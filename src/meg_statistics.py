@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 from scipy import stats as stats
+import scipy
 import glob
 from multiprocessing import Pool
 import os
@@ -9,6 +10,8 @@ import gc
 from functools import partial
 import random
 import matplotlib.pyplot as plt
+import itertools
+from collections import defaultdict
 
 import mne
 from mne import spatial_tris_connectivity, grade_to_tris
@@ -17,21 +20,34 @@ from mne.minimum_norm import (write_inverse_operator, make_inverse_operator, app
         apply_inverse_epochs, read_inverse_operator)
 from mne.source_estimate import _make_stc
 
+# data_path = mne.datasets.sample.data_path()
+
+
 # from surfer import Brain
 # from surfer import viz
 
 import utils
 
-ROOT_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/ecr'
-LOCAL_ROOT_DIR = '/homes/5/npeled/space3/MEG/ECR/group'
-BLENDER_DIR = '/homes/5/npeled/space3/visualization_blender'
+COMP_ROOT = utils.get_exisiting_dir(('/homes/5/npeled/space3', '/home/noam'))
+LOCAL_SUBJECTS_DIR = op.join(COMP_ROOT, 'subjects')
+REMOTE_ROOT_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/ecr'
+LOCAL_ROOT_DIR = op.join(COMP_ROOT, 'MEG/ECR/group')
+BLENDER_DIR = op.join(COMP_ROOT, 'visualization_blender')
+SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
+os.environ['SUBJECTS_DIR'] = LOCAL_SUBJECTS_DIR
 
 blender_template = op.join(BLENDER_DIR, 'fsaverage', '{patient}_{cond_name}')
 
-def get_subjects():
-    epos = glob.glob(op.join(ROOT_DIR, 'ave', '*_ecr_nTSSS_conflict-epo.fif'))
-    return [utils.namebase(s).split('_')[0] for s in epos]
 
+def get_subjects():
+    if not op.isfile(op.join(LOCAL_ROOT_DIR, 'subjects.npy')):
+        epos = glob.glob(op.join(REMOTE_ROOT_DIR, 'ave', '*_ecr_nTSSS_conflict-epo.fif'))
+        subjects = [utils.namebase(s).split('_')[0] for s in epos]
+        np.save(op.join(LOCAL_ROOT_DIR, 'subjects'), subjects)
+        print(subjects)
+    else:
+        subjects = np.load(op.join(LOCAL_ROOT_DIR, 'subjects.npy'))
+    return subjects
 
 def get_healthy_controls():
     return [subject for subject in get_subjects() if subject[:2]=='hc']
@@ -93,8 +109,8 @@ def calc_inverse(epochs=None, overwrite=False):
 
 def _calc_inverse(params):
     subject, epochs, overwrite = params
-    epo = op.join(ROOT_DIR, 'ave', '{}_ecr_nTSSS_conflict-epo.fif'.format(subject))
-    fwd = op.join(ROOT_DIR, 'fwd', '{}_ecr-fwd.fif'.format(subject))
+    epo = op.join(REMOTE_ROOT_DIR, 'ave', '{}_ecr_nTSSS_conflict-epo.fif'.format(subject))
+    fwd = op.join(REMOTE_ROOT_DIR, 'fwd', '{}_ecr-fwd.fif'.format(subject))
     local_inv_file_name = op.join(LOCAL_ROOT_DIR, 'inv', '{}_ecr_nTSSS_conflict-inv.fif'.format(subject))
 
     if os.path.isfile(local_inv_file_name) and not overwrite:
@@ -128,8 +144,8 @@ def _calc_epoches(params):
     subject, events_id, tmin, tmax = params
     out_file = op.join(LOCAL_ROOT_DIR, 'epo', '{}_ecr_nTSSS_conflict-epo.fif'.format(subject))
     if not op.isfile(out_file):
-        events = mne.read_events(op.join(ROOT_DIR, 'events', '{}_ecr_nTSSS_conflict-eve.fif'.format(subject)))
-        raw = mne.io.Raw(op.join(ROOT_DIR, 'raw', '{}_ecr_nTSSS_raw.fif'.format(subject)), preload=False)
+        events = mne.read_events(op.join(REMOTE_ROOT_DIR, 'events', '{}_ecr_nTSSS_conflict-eve.fif'.format(subject)))
+        raw = mne.io.Raw(op.join(REMOTE_ROOT_DIR, 'raw', '{}_ecr_nTSSS_raw.fif'.format(subject)), preload=False)
         picks = mne.pick_types(raw.info, meg=True)
         epochs = find_epoches(raw, picks, events, events_id, tmin=tmin, tmax=tmax)
         epochs.save(out_file)
@@ -406,18 +422,15 @@ def run_permutation_ttest(tmin=None, tmax=None, p_threshold = 0.05, n_permutatio
 
 
 def read_permutation_ttest_reusults(events_id, subjects_dir, inverse_method='dSPM'):
-    for cond_id, cond_name in enumerate(events_id.keys()):
-        for patient in get_patients():
-            results_file_name = op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results', '{}_{}_{}.npz'.format(patient, cond_name, inverse_method))
-            if op.isfile(results_file_name):
-                print(patient, cond_name)
-                res = np.load(results_file_name)
-                good_cluster_inds = np.where(res['cluster_p_values'] < 0.05)[0]
-                print('good cluster {}, min: {}'.format(len(good_cluster_inds), min(res['cluster_p_values'])))
-                try:
-                    plot_ttest_results_using_pysurfer(patient, cond_name, res, subjects_dir)
-                except:
-                    pass
+    for cond_id, cond_name, patient, hc, res in patients_hcs_conds_gen(events_id, inverse_method):
+        print(patient, hc, cond_name)
+        good_cluster_inds = np.where(res['cluster_p_values'] < 0.05)[0]
+        print('good cluster {}, min: {}'.format(len(good_cluster_inds), min(res['cluster_p_values'])))
+        try:
+            plot_ttest_results_using_pysurfer(patient, cond_name, res, subjects_dir)
+        except:
+            pass
+
 
 
 def plot_ttest_results_using_pysurfer(patient, cond_name, res, subjects_dir):
@@ -438,26 +451,35 @@ def plot_ttest_results_using_pysurfer(patient, cond_name, res, subjects_dir):
 
 
 def filter_out_clusters_from_ttest_results(events_id, p_thresh=0.05, inverse_method='dSPM'):
-    for cond_id, cond_name in enumerate(events_id.keys()):
-        for patient in get_patients():
-            results_file_name = op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results',
-                '{}_{}_{}.npz'.format(patient, cond_name, inverse_method))
-            if op.isfile(results_file_name):
-                res = utils.dic2bunch(np.load(results_file_name))
-                n_times, n_vertices = res.T_obs.shape
-                good_cluster_inds = np.where(res.cluster_p_values < p_thresh)[0]
-                if len(good_cluster_inds) > 0:
-                    data = np.zeros((n_vertices, n_times))
-                    for ii, cluster_ind in enumerate(good_cluster_inds):
-                        v_inds = res.clusters[cluster_ind][1]
-                        t_inds = res.clusters[cluster_ind][0]
-                        data[v_inds, t_inds] = res.T_obs[t_inds, v_inds]
-                    np.save(op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results',
-                        '{}_{}_{}_clusters'.format(patient, cond_name, inverse_method)), data)
-                else:
-                    print('no sigificant clusters for {} {}'.format(patient, cond_name))
-            else:
-                print('no results for {} {}'.format(patient, cond_name))
+    for cond_id, cond_name, patient, hc, res in patients_hcs_conds_gen(events_id, False, inverse_method):
+        n_times, n_vertices = res.T_obs.shape
+        good_cluster_inds = np.where(res.cluster_p_values < p_thresh)[0]
+        if len(good_cluster_inds) > 0:
+            data = np.zeros((n_vertices, n_times))
+            for ii, cluster_ind in enumerate(good_cluster_inds):
+                v_inds = res.clusters[cluster_ind][1]
+                t_inds = res.clusters[cluster_ind][0]
+                data[v_inds, t_inds] = res.T_obs[t_inds, v_inds]
+            data = scipy.sparse.csr_matrix(data)
+            np.save(op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results',
+                '{}_{}_{}_{}_clusters'.format(patient, hc, cond_name, inverse_method)), data)
+        else:
+            print('no sigificant clusters for {} {}'.format(patient, cond_name))
+
+
+def plot_perm_ttest_results(events_id, inverse_method='dSPM'):
+    all_data = defaultdict(dict)
+    for cond_id, cond_name, patient, hc, data in patients_hcs_conds_gen(events_id, True, inverse_method):
+        all_data[patient][hc] = data[()]
+        fsave_vertices = [np.arange(10242), np.arange(10242)]
+        stc = _make_stc(data[()] , fsave_vertices, tmin=0, tstep=1e3, subject='fsaverage')
+        src = mne.read_source_spaces(op.join(LOCAL_SUBJECTS_DIR, 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
+        vol = stc.as_volume([src], dest='surf')
+    for patient, pat_data in all_data.iteritems():
+        plt.figure()
+        for hc, data in pat_data.iteritems():
+            pass
+
 
 
 def smooth_ttest_results(tmin, tstep, subjects_dir, inverse_method='dSPM', n_jobs=1):
@@ -583,10 +605,34 @@ def calc_labels_avg(events_id, tmin, inverse_method='dSPM', do_plot=False):
 #                 print('good_cluster_inds: {}'.format(good_cluster_inds))
 
 
+def patients_hcs_conds_gen(events_id, read_clusters=False, inverse_method='dSPM'):
+    loops = [enumerate(events_id.keys()), get_patients(), get_healthy_controls()]
+    for (cond_id, cond_name), patient, hc in itertools.product(*loops):
+        if read_clusters:
+            results_file_name = op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results',
+                '{}_{}_{}_{}_clusters.npy'.format(patient, hc, cond_name, inverse_method))
+        else:
+            results_file_name = op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results',
+                '{}_{}_{}_{}.npz'.format(patient, hc, cond_name, inverse_method))
+        if op.isfile(results_file_name):
+            if read_clusters:
+                data = np.load(results_file_name)
+                yield cond_id, cond_name, patient, hc, data
+            else:
+                res = utils.dic2bunch(np.load(results_file_name))
+                yield cond_id, cond_name, patient, hc, res
+    else:
+        print('no results for {} {} {}'.format(patient, hc, cond_name))
+
+
+def create_local_folds():
+    for fol in ['eop', 'evo', 'inv', 'stc', 'stc_epochs', 'stc_morphed',
+                'stc_epochs_morphed', 'stc_clusters', 'clusters_results',
+                'permutation_ttest_results', 'results_for_blender']:
+        utils.make_dir(op.join(LOCAL_ROOT_DIR, fol))
+
+
 if __name__ == '__main__':
-    SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
-    LOCAL_SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
-    os.environ['SUBJECTS_DIR'] = LOCAL_SUBJECTS_DIR
     T_MAX = 2
     T_MIN = -0.5
     T_MAX_CROP = 1
@@ -597,20 +643,21 @@ if __name__ == '__main__':
     n_jobs = 6
     pool = Pool(n_jobs) if n_jobs>1 else None
 
-    for fol in ['eop', 'evo', 'inv', 'stc', 'stc_epochs', 'stc_morphed',
-                'stc_epochs_morphed', 'stc_clusters', 'clusters_results',
-                'permutation_ttest_results', 'results_for_blender']:
-        utils.make_dir(op.join(LOCAL_ROOT_DIR, fol))
+    # src = mne.setup_source_space('fsaverage', surface='pial', spacing='ico5', n_jobs=2)
+
     print('healthy subjects:')
     print(get_healthy_controls())
-
+    print('patients:')
+    print(get_patients())
+    # create_local_folds()
     # create_stcs(events_id)
     # calc_all(events_id, T_MIN, T_MAX, apply_for_epochs=True)
     # morph_stcs_to_fsaverage(events_id, stc_per_epoch=True, inverse_method=inverse_method, subjects_dir=SUBJECTS_DIR, n_jobs=n_jobs)
     # calc_average_hc_epochs_stc(events_id)
     # run_permutation_ttest(tmin=T_MIN_CROP, tmax=T_MAX_CROP, p_threshold = 0.005, n_permutations=50, inverse_method=inverse_method, n_jobs=1)
+    # filter_out_clusters_from_ttest_results(events_id, p_thresh=0.05, inverse_method=inverse_method)
     # read_permutation_ttest_reusults(events_id, SUBJECTS_DIR, inverse_method)
-    filter_out_clusters_from_ttest_results(events_id, p_thresh=0.05, inverse_method=inverse_method)
+    plot_perm_ttest_results(events_id, inverse_method)
     # smooth_ttest_results(T_MIN_CROP, tstep, SUBJECTS_DIR, n_jobs=1)
     # save_ttest_result_for_blender(events_id, norm_by_percentile=False, norm_percs=(1,99), inverse_method=inverse_method, n_jobs=n_jobs)
     # calc_fsaverage_labels_indices(surf_name='pial', labels_from_annot=False, labels_fol='', parc='aparc250', subjects_dir=LOCAL_SUBJECTS_DIR)

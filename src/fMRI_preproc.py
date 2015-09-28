@@ -16,6 +16,8 @@ import shutil
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+fs_brain = Brain('fsaverage', 'both', 'pial', curv=False, offscreen=True)
+
 
 SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
 # SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
