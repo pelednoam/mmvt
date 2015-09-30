@@ -1,3 +1,4 @@
+from surfer import Brain
 import os.path as op
 import numpy as np
 from scipy import stats as stats
@@ -10,6 +11,7 @@ import gc
 from functools import partial
 import random
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import itertools
 from collections import defaultdict
 
@@ -18,7 +20,7 @@ from mne import spatial_tris_connectivity, grade_to_tris
 from mne.stats import spatio_temporal_cluster_test, spatio_temporal_cluster_1samp_test, summarize_clusters_stc
 from mne.minimum_norm import (write_inverse_operator, make_inverse_operator, apply_inverse,
         apply_inverse_epochs, read_inverse_operator)
-from mne.source_estimate import _make_stc
+from mne.source_estimate import _make_stc, VolSourceEstimate
 
 # data_path = mne.datasets.sample.data_path()
 
@@ -467,20 +469,124 @@ def filter_out_clusters_from_ttest_results(events_id, p_thresh=0.05, inverse_met
             print('no sigificant clusters for {} {}'.format(patient, cond_name))
 
 
-def plot_perm_ttest_results(events_id, inverse_method='dSPM'):
+def plot_perm_ttest_results(events_id, inverse_method='dSPM', plot_type='scatter_plot'):
+    print('plot_perm_ttest_results')
     all_data = defaultdict(dict)
+    fsave_vertices = [np.arange(10242), np.arange(10242)]
+    fs_pts = mne.vertex_to_mni(fsave_vertices, [0, 1], 'fsaverage', LOCAL_SUBJECTS_DIR) # 0 for lh
     for cond_id, cond_name, patient, hc, data in patients_hcs_conds_gen(events_id, True, inverse_method):
         all_data[patient][hc] = data[()]
-        fsave_vertices = [np.arange(10242), np.arange(10242)]
-        stc = _make_stc(data[()] , fsave_vertices, tmin=0, tstep=1e3, subject='fsaverage')
-        src = mne.read_source_spaces(op.join(LOCAL_SUBJECTS_DIR, 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
-        vol = stc.as_volume([src], dest='surf')
+    print(all_data.keys())
     for patient, pat_data in all_data.iteritems():
-        plt.figure()
-        for hc, data in pat_data.iteritems():
-            pass
+        print(patient)
+        fol = op.join(LOCAL_ROOT_DIR, 'permutation_ttest_results', patient)
+        utils.make_dir(fol)
+        if op.isfile(op.join(fol, 'perm_ttest_points.npz')):
+            d = np.load(op.join(fol, 'perm_ttest_points.npz'))
+            points, values, vertices, vertives_values = d['points'][()], d['values'][()], d['vertices'][()], d['vertives_values'][()]
+        else:
+            points, values, vertices, vertives_values = calc_points(pat_data, fs_pts)
+            np.savez(op.join(fol, 'perm_ttest_points'), points=points, values=values, vertices=vertices, vertives_values=vertives_values)
+        max_vals = 8 # int(np.percentile([max(v) for v in values.values()], 70))
+        print(max_vals)
+        fol = op.join(fol, '{}_figures'.format(plot_type))
+        utils.make_dir(fol)
+        if plot_type == 'scatter_plot':
+            scatter_plot_perm_ttest_results(points, values, fs_pts, max_vals, fol)
+        elif plot_type == 'pysurfer':
+            pysurfer_plot_perm_ttest_results(vertices, vertives_values, max_vals, fol)
 
 
+def pysurfer_plot_perm_ttest_results(vertices, vertives_values, max_vals, fol):
+    brain = Brain('fsaverage', 'both', 'pial', curv=False, offscreen=False, views=['lat', 'med'])
+    for ind, t in enumerate(vertices.keys()):
+        print(t)
+        for hemi in ['rh', 'lh']:
+            brain.add_data(np.array(vertives_values[t][hemi]), hemi=hemi, min=1, max=max_vals, remove_existing=True,
+                     colormap="YlOrRd", alpha=1, vertices=np.array(vertices[t][hemi]))
+        brain.save_image(os.path.join(fol, '{}.jpg'.format(t)))
+        brain.close()
+
+
+def scatter_plot_perm_ttest_results(points, values, fs_pts, max_vals, fol):
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter(fs_pts[0, :, 0], fs_pts[0, :, 1], fs_pts[0, :, 2], c='white', edgecolors='none', alpha=0.01)
+    ax.scatter(fs_pts[1, :, 0], fs_pts[1, :, 1], fs_pts[1, :, 2], c='white', edgecolors='none', alpha=0.01)
+    m = utils.get_scalar_map(1, max_vals, color_map='YlOrRd')
+    for ind, t in enumerate(points.keys()):
+        print(t)
+        colors = utils.arr_to_colors(values[t], 1,  max_vals, colors_map='YlOrRd')
+        sca = ax.scatter(points[t][:, 0], points[t][:, 1], points[t][:, 2], c=colors)
+        if ind == 0:
+            m.set_array(colors)
+            plt.colorbar(m, ticks=range(1, max_vals + 1), shrink=.5, aspect=10)
+            title_obj = plt.title('t={}'.format(t))
+        else:
+            plt.setp(title_obj, text='t={}'.format(t))
+        plt.savefig(op.join(fol, '{}.jpg'.format(t)))
+        sca.remove()
+    plt.close()
+
+
+def calc_points(patient_data, fs_pts):
+    from collections import Counter
+    # pts = defaultdict(dict)
+    vt = defaultdict(list)
+    vt_hemi = {}
+    for ind, (hc, data) in enumerate(patient_data.iteritems()):
+        print('{} / {}'.format(ind, len(patient_data.keys()) - 1))
+        x = np.array(data.todense())
+        inds = np.where(x)
+        ts = np.unique(inds[1])
+        for t in ts:
+            if not t in vt_hemi:
+                vt_hemi[t] = {'rh': [], 'lh': []}
+            # hc_t[t].append(hc)
+            t_inds = np.where(inds[1] == t)[0]
+            v_inds = inds[0][t_inds]
+            vt[t].extend(v_inds)
+            vt_hemi[t]['rh'].extend(v_inds[v_inds < 10242])
+            vt_hemi[t]['lh'].extend(v_inds[v_inds >= 10242] - 10242)
+            # pts[t][hc] = fs_pts[0][v_inds[v_inds < 10242]]
+            # pts[t][hc] = np.vstack((pts[t][hc], fs_pts[1][v_inds[v_inds >= 10242] - 10242]))
+    points, values = defaultdict(list), defaultdict(list)
+    vertices, vertives_values = {}, {}
+    for t in vt.keys():
+        if not t in vertices:
+            vertices[t] = {'rh': [], 'lh': []}
+        if not t in vertives_values:
+            vertives_values[t] = {'rh': [], 'lh': []}
+
+        if t % 10 == 0:
+            print(t)
+        cnt = Counter(vt[t])
+        cnt_rh = Counter(vt_hemi[t]['rh'])
+        cnt_lh = Counter(vt_hemi[t]['lh'])
+        for v, num in cnt.iteritems():
+            if not t in points:
+                points[t] = vertice_to_fs_point(v, fs_pts)
+            else:
+                points[t] = np.vstack((points[t], vertice_to_fs_point(v, fs_pts)))
+            values[t].append(num)
+        for cnt, hemi in zip([cnt_lh, cnt_rh], ['rh', 'lh']):
+            for v, num in cnt.iteritems():
+                vertices[t][hemi].append(v)
+                vertives_values[t][hemi].append(num)
+    return points, values, vertices, vertives_values
+
+
+def init_hemi_time_list_dic(t, dic):
+    if not t in dic:
+        dic[t] = {'rh': [], 'lh': []}
+    return dic
+
+
+def vertice_to_fs_point(v, fs_pts):
+    if v < 10242:
+        return fs_pts[0][v]
+    else:
+        return fs_pts[1][v - 10242]
 
 def smooth_ttest_results(tmin, tstep, subjects_dir, inverse_method='dSPM', n_jobs=1):
     for cond_id, cond_name in enumerate(events_id.keys()):
@@ -657,7 +763,7 @@ if __name__ == '__main__':
     # run_permutation_ttest(tmin=T_MIN_CROP, tmax=T_MAX_CROP, p_threshold = 0.005, n_permutations=50, inverse_method=inverse_method, n_jobs=1)
     # filter_out_clusters_from_ttest_results(events_id, p_thresh=0.05, inverse_method=inverse_method)
     # read_permutation_ttest_reusults(events_id, SUBJECTS_DIR, inverse_method)
-    plot_perm_ttest_results(events_id, inverse_method)
+    plot_perm_ttest_results(events_id, inverse_method, plot_type='pysurfer')
     # smooth_ttest_results(T_MIN_CROP, tstep, SUBJECTS_DIR, n_jobs=1)
     # save_ttest_result_for_blender(events_id, norm_by_percentile=False, norm_percs=(1,99), inverse_method=inverse_method, n_jobs=n_jobs)
     # calc_fsaverage_labels_indices(surf_name='pial', labels_from_annot=False, labels_fol='', parc='aparc250', subjects_dir=LOCAL_SUBJECTS_DIR)

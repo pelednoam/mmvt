@@ -6,11 +6,12 @@ import colorsys
 from PIL import Image
 from mayavi import mlab
 mlab.options.backend = 'auto'
+import utils
 
-subject = 'fsaverage' # 'mg79' #"fsaverage"
+subject = 'hc004' # 'mg79' #"fsaverage"
 hemi = "rh"
 surf = "pial"
-subjects_dir = [f for f in [os.environ.get('SUBJECTS_DIR', ''), '/home/noam/subjects/mri', '/homes/5/npeled/space3/subjects'] if os.path.isdir(f)][0]
+subjects_dir = utils.get_exisiting_dir(['/home/noam/subjects', '/home/noam/subjects/mri', '/homes/5/npeled/space3/subjects'])
 aparc_name = 'laus250'
 
 os.environ['SUBJECTS_DIR'] = subjects_dir
@@ -41,7 +42,7 @@ def get_group_labels(group):
 def get_group_images(group):
     images = []
     for view in get_views():
-        images.append(os.path.join('figures', '{}-{}_{}.jpg'.format(subject,group,view)))
+        images.append(os.path.join(subjects_dir, subject, 'label', '{}_figures'.format(aparc_name), '{}_{}.jpg'.format(group,view)))
     return images
 
 def get_views():
@@ -67,6 +68,8 @@ def save_groups_labels_figures():
 
 def combine_images_into_groups():
     labels, groups = get_groups()
+    fol = os.path.join(subjects_dir, subject, 'label', '{}_groups_figures'.format(aparc_name))
+    utils.make_dir(fol)
     for group in groups:
         group_im = Image.new('RGB', (800,800))
         group_images = get_group_images(group)
@@ -74,10 +77,10 @@ def combine_images_into_groups():
             view_img = Image.open(view_image_file)
             view_img.thumbnail((400,400))
             group_im.paste(view_img, coo)
-        group_im.save(os.path.join('groups_figures', '{}-{}.jpg'.format(subject, group)))
+        group_im.save(os.path.join(fol, '{}-{}.jpg'.format(subject, group)))
 
 if __name__ == '__main__':
     # annotation_to_labels()
-    save_groups_labels_figures()
-    # combine_images_into_groups()
+    # save_groups_labels_figures()
+    combine_images_into_groups()
     print('finish!')

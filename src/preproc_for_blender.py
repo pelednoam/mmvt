@@ -145,11 +145,15 @@ def read_electrodes_positions():
 
 def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electrodeses_names_fiels,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99)):
+    # load the matlab file
     d = scipy.io.loadmat(mat_file)
+    # get the labels names
     labels = d[electrodeses_names_fiels]
     labels = [str(l[0][0]) for l in labels]
+    # Loop for each condition
     for cond_id, cond_name in enumerate(conditions):
         field = field_cond_template.format(cond_name)
+        # initialize the data matrix (electrodes_num x T x 2)
         if cond_id == 0:
             data = np.zeros((d[field].shape[0], to_t - from_t, 2))
         # times = np.arange(0, to_t*2, 2)
