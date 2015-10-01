@@ -105,7 +105,7 @@ def electrodes_csv_to_npy(ras_file, output_file, delimiter=','):
     names = data[1:, 0]
     # Should also check in the electrodes data file
     if len(set(names))!=len(names):
-        raise Exeption('Duplicate electrodes names!')
+        raise Exception('Duplicate electrodes names!')
     np.savez(output_file, pos=pos, names=names)
     return output_file
 
