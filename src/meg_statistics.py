@@ -486,7 +486,7 @@ def plot_perm_ttest_results(events_id, inverse_method='dSPM', plot_type='scatter
             if plot_type == 'scatter_plot':
                 points, values = d['points'][()], d['values'][()]
             elif plot_type == 'pysurfer':
-                vertices, vertives_values = np.array(d['vertices'][()]), np.array(d['vertives_values'][()])
+                vertices, vertives_values = d['vertices'][()], d['vertives_values'][()]
         else:
             points, values, vertices, vertives_values = calc_points(pat_data, fs_pts)
             np.savez(op.join(fol, 'perm_ttest_points'), points=points, values=values, vertices=vertices, vertives_values=vertives_values)
@@ -501,15 +501,16 @@ def plot_perm_ttest_results(events_id, inverse_method='dSPM', plot_type='scatter
 
 
 def pysurfer_plot_perm_ttest_results(vertices, vertives_values, max_vals, fol):
-    brain = Brain('fsaverage', 'split', 'pial', curv=False, offscreen=False, views=['lat', 'med'])
-    for ind, t in enumerate(vertices.keys()):
+    T = max(vertices.keys())
+    for t in range(T+1):
         print(t)
+        brain = Brain('fsaverage', 'split', 'pial', curv=False, offscreen=False, views=['lat', 'med'], title='{} ms'.format(t))
         for hemi in ['rh', 'lh']:
-            if len(vertices[t][hemi]) > 0:
+            if t in vertices:
                 brain.add_data(np.array(vertives_values[t][hemi]), hemi=hemi, min=1, max=max_vals, remove_existing=True,
                          colormap="YlOrRd", alpha=1, vertices=np.array(vertices[t][hemi]))
         brain.save_image(os.path.join(fol, '{}.jpg'.format(t)))
-    brain.close()
+        brain.close()
 
 
 def scatter_plot_perm_ttest_results(points, values, fs_pts, max_vals, fol):
