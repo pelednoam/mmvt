@@ -373,6 +373,7 @@ def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=
 def get_cond_fname(fname, cond):
     return fname if utils.how_many_curlies(fname) == 0 else fname.format(cond=cond)
 
+
 def calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method='dSPM'):
     sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
     if len(sub_corticals) == 0:
@@ -886,7 +887,7 @@ if __name__ == '__main__':
     stcs_conds=None
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
     # save_activity_map(events_id, stcs_conds, inverse_method=inverse_method)
-    save_vertex_activity_map(events_id, stcs_conds, number_of_files=100)
+    # save_vertex_activity_map(events_id, stcs_conds, number_of_files=100)
 
 
     # *) misc

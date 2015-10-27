@@ -24,10 +24,6 @@ TASK_MSIT, TASK_ECR = range(2)
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 ASEG_TO_SRF = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'aseg2srf -s "{}"') # -o {}'
 
-def convert_srf_files_to_ply(srf_folder):
-    srf_files = glob.glob(os.path.join(srf_folder, '*.srf'))
-    for srf_file in srf_files:
-        srf2ply(srf_file, '{}.ply'.format(srf_file[:-4]))
 
 def subcortical_segmentation(subject):
     # Should source freesurfer
@@ -58,7 +54,7 @@ def rename_sub_cortical(fol, new_fol, codes_file):
         num = int(os.path.basename(obj_file)[:-4].split('_')[-1])
         new_name = lookup.get(num, '')
         if new_name != '':
-            srf2ply(obj_file, os.path.join(new_fol, '{}.ply'.format(new_name)))
+            utils.srf2ply(obj_file, os.path.join(new_fol, '{}.ply'.format(new_name)))
     blender_fol = os.path.join(BLENDER_SUBJECT_DIR, 'subcortical')
     if os.path.isdir(blender_fol):
         shutil.rmtree(blender_fol)
@@ -99,13 +95,22 @@ def montage_to_npy(montage_file, output_file):
     np.savez(output_file, pos=np.array(sfp.pos), names=sfp.ch_names)
 
 
-def electrodes_csv_to_npy(ras_file, output_file, delimiter=','):
+def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     data = np.genfromtxt(ras_file, dtype=str, delimiter=delimiter)
     pos = data[1:, 1:].astype(float)
-    names = data[1:, 0]
     # Should also check in the electrodes data file
+    if bipolar:
+        names = []
+        pos_biploar = []
+        for index in range(data.shape[0]-2):
+            if data[index+2, 0][:3] == data[index+1, 0][:3]:
+                names.append('{}-{}'.format(data[index+2, 0],data[index+1, 0]))
+                pos_biploar.append(pos[index] + (pos[index+1]-pos[index])/2)
+        pos = np.array(pos_biploar)
+    else:
+        names = data[1:, 0]
     if len(set(names))!=len(names):
-        raise Exeption('Duplicate electrodes names!')
+        raise Exception('Duplicate electrodes names!')
     np.savez(output_file, pos=pos, names=names)
     return output_file
 
@@ -136,12 +141,12 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
     np.savez(output_file_name, data=data, names=sfp.ch_names, conditions=conditions, colors=colors)
 
 
-def read_electrodes_positions():
+def read_electrodes_positions(bipolar=False):
     electrodes_folder = os.path.join(subject_dir, 'electrodes')
     # montage_to_npy('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/ohad/mg79/electrodes_positions.npz')
-    out_file = electrodes_csv_to_npy(os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject)), os.path.join(subject_dir, 'electrodes', 'electrodes_positions.npz'))
+    out_file = electrodes_csv_to_npy(os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject)), os.path.join(subject_dir, 'electrodes', 'electrodes_positions.npz'), bipolar)
     shutil.copyfile(out_file, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_positions.npz'))
-
+    return out_file
 
 def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electrodeses_names_fiels,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99)):
@@ -149,7 +154,9 @@ def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electro
     d = scipy.io.loadmat(mat_file)
     # get the labels names
     labels = d[electrodeses_names_fiels]
-    labels = [str(l[0][0]) for l in labels]
+    #todo: change that!!!
+    # labels = [str(l[0][0]) for l in labels]
+    labels = [str(l[0]) for l in labels[0]]
     # Loop for each condition
     for cond_id, cond_name in enumerate(conditions):
         field = field_cond_template.format(cond_name)
@@ -178,33 +185,6 @@ def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
     montage_names = set(sfp.ch_names)
     print(names-montage_names)
     print(montage_names-names)
-
-
-def srf2ply(srf_file, ply_file):
-    print('convert {} to {}'.format(srf_file, ply_file))
-    verts, faces, verts_num, faces_num = utils.read_srf_file(srf_file)
-    utils.write_ply_file(verts, faces, ply_file)
-    return ply_file
-    # faces = np.hstack((np.ones((faces_num, 1)) * 3, faces))
-    # with open(ply_file, 'w') as f:
-    #     f.write(PLY_HEADER.format(verts_num, faces_num))
-    #     np.savetxt(f, verts, '%.5f', ' ')
-    #     np.savetxt(f, faces, '%d', ' ')
-
-
-def obj2ply(obj_file, ply_file):
-    # with open(obj_file, 'r') as f:
-    #     lines = f.readlines()
-    #     verts = np.array([[float(v) for v in l.strip().split(' ')[1:]] for l in lines if l[0]=='v'])
-    #     faces = np.array([[int(v) for v in l.strip().split(' ')[1:]] for l in lines if l[0]=='f'])
-    # faces -= 1
-    verts, faces = utils.read_obj_file(obj_file)
-    utils.write_ply_file(verts, faces, ply_file)
-    # faces = np.hstack((np.ones((faces.shape[0], 1)) * 3, faces))
-    # with open(ply_file, 'w') as f:
-    #     f.write(PLY_HEADER.format(verts.shape[0], faces.shape[0]))
-    #     np.savetxt(f, verts, '%.5f', ' ')
-    #     np.savetxt(f, faces, '%d', ' ')
 
 
 def calc_faces_verts_dic():
@@ -243,31 +223,9 @@ def check_ply_files(ply_subject, ply_blender):
     print('check_ply_files: ok')
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, local_subjects_dir):
-    local_subject_dir = os.path.join(local_subjects_dir, subject)
-    neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
-    for fol, files in neccesary_files.iteritems():
-        if not os.path.isdir(os.path.join(local_subject_dir, fol)):
-            os.makedirs(os.path.join(local_subject_dir, fol))
-        for file_name in files:
-            try:
-                shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
-                            os.path.join(local_subject_dir, fol, file_name))
-            except:
-                pass
-    all_files_exists = True
-    for fol, files in neccesary_files.iteritems():
-        for file_name in files:
-            if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
-                print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
-                all_files_exists = False
-    if not all_files_exists:
-        raise Exception('Not all files exist in the local subject folder!!!')
-
-
 def convert_perecelated_cortex(subject_dir, aparc_name, hemi='both'):
     for hemi in utils.get_hemis(hemi):
-        convert_srf_files_to_ply(os.path.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
+        utils.convert_srf_files_to_ply(os.path.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
         utils.rmtree(os.path.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)))
         rename_cortical(os.path.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
                         os.path.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
@@ -280,7 +238,7 @@ def convert_perecelated_cortex(subject_dir, aparc_name, hemi='both'):
 
 def convert_cortex(subject_dir, hemi='both'):
     for hemi in utils.get_hemis(hemi):
-        ply_file = srf2ply(os.path.join(subject_dir,'surf', '{}.pial.srf'.format(hemi)), os.path.join(subject_dir,'surf', '{}.pial.ply'.format(hemi)))
+        ply_file = utils.srf2ply(os.path.join(subject_dir,'surf', '{}.pial.srf'.format(hemi)), os.path.join(subject_dir,'surf', '{}.pial.ply'.format(hemi)))
         shutil.copyfile(ply_file, os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'.format(hemi)))
 
 
@@ -297,9 +255,40 @@ def parcelate_cortex(subject, aparc_name='aparc250'):
     utils.run_script(cmd)
 
 
+def create_electrodes_volume_file(electrodes_file):
+    import nibabel as nib
+    from itertools import product
+    import csv
+
+    elecs = np.load(electrodes_file)
+    pos, names = elecs['pos'], elecs['names']
+    # pos = np.array(utils.to_ras(pos, round_coo=True))
+    groups = set([name[:3] for name in names])
+    # for group in groups:
+    with open(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}.dat'.format('electrodes')), 'w') as fp:
+        writer = csv.writer(fp, delimiter=' ')
+        writer.writerows(pos)
+        writer.writerow(['info'])
+        writer.writerow(['numpoints', len(pos)])
+        writer.writerow(['useRealRAS', '1'])
+
+    sig = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'T1.mgz'))
+    sig_data = sig.get_data()
+    sig_header = sig.get_header()
+    electrodes_positions = np.load(electrodes_file)['pos']
+    data = np.zeros((256, 256, 256), dtype=np.int16)
+    # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
+    pos = np.array(pos, dtype=np.int16)
+    for pos_ras in pos:
+        for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
+            data[z,y,z] = 1
+    img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
+    nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
+
+
 if __name__ == '__main__':
     # subject = 'colin27'
-    subject = 'hc004'
+    subject = 'mg78'
     hemis = ['rh', 'lh']
     subject_dir = os.path.join(SUBJECTS_DIR, subject)
     BLENDER_SUBJECT_DIR = os.path.join(BLENDER_ROOT_DIR, subject)
@@ -309,32 +298,34 @@ if __name__ == '__main__':
     task = TASK_MSIT
     remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     remote_subject_dir = os.path.join('/cluster/neuromind/tools/freesurfer', subject)
+    neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
+
     # remote_subject_dir = os.path.join(SCAN_SUBJECTS_DIR, subject)
     # Files needed in the local subject folder
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
     # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
     # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
 
-    # prepare_local_subjects_folder(subject, remote_subject_dir, SUBJECTS_DIR)
+
+    # prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR)
     # 1) Create srf files for subcortical structures
     # !!! Should source freesurfer !!!
     # Remember that you need to have write permissions on SUBJECTS_DIR!!!
     # subcortical_segmentation(subject)
 
     # 2) Create annotation file from fsaverage
-    create_annotation_file_from_fsaverage(subject, aparc_name, overwrite=True, n_jobs=1)
+    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite=True, n_jobs=1)
     # 1) convert rh.pial and lh.pial to rh.pial.srf and lh.pial.srf
-    freesurfer_surface_to_blender_surface(subject)
+    # freesurfer_surface_to_blender_surface(subject)
     # 2) convert the srf files to ply
-    convert_cortex(subject_dir)
+    # convert_cortex(subject_dir)
 
     # Calls Matlab 'splitting_cortical.m' script
-    parcelate_cortex(subject, aparc_name)
+    # parcelate_cortex(subject, aparc_name)
 
     # 3) After running splitting_cortical_surface in Matlab, convert the  obj files to ply
-    convert_perecelated_cortex(subject_dir, aparc_name)
-    # 5) Read the montage file and save it as numpy
-    # read_electrodes_positions()
+    # convert_perecelated_cortex(subject_dir, aparc_name)
+
 
 
     # 7) Create a dictionary for verts and faces for both hemis
@@ -346,14 +337,22 @@ if __name__ == '__main__':
 
 
     # 6) Read the electrodes data
+    bipolar = False
+    out_file = read_electrodes_positions(bipolar=bipolar)
+    create_electrodes_volume_file(out_file)
     # if task==TASK_ECR:
     #     read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
     #         ['happy', 'fear'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
     #         electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=0, to_t=2500)
     # elif task==TASK_MSIT:
-    #     read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-    #         ['noninterference', 'interference'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
-    #         electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=500, to_t=3000)
+    #     if bipolar:
+    #         read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
+    #             ['noninterference', 'interference'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+    #             electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=500, to_t=3000)
+    #     else:
+    #         read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
+    #             ['noninterference', 'interference'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+    #             electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=500, to_t=3000)
     # else:
     #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
     #                           'FearMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesFearMatr.mat'},

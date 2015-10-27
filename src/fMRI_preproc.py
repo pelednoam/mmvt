@@ -1,6 +1,9 @@
-from surfer import Brain
-from surfer import viz
-from surfer import project_volume_data
+try:
+    from surfer import Brain
+    from surfer import viz
+    from surfer import project_volume_data
+except:
+    print('no pysurfer!')
 import os, sys
 import nibabel as nib
 import mne
@@ -16,7 +19,7 @@ import shutil
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-fs_brain = Brain('fsaverage', 'both', 'pial', curv=False, offscreen=True)
+# fs_brain = Brain('fsaverage', 'both', 'pial', curv=False, offscreen=True)
 
 
 SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
@@ -245,6 +248,8 @@ if __name__ == '__main__':
     #              '/autofs/space/franklin_003/users/npeled/MSIT/mg78/aseg_stats.csv')
     # calculate_subcorticals_activity('/home/noam/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
     #              '/home/noam/fMRI/MSIT/mg78/aseg_stats.csv')
+    volume_file = nib.load('/autofs/space/franklin_003/users/npeled/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig_subject.mgz')
+    vol_data, vol_header = volume_file.get_data(), volume_file.get_header()
 
     constrast_file=constrast_file_template.format(
         contrast='non-interference-v-interference', hemi='mni305', format='mgz')

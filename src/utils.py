@@ -15,6 +15,7 @@ import math
 import os.path as op
 import types
 from sklearn.datasets.base import Bunch
+import traceback
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
 
@@ -143,6 +144,24 @@ def read_obj_file(obj_file):
         faces = np.array([[int(v) for v in l.strip().split(' ')[1:]] for l in lines if l[0]=='f'])
     faces -= 1
     return verts, faces
+
+
+def srf2ply(srf_file, ply_file):
+    print('convert {} to {}'.format(srf_file, ply_file))
+    verts, faces, verts_num, faces_num = read_srf_file(srf_file)
+    write_ply_file(verts, faces, ply_file)
+    return ply_file
+
+
+def obj2ply(obj_file, ply_file):
+    verts, faces = read_obj_file(obj_file)
+    write_ply_file(verts, faces, ply_file)
+
+
+def convert_srf_files_to_ply(srf_folder):
+    srf_files = glob.glob(os.path.join(srf_folder, '*.srf'))
+    for srf_file in srf_files:
+        srf2ply(srf_file, '{}.ply'.format(srf_file[:-4]))
 
 
 def get_ply_vertices_num(ply_file_template):
@@ -299,19 +318,21 @@ def namebase(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
 
-def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6):
+def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     if subjects_dir=='':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = os.path.join(subjects_dir, subject)
-    labels_fol = os.path.join(subjects_dir, 'fsaverage', 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
+    labels_fol = os.path.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
     sub_labels_fol = os.path.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not os.path.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
     for label_file in glob.glob(os.path.join(labels_fol, '*.label')):
-        fs_label = mne.read_label(label_file)
-        fs_label.values.fill(1.0)
-        sub_label = fs_label.morph('fsaverage', subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
-        sub_label.save(os.path.join(sub_labels_fol, '{}.label'.format(sub_label.name)))
+        local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
+        if not os.path.isfile(local_label_name) or overwrite:
+            fs_label = mne.read_label(label_file)
+            fs_label.values.fill(1.0)
+            sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
+            sub_label.save(local_label_name)
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True):
@@ -504,3 +525,37 @@ def parallel_run(pool, func, params, n_jobs):
 
 def fsaverage_vertices():
     return [np.arange(10242), np.arange(10242)]
+
+
+def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=False):
+    local_subject_dir = os.path.join(local_subjects_dir, subject)
+    for fol, files in neccesary_files.iteritems():
+        if not os.path.isdir(os.path.join(local_subject_dir, fol)):
+            os.makedirs(os.path.join(local_subject_dir, fol))
+        for file_name in files:
+            try:
+                if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
+                    shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
+                                os.path.join(local_subject_dir, fol, file_name))
+            except:
+                if print_traceback:
+                    print(traceback.format_exc())
+    all_files_exists = True
+    for fol, files in neccesary_files.iteritems():
+        for file_name in files:
+            if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
+                print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
+                all_files_exists = False
+    if not all_files_exists:
+        raise Exception('Not all files exist in the local subject folder!!!')
+
+
+def to_ras(points, round_coo=False):
+    RAS_AFF = np.array([[-1, 0, 0, 128],
+        [0, 0, -1, 128],
+        [0, 1, 0, 128],
+        [0, 0, 0, 1]])
+    ras = [np.dot(RAS_AFF, np.append(p, 1))[:3] for p in points]
+    if round_coo:
+        ras = np.array([np.around(p) for p in ras], dtype=np.int16)
+    return ras
