@@ -255,35 +255,49 @@ def parcelate_cortex(subject, aparc_name='aparc250'):
     utils.run_script(cmd)
 
 
-def create_electrodes_volume_file(electrodes_file):
+def create_electrodes_volume_file(electrodes_file, create_points_files=True, create_volume_file=False, way_points=False):
     import nibabel as nib
     from itertools import product
     import csv
 
     elecs = np.load(electrodes_file)
-    pos, names = elecs['pos'], elecs['names']
-    # pos = np.array(utils.to_ras(pos, round_coo=True))
-    groups = set([name[:3] for name in names])
-    # for group in groups:
-    with open(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}.dat'.format('electrodes')), 'w') as fp:
-        writer = csv.writer(fp, delimiter=' ')
-        writer.writerows(pos)
-        writer.writerow(['info'])
-        writer.writerow(['numpoints', len(pos)])
-        writer.writerow(['useRealRAS', '1'])
+    elecs_pos, names = elecs['pos'], elecs['names']
 
-    sig = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'T1.mgz'))
-    sig_data = sig.get_data()
-    sig_header = sig.get_header()
-    electrodes_positions = np.load(electrodes_file)['pos']
-    data = np.zeros((256, 256, 256), dtype=np.int16)
-    # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
-    pos = np.array(pos, dtype=np.int16)
-    for pos_ras in pos:
-        for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
-            data[z,y,z] = 1
-    img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-    nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
+    if create_points_files:
+        groups = set([name[:3] for name in names])
+        freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
+            ('-w ' if way_points else '-c ')
+        for group in groups:
+            postfix = 'label' if way_points else 'dat'
+            freeview_command = freeview_command + group + postfix + ' '
+            group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if name[:3]==group])
+            file_name = '{}.{}'.format(group, postfix)
+            with open(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', file_name), 'w') as fp:
+                writer = csv.writer(fp, delimiter=' ')
+                if way_points:
+                    writer.writerow(['#!ascii label  , from subject  vox2ras=Scanner'])
+                    writer.writerow([len(group_pos)])
+                    points = np.hstack((np.ones((len(group_pos), 1)) * -1, group_pos, np.ones((len(group_pos), 1))))
+                    writer.writerows(points)
+                else:
+                    writer.writerows(group_pos)
+                    writer.writerow(['info'])
+                    writer.writerow(['numpoints', len(group_pos)])
+                    writer.writerow(['useRealRAS', '1'])
+
+    if create_volume_file:
+        sig = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'T1.mgz'))
+        sig_data = sig.get_data()
+        sig_header = sig.get_header()
+        electrodes_positions = np.load(electrodes_file)['pos']
+        data = np.zeros((256, 256, 256), dtype=np.int16)
+        # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
+        elecs_pos = np.array(elecs_pos, dtype=np.int16)
+        for pos_ras in elecs_pos:
+            for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
+                data[z,y,z] = 1
+        img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
+        nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
 
 
 if __name__ == '__main__':
