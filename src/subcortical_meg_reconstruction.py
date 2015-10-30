@@ -263,7 +263,7 @@ if __name__ == '__main__':
     fwd_sub_fn =  _get_fif_name('sub-cortical-fwd')
     inv_sub_fn = _get_fif_name('sub-cortical-inv')
 
-    # Should be changed!!!
+    #todo: Should be changed!!!
     baseline_min_t = None
     baseline_max_t = 0
     min_crop_t = 0

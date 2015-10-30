@@ -9,12 +9,6 @@ import scipy.io
 from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 
-# SRF_FOLDER = '/homes/5/npeled/space3/subjects/mg79/ascii'
-SRF_FOLDER = '/homes/5/npeled/space3/ohad/rh.pial_rois'
-# SRF_TO_OBJ = '/homes/5/npeled/space3/brainder_matlab_scripts/srf2obj {}.srf > {}.obj'
-# OBJ_TO_SRF = '/homes/5/npeled/space3/brainder_matlab_scripts/obj2srf {}.obj > {}.srf'
-SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
-# PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
 SUBJECTS_DIR = [fol for fol in ['/homes/5/npeled/space3/subjects', '/home/noam/subjects/mri'] if os.path.isdir(fol)]
 SUBJECTS_DIR = SUBJECTS_DIR[0] if len(SUBJECTS_DIR) > 0 else os.environ.get('SUBJECTS_DIR')
 BLENDER_ROOT_DIR = '/homes/5/npeled/space3/visualization_blender'
@@ -24,6 +18,7 @@ TASK_MSIT, TASK_ECR = range(2)
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 ASEG_TO_SRF = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'aseg2srf -s "{}"') # -o {}'
 
+aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 def subcortical_segmentation(subject):
     # Should source freesurfer
@@ -148,6 +143,29 @@ def read_electrodes_positions(bipolar=False):
     shutil.copyfile(out_file, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_positions.npz'))
     return out_file
 
+
+def create_electrode_data_file(task, from_t, to_t, conditions, subject_dir, bipolar):
+    if task==TASK_ECR:
+        read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
+            conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+            electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t)# from_t=0, to_t=2500)
+    elif task==TASK_MSIT:
+        if bipolar:
+            read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
+                conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+                electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
+        else:
+            read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
+                conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+                electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
+    # else:
+    #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
+    #                           'FearMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesFearMatr.mat'},
+    #                          ['Happy', 'Fear'],
+    #                          '/homes/5/npeled/space3/ohad/mg79/mg79.sfp',
+    #                          '/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz', from_t, to_t) #0, 2500)
+
+
 def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electrodeses_names_fiels,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99)):
     # load the matlab file
@@ -155,8 +173,10 @@ def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electro
     # get the labels names
     labels = d[electrodeses_names_fiels]
     #todo: change that!!!
-    # labels = [str(l[0][0]) for l in labels]
-    labels = [str(l[0]) for l in labels[0]]
+    if len(labels) == 1:
+        labels = [str(l[0]) for l in labels[0]]
+    else:
+        labels = [str(l[0][0]) for l in labels]
     # Loop for each condition
     for cond_id, cond_name in enumerate(conditions):
         field = field_cond_template.format(cond_name)
@@ -300,6 +320,37 @@ def create_electrodes_volume_file(electrodes_file, create_points_files=True, cre
         nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
 
 
+def create_lut_file_for_atlas(subject, atlas):
+    from mne.label import _read_annot
+    import nibabel
+    aparc_aseg_file = os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}+aseg.mgz'.format(atlas))
+    fh = nibabel.load(aparc_aseg_file)
+    data, header = fh.get_data(),fh.get_header()
+    labels_ids = {}
+    for hemi in ['rh', 'lh']:
+        annot, ctab, names = _read_annot(os.path.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        labels_ids[hemi] = ctab[:, 4]
+        print('asdf')
+    labels = mne.read_labels_from_annot(subject, atlas, surf_name='pial')
+    for label in labels:
+        offset = 1000 if label.hemi=='lh' else 2000
+    print('asdf')
+
+
+def create_aparc_aseg_file(subject, atlas, print_only=False):
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
+    mri_file_fol = os.path.join(SUBJECTS_DIR, subject, 'mri')
+    mri_file = os.path.join(mri_file_fol, aparc_aseg_file)
+    blender_file = os.path.join(BLENDER_SUBJECT_DIR, 'freeview', aparc_aseg_file)
+    if not os.path.isfile(blender_file):
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(mri_file_fol)
+        rs(aparc2aseg)
+        shutil.copyfile(mri_file, blender_file)
+        os.chdir(current_dir)
+
+
 if __name__ == '__main__':
     # subject = 'colin27'
     subject = 'mg78'
@@ -310,6 +361,14 @@ if __name__ == '__main__':
         os.makedirs(BLENDER_SUBJECT_DIR)
     aparc_name = 'laus250' # 'aparc250'
     task = TASK_MSIT
+    if task==TASK_ECR:
+        conditions = ['happy', 'fear']
+    elif task==TASK_MSIT:
+        conditions = ['noninterference', 'interference']
+    else:
+        raise Exception('unknown task id!')
+    from_t, to_t = -500, 2000
+    from_t_ind, to_t_ind = 0, 3000
     remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     remote_subject_dir = os.path.join('/cluster/neuromind/tools/freesurfer', subject)
     neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
@@ -340,8 +399,6 @@ if __name__ == '__main__':
     # 3) After running splitting_cortical_surface in Matlab, convert the  obj files to ply
     # convert_perecelated_cortex(subject_dir, aparc_name)
 
-
-
     # 7) Create a dictionary for verts and faces for both hemis
     # calc_faces_verts_dic()
     # for subcortical_ply in glob.glob(os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '*.ply')):
@@ -349,30 +406,12 @@ if __name__ == '__main__':
     #     calc_faces_verts_dic(subcortical_ply,
     #         os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts'.format(subcortical_name)))
 
-
     # 6) Read the electrodes data
     bipolar = False
-    out_file = read_electrodes_positions(bipolar=bipolar)
-    create_electrodes_volume_file(out_file)
-    # if task==TASK_ECR:
-    #     read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-    #         ['happy', 'fear'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
-    #         electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=0, to_t=2500)
-    # elif task==TASK_MSIT:
-    #     if bipolar:
-    #         read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-    #             ['noninterference', 'interference'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
-    #             electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=500, to_t=3000)
-    #     else:
-    #         read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-    #             ['noninterference', 'interference'], os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
-    #             electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=500, to_t=3000)
-    # else:
-    #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
-    #                           'FearMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesFearMatr.mat'},
-    #                          ['Happy', 'Fear'],
-    #                          '/homes/5/npeled/space3/ohad/mg79/mg79.sfp',
-    #                          '/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz', 0, 2500)
+    # out_file = read_electrodes_positions(bipolar=bipolar)
+    # create_electrodes_volume_file(out_file)
+    # create_lut_file_for_atlas(subject, aparc_name)
+    create_electrode_data_file(task, from_t_ind, to_t_ind, conditions, subject_dir, bipolar)
 
     # check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
     #                 os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
@@ -380,4 +419,6 @@ if __name__ == '__main__':
     # misc
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
     print('finish!')
+
+
 

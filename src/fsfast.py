@@ -14,6 +14,10 @@ tksurfer_sess_mni = 'tksurfer-sess -s {subject} -analysis {contrast_name}.sm05.m
 mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.dat'
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
 
+"""
+mri_label2vol --annot rh.laus250.annot --temp T1.mgz --subject mg78 --hemi rh --identity --o rh.laus250.mgz
+mri_label2vol --annot rh.laus250.annot --temp T1.mgz --subject mg78 --hemi rh --identity --proj frac 0 1 .1 --o rh.laus250_2.mgz
+"""
 
 def run(subject, root_dir, par_file, contrast_name, contrasts, tr=2, run_preproc_sess=True, print_only=False):
     #todo: find the data TR instead of just guessing it's 2

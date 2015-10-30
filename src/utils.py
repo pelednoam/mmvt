@@ -224,7 +224,11 @@ def read_freesurfer_lookup_table(freesurfer_home):
 #     return names
 
 
-def get_numeric_index_to_label(label, lut):
+def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
+    if lut is None:
+        if free_surfer_home == '':
+            free_surfer_home = os.environ['FREE_SURFER_HOME']
+        lut = read_freesurfer_lookup_table(free_surfer_home)
     if type(label) == str:
         seg_name = label
         seg_id = lut['id'][lut['name'] == seg_name][0]
