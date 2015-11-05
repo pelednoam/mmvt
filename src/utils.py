@@ -206,11 +206,41 @@ def normalize_data(data, norm_by_percentile, norm_percs):
     return norm_data
 
 
-def read_freesurfer_lookup_table(freesurfer_home):
+def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):
+    freesurfer_home = get_environ_dir('FREESURFER_HOME', freesurfer_home)
     lut_fname = os.path.join(freesurfer_home, 'FreeSurferColorLUT.txt')
-    lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1),
-                        names=['id', 'name'])
+    if get_colors:
+        lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1, 2, 3, 4, 5), names=['id', 'name', 'r', 'g', 'b', 'a'])
+    else:
+        lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1), names=['id', 'name'])
     return lut
+
+
+def get_environ_dir(var_name, default_val=''):
+    ret_val = os.environ.get(var_name) if default_val == '' else default_val
+    if not os.path.isdir(ret_val):
+        raise Exception('get_environ_dir: No existing dir!')
+    return ret_val
+
+
+def get_link_dir(links_dir, link_name, var_name, default_val='', throw_exception=False):
+    val = os.path.join(links_dir, link_name)
+    if not os.path.isdir(val) and default_val != '':
+        val = default_val
+    if not os.path.isdir(val):
+        val = os.environ.get(var_name, '')
+    if not os.path.isdir(val):
+        if throw_exception:
+            raise Exception('No {} dir!'.format(link_name))
+        else:
+            print('No {} dir!'.format(link_name))
+    return val
+
+def get_links_dir():
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    proj_dir = os.path.split(curr_dir)[0]
+    links_dir = os.path.join(proj_dir, 'links')
+    return links_dir
 
 
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
@@ -235,8 +265,15 @@ def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
     elif type(label) == int:
         seg_id = label
         seg_name = lut['name'][lut['id'] == seg_id][0]
-    return seg_name, seg_id
+    return seg_name, int(seg_id)
 
+
+def lut_labels_to_indices(regions, lut):
+    sub_corticals = []
+    for reg in regions:
+        name, id = get_numeric_index_to_label(reg, lut)
+        sub_corticals.append(id)
+    return sub_corticals
 
 def how_many_curlies(str):
     return len(re.findall('\{*\}', str))
@@ -322,7 +359,8 @@ def namebase(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
 
-def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
+def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='',
+            sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     if subjects_dir=='':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = os.path.join(subjects_dir, subject)
@@ -330,7 +368,10 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
     sub_labels_fol = os.path.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not os.path.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    for label_file in glob.glob(os.path.join(labels_fol, '*.label')):
+    labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
+    if len(labels_files) == 0:
+        raise Exception('morph_labels_from_fsaverage: No labels files found!')
+    for label_file in labels_files:
         local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
         if not os.path.isfile(local_label_name) or overwrite:
             fs_label = mne.read_label(label_file)
@@ -345,14 +386,31 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     subject_dir = os.path.join(subjects_dir, subject)
     labels_fol = os.path.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
     labels = []
-    for label_file in glob.glob(os.path.join(labels_fol, '*.label')):
+    if overwrite:
+        for hemi in ['rh', 'lh']:
+            remove_file(os.path.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+    labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
+    if len(labels_files) == 0:
+        raise Exception('labels_to_annot: No labels files!')
+    for label_file in labels_files:
         label = mne.read_label(label_file)
         print(label.name)
         labels.append(label)
 
+    labels.sort(key=lambda l: l.name)
     mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
                               subjects_dir=subjects_dir)
 
+
+def remove_file(fname, raise_error_if_does_not_exist=False):
+    try:
+        if os.path.isfile(fname):
+            os.remove(fname)
+    except:
+        if raise_error_if_does_not_exist:
+            raise Exception(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
 
 def get_hemis(hemi):
     return ['rh', 'lh'] if hemi == 'both' else [hemi]
@@ -365,6 +423,7 @@ def rmtree(fol):
 def make_dir(fol):
     if not os.path.isdir(fol):
         os.makedirs(fol)
+    return fol
 
 def get_subfolders(fol):
     return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
@@ -563,3 +622,11 @@ def to_ras(points, round_coo=False):
     if round_coo:
         ras = np.array([np.around(p) for p in ras], dtype=np.int16)
     return ras
+
+
+def check_for_necessary_files(neccesary_files, root_fol):
+    for fol, files in neccesary_files.iteritems():
+        for file in files:
+            full_path = os.path.join(root_fol, fol, file)
+            if not os.path.isfile(full_path):
+                raise Exception('{} does not exist!'.format(full_path))

@@ -3,15 +3,18 @@ import glob
 import os
 import shutil
 import numpy as np
+from setuptools.command.egg_info import overwrite_arg
+
 import utils
 import mne
 import scipy.io
 from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 
-SUBJECTS_DIR = [fol for fol in ['/homes/5/npeled/space3/subjects', '/home/noam/subjects/mri'] if os.path.isdir(fol)]
-SUBJECTS_DIR = SUBJECTS_DIR[0] if len(SUBJECTS_DIR) > 0 else os.environ.get('SUBJECTS_DIR')
-BLENDER_ROOT_DIR = '/homes/5/npeled/space3/visualization_blender'
+LINKS_DIR = utils.get_links_dir()
+SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
+FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
+BLENDER_ROOT_DIR = os.path.join(LINKS_DIR, 'mmvt')
 CACH_SUBJECT_DIR = '/space/huygens/1/users/mia/subjects/{subject}_SurferOutput/'
 SCAN_SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
 TASK_MSIT, TASK_ECR = range(2)
@@ -19,6 +22,7 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 ASEG_TO_SRF = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'aseg2srf -s "{}"') # -o {}'
 
 aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
+
 
 def subcortical_segmentation(subject):
     # Should source freesurfer
@@ -107,7 +111,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     if len(set(names))!=len(names):
         raise Exception('Duplicate electrodes names!')
     np.savez(output_file, pos=pos, names=names)
-    return output_file
+
 
 def read_electrodes(electrodes_file):
     elecs = np.load(electrodes_file)
@@ -139,24 +143,27 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
 def read_electrodes_positions(bipolar=False):
     electrodes_folder = os.path.join(subject_dir, 'electrodes')
     # montage_to_npy('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/ohad/mg79/electrodes_positions.npz')
-    out_file = electrodes_csv_to_npy(os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject)), os.path.join(subject_dir, 'electrodes', 'electrodes_positions.npz'), bipolar)
-    shutil.copyfile(out_file, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_positions.npz'))
-    return out_file
+    csv_file = os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject))
+    output_file_name = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
+    output_file = os.path.join(subject_dir, 'electrodes', output_file_name)
+    blender_file = os.path.join(BLENDER_SUBJECT_DIR, output_file_name)
+    electrodes_csv_to_npy(csv_file, output_file, bipolar)
+    shutil.copyfile(output_file, blender_file)
+    return output_file
 
 
 def create_electrode_data_file(task, from_t, to_t, conditions, subject_dir, bipolar):
+    input_file = os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat')
+    output_file = os.path.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))
     if task==TASK_ECR:
-        read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-            conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+        read_electrodes_data_one_mat(input_file, conditions, output_file,
             electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t)# from_t=0, to_t=2500)
     elif task==TASK_MSIT:
         if bipolar:
-            read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-                conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+            read_electrodes_data_one_mat(input_file, conditions, output_file,
                 electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
         else:
-            read_electrodes_data_one_mat(os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat'),
-                conditions, os.path.join(BLENDER_SUBJECT_DIR, 'electrodes_data.npz'),
+            read_electrodes_data_one_mat(input_file, conditions, output_file,
                 electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
     # else:
     #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
@@ -262,9 +269,10 @@ def convert_cortex(subject_dir, hemi='both'):
         shutil.copyfile(ply_file, os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'.format(hemi)))
 
 
-def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwrite=True, n_jobs=6):
-    utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs)
-    utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite)
+def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwrite_annotation=True,
+        overwrite_morphing=False, n_jobs=6):
+    # utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs, overwrite=overwrite_morphing)
+    utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
 
 
 def parcelate_cortex(subject, aparc_name='aparc250'):
@@ -320,34 +328,70 @@ def create_electrodes_volume_file(electrodes_file, create_points_files=True, cre
         nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
 
 
+def create_freeview_cmd(electrodes_file, atlas, create_points_files=True, create_volume_file=False, way_points=False):
+    elecs = np.load(electrodes_file)
+    if create_points_files:
+        groups = set([name[:3] for name in elecs['names']])
+        freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
+            '{}+aseg.mgz:opacity=0.05:colormap=lut:lut={}ColorLUT.txt '.format(atlas, atlas) + \
+            ('-w ' if way_points else '-c ')
+        for group in groups:
+            postfix = '.label' if way_points else '.dat'
+            freeview_command = freeview_command + group + postfix + ' '
+    print freeview_command
+
+
 def create_lut_file_for_atlas(subject, atlas):
     from mne.label import _read_annot
-    import nibabel
-    aparc_aseg_file = os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}+aseg.mgz'.format(atlas))
-    fh = nibabel.load(aparc_aseg_file)
-    data, header = fh.get_data(),fh.get_header()
-    labels_ids = {}
-    for hemi in ['rh', 'lh']:
-        annot, ctab, names = _read_annot(os.path.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
-        labels_ids[hemi] = ctab[:, 4]
-        print('asdf')
-    labels = mne.read_labels_from_annot(subject, atlas, surf_name='pial')
-    for label in labels:
-        offset = 1000 if label.hemi=='lh' else 2000
-    print('asdf')
+    # Read the subcortical segmentation from the freesurfer lut
+    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME, get_colors=True)
+    lut_new = [list(l) for l in lut if l[0] < 1000]
+    for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
+        if hemi == 'lh':
+            lut_new.append([1000, 'ctx-lh-unknown', 25, 5,  25, 0])
+        else:
+            lut_new.append([2000, 'ctx-rh-unknown', 25,  5, 25,  0])
+        _, ctab, names = _read_annot(os.path.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        for index, (label, cval) in enumerate(zip(names, ctab)):
+            r,g,b,a, _ = cval
+            lut_new.append([index + offset + 1, label, r, g, b, a])
+    lut_new.sort(key=lambda x:x[0])
+    # Add the values above 3000
+    for l in [l for l in lut if l[0] >= 3000]:
+        lut_new.append(l)
+    new_lut_fname = os.path.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
+    np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
+    utils.make_dir(os.path.join(BLENDER_SUBJECT_DIR, 'freeview'))
+    shutil.copyfile(new_lut_fname, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}ColorLUT.txt'.format(atlas)))
 
 
-def create_aparc_aseg_file(subject, atlas, print_only=False):
+def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, check_mgz_values=False):
+    import time
+    neccesary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
+    utils.check_for_necessary_files(neccesary_files, os.path.join(SUBJECTS_DIR, subject))
     rs = utils.partial_run_script(locals(), print_only=print_only)
     aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
     mri_file_fol = os.path.join(SUBJECTS_DIR, subject, 'mri')
     mri_file = os.path.join(mri_file_fol, aparc_aseg_file)
     blender_file = os.path.join(BLENDER_SUBJECT_DIR, 'freeview', aparc_aseg_file)
-    if not os.path.isfile(blender_file):
+    if not os.path.isfile(blender_file) or overwrite:
         current_dir = os.path.dirname(os.path.realpath(__file__))
         os.chdir(mri_file_fol)
+        now = time.time()
         rs(aparc2aseg)
-        shutil.copyfile(mri_file, blender_file)
+        if os.path.isfile(mri_file) and os.path.getmtime(mri_file) > now:
+            shutil.copyfile(mri_file, blender_file)
+            if check_mgz_values:
+                import nibabel as nib
+                vol = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}+aseg.mgz'.format(atlas)))
+                vol_data = vol.get_data()
+                vol_data = vol_data[np.where(vol_data)]
+                data = vol_data.ravel()
+                import matplotlib.pyplot as plt
+                plt.hist(data, bins=100)
+                plt.show()
+        else:
+            print('Failed to create {}'.format(mri_file))
         os.chdir(current_dir)
 
 
@@ -359,7 +403,7 @@ if __name__ == '__main__':
     BLENDER_SUBJECT_DIR = os.path.join(BLENDER_ROOT_DIR, subject)
     if not os.path.isdir(BLENDER_SUBJECT_DIR):
         os.makedirs(BLENDER_SUBJECT_DIR)
-    aparc_name = 'laus250' # 'aparc250'
+    aparc_name = 'laus250' # 'aprc250'
     task = TASK_MSIT
     if task==TASK_ECR:
         conditions = ['happy', 'fear']
@@ -368,7 +412,7 @@ if __name__ == '__main__':
     else:
         raise Exception('unknown task id!')
     from_t, to_t = -500, 2000
-    from_t_ind, to_t_ind = 0, 3000
+    from_t_ind, to_t_ind = 500, 3000
     remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     remote_subject_dir = os.path.join('/cluster/neuromind/tools/freesurfer', subject)
     neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
@@ -387,7 +431,8 @@ if __name__ == '__main__':
     # subcortical_segmentation(subject)
 
     # 2) Create annotation file from fsaverage
-    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite=True, n_jobs=1)
+    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=True,
+    #     overwrite_morphing=False, n_jobs=1)
     # 1) convert rh.pial and lh.pial to rh.pial.srf and lh.pial.srf
     # freesurfer_surface_to_blender_surface(subject)
     # 2) convert the srf files to ply
@@ -407,11 +452,13 @@ if __name__ == '__main__':
     #         os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts'.format(subcortical_name)))
 
     # 6) Read the electrodes data
-    bipolar = False
-    # out_file = read_electrodes_positions(bipolar=bipolar)
-    # create_electrodes_volume_file(out_file)
-    # create_lut_file_for_atlas(subject, aparc_name)
-    create_electrode_data_file(task, from_t_ind, to_t_ind, conditions, subject_dir, bipolar)
+    bipolar = True
+    electrodes_file = read_electrodes_positions(bipolar=bipolar)
+    # create_electrode_data_file(task, from_t_ind, to_t_ind, conditions, subject_dir, bipolar)
+    # create_electrodes_volume_file(electrodes_file)
+    create_lut_file_for_atlas(subject, aparc_name)
+    # create_freeview_cmd(electrodes_file, aparc_name)
+    # create_aparc_aseg_file(subject, aparc_name, overwrite=True)
 
     # check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
     #                 os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))

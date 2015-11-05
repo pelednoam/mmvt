@@ -6,35 +6,35 @@ import shutil
 import numpy as np
 from functools import partial
 from collections import defaultdict
+import traceback
 import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator, apply_inverse_epochs)
 
 from make_ecr_events import make_ecr_events
 
-SUBJECTS_MEG_DIR = utils.get_exisiting_dir(['/homes/5/npeled/space3/MEG', '/home/noam/subjects/meg'])
-SUBJECTS_MRI_DIR = utils.get_exisiting_dir(['/homes/5/npeled/space3/subjects', '/home/noam/subjects/mri']) # '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
-FREE_SURFER_HOME = utils.get_exisiting_dir([os.environ.get('FREESURFER_HOME', ''),
-    '/usr/local/freesurfer/stable5_3_0', '/home/noam/freesurfer'])
+LINKS_DIR = utils.get_links_dir()
+SUBJECTS_MEG_DIR = os.path.join(LINKS_DIR, 'meg_subjects') # utils.get_exisiting_dir(['/homes/5/npeled/space3/MEG', '/home/noam/subjects/meg'])
+SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR') # utils.get_exisiting_dir(['/homes/5/npeled/space3/subjects', '/home/noam/subjects/mri']) # '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
+FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME') #utils.get_exisiting_dir([os.environ.get('FREESURFER_HOME', ''),
+    #'/usr/local/freesurfer/stable5_3_0', '/home/noam/freesurfer'])
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
-BEHAVIOR_FILE = utils.get_exisiting_file(
-    ['/space/lilli/1/users/DARPA-MEG/ecr/behavior/hc004_ECR_MEG_2015_03_08_14_11_13.csv',
-     '/home/noam/subjects/meg/ECR/hc004_ECR_MEG_2015_03_08_14_11_13.csv'])
-LOOKUP_TABLE_SUBCORTICAL = os.path.join(utils.get_exisiting_dir([
-    '/autofs/space/franklin_003/users/npeled/visualization_blender',
-    '/media/noam/e2d1c2d2-8ac0-46ac-806b-74c5a8a3db9d/home/noam/blender_visualiztion_tool']), 'sub_cortical_codes.txt')
+# BEHAVIOR_FILE = utils.get_exisiting_file(
+#     ['/space/lilli/1/users/DARPA-MEG/ecr/behavior/hc004_ECR_MEG_2015_03_08_14_11_13.csv',
+#      '/home/noam/subjects/meg/ECR/hc004_ECR_MEG_2015_03_08_14_11_13.csv'])
+BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
+LOOKUP_TABLE_SUBCORTICAL = os.path.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
-BLENDER_ROOT_FOLDER = '/homes/5/npeled/space3/visualization_blender/'
 TASK_MSIT, TASK_ECR = range(2)
 TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
 
-SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, INV, INV_SUB, \
+SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
 MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, STC_MORPH, ACT, ASEG = '', '', '', \
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
 
 def initGlobals(subject, mri_subject, fname_format='', raw_cleaning_method='', constrast=''):
-    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, INV, INV_SUB, \
+    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
         MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER
     SUBJECT = subject
@@ -54,8 +54,10 @@ def initGlobals(subject, mri_subject, fname_format='', raw_cleaning_method='', c
     EPO = _get_fif_no_cond_name('epo')
     FWD = _get_fif_no_cond_name('fwd')
     FWD_SUB = _get_fif_no_cond_name('sub-cortical-fwd')
+    FWD_X = _get_fif_no_cond_name('{region}-fwd')
     INV = _get_fif_no_cond_name('inv')
     INV_SUB = _get_fif_no_cond_name('sub-cortical-inv')
+    INV_X = _get_fif_no_cond_name('{region}-inv')
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
@@ -218,6 +220,14 @@ def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usin
     return fwd, fwd_with_subcortical
 
 
+def make_forward_solution_to_specific_subcortrical(events_id, region, n_jobs=4, usingEEG=True):
+    for cond in events_id.keys():
+        src = add_subcortical_volumes(None, [region])
+        fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingEEG, n_jobs)
+        mne.write_forward_solution(get_cond_fname(FWD_X.format(region=region), cond), fwd, overwrite=True)
+    return fwd
+
+
 def _make_forward_solution(src, epo, usingEEG=True, n_jobs=6):
     fwd = mne.make_forward_solution(info=epo, trans=COR, src=src, bem=BEM, # mri=MRI
                                     meg=True, eeg=usingEEG, mindist=5.0,
@@ -271,7 +281,10 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     import nibabel as nib
     from mne.source_space import _make_discrete_source_space
 
-    src = org_src.copy()
+    if org_src is not None:
+        src = org_src.copy()
+    else:
+        src = None
 
     # Find the segmentation file
     aseg_fname = os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
@@ -297,27 +310,38 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
                        seg_name=seg_name))
 
         # Combine source spaces
-        src.append(sp)
+        if src is None:
+            src = mne.SourceSpaces([sp])
+        else:
+            src.append(sp)
 
     return src
 
 
-def calc_inverse_operator(events_id, calc_for_sub_cortical_fwd=True, calc_for_corticla_fwd=True):
+def calc_inverse_operator(events_id, calc_for_corticla_fwd=True, calc_for_sub_cortical_fwd=True,
+            calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
+            spec_subcortical_fwd=None, region=None):
     conds = ['all'] if utils.how_many_curlies(EPO)==0 else events_id.keys()
+    cortical_fwd = FWD if cortical_fwd is None else cortical_fwd
+    subcortical_fwd = FWD_SUB if subcortical_fwd is None else subcortical_fwd
+    spec_subcortical_fwd = FWD_X.format(region=region) if spec_subcortical_fwd is None else spec_subcortical_fwd
     for cond in conds:
         epo = get_cond_fname(EPO, cond)
         epochs = mne.read_epochs(epo)
         noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
         if calc_for_corticla_fwd:
-            forward = mne.read_forward_solution(get_cond_fname(FWD, cond))
-            inverse_operator = make_inverse_operator(epochs.info, forward, noise_cov,
-                loose=None, depth=None)
-            write_inverse_operator(get_cond_fname(INV, cond), inverse_operator)
+            _calc_inverse_operator(cortical_fwd, INV, cond, epochs, noise_cov)
         if calc_for_sub_cortical_fwd:
-            forward_sub = mne.read_forward_solution(get_cond_fname(FWD_SUB, cond))
-            inverse_operator_sub = make_inverse_operator(epochs.info, forward_sub, noise_cov,
-                loose=None, depth=None)
-            write_inverse_operator(get_cond_fname(INV_SUB, cond), inverse_operator_sub)
+            _calc_inverse_operator(subcortical_fwd, INV_SUB, cond, epochs, noise_cov)
+        if calc_for_spec_sub_cortical:
+            _calc_inverse_operator(spec_subcortical_fwd, INV_X.format(region=region), cond, epochs, noise_cov)
+
+
+def _calc_inverse_operator(fwd_name, inv_name, cond, epochs, noise_cov):
+    fwd = mne.read_forward_solution(get_cond_fname(fwd_name, cond))
+    inverse_operator_sub = make_inverse_operator(epochs.info, fwd, noise_cov,
+        loose=None, depth=None)
+    write_inverse_operator(get_cond_fname(inv_name, cond), inverse_operator_sub)
 
 
 def calc_stc(inverse_method='dSPM'):
@@ -377,9 +401,14 @@ def get_cond_fname(fname, cond):
     return fname if utils.how_many_curlies(fname) == 0 else fname.format(cond=cond)
 
 
-def calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method='dSPM',
-        evoked=None, epochs=None):
-    sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
+def calc_sub_cortical_activity(events_id, sub_corticals_codes_file=None, inverse_method='dSPM',
+        evoked=None, epochs=None, regions=None, inv_include_hemis=True, n_dipoles=0):
+    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    if regions is not None:
+        sub_corticals = utils.lut_labels_to_indices(regions, lut)
+    else:
+        if not sub_corticals_codes_file is None:
+            sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
     if len(sub_corticals) == 0:
         return
 
@@ -390,25 +419,35 @@ def calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         global_evo = True
         if evoked is None:
             evoked = {event:mne.read_evokeds(EVO, condition=event, baseline=(None, 0)) for event in events_id.keys()}
-        inverse_operator = read_inverse_operator(INV_SUB)
+        if len(sub_corticals) > 1:
+            inverse_operator = read_inverse_operator(INV_SUB)
+        else:
+            inverse_operator = read_inverse_operator(INV_X.format(region=regions[0]))
 
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     for event in events_id.keys():
+        sub_corticals_activity = {}
         if not global_evo:
             evo = get_cond_fname(EVO, event)
             if evoked is None:
                 evoked = {event:mne.read_evokeds(evo, baseline=(None, 0))[0] for event in [event]}
-            inverse_operator = read_inverse_operator(get_cond_fname(INV_SUB, event))
-        if inverse_method in ['lcmv', 'dics']:
+            if len(sub_corticals) > 1:
+                inverse_operator = read_inverse_operator(get_cond_fname(INV_SUB, event))
+            else:
+                inverse_operator = read_inverse_operator(get_cond_fname(INV_X.format(region=regions[0]), event))
+        if inverse_method in ['lcmv', 'dics', 'rap_music']:
             if epochs is None:
                 epochs = mne.read_epochs(get_cond_fname(EPO, event))
-            forward = mne.read_forward_solution(get_cond_fname(FWD_SUB, event))
+            if len(sub_corticals) > 1:
+                forward = mne.read_forward_solution(get_cond_fname(FWD_SUB, event))
+            else:
+                forward = mne.read_forward_solution(get_cond_fname(FWD_X.format(region=regions[0]), event))
 
         if inverse_method=='lcmv':
             from mne.beamformer import lcmv
             noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
             data_cov = mne.compute_covariance(epochs, tmin=0.0, tmax=1.0) #method='shrunk')
             stc = lcmv(evoked[event], forward, noise_cov, data_cov, reg=0.01)
+
         elif inverse_method=='dics':
             from mne.beamformer import dics
             from mne.time_frequency import compute_epochs_csd
@@ -417,23 +456,55 @@ def calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
             noise_csd = compute_epochs_csd(epochs, mode='multitaper', tmin=-0.5, tmax=0.0,
                 fmin=6, fmax=10)
             stc = dics(evoked[event], forward, noise_csd, data_csd)
+
+        elif inverse_method=='rap_music':
+            from mne.beamformer import rap_music
+            noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
+            n_dipoles = len(sub_corticals) if n_dipoles==0 else n_dipoles
+            dipoles = rap_music(evoked[event], forward, noise_cov, n_dipoles=n_dipoles,
+                return_residual=False, verbose=True)
+            # todo: find out what to do if n_dipoles>1
+            for sub_cortical_ind, sub_cortical_code in enumerate(sub_corticals):
+                amp = dipoles[sub_cortical_ind].amplitude
+                amp = amp.reshape((1, amp.shape[0]))
+                sub_corticals_activity[sub_cortical_code] = amp
+                print(set([tuple(dipoles[sub_cortical_ind].pos[t]) for t in range(len(dipoles[sub_cortical_ind].times))]))
         else:
             stc = apply_inverse(evoked[event], inverse_operator, lambda2, inverse_method)
-        # stc.extract_label_time_course(label, src, mode='mean_flip')
-        read_vertices_from = len(stc.vertices[0])+len(stc.vertices[1])
-        sub_corticals_activity = {}
-        for sub_cortical_ind, sub_cortical_code in enumerate(sub_corticals):
-            # +2 becasue the first two are the hemispheres
-            sub_corticals_activity[sub_cortical_code] = stc.data[
-                read_vertices_from: read_vertices_from + len(stc.vertices[sub_cortical_ind + 2])]
-            read_vertices_from += len(stc.vertices[sub_cortical_ind + 2])
 
-        if not os.path.isdir:
-            os.mkdir(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals'))
+        if inverse_method not in ['rap_music']:
+            # todo: maybe to flip?
+            # stc.extract_label_time_course(label, src, mode='mean_flip')
+            read_vertices_from = len(stc.vertices[0])+len(stc.vertices[1]) if inv_include_hemis else 0
+            # 2 becasue the first two are the hemispheres
+            sub_cortical_indices_shift = 2 if inv_include_hemis else 0
+            for sub_cortical_ind, sub_cortical_code in enumerate(sub_corticals):
+                if len(sub_corticals) > 1:
+                    vertices_to_read = len(stc.vertices[sub_cortical_ind + sub_cortical_indices_shift])
+                else:
+                    vertices_to_read = len(stc.vertices)
+                sub_corticals_activity[sub_cortical_code] = stc.data[
+                    read_vertices_from: read_vertices_from + vertices_to_read]
+                read_vertices_from += vertices_to_read
+
+        subs_fol = utils.make_dir(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals'))
         for sub_cortical_code, activity in sub_corticals_activity.iteritems():
             sub_cortical, _ = utils.get_numeric_index_to_label(sub_cortical_code, lut)
-            np.save(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals', '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
-            np.save(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals', '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
+            np.save(os.path.join(subs_fol, '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
+            np.save(os.path.join(subs_fol, '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
+
+
+def calc_specific_subcortical_activity(region, inverse_methods, calc_fwd=True, calc_inv=True):
+    if calc_fwd:
+        make_forward_solution_to_specific_subcortrical(events_id, region)
+    if calc_inv:
+        calc_inverse_operator(events_id, False, False, True, region=region)
+    for inverse_method in inverse_methods:
+        try:
+            calc_sub_cortical_activity(events_id, None, inverse_method=inverse_method,
+                regions=[region], inv_include_hemis=False)
+        except:
+            print(traceback.format_exc())
 
 
 def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method='dSPM', all_vertices=False):
@@ -444,7 +515,8 @@ def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         print(sub_cortical)
         activity = {}
         f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True)
-        fig_name = '{} ({}): {}, {}, contrast'.format(sub_cortical, inverse_method, events_id.keys()[0], events_id.keys()[1])
+        fig_name = '{} ({}): {}, {}, contrast {}'.format(sub_cortical, inverse_method,
+            events_id.keys()[0], events_id.keys()[1], '-all-vertices' if all_vertices else '')
         ax1.set_title(fig_name)
         for event, ax in zip(events_id.keys(), [ax1, ax2]):
             data_file_name = '{}-{}-{}{}.npy'.format(event, sub_cortical, inverse_method, '-all-vertices' if all_vertices else '')
@@ -855,7 +927,9 @@ if __name__ == '__main__':
     # initGlobals('hc004', 'hc004', fname_format)
     initGlobals('ep001', 'mg78', fname_format, raw_cleaning_method, constrast)
     # initGlobals('fsaverage', 'fsaverage', fname_format)
-    inverse_method='dics' #'lcmv' #'dSPM'
+    inverse_methods = ['dSPM', 'MNE', 'sLORETA']
+    beaformers = ['dics', 'lcmv', 'rap_music']
+    inverse_method = 'dSPM'
 
     T_MAX = 2
     T_MIN = -0.5
@@ -875,11 +949,14 @@ if __name__ == '__main__':
     #                     tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
 
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_only_subcorticals=True)
-    # calc_inverse_operator(events_id, calc_for_sub_cortical_fwd=True, calc_for_corticla_fwd=False)
-    calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
-    plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method)
+    # calc_inverse_operator(events_id, calc_for_corticla_fwd=False, calc_for_sub_cortical_fwd=True)
+    # for inverse_method in inverse_methods:
+    #     calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
+    plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=True)
     # save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, inverse_method=inverse_method,
     #     colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
+    # calc_specific_subcortical_activity('Left-Hippocampus', beaformers, calc_fwd=False, calc_inv=False)
+
 
     # *) equalize_epoch_counts
     # equalize_epoch_counts(events_id, method='mintime')
