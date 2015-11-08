@@ -49,6 +49,51 @@ def import_brain(base_path):
 			cur_obj.name = cur_obj.name.split(sep='.')[0]
 			cur_obj.active_material = bpy.data.materials['Activity_map_mat']
 			cur_obj.parent = bpy.data.objects["Functional maps"]
+	bpy.ops.object.select_all(action='DESELECT')
+
+
+def create_subcortical_activity_mat(name):
+	cur_mat = bpy.data.materials['subcortical_activity_mat'].copy()
+	cur_mat.name = name+'_Mat'
+
+
+def import_subcorticals(base_path):
+	brain_layer = 5
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
+
+	layers_array = bpy.context.scene.layers
+	emptys_names = ["Functional maps", "Subcortical_activity_map"]
+	for name in emptys_names:
+		create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
+
+	brain_layer = 11
+
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
+
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
+
+	print("importing Subcortical structures")
+	# for cur_val in bpy.context.scene.layers:
+	#     print(cur_val)
+	#  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	for i in os.listdir(base_path):
+		bpy.ops.object.select_all(action='DESELECT')
+		if i.endswith(".ply"):
+			print(i)
+			bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
+			cur_obj = bpy.context.selected_objects[0]
+			cur_obj.select = True
+			bpy.ops.object.shade_smooth()
+			cur_obj.scale = [0.1]*3
+			cur_obj.hide = False
+			cur_obj.name = cur_obj.name.split(sep='.')[0]
+			create_subcortical_activity_mat(cur_obj.name)
+			cur_obj.active_material = bpy.data.materials[cur_obj.name+'_Mat']
+			cur_obj.parent = bpy.data.objects["Subcortical_activity_map"]
+	bpy.ops.object.select_all(action='DESELECT')
 
 
 class ImportBrain(bpy.types.Operator):
@@ -62,8 +107,13 @@ class ImportBrain(bpy.types.Operator):
 		print("importing ROIs")
 		import_rois(self.current_root_path)
 		import_brain(self.current_root_path)
+		import_subcorticals(os.path.join(self.current_root_path, 'subcortical_ply_names'))
+		last_obj = context.active_object.name
+		print('last obj is -'+last_obj)
+
 		bpy.data.objects[' '].select = True
-		bpy.data.objects['rh'].select = False
+		bpy.data.objects[last_obj].select = False
+		context.scene.objects.active = bpy.data.objects[' ']
 		set_appearance_show_rois_layer(bpy.context.scene, True)
 		print('Brain importing is Finished ')
 		return {"FINISHED"}
@@ -907,7 +957,7 @@ def set_appearance_show_activity_layer(self, value):
     self['appearance_show_activity_layer'] = value
     bpy.context.scene.layers[11] = value
     if value:
-        set_appearance_show_rois_layer(self,False)
+        set_appearance_show_rois_layer(self, False)
         # bpy.context.scene.layers[12] = True
 
 
