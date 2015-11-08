@@ -15,57 +15,67 @@ bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="
 
 
 def import_brain(base_path):
-    brain_layer = 11
+	brain_layer = 5
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-    for ii in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[ii] = (ii == brain_layer)
+	layers_array = bpy.context.scene.layers
+	emptys_names = ["Functional maps", "Subcortical_activity_map"]
+	for name in emptys_names:
+		create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
 
-    for ii in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[ii] = (ii == brain_layer)
+	brain_layer = 11
 
-    print("importing Hemispheres")
-    # for cur_val in bpy.context.scene.layers:
-    #     print(cur_val)
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-    for i in os.listdir(base_path):
-        bpy.ops.object.select_all(action='DESELECT')
-        if i.endswith(".ply"):
-            print(i)
-            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
-            cur_obj = bpy.context.selected_objects[0]
-            cur_obj.select = True
-            bpy.ops.object.shade_smooth()
-            cur_obj.scale = [0.1]*3
-            cur_obj.hide = False
-            cur_obj.name = cur_obj.name.split(sep='.')[0]
-            cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+	for ii in range(len(bpy.context.scene.layers)):
+		bpy.context.scene.layers[ii] = (ii == brain_layer)
+
+	print("importing Hemispheres")
+	# for cur_val in bpy.context.scene.layers:
+	#     print(cur_val)
+	#  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	for i in os.listdir(base_path):
+		bpy.ops.object.select_all(action='DESELECT')
+		if i.endswith(".ply"):
+			print(i)
+			bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
+			cur_obj = bpy.context.selected_objects[0]
+			cur_obj.select = True
+			bpy.ops.object.shade_smooth()
+			cur_obj.scale = [0.1]*3
+			cur_obj.hide = False
+			cur_obj.name = cur_obj.name.split(sep='.')[0]
+			cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+			cur_obj.parent = bpy.data.objects["Functional maps"]
 
 
 class ImportBrain(bpy.types.Operator):
-    bl_idname = "ohad.brain_importing"
-    bl_label = "import2 brain"
-    bl_options = {"UNDO"}
-    current_root_path = ''
+	bl_idname = "ohad.brain_importing"
+	bl_label = "import2 brain"
+	bl_options = {"UNDO"}
+	current_root_path = ''
 
-    def invoke(self, context, event=None):
-        self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        print("importing ROIs")
-        import_rois(self.current_root_path)
-        import_brain(self.current_root_path)
-        bpy.data.objects[' '].select = True
-        bpy.data.objects['rh'].select = False
+	def invoke(self, context, event=None):
+		self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+		print("importing ROIs")
+		import_rois(self.current_root_path)
+		import_brain(self.current_root_path)
+		bpy.data.objects[' '].select = True
+		bpy.data.objects['rh'].select = False
+		set_appearance_show_rois_layer(bpy.context.scene, True)
+		print('Brain importing is Finished ')
+		return {"FINISHED"}
 
-        return {"FINISHED"}
 
-
-def create_empty_if_doesnt_exists(name, brain_layer, layers_array):
-    if bpy.data.objects.get(name) is None:
-        layers_array[brain_layer] = True
-        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
-        bpy.data.objects['Empty'].name = name
-        if name != 'Brain':
-            bpy.data.objects[name].parent = bpy.data.objects['Brain']
+def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_name='Brain'):
+	if bpy.data.objects.get(name) is None:
+		layers_array[brain_layer] = True
+		bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
+		bpy.data.objects['Empty'].name = name
+		if name != parent_obj_name:
+			bpy.data.objects[name].parent = bpy.data.objects[parent_obj_name]
 
 
 def import_rois(base_path):
@@ -179,6 +189,7 @@ class ImportElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         import_electrodes(self.current_root_path)
+        print('Electrodes importing is Finished ')
         return {"FINISHED"}
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Import Electrodes - END^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -448,7 +459,7 @@ def filter_draw(self, context):
 	layout.prop(context.scene, "filter_curves_type", text="")
 	layout.prop(context.scene, "filter_curves_func", text="")
 	layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon = 'BORDERMOVE')
-	layout.operator("ohad.filter_clear", text="Clear Filtering", icon = 'PANEL_CLOSE')
+	layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
 
 	# bpy.context.area.type = 'GRAPH_EDITOR'
 	# filter_to = bpy.context.scence.frame_preview_end
@@ -457,7 +468,7 @@ files_names = {'MEG': 'labels_data_', 'Electrodes':'electrodes_data.npz'}
 
 bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
 bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-bpy.types.Scene.filter_to = bpy.props.IntProperty(default=1000, min=0, description="When to filter to")
+bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.data.scenes['Scene'].frame_preview_end, min=0, description="When to filter to")
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)], description="Type of curve to be filtered", update=filter_draw)
 bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)], description="Filtering function", update=filter_draw)
 
@@ -505,7 +516,7 @@ class ClearFiltering(bpy.types.Operator):
 	def invoke(self, context, event=None):
 		for subHierchy in bpy.data.objects['Brain'].children:
 			new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-			if subHierchy.name == 'Subcortical strutures':
+			if subHierchy.name == 'Subcortical structures':
 				new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
 			for obj in subHierchy.children:
 				obj.active_material = new_mat
@@ -589,9 +600,9 @@ class Filtering(bpy.types.Operator):
         objects_to_filtter_in, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
             obj.select = False
-            if obj.parent == bpy.data.objects['Subcortical strutures']:
+            if obj.parent == bpy.data.objects['Subcortical structures']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh'] :
+            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
 
         for ind in range(self.topK-1, -1, -1):
