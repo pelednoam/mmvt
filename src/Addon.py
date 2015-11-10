@@ -258,11 +258,12 @@ def add_data_to_brain(base_path):
                     os.path.join(base_path, 'sub_cortical_activity.npz')]
     print('Adding data to Brain')
     brain_obj = bpy.data.objects['Brain']
+    number_of_maximal_time_steps = -1
     obj_counter = 0
     for input_file in source_files:
         f = np.load(input_file)
         print('loaded')
-
+        number_of_maximal_time_steps = max(number_of_maximal_time_steps, len(f['data'][0]))
         for obj_name, data in zip(f['names'], f['data']):
             # print('in label loop')
             obj_name = str(obj_name)
@@ -311,6 +312,8 @@ def add_data_to_brain(base_path):
         bpy.ops.graph.previewrange_set()
     except:
         pass
+    bpy.types.Scene.maximal_time_steps = number_of_maximal_time_steps
+    print(bpy.types.Scene.maximal_time_steps)
     print('Finished keyframing!!')
 
 
@@ -542,7 +545,8 @@ class GrabFromFiltering(bpy.types.Operator):
 	def invoke(self, context, event=None):
 		print(bpy.context.scene.frame_current)
 		context.scene.filter_from = bpy.context.scene.frame_current
-		print(bpy.context.scene.filter_from)
+		# print(bpy.context.scene.filter_from)
+		bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
 		return {"FINISHED"}
 
 
@@ -554,7 +558,8 @@ class GrabToFiltering(bpy.types.Operator):
 	def invoke(self, context, event=None):
 		print(bpy.context.scene.frame_current)
 		context.scene.filter_to = bpy.context.scene.frame_current
-		print(bpy.context.scene.filter_to)
+		# print(bpy.context.scene.filter_to)
+		bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
 		return {"FINISHED"}
 
 
@@ -580,6 +585,8 @@ class ClearFiltering(bpy.types.Operator):
 			select_all_rois()
 		elif type_of_filter == 'MEG':
 			select_all_electrodes()
+		bpy.data.scenes['Scene'].frame_preview_end = bpy.types.Scene.maximal_time_steps
+		bpy.data.scenes['Scene'].frame_preview_start = 1
 		return {"FINISHED"}
 
 
@@ -630,7 +637,7 @@ class Filtering(bpy.types.Operator):
         for obj in bpy.data.objects['Deep_electrodes'].children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
-        for ind in range(self.topK-1,-1,-1):
+        for ind in range(self.topK-1, -1, -1):
             # print(str(names[objects_to_filtter_in[ind]]))
             orig_name = bpy.data.objects[str(names[objects_to_filtter_in[ind]])].name
             # print(orig_name)
@@ -945,7 +952,7 @@ def set_appearance_show_rois_layer(self, value):
     self['appearance_show_ROIs_layer'] = value
     bpy.context.scene.layers[10] = value
     if value:
-        set_appearance_show_activity_layer(self,False)
+        set_appearance_show_activity_layer(self, False)
         # bpy.context.scene.layers[12] = False
 
 
@@ -962,7 +969,10 @@ def set_appearance_show_activity_layer(self, value):
 
 
 def get_filter_view_type(self):
-    return self['filter_view_type']
+	if self['filter_view_type'] =="RENDERED":
+		return 1
+	elif self['filter_view_type'] == "SOLID":
+		return 2
 
 
 def set_filter_view_type(self, value):
@@ -1049,9 +1059,9 @@ def object_coloring(obj, rgb):
     bpy.context.scene.objects.active = obj
     obj.select = True
     cur_mat = obj.active_material
-    print('***************************************************************')
-    print(cur_mat)
-    print('***************************************************************')
+    # print('***************************************************************')
+    # print(cur_mat)
+    # print('***************************************************************')
     new_color = (rgb[0], rgb[1], rgb[2], 1)
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
 
@@ -1059,7 +1069,7 @@ def object_coloring(obj, rgb):
 def color_object_homogeneously(path, postfix_str=''):
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
-    print('start')
+    # print('start')
 
     obj_counter = 0
 
@@ -1127,7 +1137,8 @@ def activity_map_coloring(map_type):
     # select_all_rois()
 
     if map_type == 'MEG':
-        color_object_homogeneously(os.path.join(current_root_path, 'sub_cortical_activity.npz'), '.001')
+        # color_object_homogeneously(os.path.join(current_root_path, 'sub_cortical_activity.npz'), '.001')
+	    color_object_homogeneously(os.path.join(current_root_path, 'sub_cortical_activity.npz'))
 
     deselect_all()
     bpy.data.objects['Brain'].select = True
@@ -1449,7 +1460,7 @@ class DataInVertMakerPanel(bpy.types.Panel):
         layout = self.layout
         layout.operator("ohad.vertex_data_create", text="Get data in vertex", icon='ROTATE')
         layout.operator("ohad.vertex_data_clear", text="Clear", icon='PANEL_CLOSE')
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 bpy.context.scene.appearance_show_electrodes_layer = False
@@ -1458,27 +1469,27 @@ bpy.context.scene.appearance_show_ROIs_layer = True
 
 setup_layers()
 
+bpy.utils.register_class(UpdateAppearance)
+bpy.utils.register_class(SelectAllRois)
+bpy.utils.register_class(SelectAllElectrodes)
+bpy.utils.register_class(ClearSelection)
+bpy.utils.register_class(Filtering)
+bpy.utils.register_class(GrabFromFiltering)
+bpy.utils.register_class(GrabToFiltering)
+bpy.utils.register_class(ClearFiltering)
+bpy.utils.register_class(ColorMeg)
+bpy.utils.register_class(ColorFmri)
+bpy.utils.register_class(ClearColors)
+bpy.utils.register_class(ColorElectrodes)
+bpy.utils.register_class(WhereAmI)
+bpy.utils.register_class(ClearWhereAmI)
+bpy.utils.register_class(CreateVertexData)
+bpy.utils.register_class(ClearVertexData)
 bpy.utils.register_class(AddDataToElectrodes)
 bpy.utils.register_class(AddDataToBrain)
 bpy.utils.register_class(ImportElectrodes)
 bpy.utils.register_class(ImportBrain)
 bpy.utils.register_class(ImportRoisClass)
-bpy.utils.register_class(SelectAllRois)
-bpy.utils.register_class(SelectAllElectrodes)
-bpy.utils.register_class(ClearSelection)
-bpy.utils.register_class(ClearFiltering)
-bpy.utils.register_class(ColorMeg)
-bpy.utils.register_class(ColorFmri)
-bpy.utils.register_class(Filtering)
-bpy.utils.register_class(UpdateAppearance)
-bpy.utils.register_class(WhereAmI)
-bpy.utils.register_class(ClearWhereAmI)
-bpy.utils.register_class(ClearColors)
-bpy.utils.register_class(ColorElectrodes)
-bpy.utils.register_class(CreateVertexData)
-bpy.utils.register_class(ClearVertexData)
-bpy.utils.register_class(GrabFromFiltering)
-bpy.utils.register_class(GrabToFiltering)
 
 
 bpy.utils.register_class(AppearanceMakerPanel)
@@ -1490,5 +1501,25 @@ bpy.utils.register_class(WhereAmIMakerPanel)
 bpy.utils.register_class(DataInVertMakerPanel)
 bpy.utils.register_class(DataMakerPanel)
 
+
+def find_obj_with_val():
+	import numpy as np
+	cur_objects = bpy.context.selected_objects
+	for ii in range(len(bpy.data.screens['Neuro'].areas)):
+		if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
+			for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
+				if bpy.data.screens['Neuro'].areas[ii].spaces[jj].type == 'GRAPH_EDITOR':
+					print(dir(bpy.data.screens['Neuro'].areas[ii].spaces[jj]))
+					target = bpy.data.screens['Neuro'].areas[ii].spaces[jj].cursor_position_y
+
+	values = []
+	names = []
+	for cur_obj in cur_objects:
+		for name, val in cur_obj.items():
+			if type(val) == float:
+				values.append(val)
+				names.append(name)
+	np_values = np.array(values)-target
+	print(names[np.argmin(np.abs(np_values))])
 # ###############################################################
 # bpy.types.Scene.conf_path = bpy.props.StringProperty(name = "Root Path",default = "",description = "Define the root path of the project",subtype = 'DIR_PATH')
