@@ -685,6 +685,12 @@ class Filtering(bpy.types.Operator):
     bl_label = "Filter deep elctrodes"
     bl_options = {"UNDO"}
     topK = -1
+    filter_from = 100000
+    filter_to = -100000
+    current_activity_path = ''
+    type_of_filter = None
+    type_of_func = None
+    current_file_to_upload = ''
 
     def get_object_to_filter(self, source_files):
         data, names = [], []
