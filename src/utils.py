@@ -16,6 +16,7 @@ import os.path as op
 import types
 from sklearn.datasets.base import Bunch
 import traceback
+import multiprocessing
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
 
@@ -355,6 +356,24 @@ def transform_voxels_to_RAS(aseg_hdr, pts):
     return pts
 
 
+def transform_RAS_to_voxels(pts, aseg_hdr=None, subject_mri_dir=''):
+    from mne.transforms import apply_trans, invert_transform
+
+    if aseg_hdr is None:
+        aseg_hdr = get_aseg_header(subject_mri_dir)
+    trans = aseg_hdr.get_vox2ras_tkr()
+    trans = invert_transform(trans)
+    pts = apply_trans(trans, pts)
+    return pts
+
+
+def get_aseg_header(subject_mri_dir):
+    import  nibabel as nib
+    aseg_fname = os.path.join(subject_mri_dir, 'mri', 'aseg.mgz')
+    aseg = nib.load(aseg_fname)
+    aseg_hdr = aseg.get_header()
+    return aseg_hdr
+
 def namebase(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
@@ -430,9 +449,12 @@ def get_subfolders(fol):
 
 
 def get_spaced_colors(n):
-    HSV_tuples = [(x*1.0/n, 0.5, 0.5) for x in range(n)]
-    RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
-    return RGB_tuples
+    if n <= 7:
+        colors = ['r', 'g', 'c', 'm', 'y', 'b', 'k'][:n]
+    else:
+        HSV_tuples = [(x*1.0/n, 0.5, 0.5) for x in range(n)]
+        colors = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
+    return colors
 
 
 def downsample_2d(x, R):
@@ -630,3 +652,13 @@ def check_for_necessary_files(neccesary_files, root_fol):
             full_path = os.path.join(root_fol, fol, file)
             if not os.path.isfile(full_path):
                 raise Exception('{} does not exist!'.format(full_path))
+
+
+def run_parallel(func, params, njobs=1):
+    if njobs == 1:
+        results = [func(p) for p in params]
+    else:
+        pool = multiprocessing.Pool(processes=njobs)
+        results = pool.map(func, params)
+        pool.close()
+    return results
