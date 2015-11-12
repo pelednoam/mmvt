@@ -6,6 +6,7 @@ import mathutils
 import glob
 import math
 
+
 # http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
 print("Neuroscience add on started!")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -323,8 +324,21 @@ def add_data_to_brain(base_path):
         bpy.ops.graph.previewrange_set()
     except:
         pass
+
     bpy.types.Scene.maximal_time_steps = number_of_maximal_time_steps
     print(bpy.types.Scene.maximal_time_steps)
+
+    # for obj in bpy.data.objects:
+    #     try:
+    #         if (obj.parent is 'Cortex-lh') or ((obj.parent is 'Cortex-rh') or (obj.parent is 'Subcortical structures')):
+    #             obj.select = True
+    #         else:
+    #             obj.select = False
+    #     except:
+    #         obj.select = False
+    for obj in bpy.data.objects:
+        obj.select = False
+    bpy.context.scene.objects.active = bpy.data.objects[' ']
     print('Finished keyframing!!')
 
 
@@ -374,7 +388,7 @@ def add_data_to_electrodes(base_path):
                 insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+cond_str, 0, 1)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+str(cond_str), 0, len(f['data'][0])+2)
 
-                print('keyframing '+obj_name+' object in condition '+ cond_str)
+                print('keyframing '+obj_name+' object in condition '+cond_str)
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
                     # print('keyframing '+obj_name+' object in condition '+ cond_str)
@@ -401,6 +415,19 @@ def add_data_to_electrodes(base_path):
             mod = fcurves.modifiers.new(type='LIMITS')
             obj_counter += 1
 
+    # for obj in bpy.data.objects:
+    #     try:
+    #         if obj.parent is 'Deep_electrodes':
+    #             obj.select = True
+    #         else:
+    #             obj.select = False
+    #     except:
+    #         obj.select = False
+
+    for obj in bpy.data.objects:
+        obj.select = False
+
+    bpy.context.scene.objects.active = bpy.data.objects[' ']
     print('Finished keyframing!!')
 
 
@@ -521,7 +548,11 @@ bpy.types.Scene.filter_is_on = False
 
 
 def find_obj_with_val():
-	cur_objects = bpy.context.selected_objects
+	cur_objects = []
+	for obj in bpy.data.objects:
+		if obj.select is True:
+			cur_objects.append(obj)
+
 	for ii in range(len(bpy.data.screens['Neuro'].areas)):
 		if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
 			for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
@@ -536,14 +567,20 @@ def find_obj_with_val():
 			if type(val) == float:
 				values.append(val)
 				names.append(name)
+				# print(name)
 	np_values = np.array(values)-target
-	closest_curve_str = names[np.argmin(np.abs(np_values))]
+	try:
+		print()
+		closest_curve_str = names[np.argmin(np.abs(np_values))]
+	except ValueError:
+		print('ERROR - Make sure you select all objects in interest')
 	print(closest_curve_str)
 	bpy.types.Scene.closest_curve_str = closest_curve_str
 	object_name = closest_curve_str.split('_')[0]
 	print('object name is:'+object_name)
 	try:
 		if bpy.data.objects[object_name].parent == bpy.data.objects['Deep_electrodes']:
+			print('filtering electrodes')
 			filter_electrode_func(object_name)
 		else:
 			filter_roi_func(object_name)
@@ -651,7 +688,7 @@ class ClearFiltering(bpy.types.Operator):
 		type_of_filter = bpy.context.scene.filter_curves_type
 		if type_of_filter == 'MEG':
 			select_all_rois()
-		elif type_of_filter == 'MEG':
+		elif type_of_filter == 'Electrodes':
 			select_all_electrodes()
 		bpy.data.scenes['Scene'].frame_preview_end = bpy.types.Scene.maximal_time_steps
 		bpy.data.scenes['Scene'].frame_preview_start = 1
@@ -752,7 +789,7 @@ class Filtering(bpy.types.Operator):
     def filter_ROIs(self):
         print('filter_ROIs')
         source_files = [os.path.join(self.current_activity_path, self.current_file_to_upload+hemi+'.npz') for hemi in ['lh', 'rh']]
-        objects_to_filtter_in, names = self.get_object_to_filter(source_files)
+        objects_to_filter_in, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
             obj.select = False
             if obj.parent == bpy.data.objects['Subcortical structures']:
@@ -761,7 +798,7 @@ class Filtering(bpy.types.Operator):
                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
 
         for ind in range(self.topK-1, -1, -1):
-            orig_name = bpy.data.objects[str(names[objects_to_filtter_in[ind]])].name
+            orig_name = bpy.data.objects[str(names[objects_to_filter_in[ind]])].name
             filter_roi_func(orig_name)
             # print(orig_name)
             # # new_name = '*'+orig_name
@@ -1580,7 +1617,96 @@ class DataInVertMakerPanel(bpy.types.Panel):
         layout.operator("ohad.vertex_data_create", text="Get data in vertex", icon='ROTATE')
         layout.operator("ohad.vertex_data_clear", text="Clear", icon='PANEL_CLOSE')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bpy.types.Scene.output_path = bpy.props.StringProperty(name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
+
+def render_draw(self, context):
+    layout = self.layout
+    col = layout.column(align=True)
+    col.prop(context.scene, "X_rotation", text='X rotation')
+    col.prop(context.scene, "Y_rotation", text='Y rotation')
+    col.prop(context.scene, "Z_rotation", text='Z rotation')
+    layout.prop(context.scene, "quality", text='Quality')
+    layout.prop(context.scene, 'output_path')
+    layout.prop(context.scene, 'smooth_figure')
+    layout.operator("ohad.rendering", text="Render", icon='SCENE')
+
+
+def update_rotation(self, context):
+    bpy.data.objects['Target'].rotation_euler.x = math.radians(bpy.context.scene.X_rotation)
+    bpy.data.objects['Target'].rotation_euler.y = math.radians(bpy.context.scene.Y_rotation)
+    bpy.data.objects['Target'].rotation_euler.z = math.radians(bpy.context.scene.Z_rotation)
+
+
+def update_quality(self, context):
+    print(bpy.context.scene.quality)
+    bpy.context.scene.quality = bpy.context.scene.quality
+
+bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_rotation)
+bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_rotation)
+bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
+bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
+bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
+
+
+class RenderFigure(bpy.types.Operator):
+    bl_idname = "ohad.rendering"
+    bl_label = "Render figure"
+    bl_options = {"UNDO"}
+    current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
+    x_rotation = bpy.context.scene.X_rotation
+    y_rotation = bpy.context.scene.Y_rotation
+    z_rotation = bpy.context.scene.Z_rotation
+    quality = bpy.context.scene.quality
+
+    def invoke(self, context, event=None):
+        x_rotation = bpy.context.scene.X_rotation
+        y_rotation = bpy.context.scene.Y_rotation
+        z_rotation = bpy.context.scene.Z_rotation
+        quality = bpy.context.scene.quality
+        use_square_samples = bpy.context.scene.smooth_figure
+
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$In Render$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        bpy.data.objects['Target'].rotation_euler.x = math.radians(x_rotation)
+        bpy.data.objects['Target'].rotation_euler.y = math.radians(y_rotation)
+        bpy.data.objects['Target'].rotation_euler.z = math.radians(z_rotation)
+        bpy.context.scene.render.resolution_percentage = quality
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        print(use_square_samples)
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        bpy.context.scene.cycles.use_square_samples = use_square_samples
+
+
+        # print('Output folder:')
+        # print(self.current_output_path)
+        cur_frame = bpy.context.scene.frame_current
+        print('file name:')
+        # print('f'+str(cur_frame))
+        # print('folder:'+self.current_output_path)
+        file_name = os.path.join(self.current_output_path, 'f'+str(cur_frame))
+        print(file_name)
+        bpy.context.scene.render.filepath = file_name
+        # Render and save the rendered scene to file. ------------------------------
+        print('Image quality:')
+        print(bpy.context.scene.render.resolution_percentage)
+        print("Rendering...")
+        bpy.ops.render.render(write_still=True)
+        print("Finished")
+        return {"FINISHED"}
+
+
+class RenderingMakerPanel(bpy.types.Panel):
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "Ohad"
+    bl_label = "Render"
+
+    def draw(self, context):
+        current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        render_draw(self, context)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 bpy.context.scene.appearance_show_electrodes_layer = False
 bpy.context.scene.appearance_show_activity_layer = False
@@ -1610,6 +1736,7 @@ bpy.utils.register_class(AddDataToBrain)
 bpy.utils.register_class(ImportElectrodes)
 bpy.utils.register_class(ImportBrain)
 bpy.utils.register_class(ImportRoisClass)
+bpy.utils.register_class(RenderFigure)
 
 
 bpy.utils.register_class(AppearanceMakerPanel)
@@ -1620,6 +1747,7 @@ bpy.utils.register_class(ColoringMakerPanel)
 bpy.utils.register_class(WhereAmIMakerPanel)
 bpy.utils.register_class(DataInVertMakerPanel)
 bpy.utils.register_class(DataMakerPanel)
+bpy.utils.register_class(RenderingMakerPanel)
 
 
 # ###############################################################
