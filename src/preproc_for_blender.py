@@ -140,15 +140,15 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
     np.savez(output_file_name, data=data, names=sfp.ch_names, conditions=conditions, colors=colors)
 
 
-def read_electrodes_positions(bipolar=False):
+def read_electrodes_positions(subject, subject_dir, bipolar=False, copy_to_blender=True):
     electrodes_folder = os.path.join(subject_dir, 'electrodes')
-    # montage_to_npy('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/ohad/mg79/electrodes_positions.npz')
     csv_file = os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject))
     output_file_name = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
     output_file = os.path.join(subject_dir, 'electrodes', output_file_name)
-    blender_file = os.path.join(BLENDER_SUBJECT_DIR, output_file_name)
     electrodes_csv_to_npy(csv_file, output_file, bipolar)
-    shutil.copyfile(output_file, blender_file)
+    if copy_to_blender:
+        blender_file = os.path.join(BLENDER_SUBJECT_DIR, output_file_name)
+        shutil.copyfile(output_file, blender_file)
     return output_file
 
 
@@ -343,6 +343,7 @@ def create_freeview_cmd(electrodes_file, atlas, create_points_files=True, create
 
 def create_lut_file_for_atlas(subject, atlas):
     from mne.label import _read_annot
+    import csv
     # Read the subcortical segmentation from the freesurfer lut
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME, get_colors=True)
     lut_new = [list(l) for l in lut if l[0] < 1000]
@@ -360,7 +361,10 @@ def create_lut_file_for_atlas(subject, atlas):
     for l in [l for l in lut if l[0] >= 3000]:
         lut_new.append(l)
     new_lut_fname = os.path.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
-    np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
+    with open(new_lut_fname, 'w') as fp:
+        csv_writer = csv.writer(fp, delimiter='\t')
+        csv_writer.writerows(lut_new)
+    # np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
     utils.make_dir(os.path.join(BLENDER_SUBJECT_DIR, 'freeview'))
     shutil.copyfile(new_lut_fname, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}ColorLUT.txt'.format(atlas)))
 
@@ -453,12 +457,12 @@ if __name__ == '__main__':
 
     # 6) Read the electrodes data
     bipolar = True
-    electrodes_file = read_electrodes_positions(bipolar=bipolar)
+    electrodes_file = read_electrodes_positions(subject, subject_dir, bipolar=bipolar)
     # create_electrode_data_file(task, from_t_ind, to_t_ind, conditions, subject_dir, bipolar)
     # create_electrodes_volume_file(electrodes_file)
-    create_lut_file_for_atlas(subject, aparc_name)
     # create_freeview_cmd(electrodes_file, aparc_name)
     # create_aparc_aseg_file(subject, aparc_name, overwrite=True)
+    create_lut_file_for_atlas(subject, aparc_name)
 
     # check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
     #                 os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
