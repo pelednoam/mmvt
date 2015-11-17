@@ -96,21 +96,44 @@ def montage_to_npy(montage_file, output_file):
 
 def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     data = np.genfromtxt(ras_file, dtype=str, delimiter=delimiter)
-    pos = data[1:, 1:].astype(float)
-    # Should also check in the electrodes data file
+    # Check if the electrodes coordinates has a header
+    try:
+        header = data[0, 1:].astype(float)
+    except:
+        data = np.delete(data, (0), axis=0)
+
+    pos = data[:, 1:].astype(float)
     if bipolar:
         names = []
-        pos_biploar = []
-        for index in range(data.shape[0]-2):
-            if data[index+2, 0][:3] == data[index+1, 0][:3]:
-                names.append('{}-{}'.format(data[index+2, 0],data[index+1, 0]))
+        pos_biploar, pos_org = [], []
+        for index in range(data.shape[0]-1):
+            elc_group1, elc_num1 = elec_group_number(data[index, 0])
+            elc_group2, elc_num12 = elec_group_number(data[index+1, 0])
+            if elc_group1==elc_group2:
+                names.append('{}-{}'.format(data[index+1, 0],data[index, 0]))
                 pos_biploar.append(pos[index] + (pos[index+1]-pos[index])/2)
+                pos_org.append([pos[index], pos[index+1]])
         pos = np.array(pos_biploar)
+        pos_org = np.array(pos_org)
     else:
         names = data[1:, 0]
+        pos_org = []
     if len(set(names))!=len(names):
         raise Exception('Duplicate electrodes names!')
-    np.savez(output_file, pos=pos, names=names)
+    np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
+
+
+def elec_group_number(elec_name, bipolar=False):
+    if bipolar:
+        elec_name2, elec_name1 = elec_name.split('-')
+        group, num1 = elec_group_number(elec_name1, False)
+        _, num2 = elec_group_number(elec_name2, False)
+        return group, num1, num2
+    else:
+        ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
+        num = int(elec_name[ind:])
+        group = elec_name[:ind]
+        return group, num
 
 
 def read_electrodes(electrodes_file):
@@ -462,7 +485,7 @@ if __name__ == '__main__':
     # create_electrodes_volume_file(electrodes_file)
     # create_freeview_cmd(electrodes_file, aparc_name)
     # create_aparc_aseg_file(subject, aparc_name, overwrite=True)
-    create_lut_file_for_atlas(subject, aparc_name)
+    # create_lut_file_for_atlas(subject, aparc_name)
 
     # check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
     #                 os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
