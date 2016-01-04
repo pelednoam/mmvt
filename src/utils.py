@@ -17,6 +17,7 @@ import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
+import cPickle as pickle
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
 
@@ -662,3 +663,20 @@ def run_parallel(func, params, njobs=1):
         results = pool.map(func, params)
         pool.close()
     return results
+
+
+def get_figs_fol():
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    figs_dir = os.path.join(os.path.split(curr_dir)[0], 'figs')
+    return figs_dir
+
+
+def save(obj, fname):
+    with open(fname, 'wb') as fp:
+        pickle.dump(obj, fp)
+
+
+def load(fname):
+    with open(fname, 'rb') as fp:
+        obj = pickle.load(fp)
+    return obj

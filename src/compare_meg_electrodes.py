@@ -7,10 +7,15 @@ from meg_preproc import FREE_SURFER_HOME, SUBJECTS_MEG_DIR, TASKS, TASK_ECR, TAS
 import utils
 
 
-def load_electrode_data(root_fol, electrode, bipolar, meg_conditions, meg_elec_conditions_translate,
-        from_t=None, to_t=None, normalize_data=True, positive=False, do_plot=False):
+def load_all_electrodes_data(root_fol, bipolar):
     d = np.load(os.path.join(root_fol, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else '')))
     data, names, elecs_conditions = d['data'], d['names'], d['conditions']
+    return data, names, elecs_conditions
+
+
+def load_electrode_data(root_fol, electrode, bipolar, meg_conditions, meg_elec_conditions_translate,
+        from_t=None, to_t=None, normalize_data=True, positive=False, do_plot=False):
+    data, names, elecs_conditions = load_all_electrodes_data(root_fol, bipolar)
     index = np.where(names==electrode)[0][0]
     elec_data_mat = data[index]
     elec_data = {}

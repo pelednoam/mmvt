@@ -6,8 +6,6 @@ import shutil
 import numpy as np
 from functools import partial
 from collections import defaultdict
-import traceback
-import cPickle as pickle
 import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator, apply_inverse_epochs)
@@ -569,9 +567,9 @@ def calc_csd(csd_fname, cond, epochs, from_t, to_t, mode='multitaper', fmin=6, f
     csd_cond_fname = get_cond_fname(csd_fname, cond)
     if not os.path.isfile(csd_cond_fname) or overwrite:
         csd = compute_epochs_csd(epochs, mode, tmin=from_t, tmax=to_t, fmin=fmin, fmax=fmax)
-        pickle.dump(csd, open(csd_cond_fname, 'wb'))
+        utils.save(csd, csd_cond_fname)
     else:
-        csd = pickle.load(open(csd_cond_fname, 'rb'))
+        csd = utils.load(csd_cond_fname)
     return csd
 
 
