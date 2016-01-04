@@ -18,150 +18,154 @@ import mathutils
 import glob
 import math
 
-
 # http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
 print("Neuroscience add on started!")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="", description="Define the root path of the project", subtype='DIR_PATH')
+bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
+                                                     description="Define the root path of the project",
+                                                     subtype='DIR_PATH')
 
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Import Brain - START vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 bpy.types.Scene.brain_imported = False
 
 
 def import_brain(base_path):
-	brain_layer = 5
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    brain_layer = 5
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	layers_array = bpy.context.scene.layers
-	emptys_names = ["Functional maps", "Subcortical_activity_map"]
-	for name in emptys_names:
-		create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
+    layers_array = bpy.context.scene.layers
+    emptys_names = ["Functional maps", "Subcortical_activity_map"]
+    for name in emptys_names:
+        create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
 
-	brain_layer = 11
+    brain_layer = 11
 
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	print("importing Hemispheres")
-	# for cur_val in bpy.context.scene.layers:
-	#     print(cur_val)
-	#  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	for i in os.listdir(base_path):
-		bpy.ops.object.select_all(action='DESELECT')
-		if i.endswith(".ply"):
-			print(i)
-			bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
-			cur_obj = bpy.context.selected_objects[0]
-			cur_obj.select = True
-			bpy.ops.object.shade_smooth()
-			cur_obj.scale = [0.1]*3
-			cur_obj.hide = False
-			cur_obj.name = cur_obj.name.split(sep='.')[0]
-			cur_obj.active_material = bpy.data.materials['Activity_map_mat']
-			cur_obj.parent = bpy.data.objects["Functional maps"]
-			cur_obj.hide_select = True
-			cur_obj.data.vertex_colors.new()
-			print('did hide_select')
-	bpy.ops.object.select_all(action='DESELECT')
+    print("importing Hemispheres")
+    # for cur_val in bpy.context.scene.layers:
+    #     print(cur_val)
+    #  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    for i in os.listdir(base_path):
+        bpy.ops.object.select_all(action='DESELECT')
+        if i.endswith(".ply"):
+            print(i)
+            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
+            cur_obj = bpy.context.selected_objects[0]
+            cur_obj.select = True
+            bpy.ops.object.shade_smooth()
+            cur_obj.scale = [0.1] * 3
+            cur_obj.hide = False
+            cur_obj.name = cur_obj.name.split(sep='.')[0]
+            cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+            cur_obj.parent = bpy.data.objects["Functional maps"]
+            cur_obj.hide_select = True
+            cur_obj.data.vertex_colors.new()
+            print('did hide_select')
+    bpy.ops.object.select_all(action='DESELECT')
 
 
 def create_subcortical_activity_mat(name):
-	cur_mat = bpy.data.materials['subcortical_activity_mat'].copy()
-	cur_mat.name = name+'_Mat'
+    cur_mat = bpy.data.materials['subcortical_activity_mat'].copy()
+    cur_mat.name = name + '_Mat'
 
 
 def import_subcorticals(base_path):
-	brain_layer = 5
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    brain_layer = 5
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	layers_array = bpy.context.scene.layers
-	emptys_names = ["Functional maps", "Subcortical_activity_map"]
-	for name in emptys_names:
-		create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
+    layers_array = bpy.context.scene.layers
+    emptys_names = ["Functional maps", "Subcortical_activity_map"]
+    for name in emptys_names:
+        create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
 
-	brain_layer = 11
+    brain_layer = 11
 
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	for ii in range(len(bpy.context.scene.layers)):
-		bpy.context.scene.layers[ii] = (ii == brain_layer)
+    for ii in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-	print("importing Subcortical structures")
-	# for cur_val in bpy.context.scene.layers:
-	#     print(cur_val)
-	#  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	for i in os.listdir(base_path):
-		bpy.ops.object.select_all(action='DESELECT')
-		if i.endswith(".ply"):
-			print(i)
-			bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
-			cur_obj = bpy.context.selected_objects[0]
-			cur_obj.select = True
-			bpy.ops.object.shade_smooth()
-			cur_obj.scale = [0.1]*3
-			cur_obj.hide = False
-			cur_obj.name = cur_obj.name.split(sep='.')[0]
-			create_subcortical_activity_mat(cur_obj.name)
-			cur_obj.active_material = bpy.data.materials[cur_obj.name+'_Mat']
-			cur_obj.name += '.001'
-			cur_obj.parent = bpy.data.objects["Subcortical_activity_map"]
-			cur_obj.hide_select = True
-	bpy.ops.object.select_all(action='DESELECT')
+    print("importing Subcortical structures")
+    # for cur_val in bpy.context.scene.layers:
+    #     print(cur_val)
+    #  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    for i in os.listdir(base_path):
+        bpy.ops.object.select_all(action='DESELECT')
+        if i.endswith(".ply"):
+            print(i)
+            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
+            cur_obj = bpy.context.selected_objects[0]
+            cur_obj.select = True
+            bpy.ops.object.shade_smooth()
+            cur_obj.scale = [0.1] * 3
+            cur_obj.hide = False
+            cur_obj.name = cur_obj.name.split(sep='.')[0]
+            create_subcortical_activity_mat(cur_obj.name)
+            cur_obj.active_material = bpy.data.materials[cur_obj.name + '_Mat']
+            cur_obj.name += '.001'
+            cur_obj.parent = bpy.data.objects["Subcortical_activity_map"]
+            cur_obj.hide_select = True
+    bpy.ops.object.select_all(action='DESELECT')
 
 
 class ImportBrain(bpy.types.Operator):
-	bl_idname = "ohad.brain_importing"
-	bl_label = "import2 brain"
-	bl_options = {"UNDO"}
-	current_root_path = ''
+    bl_idname = "ohad.brain_importing"
+    bl_label = "import2 brain"
+    bl_options = {"UNDO"}
+    current_root_path = ''
 
-	def invoke(self, context, event=None):
-		self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-		print("importing ROIs")
-		import_rois(self.current_root_path)
-		import_brain(self.current_root_path)
-		import_subcorticals(os.path.join(self.current_root_path, 'subcortical_ply_names'))
-		last_obj = context.active_object.name
-		print('last obj is -'+last_obj)
+    def invoke(self, context, event=None):
+        self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        print("importing ROIs")
+        import_rois(self.current_root_path)
+        import_brain(self.current_root_path)
+        import_subcorticals(os.path.join(self.current_root_path, 'subcortical_ply_names'))
+        last_obj = context.active_object.name
+        print('last obj is -' + last_obj)
 
-		bpy.data.objects[' '].select = True
-		bpy.data.objects[last_obj].select = False
-		context.scene.objects.active = bpy.data.objects[' ']
-		set_appearance_show_rois_layer(bpy.context.scene, True)
-		if bpy.data.objects.get("Deep_electrodes") is None:
-			layers_array = [False, False, False, False, False, False, False, False, False, False, False, False, False,
-							False, False, False, False, False, False, False]
-			layers_array[5] = True
-			bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
-			bpy.data.objects['Empty'].name = 'Deep_electrodes'
-		bpy.types.Scene.brain_imported = True
-		print('cleaning up')
-		for obj in bpy.data.objects['Subcortical structures'].children:
-			# print(obj.name)
-			if obj.name[-1] == '1':
-				obj.name = obj.name[0:-4]
-		print('Brain importing is Finished ')
+        bpy.data.objects[' '].select = True
+        bpy.data.objects[last_obj].select = False
+        context.scene.objects.active = bpy.data.objects[' ']
+        set_appearance_show_rois_layer(bpy.context.scene, True)
+        if bpy.data.objects.get("Deep_electrodes") is None:
+            layers_array = [False, False, False, False, False, False, False, False, False, False, False, False, False,
+                            False, False, False, False, False, False, False]
+            layers_array[5] = True
+            bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0),
+                                     layers=layers_array)
+            bpy.data.objects['Empty'].name = 'Deep_electrodes'
+        bpy.types.Scene.brain_imported = True
+        print('cleaning up')
+        for obj in bpy.data.objects['Subcortical structures'].children:
+            # print(obj.name)
+            if obj.name[-1] == '1':
+                obj.name = obj.name[0:-4]
+        print('Brain importing is Finished ')
 
-		return {"FINISHED"}
+        return {"FINISHED"}
 
 
 def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_name='Brain'):
-	if bpy.data.objects.get(name) is None:
-		layers_array[brain_layer] = True
-		bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
-		bpy.data.objects['Empty'].name = name
-		if name != parent_obj_name:
-			bpy.data.objects[name].parent = bpy.data.objects[parent_obj_name]
+    if bpy.data.objects.get(name) is None:
+        layers_array[brain_layer] = True
+        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
+        bpy.data.objects['Empty'].name = name
+        if name != parent_obj_name:
+            bpy.data.objects[name].parent = bpy.data.objects[parent_obj_name]
 
 
 def import_rois(base_path):
-    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.aparc.pial.names'), 'Cortex-lh': os.path.join(base_path, 'lh.aparc.pial.names'), 'Subcortical structures': os.path.join(base_path, 'subcortical_ply_names')}
+    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.aparc.pial.names'),
+                      'Cortex-lh': os.path.join(base_path, 'lh.aparc.pial.names'),
+                      'Subcortical structures': os.path.join(base_path, 'subcortical_ply_names')}
     brain_layer = 5
 
     for ii in range(len(bpy.context.scene.layers)):
@@ -192,7 +196,7 @@ def import_rois(base_path):
                 # print('~~~~~~~~~~~~~~~~~~~~~')
                 bpy.ops.object.shade_smooth()
                 cur_obj.parent = bpy.data.objects[anatomy_name]
-                cur_obj.scale = [0.1]*3
+                cur_obj.scale = [0.1] * 3
                 cur_obj.active_material = current_mat
                 cur_obj.hide = False
                 # print('~~~~~~~~~~~~~~~~~~~~~~new name = '+i.split(sep='.')[0])
@@ -212,6 +216,7 @@ class ImportRoisClass(bpy.types.Operator):
         import_brain(self.current_root_path)
         return {"FINISHED"}
 
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Import Brain - END^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Import Electrodes - START vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 bpy.types.Scene.electrodes_imported = False
@@ -229,7 +234,7 @@ def create_sphere(loc, rad, my_layers, name):
 def create_and_set_material(obj):
     # curMat = bpy.data.materials['OrigPatchesMat'].copy()
     cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
-    cur_mat.name = obj.name+'_Mat'
+    cur_mat.name = obj.name + '_Mat'
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (0, 1, 0, 1)
     obj.active_material = cur_mat
 
@@ -244,19 +249,19 @@ def import_electrodes(base_path):
     deep_electrodes_layer = 1
     electrode_size = 0.25
 
-    layers_array = [False]*20
+    layers_array = [False] * 20
 
     if bpy.data.objects.get("Deep_electrodes") is None:
         layers_array[5] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
         bpy.data.objects['Empty'].name = 'Deep_electrodes'
 
-    layers_array = [False]*20
+    layers_array = [False] * 20
     layers_array[deep_electrodes_layer] = True
 
     for (x, y, z), name in zip(f['pos'], f['names']):
-        print('creating '+str(name)[2:-1])
-        create_sphere((x*0.1, y*0.1, z*0.1), electrode_size, layers_array, str(name)[2:-1])
+        print('creating ' + str(name)[2:-1])
+        create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, str(name)[2:-1])
         cur_obj = bpy.data.objects[str(name)[2:-1]]
         cur_obj.select = True
         cur_obj.parent = bpy.data.objects['Deep_electrodes']
@@ -277,6 +282,7 @@ class ImportElectrodes(bpy.types.Operator):
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
 
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Import Electrodes - END^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Add data to brain - START vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 bpy.types.Scene.brain_data_exist = False
@@ -286,7 +292,7 @@ def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
     bpy.context.scene.objects.active = obj
     obj.select = True
     obj[prop_name] = value
-    obj.keyframe_insert(data_path='['+'"'+prop_name+'"'+']', frame=keyframe)
+    obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
 
 
 def add_data_to_brain(base_path):
@@ -314,14 +320,14 @@ def add_data_to_brain(base_path):
                 if cond_str[1] == "'":
                     cond_str = cond_str[2:-1]
                 # Set the values to zeros in the first and last frame for current object(current label)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+cond_str, 0, 1)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+cond_str, 0, len(f['data'][0])+2)
+                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
 
-                print('keyframing '+obj_name+' object')
+                print('keyframing ' + obj_name + ' object')
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
                     # print('keyframing '+obj_name+' object')
-                    insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+cond_str, timepoint, ind+2)
+                    insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, timepoint, ind + 2)
 
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
@@ -329,8 +335,8 @@ def add_data_to_brain(base_path):
 
             # Brain object handling
             # Set the values to zeros in the first and last frame for Brain object
-            insert_keyframe_to_custom_prop(brain_obj, obj_name+' mean', 0, 1)
-            insert_keyframe_to_custom_prop(brain_obj, obj_name+' mean', 0, len(f['data'][0])+2)
+            insert_keyframe_to_custom_prop(brain_obj, obj_name + ' mean', 0, 1)
+            insert_keyframe_to_custom_prop(brain_obj, obj_name + ' mean', 0, len(f['data'][0]) + 2)
 
             # For every time point insert keyframe to the main Brain object
             # If you want to delete prints make sure no sleep is needed
@@ -338,7 +344,8 @@ def add_data_to_brain(base_path):
             for ind in range(len(data[:, cond_ind])):
                 if len(data[ind]) == 2:
                     # print('keyframing Brain object')
-                    insert_keyframe_to_custom_prop(brain_obj, obj_name+' mean', (data[ind][0]+data[ind][1])/2, ind+2)
+                    insert_keyframe_to_custom_prop(brain_obj, obj_name + ' mean', (data[ind][0] + data[ind][1]) / 2,
+                                                   ind + 2)
                     # print('keyframed')
 
             # remove the orange keyframe sign in the fcurves window
@@ -378,6 +385,8 @@ class AddDataToBrain(bpy.types.Operator):
         add_data_to_brain(self.current_root_path)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
+
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Add data to brain - END^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Add data to Electrodes - START vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 bpy.types.Scene.electrodes_data_exist = False
@@ -387,7 +396,7 @@ def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
     bpy.context.scene.objects.active = obj
     obj.select = True
     obj[prop_name] = value
-    obj.keyframe_insert(data_path='['+'"'+prop_name+'"'+']', frame=keyframe)
+    obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
 
 
 def add_data_to_electrodes(base_path):
@@ -410,29 +419,30 @@ def add_data_to_electrodes(base_path):
                 if cond_str[1] == "'":
                     cond_str = cond_str[2:-1]
                 # Set the values to zeros in the first and last frame for current object(current label)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+cond_str, 0, 1)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+str(cond_str), 0, len(f['data'][0])+2)
+                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), 0, len(f['data'][0]) + 2)
 
-                print('keyframing '+obj_name+' object in condition '+cond_str)
+                print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
                     # print('keyframing '+obj_name+' object in condition '+ cond_str)
-                    insert_keyframe_to_custom_prop(cur_obj, obj_name+'_'+str(cond_str), timepoint, ind+2)
+                    insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
 
             # Brain object handling
             # Set the values to zeros in the first and last frame for Brain object
-            insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name+' mean', 0, 1)
-            insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name+' mean', 0, len(f['data'][0])+2)
+            insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name + ' mean', 0, 1)
+            insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name + ' mean', 0, len(f['data'][0]) + 2)
 
             print('keyframing Deep_electrodes object')
             # For every time point insert keyframe to the main Brain object
             for ind in range(len(data[:, cond_ind])):
                 # print('keyframing Deep_electrodes object')
-                insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name+' mean', (data[ind][0]+data[ind][1])/2,
-                                               ind+2)
+                insert_keyframe_to_custom_prop(deep_electrodes_obj, obj_name + ' mean',
+                                               (data[ind][0] + data[ind][1]) / 2,
+                                               ind + 2)
                 # print('keyframed')
 
             # remove the orange keyframe sign in the fcurves window
@@ -467,6 +477,8 @@ class AddDataToElectrodes(bpy.types.Operator):
         add_data_to_electrodes(self.current_root_path)
         bpy.types.Scene.electrodes_data_exist = True
         return {"FINISHED"}
+
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Add data to Electrodes - END^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
@@ -492,6 +504,7 @@ class DataMakerPanel(bpy.types.Panel):
         if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
             col2.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
 
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # select all ROIs
@@ -509,67 +522,68 @@ def deselect_all():
 
 
 def select_all_rois():
-	for subHierarchy in bpy.data.objects['Brain'].children:
-		for obj in subHierarchy.children:
-			obj.select = True
+    for subHierarchy in bpy.data.objects['Brain'].children:
+        for obj in subHierarchy.children:
+            obj.select = True
 
 
 class SelectionMakerPanel(bpy.types.Panel):
-	bl_space_type = "GRAPH_EDITOR"
-	bl_region_type = "UI"
-	bl_context = "objectmode"
-	bl_category = "Ohad"
-	bl_label = "Selection Panel"
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "Ohad"
+    bl_label = "Selection Panel"
 
-	@staticmethod
-	def draw(self, context):
-		col1 = self.layout.column(align=True)
-		# col1.operator("select.ROIs", text="ROIs")
-		col1.operator("ohad.roi_selection", text="Select all ROIs", icon='BORDER_RECT')
-		col1.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
-		col1.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
+    @staticmethod
+    def draw(self, context):
+        col1 = self.layout.column(align=True)
+        # col1.operator("select.ROIs", text="ROIs")
+        col1.operator("ohad.roi_selection", text="Select all ROIs", icon='BORDER_RECT')
+        col1.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
+        col1.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
 
 
 class SelectAllRois(bpy.types.Operator):
-	bl_idname = "ohad.roi_selection"
-	bl_label = "select2 ROIs"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.roi_selection"
+    bl_label = "select2 ROIs"
+    bl_options = {"UNDO"}
 
-	@staticmethod
-	def invoke(self, context, event=None):
-		select_all_rois()
-		return {"FINISHED"}
+    @staticmethod
+    def invoke(self, context, event=None):
+        select_all_rois()
+        return {"FINISHED"}
 
 
 def select_all_electrodes():
-	for obj in bpy.data.objects['Deep_electrodes'].children:
-			obj.select = True
+    for obj in bpy.data.objects['Deep_electrodes'].children:
+        obj.select = True
 
 
 class SelectAllElectrodes(bpy.types.Operator):
-	bl_idname = "ohad.electrodes_selection"
-	bl_label = "select2 Electrodes"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.electrodes_selection"
+    bl_label = "select2 Electrodes"
+    bl_options = {"UNDO"}
 
-	@staticmethod
-	def invoke(self, context, event=None):
-		select_all_electrodes()
-		return {"FINISHED"}
+    @staticmethod
+    def invoke(self, context, event=None):
+        select_all_electrodes()
+        return {"FINISHED"}
 
 
 class ClearSelection(bpy.types.Operator):
-	bl_idname = "ohad.clear_selection"
-	bl_label = "deselect all"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.clear_selection"
+    bl_label = "deselect all"
+    bl_options = {"UNDO"}
 
-	@staticmethod
-	def invoke(self, context, event=None):
-		for obj in bpy.data.objects:
-			obj.select = False
-		bpy.data.objects[' '].select = True
-		bpy.context.scene.objects.active = bpy.data.objects[' ']
+    @staticmethod
+    def invoke(self, context, event=None):
+        for obj in bpy.data.objects:
+            obj.select = False
+        bpy.data.objects[' '].select = True
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
 
-		return {"FINISHED"}
+        return {"FINISHED"}
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -578,77 +592,78 @@ bpy.types.Scene.filter_is_on = False
 
 
 def find_obj_with_val():
-	cur_objects = []
-	for obj in bpy.data.objects:
-		if obj.select is True:
-			cur_objects.append(obj)
+    cur_objects = []
+    for obj in bpy.data.objects:
+        if obj.select is True:
+            cur_objects.append(obj)
 
-	for ii in range(len(bpy.data.screens['Neuro'].areas)):
-		if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
-			for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
-				if bpy.data.screens['Neuro'].areas[ii].spaces[jj].type == 'GRAPH_EDITOR':
-					# print(dir(bpy.data.screens['Neuro'].areas[ii].spaces[jj]))
-					target = bpy.data.screens['Neuro'].areas[ii].spaces[jj].cursor_position_y
+    for ii in range(len(bpy.data.screens['Neuro'].areas)):
+        if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
+            for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
+                if bpy.data.screens['Neuro'].areas[ii].spaces[jj].type == 'GRAPH_EDITOR':
+                    # print(dir(bpy.data.screens['Neuro'].areas[ii].spaces[jj]))
+                    target = bpy.data.screens['Neuro'].areas[ii].spaces[jj].cursor_position_y
 
-	values = []
-	names = []
-	for cur_obj in cur_objects:
-		for name, val in cur_obj.items():
-			if type(val) == float:
-				values.append(val)
-				names.append(name)
-				# print(name)
-	np_values = np.array(values)-target
-	try:
-		print()
-		closest_curve_str = names[np.argmin(np.abs(np_values))]
-	except ValueError:
-		print('ERROR - Make sure you select all objects in interest')
-	print(closest_curve_str)
-	bpy.types.Scene.closest_curve_str = closest_curve_str
-	object_name = closest_curve_str.split('_')[0]
-	print('object name is:'+object_name)
-	try:
-		if bpy.data.objects[object_name].parent == bpy.data.objects['Deep_electrodes']:
-			print('filtering electrodes')
-			filter_electrode_func(object_name)
-		else:
-			filter_roi_func(object_name)
-	except KeyError:
-		filter_roi_func(object_name)
+    values = []
+    names = []
+    for cur_obj in cur_objects:
+        for name, val in cur_obj.items():
+            if type(val) == float:
+                values.append(val)
+                names.append(name)
+            # print(name)
+    np_values = np.array(values) - target
+    try:
+        print()
+        closest_curve_str = names[np.argmin(np.abs(np_values))]
+    except ValueError:
+        print('ERROR - Make sure you select all objects in interest')
+    print(closest_curve_str)
+    bpy.types.Scene.closest_curve_str = closest_curve_str
+    object_name = closest_curve_str.split('_')[0]
+    print('object name is:' + object_name)
+    try:
+        if bpy.data.objects[object_name].parent == bpy.data.objects['Deep_electrodes']:
+            print('filtering electrodes')
+            filter_electrode_func(object_name)
+        else:
+            filter_roi_func(object_name)
+    except KeyError:
+        filter_roi_func(object_name)
 
 
 class FindCurveClosestToCursor(bpy.types.Operator):
-	bl_idname = "ohad.curve_close_to_cursor"
-	bl_label = "curve close to cursor"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.curve_close_to_cursor"
+    bl_label = "curve close to cursor"
+    bl_options = {"UNDO"}
 
-	def invoke(self, context, event=None):
-		find_obj_with_val()
-		return {"FINISHED"}
+    def invoke(self, context, event=None):
+        find_obj_with_val()
+        return {"FINISHED"}
 
 
 def filter_draw(self, context):
-	layout = self.layout
-	col = layout.column(align=0)
-	col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
-	col.label(text=bpy.types.Scene.closest_curve_str)
-	layout.prop(context.scene, "filter_topK", text="Top K")
-	row = layout.row(align=0)
-	row.prop(context.scene, "filter_from", text="From")
-	# row.label(str(GrabFromFiltering.value))
-	row.operator(GrabFromFiltering.bl_idname, text="", icon='BORDERMOVE')
-	# row.operator("ohad.grab_from", text="", icon = 'BORDERMOVE')
-	row.prop(context.scene, "filter_to", text="To")
-	row.operator("ohad.grab_to", text="", icon='BORDERMOVE')
-	layout.prop(context.scene, "filter_curves_type", text="")
-	layout.prop(context.scene, "filter_curves_func", text="")
-	layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
-	if bpy.types.Scene.filter_is_on:
-		layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
+    layout = self.layout
+    col = layout.column(align=0)
+    col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
+    col.label(text=bpy.types.Scene.closest_curve_str)
+    layout.prop(context.scene, "filter_topK", text="Top K")
+    row = layout.row(align=0)
+    row.prop(context.scene, "filter_from", text="From")
+    # row.label(str(GrabFromFiltering.value))
+    row.operator(GrabFromFiltering.bl_idname, text="", icon='BORDERMOVE')
+    # row.operator("ohad.grab_from", text="", icon = 'BORDERMOVE')
+    row.prop(context.scene, "filter_to", text="To")
+    row.operator("ohad.grab_to", text="", icon='BORDERMOVE')
+    layout.prop(context.scene, "filter_curves_type", text="")
+    layout.prop(context.scene, "filter_curves_func", text="")
+    layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
+    if bpy.types.Scene.filter_is_on:
+        layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
 
-	# bpy.context.area.type = 'GRAPH_EDITOR'
-	# filter_to = bpy.context.scence.frame_preview_end
+    # bpy.context.area.type = 'GRAPH_EDITOR'
+    # filter_to = bpy.context.scence.frame_preview_end
+
 
 files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
 
@@ -657,95 +672,100 @@ bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, descriptio
 bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
 bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
 # bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.data.scenes['Scene'].frame_preview_end, min=0, description="When to filter to")
-bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0, description="When to filter to")
-bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)], description="Type of curve to be filtered", update=filter_draw)
-bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)], description="Filtering function", update=filter_draw)
+bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
+                                                  description="When to filter to")
+bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
+    items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
+    description="Type of curve to be filtered", update=filter_draw)
+bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
+    items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)],
+    description="Filtering function", update=filter_draw)
 
 
 class FilteringMakerPanel(bpy.types.Panel):
-	bl_space_type = "GRAPH_EDITOR"
-	bl_region_type = "UI"
-	bl_context = "objectmode"
-	bl_category = "Ohad"
-	bl_label = "Filter number of curves"
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "Ohad"
+    bl_label = "Filter number of curves"
 
-	def draw(self, context):
-		filter_draw(self, context)
+    def draw(self, context):
+        filter_draw(self, context)
 
 
 class GrabFromFiltering(bpy.types.Operator):
-	bl_idname = "ohad.grab_from"
-	bl_label = "grab from"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.grab_from"
+    bl_label = "grab from"
+    bl_options = {"UNDO"}
 
-	def invoke(self, context, event=None):
-		print(bpy.context.scene.frame_current)
-		context.scene.filter_from = bpy.context.scene.frame_current
-		# print(bpy.context.scene.filter_from)
-		bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
-		return {"FINISHED"}
+    def invoke(self, context, event=None):
+        print(bpy.context.scene.frame_current)
+        context.scene.filter_from = bpy.context.scene.frame_current
+        # print(bpy.context.scene.filter_from)
+        bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
+        return {"FINISHED"}
 
 
 class GrabToFiltering(bpy.types.Operator):
-	bl_idname = "ohad.grab_to"
-	bl_label = "grab to"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.grab_to"
+    bl_label = "grab to"
+    bl_options = {"UNDO"}
 
-	def invoke(self, context, event=None):
-		print(bpy.context.scene.frame_current)
-		context.scene.filter_to = bpy.context.scene.frame_current
-		# print(bpy.context.scene.filter_to)
-		bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
-		return {"FINISHED"}
+    def invoke(self, context, event=None):
+        print(bpy.context.scene.frame_current)
+        context.scene.filter_to = bpy.context.scene.frame_current
+        # print(bpy.context.scene.filter_to)
+        bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
+        return {"FINISHED"}
 
 
 class ClearFiltering(bpy.types.Operator):
-	bl_idname = "ohad.filter_clear"
-	bl_label = "filter clear"
-	bl_options = {"UNDO"}
+    bl_idname = "ohad.filter_clear"
+    bl_label = "filter clear"
+    bl_options = {"UNDO"}
 
-	def invoke(self, context, event=None):
-		for subHierchy in bpy.data.objects['Brain'].children:
-			new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-			if subHierchy.name == 'Subcortical structures':
-				new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-			for obj in subHierchy.children:
-				obj.active_material = new_mat
+    def invoke(self, context, event=None):
+        for subHierchy in bpy.data.objects['Brain'].children:
+            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
+            if subHierchy.name == 'Subcortical structures':
+                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+            for obj in subHierchy.children:
+                obj.active_material = new_mat
 
-		if bpy.data.objects.get('Deep_electrodes'):
-			for obj in bpy.data.objects['Deep_electrodes'].children:
-				obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
+        if bpy.data.objects.get('Deep_electrodes'):
+            for obj in bpy.data.objects['Deep_electrodes'].children:
+                obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
-		type_of_filter = bpy.context.scene.filter_curves_type
-		if type_of_filter == 'MEG':
-			select_all_rois()
-		elif type_of_filter == 'Electrodes':
-			select_all_electrodes()
-		bpy.data.scenes['Scene'].frame_preview_end = bpy.types.Scene.maximal_time_steps
-		bpy.data.scenes['Scene'].frame_preview_start = 1
-		bpy.types.Scene.closest_curve_str = ''
-		bpy.types.Scene.filter_is_on = False
-		return {"FINISHED"}
+        type_of_filter = bpy.context.scene.filter_curves_type
+        if type_of_filter == 'MEG':
+            select_all_rois()
+        elif type_of_filter == 'Electrodes':
+            select_all_electrodes()
+        bpy.data.scenes['Scene'].frame_preview_end = bpy.types.Scene.maximal_time_steps
+        bpy.data.scenes['Scene'].frame_preview_start = 1
+        bpy.types.Scene.closest_curve_str = ''
+        bpy.types.Scene.filter_is_on = False
+        return {"FINISHED"}
 
 
 def filter_roi_func(name_str):
-	orig_name = name_str
-	print(orig_name)
-	bpy.data.objects[orig_name].select = True
-	bpy.context.scene.objects.active = bpy.data.objects[orig_name]
-	if bpy.data.objects[orig_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-		bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
-	else:
-		bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat']
-	bpy.types.Scene.filter_is_on = True
+    orig_name = name_str
+    print(orig_name)
+    bpy.data.objects[orig_name].select = True
+    bpy.context.scene.objects.active = bpy.data.objects[orig_name]
+    if bpy.data.objects[orig_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
+        bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
+    else:
+        bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat']
+    bpy.types.Scene.filter_is_on = True
 
 
 def filter_electrode_func(name_str):
-	orig_name = name_str
-	bpy.data.objects[orig_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
-	bpy.data.objects[orig_name].select = True
-	bpy.context.scene.objects.active = bpy.data.objects[orig_name]
-	bpy.types.Scene.filter_is_on = True
+    orig_name = name_str
+    bpy.data.objects[orig_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+    bpy.data.objects[orig_name].select = True
+    bpy.context.scene.objects.active = bpy.data.objects[orig_name]
+    bpy.types.Scene.filter_is_on = True
 
 
 class Filtering(bpy.types.Operator):
@@ -765,7 +785,7 @@ class Filtering(bpy.types.Operator):
         data, names = [], []
         for input_file in source_files:
             try:
-                print('in get object to filter: '+input_file)
+                print('in get object to filter: ' + input_file)
                 f = np.load(input_file)
             except:
                 print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
@@ -780,12 +800,12 @@ class Filtering(bpy.types.Operator):
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
-        t_range = range(self.filter_from, self.filter_to+1)
+        t_range = range(self.filter_from, self.filter_to + 1)
 
         print(self.type_of_func)
         d = np.vstack((d for d in data))
-        print('%%%%%%%%%%%%%%%%%%%'+str(len(d[0,:,0])))
-        t_range = range(max(self.filter_from,1), min(self.filter_to,len(d[0,:,0]))-1)
+        print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
+        t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         if self.type_of_func == 'RMS':
             dd = d[:, t_range, 0] - d[:, t_range, 1]
             dd = np.sqrt(np.sum(np.power(dd, 2), 1))
@@ -811,7 +831,7 @@ class Filtering(bpy.types.Operator):
         for obj in bpy.data.objects['Deep_electrodes'].children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
-        for ind in range(self.topK-1, -1, -1):
+        for ind in range(self.topK - 1, -1, -1):
             name_str = bpy.data.objects[str(names[objects_to_filtter_in[ind]])].name
             filter_electrode_func(name_str)
             # # print(str(names[objects_to_filtter_in[ind]]))
@@ -829,7 +849,8 @@ class Filtering(bpy.types.Operator):
 
     def filter_ROIs(self):
         print('filter_ROIs')
-        source_files = [os.path.join(self.current_activity_path, self.current_file_to_upload+hemi+'.npz') for hemi in ['lh', 'rh']]
+        source_files = [os.path.join(self.current_activity_path, self.current_file_to_upload + hemi + '.npz') for hemi
+                        in ['lh', 'rh']]
         objects_to_filter_in, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
             obj.select = False
@@ -838,7 +859,7 @@ class Filtering(bpy.types.Operator):
             elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
 
-        for ind in range(self.topK-1, -1, -1):
+        for ind in range(self.topK - 1, -1, -1):
             orig_name = bpy.data.objects[str(names[objects_to_filter_in[ind]])].name
             filter_roi_func(orig_name)
             # print(orig_name)
@@ -876,6 +897,8 @@ class Filtering(bpy.types.Operator):
 
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
         return {"FINISHED"}
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -1155,12 +1178,14 @@ def set_filter_view_type(self, value):
 
 
 def make_brain_solid_or_transparent(self=None, context=None):
-    bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = bpy.context.scene.appearance_solid_slider
+    bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
+        'Fac'].default_value = bpy.context.scene.appearance_solid_slider
 
 
 def update_layers():
     if bpy.context.scene.appearance_depth_Bool:
-        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = bpy.context.scene.appearance_depth_slider
+        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[
+            1].default_value = bpy.context.scene.appearance_depth_slider
     else:
         bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = 0
 
@@ -1232,6 +1257,7 @@ class AppearanceMakerPanel(bpy.types.Panel):
         # make_brain_solid_or_transparent(self, context)
         appearance_draw(self, context)
 
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Coloring Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1264,7 +1290,7 @@ def color_object_homogeneously(path, postfix_str=''):
         cur_obj = bpy.data.objects[obj_name]
 
         new_color = object_colors[cur_frame]
-        object_coloring(bpy.data.objects[obj_name+postfix_str], new_color)
+        object_coloring(bpy.data.objects[obj_name + postfix_str], new_color)
 
     print('Finished coloring!!')
 
@@ -1283,7 +1309,7 @@ def activity_map_coloring(map_type):
     current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
     d['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))  # .astype(np.int)
     d['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))  # .astype(np.int)
-    print('load time = '+str(time.time()-start_time1))
+    print('load time = ' + str(time.time() - start_time1))
 
     start_time = time.time()
     hemispheres = ['lh', 'rh']
@@ -1291,9 +1317,9 @@ def activity_map_coloring(map_type):
 
     for hemisphere in hemispheres:
         if map_type == 'MEG':
-            f = np.load(os.path.join(current_root_path, 'activity_map_'+hemisphere, 't'+frame_str+'.npy'))
+            f = np.load(os.path.join(current_root_path, 'activity_map_' + hemisphere, 't' + frame_str + '.npy'))
         elif map_type == 'FMRI':
-            f = np.load(os.path.join(current_root_path, 'fmri_'+hemisphere+'.npy'))
+            f = np.load(os.path.join(current_root_path, 'fmri_' + hemisphere + '.npy'))
         cur_obj = bpy.data.objects[hemisphere]
         mesh = cur_obj.data
         scn = bpy.context.scene
@@ -1388,11 +1414,12 @@ class ClearColors(bpy.types.Operator):
             bpy.ops.mesh.vertex_color_remove()
             vcol_layer = mesh.vertex_colors.new()
         for obj in bpy.data.objects['Subcortical_activity_map'].children:
-            print('in clear subcortical '+obj.name)
+            print('in clear subcortical ' + obj.name)
             obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
         for obj in bpy.data.objects['Deep_electrodes'].children:
             obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
         return {"FINISHED"}
+
 
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
@@ -1415,20 +1442,21 @@ class ColoringMakerPanel(bpy.types.Panel):
         # layout.prop(context.scene, 'coloring_electrodes', text = "Plot Deep electrodes", icon = 'BLANK1')
         layout.operator("ohad.colors_clear", text="Clear", icon='PANEL_CLOSE')
 
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Coloring Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.where_am_i_str = ''
 
 
 def where_i_am_draw(self, context):
-	try:
-		layout = self.layout
-		col = layout.column(align=True)
-		col.operator("ohad.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
-		col.label(text=bpy.types.Scene.where_am_i_str)
-		col.operator("ohad.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
-	except:
-		pass
+    try:
+        layout = self.layout
+        col = layout.column(align=True)
+        col.operator("ohad.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
+        col.label(text=bpy.types.Scene.where_am_i_str)
+        col.operator("ohad.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
+    except:
+        pass
 
 
 class WhereAmI(bpy.types.Operator):
@@ -1486,7 +1514,7 @@ class WhereAmI(bpy.types.Operator):
         # print(np.argmin(np.array(distances)))
         closest_area = names[np.argmin(np.array(distances))]
 
-        print('closest area is:'+closest_area)
+        print('closest area is:' + closest_area)
         bpy.types.Scene.where_am_i_str = closest_area
         bpy.context.scene.objects.active = bpy.data.objects[closest_area]
         bpy.data.objects[closest_area].select = True
@@ -1526,7 +1554,9 @@ class ClearWhereAmI(bpy.types.Operator):
         where_i_am_draw(self, context)
         return {"FINISHED"}
 
-bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
+
+bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
+                                                      update=where_i_am_draw)
 
 
 class WhereAmIMakerPanel(bpy.types.Panel):
@@ -1538,6 +1568,7 @@ class WhereAmIMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         where_i_am_draw(self, context)
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1567,7 +1598,7 @@ class CreateVertexData(bpy.types.Operator):
     @staticmethod
     def find_vertex_index_and_mesh_closest_to_cursor(self):
         # 3d cursor relative to the object data
-        print('cursor at:'+str(bpy.context.scene.cursor_location))
+        print('cursor at:' + str(bpy.context.scene.cursor_location))
         # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
         distances = []
         names = []
@@ -1576,7 +1607,7 @@ class CreateVertexData(bpy.types.Operator):
 
         # base_obj = bpy.data.objects['Functional maps']
         meshes = ['lh', 'rh']
-#        for obj in base_obj.children:
+        #        for obj in base_obj.children:
         for cur_obj in meshes:
             obj = bpy.data.objects[cur_obj]
             co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
@@ -1590,22 +1621,23 @@ class CreateVertexData(bpy.types.Operator):
             kd.balance()
             print(obj.name)
             for (co, index, dist) in kd.find_n(co_find, 1):
-                print("cursor at "+str(co_find)+',vertex '+str(co)+',index '+str(index)+',dist '+str(dist))
+                print(
+                    "cursor at " + str(co_find) + ',vertex ' + str(co) + ',index ' + str(index) + ',dist ' + str(dist))
                 distances.append(dist)
                 names.append(obj.name)
                 vertices_idx.append(index)
                 vertices_co.append(co)
 
         closest_mesh_name = names[np.argmin(np.array(distances))]
-        print('closest_mesh ='+str(closest_mesh_name))
+        print('closest_mesh =' + str(closest_mesh_name))
         vertex_ind = vertices_idx[np.argmin(np.array(distances))]
-        print('vertex_ind ='+str(vertex_ind))
+        print('vertex_ind =' + str(vertex_ind))
         vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
         return closest_mesh_name, vertex_ind, vertex_co
 
     @staticmethod
     def create_empty_in_vertex_location(self, vertex_location):
-        layer = [False]*20
+        layer = [False] * 20
         layer[11] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=vertex_location, layers=layer)
         bpy.context.object.name = "Activity_in_vertex"
@@ -1615,38 +1647,40 @@ class CreateVertexData(bpy.types.Operator):
         bpy.context.scene.objects.active = obj
         obj.select = True
         obj[prop_name] = value
-        obj.keyframe_insert(data_path='['+'"'+prop_name+'"'+']', frame=keyframe)
+        obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
 
     @staticmethod
     def keyframe_empty(self, empty_name, closest_mesh_name, vertex_ind, data_path):
         obj = bpy.data.objects[empty_name]
-        number_of_time_points = len(glob.glob(os.path.join(data_path, 'activity_map_'+closest_mesh_name+'2', '',)+'*.npy'))
+        number_of_time_points = len(
+            glob.glob(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', '', ) + '*.npy'))
         insert_keyframe_to_custom_prop(obj, 'data', 0, 0)
-        insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points+1)
+        insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
             # print(ii)
             frame_str = str(ii)
-            f = np.load(os.path.join(data_path, 'activity_map_'+closest_mesh_name+'2', 't'+frame_str+'.npy'))
-            insert_keyframe_to_custom_prop(obj, 'data', float(f[vertex_ind, 0]), ii+1)
+            f = np.load(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', 't' + frame_str + '.npy'))
+            insert_keyframe_to_custom_prop(obj, 'data', float(f[vertex_ind, 0]), ii + 1)
 
         fcurves = bpy.data.objects[empty_name].animation_data.action.fcurves[0]
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def keyframe_empty_test(self, empty_name, closest_mesh_name, vertex_ind, data_path):
         obj = bpy.data.objects[empty_name]
-        lookup = np.load(os.path.join(data_path, 'activity_map_'+closest_mesh_name+'_verts_lookup.npy'))
+        lookup = np.load(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '_verts_lookup.npy'))
         file_num_str = str(int(lookup[vertex_ind, 0]))
         line_num = int(lookup[vertex_ind, 1])
-        data_file = np.load(os.path.join(data_path, 'activity_map_'+closest_mesh_name+'_verts', file_num_str+'.npy'))
+        data_file = np.load(
+            os.path.join(data_path, 'activity_map_' + closest_mesh_name + '_verts', file_num_str + '.npy'))
         data = data_file[line_num, :].squeeze()
 
         number_of_time_points = len(data)
         self.insert_keyframe_to_custom_prop(self, obj, 'data', 0, 0)
-        self.insert_keyframe_to_custom_prop(self, obj, 'data', 0, number_of_time_points+1)
+        self.insert_keyframe_to_custom_prop(self, obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
             print(ii)
             frame_str = str(ii)
-            self.insert_keyframe_to_custom_prop(self, obj, 'data', float(data[ii]), ii+1)
+            self.insert_keyframe_to_custom_prop(self, obj, 'data', float(data[ii]), ii + 1)
             # insert_keyframe_to_custom_prop(obj,'data',0,ii+1)
         fcurves = bpy.data.objects[empty_name].animation_data.action.fcurves[0]
         mod = fcurves.modifiers.new(type='LIMITS')
@@ -1673,9 +1707,13 @@ class DataInVertMakerPanel(bpy.types.Panel):
         layout = self.layout
         layout.operator("ohad.vertex_data_create", text="Get data in vertex", icon='ROTATE')
         layout.operator("ohad.vertex_data_clear", text="Clear", icon='PANEL_CLOSE')
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bpy.types.Scene.output_path = bpy.props.StringProperty(name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
+bpy.types.Scene.output_path = bpy.props.StringProperty(name="Output Path", default="",
+                                                       description="Define the path for the output files",
+                                                       subtype='DIR_PATH')
 
 
 def render_draw(self, context):
@@ -1700,11 +1738,20 @@ def update_quality(self, context):
     print(bpy.context.scene.quality)
     bpy.context.scene.quality = bpy.context.scene.quality
 
-bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_rotation)
-bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_rotation)
-bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
-bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
-bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
+
+bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
+                                                     description="Camera rotation around x axis",
+                                                     update=update_rotation)
+bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
+                                                     description="Camera rotation around y axis",
+                                                     update=update_rotation)
+bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
+                                                     description="Camera rotation around z axis",
+                                                     update=update_rotation)
+bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100,
+                                                  description="quality of figure in parentage", update=update_quality)
+bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image',
+                                                       description="This significantly affect rendering speed")
 
 
 class RenderFigure(bpy.types.Operator):
@@ -1734,14 +1781,13 @@ class RenderFigure(bpy.types.Operator):
         print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
         bpy.context.scene.cycles.use_square_samples = use_square_samples
 
-
         # print('Output folder:')
         # print(self.current_output_path)
         cur_frame = bpy.context.scene.frame_current
         print('file name:')
         # print('f'+str(cur_frame))
         # print('folder:'+self.current_output_path)
-        file_name = os.path.join(self.current_output_path, 'f'+str(cur_frame))
+        file_name = os.path.join(self.current_output_path, 'f' + str(cur_frame))
         print(file_name)
         bpy.context.scene.render.filepath = file_name
         # Render and save the rendered scene to file. ------------------------------
@@ -1763,6 +1809,8 @@ class RenderingMakerPanel(bpy.types.Panel):
     def draw(self, context):
         current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         render_draw(self, context)
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -1803,7 +1851,8 @@ class helper_class():
     # bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
     # bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
     # bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
-    conf_path = bpy.props.StringProperty(name="Root Path", default="", description="Define the root path of the project", subtype='DIR_PATH')
+    conf_path = bpy.props.StringProperty(name="Root Path", default="",
+                                         description="Define the root path of the project", subtype='DIR_PATH')
     brain_imported = False
     electrodes_imported = False
     brain_data_exist = False
@@ -1816,15 +1865,29 @@ class helper_class():
     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
     filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
     filter_to = bpy.props.IntProperty(default=1000, min=0, description="When to filter to")
-    filter_curves_type = bpy.props.EnumProperty(items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)], description="Type of curve to be filtered", update=filter_draw)
-    filter_curves_func = bpy.props.EnumProperty(items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)], description="Filtering function", update=filter_draw)
+    filter_curves_type = bpy.props.EnumProperty(
+        items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
+        description="Type of curve to be filtered", update=filter_draw)
+    filter_curves_func = bpy.props.EnumProperty(
+        items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)],
+        description="Filtering function", update=filter_draw)
     objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere", update=show_hide_lh)
-    objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",update=show_hide_rh)
-    objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical", update=show_hide_sub_cortical)
-    appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes", get=get_appearance_show_electrodes_layer, set=set_appearance_show_electrodes_layer)
-    appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs", get=get_appearance_show_rois_layer, set=set_appearance_show_rois_layer)
-    appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps", get=get_appearance_show_activity_layer, set=set_appearance_show_activity_layer)
-    filter_view_type = bpy.props.EnumProperty(items=[("RENDERED", "Rendered Brain", "", 1), ("SOLID", " Solid Brain", "", 2)], description="Brain appearance", get=get_filter_view_type, set=set_filter_view_type)
+    objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",
+                                                  update=show_hide_rh)
+    objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
+                                                            update=show_hide_sub_cortical)
+    appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
+                                                              get=get_appearance_show_electrodes_layer,
+                                                              set=set_appearance_show_electrodes_layer)
+    appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
+                                                        get=get_appearance_show_rois_layer,
+                                                        set=set_appearance_show_rois_layer)
+    appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
+                                                            get=get_appearance_show_activity_layer,
+                                                            set=set_appearance_show_activity_layer)
+    filter_view_type = bpy.props.EnumProperty(
+        items=[("RENDERED", "Rendered Brain", "", 1), ("SOLID", " Solid Brain", "", 2)], description="Brain appearance",
+        get=get_filter_view_type, set=set_filter_view_type)
     appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
     appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
     appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
@@ -1833,23 +1896,28 @@ class helper_class():
     coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
     where_am_i_str = ''
     where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
-    output_path = bpy.props.StringProperty(name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
-    X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_rotation)
-    Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_rotation)
-    Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
-    quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
+    output_path = bpy.props.StringProperty(name="Output Path", default="",
+                                           description="Define the path for the output files", subtype='DIR_PATH')
+    X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis",
+                                         update=update_rotation)
+    Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis",
+                                         update=update_rotation)
+    Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis",
+                                         update=update_rotation)
+    quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage",
+                                      update=update_quality)
     smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
 
 
 def register():
     tmp = helper_class()
-    bpy.types.Scene.conf_path =tmp.conf_path
-    bpy.types.Scene.brain_imported =tmp.brain_imported
-    bpy.types.Scene.electrodes_imported =tmp.electrodes_imported
-    bpy.types.Scene.brain_data_exist =tmp.brain_data_exist
-    bpy.types.Scene.electrodes_data_exist =tmp.electrodes_data_exist
-    bpy.types.Scene.closest_curve_str =tmp.closest_curve_str
-    bpy.types.Scene.filter_is_on =tmp.filter_is_on
+    bpy.types.Scene.conf_path = tmp.conf_path
+    bpy.types.Scene.brain_imported = tmp.brain_imported
+    bpy.types.Scene.electrodes_imported = tmp.electrodes_imported
+    bpy.types.Scene.brain_data_exist = tmp.brain_data_exist
+    bpy.types.Scene.electrodes_data_exist = tmp.electrodes_data_exist
+    bpy.types.Scene.closest_curve_str = tmp.closest_curve_str
+    bpy.types.Scene.filter_is_on = tmp.filter_is_on
     files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
     bpy.types.Scene.closest_curve = tmp.closest_curve
     bpy.types.Scene.filter_topK = tmp.filter_topK
@@ -1858,13 +1926,13 @@ def register():
     bpy.types.Scene.filter_to = tmp.filter_to
     bpy.types.Scene.filter_curves_type = tmp.filter_curves_type
     bpy.types.Scene.filter_curves_func = tmp.filter_curves_func
-    bpy.types.Scene.objects_show_hide_lh =tmp.objects_show_hide_lh
-    bpy.types.Scene.objects_show_hide_rh =tmp.objects_show_hide_rh
+    bpy.types.Scene.objects_show_hide_lh = tmp.objects_show_hide_lh
+    bpy.types.Scene.objects_show_hide_rh = tmp.objects_show_hide_rh
     bpy.types.Scene.objects_show_hide_sub_cortical = tmp.objects_show_hide_sub_cortical
     bpy.types.Scene.appearance_show_electrodes_layer = tmp.appearance_show_electrodes_layer
-    bpy.types.Scene.appearance_show_ROIs_layer =tmp.appearance_show_ROIs_layer
+    bpy.types.Scene.appearance_show_ROIs_layer = tmp.appearance_show_ROIs_layer
     bpy.types.Scene.appearance_show_activity_layer = tmp.appearance_show_activity_layer
-    bpy.types.Scene.filter_view_type =tmp.filter_view_type
+    bpy.types.Scene.filter_view_type = tmp.filter_view_type
     bpy.types.Scene.appearance_solid_slider = tmp.appearance_solid_slider
     bpy.types.Scene.appearance_depth_slider = tmp.appearance_depth_slider
     bpy.types.Scene.appearance_depth_Bool = tmp.appearance_depth_Bool
@@ -1876,11 +1944,10 @@ def register():
     bpy.types.Scene.Y_rotation = tmp.Y_rotation
     bpy.types.Scene.Z_rotation = tmp.Z_rotation
     bpy.types.Scene.quality = tmp.quality
-    bpy.types.Scene.smooth_figure =tmp.smooth_figure
+    bpy.types.Scene.smooth_figure = tmp.smooth_figure
+
 
 if __name__ == "__main__":
-
-
     bpy.context.scene.appearance_show_electrodes_layer = False
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
