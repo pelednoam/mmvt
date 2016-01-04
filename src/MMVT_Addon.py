@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Multi-modal visualization tool",
     "author": "Ohad Felsenstein & Noam Peled",
-    "version": (1, 1),
+    "version": (1, 2),
     "blender": (2, 7, 2),
     "api": 33333,
     "location": "View3D > Add > Mesh > Say3D",
