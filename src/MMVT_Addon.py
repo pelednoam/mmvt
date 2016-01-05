@@ -1653,7 +1653,7 @@ class ClearWhereAmI(bpy.types.Operator):
                 obj.active_material = new_mat
 
         # Noam: I think this is better than a try block
-        if 'Deep_electrodes' in bpy.data.objects
+        if 'Deep_electrodes' in bpy.data.objects:
             for obj in bpy.data.objects['Deep_electrodes'].children:
                 obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
         context.scene.objects.active = bpy.data.objects[' ']
@@ -1779,7 +1779,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
 
 
 class FreeviewOpen(bpy.types.Operator):
-    bl_idname = "ohad.freeview_open" 
+    bl_idname = "ohad.freeview_open"
     bl_label = "Open Freeview"
     bl_options = {"UNDO"}
 
