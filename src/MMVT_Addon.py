@@ -17,6 +17,17 @@ import time
 import mathutils
 import glob
 import math
+import sys
+
+# Try to import external
+try:
+    root = bpy.path.abspath('//')
+    print(root)
+    sys.path.append(os.path.join(root, 'mmvt_code'))
+    import utils
+    utils.test()
+except:
+    print('No external mmvt code!')
 
 # http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
 print("Neuroscience add on started!")
@@ -517,14 +528,25 @@ class DataMakerPanel(bpy.types.Panel):
 def deselect_all():
     for obj in bpy.data.objects:
         obj.select = False
+    # Ohad: can you explain these two lines?
     bpy.data.objects[' '].select = True
     bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
 def select_all_rois():
-    for subHierarchy in bpy.data.objects['Brain'].children:
-        for obj in subHierarchy.children:
-            obj.select = True
+    # Noam: I changed to code to distiguish between the cortex and the subcortical structures
+    #for subHierarchy in bpy.data.objects['Brain'].children:
+    #    for obj in subHierarchy.children:
+    #        obj.select = True
+
+    for obj in bpy.data.objects['Cortex-lh'].children:
+        obj.select = True
+    for obj in bpy.data.objects['Cortex-rh'].children:
+        obj.select = True
+
+def select_only_subcorticals():
+    for obj in bpy.data.objects['Subcortical strutures'].children:
+        obj.select = True
 
 
 class SelectionMakerPanel(bpy.types.Panel):
@@ -536,11 +558,12 @@ class SelectionMakerPanel(bpy.types.Panel):
 
     @staticmethod
     def draw(self, context):
-        col1 = self.layout.column(align=True)
+        col = self.layout.column(align=True)
         # col1.operator("select.ROIs", text="ROIs")
-        col1.operator("ohad.roi_selection", text="Select all ROIs", icon='BORDER_RECT')
-        col1.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
-        col1.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
+        col.operator("ohad.roi_selection", text="Select all cortical ROIs", icon='BORDER_RECT')
+        col.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
+        col.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
+        col.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
 
 
 class SelectAllRois(bpy.types.Operator):
@@ -553,6 +576,15 @@ class SelectAllRois(bpy.types.Operator):
         select_all_rois()
         return {"FINISHED"}
 
+
+class SelectAllSubcorticals(bpy.types.Operator):
+    bl_idname = "ohad.subcorticals_selection"
+    bl_label = "select only subcorticals"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        select_only_subcorticals()
+        return {"FINISHED"}
 
 def select_all_electrodes():
     for obj in bpy.data.objects['Deep_electrodes'].children:
@@ -581,7 +613,6 @@ class ClearSelection(bpy.types.Operator):
             obj.select = False
         bpy.data.objects[' '].select = True
         bpy.context.scene.objects.active = bpy.data.objects[' ']
-
         return {"FINISHED"}
 
 
@@ -668,7 +699,7 @@ def filter_draw(self, context):
 files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
 
 bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
-bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
+#bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
 bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
 bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
 # bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.data.scenes['Scene'].frame_preview_end, min=0, description="When to filter to")
@@ -800,7 +831,7 @@ class Filtering(bpy.types.Operator):
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
-        t_range = range(self.filter_from, self.filter_to + 1)
+        # t_range = range(self.filter_from, self.filter_to + 1)
 
         print(self.type_of_func)
         d = np.vstack((d for d in data))
@@ -819,6 +850,7 @@ class Filtering(bpy.types.Operator):
         objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names
+
 
     def filter_electrodes(self):
         print('filter_electrodes')
@@ -1064,13 +1096,15 @@ class Filtering(bpy.types.Operator):
 
 
 def show_hide_hierarchy(val, obj):
-    bpy.data.objects[obj].hide = val
-    for child in bpy.data.objects[obj].children:
-        child.hide = val
+    if bpy.data.objects.get(obj) is not None:
+        bpy.data.objects[obj].hide = val
+        for child in bpy.data.objects[obj].children:
+            child.hide = val
 
 
 def show_hide_hemi(val, obj_func_name, obj_brain_name):
-    bpy.data.objects[obj_func_name].hide = val
+    if bpy.data.objects.get(obj_func_name) is not None:
+        bpy.data.objects[obj_func_name].hide = val
     show_hide_hierarchy(val, obj_brain_name)
 
 
@@ -1084,7 +1118,12 @@ def show_hide_lh(self, context):
 
 def show_hide_sub_cortical(self, context):
     show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical structures")
-    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
+    # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
+    # We split the activity map into two types: meg for the same activation for the each structure, and fmri
+    # for a better resolution, like on the cortex.
+    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_fmri_activity_map")
+    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_meg_activity_map")
+
 
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere",
@@ -1180,6 +1219,7 @@ def set_filter_view_type(self, value):
 def make_brain_solid_or_transparent(self=None, context=None):
     bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
         'Fac'].default_value = bpy.context.scene.appearance_solid_slider
+    bpy.data.materials['subcortical_activity_mat'].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = bpy.context.scene.apearence_solid_slider
 
 
 def update_layers():
@@ -1199,7 +1239,7 @@ def appearance_draw(self, context):
     split = layout.split()
     split.prop(context.scene, "filter_view_type", text="")
     # print(context.scene.filter_view_type)
-    if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer is True:
+    if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer:
         # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
         split2 = layout.split()
@@ -1273,7 +1313,8 @@ def object_coloring(obj, rgb):
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
 
 
-def color_object_homogeneously(path, postfix_str=''):
+# todo: do something with the threshold parameter
+def color_object_homogeneously(path, postfix_str='', threshold=0):
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     # print('start')
@@ -1290,7 +1331,11 @@ def color_object_homogeneously(path, postfix_str=''):
         cur_obj = bpy.data.objects[obj_name]
 
         new_color = object_colors[cur_frame]
-        object_coloring(bpy.data.objects[obj_name + postfix_str], new_color)
+        if bpy.data.objects.get(obj_name) is not None:
+            print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
+            object_coloring(bpy.data.objects[obj_name+postfix_str],new_color)
+        else:
+            print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 
     print('Finished coloring!!')
 
@@ -1307,13 +1352,15 @@ def activity_map_coloring(map_type):
     d = {}
     start_time1 = time.time()
     current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-    d['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))  # .astype(np.int)
-    d['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))  # .astype(np.int)
+    d['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
+    d['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
     print('load time = ' + str(time.time() - start_time1))
 
     start_time = time.time()
     hemispheres = ['lh', 'rh']
-    # hemispheres = ['rh']
+
+    show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+    show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
 
     for hemisphere in hemispheres:
         if map_type == 'MEG':
@@ -1321,34 +1368,55 @@ def activity_map_coloring(map_type):
         elif map_type == 'FMRI':
             f = np.load(os.path.join(current_root_path, 'fmri_' + hemisphere + '.npy'))
         cur_obj = bpy.data.objects[hemisphere]
-        mesh = cur_obj.data
-        scn = bpy.context.scene
+        activity_map_obj_coloring(cur_obj, f, d[hemisphere], threshold, override_current_mat)
 
-        valid_verts = np.where(np.abs(f[:, 0]) > threshold)[0]
-        # check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
-        scn.objects.active = cur_obj
-        cur_obj.select = True
-        if override_current_mat:
-            bpy.ops.mesh.vertex_color_remove()
-
-        # if mesh.vertex_colors:
-        #    vcol_layer = mesh.vertex_colors.active
-        # else:
-        #    vcol_layer = mesh.vertex_colors.new()
-        vcol_layer = mesh.vertex_colors.new()
-
-        for vert in valid_verts:
-            x = d[hemisphere][vert]
-            for loop_ind in x[x > -1]:
-                vcol_layer.data[loop_ind].color = f[vert, 1:]
-    # select_all_rois()
-
+    # subcortical coloring
     if map_type == 'MEG':
-        # color_object_homogeneously(os.path.join(current_root_path, 'sub_cortical_activity.npz'), '.001')
-        color_object_homogeneously(os.path.join(current_root_path, 'sub_cortical_activity.npz'), '.000')
+        subcortical_activity_file = os.path.join(current_root_path,'subcortical_meg_activity.npz')
+        if os.path.isfile(subcortical_activity_file):
+            color_object_homogeneously(subcortical_activity_file,'_meg_activity', threshold)
+    if map_type == 'FMRI':
+        subcoticals = glob.glob(os.path.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
+        for subcortical_file in subcoticals:
+            subcortical = os.path.splitext(os.path.basename(subcortical_file))[0]
+            cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
+            if cur_obj is None:
+                print("Can't find the object {}!".format(subcortical))
+            else:
+                lookup_file = os.path.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
+                verts_file = os.path.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
+                if os.path.isfile(lookup_file) and os.path.isfile(verts_file):
+                    lookup = np.load(lookup_file)
+                    verts_values = np.load(verts_file)
+                    activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
 
-    deselect_all()
-    bpy.data.objects['Brain'].select = True
+
+    # Noam: not sure this is necessary
+    #deselect_all()
+    #bpy.data.objects['Brain'].select = True
+
+
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
+    mesh = cur_obj.data
+    scn = bpy.context.scene
+
+    valid_verts = np.where(np.abs(vert_values[:,0])>threshold)[0]
+    #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
+    scn.objects.active = cur_obj
+    cur_obj.select = True
+    if override_current_mat:
+        bpy.ops.mesh.vertex_color_remove()
+
+    #if mesh.vertex_colors:
+    #    vcol_layer = mesh.vertex_colors.active
+    #else:
+    #    vcol_layer = mesh.vertex_colors.new()
+    vcol_layer = mesh.vertex_colors.new()
+    print('max vert in lookup: {}, vcol_layer len: {}'.format(np.max(lookup), len(vcol_layer.data)))
+    for vert in valid_verts:
+        x = lookup[vert]
+        for loop_ind in x[x>-1]:
+            vcol_layer.data[loop_ind].color = vert_values[vert,1:]
 
 
 class ColorElectrodes(bpy.types.Operator):
@@ -1359,7 +1427,8 @@ class ColorElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        color_object_homogeneously(os.path.join(current_root_path, 'electrodes_data.npz'))
+        threshold = bpy.context.scene.coloring_threshold
+        color_object_homogeneously(os.path.join(current_root_path,'electrodes_data.npz'), threshold=threshold)
         deselect_all()
         set_appearance_show_electrodes_layer(bpy.context.scene, True)
         # bpy.data.objects['Deep_electrodes'].select = True
@@ -1376,13 +1445,14 @@ class ColorMeg(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         activity_map_coloring('MEG')
-        deselect_all()
-        for cur_obj in bpy.data.objects['Cortex-lh'].children:
-            cur_obj.select = True
-        for cur_obj in bpy.data.objects['Cortex-rh'].children:
-            cur_obj.select = True
-        for cur_obj in bpy.data.objects['Subcortical structures'].children:
-            cur_obj.select = True
+        # Noam: not sure this is necessary
+        # deselect_all()
+        # for cur_obj in bpy.data.objects['Cortex-lh'].children:
+        #     cur_obj.select = True
+        # for cur_obj in bpy.data.objects['Cortex-rh'].children:
+        #     cur_obj.select = True
+        # for cur_obj in bpy.data.objects['Subcortical structures'].children:
+        #     cur_obj.select = True
         return {"FINISHED"}
 
 
@@ -1413,11 +1483,22 @@ class ClearColors(bpy.types.Operator):
             cur_obj.select = True
             bpy.ops.mesh.vertex_color_remove()
             vcol_layer = mesh.vertex_colors.new()
-        for obj in bpy.data.objects['Subcortical_activity_map'].children:
-            print('in clear subcortical ' + obj.name)
-            obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
-        for obj in bpy.data.objects['Deep_electrodes'].children:
-            obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
+        # for obj in bpy.data.objects['Subcortical_activity_map'].children:
+        for cur_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+            print('in clear subcortical ' + cur_obj.name)
+            # obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
+            mesh = cur_obj.data
+            scn = bpy.context.scene
+            scn.objects.active = cur_obj
+            cur_obj.select = True
+            bpy.ops.mesh.vertex_color_remove()
+            vcol_layer = mesh.vertex_colors.new()
+        for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
+            if bpy.data.objects.get(root) is not None:
+                for obj in bpy.data.objects[root].children:
+                    obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1,1,1,1)
+        # for obj in bpy.data.objects['Deep_electrodes'].children:
+        #     obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
         return {"FINISHED"}
 
 
@@ -1456,13 +1537,17 @@ def where_i_am_draw(self, context):
         col.label(text=bpy.types.Scene.where_am_i_str)
         col.operator("ohad.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
     except:
-        pass
+        #Noam: try not to write pass in except, then we'll never know the try block failed
+        print('Error in where_i_am_draw!')
 
 
 class WhereAmI(bpy.types.Operator):
     bl_idname = "ohad.where_i_am"
     bl_label = "ohad where i am"
     bl_options = {"UNDO"}
+
+    where_am_I_selected_obj = None
+    where_am_I_selected_obj_org_hide = True
 
     @staticmethod
     def setup_environment(self):
@@ -1487,11 +1572,15 @@ class WhereAmI(bpy.types.Operator):
 
                 # 3d cursor relative to the object data
                 cursor = bpy.context.scene.cursor_location
-                try:
-                    if bpy.context.object.parent == bpy.data.objects['Deep_electrodes']:
-                        cursor = bpy.context.object.location
-                except KeyError:
-                    pass
+                # try:
+                #     if bpy.context.object.parent == bpy.data.objects['Deep_electrodes']:
+                #         cursor = bpy.context.object.location
+                # except KeyError:
+                #     pass
+
+                # Noam: Maybe this is better?
+                if bpy.context.object.parent == bpy.data.objects.get('Deep_electrodes', None):
+                    cursor = bpy.context.object.location
 
                 co_find = cursor * obj.matrix_world.inverted()
 
@@ -1508,14 +1597,21 @@ class WhereAmI(bpy.types.Operator):
                 # print("Close 1 points")
                 for (co, index, dist) in kd.find_n(co_find, 1):
                     # print("    ", obj.name,co, index, dist)
-                    distances.append(dist)
-                    names.append(obj.name)
+                    if 'unknown' not in obj.name:
+                        distances.append(dist)
+                        names.append(obj.name)
 
         # print(np.argmin(np.array(distances)))
+        min_index = np.argmin(np.array(distances))
         closest_area = names[np.argmin(np.array(distances))]
-
-        print('closest area is:' + closest_area)
         bpy.types.Scene.where_am_i_str = closest_area
+
+        print('closest area is: '+closest_area)
+        print('dist: {}'.format(np.min(np.array(distances))))
+        print('closets vert is {}'.format(bpy.data.objects[closest_area].data.vertices[min_index].co))
+        WhereAmI.where_am_I_selected_obj = bpy.data.objects[closest_area]
+        WhereAmI.where_am_I_selected_obj_org_hide = bpy.data.objects[closest_area].hide
+
         bpy.context.scene.objects.active = bpy.data.objects[closest_area]
         bpy.data.objects[closest_area].select = True
         bpy.data.objects[closest_area].hide = False
@@ -1541,15 +1637,19 @@ class ClearWhereAmI(bpy.types.Operator):
             for obj in subHierarchy.children:
                 obj.active_material = new_mat
 
-        try:
+        # Noam: I think this is better than a try block
+        if 'Deep_electrodes' in bpy.data.objects
             for obj in bpy.data.objects['Deep_electrodes'].children:
                 obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-        except KeyError:
-            pass
         context.scene.objects.active = bpy.data.objects[' ']
 
         for obj in bpy.data.objects:
             obj.select = False
+
+        if WhereAmI.where_am_I_selected_obj is not None:
+            WhereAmI.where_am_I_selected_obj.hide = WhereAmI.where_am_I_selected_obj_org_hide
+            WhereAmI.where_am_I_selected_obj = None
+
         bpy.types.Scene.where_am_i_str = ''
         where_i_am_draw(self, context)
         return {"FINISHED"}
@@ -1568,9 +1668,141 @@ class WhereAmIMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         where_i_am_draw(self, context)
-
+        layout = self.layout
+        layout.operator("ohad.where_i_am", text="Where Am I?", icon = 'SNAP_SURFACE')
+        layout.operator("ohad.where_am_i_clear", text="Clear", icon = 'PANEL_CLOSE')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class SearchFilter(bpy.types.Operator):
+    bl_idname = "ohad.selection_filter"
+    bl_label = "selection filter"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        label_name = context.scene.labels_regex
+        print(label_name)
+        for obj in bpy.data.objects:
+            obj.select = label_name in obj.name
+
+        return {"FINISHED"}
+
+class SearchClear(bpy.types.Operator):
+    bl_idname = "ohad.selection_clear"
+    bl_label = "selection clear"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        # Copy from where am I clear
+        for subHierchy in bpy.data.objects['Brain'].children:
+            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
+            if subHierchy.name == 'Subcortical strutures':
+                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+            for obj in subHierchy.children:
+                 obj.active_material = new_mat
+
+        for obj in bpy.data.objects['Deep_electrodes'].children:
+            obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
+
+        for h, obj_name in SearchMark.marked_objects_hide.items():
+            print(obj_name, h)
+            bpy.data.objects[obj_name].hide = bool(h)
+        return {"FINISHED"}
+
+
+class SearchMark(bpy.types.Operator):
+    bl_idname = "ohad.selection_mark"
+    bl_label = "selection mark"
+    bl_options = {"UNDO"}
+    marked_objects_hide = {}
+
+    def invoke(self, context, event=None):
+        label_name = context.scene.labels_regex
+        print(label_name)
+        for obj in bpy.data.objects:
+            if label_name in obj.name:
+                bpy.context.scene.objects.active = bpy.data.objects[obj.name]
+                bpy.data.objects[obj.name].select = True
+                SearchMark.marked_objects_hide[obj.name] = (bpy.data.objects[obj.name].hide == True)
+                bpy.data.objects[obj.name].hide = False
+                bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
+
+        return {"FINISHED"}
+
+bpy.types.Scene.labels_regex = bpy.props.StringProperty(default= '', description="labels regex")
+
+class SearchPanel(bpy.types.Panel):
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "Ohad"
+    bl_label = "Search Panel"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(context.scene, "labels_regex", text="Labels regex")
+        row = layout.row(align=0)
+        row.operator(SearchFilter.bl_idname, text="Search", icon = 'BORDERMOVE')
+        row.operator(SearchMark.bl_idname, text="Mark", icon = 'GREASEPENCIL')
+        layout.operator(SearchClear.bl_idname, text="Clear", icon = 'PANEL_CLOSE')
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class FreeviewGotoCursor(bpy.types.Operator):
+    bl_idname = "ohad.freeview_goto_cursor"
+    bl_label = "Goto Cursor"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        root = bpy.path.abspath(bpy.context.scene.conf_path)
+        point = np.genfromtxt(os.path.join(root, 'freeview', 'edit.dat'))
+        bpy.context.scene.cursor_location = point / 10.0
+        return {"FINISHED"}
+
+
+class FreeviewOpen(bpy.types.Operator):
+    bl_idname = "ohad.freeview_open"
+    bl_label = "Open Freeview"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        root = bpy.path.abspath(bpy.context.scene.conf_path)
+        sig = os.path.join(root, 'freeview', 'sig_subject.mgz')
+        T1 = os.path.join(root, 'freeview', 'T1.mgz')
+        aseg = os.path.join(root, 'freeview', 'laus250+aseg.mgz')
+        lut = os.path.join(root, 'freeview', 'laus250ColorLUT.txt')
+        electrodes = self.get_electrodes_groups(root)
+        cmd = 'freeview -v {}:colormap=heat {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(sig, T1, aseg, lut, electrodes)
+        utils.run_command_in_new_thread(cmd)
+        return {"FINISHED"}
+
+    def get_electrodes_groups(self, root):
+        groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
+        groups_files = ''
+        for group in groups:
+            groups_files = groups_files + os.path.join(root, 'freeview', '{}.dat '.format(group))
+        return groups_files
+
+class FreeviewPanel(bpy.types.Panel):
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "Ohad"
+    bl_label = "Freeview Panel"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row(align=0)
+        row.operator(FreeviewOpen.bl_idname, text="Freeview", icon = 'PARTICLES')
+        row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon = 'HAND')
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -1621,8 +1853,7 @@ class CreateVertexData(bpy.types.Operator):
             kd.balance()
             print(obj.name)
             for (co, index, dist) in kd.find_n(co_find, 1):
-                print(
-                    "cursor at " + str(co_find) + ',vertex ' + str(co) + ',index ' + str(index) + ',dist ' + str(dist))
+                print('cursor at {} ,vertex {}, index {}, dist {}'.format(str(co_find), str(co), str(index),str(dist)))
                 distances.append(dist)
                 names.append(obj.name)
                 vertices_idx.append(index)
@@ -1652,8 +1883,7 @@ class CreateVertexData(bpy.types.Operator):
     @staticmethod
     def keyframe_empty(self, empty_name, closest_mesh_name, vertex_ind, data_path):
         obj = bpy.data.objects[empty_name]
-        number_of_time_points = len(
-            glob.glob(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', '', ) + '*.npy'))
+        number_of_time_points = len(glob.glob(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', '', ) + '*.npy'))
         insert_keyframe_to_custom_prop(obj, 'data', 0, 0)
         insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
@@ -1686,7 +1916,8 @@ class CreateVertexData(bpy.types.Operator):
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def invoke(self, context, event=None):
-        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor(self)
+        # Noam: is was self.find_vertex_index_and_mesh_closest_to_cursor(self) before, are you sure we need to send the self?
+        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor()
         print(vertex_co)
         self.create_empty_in_vertex_location(self, vertex_co)
         # data_path = '/homes/5/npeled/space3/MEG/ECR/mg79'
@@ -1955,6 +2186,7 @@ if __name__ == "__main__":
     setup_layers()
     bpy.utils.register_class(UpdateAppearance)
     bpy.utils.register_class(SelectAllRois)
+    bpy.utils.register_class(SelectAllSubcorticals)
     bpy.utils.register_class(SelectAllElectrodes)
     bpy.utils.register_class(ClearSelection)
     bpy.utils.register_class(Filtering)
@@ -1962,6 +2194,11 @@ if __name__ == "__main__":
     bpy.utils.register_class(GrabFromFiltering)
     bpy.utils.register_class(GrabToFiltering)
     bpy.utils.register_class(ClearFiltering)
+    bpy.utils.register_class(SearchFilter)
+    bpy.utils.register_class(SearchClear)
+    bpy.utils.register_class(SearchMark)
+    bpy.utils.register_class(FreeviewGotoCursor)
+    bpy.utils.register_class(FreeviewOpen)
     bpy.utils.register_class(ColorMeg)
     bpy.utils.register_class(ColorFmri)
     bpy.utils.register_class(ClearColors)
@@ -1986,6 +2223,8 @@ if __name__ == "__main__":
     bpy.utils.register_class(DataInVertMakerPanel)
     bpy.utils.register_class(DataMakerPanel)
     bpy.utils.register_class(RenderingMakerPanel)
+    bpy.utils.register_class(SearchPanel)
+    bpy.utils.register_class(FreeviewPanel)
 
 
 # ###############################################################
