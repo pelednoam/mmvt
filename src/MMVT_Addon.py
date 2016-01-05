@@ -1176,12 +1176,14 @@ def set_appearance_show_activity_layer(self, value):
 def get_filter_view_type(self):
     # print('in get_filter_view_type')
     # print(self['filter_view_type'])
+    # print(type(self['filter_view_type']))
     if self['filter_view_type'] == 'RENDERED':
         return 1
     elif self['filter_view_type'] == 'SOLID':
         return 2
-
-    return self['filter_view_type']
+    elif type(self['filter_view_type']) == int:
+        return self['filter_view_type']
+    return 3
 
 
 def set_filter_view_type(self, value):
