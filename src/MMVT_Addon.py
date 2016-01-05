@@ -1685,14 +1685,16 @@ class SearchFilter(bpy.types.Operator):
     bl_idname = "ohad.selection_filter"
     bl_label = "selection filter"
     bl_options = {"UNDO"}
+    marked_objects_select = {}
 
     def invoke(self, context, event=None):
         label_name = context.scene.labels_regex
-        print(label_name)
+        SearchMark.marked_objects_select = {}
         for obj in bpy.data.objects:
+            SearchFilter.marked_objects_select[obj.name] = bpy.data.objects[obj.name].select
             obj.select = label_name in obj.name
-
         return {"FINISHED"}
+
 
 class SearchClear(bpy.types.Operator):
     bl_idname = "ohad.selection_clear"
@@ -1713,6 +1715,9 @@ class SearchClear(bpy.types.Operator):
 
         for obj_name, h in SearchMark.marked_objects_hide.items():
             bpy.data.objects[obj_name].hide = bool(h)
+        for obj_name, h in SearchFilter.marked_objects_select.items():
+            print('bpy.data.objects[{}].select = {}'.format(obj_name, bool(h)))
+            bpy.data.objects[obj_name].select = bool(h)
         return {"FINISHED"}
 
 
@@ -1724,7 +1729,7 @@ class SearchMark(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         label_name = context.scene.labels_regex
-        print(label_name)
+        SearchMark.marked_objects_hide = {}
         for obj in bpy.data.objects:
             if label_name in obj.name:
                 bpy.context.scene.objects.active = bpy.data.objects[obj.name]
