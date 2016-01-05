@@ -1779,7 +1779,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
 
 
 class FreeviewOpen(bpy.types.Operator):
-    bl_idname = "ohad.freeview_open"
+    bl_idname = "ohad.freeview_open" 
     bl_label = "Open Freeview"
     bl_options = {"UNDO"}
 
