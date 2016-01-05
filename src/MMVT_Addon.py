@@ -10,24 +10,16 @@ bl_info = {
     "wiki_url": "",
     "tracker_url": "",
     "category": "Add Mesh"}
+
 import bpy
+import mathutils
 import numpy as np
 import os
 import time
-import mathutils
 import glob
 import math
-import sys
 
 # Try to import external
-try:
-    root = bpy.path.abspath('//')
-    print(root)
-    sys.path.append(os.path.join(root, 'mmvt_code'))
-    import utils
-    utils.test()
-except:
-    print('No external mmvt code!')
 # import pydevd
 
 # http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
@@ -654,7 +646,7 @@ def find_obj_with_val():
         print('ERROR - Make sure you select all objects in interest')
     print(closest_curve_str)
     bpy.types.Scene.closest_curve_str = closest_curve_str
-    object_name = closest_curve_str.split('_')[0]
+    object_name = closest_curve_str[:closest_curve_str.rfind('_')]
     print('object name is:' + object_name)
     try:
         if bpy.data.objects[object_name].parent == bpy.data.objects['Deep_electrodes']:
@@ -1719,8 +1711,7 @@ class SearchClear(bpy.types.Operator):
         for obj in bpy.data.objects['Deep_electrodes'].children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
-        for h, obj_name in SearchMark.marked_objects_hide.items():
-            print(obj_name, h)
+        for obj_name, h in SearchMark.marked_objects_hide.items():
             bpy.data.objects[obj_name].hide = bool(h)
         return {"FINISHED"}
 
@@ -1738,7 +1729,7 @@ class SearchMark(bpy.types.Operator):
             if label_name in obj.name:
                 bpy.context.scene.objects.active = bpy.data.objects[obj.name]
                 bpy.data.objects[obj.name].select = True
-                SearchMark.marked_objects_hide[obj.name] = (bpy.data.objects[obj.name].hide == True)
+                SearchMark.marked_objects_hide[obj.name] = bpy.data.objects[obj.name].hide
                 bpy.data.objects[obj.name].hide = False
                 bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
 
@@ -2193,53 +2184,58 @@ def register():
     bpy.types.Scene.smooth_figure = tmp.smooth_figure
 
 
-if __name__ == "__main__":
+def main():
     bpy.context.scene.appearance_show_electrodes_layer = False
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
 
     setup_layers()
-    bpy.utils.register_class(UpdateAppearance)
-    bpy.utils.register_class(SelectAllRois)
-    bpy.utils.register_class(SelectAllSubcorticals)
-    bpy.utils.register_class(SelectAllElectrodes)
-    bpy.utils.register_class(ClearSelection)
-    bpy.utils.register_class(Filtering)
-    bpy.utils.register_class(FindCurveClosestToCursor)
-    bpy.utils.register_class(GrabFromFiltering)
-    bpy.utils.register_class(GrabToFiltering)
-    bpy.utils.register_class(ClearFiltering)
-    bpy.utils.register_class(SearchFilter)
-    bpy.utils.register_class(SearchClear)
-    bpy.utils.register_class(SearchMark)
-    bpy.utils.register_class(FreeviewGotoCursor)
-    bpy.utils.register_class(FreeviewOpen)
-    bpy.utils.register_class(ColorMeg)
-    bpy.utils.register_class(ColorFmri)
-    bpy.utils.register_class(ClearColors)
-    bpy.utils.register_class(ColorElectrodes)
-    bpy.utils.register_class(WhereAmI)
-    bpy.utils.register_class(ClearWhereAmI)
-    bpy.utils.register_class(CreateVertexData)
-    bpy.utils.register_class(ClearVertexData)
-    bpy.utils.register_class(AddDataToElectrodes)
-    bpy.utils.register_class(AddDataToBrain)
-    bpy.utils.register_class(ImportElectrodes)
-    bpy.utils.register_class(ImportBrain)
-    bpy.utils.register_class(ImportRoisClass)
-    bpy.utils.register_class(RenderFigure)
+    try:
+        bpy.utils.register_class(UpdateAppearance)
+        bpy.utils.register_class(SelectAllRois)
+        bpy.utils.register_class(SelectAllSubcorticals)
+        bpy.utils.register_class(SelectAllElectrodes)
+        bpy.utils.register_class(ClearSelection)
+        bpy.utils.register_class(Filtering)
+        bpy.utils.register_class(FindCurveClosestToCursor)
+        bpy.utils.register_class(GrabFromFiltering)
+        bpy.utils.register_class(GrabToFiltering)
+        bpy.utils.register_class(ClearFiltering)
+        bpy.utils.register_class(SearchFilter)
+        bpy.utils.register_class(SearchClear)
+        bpy.utils.register_class(SearchMark)
+        bpy.utils.register_class(FreeviewGotoCursor)
+        bpy.utils.register_class(FreeviewOpen)
+        bpy.utils.register_class(ColorMeg)
+        bpy.utils.register_class(ColorFmri)
+        bpy.utils.register_class(ClearColors)
+        bpy.utils.register_class(ColorElectrodes)
+        bpy.utils.register_class(WhereAmI)
+        bpy.utils.register_class(ClearWhereAmI)
+        bpy.utils.register_class(CreateVertexData)
+        bpy.utils.register_class(ClearVertexData)
+        bpy.utils.register_class(AddDataToElectrodes)
+        bpy.utils.register_class(AddDataToBrain)
+        bpy.utils.register_class(ImportElectrodes)
+        bpy.utils.register_class(ImportBrain)
+        bpy.utils.register_class(ImportRoisClass)
+        bpy.utils.register_class(RenderFigure)
 
-    bpy.utils.register_class(AppearanceMakerPanel)
-    bpy.utils.register_class(ShowHideObjectsPanel)
-    bpy.utils.register_class(SelectionMakerPanel)
-    bpy.utils.register_class(FilteringMakerPanel)
-    bpy.utils.register_class(ColoringMakerPanel)
-    bpy.utils.register_class(WhereAmIMakerPanel)
-    bpy.utils.register_class(DataInVertMakerPanel)
-    bpy.utils.register_class(DataMakerPanel)
-    bpy.utils.register_class(RenderingMakerPanel)
-    bpy.utils.register_class(SearchPanel)
-    bpy.utils.register_class(FreeviewPanel)
+        bpy.utils.register_class(AppearanceMakerPanel)
+        bpy.utils.register_class(ShowHideObjectsPanel)
+        bpy.utils.register_class(SelectionMakerPanel)
+        bpy.utils.register_class(FilteringMakerPanel)
+        bpy.utils.register_class(ColoringMakerPanel)
+        bpy.utils.register_class(WhereAmIMakerPanel)
+        bpy.utils.register_class(DataInVertMakerPanel)
+        bpy.utils.register_class(DataMakerPanel)
+        bpy.utils.register_class(RenderingMakerPanel)
+        bpy.utils.register_class(SearchPanel)
+        bpy.utils.register_class(FreeviewPanel)
+    except:
+        print('The classes are already registered!')
 
+if __name__ == "__main__":
+    main()
 
 # ###############################################################
