@@ -21,8 +21,7 @@ class run_mmvt_addon(bpy.types.Operator):
     def execute(self, context):
         root = bpy.path.abspath('//')
         print(root)
-#        sys.path.append(os.path.join(root, 'mmvt_code'))
-        sys.path.append('/homes/5/npeled/space3/code/mmvt_preprocessing/src')
+        sys.path.append(os.path.join(root, 'mmvt_code'))
         import MMVT_Addon
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(MMVT_Addon)
