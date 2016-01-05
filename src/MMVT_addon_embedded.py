@@ -14,12 +14,15 @@ bl_info = {
 import bpy
 import sys
 import os
+import importlib as imp
 
 # Try to import external
 root = bpy.path.abspath('//')
 print(root)
 sys.path.append(os.path.join(root, 'mmvt_code'))
 import MMVT_Addon
+# If you change the code and rerun the addon, you need to reload MMVT_Addon
+imp.reload(MMVT_Addon)
 MMVT_Addon.main()
 
 # import pydevd
