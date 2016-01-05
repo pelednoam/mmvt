@@ -28,8 +28,10 @@ try:
     utils.test()
 except:
     print('No external mmvt code!')
+# import pydevd
 
 # http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
+# pydevd.settrace()
 print("Neuroscience add on started!")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
@@ -613,6 +615,7 @@ class ClearSelection(bpy.types.Operator):
             obj.select = False
         bpy.data.objects[' '].select = True
         bpy.context.scene.objects.active = bpy.data.objects[' ']
+
         return {"FINISHED"}
 
 
@@ -831,7 +834,7 @@ class Filtering(bpy.types.Operator):
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
-        # t_range = range(self.filter_from, self.filter_to + 1)
+        t_range = range(self.filter_from, self.filter_to + 1)
 
         print(self.type_of_func)
         d = np.vstack((d for d in data))
@@ -850,7 +853,6 @@ class Filtering(bpy.types.Operator):
         objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names
-
 
     def filter_electrodes(self):
         print('filter_electrodes')
@@ -1164,14 +1166,17 @@ def setup_layers(self=None, context=None):
 
 def change_view3d(self=None, context=None):
     viewport_shade = bpy.context.scene.filter_view_type
-    if viewport_shade == 'RENDERED':
+    # if viewport_shade == 'RENDERED':
+    if viewport_shade == '1':
         bpy.context.scene.layers[12] = True
+        viewport_shade_str = 'RENDERED'
     else:
         bpy.context.scene.layers[12] = False
+        viewport_shade_str = 'SOLID'
 
     for ii in range(len(bpy.context.screen.areas)):
         if bpy.context.screen.areas[ii].type == 'VIEW_3D':
-            bpy.context.screen.areas[ii].spaces[0].viewport_shade = viewport_shade
+            bpy.context.screen.areas[ii].spaces[0].viewport_shade = viewport_shade_str
 
 
 def get_appearance_show_electrodes_layer(self):
@@ -1208,7 +1213,16 @@ def set_appearance_show_activity_layer(self, value):
 
 
 def get_filter_view_type(self):
-    return self['filter_view_type']
+    # print('in get_filter_view_type')
+    # print(self['filter_view_type'])
+    # print(type(self['filter_view_type']))
+    if self['filter_view_type'] == 'RENDERED':
+        return 1
+    elif self['filter_view_type'] == 'SOLID':
+        return 2
+    elif type(self['filter_view_type']) == int:
+        return self['filter_view_type']
+    return 3
 
 
 def set_filter_view_type(self, value):
@@ -1239,7 +1253,8 @@ def appearance_draw(self, context):
     split = layout.split()
     split.prop(context.scene, "filter_view_type", text="")
     # print(context.scene.filter_view_type)
-    if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer:
+    if context.scene.filter_view_type == '1' and bpy.context.scene.appearance_show_activity_layer is True:
+    # if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer is True:
         # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
         split2 = layout.split()
@@ -1276,8 +1291,8 @@ bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True
 bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                                         get=get_appearance_show_activity_layer,
                                                                         set=set_appearance_show_activity_layer)
-bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("RENDERED", "Rendered Brain", "", 1),
-                                                                 ("SOLID", " Solid Brain", "", 2)],
+bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("1", "Rendered Brain", "", 1),
+                                                                 ("2", " Solid Brain", "", 2)],
                                                           description="Brain appearance", get=get_filter_view_type,
                                                           set=set_filter_view_type)
 bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="",
@@ -2117,7 +2132,7 @@ class helper_class():
                                                             get=get_appearance_show_activity_layer,
                                                             set=set_appearance_show_activity_layer)
     filter_view_type = bpy.props.EnumProperty(
-        items=[("RENDERED", "Rendered Brain", "", 1), ("SOLID", " Solid Brain", "", 2)], description="Brain appearance",
+        items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
         get=get_filter_view_type, set=set_filter_view_type)
     appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
     appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
