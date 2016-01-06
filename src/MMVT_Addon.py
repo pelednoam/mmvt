@@ -19,11 +19,6 @@ import time
 import glob
 import math
 
-# Try to import external
-# import pydevd
-
-# http://www.blender.org/api/blender_python_api_2_66_release/bpy.props.html
-# pydevd.settrace()
 print("Neuroscience add on started!")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
@@ -40,7 +35,7 @@ def import_brain(base_path):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
 
     layers_array = bpy.context.scene.layers
-    emptys_names = ["Functional maps", "Subcortical_activity_map"]
+    emptys_names = ['Functional maps', 'Subcortical_meg_activity_map', 'Subcortical_fmri_activity_map']
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
 
@@ -49,13 +44,13 @@ def import_brain(base_path):
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
 
-    for ii in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[ii] = (ii == brain_layer)
+    # for ii in range(len(bpy.context.scene.layers)):
+    #     bpy.context.scene.layers[ii] = (ii == brain_layer)
 
     print("importing Hemispheres")
-    # for cur_val in bpy.context.scene.layers:
-    #     print(cur_val)
-    #  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    for cur_val in bpy.context.scene.layers:
+        print(cur_val)
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     for i in os.listdir(base_path):
         bpy.ops.object.select_all(action='DESELECT')
         if i.endswith(".ply"):
@@ -72,6 +67,7 @@ def import_brain(base_path):
             cur_obj.hide_select = True
             cur_obj.data.vertex_colors.new()
             print('did hide_select')
+
     bpy.ops.object.select_all(action='DESELECT')
 
 
@@ -81,16 +77,16 @@ def create_subcortical_activity_mat(name):
 
 
 def import_subcorticals(base_path):
-    brain_layer = 5
+    empty_layer = 5
+    brain_layer = 11
+
     for ii in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[ii] = (ii == brain_layer)
+        bpy.context.scene.layers[ii] = (ii == empty_layer)
 
     layers_array = bpy.context.scene.layers
-    emptys_names = ["Functional maps", "Subcortical_activity_map"]
+    emptys_names = ['Functional maps', 'Subcortical_meg_activity_map', 'Subcortical_fmri_activity_map']
     for name in emptys_names:
-        create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
-
-    brain_layer = 11
+        create_empty_if_doesnt_exists(name, empty_layer, layers_array, 'Functional maps')
 
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
@@ -102,22 +98,40 @@ def import_subcorticals(base_path):
     # for cur_val in bpy.context.scene.layers:
     #     print(cur_val)
     #  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    for i in os.listdir(base_path):
-        bpy.ops.object.select_all(action='DESELECT')
-        if i.endswith(".ply"):
-            print(i)
-            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
-            cur_obj = bpy.context.selected_objects[0]
-            cur_obj.select = True
-            bpy.ops.object.shade_smooth()
-            cur_obj.scale = [0.1] * 3
-            cur_obj.hide = False
-            cur_obj.name = cur_obj.name.split(sep='.')[0]
-            create_subcortical_activity_mat(cur_obj.name)
-            cur_obj.active_material = bpy.data.materials[cur_obj.name + '_Mat']
-            cur_obj.name += '.001'
-            cur_obj.parent = bpy.data.objects["Subcortical_activity_map"]
-            cur_obj.hide_select = True
+    base_paths = [base_path] * 2 # Read the bast_path twice, for meg and fmri
+    PATH_TYPE_SUB_MEG, PATH_TYPE_SUB_FMRI = range(3)
+    for path_type, base_path in enumerate(base_paths):
+        for i in os.listdir(base_path):
+            bpy.ops.object.select_all(action='DESELECT')
+            if i.endswith(".ply"):
+                print(i)
+                bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
+                cur_obj = bpy.context.selected_objects[0]
+                cur_obj.select = True
+                bpy.ops.object.shade_smooth()
+                cur_obj.scale = [0.1] * 3
+                cur_obj.hide = False
+                cur_obj.name = cur_obj.name.split(sep='.')[0]
+
+                if path_type == PATH_TYPE_SUB_MEG:
+                    cur_obj.name = '{}_meg_activity'.format(name)
+                    curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
+                    if curMat is None:
+                        # todo: Fix the succortical_activity_Mat to succortical_activity_mat
+                        curMat = bpy.data.materials['succortical_activity_Mat'].copy()
+                        curMat.name = '{}_mat'.format(cur_obj.name)
+                    cur_obj.active_material = bpy.data.materials[curMat.name]
+                    cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
+                elif path_type == PATH_TYPE_SUB_FMRI:
+                    cur_obj.name = '{}_fmri_activity'.format(name)
+                    if 'cerebellum' in cur_obj.name.lower():
+                        cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+                    else:
+                        cur_obj.active_material = bpy.data.materials['subcortical_activity_mat']
+                    cur_obj.parent = bpy.data.objects['Subcortical_fmri_activity_map']
+                else:
+                    print('import_subcorticals: Wrong path_type! Nothing to do...')
+                cur_obj.hide_select = True
     bpy.ops.object.select_all(action='DESELECT')
 
 
@@ -126,6 +140,7 @@ class ImportBrain(bpy.types.Operator):
     bl_label = "import2 brain"
     bl_options = {"UNDO"}
     current_root_path = ''
+    brain_layer = 5
 
     def invoke(self, context, event=None):
         self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
@@ -141,9 +156,8 @@ class ImportBrain(bpy.types.Operator):
         context.scene.objects.active = bpy.data.objects[' ']
         set_appearance_show_rois_layer(bpy.context.scene, True)
         if bpy.data.objects.get("Deep_electrodes") is None:
-            layers_array = [False, False, False, False, False, False, False, False, False, False, False, False, False,
-                            False, False, False, False, False, False, False]
-            layers_array[5] = True
+            layers_array = [False]*20
+            layers_array[ImportBrain.brain_layer] = True
             bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0),
                                      layers=layers_array)
             bpy.data.objects['Empty'].name = 'Deep_electrodes'
@@ -168,8 +182,10 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
 
 
 def import_rois(base_path):
-    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.aparc.pial.names'),
-                      'Cortex-lh': os.path.join(base_path, 'lh.aparc.pial.names'),
+    #todo: add an atlas's label
+    atlas = 'laus250'
+    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.{}.pial.names'.format(atlas)),
+                      'Cortex-lh': os.path.join(base_path, 'lh.{}.pial.names'.format(atlas)),
                       'Subcortical structures': os.path.join(base_path, 'subcortical_ply_names')}
     brain_layer = 5
 
@@ -196,15 +212,11 @@ def import_rois(base_path):
                 bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, i))
                 cur_obj = bpy.context.selected_objects[0]
                 cur_obj.select = True
-                # print('~~~~~~~~~~~~~~~~~~~~~')
-                # print(bpy.context.active_object)
-                # print('~~~~~~~~~~~~~~~~~~~~~')
                 bpy.ops.object.shade_smooth()
                 cur_obj.parent = bpy.data.objects[anatomy_name]
                 cur_obj.scale = [0.1] * 3
                 cur_obj.active_material = current_mat
                 cur_obj.hide = False
-                # print('~~~~~~~~~~~~~~~~~~~~~~new name = '+i.split(sep='.')[0])
                 cur_obj.name = i.split(sep='.')[0]
                 # time.sleep(0.3)
     bpy.ops.object.select_all(action='DESELECT')
@@ -240,12 +252,17 @@ def create_and_set_material(obj):
     # curMat = bpy.data.materials['OrigPatchesMat'].copy()
     cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
     cur_mat.name = obj.name + '_Mat'
+    # Wasn't it originally (0, 0, 1, 1)?
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (0, 1, 0, 1)
     obj.active_material = cur_mat
 
 
 def import_electrodes(base_path):
-    input_file = os.path.join(base_path, "electrodes.npz")
+    # input_file = os.path.join(base_path, "electrodes.npz")
+    # todo: add a bipolar label gui
+    bipolar = False
+    input_file = os.path.join(base_path, 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
+
 
     print('Adding deep electrodes')
     f = np.load(input_file)
@@ -266,8 +283,10 @@ def import_electrodes(base_path):
 
     for (x, y, z), name in zip(f['pos'], f['names']):
         print('creating ' + str(name)[2:-1])
-        create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, str(name)[2:-1])
-        cur_obj = bpy.data.objects[str(name)[2:-1]]
+        # instead of the ugly str(name)[2:-1]...
+        elc_name = name.astype(str)
+        create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
+        cur_obj = bpy.data.objects[elc_name]
         cur_obj.select = True
         cur_obj.parent = bpy.data.objects['Deep_electrodes']
         # cur_obj.active_material = bpy.data.materials['Deep_electrode_mat']
@@ -539,7 +558,7 @@ def select_all_rois():
         obj.select = True
 
 def select_only_subcorticals():
-    for obj in bpy.data.objects['Subcortical strutures'].children:
+    for obj in bpy.data.objects['Subcortical structures'].children:
         obj.select = True
 
 
