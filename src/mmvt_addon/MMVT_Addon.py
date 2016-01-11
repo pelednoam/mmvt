@@ -11,15 +11,25 @@ bl_info = {
     "tracker_url": "",
     "category": "Add Mesh"}
 
+
 import bpy
 import mathutils
 import numpy as np
 import os
+import sys
 import time
 import glob
 import math
+import importlib as imp
+import numbers
+
+import connections_panel
+imp.reload(connections_panel)
+
 
 print("Neuroscience add on started!")
+# todo: should change that in the code!!!
+T = 2500
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
                                                      description="Define the root path of the project",
@@ -333,16 +343,18 @@ def add_data_to_brain(base_path):
         for obj_name, data in zip(f['names'], f['data']):
             # print('in label loop')
             obj_name = str(obj_name)
-            if obj_name[1] == "'":
-                obj_name = obj_name[2:-1]
+            # if obj_name[1] == "'":
+            #     obj_name = obj_name[2:-1]
+            obj_name = obj_name.astype(str)
             print(obj_name)
             cur_obj = bpy.data.objects[obj_name]
             # print('cur_obj name = '+cur_obj.name)
 
             for cond_ind, cond_str in enumerate(f['conditions']):
-                cond_str = str(cond_str)
-                if cond_str[1] == "'":
-                    cond_str = cond_str[2:-1]
+                # cond_str = str(cond_str)
+                # if cond_str[1] == "'":
+                #     cond_str = cond_str[2:-1]
+                cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
@@ -439,9 +451,10 @@ def add_data_to_electrodes(base_path):
             cur_obj = bpy.data.objects[obj_name]
 
             for cond_ind, cond_str in enumerate(f['conditions']):
-                cond_str = str(cond_str)
-                if cond_str[1] == "'":
-                    cond_str = cond_str[2:-1]
+                # cond_str = str(cond_str)
+                # if cond_str[1] == "'":
+                #     cond_str = cond_str[2:-1]
+                cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), 0, len(f['data'][0]) + 2)
@@ -653,28 +666,33 @@ def find_obj_with_val():
     names = []
     for cur_obj in cur_objects:
         for name, val in cur_obj.items():
-            if type(val) == float:
+            if isinstance(val, numbers.Number):
                 values.append(val)
                 names.append(name)
             # print(name)
     np_values = np.array(values) - target
     try:
-        print()
         closest_curve_str = names[np.argmin(np.abs(np_values))]
     except ValueError:
+        closest_curve_str = ''
         print('ERROR - Make sure you select all objects in interest')
     print(closest_curve_str)
     bpy.types.Scene.closest_curve_str = closest_curve_str
-    object_name = closest_curve_str[:closest_curve_str.rfind('_')]
+    object_name = closest_curve_str
+    if bpy.data.objects.get(object_name) is None:
+        object_name = object_name[:object_name.rfind('_')]
     print('object name is:' + object_name)
-    try:
-        if bpy.data.objects[object_name].parent == bpy.data.objects['Deep_electrodes']:
-            print('filtering electrodes')
-            filter_electrode_func(object_name)
-        else:
-            filter_roi_func(object_name)
-    except KeyError:
+    print('parent: {}'.format(bpy.data.objects[object_name].parent))
+    # try:
+    if bpy.data.objects[object_name].parent == bpy.data.objects.get('Deep_electrodes'):
+        print('filtering electrodes')
+        filter_electrode_func(object_name)
+    elif bpy.data.objects[object_name].parent == bpy.data.objects.get(connections_panel.PARENT_OBJ):
+        connections_panel.filter(target)
+    else:
         filter_roi_func(object_name)
+    # except KeyError:
+    #     filter_roi_func(object_name)
 
 
 class FindCurveClosestToCursor(bpy.types.Operator):
@@ -839,8 +857,9 @@ class Filtering(bpy.types.Operator):
             data.append(f['data'])
             temp_names = [str(name) for name in f['names']]
             for ind in range(len(temp_names)):
-                if temp_names[ind][1] == "'":
-                    temp_names[ind] = temp_names[ind][2:-1]
+                # if temp_names[ind][1] == "'":
+                #     temp_names[ind] = temp_names[ind][2:-1]
+                temp_names[ind] = temp_names.astype(str)
             names.extend(temp_names)
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
@@ -1351,8 +1370,9 @@ def color_object_homogeneously(path, postfix_str='', threshold=0):
     print('loaded')
     for obj_name, object_colors in zip(f['names'], f['colors']):
         obj_name = str(obj_name)
-        if obj_name[1] == "'":
-            obj_name = obj_name[2:-1]
+        # if obj_name[1] == "'":
+        #     obj_name = obj_name[2:-1]
+        obj_name.astype(str)
         print(obj_name)
         cur_obj = bpy.data.objects[obj_name]
 
@@ -2215,6 +2235,8 @@ def main():
 
     setup_layers()
     try:
+        current_module = sys.modules[__name__]
+        connections_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
