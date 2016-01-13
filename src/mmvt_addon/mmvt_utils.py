@@ -1,6 +1,29 @@
 import bpy
 import traceback
 import math
+import numpy as np
+import os.path as op
+try:
+    import cPickle as pickle
+except:
+    import pickle
+
+
+def namebase(file_name):
+    return op.splitext(op.basename(file_name))[0]
+
+
+def save(obj, fname):
+    with open(fname, 'wb') as fp:
+        # protocol=2 so we'll be able to load in python 2.7
+        pickle.dump(obj, fp)
+
+
+def load(fname):
+    with open(fname, 'rb') as fp:
+        obj = pickle.load(fp)
+    return obj
+
 
 class Bag( dict ):
     """ a dict with d.key short for d["key"]
@@ -89,7 +112,9 @@ def create_material(name, diffuseColors, transparency):
 
 def delete_hierarchy(parent_obj_name, exceptions=()):
     bpy.ops.object.select_all(action='DESELECT')
-    obj = bpy.data.objects[parent_obj_name]
+    obj = bpy.data.objects.get(parent_obj_name)
+    if obj is None:
+        return
     obj.animation_data_clear()
     # Go over all the objects in the hierarchy like @zeffi suggested:
     names = set()
@@ -107,8 +132,103 @@ def delete_hierarchy(parent_obj_name, exceptions=()):
     for child_name in names:
         bpy.data.objects[child_name].animation_data_clear()
 
+    bpy.context.scene.objects.active = obj
     result = bpy.ops.object.delete()
     if result == {'FINISHED'}:
         print ("Successfully deleted object")
     else:
         print ("Could not delete object")
+
+
+def get_user_fol():
+    user = namebase(bpy.data.filepath).split('_')[0]
+    root_fol = bpy.path.abspath('//')
+    return op.join(root_fol, user)
+
+
+# def get_scalar_map(x_min, x_max, color_map='jet'):
+#     import matplotlib.colors
+#     import matplotlib.cm
+#     root = bpy.path.abspath('//')
+#     cm = load(op.join(root, 'mmvt_code', 'color_map_{}.pkl'.format(color_map)))
+#     cNorm = matplotlib.colors.Normalize(vmin=x_min, vmax=x_max)
+#     return matplotlib.cm .ScalarMappable(norm=cNorm, cmap=cm)
+#
+#
+# def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
+#     if scalar_map is None:
+#         x_min, x_max = check_min_max(x, x_min, x_max)
+#         scalar_map = get_scalar_map(x_min, x_max, colors_map)
+#     return scalar_map.to_rgba(x)
+#
+#
+# def check_min_max(x, x_min, x_max):
+#     if x_min is None:
+#         x_min = np.min(x)
+#     if x_max is None:
+#         x_max = np.max(x)
+#     return x_min, x_max
+#
+
+
+
+# EXTERNAL_PYTHON_PATH = '/homes/5/npeled/space3/anaconda3/lib/python3.5/'
+# EXTERNAL_PYTHON_PACKAGES_PATH = '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages'
+
+
+# def insert_into_path(rel_paths, root):
+#     import sys
+#     import os
+#     for rel_path in rel_paths:
+#         wpath = os.path.join(root, rel_path)
+#         try:
+#             sys.path.remove(wpath)
+#         except:
+#             pass
+#         if wpath not in sys.path:
+#             sys.path.insert(1, wpath)
+#             print('insert into path: {}'.format(wpath))
+
+
+# def insert_external_path():
+#     import sys
+#     for p in sys.path:
+#         if 'python3.4' in p:
+#             sys.path.remove(p)
+#
+#     insert_into_path(['', ], EXTERNAL_PYTHON_PACKAGES_PATH)
+#     insert_into_path(['', ], EXTERNAL_PYTHON_PATH)
+#     insert_into_path(['setuptools-18.5-py3.5.egg', 'numpy', 'numpy/core'], EXTERNAL_PYTHON_PACKAGES_PATH)
+#     import imp
+#     print('imp: ', imp.__file__)
+#
+#
+# def lib_check():
+#     # for p in sys.path:
+#     #     if 'python3.4' in p: # /site-packages/numpy
+#     #         sys.path.remove(p)
+#     # sys.path = ['/homes/5/npeled/space3/anaconda3/lib/python3.5', '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages',
+#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/setuptools-18.5-py3.5.egg',
+#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core',
+#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so'] + sys.path
+#     # sys.path.insert(1, '/homes/5/npeled/space3/anaconda3/lib/python3.5',)
+#     # insert_into_path(['', 'setuptools-18.5-py3.5.egg', 'numpy', 'numpy/core', 'numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so'])
+#     import matplotlib
+#     # imp.reload(matplotlib)
+#     print(matplotlib.__version__, matplotlib.__file__)
+#     # import numpy
+#     # print(numpy.__version__, numpy.__file__)
+#     import numpy.core
+#     # imp.reload(numpy.core)
+#     print(numpy.core.__version__, numpy.core.__file__)
+#     # import numpy.core.multiarray
+#     # imp.reload(numpy.core.multiarray)
+#     # imp.load_dynamic(numpy.core.multiarray, '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so')
+#     print(numpy.core.multiarray.__version__, numpy.core.multiarray.__file__)
+#     import matplotlib.pyplot
+#     # import mmvt_utils
+#     # imp.reload(mmvt_utils)
+#     # mmvt_utils.arr_to_colors(range(10), colors_map='jet')
+#     import imp
+#     imp.load_dynamic('numpy.core.multiarray', '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so')
+#     imp.load_dynamic('_csv', '/homes/5/npeled/space3/anaconda3/lib/python3.5/lib-dynload/_csv.cpython-35m-x86_64-linux-gnu.so')

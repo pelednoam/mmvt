@@ -20,11 +20,15 @@ import sys
 import time
 import glob
 import math
-import importlib as imp
+import importlib
 import numbers
+import traceback
+
+import mmvt_utils
+importlib.reload(mmvt_utils)
 
 import connections_panel
-imp.reload(connections_panel)
+importlib.reload(connections_panel)
 
 
 print("Neuroscience add on started!")
@@ -2235,6 +2239,7 @@ def main():
 
     setup_layers()
     try:
+        # mmvt_utils.insert_external_path()
         current_module = sys.modules[__name__]
         connections_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
@@ -2280,6 +2285,8 @@ def main():
         bpy.utils.register_class(FreeviewPanel)
     except:
         print('The classes are already registered!')
+        print(traceback.format_exc())
+
 
 if __name__ == "__main__":
     main()

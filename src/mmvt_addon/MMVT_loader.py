@@ -3,7 +3,7 @@ bl_info = {
     'author': 'Ohad Felsenstein & Noam Peled',
     'version': (1, 2),
     'blender': (2, 7, 2),
-    'location': 'Press [Space], search for "mmvt"',
+    'location': 'Press [Space], search for "mmvt_addon"',
     'category': 'Development',
 }
 
@@ -14,14 +14,14 @@ import importlib as imp
 
 
 class run_mmvt_addon(bpy.types.Operator):
-    bl_idname = 'mmvt.run_addon'
+    bl_idname = 'mmvt_addon.run_addon'
     bl_label = 'Run MMVT addon'
-    bl_description = 'Runs the mmvt addon'
+    bl_description = 'Runs the mmvt_addon addon'
 
     def execute(self, context):
         root = bpy.path.abspath('//')
         print(root)
-        sys.path.append(os.path.join(root, 'mmvt_code'))
+        sys.path.append(os.path.join(root, 'mmvt_addon'))
         import MMVT_Addon
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(MMVT_Addon)
