@@ -45,6 +45,7 @@ def add_keyframe(parent_obj, conn_name, value, T):
         insert_keyframe_to_custom_prop(parent_obj, conn_name, value, 1)
         insert_keyframe_to_custom_prop(parent_obj, conn_name, value, T)
         insert_keyframe_to_custom_prop(parent_obj, conn_name, 0, T + 1)
+        # print('insert keyframe with value of {}'.format(value))
     except:
         print("Can't add a keyframe! {}, {}, {}".format(parent_obj, conn_name, value))
         print(traceback.format_exc())
@@ -100,17 +101,19 @@ def select_hierarchy(obj, val=True, select_parent=True):
             child.select = val
 
 
-def create_material(name, diffuseColors, transparency):
-    #curMat = bpy.data.materials['OrigPatchesMat'].copy()
-    curMat = bpy.data.materials['OrigPatchMatTwoCols'].copy()
-    curMat.name = name
-    bpy.context.active_object.active_material = curMat
+def create_material(name, diffuseColors, transparency, copy_material=True):
+    curMat = bpy.context.active_object.active_material
+    if copy_material or 'MyColor' not in curMat.node_tree.nodes:
+        #curMat = bpy.data.materials['OrigPatchesMat'].copy()
+        curMat = bpy.data.materials['OrigPatchMatTwoCols'].copy()
+        curMat.name = name
+        bpy.context.active_object.active_material = curMat
     curMat.node_tree.nodes['MyColor'].inputs[0].default_value = diffuseColors
     curMat.node_tree.nodes['MyColor1'].inputs[0].default_value = diffuseColors
     curMat.node_tree.nodes['MyTransparency'].inputs['Fac'].default_value = transparency
 
 
-def delete_hierarchy(parent_obj_name, exceptions=()):
+def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False):
     bpy.ops.object.select_all(action='DESELECT')
     obj = bpy.data.objects.get(parent_obj_name)
     if obj is None:
@@ -126,24 +129,46 @@ def delete_hierarchy(parent_obj_name, exceptions=()):
 
     get_child_names(obj)
     names = names - set(exceptions)
-    objects = bpy.data.objects
-    [setattr(objects[n], 'select', True) for n in names]
     # Remove the animation from the all the child objects
     for child_name in names:
         bpy.data.objects[child_name].animation_data_clear()
 
     bpy.context.scene.objects.active = obj
-    result = bpy.ops.object.delete()
-    if result == {'FINISHED'}:
-        print ("Successfully deleted object")
-    else:
-        print ("Could not delete object")
+    if not delete_only_animation:
+        objects = bpy.data.objects
+        [setattr(objects[n], 'select', True) for n in names]
+        result = bpy.ops.object.delete()
+        if result == {'FINISHED'}:
+            print ("Successfully deleted object")
+        else:
+            print ("Could not delete object")
 
 
 def get_user_fol():
     user = namebase(bpy.data.filepath).split('_')[0]
     root_fol = bpy.path.abspath('//')
     return op.join(root_fol, user)
+
+
+def view_all_in_graph_editor(context):
+    graph_area = [context.screen.areas[k] for k in range(len(context.screen.areas)) if
+                  context.screen.areas[k].type == 'GRAPH_EDITOR'][0]
+    graph_window_region = [graph_area.regions[k] for k in range(len(graph_area.regions)) if
+                           graph_area.regions[k].type == 'WINDOW'][0]
+
+    c = context.copy()  # copy the context
+    c['area'] = graph_area
+    c['region'] = graph_window_region
+    bpy.ops.graph.view_all(c)
+
+
+def show_hide_hierarchy(val, obj, also_parent=False):
+    if bpy.data.objects.get(obj) is not None:
+        if also_parent:
+            bpy.data.objects[obj].hide = not val
+        for child in bpy.data.objects[obj].children:
+            child.hide = not val
+            child.select = val
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):

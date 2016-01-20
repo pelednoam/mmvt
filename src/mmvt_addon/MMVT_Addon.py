@@ -29,6 +29,8 @@ importlib.reload(mmvt_utils)
 
 import connections_panel
 importlib.reload(connections_panel)
+import play_panel
+importlib.reload(play_panel)
 
 
 print("Neuroscience add on started!")
@@ -165,9 +167,10 @@ class ImportBrain(bpy.types.Operator):
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
 
-        bpy.data.objects[' '].select = True
+        if bpy.data.objects.get(' '):
+            bpy.data.objects[' '].select = True
+            context.scene.objects.active = bpy.data.objects[' ']
         bpy.data.objects[last_obj].select = False
-        context.scene.objects.active = bpy.data.objects[' ']
         set_appearance_show_rois_layer(bpy.context.scene, True)
         if bpy.data.objects.get("Deep_electrodes") is None:
             layers_array = [False]*20
@@ -177,7 +180,7 @@ class ImportBrain(bpy.types.Operator):
             bpy.data.objects['Empty'].name = 'Deep_electrodes'
         bpy.types.Scene.brain_imported = True
         print('cleaning up')
-        for obj in bpy.data.objects['Subcortical structures'].children:
+        for obj in bpy.data.objects['Subcortical_structures'].children:
             # print(obj.name)
             if obj.name[-1] == '1':
                 obj.name = obj.name[0:-4]
@@ -200,14 +203,14 @@ def import_rois(base_path):
     atlas = 'laus250'
     anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.{}.pial.names'.format(atlas)),
                       'Cortex-lh': os.path.join(base_path, 'lh.{}.pial.names'.format(atlas)),
-                      'Subcortical structures': os.path.join(base_path, 'subcortical_ply_names')}
+                      'Subcortical_structures': os.path.join(base_path, 'subcortical_ply_names')}
     brain_layer = 5
 
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
 
     layers_array = bpy.context.scene.layers
-    emptys_names = ["Brain", "Subcortical structures", "Cortex-lh", "Cortex-rh"]
+    emptys_names = ["Brain", "Subcortical_structures", "Cortex-lh", "Cortex-rh"]
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
 
@@ -217,7 +220,7 @@ def import_rois(base_path):
 
     for anatomy_name, base_path in anatomy_inputs.items():
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-        if anatomy_name == 'Subcortical structures':
+        if anatomy_name == 'Subcortical_structures':
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
         for i in os.listdir(base_path):
             bpy.ops.object.select_all(action='DESELECT')
@@ -402,7 +405,7 @@ def add_data_to_brain(base_path):
 
     # for obj in bpy.data.objects:
     #     try:
-    #         if (obj.parent is 'Cortex-lh') or ((obj.parent is 'Cortex-rh') or (obj.parent is 'Subcortical structures')):
+    #         if (obj.parent is 'Cortex-lh') or ((obj.parent is 'Cortex-rh') or (obj.parent is 'Subcortical_structures')):
     #             obj.select = True
     #         else:
     #             obj.select = False
@@ -410,7 +413,8 @@ def add_data_to_brain(base_path):
     #         obj.select = False
     for obj in bpy.data.objects:
         obj.select = False
-    bpy.context.scene.objects.active = bpy.data.objects[' ']
+    if bpy.data.objects.get(' '):
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
     print('Finished keyframing!!')
 
 
@@ -503,7 +507,8 @@ def add_data_to_electrodes(base_path):
     for obj in bpy.data.objects:
         obj.select = False
 
-    bpy.context.scene.objects.active = bpy.data.objects[' ']
+    if bpy.data.objects.get(' '):
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
     print('Finished keyframing!!')
 
 
@@ -558,13 +563,13 @@ class DataMakerPanel(bpy.types.Panel):
 def deselect_all():
     for obj in bpy.data.objects:
         obj.select = False
-    # Ohad: can you explain these two lines?
-    bpy.data.objects[' '].select = True
-    bpy.context.scene.objects.active = bpy.data.objects[' ']
+    if bpy.data.objects.get(' '):
+        bpy.data.objects[' '].select = True
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
 def select_all_rois():
-    # Noam: I changed to code to distiguish between the cortex and the subcortical structures
+    # Noam: I changed to code to distiguish between the cortex and the Subcortical_structures
     #for subHierarchy in bpy.data.objects['Brain'].children:
     #    for obj in subHierarchy.children:
     #        obj.select = True
@@ -575,7 +580,7 @@ def select_all_rois():
         obj.select = True
 
 def select_only_subcorticals():
-    for obj in bpy.data.objects['Subcortical structures'].children:
+    for obj in bpy.data.objects['Subcortical_structures'].children:
         obj.select = True
 
 
@@ -594,6 +599,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         col.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
         col.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
         col.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
+        col.operator("ohad.fit_selection", text="Fit graph window", icon='MOD_ARMATURE')
 
 
 class SelectAllRois(bpy.types.Operator):
@@ -604,6 +610,7 @@ class SelectAllRois(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_rois()
+        mmvt_utils.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -614,11 +621,17 @@ class SelectAllSubcorticals(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         select_only_subcorticals()
+        mmvt_utils.view_all_in_graph_editor(context)
         return {"FINISHED"}
+
 
 def select_all_electrodes():
     for obj in bpy.data.objects['Deep_electrodes'].children:
         obj.select = True
+        obj.hide = False
+        for fcurve in obj.animation_data.action.fcurves:
+            fcurve.hide = False
+            fcurve.select = True
 
 
 class SelectAllElectrodes(bpy.types.Operator):
@@ -629,6 +642,7 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
+        mmvt_utils.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -641,9 +655,21 @@ class ClearSelection(bpy.types.Operator):
     def invoke(self, context, event=None):
         for obj in bpy.data.objects:
             obj.select = False
-        bpy.data.objects[' '].select = True
-        bpy.context.scene.objects.active = bpy.data.objects[' ']
+        if bpy.data.objects.get(' '):
+            bpy.data.objects[' '].select = True
+            bpy.context.scene.objects.active = bpy.data.objects[' ']
 
+        return {"FINISHED"}
+
+
+class FitSelection(bpy.types.Operator):
+    bl_idname = "ohad.fit_selection"
+    bl_label = "Fit selection"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        mmvt_utils.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -721,7 +747,7 @@ def filter_draw(self, context):
     row.operator(GrabFromFiltering.bl_idname, text="", icon='BORDERMOVE')
     # row.operator("ohad.grab_from", text="", icon = 'BORDERMOVE')
     row.prop(context.scene, "filter_to", text="To")
-    row.operator("ohad.grab_to", text="", icon='BORDERMOVE')
+    row.operator(GrabToFiltering.bl_idname, text="", icon='BORDERMOVE')
     layout.prop(context.scene, "filter_curves_type", text="")
     layout.prop(context.scene, "filter_curves_func", text="")
     layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
@@ -766,7 +792,7 @@ class GrabFromFiltering(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        print(bpy.context.scene.frame_current)
+        # print(bpy.context.scene.frame_current)
         context.scene.filter_from = bpy.context.scene.frame_current
         # print(bpy.context.scene.filter_from)
         bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
@@ -779,7 +805,7 @@ class GrabToFiltering(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        print(bpy.context.scene.frame_current)
+        # print(bpy.context.scene.frame_current)
         context.scene.filter_to = bpy.context.scene.frame_current
         # print(bpy.context.scene.filter_to)
         bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
@@ -794,7 +820,7 @@ class ClearFiltering(bpy.types.Operator):
     def invoke(self, context, event=None):
         for subHierchy in bpy.data.objects['Brain'].children:
             new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierchy.name == 'Subcortical structures':
+            if subHierchy.name == 'Subcortical_structures':
                 new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
             for obj in subHierchy.children:
                 obj.active_material = new_mat
@@ -859,11 +885,11 @@ class Filtering(bpy.types.Operator):
                 print(input_file)
                 print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
             data.append(f['data'])
-            temp_names = [str(name) for name in f['names']]
-            for ind in range(len(temp_names)):
+            temp_names = [name.astype(str) for name in f['names']]
+            # for ind in range(len(temp_names)):
                 # if temp_names[ind][1] == "'":
                 #     temp_names[ind] = temp_names[ind][2:-1]
-                temp_names[ind] = temp_names.astype(str)
+                # temp_names[ind] = temp_names[ind].astype(str)
             names.extend(temp_names)
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
@@ -922,7 +948,7 @@ class Filtering(bpy.types.Operator):
         objects_to_filter_in, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
             obj.select = False
-            if obj.parent == bpy.data.objects['Subcortical structures']:
+            if obj.parent == bpy.data.objects['Subcortical_structures']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
             elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
@@ -1010,7 +1036,7 @@ class Filtering(bpy.types.Operator):
 #     def invoke(self, context, event=None):
 #         for subHierarchy in bpy.data.objects['Brain'].children:
 #             new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-#             if subHierarchy.name == 'Subcortical structures':
+#             if subHierarchy.name == 'Subcortical_structures':
 #                 new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
 #
 #             for obj in subHierarchy.children:
@@ -1086,7 +1112,7 @@ class Filtering(bpy.types.Operator):
 #             obj.select = False
 #             if obj.name == 'Left cerebellum cortex' or obj.name == 'Right cerebellum cortex':
 #                 obj.active_material = bpy.data.materials['unselected_label_Mat_cerebellum']
-#             elif obj.parent == bpy.data.objects['Subcortical structures']:
+#             elif obj.parent == bpy.data.objects['Subcortical_structures']:
 #                 obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
 #             elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
 #                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
@@ -1153,13 +1179,12 @@ def show_hide_lh(self, context):
 
 
 def show_hide_sub_cortical(self, context):
-    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical structures")
+    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_structures")
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
     # We split the activity map into two types: meg for the same activation for the each structure, and fmri
     # for a better resolution, like on the cortex.
     show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_fmri_activity_map")
     show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_meg_activity_map")
-
 
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere",
@@ -1168,7 +1193,6 @@ bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(default=True, desc
                                                               update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
                                                                         update=show_hide_sub_cortical)
-
 
 class ShowHideObjectsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -1260,14 +1284,23 @@ def get_filter_view_type(self):
 
 
 def set_filter_view_type(self, value):
-    self['filter_view_type'] = value
+    # self['filter_view_type'] = value
+    bpy.data.scenes['Scene']['filter_view_type'] = value
     change_view3d()
+
+
+def change_to_rendered_brain():
+    set_filter_view_type(None, 1)
+
+
+def change_to_solid_brain():
+    set_filter_view_type(None, 2)
 
 
 def make_brain_solid_or_transparent(self=None, context=None):
     bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
         'Fac'].default_value = bpy.context.scene.appearance_solid_slider
-    bpy.data.materials['subcortical_activity_mat'].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = bpy.context.scene.apearence_solid_slider
+    bpy.data.materials['subcortical_activity_mat'].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = bpy.context.scene.appearance_solid_slider
 
 
 def update_layers():
@@ -1363,26 +1396,19 @@ def object_coloring(obj, rgb):
 
 
 # todo: do something with the threshold parameter
-def color_object_homogeneously(path, postfix_str='', threshold=0):
+def color_object_homogeneously(data, postfix_str='', threshold=0):
+    if data is None:
+        print('color_object_homogeneously: No data to color!')
+        return
+
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
-    # print('start')
-
-    obj_counter = 0
-
-    f = np.load(path)
-    print('loaded')
-    for obj_name, object_colors in zip(f['names'], f['colors']):
-        obj_name = str(obj_name)
-        # if obj_name[1] == "'":
-        #     obj_name = obj_name[2:-1]
-        obj_name.astype(str)
-        print(obj_name)
-        cur_obj = bpy.data.objects[obj_name]
+    for obj_name, object_colors in zip(data['names'], data['colors']):
+        obj_name = obj_name.astype(str)
 
         new_color = object_colors[cur_frame]
         if bpy.data.objects.get(obj_name) is not None:
-            print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
+            # print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
             object_coloring(bpy.data.objects[obj_name+postfix_str],new_color)
         else:
             print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
@@ -1390,60 +1416,83 @@ def color_object_homogeneously(path, postfix_str='', threshold=0):
     print('Finished coloring!!')
 
 
-def activity_map_coloring(map_type):
-    override_current_mat = True
-    # setup_environment_settings()
+def init_activity_map_coloring(map_type):
     set_appearance_show_activity_layer(bpy.context.scene, True)
     set_filter_view_type(bpy.context.scene, 'RENDERS')
     # change_view3d()
 
-    threshold = bpy.context.scene.coloring_threshold
-    frame_str = str(bpy.context.scene.frame_current)
-    d = {}
-    start_time1 = time.time()
+    faces_verts = {}
     current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-    d['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
-    d['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
-    print('load time = ' + str(time.time() - start_time1))
-
-    start_time = time.time()
-    hemispheres = ['lh', 'rh']
-
+    faces_verts['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
+    faces_verts['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
     show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
     show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    return faces_verts
 
-    for hemisphere in hemispheres:
+
+def load_meg_subcortical_activity():
+    meg_sub_activity = None
+    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    subcortical_activity_file = os.path.join(current_root_path,'subcortical_meg_activity.npz')
+    if os.path.isfile(subcortical_activity_file):
+        meg_sub_activity = np.load(subcortical_activity_file)
+    return meg_sub_activity
+
+
+def activity_map_coloring(map_type, meg_sub_activity=None, plot_subcorticals=True):
+    faces_verts = init_activity_map_coloring(map_type)
+    meg_sub_activity = load_meg_subcortical_activity()
+    threshold = bpy.context.scene.coloring_threshold
+    if map_type=='MEG' and plot_subcorticals:
+        meg_sub_activity = load_meg_subcortical_activity()
+    plot_activity(map_type, faces_verts, threshold, meg_sub_activity, plot_subcorticals)
+    # setup_environment_settings()
+
+
+def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
+        plot_subcorticals=True, override_current_mat=True):
+    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    hemispheres = [hemi for hemi in ['lh', 'rh'] if not bpy.data.objects[hemi].hide]
+    frame_str = str(bpy.context.scene.frame_current)
+
+    # loop_indices = {}
+    for hemi in hemispheres:
         if map_type == 'MEG':
-            f = np.load(os.path.join(current_root_path, 'activity_map_' + hemisphere, 't' + frame_str + '.npy'))
+            f = np.load(os.path.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
         elif map_type == 'FMRI':
-            f = np.load(os.path.join(current_root_path, 'fmri_' + hemisphere + '.npy'))
-        cur_obj = bpy.data.objects[hemisphere]
-        activity_map_obj_coloring(cur_obj, f, d[hemisphere], threshold, override_current_mat)
+            f = np.load(os.path.join(current_root_path, 'fmri_' + hemi + '.npy'))
+        cur_obj = bpy.data.objects[hemi]
+        # loop_indices[hemi] =
+        activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
 
-    # subcortical coloring
-    if map_type == 'MEG':
-        subcortical_activity_file = os.path.join(current_root_path,'subcortical_meg_activity.npz')
-        if os.path.isfile(subcortical_activity_file):
-            color_object_homogeneously(subcortical_activity_file,'_meg_activity', threshold)
-    if map_type == 'FMRI':
-        subcoticals = glob.glob(os.path.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
-        for subcortical_file in subcoticals:
-            subcortical = os.path.splitext(os.path.basename(subcortical_file))[0]
-            cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
-            if cur_obj is None:
-                print("Can't find the object {}!".format(subcortical))
-            else:
-                lookup_file = os.path.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
-                verts_file = os.path.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
-                if os.path.isfile(lookup_file) and os.path.isfile(verts_file):
-                    lookup = np.load(lookup_file)
-                    verts_values = np.load(verts_file)
-                    activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
+    if plot_subcorticals:
+        if map_type == 'MEG':
+            if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
+                color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
+        if map_type == 'FMRI':
+            fmri_subcortex_activity_color(threshold, override_current_mat)
 
-
+    # return loop_indices
     # Noam: not sure this is necessary
     #deselect_all()
     #bpy.data.objects['Brain'].select = True
+
+
+def fmri_subcortex_activity_color(threshold, override_current_mat=True):
+    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    subcoticals = glob.glob(os.path.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
+    for subcortical_file in subcoticals:
+        subcortical = os.path.splitext(os.path.basename(subcortical_file))[0]
+        cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
+        if cur_obj is None:
+            print("Can't find the object {}!".format(subcortical))
+        else:
+            lookup_file = os.path.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
+            verts_file = os.path.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
+            if os.path.isfile(lookup_file) and os.path.isfile(verts_file):
+                lookup = np.load(lookup_file)
+                verts_values = np.load(verts_file)
+                activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
 
 
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
@@ -1456,17 +1505,26 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     cur_obj.select = True
     if override_current_mat:
         bpy.ops.mesh.vertex_color_remove()
-
-    #if mesh.vertex_colors:
-    #    vcol_layer = mesh.vertex_colors.active
-    #else:
-    #    vcol_layer = mesh.vertex_colors.new()
     vcol_layer = mesh.vertex_colors.new()
+    # else:
+    #     vcol_layer = mesh.vertex_colors.active
+        # loop_indices = set()
     print('max vert in lookup: {}, vcol_layer len: {}'.format(np.max(lookup), len(vcol_layer.data)))
     for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x>-1]:
             vcol_layer.data[loop_ind].color = vert_values[vert,1:]
+            # loop_indices.add(loop_ind)
+    # return loop_indices
+
+
+def default_coloring(loop_indices):
+    for hemi, indices in loop_indices.items():
+        cur_obj = bpy.data.objects[hemi]
+        mesh = cur_obj.data
+        vcol_layer = mesh.vertex_colors.active
+        for loop_ind in indices:
+            vcol_layer.data[loop_ind].color = [1, 1, 1]
 
 
 class ColorElectrodes(bpy.types.Operator):
@@ -1476,14 +1534,16 @@ class ColorElectrodes(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         threshold = bpy.context.scene.coloring_threshold
-        color_object_homogeneously(os.path.join(current_root_path,'electrodes_data.npz'), threshold=threshold)
-        deselect_all()
+        data = np.load(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data.npz'))
+        color_object_homogeneously(data, threshold=threshold)
+        # deselect_all()
+        mmvt_utils.select_hierarchy('Deep_electrodes', False)
         set_appearance_show_electrodes_layer(bpy.context.scene, True)
         # bpy.data.objects['Deep_electrodes'].select = True
         for cur_obj in bpy.data.objects['Deep_electrodes'].children:
             cur_obj.select = True
+        change_to_rendered_brain()
         return {"FINISHED"}
 
 
@@ -1501,7 +1561,7 @@ class ColorMeg(bpy.types.Operator):
         #     cur_obj.select = True
         # for cur_obj in bpy.data.objects['Cortex-rh'].children:
         #     cur_obj.select = True
-        # for cur_obj in bpy.data.objects['Subcortical structures'].children:
+        # for cur_obj in bpy.data.objects['Subcortical_structures'].children:
         #     cur_obj.select = True
         return {"FINISHED"}
 
@@ -1546,7 +1606,8 @@ class ClearColors(bpy.types.Operator):
         for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
             if bpy.data.objects.get(root) is not None:
                 for obj in bpy.data.objects[root].children:
-                    obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1,1,1,1)
+                    if 'RGB' in obj.active_material.node_tree.nodes:
+                        obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1,1,1,1)
         # for obj in bpy.data.objects['Deep_electrodes'].children:
         #     obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
         return {"FINISHED"}
@@ -1611,7 +1672,7 @@ class WhereAmI(bpy.types.Operator):
 
         bpy.data.objects['Brain'].select = False
         for subHierarchy in bpy.data.objects['Brain'].children:
-            if subHierarchy == bpy.data.objects['Subcortical structures']:
+            if subHierarchy == bpy.data.objects['Subcortical_structures']:
                 cur_material = bpy.data.materials['unselected_label_Mat_subcortical']
             else:
                 cur_material = bpy.data.materials['unselected_label_Mat_cortex']
@@ -1682,7 +1743,7 @@ class ClearWhereAmI(bpy.types.Operator):
     def invoke(self, context, event=None):
         for subHierarchy in bpy.data.objects['Brain'].children:
             new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierarchy.name == 'Subcortical structures':
+            if subHierarchy.name == 'Subcortical_structures':
                 new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
             for obj in subHierarchy.children:
                 obj.active_material = new_mat
@@ -1691,7 +1752,8 @@ class ClearWhereAmI(bpy.types.Operator):
         if 'Deep_electrodes' in bpy.data.objects:
             for obj in bpy.data.objects['Deep_electrodes'].children:
                 obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-        context.scene.objects.active = bpy.data.objects[' ']
+        if bpy.data.objects.get(' '):
+            context.scene.objects.active = bpy.data.objects[' ']
 
         for obj in bpy.data.objects:
             obj.select = False
@@ -1719,8 +1781,8 @@ class WhereAmIMakerPanel(bpy.types.Panel):
     def draw(self, context):
         where_i_am_draw(self, context)
         layout = self.layout
-        layout.operator("ohad.where_i_am", text="Where Am I?", icon = 'SNAP_SURFACE')
-        layout.operator("ohad.where_am_i_clear", text="Clear", icon = 'PANEL_CLOSE')
+        # layout.operator("ohad.where_i_am", text="Where Am I?", icon = 'SNAP_SURFACE')
+        # layout.operator("ohad.where_am_i_clear", text="Clear", icon = 'PANEL_CLOSE')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2242,11 +2304,13 @@ def main():
         # mmvt_utils.insert_external_path()
         current_module = sys.modules[__name__]
         connections_panel.init(current_module)
+        play_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllElectrodes)
         bpy.utils.register_class(ClearSelection)
+        bpy.utils.register_class(FitSelection)
         bpy.utils.register_class(Filtering)
         bpy.utils.register_class(FindCurveClosestToCursor)
         bpy.utils.register_class(GrabFromFiltering)
