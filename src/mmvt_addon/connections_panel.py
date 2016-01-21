@@ -14,22 +14,23 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 # d: labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
 def create_keyframes(context, d, condition, threshold):
     layers_rods = [False] * 20
-    rods_layer = 3
+    rods_layer = ConnectionsPanel.addon.CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
-    mu.create_empty_if_doesnt_exists(PARENT_OBJ, rods_layer, layers_rods)
     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     windows_num = d.con_colors.shape[1]
     norm_fac = ConnectionsPanel.addon.T / windows_num
     mask = np.max(d.con_values[:, :, 0], axis=1) > threshold
     indices = np.where(mask)[0]
-    parent_obj = bpy.data.objects[PARENT_OBJ]
     mu.delete_hierarchy(PARENT_OBJ)
+    mu.create_empty_if_doesnt_exists(PARENT_OBJ, ConnectionsPanel.addon.BRAIN_EMPTY_LAYER, None, 'Functional maps')
+
+    parent_obj = bpy.data.objects[PARENT_OBJ]
 
     radius = .05
     for ind, conn_name, (i, j) in zip(indices, d.con_names[mask], d.con_indices[mask]):
         print('keyframing {}'.format(conn_name))
         p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
-        mu.cylinder_between(p1, p2, radius)
+        mu.cylinder_between(p1, p2, radius, layers_rods)
         con_color = np.hstack((d.con_colors[ind, 0, cond_id, :], [0.]))
         mu.create_material('{}_mat'.format(conn_name), con_color, 1)
         bpy.context.active_object.name = conn_name
@@ -86,6 +87,7 @@ def plot_connections(context, d, time, connections_type, condition, threshold, a
             con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
+    bpy.data.objects[PARENT_OBJ].select = True
     print(con_color, d.con_values[ind, t, cond_id])
 
 
@@ -111,31 +113,31 @@ def filter(target):
         fcurve.color = tuple(color)
 
 
-def show_hide_connections(context, do_show, d, condition, threshold, connections_type, time):
-    mu.show_hide_hierarchy(do_show, PARENT_OBJ)
-    bpy.data.objects[PARENT_OBJ].select = do_show
-    cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    windows_num = d.con_colors.shape[1]
-    t = int(time / ConnectionsPanel.addon.T * windows_num)
-    for ind, con_name in enumerate(d.con_names):
-        do_show_con = do_show # and con_name in masked_con_names
-        cur_obj = bpy.data.objects.get(con_name)
-        if cur_obj:
-            if do_show_con:
-                con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
-            else:
-                con_color = [1., 1., 1., 1.]
-            bpy.context.scene.objects.active = cur_obj
-            transparency = 1 if do_show_con else 0
-            mu.create_material('{}_mat'.format(con_name), con_color, transparency, False)
-
-    parent_obj = bpy.data.objects[PARENT_OBJ]
-    for fcurve in parent_obj.animation_data.action.fcurves:
-        fcurve.hide = not do_show
-        fcurve.select = do_show
-    if do_show:
-        filter_graph(context, d, condition, threshold, connections_type)
-        mu.view_all_in_graph_editor(context)
+# def show_hide_connections(context, do_show, d, condition, threshold, connections_type, time):
+#     mu.show_hide_hierarchy(do_show, PARENT_OBJ)
+#     bpy.data.objects[PARENT_OBJ].select = do_show
+#     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
+#     windows_num = d.con_colors.shape[1]
+#     t = int(time / ConnectionsPanel.addon.T * windows_num)
+#     for ind, con_name in enumerate(d.con_names):
+#         do_show_con = do_show # and con_name in masked_con_names
+#         cur_obj = bpy.data.objects.get(con_name)
+#         if cur_obj:
+#             if do_show_con:
+#                 con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
+#             else:
+#                 con_color = [1., 1., 1., 1.]
+#             bpy.context.scene.objects.active = cur_obj
+#             transparency = 1 if do_show_con else 0
+#             mu.create_material('{}_mat'.format(con_name), con_color, transparency, False)
+#
+#     parent_obj = bpy.data.objects[PARENT_OBJ]
+#     for fcurve in parent_obj.animation_data.action.fcurves:
+#         fcurve.hide = not do_show
+#         fcurve.select = do_show
+#     if do_show:
+#         filter_graph(context, d, condition, threshold, connections_type)
+#         mu.view_all_in_graph_editor(context)
 
 
 def filter_electrodes_via_connections(context, do_filter):
@@ -162,7 +164,9 @@ def filter_electrodes_via_connections(context, do_filter):
                             fcurve.hide = False
                             fcurve.select = True
 
+    bpy.data.objects[PARENT_OBJ].select = True
     mu.view_all_in_graph_editor(context)
+
 
 class CreateConnections(bpy.types.Operator):
     bl_idname = "ohad.create_connections"
@@ -187,12 +191,15 @@ class FilterGraph(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        connections_type = bpy.context.scene.connections_type
-        threshold = bpy.context.scene.connections_threshold
-        abs_threshold = False #bpy.context.scene.abs_threshold
-        condition = bpy.context.scene.conditions
-        print(connections_type, condition, threshold, abs_threshold)
-        filter_graph(context, ConnectionsPanel.d, condition, threshold, connections_type)
+        if not bpy.data.objects.get(PARENT_OBJ):
+            self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+        else:
+            connections_type = bpy.context.scene.connections_type
+            threshold = bpy.context.scene.connections_threshold
+            abs_threshold = False #bpy.context.scene.abs_threshold
+            condition = bpy.context.scene.conditions
+            print(connections_type, condition, threshold, abs_threshold)
+            filter_graph(context, ConnectionsPanel.d, condition, threshold, connections_type)
         return {"FINISHED"}
 
 
@@ -203,32 +210,38 @@ class PlotConnections(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        connections_type = bpy.context.scene.connections_type
-        threshold = bpy.context.scene.connections_threshold
-        abs_threshold = bpy.context.scene.abs_threshold
-        condition = bpy.context.scene.conditions
-        time = bpy.context.scene.frame_current
-        print(connections_type, condition, threshold, abs_threshold)
-        # mu.delete_hierarchy(PARENT_OBJ)
-        plot_connections(context, ConnectionsPanel.d, time, connections_type, condition, threshold, abs_threshold)
+        if not bpy.data.objects.get(PARENT_OBJ):
+            self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+        else:
+            connections_type = bpy.context.scene.connections_type
+            threshold = bpy.context.scene.connections_threshold
+            abs_threshold = bpy.context.scene.abs_threshold
+            condition = bpy.context.scene.conditions
+            time = bpy.context.scene.frame_current
+            print(connections_type, condition, threshold, abs_threshold)
+            # mu.delete_hierarchy(PARENT_OBJ)
+            plot_connections(context, ConnectionsPanel.d, time, connections_type, condition, threshold, abs_threshold)
         return {"FINISHED"}
 
 
-class ShowHideConnections(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_connections"
-    bl_label = "ohad show_hide_connections"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        d = ConnectionsPanel.d
-        condition = bpy.context.scene.conditions
-        connections_type = bpy.context.scene.connections_type
-        threshold = bpy.context.scene.connections_threshold
-        time = bpy.context.scene.frame_current
-        show_hide_connections(context, ConnectionsPanel.show_connections, d, condition, threshold, connections_type, time)
-        ConnectionsPanel.show_connections = not ConnectionsPanel.show_connections
-        return {"FINISHED"}
+# class ShowHideConnections(bpy.types.Operator):
+#     bl_idname = "ohad.show_hide_connections"
+#     bl_label = "ohad show_hide_connections"
+#     bl_options = {"UNDO"}
+#
+#     @staticmethod
+#     def invoke(self, context, event=None):
+#         if not bpy.data.objects.get(PARENT_OBJ):
+#             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+#         else:
+#             d = ConnectionsPanel.d
+#             condition = bpy.context.scene.conditions
+#             connections_type = bpy.context.scene.connections_type
+#             threshold = bpy.context.scene.connections_threshold
+#             time = bpy.context.scene.frame_current
+#             show_hide_connections(context, ConnectionsPanel.show_connections, d, condition, threshold, connections_type, time)
+#             ConnectionsPanel.show_connections = not ConnectionsPanel.show_connections
+#         return {"FINISHED"}
 
 
 class FilterElectrodes(bpy.types.Operator):
@@ -238,8 +251,11 @@ class FilterElectrodes(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        filter_electrodes_via_connections(context, ConnectionsPanel.do_filter)
-        ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
+        if not bpy.data.objects.get(PARENT_OBJ):
+            self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+        else:
+            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter)
+            ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
         return {"FINISHED"}
 
 
@@ -264,10 +280,10 @@ def connections_draw(self, context):
     layout.prop(context.scene, "conditions", text="")
     layout.operator("ohad.filter_graph", text="Filter graph ", icon='BORDERMOVE')
     layout.operator("ohad.plot_connections", text="Plot connections ", icon='POTATO')
-    if ConnectionsPanel.show_connections:
-        layout.operator("ohad.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
-    else:
-        layout.operator("ohad.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
+    # if ConnectionsPanel.show_connections:
+    #     layout.operator("ohad.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
+    # else:
+    #     layout.operator("ohad.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
 
     filter_obj_name = 'electrodes' if bpy.context.scene.connections_origin == 'electrodes' else 'MEG labels'
     filter_text = '{} {}'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from', filter_obj_name)
@@ -309,7 +325,6 @@ def init(addon):
     connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
     if not os.path.isfile(connections_file):
         print('No connections file! {}'.format(connections_file))
-        # self.report({'ERROR'}, "My message")
     else:
         print('loading {}'.format(connections_file))
         d = mu.Bag(np.load(connections_file))
@@ -335,7 +350,7 @@ def register():
         bpy.utils.register_class(ConnectionsPanel)
         bpy.utils.register_class(CreateConnections)
         bpy.utils.register_class(PlotConnections)
-        bpy.utils.register_class(ShowHideConnections)
+        # bpy.utils.register_class(ShowHideConnections)
         bpy.utils.register_class(ClearConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
@@ -349,7 +364,7 @@ def unregister():
         bpy.utils.unregister_class(ConnectionsPanel)
         bpy.utils.unregister_class(CreateConnections)
         bpy.utils.unregister_class(PlotConnections)
-        bpy.utils.unregister_class(ShowHideConnections)
+        # bpy.utils.unregister_class(ShowHideConnections)
         bpy.utils.unregister_class(ClearConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)

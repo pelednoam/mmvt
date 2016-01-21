@@ -64,7 +64,7 @@ def mark_objects(objs_names):
             bpy.data.objects[obj_name].active_material = bpy.data.materials['selected_label_Mat']
 
 
-def cylinder_between(p1, p2, r):
+def cylinder_between(p1, p2, r, layers_array):
     # From http://blender.stackexchange.com/questions/5898/how-can-i-create-a-cylinder-linking-two-points-with-python
     x1, y1, z1 = p1
     x2, y2, z2 = p2
@@ -73,22 +73,24 @@ def cylinder_between(p1, p2, r):
     dz = z2 - z1
     dist = math.sqrt(dx**2 + dy**2 + dz**2)
 
-    bpy.ops.mesh.primitive_cylinder_add(
-      radius = r,
-      depth = dist,
-      location = (dx/2 + x1, dy/2 + y1, dz/2 + z1)
-    )
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=dist, location=(dx/2 + x1, dy/2 + y1, dz/2 + z1))#, layers=layers_array)
 
     phi = math.atan2(dy, dx)
     theta = math.acos(dz/dist)
     bpy.context.object.rotation_euler[1] = theta
     bpy.context.object.rotation_euler[2] = phi
+    bpy.ops.object.move_to_layer(layers=layers_array)
 
 
-def create_empty_if_doesnt_exists(name,brain_layer,layers_array,root_fol='Brain'):
-    if bpy.data.objects.get(name) is None:
+def create_empty_if_doesnt_exists(name, brain_layer, layers_array=None,root_fol='Brain'):
+    if layers_array is None:
+        # layers_array = bpy.context.scene.layers
+        layers_array = [False] * 20
         layers_array[brain_layer] = True
+    if bpy.data.objects.get(name) is None:
+        # layers_array[brain_layer] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
+        bpy.ops.object.move_to_layer(layers=layers_array)
         bpy.data.objects['Empty'].name = name
         if name != root_fol:
             bpy.data.objects[name].parent = bpy.data.objects[root_fol]

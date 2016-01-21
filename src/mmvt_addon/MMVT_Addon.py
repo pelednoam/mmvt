@@ -36,6 +36,10 @@ importlib.reload(play_panel)
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
 T = 2500
+
+# LAYERS
+CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER, BRAIN_EMPTY_LAYER = 3, 1, 10, 11, 12, 5
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
                                                      description="Define the root path of the project",
@@ -46,7 +50,7 @@ bpy.types.Scene.brain_imported = False
 
 
 def import_brain(base_path):
-    brain_layer = 5
+    brain_layer = BRAIN_EMPTY_LAYER
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
 
@@ -55,7 +59,7 @@ def import_brain(base_path):
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
 
-    brain_layer = 11
+    brain_layer = ACTIVITY_LAYER
 
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
@@ -93,8 +97,9 @@ def create_subcortical_activity_mat(name):
 
 
 def import_subcorticals(base_path):
-    empty_layer = 5
-    brain_layer = 11
+    empty_layer = BRAIN_EMPTY_LAYER
+    brain_layer = ACTIVITY_LAYER
+
 
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == empty_layer)
@@ -156,7 +161,7 @@ class ImportBrain(bpy.types.Operator):
     bl_label = "import2 brain"
     bl_options = {"UNDO"}
     current_root_path = ''
-    brain_layer = 5
+    brain_layer = BRAIN_EMPTY_LAYER
 
     def invoke(self, context, event=None):
         self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
@@ -204,7 +209,7 @@ def import_rois(base_path):
     anatomy_inputs = {'Cortex-rh': os.path.join(base_path, 'rh.{}.pial.names'.format(atlas)),
                       'Cortex-lh': os.path.join(base_path, 'lh.{}.pial.names'.format(atlas)),
                       'Subcortical_structures': os.path.join(base_path, 'subcortical_ply_names')}
-    brain_layer = 5
+    brain_layer = BRAIN_EMPTY_LAYER
 
     for ii in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[ii] = (ii == brain_layer)
@@ -214,9 +219,9 @@ def import_rois(base_path):
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
 
-    bpy.context.scene.layers[10] = True
+    bpy.context.scene.layers[ROIS_LAYER] = True
     for ii in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[ii] = ii == 10
+        bpy.context.scene.layers[ii] = ii == ROIS_LAYER
 
     for anatomy_name, base_path in anatomy_inputs.items():
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
@@ -291,7 +296,7 @@ def import_electrodes(base_path):
     layers_array = [False] * 20
 
     if bpy.data.objects.get("Deep_electrodes") is None:
-        layers_array[5] = True
+        layers_array[BRAIN_EMPTY_LAYER] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
         bpy.data.objects['Empty'].name = 'Deep_electrodes'
 
@@ -1217,19 +1222,20 @@ def setup_layers(self=None, context=None):
     for layer_ind in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[layer_ind] = layer_ind == empty_layer
 
-    bpy.context.scene.layers[1] = bpy.context.scene.appearance_show_electrodes_layer
-    bpy.context.scene.layers[10] = bpy.context.scene.appearance_show_ROIs_layer
-    bpy.context.scene.layers[11] = bpy.context.scene.appearance_show_activity_layer
+    bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
+    bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_ROIs_layer
+    bpy.context.scene.layers[ACTIVITY_LAYER] = bpy.context.scene.appearance_show_activity_layer
+    bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
 def change_view3d(self=None, context=None):
     viewport_shade = bpy.context.scene.filter_view_type
     # if viewport_shade == 'RENDERED':
     if viewport_shade == '1':
-        bpy.context.scene.layers[12] = True
+        bpy.context.scene.layers[LIGHTS_LAYER] = True
         viewport_shade_str = 'RENDERED'
     else:
-        bpy.context.scene.layers[12] = False
+        bpy.context.scene.layers[LIGHTS_LAYER] = False
         viewport_shade_str = 'SOLID'
 
     for ii in range(len(bpy.context.screen.areas)):
@@ -1243,7 +1249,7 @@ def get_appearance_show_electrodes_layer(self):
 
 def set_appearance_show_electrodes_layer(self, value):
     self['appearance_show_electrodes_layer'] = value
-    bpy.context.scene.layers[1] = value
+    bpy.context.scene.layers[ELECTRODES_LAYER] = value
 
 
 def get_appearance_show_rois_layer(self):
@@ -1252,10 +1258,10 @@ def get_appearance_show_rois_layer(self):
 
 def set_appearance_show_rois_layer(self, value):
     self['appearance_show_ROIs_layer'] = value
-    bpy.context.scene.layers[10] = value
+    bpy.context.scene.layers[ROIS_LAYER] = value
     if value:
         set_appearance_show_activity_layer(self, False)
-        # bpy.context.scene.layers[12] = False
+        # bpy.context.scene.layers[LIGHTS_LAYER] = False
 
 
 def get_appearance_show_activity_layer(self):
@@ -1264,10 +1270,19 @@ def get_appearance_show_activity_layer(self):
 
 def set_appearance_show_activity_layer(self, value):
     self['appearance_show_activity_layer'] = value
-    bpy.context.scene.layers[11] = value
+    bpy.context.scene.layers[ACTIVITY_LAYER] = value
     if value:
         set_appearance_show_rois_layer(self, False)
-        # bpy.context.scene.layers[12] = True
+        # bpy.context.scene.layers[LIGHTS_LAYER] = True
+
+
+def get_appearance_show_connections_layer(self):
+    return self['appearance_show_connections_layer']
+
+
+def set_appearance_show_connections_layer(self, value):
+    self['appearance_show_connections_layer'] = value
+    bpy.context.scene.layers[CONNECTIONS_LAYER] = value
 
 
 def get_filter_view_type(self):
@@ -1317,6 +1332,7 @@ def appearance_draw(self, context):
     col1.prop(context.scene, 'appearance_show_ROIs_layer', text="Show ROIs", icon='RESTRICT_VIEW_OFF')
     col1.prop(context.scene, 'appearance_show_activity_layer', text="Show activity maps", icon='RESTRICT_VIEW_OFF')
     col1.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
+    col1.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
     split = layout.split()
     split.prop(context.scene, "filter_view_type", text="")
     # print(context.scene.filter_view_type)
@@ -1358,6 +1374,10 @@ bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True
 bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                                         get=get_appearance_show_activity_layer,
                                                                         set=set_appearance_show_activity_layer)
+bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
+                                                                        get=get_appearance_show_connections_layer,
+                                                                        set=set_appearance_show_connections_layer)
+
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("1", "Rendered Brain", "", 1),
                                                                  ("2", " Solid Brain", "", 2)],
                                                           description="Brain appearance", get=get_filter_view_type,
@@ -1985,6 +2005,7 @@ class CreateVertexData(bpy.types.Operator):
     @staticmethod
     def create_empty_in_vertex_location(self, vertex_location):
         layer = [False] * 20
+        #todo: Why 11 (activity layer)?
         layer[11] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=vertex_location, layers=layer)
         bpy.context.object.name = "Activity_in_vertex"
@@ -2232,6 +2253,10 @@ class helper_class():
     appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                             get=get_appearance_show_activity_layer,
                                                             set=set_appearance_show_activity_layer)
+    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
+                                                            get=get_appearance_show_connections_layer,
+                                                            set=set_appearance_show_connections_layer)
+
     filter_view_type = bpy.props.EnumProperty(
         items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
         get=get_filter_view_type, set=set_filter_view_type)
@@ -2279,6 +2304,7 @@ def register():
     bpy.types.Scene.appearance_show_electrodes_layer = tmp.appearance_show_electrodes_layer
     bpy.types.Scene.appearance_show_ROIs_layer = tmp.appearance_show_ROIs_layer
     bpy.types.Scene.appearance_show_activity_layer = tmp.appearance_show_activity_layer
+    bpy.types.Scene.appearance_show_connections_layer = tmp.appearance_show_connections
     bpy.types.Scene.filter_view_type = tmp.filter_view_type
     bpy.types.Scene.appearance_solid_slider = tmp.appearance_solid_slider
     bpy.types.Scene.appearance_depth_slider = tmp.appearance_depth_slider
@@ -2298,6 +2324,7 @@ def main():
     bpy.context.scene.appearance_show_electrodes_layer = False
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
+    bpy.context.scene.appearance_show_connections_layer = False
 
     setup_layers()
     try:
