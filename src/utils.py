@@ -966,7 +966,7 @@ def params_suffix(optimization_params):
 
 def time_to_go(now, run, runs_num, runs_num_to_print=10):
     if run % runs_num_to_print == 0 and run != 0:
-        time_took = time.time() - now 
+        time_took = time.time() - now
         more_time = time_took / run * (runs_num - run)
         print('{}/{} ({:.2f}s, {:.2f}s to go!)'.format(run, runs_num, time_took, more_time))
 

@@ -1,5 +1,4 @@
 import matplotlib.animation as animation
-import numpy as np
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import os.path as op
