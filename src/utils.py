@@ -1,7 +1,9 @@
 import os
 import shutil
 import numpy as np
-import scipy
+from collections import defaultdict, OrderedDict
+import itertools
+import time
 import re
 import matplotlib.pyplot as plt
 import matplotlib
@@ -17,9 +19,27 @@ import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
+import uuid
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
+
+
+class Bag( dict ):
+    """ a dict with d.key short for d["key"]
+        d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
+    """
+        # aka Dotdict
+
+    def __init__(self, *args, **kwargs):
+        dict.__init__( self, *args, **kwargs )
+        self.__dict__ = self
+
+    def __getnewargs__(self):  # for cPickle.dump( d, file, protocol=-1)
+        return tuple(self)
 
 
 def get_exisiting_dir(dirs):
@@ -54,6 +74,8 @@ def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
     if scalar_map is None:
         x_min, x_max = check_min_max(x, x_min, x_max)
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
+    # x[x<x_min] = x_min
+    # x[x>x_max] = x_max
     return scalar_map.to_rgba(x)
 
 
@@ -375,6 +397,7 @@ def get_aseg_header(subject_mri_dir):
     aseg_hdr = aseg.get_header()
     return aseg_hdr
 
+
 def namebase(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
@@ -665,14 +688,22 @@ def run_parallel(func, params, njobs=1):
     return results
 
 
-def get_figs_fol():
+def get_parent_fol():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
-    figs_dir = os.path.join(os.path.split(curr_dir)[0], 'figs')
-    return figs_dir
+    return os.path.split(curr_dir)[0]
+
+
+def get_figs_fol():
+    return os.path.join(get_parent_fol(), 'figs')
+
+
+def get_files_fol():
+    return os.path.join(get_parent_fol(), 'pkls')
 
 
 def save(obj, fname):
     with open(fname, 'wb') as fp:
+        # protocol=2 so we'll be able to load in python 2.7
         pickle.dump(obj, fp)
 
 
@@ -680,3 +711,283 @@ def load(fname):
     with open(fname, 'rb') as fp:
         obj = pickle.load(fp)
     return obj
+
+
+def fwd_vertno(fwd):
+    return sum(map(len, [src['vertno'] for src in fwd['src']]))
+
+
+def plot_3d_PCA(X, names=None, n_components=3):
+    X_PCs = calc_PCA(X, n_components)
+    plot_3d_scatter(X_PCs, names)
+
+
+def calc_PCA(X, n_components=3):
+    from sklearn import decomposition
+    X = (X - np.mean(X, 0)) / np.std(X, 0) # You need to normalize your data first
+    pca = decomposition.PCA(n_components=n_components)
+    X = pca.fit(X).transform(X)
+    print ('explained variance (first %d components): %.2f'%(n_components, sum(pca.explained_variance_ratio_)))
+    return X
+
+
+def plot_3d_scatter(X, names=None, labels=None, classifier=None):
+    from mpl_toolkits.mplot3d import Axes3D, proj3d
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter(X[:, 0], X[:, 1], X[:, 2])
+
+    if not names is None:
+        if not labels is None:
+            for label in labels:
+                ind = names.index(label)
+                add_annotation(ax, label, X[ind, 0], X[ind, 1], X[ind, 2])
+        else:
+            for x,y,z,name in zip(X[:, 0], X[:, 1], X[:, 2], names):
+                add_annotation(ax, name, x, y, z)
+
+    if not classifier is None:
+        make_ellipses(classifier, ax)
+
+    plt.show()
+
+
+def add_annotation(ax, text, x, y, z):
+    from mpl_toolkits.mplot3d import proj3d
+    import pylab
+    x2, y2, _ = proj3d.proj_transform(x,y,z, ax.get_proj())
+    pylab.annotate(
+        text, xy = (x2, y2), xytext = (-20, 20),
+        textcoords = 'offset points', ha = 'right', va = 'bottom',
+        bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
+        arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+
+
+def calc_clusters_bic(X, n_components=0, do_plot=True):
+    from sklearn import mixture
+    import itertools
+
+    lowest_bic = np.infty
+    bic = []
+    if n_components==0:
+        n_components = X.shape[0]
+    n_components_range = range(1, n_components)
+    cv_types = ['spherical', 'diag']#, 'tied'] # 'full'
+    res = defaultdict(dict)
+    for cv_type in cv_types:
+        for n_components in n_components_range:
+            # Fit a mixture of Gaussians with EM
+            gmm = mixture.GMM(n_components=n_components, covariance_type=cv_type)
+            gmm.fit(X)
+            bic.append(gmm.bic(X))
+            res[cv_type][n_components] = gmm
+            if bic[-1] < lowest_bic:
+                lowest_bic = bic[-1]
+                best_gmm = gmm
+
+    bic = np.array(bic)
+
+    if do_plot:
+        # Plot the BIC scores
+        color_iter = itertools.cycle(['k', 'r', 'g', 'b', 'c', 'm', 'y'])
+        bars = []
+        spl = plt.subplot(1, 1, 1)
+        for i, (cv_type, color) in enumerate(zip(cv_types, color_iter)):
+            xpos = np.array(n_components_range) + .2 * (i - 2)
+            bars.append(plt.bar(xpos, bic[i * len(n_components_range):
+                                          (i + 1) * len(n_components_range)],
+                                width=.2, color=color))
+        plt.xticks(n_components_range)
+        plt.ylim([bic.min() * 1.01 - .01 * bic.max(), bic.max()])
+        plt.title('BIC score per model')
+        xpos = np.mod(bic.argmin(), len(n_components_range)) + .65 +\
+            .2 * np.floor(bic.argmin() / len(n_components_range))
+        plt.text(xpos, bic.min() * 0.97 + .03 * bic.max(), '*', fontsize=14)
+        spl.set_xlabel('Number of components')
+        spl.legend([b[0] for b in bars], cv_types)
+        plt.show()
+    return res, best_gmm, bic
+
+
+def make_ellipses(gmm, ax):
+    import matplotlib as mpl
+    from mpl_toolkits.mplot3d import proj3d
+
+    for n, color in enumerate('rgb'):
+        v, w = np.linalg.eigh(gmm._get_covars()[n][:2, :2])
+        u = w[0] / np.linalg.norm(w[0])
+        angle = np.arctan2(u[1], u[0])
+        angle = 180 * angle / np.pi  # convert to degrees
+        v *= 9
+        x, y, z = gmm.means_[n, :3]
+        x2, y2, _ = proj3d.proj_transform(x,y,z, ax.get_proj())
+        ell = mpl.patches.Ellipse([x2, y2], v[0], v[1],
+                                  180 + angle, color=color)
+        ell.set_clip_box(ax.bbox)
+        ell.set_alpha(0.5)
+        ax.add_artist(ell)
+
+
+def find_subsets(l, k):
+    sl, used = set(l), set()
+    picks = []
+    while len(sl-used) >= k:
+        pick = np.random.choice(list(sl-used), k, replace=False).tolist()
+        picks.append(pick)
+        used = used | set(pick)
+    if len(sl-used) > 0:
+        picks.append(list(sl-used))
+    return picks
+
+def flat_list_of_sets(l):
+    from operator import or_
+    return reduce(or_, l)
+
+
+def flat_list_of_lists(l):
+    return sum(l, [])
+
+
+def how_many_cores():
+    return multiprocessing.cpu_count()
+
+
+def rand_letters(num):
+    return str(uuid.uuid4())[:num]
+
+
+def how_many_subplots(pics_num):
+    if pics_num < 4:
+        return pics_num, 1
+    dims = [(k**2, k, k) for k in range(1,9)]
+    for max_pics_num, x, y in dims:
+        if pics_num <= max_pics_num:
+            return x, y
+    return 10, 10
+
+
+def chunks(l, n):
+    n = max(1, int(n))
+    return [l[i:i + n] for i in range(0, len(l), n)]
+
+
+def powerset(iterable):
+    from itertools import chain, combinations
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+
+def subsets(s):
+    return map(set, powerset(s))
+
+
+def stack(arr, stack_type='v'):
+    '''
+    :param arr: array input
+    :param stack_type: v for vstack, h for hstack
+    :return: numpy array
+    '''
+    if stack_type == 'v':
+        stack_func = np.vstack
+    elif stack_type == 'h':
+        stack_func = np.hstack
+    else:
+        raise Exception('Wrong stack type! {}'.format(stack_type))
+
+    X = []
+    for item in arr:
+        X = item if len(X)==0 else stack_func((X, item))
+    return X
+
+
+def elec_group_number(elec_name, bipolar=False):
+    if bipolar:
+        elec_name2, elec_name1 = elec_name.split('-')
+        group, num1 = elec_group_number(elec_name1, False)
+        _, num2 = elec_group_number(elec_name2, False)
+        return group, num1, num2
+    else:
+        ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
+        num = int(elec_name[ind:])
+        group = elec_name[:ind]
+        return group, num
+
+
+def max_min_diff(x):
+    return max(x) - min(x)
+
+
+def diff_4pc(y, dx=1):
+    '''
+    http://gilgamesh.cheme.cmu.edu/doc/software/jacapo/9-numerics/9.1-numpy/9.2-integration.html#numerical-differentiation
+    calculate dy by 4-point center differencing using array slices
+
+    \frac{y[i-2] - 8y[i-1] + 8[i+1] - y[i+2]}{12h}
+
+    y[0] and y[1] must be defined by lower order methods
+    and y[-1] and y[-2] must be defined by lower order methods
+
+    :param y: the signal
+    :param dx: np.diff(x): Assumes the points are evenely spaced!
+    :return: The derivatives
+    '''
+    dy = np.zeros(y.shape,np.float)
+    dy[2:-2] = (y[0:-4] - 8*y[1:-3] + 8*y[3:-1] - y[4:])/(12.*dx)
+    dy[0] = (y[1]-y[0])/dx
+    dy[1] = (y[2]-y[1])/dx
+    dy[-2] = (y[-2] - y[-3])/dx
+    dy[-1] = (y[-1] - y[-2])/dx
+    return dy
+
+
+def sort_dict_by_values(dic):
+    return OrderedDict(sorted(dic.items()))
+
+
+def first_key(dic):
+    rev_fic = {v:k for k,v in dic.items()}
+    first_item = sorted(dic.values())[0]
+    return rev_fic[first_item]
+
+
+def superset(x):
+    return itertools.chain.from_iterable(itertools.combinations(x, n) for n in range(1, len(x)+1))
+    # all_sets = set()
+    # for l in range(1, len(arr)+1):
+    #     for subset in itertools.combinations(arr, l):
+    #         all_sets.add(subset)
+    # return all_sets
+
+def params_suffix(optimization_params):
+    return ''.join(['_{}_{}'.format(param_key, param_val) for param_key, param_val in
+        sorted(optimization_params.items())])
+
+
+def time_to_go(now, run, runs_num, runs_num_to_print=10):
+    if run % runs_num_to_print == 0 and run != 0:
+        time_took = time.time() - now 
+        more_time = time_took / run * (runs_num - run)
+        print('{}/{} ({:.2f}s, {:.2f}s to go!)'.format(run, runs_num, time_took, more_time))
+
+
+def lower_rec_indices(m):
+    for i in range(m):
+        for j in range(i):
+            yield (i, j)
+
+
+def lower_rec_to_arr(x):
+    M = x.shape[0]
+    L = int((M*M+M)/2-M)
+    ret = np.zeros((L))
+    for ind, (i,j) in enumerate(lower_rec_indices(M)):
+        ret[ind] = x[i, j]
+    return ret
+
+
+def find_list_items_in_list(l_new, l_org):
+    indices = []
+    for item in l_new:
+        indices.append(l_org.index(item) if item in l_org else -1)
+    return indices
