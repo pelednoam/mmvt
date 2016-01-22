@@ -8,7 +8,7 @@ from src import utils
 import time
 
 
-def ani_frame(fol, dpi, fps):
+def ani_frame(fol, dpi, fps, video_fname):
     images = sorted(glob.glob(op.join(fol, '*.png')), key=lambda x:int(utils.namebase(x)[1:]))
     im = Image.open(images[0])
     img_width, img_height = im.size
@@ -39,9 +39,7 @@ def ani_frame(fol, dpi, fps):
     ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=True)
     writer = animation.writers['ffmpeg'](fps=fps)
 
-    ani.save(op.join(fol, 'demo.mp4'),writer=writer,dpi=dpi)
-    # ani.save(op.join(fol, 'demo.mp4'))
-
+    ani.save(op.join(fol, video_fname),writer=writer,dpi=dpi)
     return ani
 
 
@@ -49,4 +47,5 @@ if __name__ == '__main__':
     fol = '/home/noam/mmvt/movies/mg78_elecs_coh_meg'
     dpi = 100
     fps = 10
-    ani_frame(fol, dpi, fps)
+    video_fname = 'mg78_elecs_coh_meg.mp4'
+    ani_frame(fol, dpi, fps, video_fname)
