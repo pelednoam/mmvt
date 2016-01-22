@@ -16,6 +16,8 @@ def load_all_electrodes_data(root_fol, bipolar):
 def load_electrode_data(root_fol, electrode, bipolar, meg_conditions, meg_elec_conditions_translate,
         from_t=None, to_t=None, normalize_data=True, positive=False, do_plot=False):
     data, names, elecs_conditions = load_all_electrodes_data(root_fol, bipolar)
+    if electrode not in names:
+        raise Exception('{} not in {}'.format(electrode, os.path.join(root_fol, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))))
     index = np.where(names==electrode)[0][0]
     elec_data_mat = data[index]
     elec_data = {}
@@ -117,8 +119,9 @@ if __name__ == '__main__':
     bipolar = False
 
     inverse_methods = ['dSPM', 'MNE', 'sLORETA', 'dics', 'lcmv', 'rap_music']
+    inverse_methods = ['sLORETA']
     electrode = 'LAT3-LAT2' if bipolar else 'LAT3'
-    region = 'Left-Hippocampus'
+    region = electrode #'Left-Hippocampus'
     normalize_data = True
     do_plot = False
     elec_data = load_electrode_data(root_fol, electrode, bipolar, meg_conditions, meg_elec_conditions_translate, normalize_data, do_plot)
