@@ -46,6 +46,8 @@ def create_keyframes(context, d, condition, threshold):
 
     for fcurve in parent_obj.animation_data.action.fcurves:
         fcurve.modifiers.new(type='LIMITS')
+        for kf in fcurve.keyframe_points:
+                kf.interpolation = 'BEZIER'
 
     print('finish keyframing!')
 
@@ -168,6 +170,46 @@ def filter_electrodes_via_connections(context, do_filter):
     mu.view_all_in_graph_editor(context)
 
 
+def capture_graph_data():
+    parent_obj = bpy.data.objects[PARENT_OBJ]
+    time_range = range(ConnectionsPanel.addon.T)
+    data = defaultdict(list)
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if fcurve.hide:
+            continue
+        name = fcurve.data_path.split('"')[1]
+        print('{} extrapolation'.format(name))
+        for kf in fcurve.keyframe_points:
+                kf.interpolation = 'BEZIER'
+        for t in time_range:
+            d = fcurve.evaluate(t)
+            data[name].append(d)
+    return data, time_range
+
+
+def capture_graph(context):
+    # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+
+    data, time_range = capture_graph_data()
+    fig = plt.figure()
+    for k, values in data.items():
+        plt.plot(time_range, values, label=k)
+    current_t = context.scene.frame_current
+    axes = plt.gca()
+    ymin, ymax = axes.get_ylim()
+    plt.plot([current_t, current_t], [ymin, ymax], 'g-')
+    plt.legend()
+    plt.xlabel('Time (ms)')
+    plt.title('Coherence')
+    if not os.path.isdir(op.join(mu.get_user_fol(), 'images')):
+        os.makedirs(op.join(mu.get_user_fol(), 'images'))
+    fig.savefig(op.join(mu.get_user_fol(), 'images', 'temp.png'))
+    print('saving to {}'.format(op.join(mu.get_user_fol(), 'images', 'temp.png')))
+
+
 class CreateConnections(bpy.types.Operator):
     bl_idname = "ohad.create_connections"
     bl_label = "ohad create connections"
@@ -270,6 +312,17 @@ class ClearConnections(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ExportGraph(bpy.types.Operator):
+    bl_idname = "ohad.export_graph"
+    bl_label = "ohad export_graph"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        capture_graph(context)
+        return {"FINISHED"}
+
+
 def connections_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "connections_origin", text="")
@@ -288,7 +341,8 @@ def connections_draw(self, context):
     filter_obj_name = 'electrodes' if bpy.context.scene.connections_origin == 'electrodes' else 'MEG labels'
     filter_text = '{} {}'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from', filter_obj_name)
     layout.operator("ohad.filter_electrodes", text=filter_text, icon='BORDERMOVE')
-    layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
+    layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
+    # layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
 bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
@@ -351,9 +405,10 @@ def register():
         bpy.utils.register_class(CreateConnections)
         bpy.utils.register_class(PlotConnections)
         # bpy.utils.register_class(ShowHideConnections)
-        bpy.utils.register_class(ClearConnections)
+        # bpy.utils.register_class(ClearConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
+        bpy.utils.register_class(ExportGraph)
         print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
@@ -365,8 +420,9 @@ def unregister():
         bpy.utils.unregister_class(CreateConnections)
         bpy.utils.unregister_class(PlotConnections)
         # bpy.utils.unregister_class(ShowHideConnections)
-        bpy.utils.unregister_class(ClearConnections)
+        # bpy.utils.unregister_class(ClearConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
+        bpy.utils.unregister_class(ExportGraph)
     except:
         print("Can't unregister ConnectionsPanel!")
