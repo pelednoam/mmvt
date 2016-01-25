@@ -1167,11 +1167,13 @@ def show_hide_hierarchy(val, obj):
         bpy.data.objects[obj].hide = val
         for child in bpy.data.objects[obj].children:
             child.hide = val
+            child.hide_render = val
 
 
 def show_hide_hemi(val, obj_func_name, obj_brain_name):
     if bpy.data.objects.get(obj_func_name) is not None:
         bpy.data.objects[obj_func_name].hide = val
+        bpy.data.objects[obj_func_name].hide_render = val
     show_hide_hierarchy(val, obj_brain_name)
 
 
@@ -2126,45 +2128,49 @@ class RenderFigure(bpy.types.Operator):
     bl_idname = "ohad.rendering"
     bl_label = "Render figure"
     bl_options = {"UNDO"}
-    current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
+    # current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
     x_rotation = bpy.context.scene.X_rotation
     y_rotation = bpy.context.scene.Y_rotation
     z_rotation = bpy.context.scene.Z_rotation
     quality = bpy.context.scene.quality
 
     def invoke(self, context, event=None):
-        x_rotation = bpy.context.scene.X_rotation
-        y_rotation = bpy.context.scene.Y_rotation
-        z_rotation = bpy.context.scene.Z_rotation
-        quality = bpy.context.scene.quality
-        use_square_samples = bpy.context.scene.smooth_figure
-
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$In Render$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        bpy.data.objects['Target'].rotation_euler.x = math.radians(x_rotation)
-        bpy.data.objects['Target'].rotation_euler.y = math.radians(y_rotation)
-        bpy.data.objects['Target'].rotation_euler.z = math.radians(z_rotation)
-        bpy.context.scene.render.resolution_percentage = quality
-        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        print(use_square_samples)
-        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        bpy.context.scene.cycles.use_square_samples = use_square_samples
-
-        # print('Output folder:')
-        # print(self.current_output_path)
-        cur_frame = bpy.context.scene.frame_current
-        print('file name:')
-        # print('f'+str(cur_frame))
-        # print('folder:'+self.current_output_path)
-        file_name = os.path.join(self.current_output_path, 'f' + str(cur_frame))
-        print(file_name)
-        bpy.context.scene.render.filepath = file_name
-        # Render and save the rendered scene to file. ------------------------------
-        print('Image quality:')
-        print(bpy.context.scene.render.resolution_percentage)
-        print("Rendering...")
-        bpy.ops.render.render(write_still=True)
-        print("Finished")
+        render_image()
         return {"FINISHED"}
+
+
+def render_image():
+    x_rotation = bpy.context.scene.X_rotation
+    y_rotation = bpy.context.scene.Y_rotation
+    z_rotation = bpy.context.scene.Z_rotation
+    quality = bpy.context.scene.quality
+    use_square_samples = bpy.context.scene.smooth_figure
+
+    print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$In Render$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+    bpy.data.objects['Target'].rotation_euler.x = math.radians(x_rotation)
+    bpy.data.objects['Target'].rotation_euler.y = math.radians(y_rotation)
+    bpy.data.objects['Target'].rotation_euler.z = math.radians(z_rotation)
+    bpy.context.scene.render.resolution_percentage = quality
+    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+    print(use_square_samples)
+    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+    bpy.context.scene.cycles.use_square_samples = use_square_samples
+
+    # print('Output folder:')
+    # print(self.current_output_path)
+    cur_frame = bpy.context.scene.frame_current
+    print('file name:')
+    # print('f'+str(cur_frame))
+    # print('folder:'+self.current_output_path)
+    file_name = os.path.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
+    print(file_name)
+    bpy.context.scene.render.filepath = file_name
+    # Render and save the rendered scene to file. ------------------------------
+    print('Image quality:')
+    print(bpy.context.scene.render.resolution_percentage)
+    print("Rendering...")
+    bpy.ops.render.render(write_still=True)
+    print("Finished")
 
 
 class RenderingMakerPanel(bpy.types.Panel):

@@ -16,7 +16,7 @@ bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_coh", "MEG Coherence", "", 2),
            ("elecs", "Electrodes activity", "", 3), ("elecs_coh", "Electrodes coherence", "", 4),
            ("elecs_act_coh", "Electrodes activity & coherence", "", 5),
-           ("meg_elecs", "Meg & Electrodes activity", "", 6)],
+           ("meg_elecs", "Meg & Electrodes activity", "", 6), ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "", 7)],
            description='Type pf data to play')
 
 
@@ -82,18 +82,18 @@ def plot_something(context, cur_frame):
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
 
-    if play_type in ['meg', 'meg_elecs']:
+    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
         #     PlayPanel.addon.default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
         PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
-    if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh']:
+    if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
         plot_electrodes(cur_frame)
     if play_type == 'meg_coh':
         pass
-    if play_type in ['elecs_coh', 'elecs_act_coh']:
+    if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
         p = PlayPanel.addon.connections_panel
         d = p.ConnectionsPanel.d
         connections_type = bpy.context.scene.connections_type
@@ -101,7 +101,7 @@ def plot_something(context, cur_frame):
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
         p.plot_connections(context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
-
+    PlayPanel.addon.render_image()
 
 def plot_electrodes(cur_frame):
     threshold = bpy.context.scene.coloring_threshold
