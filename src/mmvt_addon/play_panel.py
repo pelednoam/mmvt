@@ -134,49 +134,51 @@ def plot_something(context, cur_frame, uuid):
 
 
 def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
-    # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
-    import matplotlib as mpl
-    mpl.use('Agg')
-    import matplotlib.pyplot as plt
-
     if not os.path.isdir(image_fol):
         os.makedirs(image_fol)
-
-    # fig = plt.figure()
-    time_range = range(PlayPanel.addon.T)
-    fig, ax1 = plt.subplots()
-    axes = [ax1]
-    if len(data.keys()) > 1:
-        ax2 = ax1.twinx()
-        axes = [ax1, ax2]
-    for (data_type, data_values), ax in zip(data.items(), axes):
-        for k, values in data_values.items():
-            ax.plot(time_range, values, label=k, color=tuple(graph_colors[data_type][k]))
-    current_t = context.scene.frame_current
-    # ax = plt.gca()
-    # ymin, ymax = axes[0].get_ylim()
-    # plt.xlim([0, time_range[-1]])
-
-    # Shrink current axis by 20%
-    # box = ax.get_position()
-    # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-
-    # Put a legend to the right of the current axis
-    # ax.legend(loc='upper center', bbox_to_anchor=(1, 0.5))
-
-    # plt.legend(loc='best')
-    plt.xlabel('Time (ms)')
-    # plt.title('Coherence')
-    image_fname = op.join(image_fol, 'g.png')
-    fig.savefig(image_fname)
-    # mmvt_utils.save(ax, op.join(image_fol, 'plt.pkl'))
     mmvt_utils.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
-    # if plot_time:
-    #     plt.plot([current_t, current_t], [ymin, ymax], 'g-')
-    #     image_fname_t = op.join(image_fol, 'g{}.png'.format(current_t))
-    #     fig.savefig(image_fname_t)
-    print('saving to {}'.format(image_fname))
 
+    try:
+        # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
+        import matplotlib as mpl
+        mpl.use('Agg')
+        import matplotlib.pyplot as plt
+
+        # fig = plt.figure()
+        time_range = range(PlayPanel.addon.T)
+        fig, ax1 = plt.subplots()
+        axes = [ax1]
+        if len(data.keys()) > 1:
+            ax2 = ax1.twinx()
+            axes = [ax1, ax2]
+        for (data_type, data_values), ax in zip(data.items(), axes):
+            for k, values in data_values.items():
+                ax.plot(time_range, values, label=k, color=tuple(graph_colors[data_type][k]))
+        current_t = context.scene.frame_current
+        # ax = plt.gca()
+        # ymin, ymax = axes[0].get_ylim()
+        # plt.xlim([0, time_range[-1]])
+
+        # Shrink current axis by 20%
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+        # Put a legend to the right of the current axis
+        # ax.legend(loc='upper center', bbox_to_anchor=(1, 0.5))
+
+        # plt.legend(loc='best')
+        plt.xlabel('Time (ms)')
+        # plt.title('Coherence')
+        image_fname = op.join(image_fol, 'g.png')
+        fig.savefig(image_fname)
+        # mmvt_utils.save(ax, op.join(image_fol, 'plt.pkl'))
+        # if plot_time:
+        #     plt.plot([current_t, current_t], [ymin, ymax], 'g-')
+        #     image_fname_t = op.join(image_fol, 'g{}.png'.format(current_t))
+        #     fig.savefig(image_fname_t)
+        print('saving to {}'.format(image_fname))
+    except:
+        print('No matplotlib!')
 
 def plot_electrodes(cur_frame):
     threshold = bpy.context.scene.coloring_threshold
