@@ -4,7 +4,9 @@ import os.path as op
 import numpy as np
 import traceback
 import time
+import os
 import pprint as pp # pretty printing: pp.pprint(something)
+from collections import OrderedDict
 
 bpy.types.Scene.play_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
 bpy.types.Scene.play_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
@@ -25,14 +27,16 @@ class ModalTimerOperator(bpy.types.Operator):
     bl_idname = "wm.modal_timer_operator"
     bl_label = "Modal Timer Operator"
 
-    limits = bpy.props.IntProperty(default=bpy.context.scene.play_from)
+    # limits = bpy.props.IntProperty(default=bpy.context.scene.play_from)
+    limits = bpy.context.scene.play_from
     _timer = None
     _time = time.time()
+    _uuid = mmvt_utils.rand_letters(5)
 
     def modal(self, context, event):
         # First frame initialization:
         if PlayPanel.init_play:
-            PlayPanel.init_play = False
+            ModalTimerOperator._uuid = mmvt_utils.rand_letters(5)
             self.limits = bpy.context.scene.frame_current
 
         if not PlayPanel.is_playing:
@@ -51,20 +55,23 @@ class ModalTimerOperator(bpy.types.Operator):
                 bpy.context.scene.frame_current = self.limits
                 print(self.limits, time.time() - self._time)
                 self._time = time.time()
-                plot_something(context, self.limits)
+                plot_something(context, self.limits, ModalTimerOperator._uuid)
                 self.limits = self.limits - bpy.context.scene.play_dt if PlayPanel.play_reverse else \
                         self.limits + bpy.context.scene.play_dt
+
+        if PlayPanel.init_play:
+            PlayPanel.init_play = False
 
         return {'PASS_THROUGH'}
 
     def execute(self, context):
-        self.cancel(context)
         # ModalTimerOperator._timer = wm.event_timer_add(time_step=bpy.context.scene.play_time_step, window=context.window)
-
         wm = context.window_manager
         if ModalTimerOperator._timer:
             print('timer is already running!')
+            print('last tick {}'.format(time.time() - self._time))
         else:
+            self.cancel(context)
             ModalTimerOperator._timer = wm.event_timer_add(time_step=0.05, window=context.window)
             self._time = time.time()
             wm.modal_handler_add(self)
@@ -77,10 +84,23 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def plot_something(context, cur_frame):
+def plot_something(context, cur_frame, uuid):
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
+
+    if PlayPanel.init_play:
+        graph_data = OrderedDict()
+        graph_colors = OrderedDict()
+        if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
+            connections_graph_data, connections_graph_colors = PlayPanel.addon.connections_panel.capture_graph_data()
+            graph_data.update(connections_graph_data)
+            graph_colors.update(connections_graph_colors)
+        if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
+            elecs_graph_data, elecs_graph_colors = get_electrodes_data()
+            graph_data.update(elecs_graph_data)
+            graph_colors.update(elecs_graph_colors)
+
 
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
@@ -101,7 +121,45 @@ def plot_something(context, cur_frame):
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
         p.plot_connections(context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
+
+    image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
     PlayPanel.addon.render_image()
+    plot_graph(context, graph_data, graph_colors, image_fol)
+
+
+def plot_graph(context, data, colors, image_fol):
+    # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    time_range = range(PlayPanel.addon.T)
+    for k, values in data.items():
+        plt.plot(time_range, values, label=k, color=colors[k])
+    current_t = context.scene.frame_current
+    ax = plt.gca()
+    ymin, ymax = ax.get_ylim()
+    plt.xlim([0, time_range[-1]])
+    plt.plot([current_t, current_t], [ymin, ymax], 'g-')
+
+    # Shrink current axis by 20%
+    # box = ax.get_position()
+    # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+    # Put a legend to the right of the current axis
+    # ax.legend(loc='upper center', bbox_to_anchor=(1, 0.5))
+
+    # plt.legend(loc='best')
+    plt.xlabel('Time (ms)')
+    # plt.title('Coherence')
+    # image_fol = op.join(mu.get_user_fol(), 'images', mu.rand_letters(5))
+    if not os.path.isdir(image_fol):
+        os.makedirs(image_fol)
+    image_fname = op.join(image_fol, 'g{}.png'.format(current_t))
+    fig.savefig(image_fname)
+    print('saving to {}'.format(image_fname))
+
 
 def plot_electrodes(cur_frame):
     threshold = bpy.context.scene.coloring_threshold
@@ -113,6 +171,22 @@ def plot_electrodes(cur_frame):
             PlayPanel.addon.object_coloring(bpy.data.objects[obj_name], new_color)
         else:
             print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+
+
+def get_electrodes_data():
+    elecs_data = OrderedDict()
+    elecs_colors = OrderedDict()
+    time_range = range(PlayPanel.addon.T)
+    for obj_name in PlayPanel.electrodes_names:
+        if bpy.data.objects.get(obj_name) is None:
+            continue
+        elec_obj = bpy.data.objects[obj_name]
+        if elec_obj.hide or elec_obj.animation_data is None:
+            continue
+        data, colors = mmvt_utils.evaluate_fcurves(elec_obj, time_range)
+        elecs_data.update(data)
+        elecs_colors.update(colors)
+    return elecs_data, elecs_colors
 
 
 def init_plotting():
@@ -143,6 +217,7 @@ class PlayPanel(bpy.types.Panel):
     is_playing = False
     play_reverse = False
     first_time = True
+    init_play = True
 
     def draw(self, context):
         play_panel_draw(context, self.layout)
@@ -178,7 +253,7 @@ class Play(bpy.types.Operator):
         PlayPanel.play_reverse = False
         PlayPanel.init_play = True
         if PlayPanel.first_time:
-            PlayPanel.first_time = False
+            # PlayPanel.first_time = False
             ModalTimerOperator.limits = bpy.context.scene.play_from
             bpy.ops.wm.modal_timer_operator()
         return {"FINISHED"}
@@ -216,7 +291,7 @@ class PrevKeyFrame(bpy.types.Operator):
     def invoke(self, context, event=None):
         PlayPanel.is_playing = False
         bpy.context.scene.frame_current -= bpy.context.scene.play_from
-        plot_something()
+        plot_something(context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
         return {'FINISHED'}
 
 
@@ -228,7 +303,7 @@ class NextKeyFrame(bpy.types.Operator):
     def invoke(self, context, event=None):
         PlayPanel.is_playing = False
         bpy.context.scene.frame_current += bpy.context.scene.play_dt
-        plot_something()
+        plot_something(context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
         return {"FINISHED"}
 
 

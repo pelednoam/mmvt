@@ -82,6 +82,8 @@ def plot_connections(context, d, time, connections_type, condition, threshold, a
     windows_num = d.con_colors.shape[1]
     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     t = int(time / ConnectionsPanel.addon.T * windows_num)
+    if t >= d.con_colors.shape[1]:
+        print('time out of bounds! {}'.format(t))
     # for conn_name, conn_colors in colors.items():
     for ind, con_name in enumerate(d.con_names):
         cur_obj = bpy.data.objects.get(con_name)
@@ -174,40 +176,24 @@ def capture_graph_data():
     parent_obj = bpy.data.objects[PARENT_OBJ]
     time_range = range(ConnectionsPanel.addon.T)
     data = defaultdict(list)
+    colors = {}
     for fcurve in parent_obj.animation_data.action.fcurves:
         if fcurve.hide:
             continue
         name = fcurve.data_path.split('"')[1]
         print('{} extrapolation'.format(name))
         for kf in fcurve.keyframe_points:
-                kf.interpolation = 'BEZIER'
+            kf.interpolation = 'BEZIER'
         for t in time_range:
             d = fcurve.evaluate(t)
             data[name].append(d)
-    return data, time_range
+        colors[name] = fcurve.color
+    return data, colors
 
 
-def capture_graph(context):
-    # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
-    import matplotlib as mpl
-    mpl.use('Agg')
-    import matplotlib.pyplot as plt
-
-    data, time_range = capture_graph_data()
-    fig = plt.figure()
-    for k, values in data.items():
-        plt.plot(time_range, values, label=k)
-    current_t = context.scene.frame_current
-    axes = plt.gca()
-    ymin, ymax = axes.get_ylim()
-    plt.plot([current_t, current_t], [ymin, ymax], 'g-')
-    plt.legend()
-    plt.xlabel('Time (ms)')
-    plt.title('Coherence')
-    if not os.path.isdir(op.join(mu.get_user_fol(), 'images')):
-        os.makedirs(op.join(mu.get_user_fol(), 'images'))
-    fig.savefig(op.join(mu.get_user_fol(), 'images', 'temp.png'))
-    print('saving to {}'.format(op.join(mu.get_user_fol(), 'images', 'temp.png')))
+def capture_graph(context, image_fol):
+    data, colors = capture_graph_data()
+    ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
 
 
 class CreateConnections(bpy.types.Operator):
@@ -316,10 +302,12 @@ class ExportGraph(bpy.types.Operator):
     bl_idname = "ohad.export_graph"
     bl_label = "ohad export_graph"
     bl_options = {"UNDO"}
+    uuid = mu.rand_letters(5)
 
     @staticmethod
     def invoke(self, context, event=None):
-        capture_graph(context)
+        image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+        capture_graph(context, image_fol)
         return {"FINISHED"}
 
 

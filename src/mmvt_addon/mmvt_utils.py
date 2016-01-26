@@ -3,6 +3,9 @@ import traceback
 import math
 import numpy as np
 import os.path as op
+import uuid
+from collections import OrderedDict
+
 try:
     import cPickle as pickle
 except:
@@ -171,6 +174,28 @@ def show_hide_hierarchy(val, obj, also_parent=False):
         for child in bpy.data.objects[obj].children:
             child.hide = not val
             child.select = val
+
+
+def rand_letters(num):
+    return str(uuid.uuid4())[:num]
+
+
+def evaluate_fcurves(parent_obj, time_range):
+    data = OrderedDict()
+    colors = OrderedDict()
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if fcurve.hide:
+            continue
+        name = fcurve.data_path.split('"')[1]
+        print('{} extrapolation'.format(name))
+        for kf in fcurve.keyframe_points:
+            kf.interpolation = 'BEZIER'
+        data[name] = []
+        for t in time_range:
+            d = fcurve.evaluate(t)
+            data[name].append(d)
+        colors[name] = fcurve.color
+    return data, colors
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):
