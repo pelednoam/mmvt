@@ -58,7 +58,7 @@ def filter_graph(context, d, condition, threshold, connections_type):
     masked_con_names = calc_masked_con_names(d, threshold, connections_type)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     for fcurve in parent_obj.animation_data.action.fcurves:
-        con_name = fcurve.data_path[2:-2]
+        con_name = mu.fcurve_name(fcurve)
         cur_obj = bpy.data.objects[con_name]
         fcurve.hide = con_name not in masked_con_names
         fcurve.select = not fcurve.hide
@@ -144,7 +144,7 @@ def filter(target):
 #         mu.view_all_in_graph_editor(context)
 
 
-def filter_electrodes_via_connections(context, do_filter):
+def filter_electrodes_via_connections(context, do_filter, condition=None):
     for elc_name in ConnectionsPanel.addon.play_panel.PlayPanel.electrodes_names:
         cur_obj = bpy.data.objects.get(elc_name)
         if cur_obj:
@@ -157,16 +157,25 @@ def filter_electrodes_via_connections(context, do_filter):
     if do_filter:
         for ind, con_name in enumerate(ConnectionsPanel.d.con_names):
             cur_obj = bpy.data.objects.get(con_name)
-            if cur_obj and not cur_obj.hide:
-                electrodes = con_name.split('-')
-                for elc in electrodes:
-                    cur_obj = bpy.data.objects.get(elc)
-                    if cur_obj:
-                        cur_obj.hide = False
-                        cur_obj.select = True
-                        for fcurve in cur_obj.animation_data.action.fcurves:
-                            fcurve.hide = False
-                            fcurve.select = True
+            if not cur_obj or cur_obj.hide:
+                continue
+            electrodes = con_name.split('-')
+            for elc in electrodes:
+                cur_obj = bpy.data.objects.get(elc)
+                if not cur_obj:
+                    continue
+                cur_obj.hide = False
+                cur_obj.select = True
+                for fcurve in cur_obj.animation_data.action.fcurves:
+                    if not condition is None:
+                        fcurve_name = mu.fcurve_name(fcurve)
+                        fcurve_condition = fcurve_name.split('_')[-1]
+                        show_fcurve = fcurve_condition == condition
+                        fcurve.hide = not show_fcurve
+                        fcurve.select = show_fcurve
+                    else:
+                        fcurve.hide = False
+                        fcurve.select = True
 
     bpy.data.objects[PARENT_OBJ].select = True
     mu.view_all_in_graph_editor(context)
@@ -175,24 +184,29 @@ def filter_electrodes_via_connections(context, do_filter):
 def capture_graph_data():
     parent_obj = bpy.data.objects[PARENT_OBJ]
     time_range = range(ConnectionsPanel.addon.T)
-    data = defaultdict(list)
-    colors = {}
-    for fcurve in parent_obj.animation_data.action.fcurves:
-        if fcurve.hide:
-            continue
-        name = fcurve.data_path.split('"')[1]
-        print('{} extrapolation'.format(name))
-        for kf in fcurve.keyframe_points:
-            kf.interpolation = 'BEZIER'
-        for t in time_range:
-            d = fcurve.evaluate(t)
-            data[name].append(d)
-        colors[name] = fcurve.color
+    data, colors = mu.evaluate_fcurves(parent_obj, time_range)
+    # data = defaultdict(list)
+    # colors = {}
+    # for fcurve in parent_obj.animation_data.action.fcurves:
+    #     if fcurve.hide:
+    #         continue
+    #     name = mu.fcurve_name(fcurve)
+    #     print('{} extrapolation'.format(name))
+    #     for kf in fcurve.keyframe_points:
+    #         kf.interpolation = 'BEZIER'
+    #     for t in time_range:
+    #         d = fcurve.evaluate(t)
+    #         data[name].append(d)
+    #     colors[name] = tuple(fcurve.color)
     return data, colors
 
 
 def capture_graph(context, image_fol):
-    data, colors = capture_graph_data()
+    data, colors = {}, {}
+    data['Coherence'], colors['Coherence'] = capture_graph_data()
+    data['Electrodes'], colors['Electrodes'] = ConnectionsPanel.addon.play_panel.get_electrodes_data()
+    # data.update(elcs_data)
+    # colors.update(elcs_colors)
     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
 
 
@@ -282,7 +296,7 @@ class FilterElectrodes(bpy.types.Operator):
         if not bpy.data.objects.get(PARENT_OBJ):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
-            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter)
+            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter, bpy.context.scene.conditions)
             ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
         return {"FINISHED"}
 

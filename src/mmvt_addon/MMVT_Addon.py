@@ -1284,6 +1284,7 @@ def get_appearance_show_connections_layer(self):
 
 def set_appearance_show_connections_layer(self, value):
     self['appearance_show_connections_layer'] = value
+    bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
     bpy.context.scene.layers[CONNECTIONS_LAYER] = value
 
 

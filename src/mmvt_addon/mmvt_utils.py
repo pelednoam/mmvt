@@ -194,8 +194,18 @@ def evaluate_fcurves(parent_obj, time_range):
         for t in time_range:
             d = fcurve.evaluate(t)
             data[name].append(d)
-        colors[name] = fcurve.color
+        colors[name] = tuple(fcurve.color)
     return data, colors
+
+
+def fcurve_name(fcurve):
+    return fcurve.data_path.split('"')[1]
+
+
+def show_only_selected_fcurves(context):
+    space = context.space_data
+    dopesheet = space.dopesheet
+    dopesheet.show_only_selected = True
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):

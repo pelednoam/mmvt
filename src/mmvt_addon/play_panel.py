@@ -90,17 +90,23 @@ def plot_something(context, cur_frame, uuid):
     play_type = bpy.context.scene.play_type
 
     if PlayPanel.init_play:
-        graph_data = OrderedDict()
-        graph_colors = OrderedDict()
+        # graph_data = OrderedDict()
+        # graph_colors = OrderedDict()
+        graph_data = {}
+        graph_colors = {}
+
         if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
             connections_graph_data, connections_graph_colors = PlayPanel.addon.connections_panel.capture_graph_data()
-            graph_data.update(connections_graph_data)
-            graph_colors.update(connections_graph_colors)
+            graph_data['Coherence'] = connections_graph_data
+            graph_colors['Coherence'] = connections_graph_colors
+            # graph_data.update(connections_graph_data)
+            # graph_colors.update(connections_graph_colors)
         if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
             elecs_graph_data, elecs_graph_colors = get_electrodes_data()
-            graph_data.update(elecs_graph_data)
-            graph_colors.update(elecs_graph_colors)
-
+            # graph_data.update(elecs_graph_data)
+            # graph_colors.update(elecs_graph_colors)
+            graph_data['Electrodes'] = elecs_graph_data
+            graph_colors['Electrodes'] = elecs_graph_colors
 
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
@@ -123,25 +129,33 @@ def plot_something(context, cur_frame, uuid):
         p.plot_connections(context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
 
     image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
-    PlayPanel.addon.render_image()
+    # PlayPanel.addon.render_image()
     plot_graph(context, graph_data, graph_colors, image_fol)
 
 
-def plot_graph(context, data, colors, image_fol):
+def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
     # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945
     import matplotlib as mpl
     mpl.use('Agg')
     import matplotlib.pyplot as plt
 
-    fig = plt.figure()
+    if not os.path.isdir(image_fol):
+        os.makedirs(image_fol)
+
+    # fig = plt.figure()
     time_range = range(PlayPanel.addon.T)
-    for k, values in data.items():
-        plt.plot(time_range, values, label=k, color=colors[k])
+    fig, ax1 = plt.subplots()
+    axes = [ax1]
+    if len(data.keys()) > 1:
+        ax2 = ax1.twinx()
+        axes = [ax1, ax2]
+    for (data_type, data_values), ax in zip(data.items(), axes):
+        for k, values in data_values.items():
+            ax.plot(time_range, values, label=k, color=tuple(graph_colors[data_type][k]))
     current_t = context.scene.frame_current
-    ax = plt.gca()
-    ymin, ymax = ax.get_ylim()
-    plt.xlim([0, time_range[-1]])
-    plt.plot([current_t, current_t], [ymin, ymax], 'g-')
+    # ax = plt.gca()
+    # ymin, ymax = axes[0].get_ylim()
+    # plt.xlim([0, time_range[-1]])
 
     # Shrink current axis by 20%
     # box = ax.get_position()
@@ -153,11 +167,14 @@ def plot_graph(context, data, colors, image_fol):
     # plt.legend(loc='best')
     plt.xlabel('Time (ms)')
     # plt.title('Coherence')
-    # image_fol = op.join(mu.get_user_fol(), 'images', mu.rand_letters(5))
-    if not os.path.isdir(image_fol):
-        os.makedirs(image_fol)
-    image_fname = op.join(image_fol, 'g{}.png'.format(current_t))
+    image_fname = op.join(image_fol, 'g.png')
     fig.savefig(image_fname)
+    # mmvt_utils.save(ax, op.join(image_fol, 'plt.pkl'))
+    mmvt_utils.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
+    # if plot_time:
+    #     plt.plot([current_t, current_t], [ymin, ymax], 'g-')
+    #     image_fname_t = op.join(image_fol, 'g{}.png'.format(current_t))
+    #     fig.savefig(image_fname_t)
     print('saving to {}'.format(image_fname))
 
 
@@ -173,19 +190,24 @@ def plot_electrodes(cur_frame):
             print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 
 
-def get_electrodes_data():
+def get_electrodes_data(per_condition=True):
     elecs_data = OrderedDict()
     elecs_colors = OrderedDict()
     time_range = range(PlayPanel.addon.T)
-    for obj_name in PlayPanel.electrodes_names:
-        if bpy.data.objects.get(obj_name) is None:
-            continue
-        elec_obj = bpy.data.objects[obj_name]
-        if elec_obj.hide or elec_obj.animation_data is None:
-            continue
-        data, colors = mmvt_utils.evaluate_fcurves(elec_obj, time_range)
-        elecs_data.update(data)
-        elecs_colors.update(colors)
+    if per_condition:
+        for obj_name in PlayPanel.electrodes_names:
+            if bpy.data.objects.get(obj_name) is None:
+                continue
+            elec_obj = bpy.data.objects[obj_name]
+            if elec_obj.hide or elec_obj.animation_data is None:
+                continue
+            data, colors = mmvt_utils.evaluate_fcurves(elec_obj, time_range)
+            elecs_data.update(data)
+            elecs_colors.update(colors)
+    else:
+        #todo: check if the fcurves under the parent obj are hiden
+        parent_obj = bpy.data.objects['Deep_electrodes']
+        elecs_data, elecs_colors = mmvt_utils.evaluate_fcurves(parent_obj, time_range)
     return elecs_data, elecs_colors
 
 
