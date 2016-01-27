@@ -63,6 +63,7 @@ def filter_graph(context, d, condition, threshold, connections_type):
         fcurve.hide = con_name not in masked_con_names
         fcurve.select = not fcurve.hide
         cur_obj.hide = con_name not in masked_con_names
+        cur_obj.hide_render = con_name not in masked_con_names
         cur_obj.select = not cur_obj.hide
 
 
@@ -208,6 +209,7 @@ def capture_graph(context, image_fol):
     # data.update(elcs_data)
     # colors.update(elcs_colors)
     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
+    ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
 
 class CreateConnections(bpy.types.Operator):
