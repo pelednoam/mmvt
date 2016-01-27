@@ -18,7 +18,7 @@ def create_keyframes(context, d, condition, threshold):
     layers_rods[rods_layer] = True
     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     windows_num = d.con_colors.shape[1]
-    norm_fac = ConnectionsPanel.addon.T / windows_num
+    norm_fac = ConnectionsPanel.addon.get_max_time_steps() / windows_num
     mask = np.max(d.con_values[:, :, 0], axis=1) > threshold
     indices = np.where(mask)[0]
     mu.delete_hierarchy(PARENT_OBJ)
@@ -38,8 +38,9 @@ def create_keyframes(context, d, condition, threshold):
         # if not bpy.data.objects.get(conn_name):
         #     continue
         mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, 0, 1)
-        mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, d.con_values[ind, -1, cond_id], ConnectionsPanel.addon.T + 1)
-        mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, 0, ConnectionsPanel.addon.T + 2)
+        mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, d.con_values[ind, -1, cond_id],
+            ConnectionsPanel.addon.get_max_time_steps() + 1)
+        mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, 0, ConnectionsPanel.addon.get_max_time_steps() + 2)
         for t in range(windows_num):
             timepoint = t * norm_fac + 2
             mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, d.con_values[ind, t, cond_id], timepoint)
@@ -82,7 +83,7 @@ def calc_masked_con_names(d, threshold, connections_type):
 def plot_connections(context, d, time, connections_type, condition, threshold, abs_threshold=True):
     windows_num = d.con_colors.shape[1]
     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    t = int(time / ConnectionsPanel.addon.T * windows_num)
+    t = int(time / ConnectionsPanel.addon.get_max_time_steps() * windows_num)
     if t >= d.con_colors.shape[1]:
         print('time out of bounds! {}'.format(t))
     # for conn_name, conn_colors in colors.items():
@@ -110,7 +111,7 @@ def filter(target):
     parent_obj = bpy.data.objects[PARENT_OBJ]
     for index in indices:
         bpy.data.objects[str(names[index])].select = True
-        mu.add_keyframe(parent_obj, str(names[index]), float(values[index]), ConnectionsPanel.addon.T)
+        mu.add_keyframe(parent_obj, str(names[index]), float(values[index]), ConnectionsPanel.addon.get_max_time_steps())
     selected_colors = np.array(ConnectionsPanel.d['selected_colors'])[indices]
     for fcurve, color in zip(parent_obj.animation_data.action.fcurves, selected_colors):
         fcurve.modifiers.new(type='LIMITS')
@@ -123,7 +124,7 @@ def filter(target):
 #     bpy.data.objects[PARENT_OBJ].select = do_show
 #     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
 #     windows_num = d.con_colors.shape[1]
-#     t = int(time / ConnectionsPanel.addon.T * windows_num)
+#     t = int(time / ConnectionsPanel.addon.get_max_time_steps() * windows_num)
 #     for ind, con_name in enumerate(d.con_names):
 #         do_show_con = do_show # and con_name in masked_con_names
 #         cur_obj = bpy.data.objects.get(con_name)
@@ -184,7 +185,7 @@ def filter_electrodes_via_connections(context, do_filter, condition=None):
 
 def capture_graph_data():
     parent_obj = bpy.data.objects[PARENT_OBJ]
-    time_range = range(ConnectionsPanel.addon.T)
+    time_range = range(ConnectionsPanel.addon.get_max_time_steps())
     data, colors = mu.evaluate_fcurves(parent_obj, time_range)
     # data = defaultdict(list)
     # colors = {}

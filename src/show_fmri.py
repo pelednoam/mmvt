@@ -28,6 +28,7 @@ fMRI_FILE = '/homes/5/npeled/space3/ECR/hc001/bold/congruence.sm05.{}/congruent-
 # x = nib.load('/homes/5/npeled/Desktop/sig_fsaverage.nii.gz')
 # xfs = nib.load('/homes/5/npeled/Desktop/sig_subject.nii.gz')
 
+
 def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs", min=None, max=None):
     brain = Brain(subject, hemi, surf_name, curv=False)
     hemi = brain._check_hemi(hemi)

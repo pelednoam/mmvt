@@ -151,7 +151,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         import matplotlib.pyplot as plt
 
         # fig = plt.figure()
-        time_range = range(PlayPanel.addon.T)
+        time_range = range(PlayPanel.addon.get_max_time_steps())
         fig, ax1 = plt.subplots()
         axes = [ax1]
         if len(data.keys()) > 1:
@@ -201,7 +201,7 @@ def plot_electrodes(cur_frame):
 def get_electrodes_data(per_condition=True):
     elecs_data = OrderedDict()
     elecs_colors = OrderedDict()
-    time_range = range(PlayPanel.addon.T)
+    time_range = range(PlayPanel.addon.get_max_time_steps())
     if per_condition:
         for obj_name in PlayPanel.electrodes_names:
             if bpy.data.objects.get(obj_name) is None:
@@ -363,7 +363,7 @@ class GrabToPlay(bpy.types.Operator):
 def init(addon):
     register()
     PlayPanel.addon = addon
-    bpy.context.scene.play_to = addon.T
+    bpy.context.scene.play_to = addon.get_max_time_steps()
     init_plotting()
     print('PlayPanel initialization completed successfully!')
 

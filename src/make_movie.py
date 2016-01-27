@@ -84,7 +84,7 @@ def ani_frame(time_range, ms_before_stimuli, time_dt, fol, dpi, fps, video_fname
 
     # plt.tight_layout()
     now = time.time()
-    plt.show()
+    # plt.show()
 
     def init_func():
         return update_img(0)
@@ -117,7 +117,7 @@ def plot_color_bar(ax, color_map_bounds, cb_title=''):
 
 
 if __name__ == '__main__':
-    fol = '/home/noam/mmvt/mg78/images/meg_elecs_coh'
+    fol = '/home/noam/mmvt/mg78/images/meg_elecs_coh_2'
     dpi = 100
     fps = 10
     video_fname = 'mg78_elecs_coh_meg.mp4'

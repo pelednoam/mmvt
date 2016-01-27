@@ -839,11 +839,39 @@ class ClearFiltering(bpy.types.Operator):
             select_all_rois()
         elif type_of_filter == 'Electrodes':
             select_all_electrodes()
-        bpy.data.scenes['Scene'].frame_preview_end = bpy.types.Scene.maximal_time_steps
+        bpy.data.scenes['Scene'].frame_preview_end = get_max_time_steps()
         bpy.data.scenes['Scene'].frame_preview_start = 1
         bpy.types.Scene.closest_curve_str = ''
         bpy.types.Scene.filter_is_on = False
         return {"FINISHED"}
+
+
+def get_max_time_steps():
+    # Check if maximal_time_steps is in bpy.types.Scene
+    try:
+        return bpy.types.Scene.maximal_time_steps
+    except:
+        print('No preperty maximal_time_steps in bpy.types.Scene')
+
+    # Check if there is animation data in MEG
+    try:
+        hemi = bpy.data.objects['Cortex-lh']
+        # Takes the first child first condition fcurve
+        fcurves = hemi.children[0].animation_data.action.fcurves[0]
+        return len(fcurves.keyframe_points) - 3
+    except:
+        print('No MEG data')
+
+    try:
+        elec = bpy.data.objects['Deep_electrodes'].children[0]
+        fcurves = elec.animation_data.action.fcurves[0]
+        return len(fcurves.keyframe_points) - 2
+    except:
+        print('No deep electrodes data')
+
+    # Bad fallback...
+    return T
+
 
 
 def filter_roi_func(name_str):
