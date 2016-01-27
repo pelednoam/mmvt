@@ -58,9 +58,7 @@ class ModalTimerOperator(bpy.types.Operator):
                 plot_something(context, self.limits, ModalTimerOperator._uuid)
                 self.limits = self.limits - bpy.context.scene.play_dt if PlayPanel.play_reverse else \
                         self.limits + bpy.context.scene.play_dt
-
-        if PlayPanel.init_play:
-            PlayPanel.init_play = False
+                bpy.context.scene.frame_current = self.limits
 
         return {'PASS_THROUGH'}
 
@@ -88,8 +86,11 @@ def plot_something(context, cur_frame, uuid):
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
+    image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
 
-    if PlayPanel.init_play:
+    #todo: Check the init_play!
+    if False: #PlayPanel.init_play:
+        PlayPanel.init_play = False
         # graph_data = OrderedDict()
         # graph_colors = OrderedDict()
         graph_data = {}
@@ -107,6 +108,7 @@ def plot_something(context, cur_frame, uuid):
             # graph_colors.update(elecs_graph_colors)
             graph_data['Electrodes'] = elecs_graph_data
             graph_colors['Electrodes'] = elecs_graph_colors
+        save_graph_data(graph_data, graph_colors, image_fol)
 
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
@@ -128,15 +130,19 @@ def plot_something(context, cur_frame, uuid):
         condition = bpy.context.scene.conditions
         p.plot_connections(context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
 
-    image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
     # PlayPanel.addon.render_image()
-    plot_graph(context, graph_data, graph_colors, image_fol)
+    # plot_graph(context, graph_data, graph_colors, image_fol)
+
+
+def save_graph_data(data, graph_colors, image_fol):
+    if not os.path.isdir(image_fol):
+        os.makedirs(image_fol)
+    mmvt_utils.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
 
 
 def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
     if not os.path.isdir(image_fol):
         os.makedirs(image_fol)
-    mmvt_utils.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
 
     try:
         # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server/4935945#4935945

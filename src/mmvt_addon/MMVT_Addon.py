@@ -2094,7 +2094,7 @@ def render_draw(self, context):
     col.prop(context.scene, "Y_rotation", text='Y rotation')
     col.prop(context.scene, "Z_rotation", text='Z rotation')
     layout.prop(context.scene, "quality", text='Quality')
-    # layout.prop(context.scene, 'output_path')
+    layout.prop(context.scene, 'output_path')
     layout.prop(context.scene, 'smooth_figure')
     layout.operator("ohad.rendering", text="Render", icon='SCENE')
 
@@ -2129,7 +2129,7 @@ class RenderFigure(bpy.types.Operator):
     bl_idname = "ohad.rendering"
     bl_label = "Render figure"
     bl_options = {"UNDO"}
-    # current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
+    current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
     x_rotation = bpy.context.scene.X_rotation
     y_rotation = bpy.context.scene.Y_rotation
     z_rotation = bpy.context.scene.Z_rotation
@@ -2164,7 +2164,7 @@ def render_image():
     # print('f'+str(cur_frame))
     # print('folder:'+self.current_output_path)
     file_name = os.path.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
-    file_name = os.path.join(mmvt_utils.get_user_fol(), 'images', mmvt_utils.rand_letters(5))
+    # file_name = os.path.join(mmvt_utils.get_user_fol(), 'images', mmvt_utils.rand_letters(5))
     print(file_name)
     bpy.context.scene.render.filepath = file_name
     # Render and save the rendered scene to file. ------------------------------

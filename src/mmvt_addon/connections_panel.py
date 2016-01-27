@@ -26,7 +26,7 @@ def create_keyframes(context, d, condition, threshold):
 
     parent_obj = bpy.data.objects[PARENT_OBJ]
 
-    radius = .05
+    radius = .1 #.05
     for ind, conn_name, (i, j) in zip(indices, d.con_names[mask], d.con_indices[mask]):
         print('keyframing {}'.format(conn_name))
         p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
