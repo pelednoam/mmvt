@@ -1,5 +1,5 @@
 import os
-import utils
+import time
 import matplotlib.pyplot as plt
 import glob
 import shutil
@@ -10,10 +10,11 @@ import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator, apply_inverse_epochs)
 
-from make_ecr_events import make_ecr_events
+from src import utils
+# from make_ecr_events import make_ecr_events
 
 LINKS_DIR = utils.get_links_dir()
-SUBJECTS_MEG_DIR = os.path.join(LINKS_DIR, 'meg_subjects')
+SUBJECTS_MEG_DIR = os.path.join(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
@@ -26,6 +27,7 @@ LOOKUP_TABLE_SUBCORTICAL = os.path.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 TASK_MSIT, TASK_ECR = range(2)
 TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
+STAT_AVG, STAT_DIFF = range(2)
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
 MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
@@ -626,8 +628,9 @@ def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         plt.close()
 
 
-def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, inverse_method='dSPM',
-        colors_map='OrRd', norm_by_percentile=True, norm_percs=(1,99), do_plot=False):
+def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method='dSPM',
+        colors_map='OrRd', norm_by_percentile=True, norm_percs=(1,99), threshold=0,
+        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False, do_plot=False):
     if do_plot:
         plt.figure()
 
@@ -637,9 +640,10 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, in
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     for ind, sub_cortical_ind in enumerate(sub_corticals):
         sub_cortical_name, _ = utils.get_numeric_index_to_label(sub_cortical_ind, lut)
+        sub_cortical_name = sub_cortical_name.astype(str)
         names_for_blender.append(sub_cortical_name)
         for cond_id, cond in enumerate(events_id.keys()):
-            x = np.load(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals',
+            x = np.load(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
                 '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method)))
             if first_time:
                 first_time = False
@@ -647,17 +651,32 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, in
                 data = np.zeros((len(sub_corticals), T, len(events_id.keys())))
             data[ind, :, cond_id] = x[:T]
         if do_plot:
-            plt.plot(data[ind, :, 0]-data[ind, :, 1], label='{}-{} {}'.format(
+            plt.plot(data[ind, :, 0] - data[ind, :, 1], label='{}-{} {}'.format(
                 events_id.keys()[0], events_id.keys()[1], sub_cortical_name))
 
-    avg_data = np.mean(data, 2)
+    if stat == STAT_AVG:
+        stat_data = np.squeeze(np.mean(data, axis=2))
+    elif stat == STAT_DIFF:
+        stat_data = np.squeeze(np.diff(data, axis=2))
+    else:
+        raise Exception('Wonrg stat value!')
     # Normalize
-    avg_data = utils.normalize_data(avg_data, norm_by_percentile, norm_percs)
+    stat_data = utils.normalize_data(stat_data, norm_by_percentile, norm_percs)
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    min_x, max_x = np.percentile(avg_data, norm_percs[0]), np.percentile(avg_data, norm_percs[1])
-    colors = utils.mat_to_colors(avg_data, min_x, max_x, colorsMap=colors_map)
+    if norm_by_percentile:
+        data_min, data_max = np.percentile(stat_data, norm_percs[0]), np.percentile(stat_data, norm_percs[1])
+    else:
+        data_min, data_max = np.min(stat_data), np.max(stat_data)
+    if stat == STAT_AVG:
+        colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap=colors_map)
+    elif stat == STAT_DIFF:
+        data_minmax = max(map(abs, [data_max, data_min]))
+        colors = utils.mat_to_colors_two_colors_maps(stat_data, threshold=threshold,
+            x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+            default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
+
     np.savez(os.path.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
-        names=names_for_blender, conditions=events_id.keys())
+        names=names_for_blender, conditions=list(events_id.keys()))
 
     if do_plot:
         plt.legend()
@@ -735,11 +754,11 @@ def calc_stc_for_all_vertices(stc, n_jobs=6):
     return mne.morph_data(MRI_SUBJECT, MRI_SUBJECT, stc, n_jobs=n_jobs, grade=vertices_to)
 
 
-def smooth_stc(events_id, stcs=None, inverse_method='dSPM', n_jobs=6):
+def smooth_stc(events_id, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
     stcs = {}
     for ind, cond in enumerate(events_id.keys()):
-        if stcs is not None:
-            stc = stcs[cond]
+        if stcs_conds is not None:
+            stc = stcs_conds[cond]
         else:
             # Can read only for the 'rh', it'll also read the second file for 'lh'. Strange...
             stc = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'))
@@ -761,9 +780,12 @@ def check_stc_with_ply(stc, cond_name):
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events_id, stcs_conds=None, colors_map='OrRd', inverse_method='dSPM',
-        norm_by_percentile=True, norm_percs=(1,99)):
-    stcs = get_average_stc_over_conditions(events_id, stcs_conds, inverse_method, smoothed=True)
+def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inverse_method='dSPM',
+        norm_by_percentile=True, norm_percs=(1,99), threshold=0,
+        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
+    if stat not in [STAT_DIFF, STAT_AVG]:
+        raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
+    stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
     for hemi in ['rh', 'lh']:
@@ -776,20 +798,29 @@ def save_activity_map(events_id, stcs_conds=None, colors_map='OrRd', inverse_met
         fol = '{}'.format(ACT.format(hemi))
         utils.delete_folder_files(fol)
         # data = data / data_max
-        for t in xrange(data.shape[1]):
-            colors = utils.arr_to_colors(data[:, t], 0, data_max, scalar_map=scalar_map)[:,:3]
+        now = time.time()
+        T = data.shape[1]
+        for t in range(T):
+            utils.time_to_go(now, t, T, runs_num_to_print=10)
+            if stat == STAT_AVG:
+                colors = utils.arr_to_colors(data[:, t], 0, data_max, scalar_map=scalar_map)[:,:3]
+            elif stat == STAT_DIFF:
+                data_minmax = utils.get_max_abs(data_max, data_min)
+                colors = utils.arr_to_colors_two_colors_maps(data[:, t], threshold=threshold,
+                    x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+                    default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
             colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
             np.save(os.path.join(fol, 't{}'.format(t)), colors)
-            if t % 10 == 0:
-                print('{}: {} out of {}'.format(hemi, t, data.shape[1]))
 
 
-def save_vertex_activity_map(events_id, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
+def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
+    if stat not in [STAT_DIFF, STAT_AVG]:
+        raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
     if stcs_conds is None:
         stcs_conds = {}
         for cond in events_id.keys():
             stcs_conds[cond] = np.load(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
-    stcs = get_average_stc_over_conditions(events_id, stcs_conds, inverse_method, smoothed=True)
+    stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
 
     for hemi in ['rh', 'lh']:
@@ -819,14 +850,14 @@ def save_vertex_activity_map(events_id, stcs_conds=None, inverse_method='dSPM', 
             np.save(file_name, x)
 
 
-def get_average_stc_over_conditions(events_id, stcs_conds=None, inverse_method='dSPM', smoothed=False):
+def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_method='dSPM', smoothed=False):
     stcs = {}
     stc_template = STC_HEMI if not smoothed else STC_HEMI_SMOOTH
     for cond_ind, cond in enumerate(events_id.keys()):
-        if stcs is None:
+        if stcs_conds is None:
             # Reading only the rh, the lh will be read too
-            print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='rh')))
-            stc = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='rh'))
+            print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='lh')))
+            stc = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='lh'))
         else:
             stc = stcs_conds[cond]
         for hemi in ['rh', 'lh']:
@@ -834,9 +865,15 @@ def get_average_stc_over_conditions(events_id, stcs_conds=None, inverse_method='
             if hemi not in stcs:
                 stcs[hemi] = np.zeros((data.shape[0], data.shape[1], 2))
             stcs[hemi][:, :, cond_ind] = data
-        # Average over the conditions
-        stcs[hemi] = stcs[hemi].mean(2)
-
+    for hemi in ['rh', 'lh']:
+        if stat == STAT_AVG:
+            # Average over the conditions
+            stcs[hemi] = stcs[hemi].mean(2)
+        elif stat == STAT_DIFF:
+            # Calc the diff of the conditions
+            stcs[hemi] = np.squeeze(np.diff(stcs[hemi], axis=2))
+        else:
+            raise Exception('Wrong value for stat, should be STAT_AVG or STAT_DIFF')
     return stcs
 
 
@@ -1025,6 +1062,7 @@ if __name__ == '__main__':
     # createEventsFiles(behavior_file=BEHAVIOR_FILE, pattern='1.....')
     event_digit=0
     evoked, epochs = None, None
+    stat = STAT_DIFF
     # evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
     #                     tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
     #
@@ -1033,9 +1071,9 @@ if __name__ == '__main__':
     # for inverse_method in inverse_methods:
     #     calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
     #     plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
-    # save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, inverse_method=inverse_method,
-    #     colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
-    calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
+    save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
+        colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
+    # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
 
 
     # *) equalize_epoch_counts
@@ -1053,10 +1091,11 @@ if __name__ == '__main__':
     #     calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
     # plot_labels_data(plot_each_label=True)
     # *) Save the activity map
-    stcs_conds=None
+    stcs_conds = None
+    stcs = None
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    # save_activity_map(events_id, stcs_conds, inverse_method=inverse_method)
-    # save_vertex_activity_map(events_id, stcs_conds, number_of_files=100)
+    # save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
+    # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
 
 
     # *) misc

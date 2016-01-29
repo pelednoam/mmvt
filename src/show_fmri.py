@@ -221,14 +221,13 @@ def load_fmri(subject, input_file, hemi='both'):
     else:
         brain.add_overlay(input_file.format(hemi), hemi=hemi)
 
+
 def morph_stc(subject_from, subject_to, stc_from_file):
     stc_from = mne.read_source_estimate(stc_from_file)
     vertices_to = [np.arange(10242), np.arange(10242)]
     stc_to = mne.morph_data(subject_from, subject_to, stc_from, n_jobs=4,
                         grade=vertices_to)
     stc_to.save('{}_{}.stc'.format(stc_from_file[:-4], subject_to))
-
-
 
 
 if __name__ == '__main__':

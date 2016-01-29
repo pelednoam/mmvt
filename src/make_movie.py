@@ -43,7 +43,7 @@ def ani_frame(time_range, ms_before_stimuli, time_dt, fol, dpi, fps, video_fname
         return t_line, ymin, ymax
 
 
-    images = sorted(glob.glob(op.join(fol, 'f*.png')), key=lambda x:int(utils.namebase(x)[1:]))[:20]
+    images = sorted(glob.glob(op.join(fol, 'f*.png')), key=lambda x:int(utils.namebase(x)[1:]))#[:20]
     im = Image.open(images[0])
     img_width, img_height = im.size
 

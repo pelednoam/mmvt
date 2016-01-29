@@ -5,6 +5,7 @@ import numpy as np
 import os.path as op
 import uuid
 from collections import OrderedDict
+import time
 
 try:
     import cPickle as pickle
@@ -206,6 +207,21 @@ def show_only_selected_fcurves(context):
     space = context.space_data
     dopesheet = space.dopesheet
     dopesheet.show_only_selected = True
+
+
+def time_to_go(now, run, runs_num, runs_num_to_print=10):
+    if run % runs_num_to_print == 0 and run != 0:
+        time_took = time.time() - now
+        more_time = time_took / run * (runs_num - run)
+        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+
+
+def show_hide_obj_and_fcurves(objs, val):
+    for obj in objs:
+        obj.select = val
+        for fcurve in obj.animation_data.action.fcurves:
+            fcurve.hide = not val
+            fcurve.select = val
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):
