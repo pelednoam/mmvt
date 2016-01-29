@@ -661,12 +661,10 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
     else:
         raise Exception('Wonrg stat value!')
     # Normalize
-    stat_data = utils.normalize_data(stat_data, norm_by_percentile, norm_percs)
+    # todo: I don't think we should normalize stat_data
+    # stat_data = utils.normalize_data(stat_data, norm_by_percentile, norm_percs)
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    if norm_by_percentile:
-        data_min, data_max = np.percentile(stat_data, norm_percs[0]), np.percentile(stat_data, norm_percs[1])
-    else:
-        data_min, data_max = np.min(stat_data), np.max(stat_data)
+    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
     if stat == STAT_AVG:
         colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap=colors_map)
     elif stat == STAT_DIFF:

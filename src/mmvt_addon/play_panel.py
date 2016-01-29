@@ -220,7 +220,8 @@ def get_electrodes_data(per_condition=True):
 
 
 def init_plotting():
-    data_fname = op.join(mmvt_utils.get_user_fol(), 'electrodes_data.npz')
+    data_fname = op.join(mmvt_utils.get_user_fol(), 'electrodes_data_{}.npz'.format(
+        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
     if op.isfile(data_fname):
         PlayPanel.electrodes_data = np.load(data_fname)
         PlayPanel.electrodes_names = [elc.astype(str) for elc in PlayPanel.electrodes_data['names']]

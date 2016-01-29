@@ -563,9 +563,10 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mmvt_utils.get_user_fol()
-        source_files = [os.path.join(base_path, "electrodes_data.npz")]
+        source_files = [os.path.join(base_path, 'electrodes_data_{}.npz'.format(
+            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))]
 
-        # add_data_to_electrodes(self, source_files)
+        add_data_to_electrodes(self, source_files)
         add_data_to_electrodes_parent_obj(self, parent_obj, source_files, STAT_DIFF)
         bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
@@ -819,7 +820,7 @@ def filter_draw(self, context):
     # filter_to = bpy.context.scence.frame_preview_end
 
 
-files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
+files_names = {'MEG': 'labels_data_{hemi}.npz', 'Electrodes': 'electrodes_data_{stat}.npz'}
 
 bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
 #bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
@@ -890,8 +891,9 @@ class ClearFiltering(bpy.types.Operator):
         if bpy.data.objects.get('Deep_electrodes'):
             for obj in bpy.data.objects['Deep_electrodes'].children:
                 obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-                # safety check
+                # safety check, if something happened to the electrode's material
                 create_and_set_material(obj)
+                # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
                 # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 
         type_of_filter = bpy.context.scene.filter_curves_type
@@ -948,7 +950,8 @@ def filter_roi_func(obj_name):
 
 def filter_electrode_func(name_str):
     bpy.data.objects[name_str].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
-    bpy.data.objects[name_str].select = True
+    if bpy.context.scene.selection_type == 'conds':
+        bpy.data.objects[name_str].select = True
     bpy.context.scene.objects.active = bpy.data.objects[name_str]
     bpy.types.Scene.filter_is_on = True
 
@@ -970,14 +973,11 @@ class Filtering(bpy.types.Operator):
         data, names = [], []
         for input_file in source_files:
             try:
-                print('in get object to filter: ' + input_file)
                 f = np.load(input_file)
+                data.append(f['data'])
+                names.extend([name.astype(str) for name in f['names']])
             except:
-                print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-                print(input_file)
-                print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-            data.append(f['data'])
-            names.extend([name.astype(str) for name in f['names']])
+                mmvt_utils.message(self, "Can't load {}!".format(input_file))
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
@@ -1009,9 +1009,9 @@ class Filtering(bpy.types.Operator):
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names
 
-    def filter_electrodes(self):
+    def filter_electrodes(self, current_file_to_upload):
         print('filter_electrodes')
-        source_files = [os.path.join(self.current_activity_path, self.current_file_to_upload)]
+        source_files = [os.path.join(self.current_activity_path, current_file_to_upload)]
         objects_indices, names = self.get_object_to_filter(source_files)
 
         for obj in bpy.data.objects:
@@ -1038,27 +1038,10 @@ class Filtering(bpy.types.Operator):
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 
-        # for ind in range(self.topK - 1, -1, -1):
-        #     name_str = bpy.data.objects[names[objects_indices[ind]]].name
-        #     filter_electrode_func(name_str)
-            # # print(str(names[objects_to_filtter_in[ind]]))
-            # orig_name = bpy.data.objects[str(names[objects_to_filtter_in[ind]])].name
-            # # print(orig_name)
-            # # new_name = '*'+orig_name
-            # # print(new_name)
-            # # bpy.data.objects[orig_name].name = new_name
-            # bpy.data.objects[orig_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
-            #
-            # bpy.data.objects[orig_name].select = True
-            # bpy.context.scene.objects.active = bpy.data.objects[orig_name]
-
-        # bpy.context.object.parent.select = False
-
-
-    def filter_ROIs(self):
+    def filter_rois(self, current_file_to_upload):
         print('filter_ROIs')
         set_appearance_show_rois_layer(bpy.context.scene, True)
-        source_files = [os.path.join(self.current_activity_path, self.current_file_to_upload + hemi + '.npz') for hemi
+        source_files = [os.path.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in ['lh', 'rh']]
         objects_indices, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
@@ -1105,16 +1088,16 @@ class Filtering(bpy.types.Operator):
         # self.current_activity_path = bpy.path.abspath(bpy.context.scene.activity_path)
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
-        self.current_file_to_upload = files_names[self.type_of_filter]
+        current_file_to_upload = files_names[self.type_of_filter]
 
         # print(self.current_root_path)
         # source_files = ["/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
-            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~invoke~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            self.filter_electrodes()
-            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~invoke2~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            current_file_to_upload = current_file_to_upload.format(
+                stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
+            self.filter_electrodes(current_file_to_upload)
         elif self.type_of_filter == 'MEG':
-            self.filter_ROIs()
+            self.filter_rois(current_file_to_upload)
 
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
         return {"FINISHED"}
@@ -1706,7 +1689,8 @@ class ColorElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         threshold = bpy.context.scene.coloring_threshold
-        data = np.load(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data.npz'))
+        data = np.load(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
+            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
         mmvt_utils.select_hierarchy('Deep_electrodes', False)
@@ -2383,7 +2367,7 @@ class helper_class():
     electrodes_data_exist = False
     closest_curve_str = ''
     filter_is_on = False
-    files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
+    # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
     closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
@@ -2446,7 +2430,7 @@ def register():
     bpy.types.Scene.electrodes_data_exist = tmp.electrodes_data_exist
     bpy.types.Scene.closest_curve_str = tmp.closest_curve_str
     bpy.types.Scene.filter_is_on = tmp.filter_is_on
-    files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
+    # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
     bpy.types.Scene.closest_curve = tmp.closest_curve
     bpy.types.Scene.filter_topK = tmp.filter_topK
     bpy.types.Scene.filter_topK = tmp.filter_topK

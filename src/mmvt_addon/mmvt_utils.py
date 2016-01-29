@@ -219,9 +219,17 @@ def time_to_go(now, run, runs_num, runs_num_to_print=10):
 def show_hide_obj_and_fcurves(objs, val):
     for obj in objs:
         obj.select = val
-        for fcurve in obj.animation_data.action.fcurves:
-            fcurve.hide = not val
-            fcurve.select = val
+        if obj.animation_data:
+            for fcurve in obj.animation_data.action.fcurves:
+                fcurve.hide = not val
+                fcurve.select = val
+        else:
+            print('No animation in {}'.format(obj.name))
+
+
+def message(self, message):
+    # todo: Find how to send messaages without the self
+    self.report({'ERROR'}, message)
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):

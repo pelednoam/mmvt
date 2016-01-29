@@ -5,7 +5,7 @@ import shutil
 import numpy as np
 from setuptools.command.egg_info import overwrite_arg
 
-import utils
+from src import utils
 import mne
 import scipy.io
 from collections import defaultdict, Counter
@@ -22,7 +22,8 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 ASEG_TO_SRF = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'aseg2srf -s "{}"') # -o {}'
 
 aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
-
+STAT_AVG, STAT_DIFF = range(2)
+STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 
 def subcortical_segmentation(subject):
     # Should source freesurfer
@@ -175,18 +176,19 @@ def read_electrodes_positions(subject, subject_dir, bipolar=False, copy_to_blend
     return output_file
 
 
-def create_electrode_data_file(task, from_t, to_t, conditions, subject_dir, bipolar):
+def create_electrode_data_file(task, from_t, to_t, stat, conditions, subject_dir, bipolar):
     input_file = os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat')
-    output_file = os.path.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))
+    output_file = os.path.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data_{}.npz'.format(
+            '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if task==TASK_ECR:
-        read_electrodes_data_one_mat(input_file, conditions, output_file,
+        read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
             electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t)# from_t=0, to_t=2500)
     elif task==TASK_MSIT:
         if bipolar:
-            read_electrodes_data_one_mat(input_file, conditions, output_file,
+            read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
                 electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
         else:
-            read_electrodes_data_one_mat(input_file, conditions, output_file,
+            read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
                 electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
     # else:
     #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
@@ -196,8 +198,9 @@ def create_electrode_data_file(task, from_t, to_t, conditions, subject_dir, bipo
     #                          '/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz', from_t, to_t) #0, 2500)
 
 
-def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electrodeses_names_fiels,
-        field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99)):
+def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, electrodeses_names_fiels,
+        field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99), threshold=0,
+        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
     # load the matlab file
     d = scipy.io.loadmat(mat_file)
     # get the labels names
@@ -218,13 +221,21 @@ def read_electrodes_data_one_mat(mat_file, conditions, output_file_name, electro
         cond_data = d[field] # [:, times]
         cond_data_downsample = utils.downsample_2d(cond_data, 2)
         data[:, :, cond_id] = cond_data_downsample[:, from_t:to_t]
-    if norm_by_percentile:
-        norm_val = max(map(abs, [np.percentile(data, norm_percs[ind]) for ind in [0,1]]))
+
+    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
+    if stat == STAT_AVG:
+        stat_data = np.squeeze(np.mean(data, axis=2))
+        # colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap='RdBu', flip_cm=True)
+    elif stat == STAT_DIFF:
+        stat_data = np.squeeze(np.diff(data, axis=2))
     else:
-        norm_val = max(map(abs, [np.max(data), np.min(data)]))
-    data /= norm_val
-    avg_data = np.mean(data, 2)
-    colors = utils.mat_to_colors(avg_data, np.percentile(avg_data, 2), np.percentile(avg_data, 98), colorsMap='RdBu', flip_cm=True)
+        raise Exception('Wrong stat value!')
+
+    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
+    data_minmax = max(map(abs, [data_max, data_min]))
+    colors = utils.mat_to_colors_two_colors_maps(stat_data, threshold=threshold,
+        x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+        default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
     np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
 
 
@@ -361,7 +372,7 @@ def create_freeview_cmd(electrodes_file, atlas, create_points_files=True, create
         for group in groups:
             postfix = '.label' if way_points else '.dat'
             freeview_command = freeview_command + group + postfix + ' '
-    print freeview_command
+    print(freeview_command)
 
 
 def create_lut_file_for_atlas(subject, atlas):
@@ -422,6 +433,55 @@ def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, ch
         os.chdir(current_dir)
 
 
+def main(bipolar, stat):
+    remote_subject_dir = os.path.join(SCAN_SUBJECTS_DIR, subject)
+    # Files needed in the local subject folder
+    # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
+    # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
+    # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
+
+    utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR)
+    # *) Create srf files for subcortical structures
+    # !!! Should source freesurfer !!!
+    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
+    subcortical_segmentation(subject)
+
+    # *) Create annotation file from fsaverage
+    create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=True,
+        overwrite_morphing=False, n_jobs=1)
+    # *) convert rh.pial and lh.pial to rh.pial.srf and lh.pial.srf
+    freesurfer_surface_to_blender_surface(subject)
+    # *) convert the srf files to ply
+    convert_cortex(subject_dir)
+
+    # *) Calls Matlab 'splitting_cortical.m' script
+    parcelate_cortex(subject, aparc_name)
+
+    # *) After running splitting_cortical_surface in Matlab, convert the  obj files to ply
+    convert_perecelated_cortex(subject_dir, aparc_name)
+
+    # *) Create a dictionary for verts and faces for both hemis
+    calc_faces_verts_dic()
+    for subcortical_ply in glob.glob(os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '*.ply')):
+        faces_verts_dic_fname = os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts'.format(
+            utils.namebase(subcortical_ply)))
+        calc_faces_verts_dic(subcortical_ply, faces_verts_dic_fname)
+
+    # *) Read the electrodes data
+    electrodes_file = read_electrodes_positions(subject, subject_dir, bipolar=bipolar)
+    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar)
+    create_electrodes_volume_file(electrodes_file)
+    create_freeview_cmd(electrodes_file, aparc_name)
+    create_aparc_aseg_file(subject, aparc_name, overwrite=True)
+    create_lut_file_for_atlas(subject, aparc_name)
+
+    check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
+                    os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
+
+    # misc
+    # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
+
+
 if __name__ == '__main__':
     # subject = 'colin27'
     subject = 'mg78'
@@ -443,55 +503,12 @@ if __name__ == '__main__':
     remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     remote_subject_dir = os.path.join('/cluster/neuromind/tools/freesurfer', subject)
     neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
+    bipolar = False
+    stat = STAT_DIFF
+    # main(bipolar, stat)
 
-    # remote_subject_dir = os.path.join(SCAN_SUBJECTS_DIR, subject)
-    # Files needed in the local subject folder
-    # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
-    # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
-    # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
+    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar)
 
-
-    # prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR)
-    # 1) Create srf files for subcortical structures
-    # !!! Should source freesurfer !!!
-    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
-    # subcortical_segmentation(subject)
-
-    # 2) Create annotation file from fsaverage
-    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=True,
-    #     overwrite_morphing=False, n_jobs=1)
-    # 1) convert rh.pial and lh.pial to rh.pial.srf and lh.pial.srf
-    # freesurfer_surface_to_blender_surface(subject)
-    # 2) convert the srf files to ply
-    # convert_cortex(subject_dir)
-
-    # Calls Matlab 'splitting_cortical.m' script
-    # parcelate_cortex(subject, aparc_name)
-
-    # 3) After running splitting_cortical_surface in Matlab, convert the  obj files to ply
-    # convert_perecelated_cortex(subject_dir, aparc_name)
-
-    # 7) Create a dictionary for verts and faces for both hemis
-    # calc_faces_verts_dic()
-    # for subcortical_ply in glob.glob(os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '*.ply')):
-    #     subcortical_name = utils.namebase(subcortical_ply)
-    #     calc_faces_verts_dic(subcortical_ply,
-    #         os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts'.format(subcortical_name)))
-
-    # 6) Read the electrodes data
-    bipolar = True
-    electrodes_file = read_electrodes_positions(subject, subject_dir, bipolar=bipolar)
-    # create_electrode_data_file(task, from_t_ind, to_t_ind, conditions, subject_dir, bipolar)
-    # create_electrodes_volume_file(electrodes_file)
-    # create_freeview_cmd(electrodes_file, aparc_name)
-    # create_aparc_aseg_file(subject, aparc_name, overwrite=True)
-    # create_lut_file_for_atlas(subject, aparc_name)
-
-    # check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
-    #                 os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
-
-    # misc
-    # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
     print('finish!')
 
 
