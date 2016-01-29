@@ -186,16 +186,18 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
     except:
         print('No matplotlib!')
 
+
 def plot_electrodes(cur_frame):
     threshold = bpy.context.scene.coloring_threshold
     names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_data['colors']
     for obj_name, object_colors in zip(names, colors):
         # obj_name = obj_name.astype(str)
-        new_color = object_colors[cur_frame]
-        if bpy.data.objects.get(obj_name) is not None:
-            PlayPanel.addon.object_coloring(bpy.data.objects[obj_name], new_color)
-        else:
-            print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+        if cur_frame < len(object_colors):
+            new_color = object_colors[cur_frame]
+            if bpy.data.objects.get(obj_name) is not None:
+                PlayPanel.addon.object_coloring(bpy.data.objects[obj_name], new_color)
+            else:
+                print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_electrodes_data(per_condition=True):

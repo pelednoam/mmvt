@@ -80,21 +80,23 @@ def calc_masked_con_names(d, threshold, connections_type):
 
 
 # d: labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
-def plot_connections(context, d, time, connections_type, condition, threshold, abs_threshold=True):
+def plot_connections(self, context, d, time, connections_type, condition, threshold, abs_threshold=True):
     windows_num = d.con_colors.shape[1]
     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     t = int(time / ConnectionsPanel.addon.get_max_time_steps() * windows_num)
     if t >= d.con_colors.shape[1]:
-        print('time out of bounds! {}'.format(t))
-    # for conn_name, conn_colors in colors.items():
-    for ind, con_name in enumerate(d.con_names):
-        cur_obj = bpy.data.objects.get(con_name)
-        if cur_obj and not cur_obj.hide:
-            con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
-            bpy.context.scene.objects.active = cur_obj
-            mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
-    bpy.data.objects[PARENT_OBJ].select = True
-    print(con_color, d.con_values[ind, t, cond_id])
+        mu.message(self, 'time out of bounds! {}'.format(time))
+    else:
+        # for conn_name, conn_colors in colors.items():
+        for ind, con_name in enumerate(d.con_names):
+            cur_obj = bpy.data.objects.get(con_name)
+            if cur_obj and not cur_obj.hide:
+                con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
+                bpy.context.scene.objects.active = cur_obj
+                mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
+        # bpy.data.objects[PARENT_OBJ].select = True
+        ConnectionsPanel.addon.set_appearance_show_connections_layer(bpy.data.scenes['Scene'], True)
+        print(con_color, d.con_values[ind, t, cond_id])
 
 
 def filter(target):
@@ -265,7 +267,7 @@ class PlotConnections(bpy.types.Operator):
             time = bpy.context.scene.frame_current
             print(connections_type, condition, threshold, abs_threshold)
             # mu.delete_hierarchy(PARENT_OBJ)
-            plot_connections(context, ConnectionsPanel.d, time, connections_type, condition, threshold, abs_threshold)
+            plot_connections(self, context, ConnectionsPanel.d, time, connections_type, condition, threshold, abs_threshold)
         return {"FINISHED"}
 
 
