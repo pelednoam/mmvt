@@ -381,8 +381,6 @@ def add_data_to_brain():
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
-
-            # Brain object handling
     try:
         bpy.ops.graph.previewrange_set()
     except:
@@ -632,12 +630,9 @@ def select_only_subcorticals():
 def select_all_electrodes():
     select_brain_objects('Deep_electrodes', bpy.data.objects['Deep_electrodes'].children)
 
-    # for obj in bpy.data.objects['Deep_electrodes'].children:
-    #     obj.select = True
-    #     obj.hide = False
-    #     for fcurve in obj.animation_data.action.fcurves:
-    #         fcurve.hide = False
-    #         fcurve.select = True
+
+def select_all_connections():
+    select_brain_objects('connections', bpy.data.objects['connections'].children)
 
 
 def select_brain_objects(parent_obj_name, children):
@@ -669,6 +664,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator("ohad.roi_selection", text="Select all cortical ROIs", icon='BORDER_RECT')
         layout.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
         layout.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
+        layout.operator("ohad.connections_selection", text="Select all Connections", icon='BORDER_RECT')
         layout.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
         layout.operator("ohad.fit_selection", text="Fit graph window", icon='MOD_ARMATURE')
 
@@ -704,6 +700,18 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
+        mmvt_utils.view_all_in_graph_editor(context)
+        return {"FINISHED"}
+
+
+class SelectAllConnections(bpy.types.Operator):
+    bl_idname = "ohad.connections_selection"
+    bl_label = "select connections"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        select_all_connections()
         mmvt_utils.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -754,35 +762,44 @@ def find_obj_with_val():
                     # print(dir(bpy.data.screens['Neuro'].areas[ii].spaces[jj]))
                     target = bpy.data.screens['Neuro'].areas[ii].spaces[jj].cursor_position_y
 
-    values = []
-    names = []
+    values, names, obj_names = [], [], []
     for cur_obj in cur_objects:
+        # if cur_obj.animation_data is None:
+        #     continue
+        # for fcurve in cur_obj.animation_data.action.fcurves:
+        #     val = fcurve.evaluate(bpy.context.scene.frame_current)
+        #     name = mmvt_utils.fcurve_name(fcurve)
         for name, val in cur_obj.items():
             if isinstance(val, numbers.Number):
                 values.append(val)
                 names.append(name)
+                obj_names.append(cur_obj.name)
             # print(name)
     np_values = np.array(values) - target
     try:
-        closest_curve_str = names[np.argmin(np.abs(np_values))]
+        index = np.argmin(np.abs(np_values))
+        closest_curve_name = names[index]
+        closet_object_name = obj_names[index]
     except ValueError:
-        closest_curve_str = ''
+        closest_curve_name = ''
+        closet_object_name = ''
         print('ERROR - Make sure you select all objects in interest')
-    print(closest_curve_str)
-    bpy.types.Scene.closest_curve_str = closest_curve_str
-    object_name = closest_curve_str
-    if bpy.data.objects.get(object_name) is None:
-        object_name = object_name[:object_name.rfind('_')]
-    print('object name is:' + object_name)
-    print('parent: {}'.format(bpy.data.objects[object_name].parent))
+    # print(closest_curve_name, closet_object_name)
+    bpy.types.Scene.closest_curve_str = closest_curve_name
+    # object_name = closest_curve_str
+    # if bpy.data.objects.get(object_name) is None:
+    #     object_name = object_name[:object_name.rfind('_')]
+    print('object name: {}, curve name: {}'.format(closet_object_name, closest_curve_name))
+    parent_obj = bpy.data.objects[closet_object_name].parent
+    # print('parent: {}'.format(bpy.data.objects[object_name].parent))
     # try:
-    if bpy.data.objects[object_name].parent == bpy.data.objects.get('Deep_electrodes'):
+    if parent_obj.name == 'Deep_electrodes':
         print('filtering electrodes')
-        filter_electrode_func(object_name)
-    elif bpy.data.objects[object_name].parent == bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        connections_panel.filter(target)
+        filter_electrode_func(closet_object_name, closest_curve_name)
+    elif parent_obj.name == connections_panel.PARENT_OBJ:
+        connections_panel.find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target)
     else:
-        filter_roi_func(object_name)
+        filter_roi_func(closet_object_name, closest_curve_name)
     # except KeyError:
     #     filter_roi_func(object_name)
 
@@ -935,24 +952,23 @@ def get_max_time_steps():
     return T
 
 
-def filter_roi_func(obj_name):
-    print(obj_name)
+def filter_roi_func(closet_object_name, closest_curve_name):
     if bpy.context.scene.selection_type == 'conds':
-        bpy.data.objects[obj_name].select = True
+        bpy.data.objects[closet_object_name].select = True
 
-    bpy.context.scene.objects.active = bpy.data.objects[obj_name]
-    if bpy.data.objects[obj_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-        bpy.data.objects[obj_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
+    bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
+    if bpy.data.objects[closet_object_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
+        bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
     else:
-        bpy.data.objects[obj_name].active_material = bpy.data.materials['selected_label_Mat']
+        bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
     bpy.types.Scene.filter_is_on = True
 
 
-def filter_electrode_func(name_str):
-    bpy.data.objects[name_str].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+def filter_electrode_func(closet_object_name, closest_curve_name):
+    bpy.data.objects[closet_object_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
     if bpy.context.scene.selection_type == 'conds':
-        bpy.data.objects[name_str].select = True
-    bpy.context.scene.objects.active = bpy.data.objects[name_str]
+        bpy.data.objects[closet_object_name].select = True
+    bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
     bpy.types.Scene.filter_is_on = True
 
 
@@ -2476,6 +2492,7 @@ def main():
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllElectrodes)
+        bpy.utils.register_class(SelectAllConnections)
         bpy.utils.register_class(ClearSelection)
         bpy.utils.register_class(FitSelection)
         bpy.utils.register_class(Filtering)

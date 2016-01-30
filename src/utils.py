@@ -26,6 +26,7 @@ except:
 import uuid
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
+STAT_AVG, STAT_DIFF = range(2)
 
 
 class Bag( dict ):
@@ -239,6 +240,16 @@ def normalize_data(data, norm_by_percentile, norm_percs):
     max_abs = get_max_abs(data_max, data_min)
     norm_data = data / max_abs
     return norm_data
+
+
+def calc_stat_data(data, stat, axis=2):
+    if stat == STAT_AVG:
+        stat_data = np.squeeze(np.mean(data, axis=axis))
+    elif stat == STAT_DIFF:
+        stat_data = np.squeeze(np.diff(data, axis=axis))
+    else:
+        raise Exception('Wonrg stat value!')
+    return stat_data
 
 
 def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):

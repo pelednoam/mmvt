@@ -55,7 +55,7 @@ class ModalTimerOperator(bpy.types.Operator):
                 bpy.context.scene.frame_current = self.limits
                 print(self.limits, time.time() - self._time)
                 self._time = time.time()
-                plot_something(context, self.limits, ModalTimerOperator._uuid)
+                plot_something(self, context, self.limits, ModalTimerOperator._uuid)
                 self.limits = self.limits - bpy.context.scene.play_dt if PlayPanel.play_reverse else \
                         self.limits + bpy.context.scene.play_dt
                 bpy.context.scene.frame_current = self.limits
@@ -82,7 +82,7 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def plot_something(context, cur_frame, uuid):
+def plot_something(self, context, cur_frame, uuid):
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
@@ -128,7 +128,7 @@ def plot_something(context, cur_frame, uuid):
         threshold = bpy.context.scene.connections_threshold
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
-        p.plot_connections(context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
+        p.plot_connections(self, context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
 
     # PlayPanel.addon.render_image()
     # plot_graph(context, graph_data, graph_colors, image_fol)
@@ -324,7 +324,7 @@ class PrevKeyFrame(bpy.types.Operator):
     def invoke(self, context, event=None):
         PlayPanel.is_playing = False
         bpy.context.scene.frame_current -= bpy.context.scene.play_from
-        plot_something(context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
+        plot_something(self, context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
         return {'FINISHED'}
 
 
@@ -336,7 +336,7 @@ class NextKeyFrame(bpy.types.Operator):
     def invoke(self, context, event=None):
         PlayPanel.is_playing = False
         bpy.context.scene.frame_current += bpy.context.scene.play_dt
-        plot_something(context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
+        plot_something(self, context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
         return {"FINISHED"}
 
 

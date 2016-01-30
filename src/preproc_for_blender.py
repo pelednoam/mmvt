@@ -190,12 +190,6 @@ def create_electrode_data_file(task, from_t, to_t, stat, conditions, subject_dir
         else:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
                 electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
-    # else:
-    #     read_electrodes_data({'HappyMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesHappyMatr.mat',
-    #                           'FearMatr': '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/ERPAverageValuesFearMatr.mat'},
-    #                          ['Happy', 'Fear'],
-    #                          '/homes/5/npeled/space3/ohad/mg79/mg79.sfp',
-    #                          '/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz', from_t, to_t) #0, 2500)
 
 
 def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, electrodeses_names_fiels,

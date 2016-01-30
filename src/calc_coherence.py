@@ -12,24 +12,27 @@ SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
+STAT_AVG, STAT_DIFF = range(2)
 
-
-def calc_electrodes_coh(subject, sfreq=1000, fmin=55, fmax=110, bw=15, dt=0.1, window_len=0.1, n_jobs=6):
+def calc_electrodes_coh(subject, from_t_ind, to_t_ind, sfreq=1000, fmin=55, fmax=110, bw=15,
+        dt=0.1, window_len=0.1, n_jobs=6):
     input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes_data_trials.mat')
     d = sio.loadmat(input_file)
     output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh.npy')
     windows = np.linspace(0, 2.5-dt, 2.5 / dt)
     for cond, data in enumerate([d['interference'], d['noninterference']]):
         if cond == 0:
-            # coh_mat = np.zeros((data.shape[1], data.shape[1], len(windows), 2))
-            coh_mat = np.load(output_file)
-            continue
+            coh_mat = np.zeros((data.shape[1], data.shape[1], len(windows), 2))
+            # coh_mat = np.load(output_file)
+            # continue
+        ds_data = downsample_data(data)
+        ds_data = ds_data[:, :, from_t_ind:to_t_ind]
         now = time.time()
         for win, tmin in enumerate(windows):
             print('cond {}, tmin {}'.format(cond, tmin))
             utils.time_to_go(now, win+1, len(windows))
             con_cnd, _, _, _, _ = spectral_connectivity(
-                data, method='coh', mode='multitaper', sfreq=sfreq,
+                ds_data, method='coh', mode='multitaper', sfreq=sfreq,
                 fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
                 tmin=tmin, tmax=tmin+window_len)
             con_cnd = np.mean(con_cnd, axis=2)
@@ -39,12 +42,20 @@ def calc_electrodes_coh(subject, sfreq=1000, fmin=55, fmax=110, bw=15, dt=0.1, w
         np.save(output_file[:-4], coh_mat)
 
 
-def save_electrodes_coh_to_blender(subject, threshold=0.8, bipolar=False, color_map='jet'):
+def downsample_data(data):
+    C, E, T = data.shape
+    new_data = np.zeros((C, E, int(T/2)))
+    for epoch in range(C):
+        new_data[epoch, :, :] = utils.downsample_2d(data[epoch, :, :], 2)
+    return new_data
+
+
+def save_electrodes_coh_to_blender(subject,  stat, threshold=0.8, bipolar=False):
     d = {}
     d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_electrodes_coh_colors(subject, d['labels'], d['hemis'], threshold, color_map)
+        calc_electrodes_coh_colors(subject, d['labels'], d['hemis'], stat)
     d['conditions'] = ['interference', 'neutral']
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh'), **d)
 
@@ -90,31 +101,34 @@ def get_electrodes_coh(subject, labels):
     return sorted_coh
 
 
-def calc_electrodes_coh_colors(subject, labels, hemis, threshold=0.5, color_map='jet'):
+def calc_electrodes_coh_colors(subject, labels, hemis, stat, threshold=0, color_map='jet',
+        norm_by_percentile=True, norm_percs=(1,99)):
+        # cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
     coh = get_electrodes_coh(subject, labels)
     M = coh.shape[0]
     W = coh.shape[2]
     L = int((M*M+M)/2-M)
-    # coh_colors = np.zeros((L, 6, W, 2))
-    con_colors = np.zeros((L, W, 2, 3))
+    # con_colors = np.zeros((L, W, 3))
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, 2))
     con_names = [None] * L
     con_type = np.zeros((L))
+    coh_stat = utils.calc_stat_data(coh, stat, axis=3)
+    x = coh_stat.ravel()
+    data_max, data_min = utils.get_data_max_min(x, norm_by_percentile, norm_percs)
+    data_minmax = max(map(abs, [data_max, data_min]))
+    # sm = utils.get_scalar_map(threshold, data_max, color_map=color_map)
     for cond in range(2):
-        x = coh[:, :, :, cond].ravel()
-        min_x, max_x = np.percentile(x, 1), np.percentile(x, 99) # np.min(x), np.max(x)
-        if np.max(x) < threshold:
-            continue
-        sm = utils.get_scalar_map(threshold, max_x, color_map=color_map)
-        # sm = utils.get_scalar_map(0.8, 0.9, color_map=color_map)
         for w in range(W):
             # win_colors = utils.mat_to_colors(coh[:, :, w, cond], threshold, max_x, color_map, sm)
-            coh_arr = utils.lower_rec_to_arr(coh[:, :, w, cond])
-            win_colors = utils.arr_to_colors(coh_arr, threshold, max_x, color_map, sm)
+            # coh_arr = utils.lower_rec_to_arr(coh[:, :, w, cond])
+            # win_colors = utils.arr_to_colors(coh_arr, threshold, max_x, color_map, sm)
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
-                con_colors[ind, w, cond, :] = win_colors[ind][:3]
+                # con_colors[ind, w, cond, :] = win_colors[ind][:3]
                 con_values[ind, w, cond] = coh[i, j, w, cond]
+    stat_data = utils.calc_stat_data(con_values, stat)
+    con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
+
     for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
         con_indices[ind, :] = [i, j]
         con_names[ind] = '{}-{}'.format(labels[i].astype(str), labels[j].astype(str))
@@ -126,9 +140,11 @@ def calc_electrodes_coh_colors(subject, labels, hemis, threshold=0.5, color_map=
 
 
 def main(subject, matlab_electrodes_data_file):
-    # calc_electrodes_coh(subject)
+    from_t_ind, to_t_ind = 500, 3000
+    stat = STAT_DIFF
+    # calc_electrodes_coh(subject, from_t_ind, to_t_ind, n_jobs=1)
     # load_coherence_meta_data_from_matlab(subject, matlab_electrodes_data_file)
-    save_electrodes_coh_to_blender(subject)
+    save_electrodes_coh_to_blender(subject, stat)
 
 
 if __name__ == '__main__':

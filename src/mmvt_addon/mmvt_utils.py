@@ -209,6 +209,17 @@ def show_only_selected_fcurves(context):
     dopesheet.show_only_selected = True
 
 
+def get_fcurve_values(parent_name, fcurve_name):
+    xs, ys = [], []
+    parent_obj = bpy.data.objects[parent_name]
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if fcurve_name(fcurve) == fcurve_name:
+            for kp in fcurve.keyframe_points:
+                xs.append(kp.co[0])
+                ys.append(kp.co[1])
+    return xs, ys
+
+
 def time_to_go(now, run, runs_num, runs_num_to_print=10):
     if run % runs_num_to_print == 0 and run != 0:
         time_took = time.time() - now

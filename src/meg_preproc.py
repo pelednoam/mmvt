@@ -654,12 +654,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
             plt.plot(data[ind, :, 0] - data[ind, :, 1], label='{}-{} {}'.format(
                 events_id.keys()[0], events_id.keys()[1], sub_cortical_name))
 
-    if stat == STAT_AVG:
-        stat_data = np.squeeze(np.mean(data, axis=2))
-    elif stat == STAT_DIFF:
-        stat_data = np.squeeze(np.diff(data, axis=2))
-    else:
-        raise Exception('Wonrg stat value!')
+    stat_data = utils.calc_stat_data(data, stat)
     # Normalize
     # todo: I don't think we should normalize stat_data
     # stat_data = utils.normalize_data(stat_data, norm_by_percentile, norm_percs)
