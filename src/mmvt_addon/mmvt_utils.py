@@ -243,6 +243,16 @@ def message(self, message):
     self.report({'ERROR'}, message)
 
 
+def show_only_group_objects(context, objects, group_name):
+    space = context.space_data
+    dopesheet = space.dopesheet
+    selected_group = bpy.data.groups.get(group_name, bpy.data.groups.new(group_name))
+    for obj in objects:
+        selected_group.objects.link(obj)
+    dopesheet.filter_group = selected_group
+    dopesheet.show_only_group_objects = True
+
+
 # def get_scalar_map(x_min, x_max, color_map='jet'):
 #     import matplotlib.colors
 #     import matplotlib.cm

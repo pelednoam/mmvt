@@ -128,15 +128,18 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
     now = time.time()
     fcurves_num = len(parent_obj.animation_data.action.fcurves)
     for fcurve_index, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
-        mu.time_to_go(now, fcurve_index, fcurves_num, runs_num_to_print=10)
+        # mu.time_to_go(now, fcurve_index, fcurves_num, runs_num_to_print=10)
         con_name = mu.fcurve_name(fcurve)
         cur_obj = bpy.data.objects[con_name]
-        fcurve.hide = con_name not in masked_con_names
-        fcurve.select = not fcurve.hide
         cur_obj.hide = con_name not in masked_con_names
         cur_obj.hide_render = con_name not in masked_con_names
-        cur_obj.select = not cur_obj.hide
+        if bpy.context.scene.selection_type == 'conds':
+            cur_obj.select = not cur_obj.hide
+        else:
+            fcurve.hide = con_name not in masked_con_names
+            fcurve.select = not fcurve.hide
 
+    parent_obj.select = True
 
 def calc_masked_con_names(d, threshold, connections_type, condition, stat):
     # For now, we filter only according to both conditions, not each one seperatly
@@ -167,18 +170,18 @@ def plot_connections(self, context, d, plot_time, connections_type, condition, t
         mu.message(self, 'time out of bounds! {}'.format(plot_time))
     else:
         # for conn_name, conn_colors in colors.items():
-        vals = []
+        # vals = []
         selected_objects, selected_indices = get_all_selected_connections(d)
         for ind, con_name in zip(selected_indices, selected_objects):
-            print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
+            # print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
             cur_obj = bpy.data.objects.get(con_name)
             con_color = np.hstack((d.con_colors[ind, t, :], [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
-            vals.append(np.diff(d.con_values[ind, t])[0])
-        # bpy.data.objects[PARENT_OBJ].select = True
+            # vals.append(np.diff(d.con_values[ind, t])[0])
+        bpy.data.objects[PARENT_OBJ].select = True
         ConnectionsPanel.addon.set_appearance_show_connections_layer(bpy.data.scenes['Scene'], True)
-        print(max(vals), min(vals))
+        # print(max(vals), min(vals))
         # print(con_color, d.con_values[ind, t, cond_id])
 
 
@@ -221,89 +224,49 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
         for fcurve in parent_obj.animation_data.action.fcurves:
             conn_name = mu.fcurve_name(conn_name)
 
-    # values = ConnectionsPanel.d['selected_values']
-    # names = ConnectionsPanel.d['selected_connections']
-    # closest_value = values[np.argmin(np.abs(np.array(values) - target))]
-    # indices = np.where(values == closest_value)[0]
-    # exceptions = []
-    # for index in indices:
-    #     obj_name = str(names[index])
-    #     bpy.data.objects[obj_name].select = False
-    #     exceptions.append(obj_name)
-    # mu.delete_hierarchy(PARENT_OBJ, exceptions=exceptions)
-    # parent_obj = bpy.data.objects[PARENT_OBJ]
-    # for index in indices:
-    #     bpy.data.objects[str(names[index])].select = True
-    #     mu.add_keyframe(parent_obj, str(names[index]), float(values[index]),
-    #                     ConnectionsPanel.addon.get_max_time_steps())
-    # selected_colors = np.array(ConnectionsPanel.d['selected_colors'])[indices]
-    # for fcurve, color in zip(parent_obj.animation_data.action.fcurves, selected_colors):
-    #     fcurve.modifiers.new(type='LIMITS')
-    #     fcurve.color_mode = 'CUSTOM'
-    #     fcurve.color = tuple(color)
 
-
-# def show_hide_connections(context, do_show, d, condition, threshold, connections_type, time):
-#     mu.show_hide_hierarchy(do_show, PARENT_OBJ)
-#     bpy.data.objects[PARENT_OBJ].select = do_show
-#     cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-#     windows_num = d.con_colors.shape[1]
-#     t = int(time / ConnectionsPanel.addon.get_max_time_steps() * windows_num)
-#     for ind, con_name in enumerate(d.con_names):
-#         do_show_con = do_show # and con_name in masked_con_names
-#         cur_obj = bpy.data.objects.get(con_name)
-#         if cur_obj:
-#             if do_show_con:
-#                 con_color = np.hstack((d.con_colors[ind, t, cond_id, :], [0.]))
-#             else:
-#                 con_color = [1., 1., 1., 1.]
-#             bpy.context.scene.objects.active = cur_obj
-#             transparency = 1 if do_show_con else 0
-#             mu.create_material('{}_mat'.format(con_name), con_color, transparency, False)
-#
-#     parent_obj = bpy.data.objects[PARENT_OBJ]
-#     for fcurve in parent_obj.animation_data.action.fcurves:
-#         fcurve.hide = not do_show
-#         fcurve.select = do_show
-#     if do_show:
-#         filter_graph(context, d, condition, threshold, connections_type)
-#         mu.view_all_in_graph_editor(context)
-
-
-def filter_electrodes_via_connections(context, do_filter, condition=None):
+def filter_electrodes_via_connections(context, do_filter):
+    display_diff = bpy.context.scene.selection_type == 'diff'
     for elc_name in ConnectionsPanel.addon.play_panel.PlayPanel.electrodes_names:
         cur_obj = bpy.data.objects.get(elc_name)
         if cur_obj:
             cur_obj.hide = do_filter
-            cur_obj.select = not do_filter
+            cur_obj.hide_render = do_filter
+            cur_obj.select = not do_filter or not display_diff
             for fcurve in cur_obj.animation_data.action.fcurves:
                 fcurve.hide = do_filter
                 fcurve.select = not do_filter
 
+    elecs_parent_obj = bpy.data.objects['Deep_electrodes']
+    elecs_parent_obj.select = display_diff
+    for fcurve in elecs_parent_obj.animation_data.action.fcurves:
+        fcurve.hide = do_filter
+        fcurve.select = not do_filter
+
     if do_filter:
+        selected_electrodes = set()
         for ind, con_name in enumerate(ConnectionsPanel.d.con_names):
             cur_obj = bpy.data.objects.get(con_name)
             if not cur_obj or cur_obj.hide:
                 continue
             electrodes = con_name.split('-')
             for elc in electrodes:
-                cur_obj = bpy.data.objects.get(elc)
-                if not cur_obj:
+                cur_elc = bpy.data.objects.get(elc)
+                if not cur_elc or elc in selected_electrodes:
                     continue
-                cur_obj.hide = False
-                cur_obj.select = True
-                for fcurve in cur_obj.animation_data.action.fcurves:
-                    if condition:
-                        fcurve_name = mu.fcurve_name(fcurve)
-                        fcurve_condition = fcurve_name.split('_')[-1]
-                        show_fcurve = fcurve_condition == condition
-                        fcurve.hide = not show_fcurve
-                        fcurve.select = show_fcurve
-                    else:
-                        fcurve.hide = False
-                        fcurve.select = True
+                selected_electrodes.add(elc)
+                # if bpy.context.scene.selection_type == 'conds':
+                cur_elc.hide = False
+                cur_elc.select = not display_diff
+                for fcurve in cur_elc.animation_data.action.fcurves:
+                    fcurve.hide = False
+                    fcurve.select = True
+        for fcurve in elecs_parent_obj.animation_data.action.fcurves:
+            elc_name = mu.fcurve_name(fcurve)
+            if elc_name in selected_electrodes:
+                fcurve.hide = False
+                fcurve.select = True
 
-    bpy.data.objects[PARENT_OBJ].select = True
     mu.view_all_in_graph_editor(context)
 
 
@@ -412,7 +375,7 @@ class FilterElectrodes(bpy.types.Operator):
         if not bpy.data.objects.get(PARENT_OBJ):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
-            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter, bpy.context.scene.conditions)
+            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter)
             ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
         return {"FINISHED"}
 
