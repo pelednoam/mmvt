@@ -14,12 +14,14 @@ bpy.types.Scene.play_to = bpy.props.IntProperty(default=bpy.context.scene.frame_
 bpy.types.Scene.play_dt = bpy.props.IntProperty(default=50, min=1, description="play dt (ms)")
 bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
                                                   description="How much time (s) to wait between frames")
+bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_coh", "MEG Coherence", "", 2),
            ("elecs", "Electrodes activity", "", 3), ("elecs_coh", "Electrodes coherence", "", 4),
            ("elecs_act_coh", "Electrodes activity & coherence", "", 5),
            ("meg_elecs", "Meg & Electrodes activity", "", 6), ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "", 7)],
            description='Type pf data to play')
+
 
 
 class ModalTimerOperator(bpy.types.Operator):
@@ -88,6 +90,10 @@ def plot_something(self, context, cur_frame, uuid):
     play_type = bpy.context.scene.play_type
     image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
 
+    #todo: need a different threshold value for each modality!
+    meg_threshold = 1.0
+    electrodes_threshold = 0.0
+
     #todo: Check the init_play!
     if False: #PlayPanel.init_play:
         PlayPanel.init_play = False
@@ -114,11 +120,11 @@ def plot_something(self, context, cur_frame, uuid):
         # if PlayPanel.loop_indices:
         #     PlayPanel.addon.default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
-        PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, threshold,
+        PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, meg_threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
-        plot_electrodes(cur_frame)
+        plot_electrodes(cur_frame, electrodes_threshold)
     if play_type == 'meg_coh':
         pass
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
@@ -130,7 +136,8 @@ def plot_something(self, context, cur_frame, uuid):
         condition = bpy.context.scene.conditions
         p.plot_connections(self, context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
 
-    # PlayPanel.addon.render_image()
+    if bpy.context.scene.render_movie:
+        PlayPanel.addon.render_image()
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
@@ -187,11 +194,10 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         print('No matplotlib!')
 
 
-def plot_electrodes(cur_frame):
-    threshold = bpy.context.scene.coloring_threshold
-    names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_data['colors']
-    for obj_name, object_colors in zip(names, colors):
-        # obj_name = obj_name.astype(str)
+def plot_electrodes(cur_frame, threshold):
+    # todo: need to use the threshold
+    # threshold = bpy.context.scene.coloring_threshold
+    for obj_name, object_colors in zip(PlayPanel.electrodes_names, PlayPanel.electrodes_colors):
         if cur_frame < len(object_colors):
             new_color = object_colors[cur_frame]
             if bpy.data.objects.get(obj_name) is not None:
@@ -225,8 +231,9 @@ def init_plotting():
     data_fname = op.join(mmvt_utils.get_user_fol(), 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
     if op.isfile(data_fname):
-        PlayPanel.electrodes_data = np.load(data_fname)
-        PlayPanel.electrodes_names = [elc.astype(str) for elc in PlayPanel.electrodes_data['names']]
+        d = np.load(data_fname)
+        PlayPanel.electrodes_colors = d['colors']
+        PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
     else:
         print('No electrodes data file!')
     PlayPanel.faces_verts = PlayPanel.addon.init_activity_map_coloring('MEG')
@@ -273,6 +280,7 @@ def play_panel_draw(context, layout):
     row.operator(Pause.bl_idname, text="", icon='PAUSE')
     row.operator(Play.bl_idname, text="", icon='PLAY')
     row.operator(NextKeyFrame.bl_idname, text="", icon='NEXT_KEYFRAME')
+    layout.prop(context.scene, 'render_movie', text="Render the movie")
 
 
 
@@ -313,6 +321,7 @@ class Pause(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         PlayPanel.is_playing = False
+        plot_something(self, context, bpy.context.scene.frame_current, ModalTimerOperator._uuid)
         return {"FINISHED"}
 
 

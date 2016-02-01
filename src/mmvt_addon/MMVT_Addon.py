@@ -38,7 +38,8 @@ print("Neuroscience add on started!")
 T = 2500
 
 # LAYERS
-CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER, BRAIN_EMPTY_LAYER = 3, 1, 10, 11, 12, 5
+(CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
+    BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 STAT_AVG, STAT_DIFF = range(2)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
@@ -524,12 +525,13 @@ def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
             continue
         print('loading {}'.format(input_file))
         f = np.load(input_file)
-        for obj_name, data in zip(f['names'], f['data']):
+        # for obj_name, data in zip(f['names'], f['data']):
+        for obj_name, data_stat in zip(f['names'], f['stat']):
             obj_name = obj_name.astype(str)
-            if stat == STAT_AVG:
-                data_stat = np.squeeze(np.mean(data, axis=1))
-            elif stat == STAT_DIFF:
-                data_stat = np.squeeze(np.diff(data, axis=1))
+            # if stat == STAT_AVG:
+            #     data_stat = np.squeeze(np.mean(data, axis=1))
+            # elif stat == STAT_DIFF:
+            #     data_stat = np.squeeze(np.diff(data, axis=1))
             sources[obj_name] = data_stat
 
     sources_names = sorted(list(sources.keys()))
@@ -564,7 +566,7 @@ class AddDataToElectrodes(bpy.types.Operator):
         source_files = [os.path.join(base_path, 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))]
 
-        add_data_to_electrodes(self, source_files)
+        # add_data_to_electrodes(self, source_files)
         add_data_to_electrodes_parent_obj(self, parent_obj, source_files, STAT_DIFF)
         bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
@@ -952,7 +954,7 @@ def get_max_time_steps():
     return T
 
 
-def filter_roi_func(closet_object_name, closest_curve_name):
+def filter_roi_func(closet_object_name, closest_curve_name=None):
     if bpy.context.scene.selection_type == 'conds':
         bpy.data.objects[closet_object_name].select = True
 
@@ -964,7 +966,7 @@ def filter_roi_func(closet_object_name, closest_curve_name):
     bpy.types.Scene.filter_is_on = True
 
 
-def filter_electrode_func(closet_object_name, closest_curve_name):
+def filter_electrode_func(closet_object_name, closest_curve_name=None):
     bpy.data.objects[closet_object_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
     if bpy.context.scene.selection_type == 'conds':
         bpy.data.objects[closet_object_name].select = True
@@ -1340,7 +1342,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def setup_layers(self=None, context=None):
-    empty_layer = 14
+    empty_layer = EMPTY_LAYER
 
     for layer_ind in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[layer_ind] = layer_ind == empty_layer
@@ -1556,7 +1558,8 @@ bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, de
 
 def object_coloring(obj, rgb):
     bpy.context.scene.objects.active = obj
-    obj.select = True
+    # todo: do we need to select the object here? In diff mode it's a problem
+    # obj.select = True
     cur_mat = obj.active_material
     # print('***************************************************************')
     # print(cur_mat)
@@ -1576,13 +1579,17 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
     for obj_name, object_colors, values in zip(data['names'], data['colors'], data['data']):
         obj_name = obj_name.astype(str)
         value = np.diff(values[cur_frame])[0]
+        # todo: there is a difference between value and real_value, what should we do?
+        # real_value = mmvt_utils.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
         new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
         # todo: check if the stat should be avg or diff
-        if bpy.data.objects.get(obj_name) is not None:
+        obj = bpy.data.objects.get(obj_name+postfix_str)
+        if obj and not obj.hide:
             # print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
-            object_coloring(bpy.data.objects[obj_name+postfix_str],new_color)
-        else:
-            print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+            object_coloring(obj, new_color)
+            print(obj_name, value, new_color)
+        # else:
+        #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 
     print('Finished coloring!!')
 
@@ -1613,7 +1620,8 @@ def load_meg_subcortical_activity():
 def activity_map_coloring(map_type):
     faces_verts = init_activity_map_coloring(map_type)
     threshold = bpy.context.scene.coloring_threshold
-    if map_type=='MEG':
+    meg_sub_activity = None
+    if map_type == 'MEG':
         meg_sub_activity = load_meg_subcortical_activity()
     plot_activity(map_type, faces_verts, threshold, meg_sub_activity)
     # setup_environment_settings()
@@ -1709,11 +1717,11 @@ class ColorElectrodes(bpy.types.Operator):
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
-        mmvt_utils.select_hierarchy('Deep_electrodes', False)
+        # mmvt_utils.select_hierarchy('Deep_electrodes', False)
         set_appearance_show_electrodes_layer(bpy.context.scene, True)
         # bpy.data.objects['Deep_electrodes'].select = True
-        for cur_obj in bpy.data.objects['Deep_electrodes'].children:
-            cur_obj.select = True
+        # for cur_obj in bpy.data.objects['Deep_electrodes'].children:
+        #     cur_obj.select = True
         change_to_rendered_brain()
         return {"FINISHED"}
 

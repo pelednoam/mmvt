@@ -19,6 +19,7 @@ import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
+
 try:
     import cPickle as pickle
 except:
@@ -1011,3 +1012,13 @@ def find_list_items_in_list(l_new, l_org):
     for item in l_new:
         indices.append(l_org.index(item) if item in l_org else -1)
     return indices
+
+
+def moving_avg(x, window):
+    # import pandas as pd
+    # return pd.rolling_mean(x, window)#[:, window-1:]
+    weights = np.repeat(1.0, window)/window
+    sma = np.zeros((x.shape[0], x.shape[1] - window + 1))
+    for ind in range(x.shape[0]):
+        sma[ind] = np.convolve(x[ind], weights, 'valid')
+    return sma

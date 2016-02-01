@@ -176,25 +176,29 @@ def read_electrodes_positions(subject, subject_dir, bipolar=False, copy_to_blend
     return output_file
 
 
-def create_electrode_data_file(task, from_t, to_t, stat, conditions, subject_dir, bipolar):
+def create_electrode_data_file(task, from_t, to_t, stat, conditions, subject_dir, bipolar, moving_average_win_size=0):
     input_file = os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat')
     output_file = os.path.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if task==TASK_ECR:
         read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
-            electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t)# from_t=0, to_t=2500)
+            electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t,
+            moving_average_win_size=moving_average_win_size)# from_t=0, to_t=2500)
     elif task==TASK_MSIT:
         if bipolar:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
-                electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
+                electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked',
+                from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
         else:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
-                electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked', from_t=from_t, to_t=to_t) #from_t=500, to_t=3000)
+                electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked',
+                from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
 
 
 def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, electrodeses_names_fiels,
-        field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(1,99), threshold=0,
-        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
+        field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(3, 97), threshold=0,
+        color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
+        moving_average_win_size=0):
     # load the matlab file
     d = scipy.io.loadmat(mat_file)
     # get the labels names
@@ -219,18 +223,32 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     if stat == STAT_AVG:
         stat_data = np.squeeze(np.mean(data, axis=2))
-        # colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap='RdBu', flip_cm=True)
     elif stat == STAT_DIFF:
         stat_data = np.squeeze(np.diff(data, axis=2))
     else:
         raise Exception('Wrong stat value!')
 
-    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
+    if moving_average_win_size > 0:
+        # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
+        stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
+
+    colors = calc_colors(stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small,
+                         flip_cm_big, flip_cm_small)
+    colors_mv = calc_colors(stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small,
+                            flip_cm_big, flip_cm_small)
+    # np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
+    np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+
+
+def calc_colors(data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small):
+    data_max, data_min = utils.get_data_max_min(data, norm_by_percentile, norm_percs)
     data_minmax = max(map(abs, [data_max, data_min]))
-    colors = utils.mat_to_colors_two_colors_maps(stat_data, threshold=threshold,
-        x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+    print('data minmax: {}'.format(data_minmax))
+    colors = utils.mat_to_colors_two_colors_maps(data, threshold=threshold,
+        x_max=data_minmax, x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
         default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
-    np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
+    return colors
+    # colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
 
 
 def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
@@ -501,7 +519,7 @@ if __name__ == '__main__':
     stat = STAT_DIFF
     # main(bipolar, stat)
 
-    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar)
+    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar, moving_average_win_size=100)
 
     print('finish!')
 

@@ -199,6 +199,13 @@ def evaluate_fcurves(parent_obj, time_range):
     return data, colors
 
 
+def get_fcurve_current_frame_val(parent_obj_name, obj_name, cur_frame):
+    for fcurve in bpy.data.objects[parent_obj_name].animation_data.action.fcurves:
+        name = fcurve_name(fcurve)
+        if name == obj_name:
+            return fcurve.evaluate(cur_frame)
+
+
 def fcurve_name(fcurve):
     return fcurve.data_path.split('"')[1]
 
@@ -232,7 +239,9 @@ def show_hide_obj_and_fcurves(objs, val):
         obj.select = val
         if obj.animation_data:
             for fcurve in obj.animation_data.action.fcurves:
-                fcurve.hide = not val
+                if val:
+                    fcurve.hide = not val
+                    fcurve.hide = not val
                 fcurve.select = val
         else:
             print('No animation in {}'.format(obj.name))

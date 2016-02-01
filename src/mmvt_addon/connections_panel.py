@@ -28,11 +28,15 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     T = ConnectionsPanel.addon.get_max_time_steps()
     windows_num = d.con_colors.shape[1]
     norm_fac = T / windows_num
-    mask1 = np.max(d.con_values[:, :, 0], axis=1) > threshold
-    mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
-    # Takes all the connections that at least one condition pass the threshold
-    # Ex: np.array([True, False, False]) | np.array([False, True, False]) = array([ True,  True, False], dtype=bool)
-    mask = mask1 | mask2
+    if bpy.context.scene.selection_type == 'conds':
+        # Takes all the connections that at least one condition pass the threshold
+        # Ex: np.array([True, False, False]) | np.array([False, True, False]) = array([ True,  True, False], dtype=bool)
+        mask1 = np.max(d.con_values[:, :, 0], axis=1) > threshold
+        mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
+        mask = mask1 | mask2
+    else:
+        stat_data = calc_stat_data(d.con_values, stat)
+        mask = np.max(abs(stat_data), axis=1) > threshold
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[PARENT_OBJ]
     parent_obj.animation_data_clear()
@@ -226,19 +230,19 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
 
 
 def filter_electrodes_via_connections(context, do_filter):
-    display_diff = bpy.context.scene.selection_type == 'diff'
+    display_conds = bpy.context.scene.selection_type == 'conds'
     for elc_name in ConnectionsPanel.addon.play_panel.PlayPanel.electrodes_names:
         cur_obj = bpy.data.objects.get(elc_name)
         if cur_obj:
             cur_obj.hide = do_filter
             cur_obj.hide_render = do_filter
-            cur_obj.select = not do_filter or not display_diff
+            cur_obj.select = not do_filter and display_conds
             for fcurve in cur_obj.animation_data.action.fcurves:
                 fcurve.hide = do_filter
                 fcurve.select = not do_filter
 
     elecs_parent_obj = bpy.data.objects['Deep_electrodes']
-    elecs_parent_obj.select = display_diff
+    elecs_parent_obj.select = not display_conds
     for fcurve in elecs_parent_obj.animation_data.action.fcurves:
         fcurve.hide = do_filter
         fcurve.select = not do_filter
@@ -257,7 +261,7 @@ def filter_electrodes_via_connections(context, do_filter):
                 selected_electrodes.add(elc)
                 # if bpy.context.scene.selection_type == 'conds':
                 cur_elc.hide = False
-                cur_elc.select = not display_diff
+                cur_elc.select = display_conds
                 for fcurve in cur_elc.animation_data.action.fcurves:
                     fcurve.hide = False
                     fcurve.select = True
