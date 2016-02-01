@@ -669,7 +669,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
             default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
     np.savez(os.path.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
-        names=names_for_blender, conditions=list(events_id.keys()))
+        names=names_for_blender, conditions=list(events_id.keys()), data_minmax=data_minmax)
 
     if do_plot:
         plt.legend()
@@ -780,6 +780,8 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
         raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
     stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
+    data_minmax = utils.get_max_abs(data_max, data_min)
+    utils.save(data_minmax, os.path.join(BLENDER_ROOT_FOLDER, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
     scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
     for hemi in ['rh', 'lh']:
         verts, faces = utils.read_ply_file(os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
@@ -798,12 +800,38 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
             if stat == STAT_AVG:
                 colors = utils.arr_to_colors(data[:, t], 0, data_max, scalar_map=scalar_map)[:,:3]
             elif stat == STAT_DIFF:
-                data_minmax = utils.get_max_abs(data_max, data_min)
                 colors = utils.arr_to_colors_two_colors_maps(data[:, t], threshold=threshold,
                     x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
                     default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
             colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
             np.save(os.path.join(fol, 't{}'.format(t)), colors)
+
+
+def calc_activity_significance():
+    from mne import spatial_tris_connectivity, grade_to_tris
+    from mne.stats import (spatio_temporal_cluster_1samp_test)
+    from scipy import stats as stats
+
+    #    To use an algorithm optimized for spatio-temporal clustering, we
+    #    just pass the spatial connectivity matrix (instead of spatio-temporal)
+    print('Computing connectivity.')
+    connectivity = spatial_tris_connectivity(grade_to_tris(5))
+
+    #    Note that X needs to be a multi-dimensional array of shape
+    #    samples (subjects) x time x space, so we permute dimensions
+    X = np.transpose(X, [2, 1, 0])
+
+    #    Now let's actually do the clustering. This can take a long time...
+    #    Here we set the threshold quite high to reduce computation.
+    p_threshold = 0.001
+    t_threshold = -stats.distributions.t.ppf(p_threshold / 2., n_subjects - 1)
+    print('Clustering.')
+    T_obs, clusters, cluster_p_values, H0 = clu = \
+        spatio_temporal_cluster_1samp_test(X, connectivity=connectivity, n_jobs=2,
+                                           threshold=t_threshold)
+    #    Now select the clusters that are sig. at p < 0.05 (note that this value
+    #    is multiple-comparisons corrected).
+    good_cluster_inds = np.where(cluster_p_values < 0.05)[0]
 
 
 def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
@@ -1064,8 +1092,8 @@ if __name__ == '__main__':
     # for inverse_method in inverse_methods:
     #     calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
     #     plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
-    save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
-        colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
+    # save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
+    #     colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
     # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
 
 
@@ -1087,7 +1115,7 @@ if __name__ == '__main__':
     stcs_conds = None
     stcs = None
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    # save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
+    save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
     # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
 
 

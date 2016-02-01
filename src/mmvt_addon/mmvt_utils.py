@@ -249,7 +249,10 @@ def show_hide_obj_and_fcurves(objs, val):
 
 def message(self, message):
     # todo: Find how to send messaages without the self
-    self.report({'ERROR'}, message)
+    if self:
+        self.report({'ERROR'}, message)
+    else:
+        print(message)
 
 
 def show_only_group_objects(context, objects, group_name):

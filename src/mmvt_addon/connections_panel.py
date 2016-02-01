@@ -275,21 +275,25 @@ def filter_electrodes_via_connections(context, do_filter):
     mu.view_all_in_graph_editor(context)
 
 
-def capture_graph_data():
+def capture_graph_data(per_condition):
     parent_obj = bpy.data.objects[PARENT_OBJ]
     time_range = range(ConnectionsPanel.addon.get_max_time_steps())
-    data, colors = mu.evaluate_fcurves(parent_obj, time_range)
+    if per_condition:
+        #todo: implement
+        pass
+    else:
+        data, colors = mu.evaluate_fcurves(parent_obj, time_range)
     return data, colors
 
 
-def capture_graph(context, image_fol):
-    data, colors = {}, {}
-    data['Coherence'], colors['Coherence'] = capture_graph_data()
-    data['Electrodes'], colors['Electrodes'] = ConnectionsPanel.addon.play_panel.get_electrodes_data()
-    # data.update(elcs_data)
-    # colors.update(elcs_colors)
-    ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
-    ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
+# def capture_graph(context, image_fol):
+#     data, colors = {}, {}
+#     data['Coherence'], colors['Coherence'] = capture_graph_data()
+#     data['Electrodes'], colors['Electrodes'] = ConnectionsPanel.addon.play_panel.get_electrodes_data()
+#     # data.update(elcs_data)
+#     # colors.update(elcs_colors)
+#     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
+#     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
 
 class CreateConnections(bpy.types.Operator):
@@ -396,17 +400,17 @@ class ClearConnections(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class ExportGraph(bpy.types.Operator):
-    bl_idname = "ohad.export_graph"
-    bl_label = "ohad export_graph"
-    bl_options = {"UNDO"}
-    uuid = mu.rand_letters(5)
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
-        capture_graph(context, image_fol)
-        return {"FINISHED"}
+# class ExportGraph(bpy.types.Operator):
+#     bl_idname = "ohad.export_graph"
+#     bl_label = "ohad export_graph"
+#     bl_options = {"UNDO"}
+#     uuid = mu.rand_letters(5)
+#
+#     @staticmethod
+#     def invoke(self, context, event=None):
+#         image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+#         capture_graph(context, image_fol)
+#         return {"FINISHED"}
 
 
 def connections_draw(self, context):
@@ -427,7 +431,7 @@ def connections_draw(self, context):
     filter_obj_name = 'electrodes' if bpy.context.scene.connections_origin == 'electrodes' else 'MEG labels'
     filter_text = '{} {}'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from', filter_obj_name)
     layout.operator("ohad.filter_electrodes", text=filter_text, icon='BORDERMOVE')
-    layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
+    # layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
@@ -494,7 +498,7 @@ def register():
         # bpy.utils.register_class(ClearConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
-        bpy.utils.register_class(ExportGraph)
+        # bpy.utils.register_class(ExportGraph)
         print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
@@ -509,6 +513,6 @@ def unregister():
         # bpy.utils.unregister_class(ClearConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
-        bpy.utils.unregister_class(ExportGraph)
+        # bpy.utils.unregister_class(ExportGraph)
     except:
         print("Can't unregister ConnectionsPanel!")

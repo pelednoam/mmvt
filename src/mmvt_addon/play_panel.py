@@ -1,5 +1,5 @@
 import bpy
-import mmvt_utils
+import mmvt_utils as mu
 import os.path as op
 import numpy as np
 import traceback
@@ -33,12 +33,12 @@ class ModalTimerOperator(bpy.types.Operator):
     limits = bpy.context.scene.play_from
     _timer = None
     _time = time.time()
-    _uuid = mmvt_utils.rand_letters(5)
+    _uuid = mu.rand_letters(5)
 
     def modal(self, context, event):
         # First frame initialization:
         if PlayPanel.init_play:
-            ModalTimerOperator._uuid = mmvt_utils.rand_letters(5)
+            ModalTimerOperator._uuid = mu.rand_letters(5)
             self.limits = bpy.context.scene.frame_current
 
         if not PlayPanel.is_playing:
@@ -88,33 +88,14 @@ def plot_something(self, context, cur_frame, uuid):
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
-    image_fol = op.join(mmvt_utils.get_user_fol(), 'images', uuid)
+    image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
     #todo: need a different threshold value for each modality!
     meg_threshold = 1.0
     electrodes_threshold = 0.0
 
     #todo: Check the init_play!
-    if False: #PlayPanel.init_play:
-        PlayPanel.init_play = False
-        # graph_data = OrderedDict()
-        # graph_colors = OrderedDict()
-        graph_data = {}
-        graph_colors = {}
-
-        if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
-            connections_graph_data, connections_graph_colors = PlayPanel.addon.connections_panel.capture_graph_data()
-            graph_data['Coherence'] = connections_graph_data
-            graph_colors['Coherence'] = connections_graph_colors
-            # graph_data.update(connections_graph_data)
-            # graph_colors.update(connections_graph_colors)
-        if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
-            elecs_graph_data, elecs_graph_colors = get_electrodes_data()
-            # graph_data.update(elecs_graph_data)
-            # graph_colors.update(elecs_graph_colors)
-            graph_data['Electrodes'] = elecs_graph_data
-            graph_colors['Electrodes'] = elecs_graph_colors
-        save_graph_data(graph_data, graph_colors, image_fol)
+    # if False: #PlayPanel.init_play:
 
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
@@ -141,10 +122,25 @@ def plot_something(self, context, cur_frame, uuid):
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
+def capture_graph(context):
+    play_type = bpy.context.scene.play_type
+    image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+    graph_data, graph_colors = {}, {}
+    per_condition = bpy.context.scene.selection_type == 'conds'
+
+    if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
+        graph_data['coherence'], graph_colors['coherence'] = PlayPanel.addon.connections_panel.capture_graph_data(per_condition)
+    if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
+        graph_data['electrodes'], graph_colors['electrodes'] = get_electrodes_data(per_condition)
+    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
+        graph_data['meg'], graph_colors['meg'], graph_data['meg_minmax'] = get_meg_data(per_condition)
+    save_graph_data(graph_data, graph_colors, image_fol)
+
+
 def save_graph_data(data, graph_colors, image_fol):
     if not os.path.isdir(image_fol):
         os.makedirs(image_fol)
-    mmvt_utils.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
+    mu.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
 
 
 def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
@@ -184,7 +180,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         # plt.title('Coherence')
         image_fname = op.join(image_fol, 'g.png')
         fig.savefig(image_fname)
-        # mmvt_utils.save(ax, op.join(image_fol, 'plt.pkl'))
+        # mu.save(ax, op.join(image_fol, 'plt.pkl'))
         # if plot_time:
         #     plt.plot([current_t, current_t], [ymin, ymax], 'g-')
         #     image_fname_t = op.join(image_fol, 'g{}.png'.format(current_t))
@@ -206,6 +202,21 @@ def plot_electrodes(cur_frame, threshold):
                 print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 
 
+def get_meg_data(per_condition=True):
+    meg_data = OrderedDict()
+    meg_colors = OrderedDict()
+    meg_activity = np.load(os.path.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))
+    meg_minmax = float(meg_activity['data_minmax'])
+    time_range = range(PlayPanel.addon.get_max_time_steps())
+    brain_obj = bpy.data.objects['Brain']
+    if per_condition:
+        # todo: implement
+        pass
+    else:
+        meg_data, meg_colors = mu.evaluate_fcurves(brain_obj, time_range)
+    return meg_data, meg_colors, meg_minmax
+
+
 def get_electrodes_data(per_condition=True):
     elecs_data = OrderedDict()
     elecs_colors = OrderedDict()
@@ -217,18 +228,17 @@ def get_electrodes_data(per_condition=True):
             elec_obj = bpy.data.objects[obj_name]
             if elec_obj.hide or elec_obj.animation_data is None:
                 continue
-            data, colors = mmvt_utils.evaluate_fcurves(elec_obj, time_range)
+            data, colors = mu.evaluate_fcurves(elec_obj, time_range)
             elecs_data.update(data)
             elecs_colors.update(colors)
     else:
-        #todo: check if the fcurves under the parent obj are hiden
         parent_obj = bpy.data.objects['Deep_electrodes']
-        elecs_data, elecs_colors = mmvt_utils.evaluate_fcurves(parent_obj, time_range)
+        elecs_data, elecs_colors = mu.evaluate_fcurves(parent_obj, time_range)
     return elecs_data, elecs_colors
 
 
 def init_plotting():
-    data_fname = op.join(mmvt_utils.get_user_fol(), 'electrodes_data_{}.npz'.format(
+    data_fname = op.join(mu.get_user_fol(), 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
     if op.isfile(data_fname):
         d = np.load(data_fname)
@@ -238,11 +248,11 @@ def init_plotting():
         print('No electrodes data file!')
     PlayPanel.faces_verts = PlayPanel.addon.init_activity_map_coloring('MEG')
     PlayPanel.meg_sub_activity = PlayPanel.addon.load_meg_subcortical_activity()
-    # connections_file = op.join(mmvt_utils.get_user_fol(), 'electrodes_coh.npz')
+    # connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
     # if not op.isfile(connections_file):
     #     print('No connections coherence file! {}'.format(connections_file))
     # else:
-    #     PlayPanel.electrodes_coherence = mmvt_utils.Bag(np.load(connections_file))
+    #     PlayPanel.electrodes_coherence = mu.Bag(np.load(connections_file))
 
 
 class PlayPanel(bpy.types.Panel):
@@ -281,7 +291,7 @@ def play_panel_draw(context, layout):
     row.operator(Play.bl_idname, text="", icon='PLAY')
     row.operator(NextKeyFrame.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'render_movie', text="Render the movie")
-
+    layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
 
 
 class Play(bpy.types.Operator):
@@ -372,6 +382,19 @@ class GrabToPlay(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ExportGraph(bpy.types.Operator):
+    bl_idname = "ohad.export_graph"
+    bl_label = "ohad export_graph"
+    bl_options = {"UNDO"}
+    uuid = mu.rand_letters(5)
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+        capture_graph(context)
+        return {"FINISHED"}
+
+
 def init(addon):
     register()
     PlayPanel.addon = addon
@@ -392,6 +415,7 @@ def register():
         bpy.utils.register_class(NextKeyFrame)
         bpy.utils.register_class(Pause)
         bpy.utils.register_class(ModalTimerOperator)
+        bpy.utils.register_class(ExportGraph)
         print('PlayPanel was registered!')
     except:
         print("Can't register PlayPanel!")
@@ -409,6 +433,7 @@ def unregister():
         bpy.utils.unregister_class(NextKeyFrame)
         bpy.utils.unregister_class(Pause)
         bpy.utils.unregister_class(ModalTimerOperator)
+        bpy.utils.unregister_class(ExportGraph)
     except:
         print("Can't unregister PlayPanel!")
         print(traceback.format_exc())

@@ -503,7 +503,7 @@ def add_data_to_electrodes(self, source_files):
                 cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
                 insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), 0, len(f['data'][0]) + 2)
+                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
@@ -536,13 +536,13 @@ def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
 
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
-    T = len(sources[sources_names[0]]) + 2
+    T = get_max_time_steps() # len(sources[sources_names[0]]) + 2
     now = time.time()
     for obj_counter, source_name in enumerate(sources_names):
         mmvt_utils.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         data = sources[source_name]
         insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
+        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
 
         for ind in range(data.shape[0]):
             insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
@@ -625,6 +625,7 @@ def deselect_all():
 def select_all_rois():
     select_brain_objects('Brain', bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children)
 
+
 def select_only_subcorticals():
     select_brain_objects('Subcortical_structures', bpy.data.objects['Subcortical_structures'].children)
 
@@ -639,15 +640,15 @@ def select_all_connections():
 
 def select_brain_objects(parent_obj_name, children):
     parent_obj = bpy.data.objects[parent_obj_name]
-    if bpy.context.scene.selection_type == 'conds':
-        mmvt_utils.show_hide_obj_and_fcurves(children, True)
-        parent_obj.select = False
-    else:
+    if parent_obj.animation_data and bpy.context.scene.selection_type == 'diff':
         mmvt_utils.show_hide_obj_and_fcurves(children, False)
         parent_obj.select = True
         for fcurve in parent_obj.animation_data.action.fcurves:
             fcurve.hide = False
             fcurve.select = True
+    else:
+        mmvt_utils.show_hide_obj_and_fcurves(children, True)
+        parent_obj.select = False
 
 
 class SelectionMakerPanel(bpy.types.Panel):
@@ -1441,7 +1442,10 @@ def change_to_solid_brain():
 def make_brain_solid_or_transparent(self=None, context=None):
     bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
         'Fac'].default_value = bpy.context.scene.appearance_solid_slider
-    bpy.data.materials['subcortical_activity_mat'].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = bpy.context.scene.appearance_solid_slider
+    if 'subcortical_activity_mat' in bpy.data.materials:
+        subcortical_mat = bpy.data.materials['subcortical_activity_mat']
+        subcortical_mat.node_tree.nodes['transparency_node'].inputs['Fac'].default_value = \
+            bpy.context.scene.appearance_solid_slider
 
 
 def update_layers():
