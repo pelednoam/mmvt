@@ -261,6 +261,7 @@ def filter_electrodes_via_connections(context, do_filter):
                 selected_electrodes.add(elc)
                 # if bpy.context.scene.selection_type == 'conds':
                 cur_elc.hide = False
+                cur_elc.hide_render = False
                 cur_elc.select = display_conds
                 for fcurve in cur_elc.animation_data.action.fcurves:
                     fcurve.hide = False
