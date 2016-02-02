@@ -90,12 +90,13 @@ def plot_something(self, context, cur_frame, uuid):
     play_type = bpy.context.scene.play_type
     image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
-    imp_time = False
-    for imp_time_range in PlayPanel.imp_times:
-        if imp_time_range[0] <= cur_frame <= imp_time_range[1]:
-            imp_time = True
-    if not imp_time:
-        return
+    # todo: implement the imp times
+    # imp_time = False
+    # for imp_time_range in PlayPanel.imp_times:
+    #     if imp_time_range[0] <= cur_frame <= imp_time_range[1]:
+    #         imp_time = True
+    # if not imp_time:
+    #     return
 
     #todo: need a different threshold value for each modality!
     meg_threshold = 1.0
