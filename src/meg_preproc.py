@@ -818,6 +818,7 @@ def calc_activity_significance(events_id, stcs_conds=None):
     # tris = grade_to_tris(5)
     # points, tris_sub = mne.read_surface
 
+
     paired_constart_fname = op.join(SUBJECT_MEG_FOLDER, 'paired_contrast.npy')
     n_subjects = 1
     if not op.isfile(paired_constart_fname):
@@ -851,21 +852,23 @@ def calc_activity_significance(events_id, stcs_conds=None):
     #    To use an algorithm optimized for spatio-temporal clustering, we
     #    just pass the spatial connectivity matrix (instead of spatio-temporal)
     print('Computing connectivity.')
-    tris = get_subject_tris()
+    # tris = get_subject_tris()
     connectivity = None # spatial_tris_connectivity(tris)
     #    Now let's actually do the clustering. This can take a long time...
     #    Here we set the threshold quite high to reduce computation.
-    p_threshold = 0.001
-    t_threshold = -stats.distributions.t.ppf(p_threshold / 2., n_subjects - 1)
+    p_threshold = 0.2
+    t_threshold = -stats.distributions.t.ppf(p_threshold / 2., 10 - 1)
     print('Clustering.')
-    T_obs, clusters, cluster_p_values, H0 = clu = \
-        spatio_temporal_cluster_1samp_test(X, connectivity=connectivity, n_jobs=2,
-                                           threshold=t_threshold)
+    T_obs, clusters, cluster_p_values, H0 = \
+        spatio_temporal_cluster_1samp_test(X, connectivity=connectivity, n_jobs=6,
+            threshold=t_threshold)
     #    Now select the clusters that are sig. at p < 0.05 (note that this value
     #    is multiple-comparisons corrected).
     good_cluster_inds = np.where(cluster_p_values < 0.05)[0]
-    utils.save((clu, good_cluster_inds, tstep), op.join(SUBJECT_MEG_FOLDER, 'spatio_temporal_ttest.npy'))
-
+    # utils.save((clu, good_cluster_inds), op.join(SUBJECT_MEG_FOLDER, 'spatio_temporal_ttest.npy'))
+    np.savez(op.join(SUBJECT_MEG_FOLDER, 'spatio_temporal_ttest'), T_obs=T_obs, clusters=clusters,
+             cluster_p_values=cluster_p_values, H0=H0, good_cluster_inds=good_cluster_inds)
+    print('good_cluster_inds: {}'.format(good_cluster_inds))
 
 def get_subject_tris():
     from mne import read_surface

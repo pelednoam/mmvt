@@ -90,6 +90,13 @@ def plot_something(self, context, cur_frame, uuid):
     play_type = bpy.context.scene.play_type
     image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
+    imp_time = False
+    for imp_time_range in PlayPanel.imp_times:
+        if imp_time_range[0] <= cur_frame <= imp_time_range[1]:
+            imp_time = True
+    if not imp_time:
+        return
+
     #todo: need a different threshold value for each modality!
     meg_threshold = 1.0
     electrodes_threshold = 0.0
@@ -133,7 +140,7 @@ def capture_graph(context):
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         graph_data['electrodes'], graph_colors['electrodes'] = get_electrodes_data(per_condition)
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
-        graph_data['meg'], graph_colors['meg'], graph_data['meg_minmax'] = get_meg_data(per_condition)
+        graph_data['meg'], graph_colors['meg'] = get_meg_data(per_condition)
     save_graph_data(graph_data, graph_colors, image_fol)
 
 
@@ -203,18 +210,19 @@ def plot_electrodes(cur_frame, threshold):
 
 
 def get_meg_data(per_condition=True):
-    meg_data = OrderedDict()
-    meg_colors = OrderedDict()
-    meg_activity = np.load(os.path.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))
-    meg_minmax = float(meg_activity['data_minmax'])
     time_range = range(PlayPanel.addon.get_max_time_steps())
     brain_obj = bpy.data.objects['Brain']
     if per_condition:
-        # todo: implement
-        pass
+        meg_data, meg_colors = OrderedDict(), OrderedDict()
+        rois_objs = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
+        for roi_obj in rois_objs:
+            if roi_obj.animation_data:
+                meg_data_roi, meg_colors_roi = mu.evaluate_fcurves(roi_obj, time_range)
+                meg_data.update(meg_data_roi)
+                meg_colors.update(meg_colors_roi)
     else:
         meg_data, meg_colors = mu.evaluate_fcurves(brain_obj, time_range)
-    return meg_data, meg_colors, meg_minmax
+    return meg_data, meg_colors
 
 
 def get_electrodes_data(per_condition=True):
@@ -268,6 +276,7 @@ class PlayPanel(bpy.types.Panel):
     play_reverse = False
     first_time = True
     init_play = True
+    imp_times = [[148, 221], [247, 273], [410, 555], [903, 927]]
 
     def draw(self, context):
         play_panel_draw(context, self.layout)
