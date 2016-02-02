@@ -1,4 +1,5 @@
 import os
+import os.path as op
 import time
 import matplotlib.pyplot as plt
 import glob
@@ -14,15 +15,15 @@ from src import utils
 # from make_ecr_events import make_ecr_events
 
 LINKS_DIR = utils.get_links_dir()
-SUBJECTS_MEG_DIR = os.path.join(LINKS_DIR, 'meg')
+SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
 # BEHAVIOR_FILE = utils.get_exisiting_file(
 #     ['/space/lilli/1/users/DARPA-MEG/ecr/behavior/hc004_ECR_MEG_2015_03_08_14_11_13.csv',
 #      '/home/noam/subjects/meg/ECR/hc004_ECR_MEG_2015_03_08_14_11_13.csv'])
-BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
-LOOKUP_TABLE_SUBCORTICAL = os.path.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
+BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
+LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 TASK_MSIT, TASK_ECR = range(2)
@@ -42,9 +43,9 @@ def init_globals(subject, mri_subject, fname_format='', files_includes_cond=Fals
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
-    SUBJECT_MEG_FOLDER = os.path.join(subjects_meg_dir, tasks[task], SUBJECT)
-    SUBJECT_MRI_FOLDER = os.path.join(subjects_mri_dir, MRI_SUBJECT)
-    BLENDER_SUBJECT_FOLDER = os.path.join(blender_root_folder, MRI_SUBJECT)
+    SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, tasks[task], SUBJECT)
+    SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
+    BLENDER_SUBJECT_FOLDER = op.join(blender_root_folder, MRI_SUBJECT)
     if files_includes_cond:
         _get_fif_name = partial(get_file_name, fname_format=fname_format, file_type='fif',
             raw_cleaning_method=raw_cleaning_method, constrast=constrast)
@@ -74,15 +75,15 @@ def init_globals(subject, mri_subject, fname_format='', files_includes_cond=Fals
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
     STC_HEMI_SMOOTH_SAVE = get_file_name('{method}-smoothed', '', fname_format)[:-1]
-    STC_MORPH = os.path.join(SUBJECTS_MEG_DIR, tasks[task], '{}', '{}-{}-inv.stc') # cond, method
-    LBL = os.path.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
-    ACT = os.path.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
+    STC_MORPH = op.join(SUBJECTS_MEG_DIR, tasks[task], '{}', '{}-{}-inv.stc') # cond, method
+    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
+    ACT = op.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
-    MRI = os.path.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(SUBJECT))
-    SRC = os.path.join(SUBJECT_MRI_FOLDER, 'bem', '{}-oct-6p-src.fif'.format(SUBJECT))
-    BEM = os.path.join(SUBJECT_MRI_FOLDER, 'bem', '{}-5120-5120-5120-bem-sol.fif'.format(SUBJECT))
-    COR = os.path.join(SUBJECT_MRI_FOLDER, 'mri', 'T1-neuromag', 'sets', 'COR.fif')
-    ASEG = os.path.join(SUBJECT_MRI_FOLDER, 'ascii')
+    MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(SUBJECT))
+    SRC = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-oct-6p-src.fif'.format(SUBJECT))
+    BEM = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-5120-5120-5120-bem-sol.fif'.format(SUBJECT))
+    COR = op.join(SUBJECT_MRI_FOLDER, 'mri', 'T1-neuromag', 'sets', 'COR.fif')
+    ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
 
 
 def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', raw_cleaning_method='', constrast='', root_dir=''):
@@ -99,7 +100,7 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
         fname = fname.replace('__', '_')
     if root_dir == '':
         root_dir = SUBJECT_MEG_FOLDER
-    return os.path.join(root_dir, fname)
+    return op.join(root_dir, fname)
 
 
 def load_raw():
@@ -187,7 +188,7 @@ def equalize_epoch_counts(events_id, method='mintime'):
     else:
         for cond_name, epochs in zip(events_id.keys(), epochs):
             epochs.save(EPO.format(cond=cond_name))
-            
+
 
 def find_epoches(raw, picks,  events, event_id, tmin, tmax, baseline=(None, 0)):
     # remove events that are not in the events table
@@ -198,7 +199,7 @@ def find_epoches(raw, picks,  events, event_id, tmin, tmax, baseline=(None, 0)):
 
 def check_src_ply_vertices_num(src):
     # check the vertices num with the ply files
-    ply_vertives_num = utils.get_ply_vertices_num(os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'))
+    ply_vertives_num = utils.get_ply_vertices_num(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'))
     if ply_vertives_num is not None:
         print(ply_vertives_num)
         src_vertices_num = [src_h['np'] for src_h in src]
@@ -244,7 +245,7 @@ def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usin
 
 def make_forward_solution_to_specific_subcortrical(events_id, region, n_jobs=4, usingEEG=True):
     import nibabel as nib
-    aseg_fname = os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
+    aseg_fname = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
     for cond in events_id.keys():
@@ -302,7 +303,7 @@ def add_subcortical_surfaces(src, seg_labels):
 
         # Get numeric index to label
         seg_name, seg_id = utils.get_numeric_index_to_label(label, lut)
-        srf_file = os.path.join(ASEG, 'aseg_%.3d.srf' % seg_id)
+        srf_file = op.join(ASEG, 'aseg_%.3d.srf' % seg_id)
         pts, _, _, _ = utils.read_srf_file(srf_file)
 
         # Convert to meters
@@ -341,7 +342,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
         src = None
 
     # Find the segmentation file
-    aseg_fname = os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
+    aseg_fname = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
     sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, spacing, use_grid, FREE_SURFER_HOME)
@@ -439,7 +440,7 @@ def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=
             evoked = None
     else:
         evo_cond = get_cond_fname(EVO, cond_name)
-        if os.path.isfile(evo_cond):
+        if op.isfile(evo_cond):
             evoked = mne.read_evokeds(evo_cond, baseline=baseline)[0]
         else:
             print('No evoked file, trying to use epo file')
@@ -547,16 +548,16 @@ def calc_sub_cortical_activity(events_id, sub_corticals_codes_file=None, inverse
                     read_vertices_from: read_vertices_from + vertices_to_read]
                 read_vertices_from += vertices_to_read
 
-        subs_fol = utils.make_dir(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals'))
+        subs_fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'subcorticals'))
         for sub_cortical_code, activity in sub_corticals_activity.iteritems():
             sub_cortical, _ = utils.get_numeric_index_to_label(sub_cortical_code, lut)
-            np.save(os.path.join(subs_fol, '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
-            np.save(os.path.join(subs_fol, '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
+            np.save(op.join(subs_fol, '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
+            np.save(op.join(subs_fol, '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
 
 
 def calc_cov(cov_fname, cond, epochs, from_t, to_t, method='empirical', overwrite=False):
     cov_cond_fname = get_cond_fname(cov_fname, cond)
-    if not os.path.isfile(cov_cond_fname) or overwrite:
+    if not op.isfile(cov_cond_fname) or overwrite:
         cov = mne.compute_covariance(epochs.crop(from_t, to_t, copy=True), method=method)
         cov.save(cov_cond_fname)
     else:
@@ -567,7 +568,7 @@ def calc_cov(cov_fname, cond, epochs, from_t, to_t, method='empirical', overwrit
 def calc_csd(csd_fname, cond, epochs, from_t, to_t, mode='multitaper', fmin=6, fmax=10, overwrite=False):
     from mne.time_frequency import compute_epochs_csd
     csd_cond_fname = get_cond_fname(csd_fname, cond)
-    if not os.path.isfile(csd_cond_fname) or overwrite:
+    if not op.isfile(csd_cond_fname) or overwrite:
         csd = compute_epochs_csd(epochs, mode, tmin=from_t, tmax=to_t, fmin=fmin, fmax=fmax)
         utils.save(csd, csd_cond_fname)
     else:
@@ -582,7 +583,7 @@ def calc_specific_subcortical_activity(region, inverse_methods, events_id, plot_
     if not x_opertor_exists(INV_X, region, events_id) or overwrite_inv:
         calc_inverse_operator(events_id, False, False, True, region=region)
     for inverse_method in inverse_methods:
-        files_exist = np.all([os.path.isfile(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals',
+        files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events_id.keys()])
         if not files_exist or overwrite_activity:
             calc_sub_cortical_activity(events_id, None, inverse_method=inverse_method,
@@ -593,9 +594,9 @@ def calc_specific_subcortical_activity(region, inverse_methods, events_id, plot_
 
 def x_opertor_exists(operator, region, events_id):
     if not '{cond}' in operator:
-        exists = os.path.isfile(os.path.join(SUBJECT_MEG_FOLDER, operator.format(region=region)))
+        exists = op.isfile(op.join(SUBJECT_MEG_FOLDER, operator.format(region=region)))
     else:
-        exists = np.all([os.path.isfile(os.path.join(SUBJECT_MEG_FOLDER,
+        exists = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER,
             get_cond_fname(operator, cond, region=region))) for cond in events_id.keys()])
     return exists
 
@@ -616,15 +617,15 @@ def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         ax1.set_title(fig_name)
         for event, ax in zip(events_id.keys(), [ax1, ax2]):
             data_file_name = '{}-{}-{}{}.npy'.format(event, sub_cortical, inverse_method, '-all-vertices' if all_vertices else '')
-            activity[event] = np.load(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals', data_file_name))
+            activity[event] = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', data_file_name))
             ax.plot(activity[event].T)
         ax3.plot(activity[events_id.keys()[0]].T - activity[events_id.keys()[1]].T)
         f.subplots_adjust(hspace=0.2)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
-        fol = os.path.join(SUBJECT_MEG_FOLDER, 'figures')
-        if not os.path.isdir(fol):
+        fol = op.join(SUBJECT_MEG_FOLDER, 'figures')
+        if not op.isdir(fol):
             os.mkdir(fol)
-        plt.savefig(os.path.join(fol, fig_name))
+        plt.savefig(op.join(fol, fig_name))
         plt.close()
 
 
@@ -643,7 +644,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
         sub_cortical_name = sub_cortical_name.astype(str)
         names_for_blender.append(sub_cortical_name)
         for cond_id, cond in enumerate(events_id.keys()):
-            x = np.load(os.path.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
+            x = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
                 '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method)))
             if first_time:
                 first_time = False
@@ -668,7 +669,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
             x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
             default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
-    np.savez(os.path.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
+    np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
         names=names_for_blender, conditions=list(events_id.keys()), data_minmax=data_minmax)
 
     if do_plot:
@@ -728,16 +729,16 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
 #
 #     cond1tlrc = mne.morph_data(SUBJECT, 'fsaverage', condition1, subjects_dir=SUBJECTS_DIR, n_jobs=4)
 #     cond2tlrc = mne.morph_data(SUBJECT, 'fsaverage', condition2, subjects_dir=SUBJECTS_DIR, n_jobs=4)
-#     cond1tlrc.save(os.path.join(SUBJECT_FOLDER, '{}_tlrc_{}'.format(method, CONDS[0])))
-#     cond2tlrc.save(os.path.join(SUBJECT_FOLDER, '{}_tlrc_{}'.format(method, CONDS[1])))
+#     cond1tlrc.save(op.join(SUBJECT_FOLDER, '{}_tlrc_{}'.format(method, CONDS[0])))
+#     cond2tlrc.save(op.join(SUBJECT_FOLDER, '{}_tlrc_{}'.format(method, CONDS[1])))
 
 
 def morph_stc(subject_to, cond='all', grade=None, n_jobs=6, inverse_method='dSPM'):
     stc = mne.read_source_estimate(STC.format(cond, inverse_method))
     vertices_to = mne.grade_to_vertices(subject_to, grade=grade)
     stc_to = mne.morph_data(SUBJECT, subject_to, stc, n_jobs=n_jobs, grade=vertices_to)
-    fol_to = os.path.join(SUBJECTS_MEG_DIR, TASK, subject_to)
-    if not os.path.isdir(fol_to):
+    fol_to = op.join(SUBJECTS_MEG_DIR, TASK, subject_to)
+    if not op.isdir(fol_to):
         os.mkdir(fol_to)
     stc_to.save(STC_MORPH.format(subject_to, cond, inverse_method))
 
@@ -766,7 +767,7 @@ def check_stc_with_ply(stc, cond_name):
     for hemi in ['rh', 'lh']:
         stc_vertices = stc.rh_vertno if hemi=='rh' else stc.lh_vertno
         print('{} {} stc vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
-        ply_vertices, _ = utils.read_ply_file(os.path.join(BLENDER_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
+        ply_vertices, _ = utils.read_ply_file(op.join(BLENDER_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
         print('{} {} ply vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
         if len(stc_vertices) != ply_vertices.shape[0]:
             raise Exception('check_stc_with_ply: Wrong number of vertices!')
@@ -781,10 +782,10 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
     stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     data_minmax = utils.get_max_abs(data_max, data_min)
-    utils.save(data_minmax, os.path.join(BLENDER_ROOT_FOLDER, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
+    utils.save(data_minmax, op.join(BLENDER_ROOT_FOLDER, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
     scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
     for hemi in ['rh', 'lh']:
-        verts, faces = utils.read_ply_file(os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+        verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
         data = stcs[hemi]
         if verts.shape[0]!=data.shape[0]:
             raise Exception('save_activity_map: wrong number of vertices!')
@@ -804,23 +805,54 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
                     x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
                     default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
             colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
-            np.save(os.path.join(fol, 't{}'.format(t)), colors)
+            np.save(op.join(fol, 't{}'.format(t)), colors)
 
 
-def calc_activity_significance():
+def calc_activity_significance(events_id, stcs_conds=None):
     from mne import spatial_tris_connectivity, grade_to_tris
     from mne.stats import (spatio_temporal_cluster_1samp_test)
+    from mne import bem
     from scipy import stats as stats
+
+    # surf = bem.read_bem_surfaces(BEM)
+    # tris = grade_to_tris(5)
+    # points, tris_sub = mne.read_surface
+
+    paired_constart_fname = op.join(SUBJECT_MEG_FOLDER, 'paired_contrast.npy')
+    n_subjects = 1
+    if not op.isfile(paired_constart_fname):
+        stc_template = STC_HEMI_SMOOTH
+        if stcs_conds is None:
+            stcs_conds = {}
+            for cond_ind, cond in enumerate(events_id.keys()):
+                # Reading only the rh, the lh will be read too
+                print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='lh')))
+                stcs_conds[cond] = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='lh'))
+
+        # Let's only deal with t > 0, cropping to reduce multiple comparisons
+        for cond in events_id.keys():
+            stcs_conds[cond].crop(0, None)
+        conds = sorted(list(events_id.keys()))
+        tmin = stcs_conds[conds[0]].tmin
+        tstep = stcs_conds[conds[0]].tstep
+        n_vertices_sample, n_times = stcs_conds[conds[0]].data.shape
+        X = np.zeros((n_vertices_sample, n_times, n_subjects, 2))
+        X[:, :, :, 0] += stcs_conds[conds[0]].data[:, :, np.newaxis]
+        X[:, :, :, 1] += stcs_conds[conds[1]].data[:, :, np.newaxis]
+        X = np.abs(X)  # only magnitude
+        X = X[:, :, :, 0] - X[:, :, :, 1]  # make paired contrast
+        #    Note that X needs to be a multi-dimensional array of shape
+        #    samples (subjects) x time x space, so we permute dimensions
+        X = np.transpose(X, [2, 1, 0])
+        np.save(paired_constart_fname, X)
+    else:
+        X = np.load(paired_constart_fname)
 
     #    To use an algorithm optimized for spatio-temporal clustering, we
     #    just pass the spatial connectivity matrix (instead of spatio-temporal)
     print('Computing connectivity.')
-    connectivity = spatial_tris_connectivity(grade_to_tris(5))
-
-    #    Note that X needs to be a multi-dimensional array of shape
-    #    samples (subjects) x time x space, so we permute dimensions
-    X = np.transpose(X, [2, 1, 0])
-
+    tris = get_subject_tris()
+    connectivity = None # spatial_tris_connectivity(tris)
     #    Now let's actually do the clustering. This can take a long time...
     #    Here we set the threshold quite high to reduce computation.
     p_threshold = 0.001
@@ -832,6 +864,16 @@ def calc_activity_significance():
     #    Now select the clusters that are sig. at p < 0.05 (note that this value
     #    is multiple-comparisons corrected).
     good_cluster_inds = np.where(cluster_p_values < 0.05)[0]
+    utils.save((clu, good_cluster_inds, tstep), op.join(SUBJECT_MEG_FOLDER, 'spatio_temporal_ttest.npy'))
+
+
+def get_subject_tris():
+    from mne import read_surface
+    _, tris_lh = read_surface(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', 'lh.white'))
+    _, tris_rh = read_surface(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', 'rh.white'))
+    # tris =  [tris_lh, tris_rh]
+    tris = np.vstack((tris_lh, tris_rh))
+    return tris
 
 
 def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
@@ -845,7 +887,7 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
     # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
 
     for hemi in ['rh', 'lh']:
-        verts, faces = utils.read_ply_file(os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+        verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
         data = stcs[hemi]
         if verts.shape[0]!=data.shape[0]:
             raise Exception('save_vertex_activity_map: wrong number of vertices!')
@@ -866,7 +908,7 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
 
         np.save('{}_verts_lookup'.format(ACT.format(hemi)), look_up)
         for file_num in xrange(number_of_files):
-            file_name = os.path.join(fol, str(file_num))
+            file_name = op.join(fol, str(file_num))
             x = np.array(data_hash[file_num])
             np.save(file_name, x)
 
@@ -900,10 +942,10 @@ def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_metho
 
 def rename_activity_files():
     fol = '/homes/5/npeled/space3/MEG/ECR/mg79/activity_map_rh'
-    files = glob.glob(os.path.join(fol, '*.npy'))
+    files = glob.glob(op.join(fol, '*.npy'))
     for file in files:
         name = '{}.npy'.format(file.split('/')[-1].split('-')[0])
-        os.rename(file, os.path.join(fol, name))
+        os.rename(file, op.join(fol, name))
 
 
 def calc_labels_avg(parc, hemi, surf_name, stc=None):
@@ -941,7 +983,7 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
 
 def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', norm_by_percentile=True, norm_percs=(1,99), do_plot=False):
-    labels_fol = os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', 'aparc250') if labels_fol=='' else labels_fol
+    labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', 'aparc250') if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
         for cond in events_id.keys():
@@ -951,7 +993,7 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
         labels = mne.read_labels_from_annot(MRI_SUBJECT, parc, hemi, surf_name)
     else:
         labels = []
-        for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):
+        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
             label = mne.read_label(label_file)
             labels.append(label)
 
@@ -997,8 +1039,8 @@ def plot_labels_data(plot_each_label=False):
         plt.figure()
         d = np.load(LBL.format(hemi))
         for cond_id, cond_name in enumerate(d['conditions']):
-            figures_fol = os.path.join(SUBJECT_MEG_FOLDER, 'figures', hemi, cond_name)
-            if not os.path.isdir(figures_fol):
+            figures_fol = op.join(SUBJECT_MEG_FOLDER, 'figures', hemi, cond_name)
+            if not op.isdir(figures_fol):
                 os.makedirs(figures_fol)
             for name, data in zip(d['names'], d['data'][:,:,cond_id]):
                 if plot_each_label:
@@ -1007,7 +1049,7 @@ def plot_labels_data(plot_each_label=False):
                 if plot_each_label:
                     plt.title('{}: {} {}'.format(cond_name, hemi, name))
                     plt.xlabel('time (ms)')
-                    plt.savefig(os.path.join(figures_fol, '{}.jpg'.format(name)))
+                    plt.savefig(op.join(figures_fol, '{}.jpg'.format(name)))
                     plt.close()
             # plt.legend()
             if not plot_each_label:
@@ -1072,7 +1114,7 @@ if __name__ == '__main__':
     T_MAX = 2
     T_MIN = -0.5
     # sub_corticals = [18, 54] # 18, 'Left-Amygdala', 54, 'Right-Amygdala
-    sub_corticals_codes_file = os.path.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
+    sub_corticals_codes_file = op.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     stcs = None
@@ -1115,9 +1157,9 @@ if __name__ == '__main__':
     stcs_conds = None
     stcs = None
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
+    # save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
     # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
-
+    calc_activity_significance(events_id, stcs_conds)
 
     # *) misc
     # check_labels()
