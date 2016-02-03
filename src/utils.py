@@ -19,6 +19,7 @@ import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
+
 try:
     import cPickle as pickle
 except:
@@ -26,6 +27,7 @@ except:
 import uuid
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
+STAT_AVG, STAT_DIFF = range(2)
 
 
 class Bag( dict ):
@@ -103,13 +105,13 @@ def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm
     colors = np.ones((len(x), 3)) * default_val
     x_min, x_max = check_min_max(x, x_min, x_max)
 
-    if sum(x >= threshold) > 0:
+    if np.sum(x >= threshold) > 0:
         if not flip_cm_big:
             big_colors = arr_to_colors(x[x>=threshold], threshold, x_max, cm_big, scalar_map_big)[:, :3]
         else:
             big_colors = arr_to_colors(-x[x>=threshold], -x_max, -threshold, cm_big, scalar_map_big)[:, :3]
         colors[x>=threshold, :] = big_colors
-    if sum(x <= -threshold) > 0:
+    if np.sum(x <= -threshold) > 0:
         if not flip_cm_small:
             small_colors = arr_to_colors(x[x<=-threshold], x_min, -threshold, cm_small, scalar_map_small)[:, :3]
         else:
@@ -118,15 +120,18 @@ def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm
     return colors
 
 
-def mat_to_colors_two_colors_maps(x, cm1='YlOrRd', cm2='PuBu', threshold=0, default_val=0):
+def mat_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm_small='PuBu', threshold=0, default_val=0,
+        scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False):
     colors = np.ones((x.shape[0],x.shape[1], 3)) * default_val
-    x_max, x_min = np.max(x), np.min(x)
-    scalar_map_pos = get_scalar_map(threshold, x_max, cm1)
-    scalar_map_neg = get_scalar_map(x_min, -threshold, cm2)
+    x_min, x_max = check_min_max(x, x_min, x_max)
+    # scalar_map_pos = get_scalar_map(threshold, x_max, cm_big)
+    # scalar_map_neg = get_scalar_map(x_min, -threshold, cm_small)
+    # todo: calculate the scaler map before the loop to speed up
+    scalar_map_pos, scalar_map_neg = None, None
     for ind in range(x.shape[0]):
-        colors[ind] = arr_to_colors_two_colors_maps(x[ind], x_min, x_max, cm1, cm2, threshold,
-            default_val, scalar_map_pos, scalar_map_neg)
-    return colors
+        colors[ind] = arr_to_colors_two_colors_maps(x[ind], x_min, x_max, cm_big, cm_small, threshold,
+            default_val, scalar_map_pos, scalar_map_neg, flip_cm_big, flip_cm_small)
+    return np.array(colors)
 
 
 def read_srf_file(srf_file):
@@ -146,8 +151,8 @@ def read_ply_file(ply_file):
         faces_num = int(lines[6].split(' ')[-1])
         verts_lines = lines[9:9 + verts_num]
         faces_lines = lines[9 + verts_num:]
-        verts = np.array([map(float, l.strip().split(' ')) for l in verts_lines])
-        faces = np.array([map(int, l.strip().split(' ')) for l in faces_lines])[:,1:]
+        verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
+        faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
     return verts, faces
 
 
@@ -209,18 +214,26 @@ def check_hemi(hemi):
     return hemi
 
 
-def get_data_max_min(data, norm_by_percentile, norm_percs):
-    if norm_by_percentile:
-        data_max = np.percentile(data, norm_percs[1])
-        data_min = np.percentile(data, norm_percs[0])
+def get_data_max_min(data, norm_by_percentile, norm_percs, data_per_hemi=False, hemis = ['rh', 'lh']):
+    if data_per_hemi:
+        if norm_by_percentile:
+            data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
+            data_min = min([np.percentile(data[hemi], norm_percs[0]) for hemi in hemis])
+        else:
+            data_max = max([np.max(data[hemi]) for hemi in hemis])
+            data_min = min([np.min(data[hemi]) for hemi in hemis])
     else:
-        data_max = np.max(data)
-        data_min = np.min(data)
+        if norm_by_percentile:
+            data_max = np.percentile(data, norm_percs[1])
+            data_min = np.percentile(data, norm_percs[0])
+        else:
+            data_max = np.max(data)
+            data_min = np.min(data)
     return data_max, data_min
 
 
 def get_max_abs(data_max, data_min):
-    return max(map(abs,[data_max, data_min]))
+    return max(map(abs, [data_max, data_min]))
 
 
 def normalize_data(data, norm_by_percentile, norm_percs):
@@ -228,6 +241,16 @@ def normalize_data(data, norm_by_percentile, norm_percs):
     max_abs = get_max_abs(data_max, data_min)
     norm_data = data / max_abs
     return norm_data
+
+
+def calc_stat_data(data, stat, axis=2):
+    if stat == STAT_AVG:
+        stat_data = np.squeeze(np.mean(data, axis=axis))
+    elif stat == STAT_DIFF:
+        stat_data = np.squeeze(np.diff(data, axis=axis))
+    else:
+        raise Exception('Wonrg stat value!')
+    return stat_data
 
 
 def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):
@@ -494,7 +517,7 @@ def read_sub_corticals_code_file(sub_corticals_codes_file, read_also_names=False
             names = map(str, names)
             sub_corticals = {code:name for code, name in zip(codes, names)}
         else:
-            sub_corticals = codes
+            sub_corticals = list(codes)
     else:
         sub_corticals = []
     return sub_corticals
@@ -517,16 +540,14 @@ def convert_stcs_to_h5(root, folds):
                         os.remove(stc_lh_file)
 
 
-def get_activity_max_min(stc, norm_by_percentile=False, norm_percs=None, threshold=None):
-    if type(stc) is types.DictType:
+def get_activity_max_min(stc, norm_by_percentile=False, norm_percs=None, threshold=None, hemis=['rh', 'lh']):
+    if isinstance(stc, dict):
         if norm_by_percentile:
-            data_max = max(np.percentile(stc['rh'], norm_percs[1]),
-                           np.percentile(stc['lh'], norm_percs[1]))
-            data_min = min(np.percentile(stc['rh'], norm_percs[0]),
-                           np.percentile(stc['lh'], norm_percs[0]))
+            data_max = max([np.percentile(stc[hemi], norm_percs[1]) for hemi in hemis])
+            data_min = min([np.percentile(stc[hemi], norm_percs[0]) for hemi in hemis])
         else:
-            data_max = max(np.max(stc['rh']), np.max(stc['lh']))
-            data_min = max(np.min(stc['rh']), np.min(stc['lh']))
+            data_max = max([np.max(stc[hemi]) for hemi in hemis])
+            data_min = min([np.min(stc[hemi]) for hemi in hemis])
     else:
         if norm_by_percentile:
             data_max = np.percentile(stc.data, norm_percs[1])
@@ -968,7 +989,7 @@ def time_to_go(now, run, runs_num, runs_num_to_print=10):
     if run % runs_num_to_print == 0 and run != 0:
         time_took = time.time() - now
         more_time = time_took / run * (runs_num - run)
-        print('{}/{} ({:.2f}s, {:.2f}s to go!)'.format(run, runs_num, time_took, more_time))
+        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
 
 
 def lower_rec_indices(m):
@@ -991,3 +1012,13 @@ def find_list_items_in_list(l_new, l_org):
     for item in l_new:
         indices.append(l_org.index(item) if item in l_org else -1)
     return indices
+
+
+def moving_avg(x, window):
+    # import pandas as pd
+    # return pd.rolling_mean(x, window)#[:, window-1:]
+    weights = np.repeat(1.0, window)/window
+    sma = np.zeros((x.shape[0], x.shape[1] - window + 1))
+    for ind in range(x.shape[0]):
+        sma[ind] = np.convolve(x[ind], weights, 'valid')
+    return sma

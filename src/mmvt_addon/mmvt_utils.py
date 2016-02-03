@@ -5,6 +5,7 @@ import numpy as np
 import os.path as op
 import uuid
 from collections import OrderedDict
+import time
 
 try:
     import cPickle as pickle
@@ -198,6 +199,13 @@ def evaluate_fcurves(parent_obj, time_range):
     return data, colors
 
 
+def get_fcurve_current_frame_val(parent_obj_name, obj_name, cur_frame):
+    for fcurve in bpy.data.objects[parent_obj_name].animation_data.action.fcurves:
+        name = fcurve_name(fcurve)
+        if name == obj_name:
+            return fcurve.evaluate(cur_frame)
+
+
 def fcurve_name(fcurve):
     return fcurve.data_path.split('"')[1]
 
@@ -206,6 +214,55 @@ def show_only_selected_fcurves(context):
     space = context.space_data
     dopesheet = space.dopesheet
     dopesheet.show_only_selected = True
+
+
+def get_fcurve_values(parent_name, fcurve_name):
+    xs, ys = [], []
+    parent_obj = bpy.data.objects[parent_name]
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if fcurve_name(fcurve) == fcurve_name:
+            for kp in fcurve.keyframe_points:
+                xs.append(kp.co[0])
+                ys.append(kp.co[1])
+    return xs, ys
+
+
+def time_to_go(now, run, runs_num, runs_num_to_print=10):
+    if run % runs_num_to_print == 0 and run != 0:
+        time_took = time.time() - now
+        more_time = time_took / run * (runs_num - run)
+        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+
+
+def show_hide_obj_and_fcurves(objs, val):
+    for obj in objs:
+        obj.select = val
+        if obj.animation_data:
+            for fcurve in obj.animation_data.action.fcurves:
+                if val:
+                    fcurve.hide = not val
+                    fcurve.hide = not val
+                fcurve.select = val
+        else:
+            print('No animation in {}'.format(obj.name))
+
+
+def message(self, message):
+    # todo: Find how to send messaages without the self
+    if self:
+        self.report({'ERROR'}, message)
+    else:
+        print(message)
+
+
+def show_only_group_objects(context, objects, group_name):
+    space = context.space_data
+    dopesheet = space.dopesheet
+    selected_group = bpy.data.groups.get(group_name, bpy.data.groups.new(group_name))
+    for obj in objects:
+        selected_group.objects.link(obj)
+    dopesheet.filter_group = selected_group
+    dopesheet.show_only_group_objects = True
 
 
 # def get_scalar_map(x_min, x_max, color_map='jet'):
