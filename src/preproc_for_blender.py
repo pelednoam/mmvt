@@ -322,9 +322,11 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwr
 
 
 def parcelate_cortex(subject, aparc_name='aparc250'):
-    matlab_command = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'splitting_cortical.m')
+    matlab_dir = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts')
+    matlab_command = os.path.join(matlab_dir, 'splitting_cortical.m')
     matlab_command = "'{}'".format(matlab_command)
-    scipy.io.savemat(os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'params.mat'), mdict={'subject': subject, 'aparc':aparc_name})
+    scipy.io.savemat(os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'params.mat'),
+        mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR, 'scripts_dir': matlab_dir})
     cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
     utils.run_script(cmd)
 
