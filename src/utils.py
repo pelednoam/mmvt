@@ -139,8 +139,8 @@ def read_srf_file(srf_file):
         lines = f.readlines()
         verts_num, faces_num = map(int, lines[1].strip().split(' '))
         sep = '  ' if len(lines[2].split('  ')) > 1 else ' '
-        verts = np.array([map(float, l.strip().split(sep)) for l in lines[2:verts_num+2]])[:,:-1]
-        faces = np.array([map(int, l.strip().split(' ')) for l in lines[verts_num+2:]])[:,:-1]
+        verts = np.array([list(map(float, l.strip().split(sep))) for l in lines[2:verts_num+2]])[:,:-1]
+        faces = np.array([list(map(int, l.strip().split(' '))) for l in lines[verts_num+2:]])[:,:-1]
     return verts, faces, verts_num, faces_num
 
 
@@ -162,8 +162,9 @@ def write_ply_file(verts, faces, ply_file_name):
     faces = np.hstack((np.ones((faces_num, 1)) * 3, faces))
     with open(ply_file_name, 'w') as f:
         f.write(PLY_HEADER.format(verts_num, faces_num))
-        np.savetxt(f, verts, '%.5f', ' ')
-        np.savetxt(f, faces, '%d', ' ')
+    with open(ply_file_name, 'ab') as f:
+        np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
+        np.savetxt(f, faces, fmt='%d', delimiter=' ')
 
 
 def read_obj_file(obj_file):
@@ -330,8 +331,8 @@ def run_script(cmd):
     print('running: {}'.format(cmd))
     output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd),
                                      shell=True)
-    if (output != ''):
-        print(output)
+    print(output)
+    return output
 
 
 # def partial_run_script(vars, more_vars=None):
@@ -342,7 +343,7 @@ def partial_run_script(vars, more_vars=None, print_only=False):
 
 
 def _run_script_wrapper(cmd, vars, print_only=False, **kwargs):
-    for k,v in kwargs.iteritems():
+    for k,v in kwargs.items():
         vars[k] = v
     print(cmd.format(**vars))
     if not print_only:
@@ -436,7 +437,7 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
         os.makedirs(sub_labels_fol)
     labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
     if len(labels_files) == 0:
-        raise Exception('morph_labels_from_fsaverage: No labels files found!')
+        raise Exception('morph_labels_from_fsaverage: No labels files found in {}!'.format(labels_fol))
     for label_file in labels_files:
         local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
         if not os.path.isfile(local_label_name) or overwrite:
@@ -460,7 +461,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
         raise Exception('labels_to_annot: No labels files!')
     for label_file in labels_files:
         label = mne.read_label(label_file)
-        print(label.name)
+        # print(label.name)
         labels.append(label)
 
     labels.sort(key=lambda l: l.name)
@@ -659,7 +660,7 @@ def fsaverage_vertices():
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=False):
     local_subject_dir = os.path.join(local_subjects_dir, subject)
-    for fol, files in neccesary_files.iteritems():
+    for fol, files in neccesary_files.items():
         if not os.path.isdir(os.path.join(local_subject_dir, fol)):
             os.makedirs(os.path.join(local_subject_dir, fol))
         for file_name in files:
@@ -671,7 +672,7 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
                 if print_traceback:
                     print(traceback.format_exc())
     all_files_exists = True
-    for fol, files in neccesary_files.iteritems():
+    for fol, files in neccesary_files.items():
         for file_name in files:
             if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
                 print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
@@ -692,7 +693,7 @@ def to_ras(points, round_coo=False):
 
 
 def check_for_necessary_files(neccesary_files, root_fol):
-    for fol, files in neccesary_files.iteritems():
+    for fol, files in neccesary_files.items():
         for file in files:
             full_path = os.path.join(root_fol, fol, file)
             if not os.path.isfile(full_path):
@@ -1022,3 +1023,11 @@ def moving_avg(x, window):
     for ind in range(x.shape[0]):
         sma[ind] = np.convolve(x[ind], weights, 'valid')
     return sma
+
+
+def is_exe(fpath):
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+
+def set_exe_permissions(fpath):
+    os.chmod(fpath, 0o744)

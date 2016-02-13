@@ -1,6 +1,6 @@
-import subprocess
 import glob
 import os
+import os.path as op
 import shutil
 import numpy as np
 from setuptools.command.egg_info import overwrite_arg
@@ -14,49 +14,65 @@ import matplotlib.pyplot as plt
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = os.path.join(LINKS_DIR, 'mmvt')
+BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 CACH_SUBJECT_DIR = '/space/huygens/1/users/mia/subjects/{subject}_SurferOutput/'
 SCAN_SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
 TASK_MSIT, TASK_ECR = range(2)
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
-ASEG_TO_SRF = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'aseg2srf -s "{}"') # -o {}'
+BRAINDER_SCRIPTS_DIR = op.join(BLENDER_ROOT_DIR, 'brainder_scripts')
+ASEG_TO_SRF = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf -s "{}"') # -o {}'
 
 aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 
-def subcortical_segmentation(subject):
-    # Should source freesurfer
+
+def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
+    # !!! Can't run in an IDE! must run in the terminal after sourcing freesurfer !!!
     # Remember that you need to have write permissions on SUBJECTS_DIR!!!
     # You can create a local folder for the current subject. The files you need are:
-    # mri/aseg.mgz, mri/norm.mgz
-    subject_dir = os.path.join(SUBJECTS_DIR, subject)
-    aseg_to_srf_output_fol = os.path.join(SUBJECTS_DIR, subject, 'ascii')
-    function_output_fol = os.path.join(subject_dir, 'subcortical_objs')
-    renamed_output_fol = os.path.join(subject_dir, 'subcortical')
-    utils.rmtree(function_output_fol)
-    utils.rmtree(aseg_to_srf_output_fol)
-    utils.rmtree(renamed_output_fol)
-    print('Trying to write into {}'.format(aseg_to_srf_output_fol))
-    utils.run_script(ASEG_TO_SRF.format(subject, subject_dir))
-    os.rename(aseg_to_srf_output_fol, function_output_fol)
-    rename_sub_cortical(function_output_fol, renamed_output_fol,
-        os.path.join(SUBJECTS_DIR, 'sub_cortical_codes.txt'))
+    # mri/aseg.mgz, mri/norm.mgz'
+    subject_dir = op.join(SUBJECTS_DIR, subject)
+    script_fname = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf')
+    if not op.isfile(script_fname):
+        raise Exception('The subcortical segmentation script is missing! {}'.format(script_fname))
+    if not utils.is_exe(script_fname):
+        utils.set_exe_permissions(script_fname)
+
+    aseg_to_srf_output_fol = op.join(SUBJECTS_DIR, subject, 'ascii')
+    function_output_fol = op.join(subject_dir, 'subcortical_objs')
+    renamed_output_fol = op.join(subject_dir, 'subcortical')
+    lookup = load_subcortical_lookup_table()
+    obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
+    if len(obj_files) < len(lookup) or overwrite_subcortical_objs:
+        utils.delete_folder_files(function_output_fol)
+        utils.delete_folder_files(aseg_to_srf_output_fol)
+        utils.delete_folder_files(renamed_output_fol)
+        print('Trying to write into {}'.format(aseg_to_srf_output_fol))
+        utils.run_script(ASEG_TO_SRF.format(subject, subject_dir))
+        os.rename(aseg_to_srf_output_fol, function_output_fol)
+    ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
+    if len(ply_files) < len(lookup) or overwrite_subcortical_objs:
+        convert_and_rename_subcortical_files(function_output_fol, renamed_output_fol, lookup)
 
 
-def rename_sub_cortical(fol, new_fol, codes_file):
-    # names = utils.read_sub_cortical_lookup_table(codes_file)
+def load_subcortical_lookup_table():
+    codes_file = op.join(SUBJECTS_DIR, 'sub_cortical_codes.txt')
     lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
     lookup = {int(val):name for name, val in zip(lookup[:, 0], lookup[:, 1])}
-    obj_files = glob.glob(os.path.join(fol, '*.srf'))
+    return lookup
+
+
+def convert_and_rename_subcortical_files(fol, new_fol, lookup):
+    obj_files = glob.glob(op.join(fol, '*.srf'))
     utils.delete_folder_files(new_fol)
     for obj_file in obj_files:
-        num = int(os.path.basename(obj_file)[:-4].split('_')[-1])
+        num = int(op.basename(obj_file)[:-4].split('_')[-1])
         new_name = lookup.get(num, '')
         if new_name != '':
-            utils.srf2ply(obj_file, os.path.join(new_fol, '{}.ply'.format(new_name)))
-    blender_fol = os.path.join(BLENDER_SUBJECT_DIR, 'subcortical')
-    if os.path.isdir(blender_fol):
+            utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
+    blender_fol = op.join(BLENDER_SUBJECT_DIR, 'subcortical')
+    if op.isdir(blender_fol):
         shutil.rmtree(blender_fol)
     shutil.copytree(new_fol, blender_fol)
 
@@ -66,28 +82,38 @@ def rename_cortical(fol, new_fol, codes_file):
     with open(codes_file, 'r') as f:
         for code, line in enumerate(f.readlines()):
             names[code+1] = line.strip()
-    ply_files = glob.glob(os.path.join(fol, '*.ply'))
+    ply_files = glob.glob(op.join(fol, '*.ply'))
     utils.delete_folder_files(new_fol)
     for ply_file in ply_files:
-        base_name = os.path.basename(ply_file)
+        base_name = op.basename(ply_file)
         num = int(base_name.split('.')[-2])
         hemi = base_name.split('.')[0]
         name = names.get(num, num)
         new_name = '{}-{}'.format(name, hemi)
-        shutil.copy(ply_file, os.path.join(new_fol, '{}.ply'.format(new_name)))
+        shutil.copy(ply_file, op.join(new_fol, '{}.ply'.format(new_name)))
 
 
-def freesurfer_surface_to_blender_surface(subject, hemi='both'):
+def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
     # Files needed:
     # surf/rh.pial, surf/lh.pial
     for hemi in utils.get_hemis(hemi):
-        surf_name = os.path.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))
+        surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))
         surf_wavefront_name = '{}.asc'.format(surf_name)
-        utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
         surf_new_name = '{}.srf'.format(surf_name)
-        print(surf_wavefront_name, surf_new_name)
-        os.rename(surf_wavefront_name, surf_new_name)
-    # runScript(SRF_TO_OBJ.format(surf_name, surf_name))
+        hemi_ply_fname = '{}.ply'.format(surf_name)
+        if overwrite or not op.isfile(hemi_ply_fname):
+            utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
+            print(surf_wavefront_name, surf_new_name)
+            os.rename(surf_wavefront_name, surf_new_name)
+            convert_hemis_srf_to_ply(hemi)
+
+
+def convert_hemis_srf_to_ply(subject, hemi='both'):
+    subject_dir = op.join(SUBJECTS_DIR, subject)
+    for hemi in utils.get_hemis(hemi):
+        ply_file = utils.srf2ply(op.join(subject_dir,'surf', '{}.pial.srf'.format(hemi)),
+                                 op.join(subject_dir,'surf', '{}.pial.ply'.format(hemi)))
+        shutil.copyfile(ply_file, op.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'.format(hemi)))
 
 
 def montage_to_npy(montage_file, output_file):
@@ -165,20 +191,24 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
 
 
 def read_electrodes_positions(subject, subject_dir, bipolar=False, copy_to_blender=True):
-    electrodes_folder = os.path.join(subject_dir, 'electrodes')
-    csv_file = os.path.join(electrodes_folder, '{}_RAS.csv'.format(subject))
+    electrodes_folder = op.join(subject_dir, 'electrodes')
+    csv_file = op.join(electrodes_folder, '{}_RAS.csv'.format(subject))
+    if not op.isfile(csv_file):
+        print('No electrodes coordinates file! {}'.format(csv_file))
+        return None
+
     output_file_name = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
-    output_file = os.path.join(subject_dir, 'electrodes', output_file_name)
+    output_file = op.join(subject_dir, 'electrodes', output_file_name)
     electrodes_csv_to_npy(csv_file, output_file, bipolar)
     if copy_to_blender:
-        blender_file = os.path.join(BLENDER_SUBJECT_DIR, output_file_name)
+        blender_file = op.join(BLENDER_SUBJECT_DIR, output_file_name)
         shutil.copyfile(output_file, blender_file)
     return output_file
 
 
 def create_electrode_data_file(task, from_t, to_t, stat, conditions, subject_dir, bipolar, moving_average_win_size=0):
-    input_file = os.path.join(subject_dir, 'electrodes', 'electrodes_data.mat')
-    output_file = os.path.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data_{}.npz'.format(
+    input_file = op.join(subject_dir, 'electrodes', 'electrodes_data.mat')
+    output_file = op.join(BLENDER_SUBJECT_DIR, 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if task==TASK_ECR:
         read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
@@ -260,9 +290,21 @@ def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
     print(montage_names-names)
 
 
-def calc_faces_verts_dic():
-    for hemi in hemis:
-        ply_file = os.path.join(subject_dir,'surf', '{}.pial.ply'.format(hemi))
+def calc_faces_verts_dic(overwrite=False):
+    ply_files = [op.join(subject_dir,'surf', '{}.pial.ply'.format(hemi)) for hemi in ['rh','lh']]
+    out_files = [op.join(BLENDER_SUBJECT_DIR, 'faces_verts_{}.npy'.format(hemi)) for hemi in ['rh','lh']]
+    subcortical_plys = glob.glob(op.join(BLENDER_SUBJECT_DIR, 'subcortical', '*.ply'))
+    if len(subcortical_plys) > 0:
+        faces_verts_dic_fnames = [op.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts.npy'.format(
+                utils.namebase(ply))) for ply in subcortical_plys]
+        ply_files.extend(subcortical_plys)
+        out_files.extend(faces_verts_dic_fnames)
+
+    for ply_file, out_file in zip(ply_files, out_files):
+        if not overwrite and op.isfile(out_file):
+            print('{} already exist.'.format(out_file))
+            continue
+        # ply_file = op.join(subject_dir,'surf', '{}.pial.ply'.format(hemi))
         print('preparing a lookup table for {}'.format(ply_file))
         verts, faces = utils.read_ply_file(ply_file)
         _faces = faces.ravel()
@@ -277,7 +319,6 @@ def calc_faces_verts_dic():
         for ind, (k,v) in enumerate(zip(faces_sort, faces_arg_sort)):
             d_mat[k, n] = v
             n = 0 if ind<len(diff) and diff[ind] > 0 else n+1
-        out_file = os.path.join(BLENDER_SUBJECT_DIR, 'faces_verts_{}'.format(hemi))
         print('writing {}'.format(out_file))
         np.save(out_file, d_mat.astype(np.int))
 
@@ -296,39 +337,48 @@ def check_ply_files(ply_subject, ply_blender):
     print('check_ply_files: ok')
 
 
-def convert_perecelated_cortex(subject_dir, aparc_name, hemi='both'):
+def convert_perecelated_cortex(subject, aparc_name, hemi='both'):
+    subject_dir = op.join(SUBJECTS_DIR, subject)
     for hemi in utils.get_hemis(hemi):
-        utils.convert_srf_files_to_ply(os.path.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
-        utils.rmtree(os.path.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)))
-        rename_cortical(os.path.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
-                        os.path.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
-                        os.path.join(subject_dir,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name)))
-        blender_fol = os.path.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi))
+        utils.convert_srf_files_to_ply(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
+        utils.rmtree(op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)))
+        rename_cortical(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
+                        op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
+                        op.join(subject_dir,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name)))
+        blender_fol = op.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi))
         utils.rmtree(blender_fol)
-        shutil.copytree(os.path.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
-                        os.path.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi)))
+        shutil.copytree(op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
+                        op.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi)))
 
 
-def convert_cortex(subject_dir, hemi='both'):
-    for hemi in utils.get_hemis(hemi):
-        ply_file = utils.srf2ply(os.path.join(subject_dir,'surf', '{}.pial.srf'.format(hemi)), os.path.join(subject_dir,'surf', '{}.pial.ply'.format(hemi)))
-        shutil.copyfile(ply_file, os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'.format(hemi)))
-
-
-def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwrite_annotation=True,
+def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwrite_annotation=False,
         overwrite_morphing=False, n_jobs=6):
-    # utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs, overwrite=overwrite_morphing)
-    utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+    utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs, overwrite=overwrite_morphing)
+    if not overwrite_annotation:
+        subject_dir = op.join(SUBJECTS_DIR, subject)
+        annotations_exist = np.all([op.isfile(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi,
+            aparc_name))) for hemi in ['rh', 'lh']])
+    # Note that using the current mne version this code won't work, because of collissions between hemis
+    # You need to change the mne.write_labels_to_annot code for that.
+    if overwrite_annotation or not annotations_exist:
+        utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
 
 
-def parcelate_cortex(subject, aparc_name='aparc250'):
-    matlab_dir = os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts')
-    matlab_command = os.path.join(matlab_dir, 'splitting_cortical.m')
-    matlab_command = "'{}'".format(matlab_command)
-    scipy.io.savemat(os.path.join(BLENDER_ROOT_DIR, 'brainder_matlab_scripts', 'params.mat'),
-        mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR, 'scripts_dir': matlab_dir})
-    cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-    utils.run_script(cmd)
+def parcelate_cortex(subject, aparc_name='aparc250', overwrite=False):
+    labels_files = np.array([len(glob.glob(op.join(SUBJECTS_DIR, subject,'{}.pial.names.{}'.format(
+        aparc_name, hemi), '*.ply'))) for hemi in ['rh', 'lh']])
+    if overwrite or np.any(labels_files == 0):
+        matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
+        matlab_command = "'{}'".format(matlab_command)
+        scipy.io.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
+            mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
+                   'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME})
+        cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
+        utils.run_script(cmd)
+        # convert the  obj files to ply
+        convert_perecelated_cortex(subject, aparc_name)
+    else:
+        print('There are already labels ply files, rh:{}, lh:{}'.format(labels_files[0], labels_files[1]))
 
 
 def create_electrodes_volume_file(electrodes_file, create_points_files=True, create_volume_file=False, way_points=False):
@@ -348,7 +398,7 @@ def create_electrodes_volume_file(electrodes_file, create_points_files=True, cre
             freeview_command = freeview_command + group + postfix + ' '
             group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if name[:3]==group])
             file_name = '{}.{}'.format(group, postfix)
-            with open(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', file_name), 'w') as fp:
+            with open(op.join(BLENDER_SUBJECT_DIR, 'freeview', file_name), 'w') as fp:
                 writer = csv.writer(fp, delimiter=' ')
                 if way_points:
                     writer.writerow(['#!ascii label  , from subject  vox2ras=Scanner'])
@@ -362,7 +412,7 @@ def create_electrodes_volume_file(electrodes_file, create_points_files=True, cre
                     writer.writerow(['useRealRAS', '1'])
 
     if create_volume_file:
-        sig = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'T1.mgz'))
+        sig = nib.load(op.join(BLENDER_SUBJECT_DIR, 'freeview', 'T1.mgz'))
         sig_data = sig.get_data()
         sig_header = sig.get_header()
         electrodes_positions = np.load(electrodes_file)['pos']
@@ -373,7 +423,7 @@ def create_electrodes_volume_file(electrodes_file, create_points_files=True, cre
             for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
                 data[z,y,z] = 1
         img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-        nib.save(img, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
+        nib.save(img, op.join(BLENDER_SUBJECT_DIR, 'freeview', 'electrodes.nii.gz'))
 
 
 def create_freeview_cmd(electrodes_file, atlas, create_points_files=True, create_volume_file=False, way_points=False):
@@ -400,7 +450,7 @@ def create_lut_file_for_atlas(subject, atlas):
             lut_new.append([1000, 'ctx-lh-unknown', 25, 5,  25, 0])
         else:
             lut_new.append([2000, 'ctx-rh-unknown', 25,  5, 25,  0])
-        _, ctab, names = _read_annot(os.path.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        _, ctab, names = _read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
         for index, (label, cval) in enumerate(zip(names, ctab)):
             r,g,b,a, _ = cval
             lut_new.append([index + offset + 1, label, r, g, b, a])
@@ -408,34 +458,34 @@ def create_lut_file_for_atlas(subject, atlas):
     # Add the values above 3000
     for l in [l for l in lut if l[0] >= 3000]:
         lut_new.append(l)
-    new_lut_fname = os.path.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
+    new_lut_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
     with open(new_lut_fname, 'w') as fp:
         csv_writer = csv.writer(fp, delimiter='\t')
         csv_writer.writerows(lut_new)
     # np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
-    utils.make_dir(os.path.join(BLENDER_SUBJECT_DIR, 'freeview'))
-    shutil.copyfile(new_lut_fname, os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}ColorLUT.txt'.format(atlas)))
+    utils.make_dir(op.join(BLENDER_SUBJECT_DIR, 'freeview'))
+    shutil.copyfile(new_lut_fname, op.join(BLENDER_SUBJECT_DIR, 'freeview', '{}ColorLUT.txt'.format(atlas)))
 
 
 def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, check_mgz_values=False):
     import time
     neccesary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
-    utils.check_for_necessary_files(neccesary_files, os.path.join(SUBJECTS_DIR, subject))
+    utils.check_for_necessary_files(neccesary_files, op.join(SUBJECTS_DIR, subject))
     rs = utils.partial_run_script(locals(), print_only=print_only)
     aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
-    mri_file_fol = os.path.join(SUBJECTS_DIR, subject, 'mri')
-    mri_file = os.path.join(mri_file_fol, aparc_aseg_file)
-    blender_file = os.path.join(BLENDER_SUBJECT_DIR, 'freeview', aparc_aseg_file)
-    if not os.path.isfile(blender_file) or overwrite:
-        current_dir = os.path.dirname(os.path.realpath(__file__))
+    mri_file_fol = op.join(SUBJECTS_DIR, subject, 'mri')
+    mri_file = op.join(mri_file_fol, aparc_aseg_file)
+    blender_file = op.join(BLENDER_SUBJECT_DIR, 'freeview', aparc_aseg_file)
+    if not op.isfile(blender_file) or overwrite:
+        current_dir = op.dirname(op.realpath(__file__))
         os.chdir(mri_file_fol)
         now = time.time()
         rs(aparc2aseg)
-        if os.path.isfile(mri_file) and os.path.getmtime(mri_file) > now:
+        if op.isfile(mri_file) and op.getmtime(mri_file) > now:
             shutil.copyfile(mri_file, blender_file)
             if check_mgz_values:
                 import nibabel as nib
-                vol = nib.load(os.path.join(BLENDER_SUBJECT_DIR, 'freeview', '{}+aseg.mgz'.format(atlas)))
+                vol = nib.load(op.join(BLENDER_SUBJECT_DIR, 'freeview', '{}+aseg.mgz'.format(atlas)))
                 vol_data = vol.get_data()
                 vol_data = vol_data[np.where(vol_data)]
                 data = vol_data.ravel()
@@ -447,8 +497,9 @@ def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, ch
         os.chdir(current_dir)
 
 
-def main(bipolar, stat):
-    remote_subject_dir = os.path.join(SCAN_SUBJECTS_DIR, subject)
+def main(bipolar, stat, neccesary_files, overwrite_annotation=False, overwrite_morphing_labels=False,
+         overwrite_hemis_srf=False, overwrite_labels_ply_files=False):
+    remote_subject_dir = op.join(SCAN_SUBJECTS_DIR, subject)
     # Files needed in the local subject folder
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
     # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
@@ -461,48 +512,53 @@ def main(bipolar, stat):
     subcortical_segmentation(subject)
 
     # *) Create annotation file from fsaverage
-    create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=True,
-        overwrite_morphing=False, n_jobs=1)
+    create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=overwrite_annotation,
+        overwrite_morphing=overwrite_morphing_labels, n_jobs=1)
     # *) convert rh.pial and lh.pial to rh.pial.srf and lh.pial.srf
-    freesurfer_surface_to_blender_surface(subject)
-    # *) convert the srf files to ply
-    convert_cortex(subject_dir)
+    freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
 
     # *) Calls Matlab 'splitting_cortical.m' script
-    parcelate_cortex(subject, aparc_name)
-
-    # *) After running splitting_cortical_surface in Matlab, convert the  obj files to ply
-    convert_perecelated_cortex(subject_dir, aparc_name)
+    parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files)
 
     # *) Create a dictionary for verts and faces for both hemis
     calc_faces_verts_dic()
-    for subcortical_ply in glob.glob(os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '*.ply')):
-        faces_verts_dic_fname = os.path.join(BLENDER_SUBJECT_DIR, 'subcortical', '{}_faces_verts'.format(
-            utils.namebase(subcortical_ply)))
-        calc_faces_verts_dic(subcortical_ply, faces_verts_dic_fname)
 
+    # todo: Move these line to a different file
     # *) Read the electrodes data
-    electrodes_file = read_electrodes_positions(subject, subject_dir, bipolar=bipolar)
-    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar)
-    create_electrodes_volume_file(electrodes_file)
-    create_freeview_cmd(electrodes_file, aparc_name)
-    create_aparc_aseg_file(subject, aparc_name, overwrite=True)
-    create_lut_file_for_atlas(subject, aparc_name)
+    # electrodes_file = read_electrodes_positions(subject, subject_dir, bipolar=bipolar)
+    # if electrodes_file:
+    #     create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar)
+    #     create_electrodes_volume_file(electrodes_file)
+    # create_freeview_cmd(electrodes_file, aparc_name)
+    # create_aparc_aseg_file(subject, aparc_name, overwrite=True)
+    # create_lut_file_for_atlas(subject, aparc_name)
 
-    check_ply_files(os.path.join(subject_dir,'surf', '{}.pial.ply'),
-                    os.path.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
+    check_ply_files(op.join(subject_dir,'surf', '{}.pial.ply'),
+                    op.join(BLENDER_SUBJECT_DIR, '{}.pial.ply'))
 
     # misc
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
 if __name__ == '__main__':
+    # ******************************************************************
+    # Be sure that you have matlab installed on your machine,
+    # and you can run it from the terminal by just calling 'matlab'
+    # Some of the functions are using freesurfer, so if you want to
+    # run main, you need to run it from the terminal (not from an IDE),
+    # after sourcing freesurfer.
+    # If you want to import the subcortical structures, you need to
+    # download the folder 'brainder_scripts' from the git,
+    # and put it under the main mmvt folder.
+    # ******************************************************************
+
     # subject = 'colin27'
-    subject = 'mg78'
+    subject = 'hc008'
+    print('subject: {}'.format(subject))
     hemis = ['rh', 'lh']
-    subject_dir = os.path.join(SUBJECTS_DIR, subject)
-    BLENDER_SUBJECT_DIR = os.path.join(BLENDER_ROOT_DIR, subject)
-    if not os.path.isdir(BLENDER_SUBJECT_DIR):
+    subject_dir = op.join(SUBJECTS_DIR, subject)
+    BLENDER_SUBJECT_DIR = op.join(BLENDER_ROOT_DIR, subject)
+    if not op.isdir(BLENDER_SUBJECT_DIR):
         os.makedirs(BLENDER_SUBJECT_DIR)
     aparc_name = 'laus250' # 'aprc250'
     task = TASK_MSIT
@@ -515,14 +571,14 @@ if __name__ == '__main__':
     from_t, to_t = -500, 2000
     from_t_ind, to_t_ind = 500, 3000
     remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
-    remote_subject_dir = os.path.join('/cluster/neuromind/tools/freesurfer', subject)
-    neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz'], 'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg']}
+    remote_subject_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
+    neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+
     bipolar = False
     stat = STAT_DIFF
-    # main(bipolar, stat)
-
-    create_electrode_data_file(task, from_t_ind, to_t_ind, stat, conditions, subject_dir, bipolar, moving_average_win_size=100)
-
+    # main(bipolar, stat, neccesary_files)
+    parcelate_cortex(subject, aparc_name, overwrite=True)
     print('finish!')
 
 
