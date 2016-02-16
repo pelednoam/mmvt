@@ -265,89 +265,26 @@ def show_only_group_objects(context, objects, group_name):
     dopesheet.show_only_group_objects = True
 
 
-# def get_scalar_map(x_min, x_max, color_map='jet'):
-#     import matplotlib.colors
-#     import matplotlib.cm
-#     root = bpy.path.abspath('//')
-#     cm = load(op.join(root, 'mmvt_code', 'color_map_{}.pkl'.format(color_map)))
-#     cNorm = matplotlib.colors.Normalize(vmin=x_min, vmax=x_max)
-#     return matplotlib.cm .ScalarMappable(norm=cNorm, cmap=cm)
-#
-#
-# def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
-#     if scalar_map is None:
-#         x_min, x_max = check_min_max(x, x_min, x_max)
-#         scalar_map = get_scalar_map(x_min, x_max, colors_map)
-#     return scalar_map.to_rgba(x)
-#
-#
-# def check_min_max(x, x_min, x_max):
-#     if x_min is None:
-#         x_min = np.min(x)
-#     if x_max is None:
-#         x_max = np.max(x)
-#     return x_min, x_max
-#
+def create_spline(points, bevel_depth=0.045, resolution_u=5):
+    # points = [ [1,1,1], [-1,1,1], [-1,-1,1], [1,-1,-1] ]
+    curvedata = bpy.data.curves.new(name="Curve", type='CURVE')
+    curvedata.dimensions = '3D'
+    curvedata.fill_mode = 'FULL'
+    curvedata.bevel_depth = bevel_depth
+    ob = bpy.data.objects.new("CurveObj", curvedata)
+    bpy.context.scene.objects.link(ob)
 
-
-
-# EXTERNAL_PYTHON_PATH = '/homes/5/npeled/space3/anaconda3/lib/python3.5/'
-# EXTERNAL_PYTHON_PACKAGES_PATH = '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages'
-
-
-# def insert_into_path(rel_paths, root):
-#     import sys
-#     import os
-#     for rel_path in rel_paths:
-#         wpath = os.path.join(root, rel_path)
-#         try:
-#             sys.path.remove(wpath)
-#         except:
-#             pass
-#         if wpath not in sys.path:
-#             sys.path.insert(1, wpath)
-#             print('insert into path: {}'.format(wpath))
-
-
-# def insert_external_path():
-#     import sys
-#     for p in sys.path:
-#         if 'python3.4' in p:
-#             sys.path.remove(p)
-#
-#     insert_into_path(['', ], EXTERNAL_PYTHON_PACKAGES_PATH)
-#     insert_into_path(['', ], EXTERNAL_PYTHON_PATH)
-#     insert_into_path(['setuptools-18.5-py3.5.egg', 'numpy', 'numpy/core'], EXTERNAL_PYTHON_PACKAGES_PATH)
-#     import imp
-#     print('imp: ', imp.__file__)
-#
-#
-# def lib_check():
-#     # for p in sys.path:
-#     #     if 'python3.4' in p: # /site-packages/numpy
-#     #         sys.path.remove(p)
-#     # sys.path = ['/homes/5/npeled/space3/anaconda3/lib/python3.5', '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages',
-#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/setuptools-18.5-py3.5.egg',
-#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core',
-#     #             '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so'] + sys.path
-#     # sys.path.insert(1, '/homes/5/npeled/space3/anaconda3/lib/python3.5',)
-#     # insert_into_path(['', 'setuptools-18.5-py3.5.egg', 'numpy', 'numpy/core', 'numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so'])
-#     import matplotlib
-#     # imp.reload(matplotlib)
-#     print(matplotlib.__version__, matplotlib.__file__)
-#     # import numpy
-#     # print(numpy.__version__, numpy.__file__)
-#     import numpy.core
-#     # imp.reload(numpy.core)
-#     print(numpy.core.__version__, numpy.core.__file__)
-#     # import numpy.core.multiarray
-#     # imp.reload(numpy.core.multiarray)
-#     # imp.load_dynamic(numpy.core.multiarray, '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so')
-#     print(numpy.core.multiarray.__version__, numpy.core.multiarray.__file__)
-#     import matplotlib.pyplot
-#     # import mmvt_utils
-#     # imp.reload(mmvt_utils)
-#     # mmvt_utils.arr_to_colors(range(10), colors_map='jet')
-#     import imp
-#     imp.load_dynamic('numpy.core.multiarray', '/homes/5/npeled/space3/anaconda3/lib/python3.5/site-packages/numpy/core/multiarray.cpython-35m-x86_64-linux-gnu.so')
-#     imp.load_dynamic('_csv', '/homes/5/npeled/space3/anaconda3/lib/python3.5/lib-dynload/_csv.cpython-35m-x86_64-linux-gnu.so')
+    spline = curvedata.splines.new('BEZIER')
+    spline.bezier_points.add(len(points)-1)
+    print(len(spline.bezier_points))
+    for num in range(len(spline.bezier_points)):
+        spline.bezier_points[num].co = points[num]
+        spline.bezier_points[num].handle_right_type = 'AUTO'
+        spline.bezier_points[num].handle_left_type = 'AUTO'
+    spline.resolution_u = resolution_u
+    #spline.order_u = 6
+    #spline.use_bezier_u = True
+    #spline.radius_interpolation = 'BSPLINE'
+    #print(spline.type)
+    #spline.use_smooth = True
+    return spline

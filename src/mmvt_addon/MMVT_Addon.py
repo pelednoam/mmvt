@@ -110,6 +110,7 @@ def import_subcorticals(base_path):
     PATH_TYPE_SUB_MEG, PATH_TYPE_SUB_FMRI = range(2)
     for path_type, base_path in enumerate(base_paths):
         for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
+            name = mmvt_utils.namebase(ply_fname)
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
             bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
@@ -163,13 +164,6 @@ class ImportBrain(bpy.types.Operator):
             context.scene.objects.active = bpy.data.objects[' ']
         bpy.data.objects[last_obj].select = False
         set_appearance_show_rois_layer(bpy.context.scene, True)
-        # todo: move this code somewhere else
-        if bpy.data.objects.get("Deep_electrodes") is None:
-            layers_array = [False]*20
-            layers_array[ImportBrain.brain_layer] = True
-            bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0),
-                                     layers=layers_array)
-            bpy.data.objects['Empty'].name = 'Deep_electrodes'
         bpy.types.Scene.brain_imported = True
         print('cleaning up')
         for obj in bpy.data.objects['Subcortical_structures'].children:
@@ -269,7 +263,6 @@ def import_electrodes(base_path):
     # todo: add a bipolar label gui
     bipolar = False
     input_file = os.path.join(base_path, 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
-
 
     print('Adding deep electrodes')
     f = np.load(input_file)

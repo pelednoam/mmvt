@@ -341,14 +341,14 @@ def convert_perecelated_cortex(subject, aparc_name, hemi='both'):
     subject_dir = op.join(SUBJECTS_DIR, subject)
     for hemi in utils.get_hemis(hemi):
         utils.convert_srf_files_to_ply(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
-        utils.rmtree(op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)))
+        utils.rmtree(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)))
         rename_cortical(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
-                        op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
+                        op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
                         op.join(subject_dir,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name)))
-        blender_fol = op.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi))
+        blender_fol = op.join(BLENDER_SUBJECT_DIR,'{}.pial.{}'.format(aparc_name, hemi))
         utils.rmtree(blender_fol)
-        shutil.copytree(op.join(subject_dir,'{}.pial.names.{}'.format(aparc_name, hemi)),
-                        op.join(BLENDER_SUBJECT_DIR,'{}.pial.names.{}'.format(aparc_name, hemi)))
+        shutil.copytree(op.join(subject_dir,'{}.pial.{}'.format(aparc_name, hemi)),
+                        op.join(BLENDER_SUBJECT_DIR,'{}.pial.{}'.format(aparc_name, hemi)))
 
 
 def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwrite_annotation=False,
@@ -365,7 +365,7 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwr
 
 
 def parcelate_cortex(subject, aparc_name='aparc250', overwrite=False):
-    labels_files = np.array([len(glob.glob(op.join(SUBJECTS_DIR, subject,'{}.pial.names.{}'.format(
+    labels_files = np.array([len(glob.glob(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in ['rh', 'lh']])
     if overwrite or np.any(labels_files == 0):
         matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
@@ -578,7 +578,6 @@ if __name__ == '__main__':
     bipolar = False
     stat = STAT_DIFF
     # main(bipolar, stat, neccesary_files)
-    parcelate_cortex(subject, aparc_name, overwrite=True)
     print('finish!')
 
 
