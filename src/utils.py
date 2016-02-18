@@ -19,6 +19,7 @@ import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
+import scipy.io as sio
 
 try:
     import cPickle as pickle
@@ -1031,3 +1032,5 @@ def is_exe(fpath):
 
 def set_exe_permissions(fpath):
     os.chmod(fpath, 0o744)
+
+
