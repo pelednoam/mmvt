@@ -9,6 +9,7 @@ def matlab_cell_arrays_to_dict(mat_fname):
     for key in keys:
         data_type = d[key][0][0].dtype
         #todo: check more types than only numbers and strings
+        # check if the data type is numeric ('u' for unsigned numeric)
         if data_type.kind in np.typecodes['AllInteger'] + 'u':
             res_dict[key] = matlab_cell_array_to_list(d[key])
         else:
