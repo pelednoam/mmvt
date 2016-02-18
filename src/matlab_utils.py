@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.io as sio
+from pprint import pprint
 
 
 def matlab_cell_arrays_to_dict(mat_fname):
@@ -30,3 +31,9 @@ def matlab_cell_str_to_list(cell_arr):
     for ind in range(len(cell_arr[0])):
         ret_list.append(cell_arr[0][ind][0].astype(str))
     return ret_list
+
+
+if __name__ == '__main__':
+    mat_fanme = 'my_mat.mat'
+    vars_dic = matlab_cell_arrays_to_dict(mat_fanme)
+    pprint(vars_dic)
