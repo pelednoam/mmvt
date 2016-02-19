@@ -1,34 +1,37 @@
-import numpy as np
-import os
-import mne
-import traceback
-from collections import defaultdict
-import glob
-from itertools import product, groupby
+import copy
 import csv
-import time
 import gc
+import glob
 import itertools
+import logging
+import os
+import random
+import time
+import traceback
+import warnings
+from collections import defaultdict
+from datetime import datetime
 from functools import partial
+from itertools import product, groupby
+
 import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import leastsq, minimize
+import mne
+import numpy as np
+import pandas
 from mne.beamformer import lcmv
 from mne.time_frequency import compute_epochs_csd
-from sklearn.datasets.base import Bunch
-from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV, ElasticNetCV, ElasticNet
+from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import leastsq, minimize
 from sklearn import mixture
-import pandas
-import copy
-import logging
-from datetime import datetime
-import random
+from sklearn.datasets.base import Bunch
+from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV, ElasticNetCV
+
 from src import dtw
-from src import utils
-from src.meg_preproc import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
 from src import meg_preproc
-from src import tf_dics as tf
-import warnings
+from src import utils
+from src.beamformers import tf_dics as tf
+from src.meg_preproc import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
+
 warnings.filterwarnings("ignore")
 
 try:
@@ -540,7 +543,6 @@ def calc_meg_data_dic(event_id, evoked, epochs, data_cov, noise_cov, all_meg_dat
 
 
 def calc_optimization_features(optimization_method, freqs_bins, cond, meg_data_dic, elec_data, electrodes, from_t, to_t, optimization_params={}):
-    from sklearn.metrics import make_scorer
     # scorer = make_scorer(rol_corr, False)
     cv_parameters = []
     if optimization_method in ['Ridge', 'RidgeCV', 'Lasso', 'LassoCV', 'ElasticNet', 'ElasticNetCV']:
@@ -2530,8 +2532,8 @@ if __name__ == '__main__':
     EVENTS_TRANS_INV = {v:k for k, v in EVENTS_TRANS.items()}
     meg_preproc.init_globals(MEG_SUBJECT, MRI_SUBJECT, fname_format, True, raw_cleaning_method, constrast,
                              SUBJECTS_MEG_DIR, TASKS, task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
-    from src.meg_preproc import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV,\
-        NOISE_COV_EMTPTY_ROOM, DATA_CSD, NOISE_CSD, NOISE_CSD_EMPTY_ROOM
+    from src.meg_preproc import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV, \
+        DATA_CSD, NOISE_CSD, NOISE_CSD_EMPTY_ROOM
     now = time.time()
     main()
     print('Finish! {}'.format(time.time() - now))

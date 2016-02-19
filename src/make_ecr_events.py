@@ -50,10 +50,10 @@ def parser(argv):
     try: 
         opts, args = getopt.getopt(argv, 'hi:o:d:p:', ['in=','out=','data=','pattern='])
     except getopt.GetoptError:
-        print h
+        print(h)
     for opt, arg in opts:
         if opt == '-h':
-            print h
+            print(h)
             sys.exit()
         elif opt in ('-i', '--in'):
             raw_file = arg

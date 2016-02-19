@@ -1638,25 +1638,22 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
     t = bpy.context.scene.frame_current
     for hemi in hemispheres:
         cur_obj = bpy.data.objects[hemi]
-        # 'labels_indices', 'labels_names'
-        d = mmvt_utils.load(os.path.join(user_fol, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
-        names = ['{}-{}'.format(label.astype(str), hemi) for label in d['labels_names']]
-        # data, colors, names
+        labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
         labels_data = np.load(os.path.join(user_fol, 'labels_data_no_conds_{}.npz'.format(hemi)))
-        # for ind, (label_name, labenamesl_vertices) in enumerate(zip(names, d['labels_indices'])):
-        vertices_num = sum([len(verts) for verts in d['labels_indices']])
-        all_vertices, all_data = np.empty((0, 1)), np.empty((0, 4))
+        vertices_num = max(map(max, labels_vertices[hemi])) + 1 # max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0])
+        colors_data = np.ones((vertices_num, 4))
+        colors_data[:, 0] = 0
         for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
-            label_index = names.index(label_name)
-            label_vertices = np.array(d['labels_indices'][label_index])
+            if 'unknown' in label_name:
+                continue
+            label_index = labels_names[hemi].index(label_name)
+            label_vertices = np.array(labels_vertices[hemi][label_index])
             if len(label_vertices) > 0:
-                print('coloring {} with {}'.format(label_name, label_colors[t]))
-                colors_data = np.hstack((label_data[t], label_colors[t]))
-                colors_data = np.tile(colors_data, (len(label_vertices), 1))
-                all_data = np.vstack((all_data, colors_data))
-                all_vertices = np.vstack((all_vertices, label_vertices.reshape((len(label_vertices), 1))))
-        all_vertices = all_vertices.ravel()
-        activity_map_obj_coloring(cur_obj, all_data, faces_verts[hemi], threshold, True, all_vertices)
+                # print('coloring {} with {}'.format(label_name, label_colors[t]))
+                label_colors_data = np.hstack((label_data[t], label_colors[t]))
+                label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
+                colors_data[label_vertices, :] = label_colors_data
+        activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
 
 
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
@@ -1705,13 +1702,11 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True):
                 activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
 
 
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, verts=None):
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
     valid_verts = np.where(np.abs(vert_values[:,0])>threshold)[0]
-    if not verts is None:
-        valid_verts = verts[valid_verts]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
@@ -1722,10 +1717,10 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     #     vcol_layer = mesh.vertex_colors.active
         # loop_indices = set()
     print('max vert in lookup: {}, vcol_layer len: {}'.format(np.max(lookup), len(vcol_layer.data)))
-    for ind, vert in enumerate(valid_verts):
+    for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x>-1]:
-            vcol_layer.data[loop_ind].color = vert_values[ind, 1:]
+            vcol_layer.data[loop_ind].color = vert_values[vert, 1:]
             # loop_indices.add(loop_ind)
     # return loop_indices
 
