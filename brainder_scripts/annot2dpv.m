@@ -68,14 +68,22 @@ names = ctab.struct_names;
 
 % For each structure, replace its coded colour by its index
 no_indices = zeros(1, ctab.numEntries);
+labels_indices = cell(1, ctab.numEntries);
+labels_names = cell(1, ctab.numEntries);
 for s = 1:ctab.numEntries,
     indices = lab == ctab.table(s,5);
     if (sum(indices)==0 && ~strcmp(ctab.struct_names(s), 'unknown'))
         fprintf('%s has no vertices!\n', ctab.struct_names{s});
         no_indices(s) = 1;
+        labels_indices{s} = [];
+    else
+        labels_indices{s} = find(indices);
+        labels_names{s} = names{s};
     end
+    labels_names{s} = names{s};
     lab(lab == ctab.table(s,5)) = s;
 end
+save(sprintf('%s_labels.m',annotfile), 'labels_indices', 'labels_names');
 % Remove the areas without vertices from the names list
 names(no_indices==1) = [];
 c=cellstr(names);
