@@ -1723,8 +1723,6 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         x = lookup[vert]
         for loop_ind in x[x>-1]:
             vcol_layer.data[loop_ind].color = vert_values[ind, 1:]
-            # loop_indices.add(loop_ind)
-    # return loop_indices
 
 
 def default_coloring(loop_indices):

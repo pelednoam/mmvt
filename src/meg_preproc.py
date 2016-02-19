@@ -1162,8 +1162,8 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
 
 
 if __name__ == '__main__':
-    # subject_id, martinos_subject_id = 'mg78', 'ep001'
-    subject_id, martinos_subject_id = 'hc008', 'hc008'
+    subject_id, martinos_subject_id = 'mg78', 'ep001'
+    # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
     TASK = TASK_MSIT
     if TASK==TASK_MSIT:

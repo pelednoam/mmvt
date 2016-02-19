@@ -562,8 +562,8 @@ if __name__ == '__main__':
     # and put it under the main mmvt folder.
     # ******************************************************************
 
-    # subject = 'colin27'
-    subject = 'hc008'
+    subject = 'mg78'
+    # subject = 'hc008'
     print('subject: {}'.format(subject))
     hemis = HEMIS
     subject_dir = op.join(SUBJECTS_DIR, subject)
@@ -588,6 +588,8 @@ if __name__ == '__main__':
     bipolar = False
     stat = STAT_DIFF
     # main(bipolar, stat, neccesary_files)
+    # parcelate_cortex(subject, aparc_name, False)
+    save_matlab_labels_indices(subject, aparc_name)
     print('finish!')
 
 
