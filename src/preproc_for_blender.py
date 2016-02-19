@@ -6,8 +6,9 @@ import numpy as np
 from setuptools.command.egg_info import overwrite_arg
 
 from src import utils
+from src import matlab_utils
 import mne
-import scipy.io
+import scipy.io as sio
 from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 
@@ -21,6 +22,7 @@ TASK_MSIT, TASK_ECR = range(2)
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 BRAINDER_SCRIPTS_DIR = op.join(BLENDER_ROOT_DIR, 'brainder_scripts')
 ASEG_TO_SRF = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf -s "{}"') # -o {}'
+HEMIS = ['rh', 'lh']
 
 aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 STAT_AVG, STAT_DIFF = range(2)
@@ -172,7 +174,7 @@ def read_electrodes(electrodes_file):
 def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_name, from_t=0, to_t=None,
                          norm_by_percentile=True, norm_percs=(1,99)):
     for cond_id, (field, file_name) in enumerate(elecs_data_dic.iteritems()):
-        d = scipy.io.loadmat(file_name)
+        d = sio.loadmat(file_name)
         if cond_id == 0:
             data = np.zeros((d[field].shape[0], to_t - from_t, 2))
         times = np.arange(0, to_t*2, 2)
@@ -230,7 +232,7 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
         color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
         moving_average_win_size=0):
     # load the matlab file
-    d = scipy.io.loadmat(mat_file)
+    d = sio.loadmat(mat_file)
     # get the labels names
     labels = d[electrodeses_names_fiels]
     #todo: change that!!!
@@ -324,7 +326,7 @@ def calc_faces_verts_dic(overwrite=False):
 
 
 def check_ply_files(ply_subject, ply_blender):
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         print('reading {}'.format(ply_subject.format(hemi)))
         verts1, faces1 = utils.read_ply_file(ply_subject.format(hemi))
         print('reading {}'.format(ply_blender.format(hemi)))
@@ -357,7 +359,7 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwr
     if not overwrite_annotation:
         subject_dir = op.join(SUBJECTS_DIR, subject)
         annotations_exist = np.all([op.isfile(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi,
-            aparc_name))) for hemi in ['rh', 'lh']])
+            aparc_name))) for hemi in HEMIS])
     # Note that using the current mne version this code won't work, because of collissions between hemis
     # You need to change the mne.write_labels_to_annot code for that.
     if overwrite_annotation or not annotations_exist:
@@ -366,19 +368,27 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', overwr
 
 def parcelate_cortex(subject, aparc_name='aparc250', overwrite=False):
     labels_files = np.array([len(glob.glob(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(
-        aparc_name, hemi), '*.ply'))) for hemi in ['rh', 'lh']])
+        aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
     if overwrite or np.any(labels_files == 0):
         matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
         matlab_command = "'{}'".format(matlab_command)
-        scipy.io.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
+        sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
             mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
                    'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME})
         cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
         utils.run_script(cmd)
         # convert the  obj files to ply
         convert_perecelated_cortex(subject, aparc_name)
+        save_matlab_labels_indices(subject, aparc_name)
     else:
         print('There are already labels ply files, rh:{}, lh:{}'.format(labels_files[0], labels_files[1]))
+
+
+def save_matlab_labels_indices(subject, aparc_name):
+    for hemi in HEMIS:
+        matlab_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_labels.m'.format(hemi, aparc_name))
+        labels_dic = matlab_utils.matlab_cell_arrays_to_dict(matlab_fname)
+        utils.save(labels_dic, op.join(BLENDER_ROOT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
 
 
 def create_electrodes_volume_file(electrodes_file, create_points_files=True, create_volume_file=False, way_points=False):
@@ -555,7 +565,7 @@ if __name__ == '__main__':
     # subject = 'colin27'
     subject = 'hc008'
     print('subject: {}'.format(subject))
-    hemis = ['rh', 'lh']
+    hemis = HEMIS
     subject_dir = op.join(SUBJECTS_DIR, subject)
     BLENDER_SUBJECT_DIR = op.join(BLENDER_ROOT_DIR, subject)
     if not op.isdir(BLENDER_SUBJECT_DIR):

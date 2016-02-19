@@ -22,13 +22,14 @@ print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
 # BEHAVIOR_FILE = utils.get_exisiting_file(
 #     ['/space/lilli/1/users/DARPA-MEG/ecr/behavior/hc004_ECR_MEG_2015_03_08_14_11_13.csv',
 #      '/home/noam/subjects/meg/ECR/hc004_ECR_MEG_2015_03_08_14_11_13.csv'])
-BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
-LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
+BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 TASK_MSIT, TASK_ECR = range(2)
 TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
 STAT_AVG, STAT_DIFF = range(2)
+HEMIS = ['rh', 'lh']
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
 MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
@@ -36,7 +37,7 @@ MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, S
                 '', '', '', '', '', ''
 
 def init_globals(subject, mri_subject, fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
-        subjects_meg_dir='', tasks='', task='', subjects_mri_dir='', blender_root_folder=''):
+        subjects_meg_dir='', tasks='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR=''):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
         MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
@@ -45,7 +46,7 @@ def init_globals(subject, mri_subject, fname_format='', files_includes_cond=Fals
     os.environ['SUBJECT'] = SUBJECT
     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, tasks[task], SUBJECT)
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
-    BLENDER_SUBJECT_FOLDER = op.join(blender_root_folder, MRI_SUBJECT)
+    BLENDER_SUBJECT_FOLDER = op.join(BLENDER_ROOT_DIR, MRI_SUBJECT)
     if files_includes_cond:
         _get_fif_name = partial(get_file_name, fname_format=fname_format, file_type='fif',
             raw_cleaning_method=raw_cleaning_method, constrast=constrast)
@@ -764,7 +765,7 @@ def smooth_stc(events_id, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
 
 
 def check_stc_with_ply(stc, cond_name):
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         stc_vertices = stc.rh_vertno if hemi=='rh' else stc.lh_vertno
         print('{} {} stc vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
         ply_vertices, _ = utils.read_ply_file(op.join(BLENDER_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
@@ -782,9 +783,9 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
     stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     data_minmax = utils.get_max_abs(data_max, data_min)
-    utils.save(data_minmax, op.join(BLENDER_ROOT_FOLDER, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
+    utils.save(data_minmax, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
     scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
         data = stcs[hemi]
         if verts.shape[0]!=data.shape[0]:
@@ -813,11 +814,6 @@ def calc_activity_significance(events_id, stcs_conds=None):
     from mne.stats import (spatio_temporal_cluster_1samp_test)
     from mne import bem
     from scipy import stats as stats
-
-    # surf = bem.read_bem_surfaces(BEM)
-    # tris = grade_to_tris(5)
-    # points, tris_sub = mne.read_surface
-
 
     paired_constart_fname = op.join(SUBJECT_MEG_FOLDER, 'paired_contrast.npy')
     n_subjects = 1
@@ -889,7 +885,7 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
     stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
     # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
 
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
         data = stcs[hemi]
         if verts.shape[0]!=data.shape[0]:
@@ -926,12 +922,12 @@ def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_metho
             stc = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='lh'))
         else:
             stc = stcs_conds[cond]
-        for hemi in ['rh', 'lh']:
+        for hemi in HEMIS:
             data = stc.rh_data if hemi == 'rh' else stc.lh_data
             if hemi not in stcs:
                 stcs[hemi] = np.zeros((data.shape[0], data.shape[1], 2))
             stcs[hemi][:, :, cond_ind] = data
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         if stat == STAT_AVG:
             # Average over the conditions
             stcs[hemi] = stcs[hemi].mean(2)
@@ -1038,7 +1034,7 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
 
 def plot_labels_data(plot_each_label=False):
     plt.close('all')
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         plt.figure()
         d = np.load(LBL.format(hemi))
         for cond_id, cond_name in enumerate(d['conditions']):
@@ -1064,7 +1060,7 @@ def plot_labels_data(plot_each_label=False):
 def check_both_hemi_in_stc(events_id):
     for ind, cond in enumerate(events_id.keys()):
         stcs = {}
-        for hemi in ['rh', 'lh']:
+        for hemi in HEMIS:
             stcs[hemi] = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi))
         print(np.all(stcs['rh'].rh_data == stcs['lh'].rh_data))
         print(np.all(stcs['rh'].lh_data == stcs['lh'].lh_data))
@@ -1072,7 +1068,7 @@ def check_both_hemi_in_stc(events_id):
 
 def check_labels():
     data, names = [], []
-    for hemi in ['rh', 'lh']:
+    for hemi in HEMIS:
         f = np.load('/homes/5/npeled/space3/visualization_blender/fsaverage/pp003_Fear/labels_data_{}.npz'.format(hemi))
         data.append(f['data'])
         names.extend(f['names'])
@@ -1089,7 +1085,86 @@ def check_labels():
     return objects_to_filtter_in,names
 
 
+def test_labels_coloring(aparc_name):
+    T = 2500
+    for hemi in HEMIS:
+        d = utils.load(op.join(BLENDER_SUBJECT_FOLDER, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+        names = ['{}-{}'.format(label, hemi) for label in d['labels_names']]
+        # data = np.random.rand(len(d['labels_names']), T) * 2 - 1
+        data = np.zeros((len(d['labels_names']), T))
+        for ind in range(len(d['labels_names'])):
+            data[ind, :] = (np.sin(np.arange(2500)/100 - np.random.rand(1)*100) + np.random.randn(2500)/100) * np.random.rand(1)
+        colors = utils.mat_to_colors(data)
+        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'labels_data_no_conds_{}.npz'.format(hemi)),
+                 data=data, colors=colors, names=names)
+        # plt.plot(range(T), data.T)
+        # plt.show()
+
+
+def misc():
+    # check_labels()
+    # Morph and move to mg79
+    # morph_stc('mg79', 'all')
+    # initGlobals('mg79')
+    # readLabelsData()
+    # plot3DActivity()
+    # plot3DActivity()
+    # morphTOTlrc()
+    # stc = read_source_estimate(STC)
+    # plot3DActivity(stc)
+    # permuationTest()
+    # check_both_hemi_in_stc(events_id)
+    # lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    pass
+
+
+def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs):
+    stcs = None
+    # 1) Load the raw data
+    # raw = loadRaw()
+    # print(raw.info['sfreq'])
+    # filter(raw)
+    # createEventsFiles(behavior_file=BEHAVIOR_FILE, pattern='1.....')
+    # event_digit=0
+    evoked, epochs = None, None
+    stat = STAT_DIFF
+    evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
+                        tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
+
+    make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_only_subcorticals=True)
+    calc_inverse_operator(events_id, calc_for_corticla_fwd=False, calc_for_sub_cortical_fwd=True)
+    for inverse_method in inverse_methods:
+        calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
+        plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
+    save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
+        colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
+    # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
+
+
+    # *) equalize_epoch_counts
+    # equalize_epoch_counts(events_id, method='mintime')
+    # *) Calc stc for all the conditions
+    calc_stc(inverse_method)
+    # *) Calc stc per condition
+    stcs = calc_stc_per_condition(events_id, inverse_method)
+    morph_labels_from_fsaverage(aparc_name=aparc_name)
+    labels_to_annot(parc_name=aparc_name, overwrite=True)
+    # *) Calc labelse average per condition
+    for hemi in HEMIS:
+        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=False,
+            labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
+    # plot_labels_data(plot_each_label=True)
+    # *) Save the activity map
+    stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
+    save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
+    save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
+    calc_activity_significance(events_id, stcs_conds)
+
+
 if __name__ == '__main__':
+    # subject_id, martinos_subject_id = 'mg78', 'ep001'
+    subject_id, martinos_subject_id = 'hc008', 'hc008'
+
     TASK = TASK_MSIT
     if TASK==TASK_MSIT:
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
@@ -1106,8 +1181,8 @@ if __name__ == '__main__':
     files_includes_cond=True
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
-    init_globals('ep001', 'mg78', fname_format, files_includes_cond, raw_cleaning_method, constrast,
-                 SUBJECTS_MEG_DIR, TASKS, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_FOLDER)
+    init_globals(martinos_subject_id, subject_id, fname_format, files_includes_cond, raw_cleaning_method, constrast,
+                 SUBJECTS_MEG_DIR, TASKS, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
     inverse_methods = ['dSPM', 'MNE', 'sLORETA']
@@ -1116,68 +1191,9 @@ if __name__ == '__main__':
 
     T_MAX = 2
     T_MIN = -0.5
-    # sub_corticals = [18, 54] # 18, 'Left-Amygdala', 54, 'Right-Amygdala
-    sub_corticals_codes_file = op.join(BLENDER_ROOT_FOLDER, 'sub_cortical_codes.txt')
+    sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
-    stcs = None
-    # 1) Load the raw data
-    # raw = loadRaw()
-    # print(raw.info['sfreq'])
-    # filter(raw)
-    # createEventsFiles(behavior_file=BEHAVIOR_FILE, pattern='1.....')
-    event_digit=0
-    evoked, epochs = None, None
-    stat = STAT_DIFF
-    # evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
-    #                     tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
-    #
-    # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_only_subcorticals=True)
-    # calc_inverse_operator(events_id, calc_for_corticla_fwd=False, calc_for_sub_cortical_fwd=True)
-    # for inverse_method in inverse_methods:
-    #     calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
-    #     plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
-    # save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
-    #     colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
-    # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
-
-
-    # *) equalize_epoch_counts
-    # equalize_epoch_counts(events_id, method='mintime')
-    # *) Calc stc for all the conditions
-    # calc_stc(inverse_method)
-    # *) Calc stc per condition
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
-    # morph_labels_from_fsaverage(aparc_name=aparc_name)
-    # labels_to_annot(parc_name=aparc_name, overwrite=True)
-    # *) Calc labels average
-    # # calc_labels_avg(aparc_name, 'rh', 'pial')
-    # *) Calc labelse average per condition
-    # for hemi in ['rh', 'lh']:
-    #     calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
-    # plot_labels_data(plot_each_label=True)
-    # *) Save the activity map
-    stcs_conds = None
-    stcs = None
-    # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    # save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
-    # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
-    calc_activity_significance(events_id, stcs_conds)
-
-    # *) misc
-    # check_labels()
-    # Morph and move to mg79
-    # morph_stc('mg79', 'all')
-    # initGlobals('mg79')
-    # readLabelsData()
-    # plot3DActivity()
-    # plot3DActivity()
-    # morphTOTlrc()
-    # stc = read_source_estimate(STC)
-    # plot3DActivity(stc)
-    # permuationTest()
-    # check_both_hemi_in_stc(events_id)
-    # lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
-    # for l in lut:
-    #     print l
+    # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
+    test_labels_coloring(aparc_name)
     print('finish!')
