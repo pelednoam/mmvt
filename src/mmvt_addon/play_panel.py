@@ -300,7 +300,7 @@ def play_panel_draw(context, layout):
     row.operator(Pause.bl_idname, text="", icon='PAUSE')
     row.operator(Play.bl_idname, text="", icon='PLAY')
     row.operator(NextKeyFrame.bl_idname, text="", icon='NEXT_KEYFRAME')
-    layout.prop(context.scene, 'render_movie', text="Render the movie")
+    layout.prop(context.scene, 'render_movie', text="Render to a movie")
     layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
 
 

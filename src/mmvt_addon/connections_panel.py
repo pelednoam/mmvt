@@ -28,15 +28,16 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     T = ConnectionsPanel.addon.get_max_time_steps()
     windows_num = d.con_colors.shape[1]
     norm_fac = T / windows_num
-    if bpy.context.scene.selection_type == 'conds':
-        # Takes all the connections that at least one condition pass the threshold
-        # Ex: np.array([True, False, False]) | np.array([False, True, False]) = array([ True,  True, False], dtype=bool)
-        mask1 = np.max(d.con_values[:, :, 0], axis=1) > threshold
-        mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
-        mask = mask1 | mask2
-    else:
-        stat_data = calc_stat_data(d.con_values, stat)
-        mask = np.max(abs(stat_data), axis=1) > threshold
+    # todo: Check if we really want to let the user create connection according to the first option
+    # if bpy.context.scene.selection_type == 'conds':
+    #     # Takes all the connections that at least one condition pass the threshold
+    #     # Ex: np.array([True, False, False]) | np.array([False, True, False]) = array([ True,  True, False], dtype=bool)
+    #     mask1 = np.max(d.con_values[:, :, 0], axis=1) > threshold
+    #     mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
+    #     mask = mask1 | mask2
+    # else:
+    stat_data = calc_stat_data(d.con_values, stat)
+    mask = np.max(abs(stat_data), axis=1) > threshold
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[PARENT_OBJ]
     parent_obj.animation_data_clear()
@@ -144,6 +145,7 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
             fcurve.select = not fcurve.hide
 
     parent_obj.select = True
+
 
 def calc_masked_con_names(d, threshold, connections_type, condition, stat):
     # For now, we filter only according to both conditions, not each one seperatly

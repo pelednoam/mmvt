@@ -31,6 +31,8 @@ import connections_panel
 importlib.reload(connections_panel)
 import play_panel
 importlib.reload(play_panel)
+import dti_panel
+importlib.reload(dti_panel)
 
 
 print("Neuroscience add on started!")
@@ -1403,9 +1405,10 @@ def get_appearance_show_connections_layer(self):
 
 
 def set_appearance_show_connections_layer(self, value):
-    self['appearance_show_connections_layer'] = value
-    bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
-    bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+    if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+        self['appearance_show_connections_layer'] = value
+        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
+        bpy.context.scene.layers[CONNECTIONS_LAYER] = value
 
 
 def get_filter_view_type(self):
@@ -2531,6 +2534,7 @@ def main():
         current_module = sys.modules[__name__]
         connections_panel.init(current_module)
         play_panel.init(current_module)
+        dti_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
