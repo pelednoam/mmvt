@@ -1636,23 +1636,27 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mmvt_utils.get_user_fol()
     t = bpy.context.scene.frame_current
-    for hemi in hemispheres:
+    now = time.time()
+    for hemi_ind, hemi in enumerate(hemispheres):
         cur_obj = bpy.data.objects[hemi]
         labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
-        labels_data = np.load(os.path.join(user_fol, 'labels_data_no_conds_{}.npz'.format(hemi)))
+        labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
         vertices_num = max(map(max, labels_vertices[hemi])) + 1 # max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0])
         colors_data = np.ones((vertices_num, 4))
         colors_data[:, 0] = 0
+        no_t = labels_data['data'][0].ndim == 0
         for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
             if 'unknown' in label_name:
                 continue
             label_index = labels_names[hemi].index(label_name)
             label_vertices = np.array(labels_vertices[hemi][label_index])
             if len(label_vertices) > 0:
-                # print('coloring {} with {}'.format(label_name, label_colors[t]))
-                label_colors_data = np.hstack((label_data[t], label_colors[t]))
+                label_data_t, label_colors_t = (label_data, label_colors) if no_t else (label_data[t], label_colors[t])
+                # print('coloring {} with {}'.format(label_name, label_colors_t))
+                label_colors_data = np.hstack((label_data_t, label_colors_t))
                 label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
                 colors_data[label_vertices, :] = label_colors_data
+        mmvt_utils.time_to_go(now, hemi_ind, len(hemispheres), 1)
         activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
 
 

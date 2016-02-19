@@ -1085,19 +1085,27 @@ def check_labels():
     return objects_to_filtter_in,names
 
 
-def test_labels_coloring(aparc_name):
+def test_labels_coloring(subject, aparc_name):
     T = 2500
+    labels_fnames = glob.glob(op.join(SUBJECTS_MRI_DIR, subject, 'label', aparc_name, '*.label'))
+    labels_names = defaultdict(list)
+    for label_fname in labels_fnames:
+        label = mne.read_label(label_fname)
+        labels_names[label.hemi].append(label.name)
+
     for hemi in HEMIS:
-        labels_names, _ = utils.load(op.join(BLENDER_SUBJECT_FOLDER,
-            'labels_vertices_{}.pkl'.format(aparc_name)))
-        # data = np.random.rand(len(d['labels_names']), T) * 2 - 1
-        data = np.zeros((len(labels_names[hemi]), T))
-        for ind in range(len(labels_names[hemi])):
-            data[ind, :] = (np.sin(np.arange(2500)/100 - np.random.rand(1)*100) +
-                            np.random.randn(2500)/100) * np.random.rand(1)
+        L = len(labels_names[hemi])
+        data, data_no_t = np.zeros((L, T)), np.zeros((L))
+        for ind in range(L):
+            data[ind, :] = (np.sin(np.arange(T) / 100 - np.random.rand(1) * 100) +
+                np.random.randn(T) / 100) * np.random.rand(1)
+            data_no_t[ind] = data[ind, 0]
         colors = utils.mat_to_colors(data)
-        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'labels_data_no_conds_{}.npz'.format(hemi)),
-                 data=data, colors=colors, names=labels_names[hemi])
+        colors_no_t = utils.arr_to_colors(data_no_t)
+        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
+            data=data, colors=colors, names=labels_names[hemi])
+        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
+            data=data_no_t, colors=colors_no_t, names=labels_names[hemi])
         # plt.plot(range(T), data.T)
         # plt.show()
 

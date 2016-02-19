@@ -16,10 +16,10 @@ bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
                                                   description="How much time (s) to wait between frames")
 bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
-    items=[("meg", "MEG activity", "", 1), ("meg_coh", "MEG Coherence", "", 2),
-           ("elecs", "Electrodes activity", "", 3), ("elecs_coh", "Electrodes coherence", "", 4),
-           ("elecs_act_coh", "Electrodes activity & coherence", "", 5),
-           ("meg_elecs", "Meg & Electrodes activity", "", 6), ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "", 7)],
+    items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
+           ("elecs", "Electrodes activity", "", 4), ("elecs_coh", "Electrodes coherence", "",5),
+           ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
+           ("meg_elecs", "Meg & Electrodes activity", "", 7), ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",8)],
            description='Type pf data to play')
 
 
@@ -114,6 +114,9 @@ def plot_something(self, context, cur_frame, uuid):
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
         plot_electrodes(cur_frame, electrodes_threshold)
+    if play_type == 'meg_labels':
+        # todo: get the aparc_name
+        PlayPanel.addon.meg_labels_coloring(self, context, aparc_name='laus250', override_current_mat=True)
     if play_type == 'meg_coh':
         pass
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
