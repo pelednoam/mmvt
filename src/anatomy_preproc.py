@@ -240,7 +240,6 @@ if __name__ == '__main__':
     # download the folder 'brainder_scripts' from the git,
     # and put it under the main mmvt folder.
     # ******************************************************************
-
     subject = 'hc008'
     aparc_name = 'laus250' # 'aprc250'
     print('subject: {}, atlas: {}'.format(subject, aparc_name))
