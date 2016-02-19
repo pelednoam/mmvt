@@ -72,8 +72,8 @@ def read_tracks(track_gen, hdr, vox2ras_trans):
         # track = apply_trans(hdr['vox_to_ras'], track[0])
         # track = nib.affines.apply_affine(AFFINE_TRANS, track)
         # track = nib.affines.apply_affine(hdr['vox_to_ras'], track)
-        zoom = np.diag([1., 1., 0.5])
-        track = np.dot(track, zoom)
+        # zoom = np.diag([1., 1., 0.5])
+        # track = np.dot(track, zoom)
         tracks.append(track)
     return tracks
 

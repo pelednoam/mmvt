@@ -295,3 +295,8 @@ def create_spline(points, layers_array, bevel_depth=0.045, resolution_u=5):
 
 def get_subfolders(fol):
     return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
+
+
+def hemi_files_exists(fname):
+    return os.path.isfile(os.path.join(fname.format(hemi='rh'))) and \
+           os.path.isfile(os.path.join(fname.format(hemi='lh')))

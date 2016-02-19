@@ -1843,11 +1843,26 @@ class ColoringMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        user_fol = mmvt_utils.get_user_fol()
+        # todo: read this from somewhere!
+        aparc_name = 'laus250'
+        faces_verts_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'faces_verts_{hemi}.npy'))
+        fmri_files_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'fmri_{hemi}.npy'))
+        meg_files_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+        meg_labels_files_exist = os.path.isfile(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
+            mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
+        electrodes_files_exist = os.path.isfile(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
+            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
-        layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-        layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
-        layout.operator(ColorFmri.bl_idname, text="Plot FMRI ", icon='POTATO')
-        layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
+        if faces_verts_exist:
+            if meg_files_exist:
+                layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+            if meg_labels_files_exist:
+                layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
+            if fmri_files_exist:
+                layout.operator(ColorFmri.bl_idname, text="Plot FMRI ", icon='POTATO')
+        if electrodes_files_exist:
+            layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
