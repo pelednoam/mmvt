@@ -2,6 +2,7 @@ import bpy
 import traceback
 import math
 import numpy as np
+import os
 import os.path as op
 import uuid
 from collections import OrderedDict
@@ -117,6 +118,7 @@ def create_material(name, diffuseColors, transparency, copy_material=True):
     curMat.node_tree.nodes['MyColor'].inputs[0].default_value = diffuseColors
     curMat.node_tree.nodes['MyColor1'].inputs[0].default_value = diffuseColors
     curMat.node_tree.nodes['MyTransparency'].inputs['Fac'].default_value = transparency
+    bpy.context.active_object.active_material.diffuse_color = diffuseColors[:3]
 
 
 def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False):
@@ -171,9 +173,10 @@ def view_all_in_graph_editor(context):
 def show_hide_hierarchy(val, obj, also_parent=False):
     if bpy.data.objects.get(obj) is not None:
         if also_parent:
-            bpy.data.objects[obj].hide = not val
+            bpy.data.objects[obj].hide_render = not val
         for child in bpy.data.objects[obj].children:
             child.hide = not val
+            child.hide_render = not val
             child.select = val
 
 
@@ -265,7 +268,7 @@ def show_only_group_objects(context, objects, group_name):
     dopesheet.show_only_group_objects = True
 
 
-def create_spline(points, bevel_depth=0.045, resolution_u=5):
+def create_spline(points, layers_array, bevel_depth=0.045, resolution_u=5):
     # points = [ [1,1,1], [-1,1,1], [-1,-1,1], [1,-1,-1] ]
     curvedata = bpy.data.curves.new(name="Curve", type='CURVE')
     curvedata.dimensions = '3D'
@@ -276,7 +279,6 @@ def create_spline(points, bevel_depth=0.045, resolution_u=5):
 
     spline = curvedata.splines.new('BEZIER')
     spline.bezier_points.add(len(points)-1)
-    print(len(spline.bezier_points))
     for num in range(len(spline.bezier_points)):
         spline.bezier_points[num].co = points[num]
         spline.bezier_points[num].handle_right_type = 'AUTO'
@@ -287,4 +289,14 @@ def create_spline(points, bevel_depth=0.045, resolution_u=5):
     #spline.radius_interpolation = 'BSPLINE'
     #print(spline.type)
     #spline.use_smooth = True
-    return spline
+    bpy.ops.object.move_to_layer(layers=layers_array)
+    return ob
+
+
+def get_subfolders(fol):
+    return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
+
+
+def hemi_files_exists(fname):
+    return os.path.isfile(os.path.join(fname.format(hemi='rh'))) and \
+           os.path.isfile(os.path.join(fname.format(hemi='lh')))

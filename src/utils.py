@@ -79,7 +79,7 @@ def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
     # x[x<x_min] = x_min
     # x[x>x_max] = x_max
-    return scalar_map.to_rgba(x)
+    return scalar_map.to_rgba(x)[:, :3]
 
 
 def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, flip_cm=False):
@@ -272,7 +272,7 @@ def get_environ_dir(var_name, default_val=''):
     return ret_val
 
 
-def get_link_dir(links_dir, link_name, var_name, default_val='', throw_exception=False):
+def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
     val = os.path.join(links_dir, link_name)
     if not os.path.isdir(val) and default_val != '':
         val = default_val
@@ -284,6 +284,7 @@ def get_link_dir(links_dir, link_name, var_name, default_val='', throw_exception
         else:
             print('No {} dir!'.format(link_name))
     return val
+
 
 def get_links_dir():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
@@ -690,7 +691,7 @@ def to_ras(points, round_coo=False):
     ras = [np.dot(RAS_AFF, np.append(p, 1))[:3] for p in points]
     if round_coo:
         ras = np.array([np.around(p) for p in ras], dtype=np.int16)
-    return ras
+    return np.array(ras)
 
 
 def check_for_necessary_files(neccesary_files, root_fol):

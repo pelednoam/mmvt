@@ -152,8 +152,8 @@ def calc_epoches(raw, events_id, tmin, tmax, event_digit=0, read_events_from_fil
         return None
 
 
-def createEventsFiles(behavior_file, pattern):
-    make_ecr_events(RAW, behavior_file, EVE, pattern)
+# def createEventsFiles(behavior_file, pattern):
+#     make_ecr_events(RAW, behavior_file, EVE, pattern)
 
 
 def calc_evoked(event_digit, events_id, tmin, tmax, raw=None, read_events_from_file=False, events_file_name=''):
@@ -898,7 +898,7 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
         utils.delete_folder_files(fol)
         # data = data / data_max
         look_up = np.zeros((data.shape[0], 2), dtype=np.int)
-        for vert_ind in xrange(data.shape[0]):
+        for vert_ind in range(data.shape[0]):
             file_num = vert_ind % number_of_files
             data_hash[file_num].append(data[vert_ind, :])
             look_up[vert_ind] = [file_num, len(data_hash[file_num])-1]
@@ -906,7 +906,7 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
                 print('{}: {} out of {}'.format(hemi, vert_ind, data.shape[0]))
 
         np.save('{}_verts_lookup'.format(ACT.format(hemi)), look_up)
-        for file_num in xrange(number_of_files):
+        for file_num in range(number_of_files):
             file_name = op.join(fol, str(file_num))
             x = np.array(data_hash[file_num])
             np.save(file_name, x)
@@ -1085,18 +1085,27 @@ def check_labels():
     return objects_to_filtter_in,names
 
 
-def test_labels_coloring(aparc_name):
+def test_labels_coloring(subject, aparc_name):
     T = 2500
+    labels_fnames = glob.glob(op.join(SUBJECTS_MRI_DIR, subject, 'label', aparc_name, '*.label'))
+    labels_names = defaultdict(list)
+    for label_fname in labels_fnames:
+        label = mne.read_label(label_fname)
+        labels_names[label.hemi].append(label.name)
+
     for hemi in HEMIS:
-        d = utils.load(op.join(BLENDER_SUBJECT_FOLDER, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
-        names = ['{}-{}'.format(label, hemi) for label in d['labels_names']]
-        # data = np.random.rand(len(d['labels_names']), T) * 2 - 1
-        data = np.zeros((len(d['labels_names']), T))
-        for ind in range(len(d['labels_names'])):
-            data[ind, :] = (np.sin(np.arange(2500)/100 - np.random.rand(1)*100) + np.random.randn(2500)/100) * np.random.rand(1)
+        L = len(labels_names[hemi])
+        data, data_no_t = np.zeros((L, T)), np.zeros((L))
+        for ind in range(L):
+            data[ind, :] = (np.sin(np.arange(T) / 100 - np.random.rand(1) * 100) +
+                np.random.randn(T) / 100) * np.random.rand(1)
+            data_no_t[ind] = data[ind, 0]
         colors = utils.mat_to_colors(data)
-        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'labels_data_no_conds_{}.npz'.format(hemi)),
-                 data=data, colors=colors, names=names)
+        colors_no_t = utils.arr_to_colors(data_no_t)
+        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
+            data=data, colors=colors, names=labels_names[hemi])
+        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
+            data=data_no_t, colors=colors_no_t, names=labels_names[hemi])
         # plt.plot(range(T), data.T)
         # plt.show()
 
@@ -1140,7 +1149,6 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
         colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
     # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
 
-
     # *) equalize_epoch_counts
     # equalize_epoch_counts(events_id, method='mintime')
     # *) Calc stc for all the conditions
@@ -1162,7 +1170,7 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
 
 
 if __name__ == '__main__':
-    subject_id, martinos_subject_id = 'mg78', 'ep001'
+    subject, martinos_subject = 'mg78', 'ep001'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
     TASK = TASK_MSIT
@@ -1181,7 +1189,7 @@ if __name__ == '__main__':
     files_includes_cond=True
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
-    init_globals(martinos_subject_id, subject_id, fname_format, files_includes_cond, raw_cleaning_method, constrast,
+    init_globals(martinos_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, constrast,
                  SUBJECTS_MEG_DIR, TASKS, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
@@ -1195,5 +1203,5 @@ if __name__ == '__main__':
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
-    test_labels_coloring(aparc_name)
+    test_labels_coloring(subject, aparc_name)
     print('finish!')
