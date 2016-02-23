@@ -1069,6 +1069,7 @@ def check_both_hemi_in_stc(events_id):
 def check_labels():
     data, names = [], []
     for hemi in HEMIS:
+        # todo: What?
         f = np.load('/homes/5/npeled/space3/visualization_blender/fsaverage/pp003_Fear/labels_data_{}.npz'.format(hemi))
         data.append(f['data'])
         names.extend(f['names'])
@@ -1101,7 +1102,7 @@ def test_labels_coloring(subject, aparc_name):
                 np.random.randn(T) / 100) * np.random.rand(1)
             data_no_t[ind] = data[ind, 0]
         colors = utils.mat_to_colors(data)
-        colors_no_t = utils.arr_to_colors(data_no_t)
+        colors_no_t = utils.arr_to_colors(data_no_t)[:, :3]
         np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
             data=data, colors=colors, names=labels_names[hemi])
         np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
