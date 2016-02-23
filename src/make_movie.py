@@ -15,8 +15,8 @@ LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
 
 
-def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type='meg',
-              data_to_show_in_graph = ('electrodes', 'coherence'), cb_title='', bitrate=5000, fol2='', ylabels=()):
+def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title='', bitrate=5000, images2=(), ylabels=(), show_first_pic=False):
     def get_t(image_index):
         return int(utils.namebase(images[image_index])[1:])
 
@@ -43,6 +43,8 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, 
                 if np.allclose(values, 0):
                     continue
                 color = colors[ind] if graph2_ax else tuple(graph_colors[data_type][k])
+                if graph_colors[data_type][k].ndim > 1:
+                    color = graph_colors[data_type][k][0]
                 ax.plot(time_range, values, label=k, color=color, alpha=0.2)# color=tuple(graph_colors[data_type][k]))
             ind += 1
 
@@ -98,10 +100,9 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, 
         plt.tight_layout()
         # resize_and_move_ax(brain_ax, dx=0.03)
         resize_and_move_ax(ax_cb, ddw=1, dx=-0.06)
-        resize_and_move_ax(graph_ax, dx=0.04, dy=0.03, ddw=0.91)
+        resize_and_move_ax(graph_ax, dx=0.05, dy=0.03, ddw=0.89)
         return ax_cb, im, graph_ax
 
-    images = sorted(glob.glob(op.join(fol, 'f*.png')), key=lambda x:int(utils.namebase(x)[1:]))#[:20]
     first_image = Image.open(images[0])
     img_width, img_height = first_image.size
     print('video: width {} height {} dpi {}'.format(img_width, img_height, dpi))
@@ -115,7 +116,6 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, 
     gs = gridspec.GridSpec(g, g)#, height_ratios=[3, 1])
 
     if fol2 != '':
-        images2 = sorted(glob.glob(op.join(fol2, 'f*.png')), key=lambda x:int(utils.namebase(x)[1:]))#[:20]
         ax_cb, im, im2, graph1_ax, graph2_ax = two_brains_two_graphs()
     else:
         ax_cb, im, graph1_ax = one_brain_one_graph(gs, g2)
@@ -126,7 +126,8 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, 
     plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type)
 
     now = time.time()
-    plt.show()
+    if show_first_pic:
+        plt.show()
 
     def init_func():
         return update_img(0)
@@ -168,6 +169,61 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax.set_position(ax_pos_new) # set a new position
 
 
+def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+    data_to_show_in_graph, cb_title='', bitrate=5000, fol2='', ylabels=(), pics_type='png', show_first_pic=False, n_jobs=1):
+
+    images1 = get_pics(fol, pics_type)
+    images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
+    if fol2 != '':
+        images2 = get_pics(fol2, pics_type)
+        if len(images2) != len(images1):
+            raise Exception('fol and fol2 have different number of pictures!')
+        images2_chunks = utils.chunks(images2, int(len(images2) / n_jobs))
+    else:
+        images2_chunks = [''] * int(len(images1) / n_jobs)
+    params = [(images1_chunk, images2_chunk, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
+               video_fname, cb_data_type, data_to_show_in_graph, cb_title, bitrate, ylabels, show_first_pic,
+               run) for run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
+    utils.run_parallel(_create_movie_parallel, params, n_jobs)
+    video_name, video_type = os.path.splitext(video_fname)
+    combine_movies(fol, video_name, video_type[1:])
+
+
+def combine_movies(fol, movie_name, movie_type='mp4'):
+    # First convert the part to avi, because mp4 cannot be concat
+    cmd = 'ffmpeg -i concat:"'
+    parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
+    for part_fname in parts:
+        part_name, _ = os.path.splitext(part_fname)
+        cmd = '{}{}.avi|'.format(cmd, op.join(fol, part_name))
+        utils.remove_file('{}.avi'.format(part_name))
+        utils.run_script('ffmpeg -i {} -codec copy {}.avi'.format(part_fname, op.join(fol, part_name)))
+    # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+    cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+    print(cmd)
+    utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
+    utils.run_script(cmd)
+    # clean up
+    utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
+    for part_fname in parts:
+        part_name, _ = os.path.splitext(part_fname)
+        utils.remove_file('{}.avi'.format(part_name))
+
+
+def _create_movie_parallel(params):
+    (images1, images2, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
+        video_fname, cb_data_type, data_to_show_in_graph, cb_title, bitrate, ylabels,
+        show_first_pic, run) = params
+    video_name, video_type = os.path.splitext(video_fname)
+    video_fname = '{}_{}{}'.format(video_name, run, video_type)
+    ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images1, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title, bitrate, images2, ylabels, show_first_pic)
+
+
+def get_pics(fol, pics_type='png'):
+    return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:int(utils.namebase(x)[1:]))
+
+
 if __name__ == '__main__':
     subject = 'mg78'
     fol = '/home/noam/Pictures/mmvt/movie1'
@@ -178,6 +234,7 @@ if __name__ == '__main__':
     ms_before_stimuli, labels_time_dt = 500, 500
     time_range = range(2500)
     ylabels = []
+    cb_data_type = 'meg'
 
     fol = '/home/noam/Pictures/mmvt/fsaverage'
     fol2 = ''
@@ -187,12 +244,29 @@ if __name__ == '__main__':
     ms_before_stimuli, labels_time_dt = 0, 100
     time_range = range(1000)
     ylabels = ['MEG t-values']
-
     cb_data_type = 'meg'
+
+    fol = '/home/noam/Pictures/mmvt/movie1'
+    fol2 = ''
+    data_to_show_in_graph = ('meg_labels')
+    video_fname = 'mg78_labels_demo.mp4'
+    cb_title = 'MEG activity'
+    ms_before_stimuli, labels_time_dt = 500, 500
+    time_range = range(2500)
+    ylabels = ['MEG activity']
+    cb_data_type = 'meg_labels'
+
     dpi = 100
     fps = 10
     bitrate = 5000
+    pics_type = 'png'
+    show_first_pic = False
+    n_jobs = 6
 
-    ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname,
-              cb_data_type, data_to_show_in_graph, cb_title, bitrate, fol2=fol2, ylabels=ylabels)
+    # images = get_pics(fol, pics_type)
+    # images2 = get_pics(fol2, pics_type) if fol2 != '' else []
+    # ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname,
+    #           cb_data_type, data_to_show_in_graph, cb_title, bitrate, fol2=fol2, ylabels=ylabels, pics_type=pics_type)
 
+    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, pics_type, show_first_pic, n_jobs)

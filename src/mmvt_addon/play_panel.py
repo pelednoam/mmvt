@@ -145,6 +145,8 @@ def capture_graph(context):
         graph_data['electrodes'], graph_colors['electrodes'] = get_electrodes_data(per_condition)
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         graph_data['meg'], graph_colors['meg'] = get_meg_data(per_condition)
+    if play_type in ['meg_labels']:
+        graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
     save_graph_data(graph_data, graph_colors, image_fol)
 
 
@@ -152,6 +154,7 @@ def save_graph_data(data, graph_colors, image_fol):
     if not os.path.isdir(image_fol):
         os.makedirs(image_fol)
     mu.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
+    print('graph data was saved to {}'.format(op.join(image_fol, 'data.pkl')))
 
 
 def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
@@ -227,6 +230,17 @@ def get_meg_data(per_condition=True):
     else:
         meg_data, meg_colors = mu.evaluate_fcurves(brain_obj, time_range)
     return meg_data, meg_colors
+
+
+def get_meg_labels_data():
+    meg_labels_data, meg_labels_colors = OrderedDict(), OrderedDict()
+    user_fol = mu.get_user_fol()
+    for hemi in ['rh', 'lh']:
+        labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
+        for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
+            meg_labels_data[label_name] = label_data
+            meg_labels_colors[label_name] = label_colors
+    return meg_labels_data, meg_labels_colors
 
 
 def get_electrodes_data(per_condition=True):

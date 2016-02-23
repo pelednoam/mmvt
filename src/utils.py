@@ -79,7 +79,7 @@ def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
     # x[x<x_min] = x_min
     # x[x>x_max] = x_max
-    return scalar_map.to_rgba(x)[:, :3]
+    return scalar_map.to_rgba(x)
 
 
 def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, flip_cm=False):
@@ -1035,3 +1035,5 @@ def set_exe_permissions(fpath):
     os.chmod(fpath, 0o744)
 
 
+def both_hemi_files_exist(file_template):
+    return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
