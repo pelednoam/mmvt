@@ -1040,3 +1040,17 @@ def set_exe_permissions(fpath):
 
 def both_hemi_files_exist(file_template):
     return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
+
+
+def csv_from_excel(xlsx_fname, csv_fname):
+    import xlrd
+    import csv
+    wb = xlrd.open_workbook(xlsx_fname)
+    sh = wb.sheet_by_name('Sheet1')
+    csv_file = open(csv_fname, 'w')
+    wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+
+    for rownum in range(sh.nrows):
+        wr.writerow([val for val in sh.row_values(rownum)])
+
+    csv_file.close()

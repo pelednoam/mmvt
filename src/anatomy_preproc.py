@@ -270,7 +270,7 @@ if __name__ == '__main__':
     # ******************************************************************
     subject = 'mg96'
     aparc_name = 'laus250' # 'aprc250'
-    fsaverage = 'hc008'
+    fsaverage = 'fsaverage'
     print('subject: {}, atlas: {}'.format(subject, aparc_name))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
 
@@ -285,6 +285,10 @@ if __name__ == '__main__':
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subject_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs', subject)
-    main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
-         overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
+    # main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
+    #      overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
+
+    flags = {}
+    flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, True, True)
+
     print('finish!')

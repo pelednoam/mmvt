@@ -5,8 +5,8 @@ import shutil
 import time
 import csv
 from mne.label import _read_annot
-# from src import utils
-import utils
+from src import utils
+
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -19,7 +19,7 @@ APARC2ASEG = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, create_volume_file=False, way_points=False):
     electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format(
         '_bipolar' if bipolar else ''))
-
+    blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
     elecs = np.load(electrodes_file)
     if create_points_files:
         groups = set([name[:3] for name in elecs['names']])
@@ -29,9 +29,13 @@ def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, creat
         for group in groups:
             postfix = '.label' if way_points else '.dat'
             freeview_command = freeview_command + group + postfix + ' '
+    utils.make_dir(blender_freeview_fol)
+    with open(op.join(blender_freeview_fol, 'run_freeview.sh'), 'w') as sh_file:
+        sh_file.write(freeview_command)
     print(freeview_command)
 
 
+# todo: fix duplications!
 def create_lut_file_for_atlas(subject, atlas):
     # Read the subcortical segmentation from the freesurfer lut
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME, get_colors=True)
@@ -42,6 +46,7 @@ def create_lut_file_for_atlas(subject, atlas):
         else:
             lut_new.append([2000, 'ctx-rh-unknown', 25,  5, 25,  0])
         _, ctab, names = _read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        names = [name.astype(str) for name in names]
         for index, (label, cval) in enumerate(zip(names, ctab)):
             r,g,b,a, _ = cval
             lut_new.append([index + offset + 1, label, r, g, b, a])
@@ -87,16 +92,71 @@ def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, ch
         os.chdir(current_dir)
 
 
-def main(subject, aparc_name, bipolar):
-    # Create the files for freeview bridge
-    create_freeview_cmd(subject, aparc_name, bipolar)
-    create_aparc_aseg_file(subject, aparc_name, overwrite=True)
-    create_lut_file_for_atlas(subject, aparc_name)
+def create_electrodes_volume_file(subject, bipolar=False, create_points_files=True, create_volume_file=False,
+        way_points=False):
+    electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes',
+        'electrodes{}_positions.npz'.format('_bipolar' if bipolar else ''))
+    elecs = np.load(electrodes_file)
+    elecs_pos, names = elecs['pos'], [name.astype(str) for name in elecs['names']]
 
+    if create_points_files:
+        groups = set([name[:3] for name in names])
+        freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
+            ('-w ' if way_points else '-c ')
+        for group in groups:
+            postfix = 'label' if way_points else 'dat'
+            freeview_command = freeview_command + group + postfix + ' '
+            group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if name[:3] == group])
+            file_name = '{}.{}'.format(group, postfix)
+            with open(op.join(BLENDER_ROOT_DIR, subject, 'freeview', file_name), 'w') as fp:
+                writer = csv.writer(fp, delimiter=' ')
+                if way_points:
+                    writer.writerow(['#!ascii label  , from subject  vox2ras=Scanner'])
+                    writer.writerow([len(group_pos)])
+                    points = np.hstack((np.ones((len(group_pos), 1)) * -1, group_pos, np.ones((len(group_pos), 1))))
+                    writer.writerows(points)
+                else:
+                    writer.writerows(group_pos)
+                    writer.writerow(['info'])
+                    writer.writerow(['numpoints', len(group_pos)])
+                    writer.writerow(['useRealRAS', '1'])
+
+    if create_volume_file:
+        import nibabel as nib
+        from itertools import product
+        sig = nib.load(op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz'))
+        sig_data = sig.get_data()
+        sig_header = sig.get_header()
+        electrodes_positions = np.load(electrodes_file)['pos']
+        data = np.zeros((256, 256, 256), dtype=np.int16)
+        # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
+        elecs_pos = np.array(elecs_pos, dtype=np.int16)
+        for pos_ras in elecs_pos:
+            for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
+                data[z,y,z] = 1
+        img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
+        nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
+
+
+def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
+    # Create the files for freeview bridge
+    # create_freeview_cmd(subject, aparc_name, bipolar)
+    create_electrodes_volume_file(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
+    create_aparc_aseg_file(subject, aparc_name, overwrite=overwrite_aseg_file)
+    create_lut_file_for_atlas(subject, aparc_name)
+    utils.copy_file(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz'), op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz'))
 
 if __name__ == '__main__':
-    subject = 'mg78'
+    import sys
+    if len(sys.argv) > 1:
+        subject = sys.argv[1]
+    else:
+        subject = 'mg78'
     aparc_name = 'laus250'
     bipolar = False
-    # main(subject, aparc_name, bipolar)
-    create_freeview_cmd(subject, aparc_name, bipolar, create_points_files=True, create_volume_file=True, way_points=False)
+    overwrite_aseg_file = False
+    create_volume_file = True
+    print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
+    # main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
+    # create_electrodes_volume_file(subject, bipolar, create_points_files=True, create_volume_file=True, way_points=False)
+    create_lut_file_for_atlas(subject, aparc_name)

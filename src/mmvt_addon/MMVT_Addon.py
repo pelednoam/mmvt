@@ -73,18 +73,20 @@ def import_brain(base_path):
     for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
         bpy.ops.object.select_all(action='DESELECT')
         print(ply_fname)
-        bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
-        cur_obj = bpy.context.selected_objects[0]
-        cur_obj.select = True
-        bpy.ops.object.shade_smooth()
-        cur_obj.scale = [0.1] * 3
-        cur_obj.hide = False
-        cur_obj.name = cur_obj.name.split(sep='.')[0]
-        cur_obj.active_material = bpy.data.materials['Activity_map_mat']
-        cur_obj.parent = bpy.data.objects["Functional maps"]
-        cur_obj.hide_select = True
-        cur_obj.data.vertex_colors.new()
-        print('did hide_select')
+        obj_name = mmvt_utils.namebase(ply_fname).split(sep='.')[0]
+        if bpy.data.objects.get(obj_name) is None:
+            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
+            cur_obj = bpy.context.selected_objects[0]
+            cur_obj.select = True
+            bpy.ops.object.shade_smooth()
+            cur_obj.scale = [0.1] * 3
+            cur_obj.hide = False
+            cur_obj.name = obj_name
+            cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+            cur_obj.parent = bpy.data.objects["Functional maps"]
+            cur_obj.hide_select = True
+            cur_obj.data.vertex_colors.new()
+            print('did hide_select')
 
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -113,7 +115,9 @@ def import_subcorticals(base_path):
     PATH_TYPE_SUB_MEG, PATH_TYPE_SUB_FMRI = range(2)
     for path_type, base_path in enumerate(base_paths):
         for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
-            name = mmvt_utils.namebase(ply_fname)
+            obj_name = mmvt_utils.namebase(ply_fname)
+            if not bpy.data.objects.get(obj_name) is None:
+                continue
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
             bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
@@ -122,7 +126,7 @@ def import_subcorticals(base_path):
             bpy.ops.object.shade_smooth()
             cur_obj.scale = [0.1] * 3
             cur_obj.hide = False
-            cur_obj.name = mmvt_utils.namebase(ply_fname)
+            cur_obj.name = obj_name
 
             if path_type == PATH_TYPE_SUB_MEG:
                 cur_obj.name = '{}_meg_activity'.format(name)
@@ -253,7 +257,7 @@ def create_sphere(loc, rad, my_layers, name):
 
 def create_and_set_material(obj):
     # curMat = bpy.data.materials['OrigPatchesMat'].copy()
-    if obj.active_material.name != obj.name + '_Mat':
+    if obj.active_material is None or obj.active_material.name != obj.name + '_Mat':
         if obj.name + '_Mat' in bpy.data.materials:
             cur_mat = bpy.data.materials[obj.name + '_Mat']
         else:
@@ -264,18 +268,18 @@ def create_and_set_material(obj):
         obj.active_material = cur_mat
 
 
-def import_electrodes(base_path):
+def import_electrodes():
     # input_file = os.path.join(base_path, "electrodes.npz")
     # todo: add a bipolar label gui
     bipolar = False
-    input_file = os.path.join(base_path, 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
+    input_file = os.path.join(mmvt_utils.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
 
     print('Adding deep electrodes')
     f = np.load(input_file)
     print('loaded')
 
     deep_electrodes_layer = 1
-    electrode_size = 0.25
+    electrode_size = 0.15
 
     layers_array = [False] * 20
 
@@ -288,9 +292,8 @@ def import_electrodes(base_path):
     layers_array[deep_electrodes_layer] = True
 
     for (x, y, z), name in zip(f['pos'], f['names']):
-        print('creating ' + str(name)[2:-1])
-        # instead of the ugly str(name)[2:-1]...
         elc_name = name.astype(str)
+        print('creating ' + elc_name)
         create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
         cur_obj = bpy.data.objects[elc_name]
         cur_obj.select = True
@@ -303,11 +306,9 @@ class ImportElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_importing"
     bl_label = "import2 electrodes"
     bl_options = {"UNDO"}
-    current_root_path = ''
 
     def invoke(self, context, event=None):
-        self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        import_electrodes(self.current_root_path)
+        import_electrodes()
         bpy.types.Scene.electrodes_imported = True
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
@@ -1403,18 +1404,18 @@ def set_appearance_show_activity_layer(self, value):
         # bpy.context.scene.layers[LIGHTS_LAYER] = True
 
 
-def get_appearance_show_connections_layer(self):
-    try:
-        return self['appearance_show_connections_layer']
-    except:
-        print(traceback.format_exc())
-        return None
-
-def set_appearance_show_connections_layer(self, value):
-    if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        self['appearance_show_connections_layer'] = value
-        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
-        bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+# def get_appearance_show_connections_layer(self):
+#     try:
+#         return self['appearance_show_connections_layer']
+#     except:
+#         print(traceback.format_exc())
+#         return None
+#
+# def set_appearance_show_connections_layer(self, value):
+#     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+#         self['appearance_show_connections_layer'] = value
+#         bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
+#         bpy.context.scene.layers[CONNECTIONS_LAYER] = value
 
 
 def get_filter_view_type(self):
@@ -1497,9 +1498,9 @@ bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True
 bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                                         get=get_appearance_show_activity_layer,
                                                                         set=set_appearance_show_activity_layer)
-bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-                                                                        get=get_appearance_show_connections_layer,
-                                                                        set=set_appearance_show_connections_layer)
+bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity")
+                                                                        # get=get_appearance_show_connections_layer,
+                                                                        # set=set_appearance_show_connections_layer)
 
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("1", "Rendered Brain", "", 1),
                                                                  ("2", " Solid Brain", "", 2)],
@@ -2475,9 +2476,9 @@ class helper_class():
     appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                             get=get_appearance_show_activity_layer,
                                                             set=set_appearance_show_activity_layer)
-    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-                                                            get=get_appearance_show_connections_layer,
-                                                            set=set_appearance_show_connections_layer)
+    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity")
+                                                            # get=get_appearance_show_connections_layer,
+                                                            # set=set_appearance_show_connections_layer)
 
     filter_view_type = bpy.props.EnumProperty(
         items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",

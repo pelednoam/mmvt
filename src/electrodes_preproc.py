@@ -1,11 +1,10 @@
 import numpy as np
+import sys
+import os
 import os.path as op
 import shutil
 import mne
 import scipy.io as sio
-import nibabel as nib
-from itertools import product
-import csv
 from src import utils
 
 
@@ -15,7 +14,7 @@ FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME'
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 TASK_MSIT, TASK_ECR = range(2)
-HEMIS = ['rh', 'lh']
+HEMIS = utils.HEMIS
 STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 
@@ -27,6 +26,7 @@ def montage_to_npy(montage_file, output_file):
 
 def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     data = np.genfromtxt(ras_file, dtype=str, delimiter=delimiter)
+    data = fix_str_items_in_csv(data)
     # Check if the electrodes coordinates has a header
     try:
         header = data[0, 1:].astype(float)
@@ -47,11 +47,23 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         pos = np.array(pos_biploar)
         pos_org = np.array(pos_org)
     else:
-        names = data[1:, 0]
+        names = data[:, 0]
         pos_org = []
-    if len(set(names))!=len(names):
+    if len(set(names)) != len(names):
         raise Exception('Duplicate electrodes names!')
+    if pos.shape[0] != len(names):
+        raise Exception('pos dim ({}) != names dim ({})'.format(pos.shape[0], len(names)))
+    print(np.hstack((names.reshape((len(names), 1)), pos)))
     np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
+
+
+def fix_str_items_in_csv(csv):
+    lines = []
+    for line in csv:
+        fix_line = list(map(lambda x: str(x).replace('"', ''), line))
+        if not np.all([len(v)==0 for v in fix_line[1:]]):
+            lines.append(fix_line)
+    return np.array(lines)
 
 
 def elec_group_number(elec_name, bipolar=False):
@@ -95,6 +107,7 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
 
 
 def read_electrodes_positions(subject, bipolar=False, copy_to_blender=True):
+    rename_and_convert_electrodes_file(subject)
     electrodes_folder = op.join(SUBJECTS_DIR, subject, 'electrodes')
     csv_file = op.join(electrodes_folder, '{}_RAS.csv'.format(subject))
     if not op.isfile(csv_file):
@@ -108,6 +121,21 @@ def read_electrodes_positions(subject, bipolar=False, copy_to_blender=True):
         blender_file = op.join(BLENDER_ROOT_DIR, subject, output_file_name)
         shutil.copyfile(output_file, blender_file)
     return output_file
+
+
+def rename_and_convert_electrodes_file(subject):
+    subject_elec_fname_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
+    subject_elec_fname_csv_upper = subject_elec_fname_pattern.format(subject=subject.upper(), postfix='csv')
+    subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
+    subject_elec_fname_xlsx_upper = subject_elec_fname_pattern.format(subject=subject.upper(), postfix='xlsx')
+    subject_elec_fname_xlsx = subject_elec_fname_pattern.format(subject=subject, postfix='xlsx')
+
+    if op.isfile(subject_elec_fname_csv_upper):
+        os.rename(subject_elec_fname_csv_upper, subject_elec_fname_csv)
+    elif op.isfile(subject_elec_fname_xlsx_upper):
+        os.rename(subject_elec_fname_xlsx_upper, subject_elec_fname_xlsx)
+    if op.isfile(subject_elec_fname_xlsx):
+        utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv)
 
 
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar, moving_average_win_size=0):
@@ -194,59 +222,20 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
     np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
 
 
-def create_electrodes_volume_file(subject, electrodes_file, create_points_files=True, create_volume_file=False, way_points=False):
-    elecs = np.load(electrodes_file)
-    elecs_pos, names = elecs['pos'], elecs['names']
-
-    if create_points_files:
-        groups = set([name[:3] for name in names])
-        freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
-            ('-w ' if way_points else '-c ')
-        for group in groups:
-            postfix = 'label' if way_points else 'dat'
-            freeview_command = freeview_command + group + postfix + ' '
-            group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if name[:3]==group])
-            file_name = '{}.{}'.format(group, postfix)
-            with open(op.join(BLENDER_ROOT_DIR, subject, 'freeview', file_name), 'w') as fp:
-                writer = csv.writer(fp, delimiter=' ')
-                if way_points:
-                    writer.writerow(['#!ascii label  , from subject  vox2ras=Scanner'])
-                    writer.writerow([len(group_pos)])
-                    points = np.hstack((np.ones((len(group_pos), 1)) * -1, group_pos, np.ones((len(group_pos), 1))))
-                    writer.writerows(points)
-                else:
-                    writer.writerows(group_pos)
-                    writer.writerow(['info'])
-                    writer.writerow(['numpoints', len(group_pos)])
-                    writer.writerow(['useRealRAS', '1'])
-
-    if create_volume_file:
-        sig = nib.load(op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz'))
-        sig_data = sig.get_data()
-        sig_header = sig.get_header()
-        electrodes_positions = np.load(electrodes_file)['pos']
-        data = np.zeros((256, 256, 256), dtype=np.int16)
-        # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
-        elecs_pos = np.array(elecs_pos, dtype=np.int16)
-        for pos_ras in elecs_pos:
-            for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
-                data[z,y,z] = 1
-        img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-        nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
-
-
-def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat):
+def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat, add_activity=True):
     # *) Read the electrodes data
     electrodes_file = read_electrodes_positions(subject, bipolar=bipolar)
-    if electrodes_file:
+    if electrodes_file and add_activity:
         create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
-        create_electrodes_volume_file(subject, electrodes_file)
     # misc
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
 if __name__ == '__main__':
-    subject = 'hc008'
+    if len(sys.argv) > 1:
+        subject = sys.argv[1]
+    else:
+        subject = 'mg96'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT
@@ -260,6 +249,7 @@ if __name__ == '__main__':
     from_t_ind, to_t_ind = 500, 3000
     bipolar = False
     stat = STAT_DIFF
+    add_activity = False
 
-    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat)
+    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat, add_activity)
     print('finish!')
