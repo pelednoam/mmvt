@@ -29,7 +29,7 @@ import uuid
 
 PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
 STAT_AVG, STAT_DIFF = range(2)
-
+HEMIS = ['lh', 'rh']
 
 class Bag( dict ):
     """ a dict with d.key short for d["key"]
@@ -209,16 +209,16 @@ def get_ply_vertices_num(ply_file_template):
 
 
 def check_hemi(hemi):
-    if hemi in ['rh', 'lh']:
+    if hemi in HEMIS:
         hemi = [hemi]
     elif hemi=='both':
-        hemi = ['rh', 'lh']
+        hemi = HEMIS
     else:
         raise ValueError('wrong hemi value!')
     return hemi
 
 
-def get_data_max_min(data, norm_by_percentile, norm_percs, data_per_hemi=False, hemis = ['rh', 'lh']):
+def get_data_max_min(data, norm_by_percentile, norm_percs, data_per_hemi=False, hemis = HEMIS):
     if data_per_hemi:
         if norm_by_percentile:
             data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
@@ -458,7 +458,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     labels_fol = os.path.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
     labels = []
     if overwrite:
-        for hemi in ['rh', 'lh']:
+        for hemi in HEMIS:
             remove_file(os.path.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
     labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
     if len(labels_files) == 0:
@@ -484,7 +484,7 @@ def remove_file(fname, raise_error_if_does_not_exist=False):
             print(traceback.format_exc())
 
 def get_hemis(hemi):
-    return ['rh', 'lh'] if hemi == 'both' else [hemi]
+    return HEMIS if hemi == 'both' else [hemi]
 
 
 def rmtree(fol):
@@ -495,6 +495,7 @@ def make_dir(fol):
     if not os.path.isdir(fol):
         os.makedirs(fol)
     return fol
+
 
 def get_subfolders(fol):
     return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
@@ -545,7 +546,7 @@ def convert_stcs_to_h5(root, folds):
                         os.remove(stc_lh_file)
 
 
-def get_activity_max_min(stc, norm_by_percentile=False, norm_percs=None, threshold=None, hemis=['rh', 'lh']):
+def get_activity_max_min(stc, norm_by_percentile=False, norm_percs=None, threshold=None, hemis=HEMIS):
     if isinstance(stc, dict):
         if norm_by_percentile:
             data_max = max([np.percentile(stc[hemi], norm_percs[1]) for hemi in hemis])
@@ -623,7 +624,7 @@ def get_labels_vertices(labels, vertno):
 
 
 def read_labels(labels_fol, hemi='both', return_generator=False):
-    hemis = [hemi] if hemi!='both' else ['rh', 'lh']
+    hemis = [hemi] if hemi!='both' else HEMIS
     labels = []
     for hemi in hemis:
         for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):

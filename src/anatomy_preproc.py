@@ -196,7 +196,7 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
             mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
                    'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME})
         cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-        # utils.run_script(cmd)
+        utils.run_script(cmd)
         # convert the  obj files to ply
         convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
         save_matlab_labels_vertices(subject, aparc_name)
@@ -285,6 +285,6 @@ if __name__ == '__main__':
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subject_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs', subject)
-    # main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
-    #      overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
+    main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
+         overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
     print('finish!')

@@ -5,7 +5,8 @@ import shutil
 import time
 import csv
 from mne.label import _read_annot
-from src import utils
+# from src import utils
+import utils
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -97,4 +98,5 @@ if __name__ == '__main__':
     subject = 'mg78'
     aparc_name = 'laus250'
     bipolar = False
-    main(subject, aparc_name, bipolar)
+    # main(subject, aparc_name, bipolar)
+    create_freeview_cmd(subject, aparc_name, bipolar, create_points_files=True, create_volume_file=True, way_points=False)

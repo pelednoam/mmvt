@@ -8,6 +8,8 @@ import os
 import pprint as pp # pretty printing: pp.pprint(something)
 from collections import OrderedDict
 
+HEMIS = mu.HEMIS
+
 bpy.types.Scene.play_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
 bpy.types.Scene.play_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
                                                   description="When to filter to")
@@ -154,7 +156,7 @@ def save_graph_data(data, graph_colors, image_fol):
     if not os.path.isdir(image_fol):
         os.makedirs(image_fol)
     mu.save((data, graph_colors), op.join(image_fol, 'data.pkl'))
-    print('graph data was saved to {}'.format(op.join(image_fol, 'data.pkl')))
+    print('Saving data into {}'.format(op.join(image_fol, 'data.pkl')))
 
 
 def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
@@ -233,14 +235,13 @@ def get_meg_data(per_condition=True):
 
 
 def get_meg_labels_data():
-    meg_labels_data, meg_labels_colors = OrderedDict(), OrderedDict()
-    user_fol = mu.get_user_fol()
-    for hemi in ['rh', 'lh']:
-        labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
+    meg_data, meg_colors = OrderedDict(), OrderedDict()
+    for hemi in HEMIS:
+        labels_data = np.load(os.path.join(mu.get_user_fol(), 'meg_labels_coloring_{}.npz'.format(hemi)))
         for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
-            meg_labels_data[label_name] = label_data
-            meg_labels_colors[label_name] = label_colors
-    return meg_labels_data, meg_labels_colors
+            meg_data[label_name] = label_data
+            meg_colors[label_name] = label_colors
+    return meg_data, meg_colors
 
 
 def get_electrodes_data(per_condition=True):
@@ -318,7 +319,7 @@ def play_panel_draw(context, layout):
     row.operator(Play.bl_idname, text="", icon='PLAY')
     row.operator(NextKeyFrame.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'render_movie', text="Render to a movie")
-    layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
+    layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
 
 class Play(bpy.types.Operator):
