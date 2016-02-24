@@ -189,10 +189,12 @@ def obj2ply(obj_file, ply_file):
     write_ply_file(verts, faces, ply_file)
 
 
-def convert_srf_files_to_ply(srf_folder):
+def convert_srf_files_to_ply(srf_folder, overwrite=True):
     srf_files = glob.glob(os.path.join(srf_folder, '*.srf'))
     for srf_file in srf_files:
-        srf2ply(srf_file, '{}.ply'.format(srf_file[:-4]))
+        ply_file = '{}.ply'.format(srf_file[:-4])
+        if overwrite or not op.isfile(ply_file):
+            srf2ply(srf_file, ply_file)
 
 
 def get_ply_vertices_num(ply_file_template):

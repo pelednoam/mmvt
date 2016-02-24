@@ -155,17 +155,16 @@ def check_ply_files(ply_subject, ply_blender):
     print('check_ply_files: ok')
 
 
-def convert_perecelated_cortex(subject, aparc_name, hemi='both'):
+def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, hemi='both'):
     for hemi in utils.get_hemis(hemi):
-        utils.convert_srf_files_to_ply(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)))
-        utils.rmtree(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)))
-        rename_cortical(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)),
-                        op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)),
-                        op.join(SUBJECTS_DIR, subject,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name)))
+        srf_fol = op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
+        ply_fol = op.join(SUBJECTS_DIR, subject,'{}_{}_ply'.format(aparc_name, hemi))
         blender_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
+        ply_names_fname = op.join(SUBJECTS_DIR, subject,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
+        utils.convert_srf_files_to_ply(srf_fol, overwrite_ply_files)
+        rename_cortical(srf_fol, ply_fol, ply_names_fname)
         utils.rmtree(blender_fol)
-        shutil.copytree(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)),
-                        op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi)))
+        shutil.copytree(ply_fol, blender_fol)
 
 
 def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
@@ -183,23 +182,28 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
-def parcelate_cortex(subject, aparc_name, overwrite=False, only_save_labels_vertices=False):
-    labels_files = np.array([len(glob.glob(op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(
+def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False):
+    labels_num = 0
+    for hemi in HEMIS:
+        ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
+        labels_num += len(np.genfromtxt(ply_names_fname))
+    labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
-    if overwrite or np.any(labels_files == 0):
+    if overwrite or labels_files_num != labels_num:
         matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
         matlab_command = "'{}'".format(matlab_command)
         sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
             mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
                    'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME})
-        if not only_save_labels_vertices:
-            cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-            utils.run_script(cmd)
-            # convert the  obj files to ply
-            convert_perecelated_cortex(subject, aparc_name)
+        cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
+        # utils.run_script(cmd)
+        # convert the  obj files to ply
+        convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
         save_matlab_labels_vertices(subject, aparc_name)
-    else:
-        print('There are already labels ply files, rh:{}, lh:{}'.format(labels_files[0], labels_files[1]))
+        labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
+            aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
+    return labels_files_num == labels_num and op.isfile(op.join(BLENDER_ROOT_DIR, subject,
+        'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
 
 
 def save_matlab_labels_vertices(subject, aparc_name):
@@ -221,7 +225,8 @@ def save_labels_vertices(subject, aparc_name):
 
 
 def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, fsaverage='fsaverage',
-         overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False):
+         overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
+         overwrite_ply_files=False):
     flags = {}
     # *) Prepare the local subject's folder
     utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR,
@@ -238,7 +243,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
     flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
 
     # *) Calls Matlab 'splitting_cortical.m' script
-    parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files)
+    flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, overwrite_ply_files)
 
     # *) Create a dictionary for verts and faces for both hemis
     calc_faces_verts_dic(subject)
@@ -280,7 +285,6 @@ if __name__ == '__main__':
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subject_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs', subject)
-    main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
-         overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
-    # save_labels_vertices(subject, aparc_name)
+    # main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
+    #      overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
     print('finish!')

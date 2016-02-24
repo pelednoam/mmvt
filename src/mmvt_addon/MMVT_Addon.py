@@ -156,9 +156,9 @@ class ImportBrain(bpy.types.Operator):
     def invoke(self, context, event=None):
         self.current_root_path = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         print("importing ROIs")
-        # import_rois(self.current_root_path)
+        import_rois(self.current_root_path)
         # import_brain(self.current_root_path)
-        import_subcorticals(os.path.join(self.current_root_path, 'subcortical'))
+        # import_subcorticals(os.path.join(self.current_root_path, 'subcortical'))
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
 
@@ -202,6 +202,7 @@ def import_rois(base_path):
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
     bpy.context.scene.layers = [ind == ROIS_LAYER for ind in range(len(bpy.context.scene.layers))]
 
+    # todo: check if obj exist before the import
     for anatomy_name, base_path in anatomy_inputs.items():
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if anatomy_name == 'Subcortical_structures':
@@ -1401,8 +1402,11 @@ def set_appearance_show_activity_layer(self, value):
 
 
 def get_appearance_show_connections_layer(self):
-    return self['appearance_show_connections_layer']
-
+    try:
+        return self['appearance_show_connections_layer']
+    except:
+        print(traceback.format_exc())
+        return None
 
 def set_appearance_show_connections_layer(self, value):
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
