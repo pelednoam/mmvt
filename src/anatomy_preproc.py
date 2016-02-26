@@ -6,9 +6,10 @@ import numpy as np
 import scipy.io as sio
 from collections import Counter, defaultdict
 import mne
-
+import traceback
 from src import utils
 from src import matlab_utils
+from src import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -94,9 +95,10 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
         surf_new_name = '{}.srf'.format(surf_name)
         hemi_ply_fname = '{}.ply'.format(surf_name)
         if overwrite or not op.isfile(hemi_ply_fname):
+            print('{}: convert srf to asc'.format(hemi))
             utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
-            print(surf_wavefront_name, surf_new_name)
             os.rename(surf_wavefront_name, surf_new_name)
+            print('{}: convert asc to ply'.format(hemi))
             convert_hemis_srf_to_ply(subject, hemi)
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
 
@@ -112,6 +114,7 @@ def calc_faces_verts_dic(subject, overwrite=False):
     ply_files = [op.join(SUBJECTS_DIR, subject,'surf', '{}.pial.ply'.format(hemi)) for hemi in HEMIS]
     out_files = [op.join(BLENDER_ROOT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in HEMIS]
     subcortical_plys = glob.glob(op.join(BLENDER_ROOT_DIR, subject, 'subcortical', '*.ply'))
+    errors = []
     if len(subcortical_plys) > 0:
         faces_verts_dic_fnames = [op.join(BLENDER_ROOT_DIR, subject, 'subcortical', '{}_faces_verts.npy'.format(
                 utils.namebase(ply))) for ply in subcortical_plys]
@@ -123,36 +126,45 @@ def calc_faces_verts_dic(subject, overwrite=False):
             print('{} already exist.'.format(out_file))
             continue
         # ply_file = op.join(SUBJECTS_DIR, subject,'surf', '{}.pial.ply'.format(hemi))
-        print('preparing a lookup table for {}'.format(ply_file))
+        # print('preparing a lookup table for {}'.format(ply_file))
         verts, faces = utils.read_ply_file(ply_file)
         _faces = faces.ravel()
-        print('{}: verts: {}, faces: {}, faces ravel: {}'.format(ply_file, verts.shape[0], faces.shape[0], len(_faces)))
+        print('{}: verts: {}, faces: {}, faces ravel: {}'.format(utils.namebase(ply_file), verts.shape[0], faces.shape[0], len(_faces)))
         faces_arg_sort = np.argsort(_faces)
         faces_sort = np.sort(_faces)
         faces_count = Counter(faces_sort)
         max_len = max([v for v in faces_count.values()])
-        d_mat = np.ones((verts.shape[0], max_len)) * -1
+        lookup = np.ones((verts.shape[0], max_len)) * -1
         diff = np.diff(faces_sort)
         n = 0
-        for ind, (k,v) in enumerate(zip(faces_sort, faces_arg_sort)):
-            d_mat[k, n] = v
+        for ind, (k, v) in enumerate(zip(faces_sort, faces_arg_sort)):
+            lookup[k, n] = v
             n = 0 if ind<len(diff) and diff[ind] > 0 else n+1
-        print('writing {}'.format(out_file))
-        np.save(out_file, d_mat.astype(np.int))
+        # print('writing {}'.format(out_file))
+        np.save(out_file, lookup.astype(np.int))
+        print('{} max lookup val: {}'.format(utils.namebase(ply_file), int(np.max(lookup))))
+        if len(_faces) != int(np.max(lookup)) + 1:
+            errors[utils.namebase(ply_file)] = 'Wrong values in lookup table! ' + \
+                'faces ravel: {}, max looup val: {}'.format(len(_faces), int(np.max(lookup)))
+    if len(errors) > 0:
+        for k, message in errors.items():
+            print('{}: {}'.format(k, message))
+    return len(errors) == 0
 
 
-def check_ply_files(ply_subject, ply_blender):
+def check_ply_files(subject):
+    ply_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply')
+    ply_blender = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply')
+    ok = True
     for hemi in HEMIS:
-        print('reading {}'.format(ply_subject.format(hemi)))
+        # print('reading {}'.format(ply_subject.format(hemi)))
         verts1, faces1 = utils.read_ply_file(ply_subject.format(hemi))
-        print('reading {}'.format(ply_blender.format(hemi)))
+        # print('reading {}'.format(ply_blender.format(hemi)))
         verts2, faces2 = utils.read_ply_file(ply_blender.format(hemi))
         print('vertices: ply: {}, blender: {}'.format(verts1.shape[0], verts2.shape[0]))
         print('faces: ply: {}, blender: {}'.format(faces1.shape[0], faces2.shape[0]))
-        ok = verts1.shape[0] == verts2.shape[0] and faces1.shape[0]==faces2.shape[0]
-        if not ok:
-            raise Exception('check_ply_files: ply files are not the same!')
-    print('check_ply_files: ok')
+        ok = ok and verts1.shape[0] == verts2.shape[0] and faces1.shape[0]==faces2.shape[0]
+    return ok
 
 
 def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, hemi='both'):
@@ -171,6 +183,9 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         overwrite_annotation=False, overwrite_morphing=False, n_jobs=6):
     utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
         fsaverage=fsaverage, overwrite=overwrite_morphing)
+    backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
+    lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
+    backup_annotation_files(subject, aparc_name)
     if not overwrite_annotation:
         annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
             aparc_name))) for hemi in HEMIS])
@@ -182,14 +197,22 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
-def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False):
-    labels_num = 0
+def backup_annotation_files(subject, aparc_name, backup_str='backup'):
+    # Backup annotation files
     for hemi in HEMIS:
-        ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
-        labels_num += len(np.genfromtxt(ply_names_fname))
-    labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
-        aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
-    if overwrite or labels_files_num != labels_num:
+        annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
+        if op.isfile(annot_fname):
+            shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)))
+
+
+def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):
+    files_exist = True
+    for hemi in HEMIS:
+        blender_labels_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
+        files_exist = files_exist and op.isdir(blender_labels_fol) and \
+            len(glob.glob(op.join(blender_labels_fol, '*.ply'))) > minimum_labels_num
+
+    if overwrite or not files_exist:
         matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
         matlab_command = "'{}'".format(matlab_command)
         sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
@@ -202,6 +225,13 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         save_matlab_labels_vertices(subject, aparc_name)
         labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
             aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
+
+    labels_num = 0
+    for hemi in HEMIS:
+        ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
+        labels_num += len(np.genfromtxt(ply_names_fname))
+    labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
+        aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
     return labels_files_num == labels_num and op.isfile(op.join(BLENDER_ROOT_DIR, subject,
         'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
 
@@ -220,42 +250,69 @@ def save_labels_vertices(subject, aparc_name):
         label = mne.read_label(label_fname)
         labels_names[label.hemi].append(label.name)
         labels_vertices[label.hemi].append(label.vertices)
-    utils.save((labels_names, labels_vertices), op.join(BLENDER_ROOT_DIR, subject,
-        'labels_vertices_{}.pkl'.format(aparc_name)))
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
+    utils.save((labels_names, labels_vertices), output_fname)
+    return op.isfile(output_fname)
 
 
 def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, fsaverage='fsaverage',
          overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
-         overwrite_ply_files=False):
+         overwrite_ply_files=False, overwrite_faces_verts=False):
     flags = {}
     # *) Prepare the local subject's folder
     utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         print_traceback=False)
-    # *) Create srf files for subcortical structures
-    # !!! Should source freesurfer !!!
-    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
-    flags['subcortical'] = subcortical_segmentation(subject)
 
     # *) Create annotation file from fsaverage
     flags['annot'] = create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=overwrite_annotation,
         overwrite_morphing=overwrite_morphing_labels, fsaverage=fsaverage, n_jobs=1)
+
     # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
     flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
 
     # *) Calls Matlab 'splitting_cortical.m' script
     flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, overwrite_ply_files)
 
+    # *) Create srf files for subcortical structures
+    # !!! Should source freesurfer !!!
+    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
+    flags['subcortical'] = subcortical_segmentation(subject)
+
     # *) Create a dictionary for verts and faces for both hemis
-    calc_faces_verts_dic(subject)
+    flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite_faces_verts)
 
     # *) Save the labels vertices for meg label plotting
-    save_labels_vertices(subject, aparc_name)
+    flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
 
-    check_ply_files(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'),
-                    op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'))
+    # *) Check the pial surfaces
+    flags['ply_files'] = check_ply_files(subject)
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))
+    return flags
+
+
+def run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
+        overwrite_hemis_srf=False, overwrite_labels_ply_files=False, overwrite_faces_verts=False,
+        fsaverage='fsaverage'):
+    subjects_flags, subjects_errors = {}, {}
+    for subject in subjects:
+        remote_subject_dir = op.join(remote_subjects_dir, subject)
+        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+        try:
+            print('*******************************************')
+            print('subject: {}, atlas: {}'.format(subject, aparc_name))
+            print('*******************************************')
+            flags = main(subject, aparc_name, neccesary_files, remote_subject_dir,
+                overwrite_annotation=overwrite_annotation, overwrite_morphing_labels=overwrite_morphing_labels,
+                overwrite_hemis_srf=overwrite_hemis_srf, overwrite_labels_ply_files=overwrite_labels_ply_files,
+                overwrite_faces_verts=overwrite_faces_verts, fsaverage=fsaverage)
+            subjects_flags[subject] = flags
+        except:
+            subjects_errors[subject] = traceback.format_exc()
+            print('Error in subject {}'.format(subject))
+            print(traceback.format_exc())
+
 
 if __name__ == '__main__':
     # ******************************************************************
@@ -268,11 +325,6 @@ if __name__ == '__main__':
     # download the folder 'brainder_scripts' from the git,
     # and put it under the main mmvt folder.
     # ******************************************************************
-    subject = 'mg96'
-    aparc_name = 'laus250' # 'aprc250'
-    fsaverage = 'fsaverage'
-    print('subject: {}, atlas: {}'.format(subject, aparc_name))
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
 
     # Files needed in the local subject folder
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
@@ -281,14 +333,33 @@ if __name__ == '__main__':
     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
 
+    overwrite_annotation = True
+    overwrite_morphing_labels = True
+    overwrite_hemis_srf = True
+    overwrite_labels_ply_files = True
+    overwrite_faces_verts = True
+    fsaverage='fsaverage'
+    aparc_name = 'laus250'
+
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
-    remote_subject_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs', subject)
-    # main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
-    #      overwrite_hemis_srf=False, overwrite_labels_ply_files=False, fsaverage=fsaverage)
+    remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
+    subjects = set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
+    run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels,
+        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage)
 
-    flags = {}
-    flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, True, True)
-
+    # subject = subjects[0]
+    # calc_faces_verts_dic(subject, overwrite_faces_verts)
+    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=overwrite_annotation,
+    #     overwrite_morphing=overwrite_morphing_labels, fsaverage=fsaverage, n_jobs=1)
+    # freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
+    # flag = save_labels_vertices(subject, aparc_name)
+    # flag = calc_faces_verts_dic(subject, overwrite_faces_verts)
+    # print(flag)
+    # check_ply_files(subject)
+    # create_annotation_file_from_fsaverage('mg85', aparc_name, overwrite_annotation=overwrite_annotation,
+    #     overwrite_morphing=overwrite_morphing_labels, fsaverage=fsaverage, n_jobs=1)
+    # backup_atlas = '{}_before_solve_collision'.format(aparc_name, fsaverage)
+    # lu.solve_labels_collision('mg85', SUBJECTS_DIR, aparc_name, backup_atlas, n_jobs=1)
     print('finish!')

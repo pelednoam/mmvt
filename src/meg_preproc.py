@@ -1204,5 +1204,5 @@ if __name__ == '__main__':
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
-    test_labels_coloring(subject, aparc_name)
+    test_labels_coloring(subject, 'laus250')
     print('finish!')

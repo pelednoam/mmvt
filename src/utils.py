@@ -178,7 +178,7 @@ def read_obj_file(obj_file):
 
 
 def srf2ply(srf_file, ply_file):
-    print('convert {} to {}'.format(srf_file, ply_file))
+    print('convert {} to {}'.format(namebase(srf_file), namebase(ply_file)))
     verts, faces, verts_num, faces_num = read_srf_file(srf_file)
     write_ply_file(verts, faces, ply_file)
     return ply_file
@@ -198,11 +198,10 @@ def convert_srf_files_to_ply(srf_folder, overwrite=True):
 
 
 def get_ply_vertices_num(ply_file_template):
-    if os.path.isfile(ply_file_template.format('rh')) and \
-        os.path.isfile(ply_file_template.format('lh')):
-            rh_vertices, _ = read_ply_file(ply_file_template.format('rh'))
-            lh_vertices, _ = read_ply_file(ply_file_template.format('lh'))
-            return {'rh':rh_vertices.shape[0], 'lh':lh_vertices.shape[0]}
+    if os.path.isfile(ply_file_template.format('rh')) and os.path.isfile(ply_file_template.format('lh')):
+        rh_vertices, _ = read_ply_file(ply_file_template.format('rh'))
+        lh_vertices, _ = read_ply_file(ply_file_template.format('lh'))
+        return {'rh':rh_vertices.shape[0], 'lh':lh_vertices.shape[0]}
     else:
         print('No surface ply files!')
         return None
@@ -331,8 +330,9 @@ def how_many_curlies(str):
     return len(re.findall('\{*\}', str))
 
 
-def run_script(cmd):
-    print('running: {}'.format(cmd))
+def run_script(cmd, verbose=False):
+    if verbose:
+        print('running: {}'.format(cmd))
     output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd),
                                      shell=True)
     print(output)
@@ -452,7 +452,7 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True):
-    if subjects_dir=='':
+    if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = os.path.join(subjects_dir, subject)
     labels_fol = os.path.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
@@ -623,18 +623,14 @@ def get_labels_vertices(labels, vertno):
     return label_vertidx, labels_names
 
 
-def read_labels(labels_fol, hemi='both', return_generator=False):
-    hemis = [hemi] if hemi!='both' else HEMIS
+def read_labels(labels_fol, hemi='both'):
+    hemis = [hemi] if hemi != 'both' else HEMIS
     labels = []
     for hemi in hemis:
         for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):
             print('read label from {}'.format(label_file))
             label = mne.read_label(label_file)
-            # if return_generator:
-            #     yield label
-            # else:
             labels.append(label)
-    # if not return_generator:
     return labels
 
 
@@ -1054,3 +1050,34 @@ def csv_from_excel(xlsx_fname, csv_fname):
         wr.writerow([val for val in sh.row_values(rownum)])
 
     csv_file.close()
+
+
+def get_all_subjects(subjects_dir, prefix, exclude_substr):
+    subjects = []
+    folders = [namebase(fol) for fol in get_subfolders(subjects_dir)]
+    for subject_fol in folders:
+        if subject_fol[:len(prefix)].lower() == prefix and exclude_substr not in subject_fol:
+            subjects.append(subject_fol)
+    return subjects
+
+
+def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
+    labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+    files_chunks = chunks(labels_files, len(labels_files) / n_jobs)
+    results = run_parallel(_read_labels_parallel, files_chunks, n_jobs)
+    labels = []
+    for labels_chunk in results:
+        labels.extend(labels_chunk)
+    return labels
+
+
+def _read_labels_parallel(files_chunk):
+    labels = []
+    for label_fname in files_chunk:
+        label = mne.read_label(label_fname)
+        labels.append(label)
+    return labels
+
+
+def merge_two_dics(dic1, dic2):
+    return {**dic1, **dic2}
