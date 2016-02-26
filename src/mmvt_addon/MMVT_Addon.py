@@ -45,9 +45,9 @@ T = 2500
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
-                                                     description="Define the root path of the project",
-                                                     subtype='DIR_PATH')
+# bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
+#                                                      description="Define the root path of the project",
+#                                                      subtype='DIR_PATH')
 
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Import Brain - START vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 bpy.types.Scene.brain_imported = False
@@ -236,7 +236,7 @@ class ImportRoisClass(bpy.types.Operator):
     current_root_path = ''
 
     def invoke(self, context, event=None):
-        self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        self.current_root_path = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         import_brain(self.current_root_path)
         return {"FINISHED"}
 
@@ -588,7 +588,7 @@ class DataMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, 'conf_path')
+        # layout.prop(context.scene, 'conf_path')
         col1 = self.layout.column(align=True)
         col2 = self.layout.column(align=True)
         if not bpy.types.Scene.brain_imported:
@@ -988,7 +988,7 @@ class Filtering(bpy.types.Operator):
     type_of_filter = None
     type_of_func = None
     current_file_to_upload = ''
-    current_root_path = bpy.context.scene.conf_path
+    current_root_path = mmvt_utils.get_user_fol() #bpy.context.scene.conf_path
 
     def get_object_to_filter(self, source_files):
         data, names = [], []
@@ -1105,7 +1105,7 @@ class Filtering(bpy.types.Operator):
         self.topK = bpy.context.scene.filter_topK
         self.filter_from = bpy.context.scene.filter_from
         self.filter_to = bpy.context.scene.filter_to
-        self.current_activity_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        self.current_activity_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
         # self.current_activity_path = bpy.path.abspath(bpy.context.scene.activity_path)
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
@@ -1610,7 +1610,7 @@ def init_activity_map_coloring(map_type):
     # change_view3d()
 
     faces_verts = {}
-    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     faces_verts['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
     faces_verts['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
     show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
@@ -1620,7 +1620,7 @@ def init_activity_map_coloring(map_type):
 
 def load_meg_subcortical_activity():
     meg_sub_activity = None
-    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     subcortical_activity_file = os.path.join(current_root_path,'subcortical_meg_activity.npz')
     if os.path.isfile(subcortical_activity_file):
         meg_sub_activity = np.load(subcortical_activity_file)
@@ -1648,7 +1648,7 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
         cur_obj = bpy.data.objects[hemi]
         labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
         labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
-        vertices_num = max(map(max, labels_vertices[hemi])) + 1 # max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0])
+        vertices_num = max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0]) + 1
         colors_data = np.ones((vertices_num, 4))
         colors_data[:, 0] = 0
         no_t = labels_data['data'][0].ndim == 0
@@ -1669,7 +1669,7 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
 
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True):
-    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
 
@@ -1697,7 +1697,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
 
 
 def fmri_subcortex_activity_color(threshold, override_current_mat=True):
-    current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     subcoticals = glob.glob(os.path.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
     for subcortical_file in subcoticals:
         subcortical = os.path.splitext(os.path.basename(subcortical_file))[0]
@@ -1727,13 +1727,13 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # else:
     #     vcol_layer = mesh.vertex_colors.active
         # loop_indices = set()
-    print('max vert in lookup: {}, vcol_layer len: {}'.format(np.max(lookup), len(vcol_layer.data)))
+    print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x>-1]:
-            vcol_layer.data[loop_ind].color = vert_values[vert, 1:]
-            # loop_indices.add(loop_ind)
-    # return loop_indices
+            d = vcol_layer.data[loop_ind]
+            d.color = vert_values[vert, 1:]
+
 
 
 def default_coloring(loop_indices):
@@ -2111,7 +2111,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        root = bpy.path.abspath(bpy.context.scene.conf_path)
+        root = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         point = np.genfromtxt(os.path.join(root, 'freeview', 'edit.dat'))
         bpy.context.scene.cursor_location = point / 10.0
         return {"FINISHED"}
@@ -2123,7 +2123,7 @@ class FreeviewOpen(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        root = bpy.path.abspath(bpy.context.scene.conf_path)
+        root = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
         sig = os.path.join(root, 'freeview', 'sig_subject.mgz')
         T1 = os.path.join(root, 'freeview', 'T1.mgz')
         aseg = os.path.join(root, 'freeview', 'laus250+aseg.mgz')
@@ -2276,7 +2276,7 @@ class CreateVertexData(bpy.types.Operator):
         print(vertex_co)
         self.create_empty_in_vertex_location(self, vertex_co)
         # data_path = '/homes/5/npeled/space3/MEG/ECR/mg79'
-        data_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        data_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
         # keyframe_empty('Activity_in_vertex',closest_mesh_name,vertex_ind,data_path)
         self.keyframe_empty_test('Activity_in_vertex', closest_mesh_name, vertex_ind, data_path)
         return {"FINISHED"}
@@ -2398,7 +2398,7 @@ class RenderingMakerPanel(bpy.types.Panel):
     bl_label = "Render"
 
     def draw(self, context):
-        current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+        current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
         render_draw(self, context)
 
 
@@ -2442,8 +2442,8 @@ class helper_class():
     # bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
     # bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
     # bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
-    conf_path = bpy.props.StringProperty(name="Root Path", default="",
-                                         description="Define the root path of the project", subtype='DIR_PATH')
+    # conf_path = bpy.props.StringProperty(name="Root Path", default="",
+    #                                      description="Define the root path of the project", subtype='DIR_PATH')
     brain_imported = False
     electrodes_imported = False
     brain_data_exist = False
@@ -2506,7 +2506,7 @@ class helper_class():
 
 def register():
     tmp = helper_class()
-    bpy.types.Scene.conf_path = tmp.conf_path
+    # bpy.types.Scene.conf_path = tmp.conf_path
     bpy.types.Scene.brain_imported = tmp.brain_imported
     bpy.types.Scene.electrodes_imported = tmp.electrodes_imported
     bpy.types.Scene.brain_data_exist = tmp.brain_data_exist

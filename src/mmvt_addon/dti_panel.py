@@ -61,10 +61,10 @@ def plot_pathway(self, context, layers_dti, pathway_name, pathway_type):
         tracks = mu.load(pkl_fname)
         N = len(tracks)
         now = time.time()
-        for ind, track in enumerate(tracks[:2]):
+        for ind, track in enumerate(tracks[:1000]):
             mu.time_to_go(now, ind, N, 100)
             track = track * 0.1
-            pprint(track)
+            # pprint(track)
             cur_obj = mu.create_spline(track, layers_dti, bevel_depth=0.01)
             # cur_obj.scale = [0.1] * 3
             cur_obj.name = '{}_{}'.format(pathway_name, ind)
