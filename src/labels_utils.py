@@ -61,9 +61,12 @@ def calc_labels_centroids(labels_hemi, hemis_verts):
     return centroids
 
 
-def check_labels(subject, subjects_dir, atlas, label_name):
-    label_org = mne.read_label(op.join(subjects_dir, subject, 'label', '{}_orig'.format(atlas), '{}.label'.format(label_name)))
-    label_new = mne.read_label(op.join(subjects_dir, subject, 'label', atlas, '{}.label'.format(label_name)))
+def backup_annotation_files(subject, subjects_dic, aparc_name, backup_str='backup'):
+    # Backup annotation files
+    for hemi in HEMIS:
+        annot_fname = op.join(subjects_dic, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
+        if op.isfile(annot_fname):
+            shutil.copyfile(op.join(subjects_dic, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)))
 
 
 if __name__ == '__main__':

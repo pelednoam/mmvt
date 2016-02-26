@@ -185,7 +185,7 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         fsaverage=fsaverage, overwrite=overwrite_morphing)
     backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
     lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
-    backup_annotation_files(subject, aparc_name)
+    lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
     if not overwrite_annotation:
         annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
             aparc_name))) for hemi in HEMIS])
@@ -195,14 +195,6 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
     return utils.both_hemi_files_exist(op.join(
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
-
-
-def backup_annotation_files(subject, aparc_name, backup_str='backup'):
-    # Backup annotation files
-    for hemi in HEMIS:
-        annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
-        if op.isfile(annot_fname):
-            shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)))
 
 
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):

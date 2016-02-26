@@ -178,7 +178,7 @@ def read_obj_file(obj_file):
 
 
 def srf2ply(srf_file, ply_file):
-    print('convert {} to {}'.format(namebase(srf_file), namebase(ply_file)))
+    # print('convert {} to {}'.format(namebase(srf_file), namebase(ply_file)))
     verts, faces, verts_num, faces_num = read_srf_file(srf_file)
     write_ply_file(verts, faces, ply_file)
     return ply_file
