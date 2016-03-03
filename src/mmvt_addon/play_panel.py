@@ -295,7 +295,7 @@ class PlayPanel(bpy.types.Panel):
     play_reverse = False
     first_time = True
     init_play = True
-    imp_times = [[148, 221], [247, 273], [410, 555], [903, 927]]
+    # imp_times = [[148, 221], [247, 273], [410, 555], [903, 927]]
 
     def draw(self, context):
         play_panel_draw(context, self.layout)

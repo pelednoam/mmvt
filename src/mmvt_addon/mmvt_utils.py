@@ -305,3 +305,13 @@ def get_subfolders(fol):
 def hemi_files_exists(fname):
     return os.path.isfile(os.path.join(fname.format(hemi='rh'))) and \
            os.path.isfile(os.path.join(fname.format(hemi='lh')))
+
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    # http://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
+    import re
+    return [ atoi(c) for c in re.split('(\d+)', text) ]

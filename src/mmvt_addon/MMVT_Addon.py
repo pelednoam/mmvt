@@ -33,7 +33,8 @@ import play_panel
 importlib.reload(play_panel)
 import dti_panel
 importlib.reload(dti_panel)
-
+import electrodes_panel
+importlib.reload(electrodes_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -912,11 +913,7 @@ class ClearFiltering(bpy.types.Operator):
 
         if bpy.data.objects.get('Deep_electrodes'):
             for obj in bpy.data.objects['Deep_electrodes'].children:
-                obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-                # safety check, if something happened to the electrode's material
-                create_and_set_material(obj)
-                # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
-                # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+                de_select_electrode(obj)
 
         type_of_filter = bpy.context.scene.filter_curves_type
         if type_of_filter == 'MEG':
@@ -928,6 +925,15 @@ class ClearFiltering(bpy.types.Operator):
         bpy.types.Scene.closest_curve_str = ''
         bpy.types.Scene.filter_is_on = False
         return {"FINISHED"}
+
+
+def de_select_electrode(obj, call_create_and_set_material=True):
+    obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
+    # safety check, if something happened to the electrode's material
+    if call_create_and_set_material:
+        create_and_set_material(obj)
+    # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
+    # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 
 
 def get_max_time_steps():
@@ -1502,10 +1508,10 @@ bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(defau
                                                                         # get=get_appearance_show_connections_layer,
                                                                         # set=set_appearance_show_connections_layer)
 
-bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("1", "Rendered Brain", "", 1),
-                                                                 ("2", " Solid Brain", "", 2)],
-                                                          description="Brain appearance", get=get_filter_view_type,
-                                                          set=set_filter_view_type)
+bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
+    items=[("1", "Rendered Brain", "", 1), ("2", " Solid Brain", "", 2)],description="Brain appearance",
+    get=get_filter_view_type, set=set_filter_view_type, default='2')
+
 
 class AppearanceMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -2556,6 +2562,7 @@ def main():
         connections_panel.init(current_module)
         play_panel.init(current_module)
         dti_panel.init(current_module)
+        electrodes_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
