@@ -72,20 +72,35 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
     shutil.copytree(new_fol, blender_fol)
 
 
-def rename_cortical(fol, new_fol, codes_file):
-    names = {}
-    with open(codes_file, 'r') as f:
-        for code, line in enumerate(f.readlines()):
-            names[code+1] = line.strip()
+def rename_cortical(subject, aparc_name, hemi, fol, new_fol, codes_file=''):
+    # names = {}
+    # with open(codes_file, 'r') as f:
+    #     for code, line in enumerate(f.readlines()):
+    #         names[code+1] = line.strip()
+    lookup = create_labels_lookup(subject, hemi, aparc_name)
     ply_files = glob.glob(op.join(fol, '*.ply'))
     utils.delete_folder_files(new_fol)
     for ply_file in ply_files:
         base_name = op.basename(ply_file)
         num = int(base_name.split('.')[-2])
         hemi = base_name.split('.')[0]
-        name = names.get(num, num)
+        name = lookup.get(num, num)
         new_name = '{}-{}'.format(name, hemi)
         shutil.copy(ply_file, op.join(new_fol, '{}.ply'.format(new_name)))
+
+
+def create_labels_lookup(subject, hemi, aparc_name):
+    import mne.label
+    lookup = {}
+    annot, ctab, label_names = \
+        mne.label._read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+    lookup_key = 1
+    for label_ind in range(len(label_names)):
+        indices_num = len(np.where(annot == ctab[label_ind, 4])[0])
+        if indices_num > 0 or label_names[label_ind].astype(str) == 'unknown':
+            lookup[lookup_key] = label_names[label_ind].astype(str)
+            lookup_key += 1
+    return lookup
 
 
 def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
@@ -174,7 +189,7 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
         blender_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         ply_names_fname = op.join(SUBJECTS_DIR, subject,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
         utils.convert_srf_files_to_ply(srf_fol, overwrite_ply_files)
-        rename_cortical(srf_fol, ply_fol, ply_names_fname)
+        rename_cortical(subject, aparc_name, hemi, srf_fol, ply_fol, ply_names_fname)
         utils.rmtree(blender_fol)
         shutil.copytree(ply_fol, blender_fol)
 
@@ -216,8 +231,8 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         # convert the  obj files to ply
         convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
         save_matlab_labels_vertices(subject, aparc_name)
-        labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
-            aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
+        # labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
+        #     aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
 
     labels_num = 0
     for hemi in HEMIS:
@@ -345,7 +360,7 @@ if __name__ == '__main__':
     overwrite_labels_ply_files = False
     overwrite_faces_verts = False
     solve_labels_collisions = False
-    fsaverage='fsaverage'
+    fsaverage = 'fsaverage'
     aparc_name = 'laus250'
     n_jobs = 6
 
@@ -357,17 +372,9 @@ if __name__ == '__main__':
     run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
         overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage, n_jobs)
 
-    # subject = subjects[0]
-    # calc_faces_verts_dic(subject, overwrite_faces_verts)
-    # create_annotation_file_from_fsaverage(subject, aparc_name, overwrite_annotation=overwrite_annotation,
-    #     overwrite_morphing=overwrite_morphing_labels, fsaverage=fsaverage, n_jobs=1)
-    # freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
-    # flag = save_labels_vertices(subject, aparc_name)
-    # flag = calc_faces_verts_dic(subject, overwrite_faces_verts)
+    subject = 'mg96'
+    aparc_name = 'aparc.DKTatlas40'
+    # flag = parcelate_cortex(subject, aparc_name , True, True)
     # print(flag)
-    # check_ply_files(subject)
-    # create_annotation_file_from_fsaverage('mg85', aparc_name, overwrite_annotation=overwrite_annotation,
-    #     overwrite_morphing=overwrite_morphing_labels, fsaverage=fsaverage, n_jobs=1)
-    # backup_atlas = '{}_before_solve_collision'.format(aparc_name, fsaverage)
-    # lu.solve_labels_collision('mg85', SUBJECTS_DIR, aparc_name, backup_atlas, n_jobs=1)
+    # convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=True, hemi='both')
     print('finish!')
