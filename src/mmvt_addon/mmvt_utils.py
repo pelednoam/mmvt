@@ -157,9 +157,13 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
             print ("Could not delete object")
 
 
+def get_user():
+    return namebase(bpy.data.filepath).split('_')[0]
+
+
 def get_user_fol():
-    user = namebase(bpy.data.filepath).split('_')[0]
     root_fol = bpy.path.abspath('//')
+    user = get_user()
     return op.join(root_fol, user)
 
 

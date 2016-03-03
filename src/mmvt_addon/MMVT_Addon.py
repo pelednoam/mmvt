@@ -39,6 +39,8 @@ importlib.reload(electrodes_panel)
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
 T = 2500
+# todo: should be a label!
+atlas_name = 'laus250'
 
 # LAYERS
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
@@ -1648,29 +1650,33 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mmvt_utils.get_user_fol()
-    t = bpy.context.scene.frame_current
-    now = time.time()
     for hemi_ind, hemi in enumerate(hemispheres):
-        cur_obj = bpy.data.objects[hemi]
         labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
         labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
-        vertices_num = max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0]) + 1
-        colors_data = np.ones((vertices_num, 4))
-        colors_data[:, 0] = 0
-        no_t = labels_data['data'][0].ndim == 0
-        for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
-            if 'unknown' in label_name:
-                continue
-            label_index = labels_names[hemi].index(label_name)
-            label_vertices = np.array(labels_vertices[hemi][label_index])
-            if len(label_vertices) > 0:
-                label_data_t, label_colors_t = (label_data, label_colors) if no_t else (label_data[t], label_colors[t])
-                # print('coloring {} with {}'.format(label_name, label_colors_t))
-                label_colors_data = np.hstack((label_data_t, label_colors_t))
-                label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
-                colors_data[label_vertices, :] = label_colors_data
-        mmvt_utils.time_to_go(now, hemi_ind, len(hemispheres), 1)
-        activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold)
+
+
+def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold):
+    vertices_num = max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0]) + 1
+    colors_data = np.ones((vertices_num, 4))
+    colors_data[:, 0] = 0
+    no_t = labels_data['data'][0].ndim == 0
+    t = bpy.context.scene.frame_current
+    now = time.time()
+    for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
+        mmvt_utils.time_to_go(now, hemi_ind, len(labels_data['names']), 10)
+        if 'unknown' in label_name:
+            continue
+        label_index = labels_names[hemi].index(label_name)
+        label_vertices = np.array(labels_vertices[hemi][label_index])
+        if len(label_vertices) > 0:
+            label_data_t, label_colors_t = (label_data, label_colors) if no_t else (label_data[t], label_colors[t])
+            # print('coloring {} with {}'.format(label_name, label_colors_t))
+            label_colors_data = np.hstack((label_data_t, label_colors_t))
+            label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
+            colors_data[label_vertices, :] = label_colors_data
+    cur_obj = bpy.data.objects[hemi]
+    activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
 
 
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,

@@ -77,8 +77,6 @@ def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
     if scalar_map is None:
         x_min, x_max = check_min_max(x, x_min, x_max)
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
-    # x[x<x_min] = x_min
-    # x[x>x_max] = x_max
     return scalar_map.to_rgba(x)
 
 
