@@ -1079,3 +1079,21 @@ def _read_labels_parallel(files_chunk):
 
 def merge_two_dics(dic1, dic2):
     return {**dic1, **dic2}
+
+
+def color_name_to_rgb(color_name):
+    try:
+        import webcolors
+        return webcolors.name_to_rgb(color_name)
+    except:
+        print('No webcolors!')
+        return None
+
+
+def color_name_to_rgb(rgb):
+    try:
+        import webcolors
+        return webcolors.rgb_to_name(rgb)
+    except:
+        print('No webcolors!')
+        return None

@@ -253,9 +253,16 @@ def save_matlab_labels_vertices(subject, aparc_name):
 
 def save_labels_vertices(subject, aparc_name):
     labels_fnames = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))
+    if len(labels_fnames) > 0:
+        labels = []
+        for label_fname in labels_fnames:
+            label = mne.read_label(label_fname)
+            labels.append(label)
+    else:
+        # Read from the annotation file
+        labels = mne.read_labels_from_annot(subject, aparc_name)
     labels_names, labels_vertices = defaultdict(list), defaultdict(list)
-    for label_fname in labels_fnames:
-        label = mne.read_label(label_fname)
+    for label in labels:
         labels_names[label.hemi].append(label.name)
         labels_vertices[label.hemi].append(label.vertices)
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
@@ -369,12 +376,14 @@ if __name__ == '__main__':
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
     subjects = set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage, n_jobs)
+    # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage, n_jobs)
 
     subject = 'mg96'
-    aparc_name = 'aparc.DKTatlas40'
-    # flag = parcelate_cortex(subject, aparc_name , True, True)
-    # print(flag)
-    # convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=True, hemi='both')
+    aparc_name = 'aparc.DKTatlas40' # 'laus250'
+    flags = {}
+    # flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite=True)
+    flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
+    print(flags)
+
     print('finish!')

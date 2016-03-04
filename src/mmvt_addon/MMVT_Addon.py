@@ -16,6 +16,7 @@ import bpy
 import mathutils
 import numpy as np
 import os
+import os.path as op
 import sys
 import time
 import glob
@@ -40,10 +41,10 @@ importlib.reload(electrodes_panel)
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
 T = 2500
-# todo: should be a label!
-atlas = 'laus250'
-bipolar = False
 
+bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
+bpy.context.scene.atlas = mmvt_utils.get_atlas()
+bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
 # LAYERS
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
@@ -58,7 +59,7 @@ HEMIS = ['rh', 'lh']
 bpy.types.Scene.brain_imported = False
 
 
-def import_brain(base_path):
+def import_brain():
     brain_layer = BRAIN_EMPTY_LAYER
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers
@@ -75,6 +76,7 @@ def import_brain(base_path):
     # # for cur_val in bpy.context.scene.layers:
     # #     print(cur_val)
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    base_path = mmvt_utils.get_user_fol()
     for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
         bpy.ops.object.select_all(action='DESELECT')
         print(ply_fname)
@@ -121,7 +123,9 @@ def import_subcorticals(base_path):
     for path_type, base_path in enumerate(base_paths):
         for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
             obj_name = mmvt_utils.namebase(ply_fname)
-            if not bpy.data.objects.get(obj_name) is None:
+            if path_type==PATH_TYPE_SUB_MEG and not bpy.data.objects.get('{}_meg_activity'.format(obj_name)) is None:
+                continue
+            if path_type==PATH_TYPE_SUB_FMRI and not bpy.data.objects.get('{}_fmri_activity'.format(obj_name)) is None:
                 continue
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
@@ -134,7 +138,7 @@ def import_subcorticals(base_path):
             cur_obj.name = obj_name
 
             if path_type == PATH_TYPE_SUB_MEG:
-                cur_obj.name = '{}_meg_activity'.format(name)
+                cur_obj.name = '{}_meg_activity'.format(obj_name)
                 curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
                 if curMat is None:
                     # todo: Fix the succortical_activity_Mat to succortical_activity_mat
@@ -143,7 +147,7 @@ def import_subcorticals(base_path):
                 cur_obj.active_material = bpy.data.materials[curMat.name]
                 cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
             elif path_type == PATH_TYPE_SUB_FMRI:
-                cur_obj.name = '{}_fmri_activity'.format(name)
+                cur_obj.name = '{}_fmri_activity'.format(obj_name)
                 if 'cerebellum' in cur_obj.name.lower():
                     cur_obj.active_material = bpy.data.materials['Activity_map_mat']
                 else:
@@ -166,7 +170,7 @@ class ImportBrain(bpy.types.Operator):
         self.current_root_path = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         print("importing ROIs")
         import_rois(self.current_root_path)
-        import_brain(self.current_root_path)
+        import_brain()
         import_subcorticals(os.path.join(self.current_root_path, 'subcortical'))
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
@@ -197,10 +201,8 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
 
 
 def import_rois(base_path):
-    #todo: add an atlas's label
-    atlas = 'laus250'
-    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, '{}.pial.rh'.format(atlas)),
-                      'Cortex-lh': os.path.join(base_path, '{}.pial.lh'.format(atlas)),
+    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
+                      'Cortex-lh': os.path.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
                       'Subcortical_structures': os.path.join(base_path, 'subcortical')}
     brain_layer = BRAIN_EMPTY_LAYER
 
@@ -275,8 +277,7 @@ def create_and_set_material(obj):
 
 def import_electrodes():
     # input_file = os.path.join(base_path, "electrodes.npz")
-    # todo: add a bipolar label gui
-    bipolar = False
+    bipolar = bpy.context.scene.bipolar
     input_file = os.path.join(mmvt_utils.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
 
     print('Adding deep electrodes')
@@ -595,13 +596,15 @@ class DataMakerPanel(bpy.types.Panel):
         layout = self.layout
         # layout.prop(context.scene, 'conf_path')
         col1 = self.layout.column(align=True)
-        col2 = self.layout.column(align=True)
-        if not bpy.types.Scene.brain_imported:
-            col1.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
-        if not bpy.types.Scene.electrodes_imported:
-            col1.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+        col1.prop(context.scene, 'atlas', text="Atlas")
+        # if not bpy.types.Scene.brain_imported:
+        col1.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
+        # if not bpy.types.Scene.electrodes_imported:
+        col1.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+        col1.prop(context.scene, 'bipolar', text="Bipolar")
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
+        col2 = self.layout.column(align=True)
         col2.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
         col2.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
@@ -1783,6 +1786,32 @@ class ColorElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorManually(bpy.types.Operator):
+    bl_idname = "ohad.man_color"
+    bl_label = "ohad man color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
+        show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
+        labels_names, labels_vertices = mmvt_utils.load(op.join(mmvt_utils.get_user_fol(), 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        faces_verts = load_faces_verts()
+        labels = dict(rh=['rostralanteriorcingulate-rh'], lh=['rostralanteriorcingulate-lh'])
+        data = dict(rh=np.array([0.5]), lh=np.array([0.5]))
+        colors = dict(rh=[[255, 0, 0]], lh=[[255, 0, 0]])
+        for hemi in HEMIS:
+            labels_data = dict(data=data[hemi], colors=colors[hemi], names=labels[hemi])
+            meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
+        regions = ['Left-Accumbens-area', 'Right-Accumbens-area', 'Left-Caudate', 'Right-Caudate']
+        colors = [[0, 128, 0], [0, 128, 0], [0, 0, 255], [0, 0, 255]]
+        for region, color in zip(regions, colors):
+            object_coloring(bpy.data.objects[region + '_meg_activity'], color)
+            # color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
+        return {"FINISHED"}
+
+
+
 class ColorMeg(bpy.types.Operator):
     bl_idname = "ohad.meg_color"
     bl_label = "ohad meg color"
@@ -1887,6 +1916,7 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorFmri.bl_idname, text="Plot FMRI ", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
+        layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -2594,6 +2624,7 @@ def main():
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorFmri)
+        bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(WhereAmI)

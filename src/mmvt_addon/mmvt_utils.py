@@ -161,6 +161,14 @@ def get_user():
     return namebase(bpy.data.filepath).split('_')[0]
 
 
+def get_atlas(default='laus250'):
+    name_split = namebase(bpy.data.filepath).split('_')
+    if len(name_split) > 1:
+        return name_split[1]
+    else:
+        return default
+
+
 def get_user_fol():
     root_fol = bpy.path.abspath('//')
     user = get_user()
