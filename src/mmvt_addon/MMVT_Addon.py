@@ -22,6 +22,7 @@ import glob
 import math
 import importlib
 import numbers
+import itertools
 import traceback
 
 import mmvt_utils
@@ -40,7 +41,8 @@ print("Neuroscience add on started!")
 # todo: should change that in the code!!!
 T = 2500
 # todo: should be a label!
-atlas_name = 'laus250'
+atlas = 'laus250'
+bipolar = False
 
 # LAYERS
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
@@ -1296,12 +1298,12 @@ class Filtering(bpy.types.Operator):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show / Hide objects ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def show_hide_hierarchy(val, obj):
+def show_hide_hierarchy(do_hide, obj):
     if bpy.data.objects.get(obj) is not None:
-        bpy.data.objects[obj].hide = val
+        bpy.data.objects[obj].hide = do_hide
         for child in bpy.data.objects[obj].children:
-            child.hide = val
-            child.hide_render = val
+            child.hide = do_hide
+            child.hide_render = do_hide
 
 
 def show_hide_hemi(val, obj_func_name, obj_brain_name):
@@ -1615,14 +1617,17 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
 def init_activity_map_coloring(map_type):
     set_appearance_show_activity_layer(bpy.context.scene, True)
     set_filter_view_type(bpy.context.scene, 'RENDERS')
-    # change_view3d()
-
-    faces_verts = {}
-    current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    faces_verts['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
-    faces_verts['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
     show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
     show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    # change_view3d()
+    return load_faces_verts()
+
+
+def load_faces_verts():
+    faces_verts = {}
+    current_root_path = mmvt_utils.get_user_fol()
+    faces_verts['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
+    faces_verts['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
     return faces_verts
 
 
@@ -1653,18 +1658,17 @@ def meg_labels_coloring(self, context, aparc_name='laus250', override_current_ma
     for hemi_ind, hemi in enumerate(hemispheres):
         labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
         labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
-        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold)
+        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat)
 
 
-def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold):
-    vertices_num = max([max(verts) for verts in labels_vertices[hemi] if len(verts) > 0]) + 1
+def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat=True):
+    now = time.time()
+    vertices_num = max(itertools.chain.from_iterable(labels_vertices[hemi])) + 1
     colors_data = np.ones((vertices_num, 4))
     colors_data[:, 0] = 0
     no_t = labels_data['data'][0].ndim == 0
     t = bpy.context.scene.frame_current
-    now = time.time()
     for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
-        mmvt_utils.time_to_go(now, hemi_ind, len(labels_data['names']), 10)
         if 'unknown' in label_name:
             continue
         label_index = labels_names[hemi].index(label_name)
@@ -1677,6 +1681,7 @@ def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_v
             colors_data[label_vertices, :] = label_colors_data
     cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+    print('Finish meg_labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
