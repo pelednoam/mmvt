@@ -45,6 +45,9 @@ T = 2500
 bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
 bpy.context.scene.atlas = mmvt_utils.get_atlas()
 bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
+bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
+bpy.context.scene.electrode_radius = 0.15
+
 # LAYERS
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
@@ -285,7 +288,7 @@ def import_electrodes():
     print('loaded')
 
     deep_electrodes_layer = 1
-    electrode_size = 0.15
+    electrode_size = bpy.context.scene.electrode_radius
 
     layers_array = [False] * 20
 
@@ -600,8 +603,9 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.brain_imported:
         col1.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
-        col1.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
         col1.prop(context.scene, 'bipolar', text="Bipolar")
+        col1.prop(context.scene, 'electrode_radius', text="Electrodes' radius")
+        col1.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
         col2 = self.layout.column(align=True)
