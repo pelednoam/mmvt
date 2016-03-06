@@ -368,7 +368,7 @@ if __name__ == '__main__':
     overwrite_faces_verts = False
     solve_labels_collisions = False
     fsaverage = 'fsaverage'
-    aparc_name = 'laus250'
+    aparc_name = 'aparc.DKTatlas40' #'laus250'
     n_jobs = 6
 
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
@@ -379,11 +379,15 @@ if __name__ == '__main__':
     # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage, n_jobs)
 
-    subject = 'mg96'
-    aparc_name = 'aparc.DKTatlas40' # 'laus250'
-    flags = {}
-    # flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite=True)
-    flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
-    print(flags)
-
+    # subject = 'mg96'
+    # aparc_name = 'aparc.DKTatlas40' # 'laus250'
+    users_flags = {}
+    for subject in subjects:
+        users_flags[subject] = {}
+        # flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite=True)
+        users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, True)
+        users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
+    for subject in subjects:
+        for flag_type, val in users_flags[subject].items():
+            print('{}: {}'.format(flag_type, val))
     print('finish!')

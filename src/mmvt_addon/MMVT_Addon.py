@@ -1421,18 +1421,18 @@ def set_appearance_show_activity_layer(self, value):
         # bpy.context.scene.layers[LIGHTS_LAYER] = True
 
 
-# def get_appearance_show_connections_layer(self):
-#     try:
-#         return self['appearance_show_connections_layer']
-#     except:
-#         print(traceback.format_exc())
-#         return None
-#
-# def set_appearance_show_connections_layer(self, value):
-#     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-#         self['appearance_show_connections_layer'] = value
-#         bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
-#         bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+def get_appearance_show_connections_layer(self):
+    try:
+        return self['appearance_show_connections_layer']
+    except:
+        print(traceback.format_exc())
+        return None
+
+def set_appearance_show_connections_layer(self, value):
+    if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+        self['appearance_show_connections_layer'] = value
+        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
+        bpy.context.scene.layers[CONNECTIONS_LAYER] = value
 
 
 def get_filter_view_type(self):
@@ -1515,9 +1515,9 @@ bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True
 bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                                         get=get_appearance_show_activity_layer,
                                                                         set=set_appearance_show_activity_layer)
-bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity")
-                                                                        # get=get_appearance_show_connections_layer,
-                                                                        # set=set_appearance_show_connections_layer)
+bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
+                                                                        get=get_appearance_show_connections_layer,
+                                                                        set=set_appearance_show_connections_layer)
 
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("1", "Rendered Brain", "", 1), ("2", " Solid Brain", "", 2)],description="Brain appearance",
@@ -2527,9 +2527,9 @@ class helper_class():
     appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
                                                             get=get_appearance_show_activity_layer,
                                                             set=set_appearance_show_activity_layer)
-    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity")
-                                                            # get=get_appearance_show_connections_layer,
-                                                            # set=set_appearance_show_connections_layer)
+    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
+                                                            get=get_appearance_show_connections_layer,
+                                                            set=set_appearance_show_connections_layer)
 
     filter_view_type = bpy.props.EnumProperty(
         items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
