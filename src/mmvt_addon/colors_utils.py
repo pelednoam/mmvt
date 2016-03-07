@@ -202,4 +202,4 @@ def normalize_hex(hex_value):
     hex_digits = match.group(1)
     if len(hex_digits) == 3:
         hex_digits = u''.join(2 * s for s in hex_digits)
-    return u'#%s' % hex_digits.lower()
+    return u'#{}'.format(hex_digits.lower())

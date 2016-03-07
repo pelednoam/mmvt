@@ -7,9 +7,12 @@ import os.path as op
 import uuid
 from collections import OrderedDict
 import time
+import subprocess
+from threading import Thread
 
 HEMIS = ['rh', 'lh']
 OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_SUBCORTEX, OBJ_TYPE_ELECTRODE = range(4)
+IS_WINDOWS = (os.name == 'nt')
 
 try:
     import cPickle as pickle
@@ -366,3 +369,29 @@ def check_obj_type(obj_name):
     else:
         obj_type = None
     return obj_type
+
+
+def get_obj_hemi(obj_name):
+    obj_type = check_obj_type(obj_name)
+    if obj_type == OBJ_TYPE_CORTEX_LH:
+        hemi = 'lh'
+    elif obj_type == OBJ_TYPE_CORTEX_RH:
+        hemi = 'rh'
+    else:
+        hemi = None
+    return hemi
+
+
+def run_command_in_new_thread(cmd):
+    thread = Thread(target=run_command, args=(cmd, ))
+    print('start!')
+    thread.start()
+
+
+def run_command(cmd):
+    print('run: {}'.format(cmd))
+    if (IS_WINDOWS):
+        os.system(cmd)
+        return None
+    else:
+        subprocess.call(cmd, shell=True)

@@ -15,7 +15,8 @@ def electrodes_update(self, context):
         show_only_current_lead(self, context)
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup[ElecsPanel.current_electrode]
-        plot_labels_probs(loc)
+        if bpy.context.scene.color_lables:
+            plot_labels_probs(loc)
         print('{}:'.format(ElecsPanel.current_electrode))
         for subcortical_name, subcortical_prob in zip(loc['subcortical_rois'], loc['subcortical_probs']):
             print('{}: {}'.format(subcortical_name, subcortical_prob))
@@ -36,12 +37,17 @@ def plot_labels_probs(elc):
     ElecsPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
     ElecsPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
     if len(elc['cortical_rois']) > 0:
-        # todo: not sure the hemi will always be in the end of the labels' names
-        hemi = elc['cortical_rois'][0][-2:]
-        labels_names, labels_vertices = mu.load(op.join(mu.get_user_fol(), 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
-        # if no matplotlib should calculate the colors offline :(
-        labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
-        ElecsPanel.addon.meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ElecsPanel.faces_verts, hemi, 0)
+        hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
+        if not hemi is None:
+            # if no matplotlib should calculate the colors offline :(
+            labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
+            ElecsPanel.addon.meg_labels_coloring_hemi(
+                ElecsPanel.labels_names, ElecsPanel.labels_vertices, labels_data, ElecsPanel.faces_verts, hemi, 0)
+        else:
+            print("Can't get the rois hemi!")
+    if len(elc['subcortical_rois']) > 0:
+        for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
+            ElecsPanel.addon.color_subcortical_region(region, color)
 
 
 def unselect_current_electrode(cur_elc_name):
@@ -57,6 +63,7 @@ def elecs_draw(self, context):
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
+    layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
 
 
 class NextElectrode(bpy.types.Operator):
@@ -86,6 +93,9 @@ class PrevElectrode(bpy.types.Operator):
 
 bpy.types.Scene.show_only_lead = bpy.props.BoolProperty(
     default=False, description="Show only the current lead", update=show_only_current_lead)
+bpy.types.Scene.color_lables = bpy.props.BoolProperty(
+    default=False, description="Color the relevant lables")
+
 
 class ElecsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -107,7 +117,10 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
+    register()
     parent = bpy.data.objects.get('Deep_electrodes')
+    if parent is None or len(parent.children) == 0:
+        return
     ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
     items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
@@ -125,7 +138,6 @@ def init(addon):
         # todo: Should be done only once in the main addon
         ElecsPanel.faces_verts = addon.load_faces_verts()
         ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
-    register()
     ElecsPanel.init = True
     print('Electrodes panel initialization completed successfully!')
 

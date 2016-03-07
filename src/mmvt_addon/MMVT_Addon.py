@@ -16,7 +16,7 @@ import bpy
 import mathutils
 import numpy as np
 import os
-import op as op
+import os.path as op
 import sys
 import time
 import glob
@@ -40,6 +40,9 @@ import dti_panel
 importlib.reload(dti_panel)
 import electrodes_panel
 importlib.reload(electrodes_panel)
+import freeview_panel
+importlib.reload(freeview_panel)
+
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -292,19 +295,21 @@ def import_electrodes():
 
     deep_electrodes_layer = 1
     electrode_size = bpy.context.scene.electrode_radius
-
     layers_array = [False] * 20
+    create_empty_if_doesnt_exists('Deep_electrodes', BRAIN_EMPTY_LAYER, layers_array, 'Deep_electrodes')
 
-    if bpy.data.objects.get("Deep_electrodes") is None:
-        layers_array[BRAIN_EMPTY_LAYER] = True
-        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
-        bpy.data.objects['Empty'].name = 'Deep_electrodes'
+    # if bpy.data.objects.get("Deep_electrodes") is None:
+    #     layers_array[BRAIN_EMPTY_LAYER] = True
+    #     bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
+    #     bpy.data.objects['Empty'].name = 'Deep_electrodes'
 
     layers_array = [False] * 20
     layers_array[deep_electrodes_layer] = True
 
     for (x, y, z), name in zip(f['pos'], f['names']):
         elc_name = name.astype(str)
+        if not bpy.data.objects.get(elc_name) is None:
+            continue
         print('creating ' + elc_name)
         create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
         cur_obj = bpy.data.objects[elc_name]
@@ -383,7 +388,7 @@ def add_data_to_brain():
         pass
 
     bpy.types.Scene.maximal_time_steps = number_of_maximal_time_steps
-    print(bpy.types.Scene.maximal_time_steps)
+    # print(bpy.types.Scene.maximal_time_steps)
 
     # for obj in bpy.data.objects:
     #     try:
@@ -1599,7 +1604,9 @@ def object_coloring(obj, rgb):
 
 
 def color_subcortical_region(region_name, rgb):
-    object_coloring(bpy.data.objects[region_name + '_meg_activity'], rgb)
+    obj = bpy.data.objects.get(region_name + '_meg_activity', None)
+    if not obj is None:
+        object_coloring(obj, rgb)
 
 
 # todo: do something with the threshold parameter
@@ -2182,59 +2189,6 @@ class SearchPanel(bpy.types.Panel):
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-class FreeviewGotoCursor(bpy.types.Operator):
-    bl_idname = "ohad.freeview_goto_cursor"
-    bl_label = "Goto Cursor"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        root = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
-        point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
-        bpy.context.scene.cursor_location = point / 10.0
-        return {"FINISHED"}
-
-
-class FreeviewOpen(bpy.types.Operator):
-    bl_idname = "ohad.freeview_open"
-    bl_label = "Open Freeview"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        root = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-        sig = op.join(root, 'freeview', 'sig_subject.mgz')
-        T1 = op.join(root, 'freeview', 'T1.mgz')
-        aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
-        lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
-        electrodes = self.get_electrodes_groups(root)
-        cmd = 'freeview -v {}:colormap=heat {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(sig, T1, aseg, lut, electrodes)
-        utils.run_command_in_new_thread(cmd)
-        return {"FINISHED"}
-
-    def get_electrodes_groups(self, root):
-        groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
-        groups_files = ''
-        for group in groups:
-            groups_files = groups_files + op.join(root, 'freeview', '{}.dat '.format(group))
-        return groups_files
-
-class FreeviewPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Freeview Panel"
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row(align=0)
-        row.operator(FreeviewOpen.bl_idname, text="Freeview", icon = 'PARTICLES')
-        row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon = 'HAND')
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2636,6 +2590,7 @@ def main():
         play_panel.init(current_module)
         dti_panel.init(current_module)
         electrodes_panel.init(current_module)
+        freeview_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
@@ -2651,8 +2606,6 @@ def main():
         bpy.utils.register_class(SearchFilter)
         bpy.utils.register_class(SearchClear)
         bpy.utils.register_class(SearchMark)
-        bpy.utils.register_class(FreeviewGotoCursor)
-        bpy.utils.register_class(FreeviewOpen)
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorFmri)
@@ -2682,7 +2635,6 @@ def main():
         bpy.utils.register_class(DataMakerPanel)
         bpy.utils.register_class(RenderingMakerPanel)
         bpy.utils.register_class(SearchPanel)
-        bpy.utils.register_class(FreeviewPanel)
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())

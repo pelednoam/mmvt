@@ -16,7 +16,7 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 APARC2ASEG = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 
-def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, create_volume_file=False, way_points=False):
+def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, way_points=False):
     electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format(
         '_bipolar' if bipolar else ''))
     blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
@@ -92,8 +92,8 @@ def create_aparc_aseg_file(subject, atlas, print_only=False, overwrite=False, ch
         os.chdir(current_dir)
 
 
-def create_electrodes_volume_file(subject, bipolar=False, create_points_files=True, create_volume_file=False,
-        way_points=False):
+def create_electrodes_points(subject, bipolar=False, create_points_files=True, create_volume_file=False,
+                             way_points=False):
     electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes',
         'electrodes{}_positions.npz'.format('_bipolar' if bipolar else ''))
     elecs = np.load(electrodes_file)
@@ -138,25 +138,31 @@ def create_electrodes_volume_file(subject, bipolar=False, create_points_files=Tr
         nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
 
 
+def copy_T1(subject):
+    blender_T1 = op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz')
+    subject_T1 = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+    if not op.isfile(blender_T1):
+        utils.copy_file(subject_T1, blender_T1)
+
+
 def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
     # Create the files for freeview bridge
-    # create_freeview_cmd(subject, aparc_name, bipolar)
-    create_electrodes_volume_file(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
+    create_freeview_cmd(subject, aparc_name, bipolar)
+    create_electrodes_points(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
     create_aparc_aseg_file(subject, aparc_name, overwrite=overwrite_aseg_file)
     create_lut_file_for_atlas(subject, aparc_name)
-    utils.copy_file(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz'), op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz'))
+    copy_T1(subject)
+
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) > 1:
-        subject = sys.argv[1]
-    else:
-        subject = 'mg78'
-    aparc_name = 'laus250'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
+    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'laus250'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True
     print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
     # main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
+    create_freeview_cmd(subject, aparc_name, bipolar)
     # create_electrodes_volume_file(subject, bipolar, create_points_files=True, create_volume_file=True, way_points=False)
-    create_lut_file_for_atlas(subject, aparc_name)
+    # create_lut_file_for_atlas(subject, aparc_name)
