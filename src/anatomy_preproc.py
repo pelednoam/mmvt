@@ -73,17 +73,13 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
 
 
 def rename_cortical(lookup, fol, new_fol):
-    # names = {}
-    # with open(codes_file, 'r') as f:
-    #     for code, line in enumerate(f.readlines()):
-    #         names[code+1] = line.strip()
     ply_files = glob.glob(op.join(fol, '*.ply'))
     utils.delete_folder_files(new_fol)
     for ply_file in ply_files:
         base_name = op.basename(ply_file)
         num = int(base_name.split('.')[-2])
         hemi = base_name.split('.')[0]
-        name = lookup.get(num, num)
+        name = lookup[hemi].get(num, num)
         new_name = '{}-{}'.format(name, hemi)
         shutil.copy(ply_file, op.join(new_fol, '{}.ply'.format(new_name)))
 
@@ -233,17 +229,11 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
             mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
                    'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME})
         cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-        utils.run_script(cmd)
+        # utils.run_script(cmd)
         # convert the  obj files to ply
         lookup = convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
         matlab_labels_vertices = save_matlab_labels_vertices(subject, aparc_name)
-        # labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
-        #     aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
 
-    # labels_num = 0
-    # for hemi in HEMIS:
-        # ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
-        # labels_num += len(np.genfromtxt(ply_names_fname))
     labels_num = sum([len(lookup[hemi]) for hemi in HEMIS])
     labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
@@ -404,11 +394,10 @@ if __name__ == '__main__':
     # subject = 'mg96'
     # aparc_name = 'aparc.DKTatlas40' # 'laus250'
     users_flags = {}
-    # subjects = ['mg63']
+    # subjects = ['mg96']
     for subject in subjects:
         users_flags[subject] = {}
-        # flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite=True)
-        users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, True)
+        users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, True, True)
         users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
     for subject in subjects:
         for flag_type, val in users_flags[subject].items():
