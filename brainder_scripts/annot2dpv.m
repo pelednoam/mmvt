@@ -1,5 +1,5 @@
 %#!/usr/pubsw/packages/octave/current/bin/octave -q
-function annot2dpv(varargin)
+function ret = annot2dpv(varargin)
 % Convert an annotation file to a DPV file.
 %
 % Usage:
@@ -64,6 +64,10 @@ dpvfile   = varargin{2};
 
 % Read the annotation file
 [vertices,lab,ctab] = blender_read_annotation(annotfile);
+if length(vertices) == 0
+    ret = false;
+    return
+end
 names = ctab.struct_names;
 
 % For each structure, replace its coded colour by its index
@@ -93,3 +97,4 @@ fclose(fileID);
 
 % Save the result
 dpxwrite(dpvfile,lab)
+ret = true;

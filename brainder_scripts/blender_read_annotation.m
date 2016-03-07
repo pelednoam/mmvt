@@ -40,6 +40,9 @@ fp = fopen(filename, 'r', 'b');
 
 if(fp < 0)
    disp('Annotation file cannot be opened');
+   vertices = [];
+   label = [];
+   colortable = [];
    return;
 end
 

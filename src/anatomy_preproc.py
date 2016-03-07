@@ -90,10 +90,13 @@ def rename_cortical(lookup, fol, new_fol):
 
 def create_labels_lookup(subject, hemi, aparc_name):
     import mne.label
-    lookup = {}
+    annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
+    if not op.isfile(annot_fname):
+        return {}
     annot, ctab, label_names = \
-        mne.label._read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+        mne.label._read_annot(annot_fname)
     lookup_key = 1
+    lookup = {}
     for label_ind in range(len(label_names)):
         indices_num = len(np.where(annot == ctab[label_ind, 4])[0])
         if indices_num > 0 or label_names[label_ind].astype(str) == 'unknown':
@@ -185,6 +188,8 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
     lookup = {}
     for hemi in utils.get_hemis(hemi):
         lookup[hemi] = create_labels_lookup(subject, hemi, aparc_name)
+        if len(lookup[hemi]) == 0:
+            continue
         srf_fol = op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         ply_fol = op.join(SUBJECTS_DIR, subject,'{}_{}_ply'.format(aparc_name, hemi))
         blender_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
@@ -231,7 +236,7 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         utils.run_script(cmd)
         # convert the  obj files to ply
         lookup = convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
-        save_matlab_labels_vertices(subject, aparc_name)
+        matlab_labels_vertices = save_matlab_labels_vertices(subject, aparc_name)
         # labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         #     aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
 
@@ -242,15 +247,22 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
     labels_num = sum([len(lookup[hemi]) for hemi in HEMIS])
     labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
-    return labels_files_num == labels_num and op.isfile(op.join(BLENDER_ROOT_DIR, subject,
-        'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+    labels_dic_fname = op.join(BLENDER_ROOT_DIR, subject,'labels_dic_{}_{}.pkl'.format(aparc_name, hemi))
+    print('labels_files_num == labels_num: {}'.format(labels_files_num == labels_num))
+    print('isfile(labels_dic_fname): {}'.format(op.isfile(labels_dic_fname)))
+    print('matlab_labels_vertices files: {}'.format(matlab_labels_vertices))
+    return labels_files_num == labels_num and op.isfile(labels_dic_fname) and matlab_labels_vertices
 
 
 def save_matlab_labels_vertices(subject, aparc_name):
     for hemi in HEMIS:
         matlab_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_labels.m'.format(hemi, aparc_name))
-        labels_dic = matlab_utils.matlab_cell_arrays_to_dict(matlab_fname)
-        utils.save(labels_dic, op.join(BLENDER_ROOT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+        if op.isfile(matlab_fname):
+            labels_dic = matlab_utils.matlab_cell_arrays_to_dict(matlab_fname)
+            utils.save(labels_dic, op.join(BLENDER_ROOT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+        else:
+            return False
+    return True
 
 
 def save_labels_vertices(subject, aparc_name):
@@ -262,7 +274,15 @@ def save_labels_vertices(subject, aparc_name):
             labels.append(label)
     else:
         # Read from the annotation file
-        labels = mne.read_labels_from_annot(subject, aparc_name)
+        labels = []
+        for hemi in HEMIS:
+            annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
+            if op.isfile(annot_fname):
+                labels_hemi = mne.read_labels_from_annot(subject, aparc_name)
+                labels.extend(labels_hemi)
+            else:
+                print("Can't find the annotation file! {}".format(annot_fname))
+                return False
     labels_names, labels_vertices = defaultdict(list), defaultdict(list)
     for label in labels:
         labels_names[label.hemi].append(label.name)
@@ -384,6 +404,7 @@ if __name__ == '__main__':
     # subject = 'mg96'
     # aparc_name = 'aparc.DKTatlas40' # 'laus250'
     users_flags = {}
+    # subjects = ['mg63']
     for subject in subjects:
         users_flags[subject] = {}
         # flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite=True)

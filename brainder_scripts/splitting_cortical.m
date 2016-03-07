@@ -28,8 +28,10 @@ function splitting_cortical()
 
     function inner_splitting_cortical_surface(annotation_file, dpv_output_file, ...
             subject_surface, file_prefix)
-        annot2dpv(annotation_file, dpv_output_file, FREESURFER_HOME);
-        splitsrf(subject_surface, dpv_output_file, file_prefix);
+        ret = annot2dpv(annotation_file, dpv_output_file, FREESURFER_HOME);
+        if ret
+            splitsrf(subject_surface, dpv_output_file, file_prefix);
+        end
     end
 
 end
