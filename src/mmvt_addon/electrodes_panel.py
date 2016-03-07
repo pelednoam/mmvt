@@ -11,6 +11,7 @@ def electrodes_update(self, context):
     ElecsPanel.current_electrode = bpy.context.scene.electrodes
     unselect_current_electrode(prev_electrode)
     ElecsPanel.addon.filter_electrode_func(bpy.context.scene.electrodes)
+    update_cursor()
     if ElecsPanel.groups[prev_electrode] != ElecsPanel.groups[ElecsPanel.current_electrode]:
         show_only_current_lead(self, context)
     if not ElecsPanel.lookup is None:
@@ -22,6 +23,12 @@ def electrodes_update(self, context):
             print('{}: {}'.format(subcortical_name, subcortical_prob))
         for cortical_name, cortical_prob in zip(loc['cortical_rois'], loc['cortical_probs']):
             print('{}: {}'.format(cortical_name, cortical_prob))
+
+
+def update_cursor():
+    current_electrode_obj = bpy.data.objects[ElecsPanel.current_electrode]
+    bpy.context.scene.cursor_location = current_electrode_obj.location
+    ElecsPanel.addon.freeview_panel.save_cursor_position()
 
 
 def show_only_current_lead(self, context):

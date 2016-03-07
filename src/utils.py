@@ -923,6 +923,8 @@ def stack(arr, stack_type='v'):
 
 
 def elec_group_number(elec_name, bipolar=False):
+    if isinstance(elec_name, bytes):
+        elec_name = elec_name.decode('utf-8')
     if bipolar:
         elec_name2, elec_name1 = elec_name.split('-')
         group, num1 = elec_group_number(elec_name1, False)
@@ -933,6 +935,14 @@ def elec_group_number(elec_name, bipolar=False):
         num = int(elec_name[ind:])
         group = elec_name[:ind]
         return group, num
+
+
+def elec_group(elec_name, bipolar):
+    if bipolar:
+        group, _, _ = elec_group_number(elec_name, bipolar)
+    else:
+        group, _ = elec_group_number(elec_name, bipolar)
+    return group
 
 
 def max_min_diff(x):

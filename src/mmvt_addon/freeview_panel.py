@@ -4,15 +4,35 @@ import numpy as np
 import os.path as op
 
 
+def save_cursor_position():
+    root = mu.get_user_fol()
+    point = bpy.context.scene.cursor_location * 10.0
+    np.savetxt(op.join(root, 'freeview', 'edit.dat'), point)
+
+
+def goto_cursor_position():
+    root = mu.get_user_fol()
+    point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
+    bpy.context.scene.cursor_location = point / 10.0
+
+
 class FreeviewGotoCursor(bpy.types.Operator):
     bl_idname = "ohad.freeview_goto_cursor"
     bl_label = "Goto Cursor"
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        root = mu.get_user_fol()
-        point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
-        bpy.context.scene.cursor_location = point / 10.0
+        goto_cursor_position
+        return {"FINISHED"}
+
+
+class FreeviewSaveCursor(bpy.types.Operator):
+    bl_idname = "ohad.freeview_save_cursor"
+    bl_label = "Save Cursor"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        save_cursor_position()
         return {"FINISHED"}
 
 
@@ -53,7 +73,9 @@ class FreeviewPanel(bpy.types.Panel):
         layout = self.layout
         row = layout.row(align=0)
         row.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
+        row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
+        row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
 
 
 def init(addon):
@@ -65,6 +87,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(FreeviewGotoCursor)
+        bpy.utils.register_class(FreeviewSaveCursor)
         bpy.utils.register_class(FreeviewOpen)
         bpy.utils.register_class(FreeviewPanel)
         print('Freeview Panel was registered!')
@@ -75,6 +98,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(FreeviewGotoCursor)
+        bpy.utils.unregister_class(FreeviewSaveCursor)
         bpy.utils.unregister_class(FreeviewOpen)
         bpy.utils.unregister_class(FreeviewPanel)
 

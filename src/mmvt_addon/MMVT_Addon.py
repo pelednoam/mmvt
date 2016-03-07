@@ -310,7 +310,7 @@ def import_electrodes():
         elc_name = name.astype(str)
         if not bpy.data.objects.get(elc_name) is None:
             continue
-        print('creating ' + elc_name)
+        print('creating {}: {}'.format(elc_name, (x, y, z)))
         create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
         cur_obj = bpy.data.objects[elc_name]
         cur_obj.select = True

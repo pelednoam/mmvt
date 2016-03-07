@@ -22,7 +22,7 @@ def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, way_p
     blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
     elecs = np.load(electrodes_file)
     if create_points_files:
-        groups = set([name[:3] for name in elecs['names']])
+        groups = set([utils.elec_group(name, bipolar) for name in elecs['names']])
         freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
             '{}+aseg.mgz:opacity=0.05:colormap=lut:lut={}ColorLUT.txt '.format(atlas, atlas) + \
             ('-w ' if way_points else '-c ')
@@ -100,13 +100,13 @@ def create_electrodes_points(subject, bipolar=False, create_points_files=True, c
     elecs_pos, names = elecs['pos'], [name.astype(str) for name in elecs['names']]
 
     if create_points_files:
-        groups = set([name[:3] for name in names])
+        groups = set([utils.elec_group(name, bipolar) for name in names])
         freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
             ('-w ' if way_points else '-c ')
         for group in groups:
             postfix = 'label' if way_points else 'dat'
             freeview_command = freeview_command + group + postfix + ' '
-            group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if name[:3] == group])
+            group_pos = np.array([pos for name, pos in zip(names, elecs_pos) if utils.elec_group(name, bipolar) == group])
             file_name = '{}.{}'.format(group, postfix)
             with open(op.join(BLENDER_ROOT_DIR, subject, 'freeview', file_name), 'w') as fp:
                 writer = csv.writer(fp, delimiter=' ')
@@ -119,7 +119,7 @@ def create_electrodes_points(subject, bipolar=False, create_points_files=True, c
                     writer.writerows(group_pos)
                     writer.writerow(['info'])
                     writer.writerow(['numpoints', len(group_pos)])
-                    writer.writerow(['useRealRAS', '1'])
+                    writer.writerow(['useRealRAS', '0'])
 
     if create_volume_file:
         import nibabel as nib
@@ -156,13 +156,15 @@ def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_
 
 if __name__ == '__main__':
     import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
-    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'laus250'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg96'
+    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'aparc.DKTatlas40'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True
     print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
     # main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
+
+    create_electrodes_points(subject, bipolar, create_volume_file=False)
     create_freeview_cmd(subject, aparc_name, bipolar)
-    # create_electrodes_volume_file(subject, bipolar, create_points_files=True, create_volume_file=True, way_points=False)
     # create_lut_file_for_atlas(subject, aparc_name)
+    print('finish!')
