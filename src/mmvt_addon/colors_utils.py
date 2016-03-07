@@ -197,9 +197,8 @@ def normalize_hex(hex_value):
     """
     match = HEX_COLOR_RE.match(hex_value)
     if match is None:
-        raise ValueError(
-            u"'%s' is not a valid hexadecimal color value." % hex_value
-        )
+        raise ValueError('{} is not a valid hexadecimal color value'.format(hex_value))
+
     hex_digits = match.group(1)
     if len(hex_digits) == 3:
         hex_digits = u''.join(2 * s for s in hex_digits)
