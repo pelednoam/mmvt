@@ -72,12 +72,11 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
     shutil.copytree(new_fol, blender_fol)
 
 
-def rename_cortical(subject, aparc_name, hemi, fol, new_fol, codes_file=''):
+def rename_cortical(lookup, fol, new_fol):
     # names = {}
     # with open(codes_file, 'r') as f:
     #     for code, line in enumerate(f.readlines()):
     #         names[code+1] = line.strip()
-    lookup = create_labels_lookup(subject, hemi, aparc_name)
     ply_files = glob.glob(op.join(fol, '*.ply'))
     utils.delete_folder_files(new_fol)
     for ply_file in ply_files:
@@ -183,15 +182,17 @@ def check_ply_files(subject):
 
 
 def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, hemi='both'):
+    lookup = {}
     for hemi in utils.get_hemis(hemi):
+        lookup[hemi] = create_labels_lookup(subject, hemi, aparc_name)
         srf_fol = op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         ply_fol = op.join(SUBJECTS_DIR, subject,'{}_{}_ply'.format(aparc_name, hemi))
         blender_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
-        ply_names_fname = op.join(SUBJECTS_DIR, subject,'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
         utils.convert_srf_files_to_ply(srf_fol, overwrite_ply_files)
-        rename_cortical(subject, aparc_name, hemi, srf_fol, ply_fol, ply_names_fname)
+        rename_cortical(lookup, srf_fol, ply_fol)
         utils.rmtree(blender_fol)
         shutil.copytree(ply_fol, blender_fol)
+    return lookup
 
 
 def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
@@ -229,15 +230,16 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
         utils.run_script(cmd)
         # convert the  obj files to ply
-        convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
+        lookup = convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files)
         save_matlab_labels_vertices(subject, aparc_name)
         # labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         #     aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
 
-    labels_num = 0
-    for hemi in HEMIS:
-        ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
-        labels_num += len(np.genfromtxt(ply_names_fname))
+    # labels_num = 0
+    # for hemi in HEMIS:
+        # ply_names_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_names.txt'.format(hemi, aparc_name))
+        # labels_num += len(np.genfromtxt(ply_names_fname))
+    labels_num = sum([len(lookup[hemi]) for hemi in HEMIS])
     labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
     return labels_files_num == labels_num and op.isfile(op.join(BLENDER_ROOT_DIR, subject,
