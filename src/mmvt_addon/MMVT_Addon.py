@@ -16,7 +16,7 @@ import bpy
 import mathutils
 import numpy as np
 import os
-import os.path as op
+import op as op
 import sys
 import time
 import glob
@@ -25,9 +25,12 @@ import importlib
 import numbers
 import itertools
 import traceback
+from collections import defaultdict
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
+import colors_utils
+importlib.reload(colors_utils)
 
 import connections_panel
 importlib.reload(connections_panel)
@@ -80,12 +83,12 @@ def import_brain():
     # #     print(cur_val)
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     base_path = mmvt_utils.get_user_fol()
-    for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
+    for ply_fname in glob.glob(op.join(base_path, '*.ply')):
         bpy.ops.object.select_all(action='DESELECT')
         print(ply_fname)
         obj_name = mmvt_utils.namebase(ply_fname).split(sep='.')[0]
         if bpy.data.objects.get(obj_name) is None:
-            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
+            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
             bpy.ops.object.shade_smooth()
@@ -124,7 +127,7 @@ def import_subcorticals(base_path):
     base_paths = [base_path] * 2 # Read the bast_path twice, for meg and fmri
     PATH_TYPE_SUB_MEG, PATH_TYPE_SUB_FMRI = range(2)
     for path_type, base_path in enumerate(base_paths):
-        for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
+        for ply_fname in glob.glob(op.join(base_path, '*.ply')):
             obj_name = mmvt_utils.namebase(ply_fname)
             if path_type==PATH_TYPE_SUB_MEG and not bpy.data.objects.get('{}_meg_activity'.format(obj_name)) is None:
                 continue
@@ -132,7 +135,7 @@ def import_subcorticals(base_path):
                 continue
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
-            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
+            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
             bpy.ops.object.shade_smooth()
@@ -174,7 +177,7 @@ class ImportBrain(bpy.types.Operator):
         print("importing ROIs")
         import_rois(self.current_root_path)
         import_brain()
-        import_subcorticals(os.path.join(self.current_root_path, 'subcortical'))
+        import_subcorticals(op.join(self.current_root_path, 'subcortical'))
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
 
@@ -204,9 +207,9 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
 
 
 def import_rois(base_path):
-    anatomy_inputs = {'Cortex-rh': os.path.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
-                      'Cortex-lh': os.path.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
-                      'Subcortical_structures': os.path.join(base_path, 'subcortical')}
+    anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
+                      'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
+                      'Subcortical_structures': op.join(base_path, 'subcortical')}
     brain_layer = BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
@@ -220,13 +223,13 @@ def import_rois(base_path):
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if anatomy_name == 'Subcortical_structures':
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-        for ply_fname in glob.glob(os.path.join(base_path, '*.ply')):
+        for ply_fname in glob.glob(op.join(base_path, '*.ply')):
             new_obj_name = mmvt_utils.namebase(ply_fname)
             if not bpy.data.objects.get(new_obj_name) is None:
                 continue
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
-            bpy.ops.import_mesh.ply(filepath=os.path.join(base_path, ply_fname))
+            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
             bpy.ops.object.shade_smooth()
@@ -279,9 +282,9 @@ def create_and_set_material(obj):
 
 
 def import_electrodes():
-    # input_file = os.path.join(base_path, "electrodes.npz")
+    # input_file = op.join(base_path, "electrodes.npz")
     bipolar = bpy.context.scene.bipolar
-    input_file = os.path.join(mmvt_utils.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
+    input_file = op.join(mmvt_utils.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
 
     print('Adding deep electrodes')
     f = np.load(input_file)
@@ -337,13 +340,13 @@ def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
 
 def add_data_to_brain():
     base_path = mmvt_utils.get_user_fol()
-    source_files = [os.path.join(base_path, 'labels_data_lh.npz'), os.path.join(base_path, 'labels_data_rh.npz'),
-                    os.path.join(base_path, 'sub_cortical_activity.npz')]
+    source_files = [op.join(base_path, 'labels_data_lh.npz'), op.join(base_path, 'labels_data_rh.npz'),
+                    op.join(base_path, 'sub_cortical_activity.npz')]
     print('Adding data to Brain')
     number_of_maximal_time_steps = -1
     obj_counter = 0
     for input_file in source_files:
-        if not os.path.isfile(input_file):
+        if not op.isfile(input_file):
             mmvt_utils.message(None, '{} does not exist!'.format(input_file))
             continue
         f = np.load(input_file)
@@ -401,9 +404,9 @@ def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
     base_path = mmvt_utils.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
     labels_data_file = 'labels_data_{hemi}.npz' if stat else 'labels_data_no_conds_{hemi}.npz'
-    brain_sources = [os.path.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in HEMIS]
+    brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
-    subcorticals_sources = [os.path.join(base_path, 'subcortical_meg_activity.npz')]
+    subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
     add_data_to_parent_obj(self, brain_obj, brain_sources, stat)
     add_data_to_parent_obj(self, subcorticals_obj, subcorticals_sources, stat)
 
@@ -412,7 +415,7 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
     sources = {}
     parent_obj.animation_data_clear()
     for input_file in source_files:
-        if not os.path.isfile(input_file):
+        if not op.isfile(input_file):
             mmvt_utils.message(self, "Can't load file {}!".format(input_file))
             continue
         print('loading {}'.format(input_file))
@@ -530,7 +533,7 @@ def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
     parent_obj.animation_data_clear()
     sources = {}
     for input_file in source_files:
-        if not os.path.isfile(input_file):
+        if not op.isfile(input_file):
             self.report({'ERROR'}, "Can't load file {}!".format(input_file))
             continue
         print('loading {}'.format(input_file))
@@ -573,7 +576,7 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mmvt_utils.get_user_fol()
-        source_files = [os.path.join(base_path, 'electrodes_data_{}.npz'.format(
+        source_files = [op.join(base_path, 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))]
 
         # add_data_to_electrodes(self, source_files)
@@ -1049,7 +1052,7 @@ class Filtering(bpy.types.Operator):
 
     def filter_electrodes(self, current_file_to_upload):
         print('filter_electrodes')
-        source_files = [os.path.join(self.current_activity_path, current_file_to_upload)]
+        source_files = [op.join(self.current_activity_path, current_file_to_upload)]
         objects_indices, names = self.get_object_to_filter(source_files)
 
         for obj in bpy.data.objects:
@@ -1079,7 +1082,7 @@ class Filtering(bpy.types.Operator):
     def filter_rois(self, current_file_to_upload):
         print('filter_ROIs')
         set_appearance_show_rois_layer(bpy.context.scene, True)
-        source_files = [os.path.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
+        source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in HEMIS]
         objects_indices, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
@@ -1228,7 +1231,7 @@ class Filtering(bpy.types.Operator):
 #
 #     def filter_electrodes(self):
 #         print('filter_electrodes')
-#         source_files = [os.path.join(self.current_root_path, self.current_file_to_upload)]
+#         source_files = [op.join(self.current_root_path, self.current_file_to_upload)]
 #         objects_to_filter_in, names = self.get_object_to_filter(source_files)
 #
 #         for obj in bpy.data.objects:
@@ -1253,7 +1256,7 @@ class Filtering(bpy.types.Operator):
 #
 #     def filter_rois(self):
 #         print('filter_rois')
-#         source_files = [os.path.join(self.current_root_path, self.current_file_to_upload+hemi+'.npz') for hemi
+#         source_files = [op.join(self.current_root_path, self.current_file_to_upload+hemi+'.npz') for hemi
 #                         in HEMIS]
 #         objects_to_filter_in, names = self.get_object_to_filter(source_files)
 #         for obj in bpy.data.objects:
@@ -1595,6 +1598,10 @@ def object_coloring(obj, rgb):
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
 
 
+def color_subcortical_region(region_name, rgb):
+    object_coloring(bpy.data.objects[region_name + '_meg_activity'], rgb)
+
+
 # todo: do something with the threshold parameter
 def color_object_homogeneously(data, postfix_str='', threshold=0):
     if data is None:
@@ -1633,16 +1640,16 @@ def init_activity_map_coloring(map_type):
 def load_faces_verts():
     faces_verts = {}
     current_root_path = mmvt_utils.get_user_fol()
-    faces_verts['lh'] = np.load(os.path.join(current_root_path, 'faces_verts_lh.npy'))
-    faces_verts['rh'] = np.load(os.path.join(current_root_path, 'faces_verts_rh.npy'))
+    faces_verts['lh'] = np.load(op.join(current_root_path, 'faces_verts_lh.npy'))
+    faces_verts['rh'] = np.load(op.join(current_root_path, 'faces_verts_rh.npy'))
     return faces_verts
 
 
 def load_meg_subcortical_activity():
     meg_sub_activity = None
     current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    subcortical_activity_file = os.path.join(current_root_path,'subcortical_meg_activity.npz')
-    if os.path.isfile(subcortical_activity_file):
+    subcortical_activity_file = op.join(current_root_path,'subcortical_meg_activity.npz')
+    if op.isfile(subcortical_activity_file):
         meg_sub_activity = np.load(subcortical_activity_file)
     return meg_sub_activity
 
@@ -1657,14 +1664,14 @@ def activity_map_coloring(map_type):
     # setup_environment_settings()
 
 
-def meg_labels_coloring(self, context, aparc_name='laus250', override_current_mat=True):
+def meg_labels_coloring(self, context, override_current_mat=True):
     faces_verts = init_activity_map_coloring('MEG')
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mmvt_utils.get_user_fol()
     for hemi_ind, hemi in enumerate(hemispheres):
-        labels_names, labels_vertices = mmvt_utils.load(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name)))
-        labels_data = np.load(os.path.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
+        labels_names, labels_vertices = mmvt_utils.load(op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        labels_data = np.load(op.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
         meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat)
 
 
@@ -1700,9 +1707,9 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     # loop_indices = {}
     for hemi in hemispheres:
         if map_type == 'MEG':
-            f = np.load(os.path.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
+            f = np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
         elif map_type == 'FMRI':
-            f = np.load(os.path.join(current_root_path, 'fmri_' + hemi + '.npy'))
+            f = np.load(op.join(current_root_path, 'fmri_' + hemi + '.npy'))
         cur_obj = bpy.data.objects[hemi]
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
@@ -1722,16 +1729,16 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
 
 def fmri_subcortex_activity_color(threshold, override_current_mat=True):
     current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    subcoticals = glob.glob(os.path.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
+    subcoticals = glob.glob(op.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
     for subcortical_file in subcoticals:
-        subcortical = os.path.splitext(os.path.basename(subcortical_file))[0]
+        subcortical = op.splitext(op.basename(subcortical_file))[0]
         cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
         if cur_obj is None:
             print("Can't find the object {}!".format(subcortical))
         else:
-            lookup_file = os.path.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
-            verts_file = os.path.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
-            if os.path.isfile(lookup_file) and os.path.isfile(verts_file):
+            lookup_file = op.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
+            verts_file = op.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
+            if op.isfile(lookup_file) and op.isfile(verts_file):
                 lookup = np.load(lookup_file)
                 verts_values = np.load(verts_file)
                 activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
@@ -1777,7 +1784,7 @@ class ColorElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         threshold = bpy.context.scene.coloring_threshold
-        data = np.load(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
+        data = np.load(op.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
@@ -1799,8 +1806,29 @@ class ColorManually(bpy.types.Operator):
     def invoke(self, context, event=None):
         show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
         show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
-        labels_names, labels_vertices = mmvt_utils.load(op.join(mmvt_utils.get_user_fol(), 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        subject_fol = mmvt_utils.get_user_fol()
+        labels_names, labels_vertices = mmvt_utils.load(
+            op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
         faces_verts = load_faces_verts()
+        objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
+        for line in mmvt_utils.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
+            obj_name, color_name = line
+            obj_type = mmvt_utils.check_obj_type(obj_name)
+            color_rgb = colors_utils.name_to_rgb(color_name)
+            if obj_type is not None:
+                objects_names[obj_type].append(obj_name)
+                colors[obj_type].append(color_rgb)
+                data[obj_type].append(1.)
+        # coloring
+        for hemi in HEMIS:
+            obj_type = mmvt_utils.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mmvt_utils.OBJ_TYPE_CORTEX_RH
+            labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
+            meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
+        for region, color in zip(objects_names[mmvt_utils.OBJ_TYPE_SUBCORTEX], colors[mmvt_utils.OBJ_TYPE_SUBCORTEX]):
+            color_subcortical_region(region, color)
+        return {"FINISHED"}
+
+    def test(self, labels_names, labels_vertices, faces_verts):
         labels = dict(rh=['rostralanteriorcingulate-rh'], lh=['rostralanteriorcingulate-lh'])
         data = dict(rh=np.array([0.5]), lh=np.array([0.5]))
         colors = dict(rh=[[255, 0, 0]], lh=[[255, 0, 0]])
@@ -1810,8 +1838,7 @@ class ColorManually(bpy.types.Operator):
         regions = ['Left-Accumbens-area', 'Right-Accumbens-area', 'Left-Caudate', 'Right-Caudate']
         colors = [[0, 128, 0], [0, 128, 0], [0, 0, 255], [0, 0, 255]]
         for region, color in zip(regions, colors):
-            object_coloring(bpy.data.objects[region + '_meg_activity'], color)
-            # color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
+            color_subcortical_region(region, color)
         return {"FINISHED"}
 
 
@@ -1868,7 +1895,7 @@ class ClearColors(bpy.types.Operator):
             vcol_layer = mesh.vertex_colors.new()
         # for obj in bpy.data.objects['Subcortical_activity_map'].children:
         for cur_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
-            print('in clear subcortical ' + cur_obj.name)
+            # print('in clear subcortical ' + cur_obj.name)
             # obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
             mesh = cur_obj.data
             scn = bpy.context.scene
@@ -1901,15 +1928,15 @@ class ColoringMakerPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         user_fol = mmvt_utils.get_user_fol()
-        # todo: read this from somewhere!
-        aparc_name = 'laus250'
-        faces_verts_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'faces_verts_{hemi}.npy'))
-        fmri_files_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'fmri_{hemi}.npy'))
-        meg_files_exist = mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
-        meg_labels_files_exist = os.path.isfile(os.path.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
-            mmvt_utils.hemi_files_exists(os.path.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
-        electrodes_files_exist = os.path.isfile(os.path.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
+        aparc_name = bpy.context.scene.atlas
+        faces_verts_exist = mmvt_utils.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
+        fmri_files_exist = mmvt_utils.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+        meg_files_exist = mmvt_utils.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+        meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
+            mmvt_utils.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
+        electrodes_files_exist = op.isfile(op.join(mmvt_utils.get_user_fol(),'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
+        manually_color_file_exist = op.isfile(op.join(user_fol, 'coloring.csv'))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         if faces_verts_exist:
             if meg_files_exist:
@@ -1918,9 +1945,10 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if fmri_files_exist:
                 layout.operator(ColorFmri.bl_idname, text="Plot FMRI ", icon='POTATO')
+            if manually_color_file_exist:
+                layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
-        layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -2163,7 +2191,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         root = mmvt_utils.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
-        point = np.genfromtxt(os.path.join(root, 'freeview', 'edit.dat'))
+        point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
         bpy.context.scene.cursor_location = point / 10.0
         return {"FINISHED"}
 
@@ -2175,10 +2203,10 @@ class FreeviewOpen(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         root = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-        sig = os.path.join(root, 'freeview', 'sig_subject.mgz')
-        T1 = os.path.join(root, 'freeview', 'T1.mgz')
-        aseg = os.path.join(root, 'freeview', 'laus250+aseg.mgz')
-        lut = os.path.join(root, 'freeview', 'laus250ColorLUT.txt')
+        sig = op.join(root, 'freeview', 'sig_subject.mgz')
+        T1 = op.join(root, 'freeview', 'T1.mgz')
+        aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
+        lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes = self.get_electrodes_groups(root)
         cmd = 'freeview -v {}:colormap=heat {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(sig, T1, aseg, lut, electrodes)
         utils.run_command_in_new_thread(cmd)
@@ -2188,7 +2216,7 @@ class FreeviewOpen(bpy.types.Operator):
         groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
         groups_files = ''
         for group in groups:
-            groups_files = groups_files + os.path.join(root, 'freeview', '{}.dat '.format(group))
+            groups_files = groups_files + op.join(root, 'freeview', '{}.dat '.format(group))
         return groups_files
 
 class FreeviewPanel(bpy.types.Panel):
@@ -2289,13 +2317,13 @@ class CreateVertexData(bpy.types.Operator):
     @staticmethod
     def keyframe_empty(self, empty_name, closest_mesh_name, vertex_ind, data_path):
         obj = bpy.data.objects[empty_name]
-        number_of_time_points = len(glob.glob(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', '', ) + '*.npy'))
+        number_of_time_points = len(glob.glob(op.join(data_path, 'activity_map_' + closest_mesh_name + '2', '', ) + '*.npy'))
         insert_keyframe_to_custom_prop(obj, 'data', 0, 0)
         insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
             # print(ii)
             frame_str = str(ii)
-            f = np.load(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '2', 't' + frame_str + '.npy'))
+            f = np.load(op.join(data_path, 'activity_map_' + closest_mesh_name + '2', 't' + frame_str + '.npy'))
             insert_keyframe_to_custom_prop(obj, 'data', float(f[vertex_ind, 0]), ii + 1)
 
         fcurves = bpy.data.objects[empty_name].animation_data.action.fcurves[0]
@@ -2303,11 +2331,11 @@ class CreateVertexData(bpy.types.Operator):
 
     def keyframe_empty_test(self, empty_name, closest_mesh_name, vertex_ind, data_path):
         obj = bpy.data.objects[empty_name]
-        lookup = np.load(os.path.join(data_path, 'activity_map_' + closest_mesh_name + '_verts_lookup.npy'))
+        lookup = np.load(op.join(data_path, 'activity_map_' + closest_mesh_name + '_verts_lookup.npy'))
         file_num_str = str(int(lookup[vertex_ind, 0]))
         line_num = int(lookup[vertex_ind, 1])
         data_file = np.load(
-            os.path.join(data_path, 'activity_map_' + closest_mesh_name + '_verts', file_num_str + '.npy'))
+            op.join(data_path, 'activity_map_' + closest_mesh_name + '_verts', file_num_str + '.npy'))
         data = data_file[line_num, :].squeeze()
 
         number_of_time_points = len(data)
@@ -2429,8 +2457,8 @@ def render_image():
     print('file name:')
     # print('f'+str(cur_frame))
     # print('folder:'+self.current_output_path)
-    file_name = os.path.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
-    # file_name = os.path.join(mmvt_utils.get_user_fol(), 'images', mmvt_utils.rand_letters(5))
+    file_name = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
+    # file_name = op.join(mmvt_utils.get_user_fol(), 'images', mmvt_utils.rand_letters(5))
     print(file_name)
     bpy.context.scene.render.filepath = file_name
     # Render and save the rendered scene to file. ------------------------------

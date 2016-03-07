@@ -9,6 +9,7 @@ from collections import OrderedDict
 import time
 
 HEMIS = ['rh', 'lh']
+OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_SUBCORTEX, OBJ_TYPE_ELECTRODE = range(4)
 
 try:
     import cPickle as pickle
@@ -340,3 +341,28 @@ def elec_group_number(elec_name, bipolar=False):
         num = int(elec_name[ind:])
         group = elec_name[:ind]
         return group, num
+
+
+def csv_file_reader(csv_fname, delimiter=','):
+    import csv
+    with open(csv_fname, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=delimiter)
+        for row in reader:
+            yield [val.strip() for val in row]
+
+
+def check_obj_type(obj_name):
+    obj = bpy.data.objects.get(obj_name, None)
+    if obj is None:
+        obj_type = None
+    elif obj.parent == bpy.data.objects['Cortex-lh']:
+        obj_type = OBJ_TYPE_CORTEX_LH
+    elif obj.parent == bpy.data.objects['Cortex-rh']:
+        obj_type = OBJ_TYPE_CORTEX_RH
+    elif obj.parent == bpy.data.objects['Subcortical_structures']:
+        obj_type = OBJ_TYPE_SUBCORTEX
+    elif obj.parent == bpy.data.objects['Deep_electrodes']:
+        obj_type = OBJ_TYPE_ELECTRODE
+    else:
+        obj_type = None
+    return obj_type
