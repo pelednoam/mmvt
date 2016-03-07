@@ -925,17 +925,7 @@ class ClearFiltering(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        for subhierarchy in bpy.data.objects['Brain'].children:
-            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subhierarchy.name == 'Subcortical_structures':
-                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-            for obj in subhierarchy.children:
-                obj.active_material = new_mat
-
-        if bpy.data.objects.get('Deep_electrodes'):
-            for obj in bpy.data.objects['Deep_electrodes'].children:
-                de_select_electrode(obj)
-
+        clear_filtering()
         type_of_filter = bpy.context.scene.filter_curves_type
         if type_of_filter == 'MEG':
             select_all_rois()
@@ -946,6 +936,19 @@ class ClearFiltering(bpy.types.Operator):
         bpy.types.Scene.closest_curve_str = ''
         bpy.types.Scene.filter_is_on = False
         return {"FINISHED"}
+
+
+def clear_filtering():
+    for subhierarchy in bpy.data.objects['Brain'].children:
+        new_mat = bpy.data.materials['unselected_label_Mat_cortex']
+        if subhierarchy.name == 'Subcortical_structures':
+            new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+        for obj in subhierarchy.children:
+            obj.active_material = new_mat
+
+    if bpy.data.objects.get('Deep_electrodes'):
+        for obj in bpy.data.objects['Deep_electrodes'].children:
+            de_select_electrode(obj)
 
 
 def de_select_electrode(obj, call_create_and_set_material=True):
@@ -2070,44 +2073,6 @@ class RenderingMakerPanel(bpy.types.Panel):
 
 
 class helper_class():
-    # bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="", description="Define the root path of the project", subtype='DIR_PATH')
-    # bpy.types.Scene.brain_imported = False
-    # bpy.types.Scene.electrodes_imported = False
-    # bpy.types.Scene.brain_data_exist = False
-    # bpy.types.Scene.electrodes_data_exist = False
-    # bpy.types.Scene.closest_curve_str = ''
-    # bpy.types.Scene.filter_is_on = False
-    # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-    # bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
-    # bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-    # bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-    # bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-    # bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0, description="When to filter to")
-    # bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)], description="Type of curve to be filtered", update=filter_draw)
-    # bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)], description="Filtering function", update=filter_draw)
-    # bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere", update=show_hide_lh)
-    # bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",update=show_hide_rh)
-    # bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical", update=show_hide_sub_cortical)
-    # bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes", get=get_appearance_show_electrodes_layer, set=set_appearance_show_electrodes_layer)
-    # bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs", get=get_appearance_show_rois_layer, set=set_appearance_show_rois_layer)
-    # bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps", get=get_appearance_show_activity_layer, set=set_appearance_show_activity_layer)
-    # bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(items=[("RENDERED", "Rendered Brain", "", 1), ("SOLID", " Solid Brain", "", 2)], description="Brain appearance", get=get_filter_view_type, set=set_filter_view_type)
-    # bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
-    # bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
-    # bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
-    # bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
-    # bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-    # bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-    # bpy.types.Scene.where_am_i_str = ''
-    # bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
-    # bpy.types.Scene.output_path = bpy.props.StringProperty(name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
-    # bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_rotation)
-    # bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_rotation)
-    # bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_rotation)
-    # bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage", update=update_quality)
-    # bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
-    # conf_path = bpy.props.StringProperty(name="Root Path", default="",
-    #                                      description="Define the root path of the project", subtype='DIR_PATH')
     brain_imported = False
     electrodes_imported = False
     brain_data_exist = False
@@ -2238,12 +2203,7 @@ def main():
         bpy.utils.register_class(SearchFilter)
         bpy.utils.register_class(SearchClear)
         bpy.utils.register_class(SearchMark)
-        bpy.utils.register_class(ColorMeg)
-        bpy.utils.register_class(ColorMegLabels)
-        bpy.utils.register_class(ColorFmri)
-        bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ClearColors)
-        bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(CreateVertexData)
@@ -2261,7 +2221,6 @@ def main():
         bpy.utils.register_class(ShowHideObjectsPanel)
         bpy.utils.register_class(SelectionMakerPanel)
         bpy.utils.register_class(FilteringMakerPanel)
-        bpy.utils.register_class(ColoringMakerPanel)
         bpy.utils.register_class(WhereAmIMakerPanel)
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(DataMakerPanel)

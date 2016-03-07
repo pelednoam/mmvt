@@ -5,7 +5,7 @@ import glob
 
 
 def electrodes_update(self, context):
-    if not ElecsPanel.init:
+    if ElecsPanel.addon is None:
         return
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = bpy.context.scene.electrodes
@@ -48,13 +48,16 @@ def plot_labels_probs(elc):
         if not hemi is None:
             # if no matplotlib should calculate the colors offline :(
             labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
-            ElecsPanel.addon.meg_labels_coloring_hemi(
+            ElecsPanel.coloring.meg_labels_coloring_hemi(
                 ElecsPanel.labels_names, ElecsPanel.labels_vertices, labels_data, ElecsPanel.faces_verts, hemi, 0)
         else:
             print("Can't get the rois hemi!")
+    else:
+        ElecsPanel.coloring.clear_cortex()
+    ElecsPanel.coloring.clear_subcortical_regions()
     if len(elc['subcortical_rois']) > 0:
         for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
-            ElecsPanel.addon.color_subcortical_region(region, color)
+            ElecsPanel.coloring.color_subcortical_region(region, color)
 
 
 def unselect_current_electrode(cur_elc_name):
@@ -116,7 +119,6 @@ class ElecsPanel(bpy.types.Panel):
     electrodes_locs = None
     lookup = None
     groups = {}
-    init = False
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -124,9 +126,10 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
-    register()
+    ElecsPanel.coloring = addon.coloring_panel
     parent = bpy.data.objects.get('Deep_electrodes')
     if parent is None or len(parent.children) == 0:
+        print("Can't register electrodes panel, no Deep_electrodes object!")
         return
     ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
@@ -145,7 +148,8 @@ def init(addon):
         # todo: Should be done only once in the main addon
         ElecsPanel.faces_verts = addon.load_faces_verts()
         ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
-    ElecsPanel.init = True
+    addon.clear_filtering()
+    register()
     print('Electrodes panel initialization completed successfully!')
 
 

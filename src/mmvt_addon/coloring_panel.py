@@ -9,28 +9,39 @@ from collections import defaultdict
 import glob
 
 HEMIS = mu.HEMIS
-_addon = None
+
+
+def _addon():
+    return ColoringMakerPanel.addon
+
 
 def object_coloring(obj, rgb):
     bpy.context.scene.objects.active = obj
     # todo: do we need to select the object here? In diff mode it's a problem
     # obj.select = True
     cur_mat = obj.active_material
-    # print('***************************************************************')
-    # print(cur_mat)
-    # print('***************************************************************')
     new_color = (rgb[0], rgb[1], rgb[2], 1)
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
 
 
-def color_subcortical_region(region_name, rgb):
-    obj = bpy.data.objects.get(region_name + '_meg_activity', None)
-    if not obj is None:
-        object_coloring(obj, rgb)
+def clear_subcortical_fmri_activity():
+    for cur_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+        clear_object_vertex_colors(cur_obj)
 
 
-def clear_subcortical_coloring():
-    pass
+def clear_cortex():
+    for hemisphere in HEMIS:
+        cur_obj = bpy.data.objects[hemisphere]
+        clear_object_vertex_colors(cur_obj)
+
+
+def clear_object_vertex_colors(cur_obj):
+    mesh = cur_obj.data
+    scn = bpy.context.scene
+    scn.objects.active = cur_obj
+    cur_obj.select = True
+    bpy.ops.mesh.vertex_color_remove()
+    vcol_layer = mesh.vertex_colors.new()
 
 
 # todo: do something with the threshold parameter
@@ -60,12 +71,13 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
 
 
 def init_activity_map_coloring(map_type):
-    _addon.set_appearance_show_activity_layer(bpy.context.scene, True)
-    _addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
-    _addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
-    _addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    _addon().set_appearance_show_activity_layer(bpy.context.scene, True)
+    _addon().set_filter_view_type(bpy.context.scene, 'RENDERS')
+    _addon().show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+    _addon().show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
     # change_view3d()
-    return load_faces_verts()
+    faces_verts = load_faces_verts()
+    return faces_verts
 
 
 def load_faces_verts():
@@ -197,6 +209,48 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
             d.color = vert_values[vert, 1:]
 
 
+def color_manually():
+    _addon().show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
+    _addon().show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
+    subject_fol = mu.get_user_fol()
+    labels_names, labels_vertices = mu.load(
+        op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+    faces_verts = load_faces_verts()
+    objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
+    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
+        obj_name, color_name = line
+        obj_type = mu.check_obj_type(obj_name)
+        color_rgb = cu.name_to_rgb(color_name)
+        if obj_type is not None:
+            objects_names[obj_type].append(obj_name)
+            colors[obj_type].append(color_rgb)
+            data[obj_type].append(1.)
+    # coloring
+    for hemi in HEMIS:
+        obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
+        labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
+        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
+    for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
+        color_subcortical_region(region, color)
+
+
+def color_subcortical_region(region_name, rgb):
+    obj = bpy.data.objects.get(region_name + '_meg_activity', None)
+    if not obj is None:
+        object_coloring(obj, rgb)
+
+
+def clear_subcortical_regions():
+    clear_colors_from_parent_childrens('Subcortical_meg_activity_map')
+
+
+def clear_colors_from_parent_childrens(parent_object):
+    parent_obj = bpy.data.objects.get(parent_object)
+    if parent_obj is not None:
+        for obj in parent_obj.children:
+            if 'RGB' in obj.active_material.node_tree.nodes:
+                obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1, 1, 1, 1)
+
 
 def default_coloring(loop_indices):
     for hemi, indices in loop_indices.items():
@@ -220,8 +274,8 @@ class ColorElectrodes(bpy.types.Operator):
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
         # mu.select_hierarchy('Deep_electrodes', False)
-        _addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
-        _addon.change_to_rendered_brain()
+        _addon().set_appearance_show_electrodes_layer(bpy.context.scene, True)
+        _addon().change_to_rendered_brain()
         return {"FINISHED"}
 
 
@@ -232,43 +286,8 @@ class ColorManually(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        _addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
-        _addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
-        subject_fol = mu.get_user_fol()
-        labels_names, labels_vertices = mu.load(
-            op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
-        faces_verts = load_faces_verts()
-        objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
-        for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
-            obj_name, color_name = line
-            obj_type = mu.check_obj_type(obj_name)
-            color_rgb = cu.name_to_rgb(color_name)
-            if obj_type is not None:
-                objects_names[obj_type].append(obj_name)
-                colors[obj_type].append(color_rgb)
-                data[obj_type].append(1.)
-        # coloring
-        for hemi in HEMIS:
-            obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
-            labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
-            meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
-        for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
-            color_subcortical_region(region, color)
+        color_manually()
         return {"FINISHED"}
-
-    def test(self, labels_names, labels_vertices, faces_verts):
-        labels = dict(rh=['rostralanteriorcingulate-rh'], lh=['rostralanteriorcingulate-lh'])
-        data = dict(rh=np.array([0.5]), lh=np.array([0.5]))
-        colors = dict(rh=[[255, 0, 0]], lh=[[255, 0, 0]])
-        for hemi in HEMIS:
-            labels_data = dict(data=data[hemi], colors=colors[hemi], names=labels[hemi])
-            meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
-        regions = ['Left-Accumbens-area', 'Right-Accumbens-area', 'Left-Caudate', 'Right-Caudate']
-        colors = [[0, 128, 0], [0, 128, 0], [0, 0, 255], [0, 0, 255]]
-        for region, color in zip(regions, colors):
-            color_subcortical_region(region, color)
-        return {"FINISHED"}
-
 
 
 class ColorMeg(bpy.types.Operator):
@@ -312,32 +331,10 @@ class ClearColors(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        hemispheres = HEMIS
-        for hemisphere in hemispheres:
-            cur_obj = bpy.data.objects[hemisphere]
-            mesh = cur_obj.data
-            scn = bpy.context.scene
-            scn.objects.active = cur_obj
-            cur_obj.select = True
-            bpy.ops.mesh.vertex_color_remove()
-            vcol_layer = mesh.vertex_colors.new()
-        # for obj in bpy.data.objects['Subcortical_activity_map'].children:
-        for cur_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
-            # print('in clear subcortical ' + cur_obj.name)
-            # obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
-            mesh = cur_obj.data
-            scn = bpy.context.scene
-            scn.objects.active = cur_obj
-            cur_obj.select = True
-            bpy.ops.mesh.vertex_color_remove()
-            vcol_layer = mesh.vertex_colors.new()
+        clear_cortex()
+        clear_subcortical_fmri_activity()
         for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
-            if bpy.data.objects.get(root) is not None:
-                for obj in bpy.data.objects[root].children:
-                    if 'RGB' in obj.active_material.node_tree.nodes:
-                        obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1,1,1,1)
-        # for obj in bpy.data.objects['Deep_electrodes'].children:
-        #     obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
+            clear_colors_from_parent_childrens(root)
         return {"FINISHED"}
 
 
@@ -382,7 +379,7 @@ class ColoringMakerPanel(bpy.types.Panel):
 
 
 def init(addon):
-    _addon = addon
+    ColoringMakerPanel.addon = addon
     register()
 
 
