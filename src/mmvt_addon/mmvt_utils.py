@@ -268,7 +268,8 @@ def show_hide_obj_and_fcurves(objs, val):
                     fcurve.hide = not val
                 fcurve.select = val
         else:
-            print('No animation in {}'.format(obj.name))
+            pass
+            # print('No animation in {}'.format(obj.name))
 
 
 def message(self, message):

@@ -145,6 +145,7 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
             fcurve.select = not fcurve.hide
 
     parent_obj.select = True
+    mu.view_all_in_graph_editor(context)
 
 
 def calc_masked_con_names(d, threshold, connections_type, condition, stat):

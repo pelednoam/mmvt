@@ -9,11 +9,14 @@ def electrodes_update(self, context):
         return
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = bpy.context.scene.electrodes
-    unselect_current_electrode(prev_electrode)
+    for elec in ElecsPanel.electrodes:
+        bpy.data.objects[elec].select = elec == ElecsPanel.current_electrode
     ElecsPanel.addon.filter_electrode_func(bpy.context.scene.electrodes)
     update_cursor()
-    if ElecsPanel.groups[prev_electrode] != ElecsPanel.groups[ElecsPanel.current_electrode]:
-        show_only_current_lead(self, context)
+    if prev_electrode != '':
+        unselect_current_electrode(prev_electrode)
+        if ElecsPanel.groups[prev_electrode] != ElecsPanel.groups[ElecsPanel.current_electrode]:
+            show_only_current_lead(self, context)
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup[ElecsPanel.current_electrode]
         if bpy.context.scene.color_lables:

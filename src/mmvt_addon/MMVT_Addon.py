@@ -48,6 +48,7 @@ importlib.reload(freeview_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
+# Should be here bpy.types.Scene.maximal_time_steps
 T = 2500
 
 bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
@@ -1082,6 +1083,8 @@ def filter_roi_func(closet_object_name, closest_curve_name=None):
 
 def filter_electrode_func(closet_object_name, closest_curve_name=None):
     bpy.data.objects[closet_object_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+    # todo: selecting the electrode will show both of their conditions time series
+    # We don't want it to happen if selection_type == 'conds'...
     if bpy.context.scene.selection_type == 'conds':
         bpy.data.objects[closet_object_name].select = True
     bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
@@ -2020,7 +2023,7 @@ class CreateVertexData(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # Noam: is was self.find_vertex_index_and_mesh_closest_to_cursor(self) before, are you sure we need to send the self?
-        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor()
+        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor(self)
         print(vertex_co)
         self.create_empty_in_vertex_location(self, vertex_co)
         # data_path = '/homes/5/npeled/space3/MEG/ECR/mg79'

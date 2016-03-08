@@ -213,29 +213,27 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
     if moving_average_win_size > 0:
         # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
+        colors_mv = calc_colors(
+            stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+    else:
+        colors = calc_colors(
+            stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
 
-    colors = calc_colors(stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small,
-                         flip_cm_big, flip_cm_small)
-    colors_mv = calc_colors(stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small,
-                            flip_cm_big, flip_cm_small)
-    # np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
-    np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
 
-
-def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat, add_activity=True):
+def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=True):
     # *) Read the electrodes data
     electrodes_file = read_electrodes_positions(subject, bipolar=bipolar)
     if electrodes_file and add_activity:
-        create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
+        for stat in [STAT_AVG, STAT_DIFF]:
+            create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
     # misc
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        subject = sys.argv[1]
-    else:
-        subject = 'mg96'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT
@@ -248,8 +246,7 @@ if __name__ == '__main__':
     from_t, to_t = -500, 2000
     from_t_ind, to_t_ind = 500, 3000
     bipolar = False
-    stat = STAT_DIFF
-    add_activity = False
+    add_activity = True
 
-    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, stat, add_activity)
+    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
     print('finish!')
