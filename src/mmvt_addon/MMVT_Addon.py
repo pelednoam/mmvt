@@ -771,6 +771,87 @@ class FitSelection(bpy.types.Operator):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def object_coloring(obj, rgb):
+    return coloring_panel.object_coloring(obj, rgb)
+
+
+def clear_subcortical_fmri_activity():
+    return coloring_panel.clear_subcortical_fmri_activity()
+
+
+def clear_cortex():
+    return coloring_panel.clear_cortex()
+
+
+def clear_object_vertex_colors(cur_obj):
+    return coloring_panel.clear_object_vertex_colors(cur_obj)
+
+
+def color_object_homogeneously(data, postfix_str='', threshold=0):
+    return coloring_panel.color_object_homogeneously(data, postfix_str, threshold)
+
+
+def init_activity_map_coloring(map_type):
+    return coloring_panel.init_activity_map_coloring(map_type)
+
+
+def load_faces_verts():
+    return coloring_panel.load_faces_verts()
+
+
+def load_meg_subcortical_activity():
+    return coloring_panel.load_meg_subcortical_activity()
+
+
+def activity_map_coloring(map_type):
+    return coloring_panel.activity_map_coloring(map_type)
+
+
+def meg_labels_coloring(self, context, override_current_mat=True):
+    return coloring_panel.meg_labels_coloring(self, context, override_current_mat)
+
+
+def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold,
+                             override_current_mat=True):
+    return coloring_panel.meg_labels_coloring_hemi(
+        labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat)
+
+
+def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None, plot_subcorticals=True,
+                  override_current_mat=True):
+    return coloring_panel.plot_activity(map_type, faces_verts, threshold, meg_sub_activity,
+        plot_subcorticals, override_current_mat)
+
+
+def fmri_subcortex_activity_color(threshold, override_current_mat=True):
+    return coloring_panel.fmri_subcortex_activity_color(threshold, override_current_mat)
+
+
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
+    return coloring_panel.activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat)
+
+
+def color_manually():
+    return coloring_panel.color_manually()
+
+
+def color_subcortical_region(region_name, rgb):
+    return coloring_panel.color_subcortical_region(region_name, rgb)
+
+
+def clear_subcortical_regions():
+    return coloring_panel.clear_subcortical_regions()
+
+
+def clear_colors_from_parent_childrens(parent_object):
+    return coloring_panel.clear_colors_from_parent_childrens(parent_object)
+
+
+def default_coloring(loop_indices):
+    return coloring_panel.default_coloring(loop_indices)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.closest_curve_str = ''
 bpy.types.Scene.filter_is_on = False
@@ -2203,7 +2284,6 @@ def main():
         bpy.utils.register_class(SearchFilter)
         bpy.utils.register_class(SearchClear)
         bpy.utils.register_class(SearchMark)
-        bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(CreateVertexData)

@@ -48,16 +48,16 @@ def plot_labels_probs(elc):
         if not hemi is None:
             # if no matplotlib should calculate the colors offline :(
             labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
-            ElecsPanel.coloring.meg_labels_coloring_hemi(
+            ElecsPanel.addon.meg_labels_coloring_hemi(
                 ElecsPanel.labels_names, ElecsPanel.labels_vertices, labels_data, ElecsPanel.faces_verts, hemi, 0)
         else:
             print("Can't get the rois hemi!")
     else:
-        ElecsPanel.coloring.clear_cortex()
-    ElecsPanel.coloring.clear_subcortical_regions()
+        ElecsPanel.addon.clear_cortex()
+    ElecsPanel.addon.clear_subcortical_regions()
     if len(elc['subcortical_rois']) > 0:
         for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
-            ElecsPanel.coloring.color_subcortical_region(region, color)
+            ElecsPanel.addon.color_subcortical_region(region, color)
 
 
 def unselect_current_electrode(cur_elc_name):
@@ -126,7 +126,6 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
-    ElecsPanel.coloring = addon.coloring_panel
     parent = bpy.data.objects.get('Deep_electrodes')
     if parent is None or len(parent.children) == 0:
         print("Can't register electrodes panel, no Deep_electrodes object!")
