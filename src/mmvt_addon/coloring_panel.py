@@ -11,10 +11,6 @@ import glob
 HEMIS = mu.HEMIS
 
 
-def _addon():
-    return ColoringMakerPanel.addon
-
-
 def object_coloring(obj, rgb):
     bpy.context.scene.objects.active = obj
     # todo: do we need to select the object here? In diff mode it's a problem
@@ -29,8 +25,8 @@ def clear_subcortical_fmri_activity():
         clear_object_vertex_colors(cur_obj)
 
 
-def clear_cortex():
-    for hemisphere in HEMIS:
+def clear_cortex(hemis=HEMIS):
+    for hemisphere in hemis:
         cur_obj = bpy.data.objects[hemisphere]
         clear_object_vertex_colors(cur_obj)
 
@@ -71,10 +67,10 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
 
 
 def init_activity_map_coloring(map_type):
-    _addon().set_appearance_show_activity_layer(bpy.context.scene, True)
-    _addon().set_filter_view_type(bpy.context.scene, 'RENDERS')
-    _addon().show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
-    _addon().show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    ColoringMakerPanel.addon.set_appearance_show_activity_layer(bpy.context.scene, True)
+    ColoringMakerPanel.addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
+    ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+    ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
     # change_view3d()
     faces_verts = load_faces_verts()
     return faces_verts
@@ -210,8 +206,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
 
 def color_manually():
-    _addon().show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
-    _addon().show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
+    ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
+    ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
     subject_fol = mu.get_user_fol()
     labels_names, labels_vertices = mu.load(
         op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
@@ -274,8 +270,8 @@ class ColorElectrodes(bpy.types.Operator):
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
         # mu.select_hierarchy('Deep_electrodes', False)
-        _addon().set_appearance_show_electrodes_layer(bpy.context.scene, True)
-        _addon().change_to_rendered_brain()
+        ColoringMakerPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
+        ColoringMakerPanel.addon.change_to_rendered_brain()
         return {"FINISHED"}
 
 
