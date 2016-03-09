@@ -6,20 +6,46 @@ import glob
 import time
 
 
+def show_electrodes():
+    if not ElecsPanel.addon.get_appearance_show_electrodes_layer(bpy.context.scene):
+        ElecsPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
+
+
+def leads_update(self, context):
+    if ElecsPanel.addon is None or not ElecsPanel.init:
+        return
+    show_electrodes()
+    prev_lead = ElecsPanel.current_lead
+    ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
+    if current_lead == 'All':
+        bpy.context.scene.show_only_lead = False
+    else:
+        for elc in ElecsPanel.electrodes:
+            if mu.elec_group(elc, bpy.context.scene.bipolar) == current_lead:
+                bpy.context.scene.electrodes = elc
+                break
+        bpy.context.scene.show_only_lead = True
+    show_only_current_lead(self, context)
+    electrodes_update(self, context)
+
+
 # todo: Add a leads combobox
 # todo: Move through the electrodes with the keyboard right and left
+# todo: Solve the bugs with the wrong lead
 def electrodes_update(self, context):
     if ElecsPanel.addon is None or not ElecsPanel.init:
         return
+    show_electrodes()
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
+    bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     select_electrode(current_electrode)
     color_electrodes(current_electrode, prev_electrode)
     update_cursor()
     if prev_electrode != '':
         unselect_prev_electrode(prev_electrode)
-        if ElecsPanel.groups[prev_electrode] != ElecsPanel.groups[current_electrode]:
-            show_only_current_lead(self, context)
+        if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
+             show_only_current_lead(self, context)
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup[current_electrode]
         print_electrode_loc(loc)
@@ -56,8 +82,9 @@ def update_cursor():
 
 def show_only_current_lead(self, context):
     if bpy.context.scene.show_only_lead:
+        bpy.context.scene.current_lead = ElecsPanel.groups[ElecsPanel.current_electrode]
         for elec_obj in bpy.data.objects['Deep_electrodes'].children:
-            elec_obj.hide = ElecsPanel.groups[elec_obj.name] != ElecsPanel.groups[ElecsPanel.current_electrode]
+            elec_obj.hide = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
     else:
         for elec_obj in bpy.data.objects['Deep_electrodes'].children:
             elec_obj.hide = False
@@ -94,6 +121,10 @@ def elecs_draw(self, context):
     layout = self.layout
     row = layout.row(align=True)
     row.operator(PrevElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
+    row.prop(context.scene, "leads", text="")
+    row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
+    row = layout.row(align=True)
+    row.operator(PrevElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
@@ -127,6 +158,7 @@ def next_electrode():
         bpy.context.scene.electrodes = next_elc
 
 
+
 class PrevElectrode(bpy.types.Operator):
     bl_idname = 'ohad.prev_electrode'
     bl_label = 'prevElectrodes'
@@ -151,7 +183,7 @@ class KeyboardListener(bpy.types.Operator):
     press_time = time.time()
 
     def modal(self, context, event):
-        if time.time() - self.press_time > 0.4 and bpy.context.scene.listen_to_keyboard and \
+        if time.time() - self.press_time > 1 and bpy.context.scene.listen_to_keyboard and \
                 event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE']:
             self.press_time = time.time()
             if event.type == 'LEFT_ARROW':
@@ -166,7 +198,6 @@ class KeyboardListener(bpy.types.Operator):
     def invoke(self, context, event=None):
         if not bpy.context.scene.listener_is_running:
             context.window_manager.modal_handler_add(self)
-            bpy.context.scene.listen_to_keyboard = True
             bpy.context.scene.listener_is_running = True
         bpy.context.scene.listen_to_keyboard = not bpy.context.scene.listen_to_keyboard
         return {'RUNNING_MODAL'}
@@ -178,6 +209,7 @@ bpy.types.Scene.color_lables = bpy.props.BoolProperty(
     default=False, description="Color the relevant lables")
 bpy.types.Scene.listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.listener_is_running = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.current_lead = bpy.props.StringProperty()
 bpy.types.Scene.electrode_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
@@ -203,17 +235,23 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
+    bipolar = bpy.context.scene.bipolar
     parent = bpy.data.objects.get('Deep_electrodes')
     if parent is None or len(parent.children) == 0:
         print("Can't register electrodes panel, no Deep_electrodes object!")
         return
     ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
-    items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
+    electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
-        items=items, description="electrodes", update=electrodes_update)
+        items=electrodes_items, description="electrodes", update=electrodes_update)
+    groups = ['All'] + sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
+    leads_items = [(group, group, '', ind) for ind, group in enumerate(groups)]
+    bpy.types.Scene.leads = bpy.props.EnumProperty(
+        items=leads_items, description="leads", update=leads_update)
     bpy.context.scene.electrodes = ElecsPanel.electrodes[0]
     ElecsPanel.current_electrode = ElecsPanel.electrodes[0]
+    ElecsPanel.current_lead = groups[0]
     ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
     loc_files = glob.glob(op.join(mu.get_user_fol(), '{}_{}_electrodes*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)))
     if len(loc_files) > 0:
@@ -229,9 +267,9 @@ def init(addon):
     # addon.clear_filtering()
     addon.clear_colors_from_parent_childrens('Deep_electrodes')
     addon.clear_cortex()
+    bpy.context.scene.show_only_lead = False
     bpy.context.scene.listen_to_keyboard = False
     bpy.context.scene.listener_is_running = False
-    bpy.context.scene.press_time = time.time()
     register()
     ElecsPanel.init = True
     print('Electrodes panel initialization completed successfully!')
@@ -250,7 +288,7 @@ def create_lookup_table(electrodes_locs, electrodes):
 def create_groups_lookup_table(electrodes):
     groups = {}
     for elc in electrodes:
-        group, num = mu.elec_group_number(elc)
+        group, num = mu.elec_group_number(elc, bpy.context.scene.bipolar)
         groups[elc] = group
     return groups
 

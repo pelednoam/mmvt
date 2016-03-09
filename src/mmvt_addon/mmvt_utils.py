@@ -347,6 +347,15 @@ def elec_group_number(elec_name, bipolar=False):
         return group, num
 
 
+def elec_group(elec_name, bipolar):
+    if bipolar:
+        group, _, _ = elec_group_number(elec_name, bipolar)
+    else:
+        group, _ = elec_group_number(elec_name, bipolar)
+    return group
+
+
+
 def csv_file_reader(csv_fname, delimiter=','):
     import csv
     with open(csv_fname, 'r') as csvfile:
