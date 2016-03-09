@@ -396,3 +396,9 @@ def run_command(cmd):
         return None
     else:
         subprocess.call(cmd, shell=True)
+
+
+def make_dir(fol):
+    if not os.path.isdir(fol):
+        os.makedirs(fol)
+    return fol

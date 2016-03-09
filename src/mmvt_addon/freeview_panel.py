@@ -7,7 +7,9 @@ import os.path as op
 def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
-    np.savetxt(op.join(root, 'freeview', 'edit.dat'), point)
+    freeview_fol = op.join(root, 'freeview')
+    mu.make_dir(freeview_fol)
+    np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
 
 
 def goto_cursor_position():

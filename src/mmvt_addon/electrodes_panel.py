@@ -3,6 +3,8 @@ import mmvt_utils as mu
 import colors_utils as cu
 import os.path as op
 import glob
+import time
+
 
 # todo: Add a leads combobox
 # todo: Move through the electrodes with the keyboard right and left
@@ -96,6 +98,10 @@ def elecs_draw(self, context):
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
     layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
+    if not bpy.context.scene.listen_to_keyboard:
+        layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='NEXT_KEYFRAME')
+    else:
+        layout.operator(KeyboardListener.bl_idname, text="Stop listen to keyboard", icon='NEXT_KEYFRAME')
     row = layout.row(align=True)
     row.label(text='Selected electrode color:')
     row = layout.row(align=True)
@@ -104,18 +110,21 @@ def elecs_draw(self, context):
     row.label(text='             ')
 
 
-
 class NextElectrode(bpy.types.Operator):
     bl_idname = 'ohad.next_electrode'
     bl_label = 'nextElectrodes'
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
-        index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
-        if index < len(ElecsPanel.electrodes) - 1:
-            next_elc = ElecsPanel.electrodes[index + 1]
-            bpy.context.scene.electrodes = next_elc
+        next_electrode()
         return {'FINISHED'}
+
+
+def next_electrode():
+    index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
+    if index < len(ElecsPanel.electrodes) - 1:
+        next_elc = ElecsPanel.electrodes[index + 1]
+        bpy.context.scene.electrodes = next_elc
 
 
 class PrevElectrode(bpy.types.Operator):
@@ -124,16 +133,51 @@ class PrevElectrode(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
-        index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
-        if index > 0:
-            prev_elc = ElecsPanel.electrodes[index - 1]
-            bpy.context.scene.electrodes = prev_elc
+        prev_electrode()
         return {'FINISHED'}
+
+
+def prev_electrode():
+    index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
+    if index > 0:
+        prev_elc = ElecsPanel.electrodes[index - 1]
+        bpy.context.scene.electrodes = prev_elc
+
+
+class KeyboardListener(bpy.types.Operator):
+    bl_idname = 'ohad.keyboard_listener'
+    bl_label = 'keyboard_listener'
+    bl_options = {'UNDO'}
+    press_time = time.time()
+
+    def modal(self, context, event):
+        if time.time() - self.press_time > 0.4 and bpy.context.scene.listen_to_keyboard and \
+                event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE']:
+            self.press_time = time.time()
+            if event.type == 'LEFT_ARROW':
+                prev_electrode()
+            elif event.type == 'RIGHT_ARROW':
+                next_electrode()
+            else:
+                pass
+                # print(event.type)
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event=None):
+        if not bpy.context.scene.listener_is_running:
+            context.window_manager.modal_handler_add(self)
+            bpy.context.scene.listen_to_keyboard = True
+            bpy.context.scene.listener_is_running = True
+        bpy.context.scene.listen_to_keyboard = not bpy.context.scene.listen_to_keyboard
+        return {'RUNNING_MODAL'}
+
 
 bpy.types.Scene.show_only_lead = bpy.props.BoolProperty(
     default=False, description="Show only the current lead", update=show_only_current_lead)
 bpy.types.Scene.color_lables = bpy.props.BoolProperty(
     default=False, description="Color the relevant lables")
+bpy.types.Scene.listen_to_keyboard = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.listener_is_running = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrode_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
@@ -170,6 +214,7 @@ def init(addon):
         items=items, description="electrodes", update=electrodes_update)
     bpy.context.scene.electrodes = ElecsPanel.electrodes[0]
     ElecsPanel.current_electrode = ElecsPanel.electrodes[0]
+    ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
     loc_files = glob.glob(op.join(mu.get_user_fol(), '{}_{}_electrodes*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)))
     if len(loc_files) > 0:
         # todo: there could be 2 files, one for bipolar and one for non bipolar
@@ -179,10 +224,14 @@ def init(addon):
             op.join(mu.get_user_fol(), 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
         # todo: Should be done only once in the main addon
         ElecsPanel.faces_verts = addon.load_faces_verts()
-        ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
+    else:
+        print("Can't find loc file!")
     # addon.clear_filtering()
     addon.clear_colors_from_parent_childrens('Deep_electrodes')
     addon.clear_cortex()
+    bpy.context.scene.listen_to_keyboard = False
+    bpy.context.scene.listener_is_running = False
+    bpy.context.scene.press_time = time.time()
     register()
     ElecsPanel.init = True
     print('Electrodes panel initialization completed successfully!')
@@ -212,6 +261,7 @@ def register():
         bpy.utils.register_class(ElecsPanel)
         bpy.utils.register_class(NextElectrode)
         bpy.utils.register_class(PrevElectrode)
+        bpy.utils.register_class(KeyboardListener)
         print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
@@ -222,7 +272,7 @@ def unregister():
         bpy.utils.unregister_class(ElecsPanel)
         bpy.utils.unregister_class(NextElectrode)
         bpy.utils.unregister_class(PrevElectrode)
-
+        bpy.utils.unregister_class(KeyboardListener)
     except:
         print("Can't unregister Electrodes Panel!")
 
