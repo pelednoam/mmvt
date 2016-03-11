@@ -44,7 +44,8 @@ import electrodes_panel
 importlib.reload(electrodes_panel)
 import freeview_panel
 importlib.reload(freeview_panel)
-
+import search_panel
+importlib.reload(search_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -1506,6 +1507,21 @@ def set_appearance_show_rois_layer(self, value):
         # bpy.context.scene.layers[LIGHTS_LAYER] = False
 
 
+def show_rois():
+    if not get_appearance_show_rois_layer(bpy.context.scene):
+        set_appearance_show_rois_layer(bpy.context.scene, True)
+
+
+def show_activity():
+    if not get_appearance_show_electrodes_layer(bpy.context.scene):
+        set_appearance_show_activity_layer(bpy.context.scene, True)
+
+
+def show_electrodes():
+    if not get_appearance_show_electrodes_layer(bpy.context.scene):
+        set_appearance_show_electrodes_layer(bpy.context.scene, True)
+
+
 def get_appearance_show_activity_layer(self):
     return self['appearance_show_activity_layer']
 
@@ -1827,89 +1843,7 @@ class WhereAmIMakerPanel(bpy.types.Panel):
         # layout.operator("ohad.where_am_i_clear", text="Clear", icon = 'PANEL_CLOSE')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class SearchFilter(bpy.types.Operator):
-    bl_idname = "ohad.selection_filter"
-    bl_label = "selection filter"
-    bl_options = {"UNDO"}
-    marked_objects_select = {}
-
-    def invoke(self, context, event=None):
-        label_name = context.scene.labels_regex
-        SearchMark.marked_objects_select = {}
-        for obj in bpy.data.objects:
-            SearchFilter.marked_objects_select[obj.name] = bpy.data.objects[obj.name].select
-            obj.select = label_name in obj.name
-        return {"FINISHED"}
-
-
-class SearchClear(bpy.types.Operator):
-    bl_idname = "ohad.selection_clear"
-    bl_label = "selection clear"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        # Copy from where am I clear
-        for subHierchy in bpy.data.objects['Brain'].children:
-            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierchy.name == 'Subcortical strutures':
-                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-            for obj in subHierchy.children:
-                 obj.active_material = new_mat
-
-        for obj in bpy.data.objects['Deep_electrodes'].children:
-            obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-
-        for obj_name, h in SearchMark.marked_objects_hide.items():
-            bpy.data.objects[obj_name].hide = bool(h)
-        for obj_name, h in SearchFilter.marked_objects_select.items():
-            print('bpy.data.objects[{}].select = {}'.format(obj_name, bool(h)))
-            bpy.data.objects[obj_name].select = bool(h)
-        return {"FINISHED"}
-
-
-class SearchMark(bpy.types.Operator):
-    bl_idname = "ohad.selection_mark"
-    bl_label = "selection mark"
-    bl_options = {"UNDO"}
-    marked_objects_hide = {}
-
-    def invoke(self, context, event=None):
-        label_name = context.scene.labels_regex
-        SearchMark.marked_objects_hide = {}
-        for obj in bpy.data.objects:
-            if label_name in obj.name:
-                bpy.context.scene.objects.active = bpy.data.objects[obj.name]
-                bpy.data.objects[obj.name].select = True
-                SearchMark.marked_objects_hide[obj.name] = bpy.data.objects[obj.name].hide
-                bpy.data.objects[obj.name].hide = False
-                bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
-
-        return {"FINISHED"}
-
-bpy.types.Scene.labels_regex = bpy.props.StringProperty(default= '', description="labels regex")
-
-class SearchPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Search Panel"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(context.scene, "labels_regex", text="Labels regex")
-        row = layout.row(align=0)
-        row.operator(SearchFilter.bl_idname, text="Search", icon = 'BORDERMOVE')
-        row.operator(SearchMark.bl_idname, text="Mark", icon = 'GREASEPENCIL')
-        layout.operator(SearchClear.bl_idname, text="Clear", icon = 'PANEL_CLOSE')
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Search Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 class ClearVertexData(bpy.types.Operator):
     bl_idname = "ohad.vertex_data_clear"
@@ -2272,6 +2206,7 @@ def main():
         dti_panel.init(current_module)
         electrodes_panel.init(current_module)
         freeview_panel.init(current_module)
+        search_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
@@ -2284,9 +2219,6 @@ def main():
         bpy.utils.register_class(GrabFromFiltering)
         bpy.utils.register_class(GrabToFiltering)
         bpy.utils.register_class(ClearFiltering)
-        bpy.utils.register_class(SearchFilter)
-        bpy.utils.register_class(SearchClear)
-        bpy.utils.register_class(SearchMark)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(CreateVertexData)
@@ -2308,7 +2240,6 @@ def main():
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(DataMakerPanel)
         bpy.utils.register_class(RenderingMakerPanel)
-        bpy.utils.register_class(SearchPanel)
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
