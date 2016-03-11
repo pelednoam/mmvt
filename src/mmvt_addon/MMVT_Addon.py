@@ -46,6 +46,8 @@ import freeview_panel
 importlib.reload(freeview_panel)
 import search_panel
 importlib.reload(search_panel)
+import appearance_panel
+importlib.reload(appearance_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -1238,171 +1240,7 @@ class Filtering(bpy.types.Operator):
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
         return {"FINISHED"}
 
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#
-# def filter_draw(self, context):
-# 	layout = self.layout
-# 	layout.prop(context.scene, "Filter_electrodes", text="Top K")
-# 	layout.prop(context.scene, "filter_curves_type", text="")
-# 	layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon = 'BORDERMOVE')
-# 	layout.operator("ohad.filter_clear", text="Clear Filtering", icon = 'PANEL_CLOSE')
-#
-# bpy.types.Scene.Filter_electrodes = bpy.props.IntProperty(default=1, min=1,
-#                                                           description="The top K electrodes to be shown")
-# bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(items=[("MEG", "MEG time course", "", 1),
-#                                                                    ("Electrodes", " Electrodes time course", "", 2)],
-#                                                             description="Type of curve to be filtered",
-#                                                             update=filter_draw)
-#
-#
-# class FilteringMakerPanel(bpy.types.Panel):
-#     bl_space_type = "GRAPH_EDITOR"
-#     bl_region_type = "UI"
-#     bl_context = "objectmode"
-#     bl_category = "Ohad"
-#     bl_label = "Filter number of curves"
-#
-#     def draw(self, context):
-#         filter_draw(self, context)
-#
-# files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-#
-#
-# class ClearFiltering(bpy.types.Operator):
-#     bl_idname = "ohad.filter_clear"
-#     bl_label = "filter clear"
-#     bl_options = {"UNDO"}
-#
-#     @staticmethod
-#     def invoke(self, context, event=None):
-#         for subHierarchy in bpy.data.objects['Brain'].children:
-#             new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-#             if subHierarchy.name == 'Subcortical_structures':
-#                 new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-#
-#             for obj in subHierarchy.children:
-#                  obj.active_material = new_mat
-#                  if obj.name == 'Left cerebellum cortex' or obj.name == 'Right cerebellum cortex':
-#                     obj.active_material = bpy.data.materials['unselected_label_Mat_cerebellum']
-#         for obj in bpy.data.objects['Deep_electrodes'].children:
-#             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-#
-#         return {"FINISHED"}
-#
-#
-# class Filtering(bpy.types.Operator):
-#     bl_idname = "ohad.filter"
-#     bl_label = "Filter deep electrodes"
-#     bl_options = {"UNDO"}
-#     topK = -1
-#     current_root_path = ''
-#     type_of_filter = ''
-#     current_file_to_upload = ''
-#
-#     def get_object_to_filter(self, source_files):
-#         data, names = [], []
-#         for input_file in source_files:
-#             f = np.load(input_file)
-#             data.append(f['data'])
-#             temp_names = [str(name) for name in f['names']]
-#             for ind in range(len(temp_names)):
-#                 if temp_names[ind][1] == "'":
-#                     temp_names[ind] = temp_names[ind][2:-1]
-#             names.extend(temp_names)
-#         self.topK = min(self.topK, len(names))
-#         d = np.vstack((d for d in data))
-#         dd = d[:, :, 0]-d[:, :, 1]
-#         dd = np.sqrt(np.sum(np.power(dd, 2), 1))
-#         # dd = d[:, :, 0]- d[:, :, 1]
-#         # amps = np.max(dd,1) - np.min(dd, 1)
-#         objects_to_filter_in = np.argsort(dd)[::-1][:self.topK]
-#         print(objects_to_filter_in, names)
-#         return objects_to_filter_in, names
-#
-#     def filter_electrodes(self):
-#         print('filter_electrodes')
-#         source_files = [op.join(self.current_root_path, self.current_file_to_upload)]
-#         objects_to_filter_in, names = self.get_object_to_filter(source_files)
-#
-#         for obj in bpy.data.objects:
-#             obj.select = False
-#
-#         for obj in bpy.data.objects['Deep_electrodes'].children:
-#             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-#
-#         for ind in range(self.topK-1, -1, -1):
-#             # print(str(names[objects_to_filter_in[ind]]))
-#             orig_name = bpy.data.objects[str(names[objects_to_filter_in[ind]])].name
-#             # print(orig_name)
-#             # new_name = '*'+orig_name
-#             # print(new_name)
-#             # bpy.data.objects[orig_name].name = new_name
-#             bpy.data.objects[orig_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
-#
-#             bpy.data.objects[orig_name].select = True
-#             bpy.context.scene.objects.active = bpy.data.objects[orig_name]
-#
-#         bpy.context.object.parent.select = False
-#
-#     def filter_rois(self):
-#         print('filter_rois')
-#         source_files = [op.join(self.current_root_path, self.current_file_to_upload+hemi+'.npz') for hemi
-#                         in HEMIS]
-#         objects_to_filter_in, names = self.get_object_to_filter(source_files)
-#         for obj in bpy.data.objects:
-#             obj.select = False
-#             if obj.name == 'Left cerebellum cortex' or obj.name == 'Right cerebellum cortex':
-#                 obj.active_material = bpy.data.materials['unselected_label_Mat_cerebellum']
-#             elif obj.parent == bpy.data.objects['Subcortical_structures']:
-#                 obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-#             elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
-#                 obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-#
-#         for ind in range(self.topK-1, -1, -1):
-#             orig_name = bpy.data.objects[str(names[objects_to_filter_in[ind]])].name
-#             print(orig_name)
-#             # new_name = '*'+orig_name
-#             # print(new_name)
-#             # bpy.data.objects[orig_name].name = new_name
-#             bpy.data.objects[orig_name].select = True
-#             bpy.context.scene.objects.active = bpy.data.objects[orig_name]
-#             # if bpy.data.objects[orig_name].parent != bpy.data.objects[orig_name]:
-#             if bpy.data.objects[orig_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-#                  bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
-#             else:
-#                 bpy.data.objects[orig_name].active_material = bpy.data.materials['selected_label_Mat']
-#
-#             if obj.name == 'Left cerebellum cortex' or obj.name == 'Right cerebellum cortex':
-#                 obj.active_material = bpy.data.materials['unselected_label_Mat_cerebellum']
-#
-#     def invoke(self, context, event=None):
-#         change_view3d()
-#         setup_layers()
-#         self.topK = bpy.context.scene.Filter_electrodes
-#         self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-#         self.type_of_filter = bpy.context.scene.filter_curves_type
-#         self.current_file_to_upload = files_names[self.type_of_filter]
-#
-#         # print(self.current_root_path)
-#         # source_files = ["/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz"]
-#         if self.type_of_filter == 'Electrodes':
-#             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~invoke~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-#             self.filter_electrodes()
-#             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~invoke2~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-#         elif self.type_of_filter == 'MEG':
-#             self.filter_rois()
-#
-#         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
-#         return {"FINISHED"}
-# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show / Hide objects ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
 def show_hide_hierarchy(do_hide, obj):
     if bpy.data.objects.get(obj) is not None:
         bpy.data.objects[obj].hide = do_hide
@@ -1457,198 +1295,16 @@ class ShowHideObjectsPanel(bpy.types.Panel):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show / Hide objects ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-def setup_layers(self=None, context=None):
-    empty_layer = EMPTY_LAYER
-
-    for layer_ind in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[layer_ind] = layer_ind == empty_layer
-
-    bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
-    bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_ROIs_layer
-    bpy.context.scene.layers[ACTIVITY_LAYER] = bpy.context.scene.appearance_show_activity_layer
-    bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
-
-
-def change_view3d(self=None, context=None):
-    viewport_shade = bpy.context.scene.filter_view_type
-    # if viewport_shade == 'RENDERED':
-    if viewport_shade == '1':
-        bpy.context.scene.layers[LIGHTS_LAYER] = True
-        viewport_shade_str = 'RENDERED'
-    else:
-        bpy.context.scene.layers[LIGHTS_LAYER] = False
-        viewport_shade_str = 'SOLID'
-
-    for ii in range(len(bpy.context.screen.areas)):
-        if bpy.context.screen.areas[ii].type == 'VIEW_3D':
-            bpy.context.screen.areas[ii].spaces[0].viewport_shade = viewport_shade_str
-
-
-def get_appearance_show_electrodes_layer(self):
-    return self['appearance_show_electrodes_layer']
-
-
-def set_appearance_show_electrodes_layer(self, value):
-    self['appearance_show_electrodes_layer'] = value
-    bpy.context.scene.layers[ELECTRODES_LAYER] = value
-
-
-def get_appearance_show_rois_layer(self):
-    return self['appearance_show_ROIs_layer']
-
-
-def set_appearance_show_rois_layer(self, value):
-    self['appearance_show_ROIs_layer'] = value
-    bpy.context.scene.layers[ROIS_LAYER] = value
-    if value:
-        set_appearance_show_activity_layer(self, False)
-        # bpy.context.scene.layers[LIGHTS_LAYER] = False
-
-
-def show_rois():
-    if not get_appearance_show_rois_layer(bpy.context.scene):
-        set_appearance_show_rois_layer(bpy.context.scene, True)
-
-
-def show_activity():
-    if not get_appearance_show_electrodes_layer(bpy.context.scene):
-        set_appearance_show_activity_layer(bpy.context.scene, True)
-
-
-def show_electrodes():
-    if not get_appearance_show_electrodes_layer(bpy.context.scene):
-        set_appearance_show_electrodes_layer(bpy.context.scene, True)
-
-
-def get_appearance_show_activity_layer(self):
-    return self['appearance_show_activity_layer']
-
-
-def set_appearance_show_activity_layer(self, value):
-    self['appearance_show_activity_layer'] = value
-    bpy.context.scene.layers[ACTIVITY_LAYER] = value
-    if value:
-        set_appearance_show_rois_layer(self, False)
-        # bpy.context.scene.layers[LIGHTS_LAYER] = True
-
-
-def get_appearance_show_connections_layer(self):
-    try:
-        return self['appearance_show_connections_layer']
-    except:
-        print(traceback.format_exc())
-        return None
-
-def set_appearance_show_connections_layer(self, value):
-    if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        self['appearance_show_connections_layer'] = value
-        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
-        bpy.context.scene.layers[CONNECTIONS_LAYER] = value
-
-
-def get_filter_view_type(self):
-    # print('in get_filter_view_type')
-    # print(self['filter_view_type'])
-    # print(type(self['filter_view_type']))
-    if self['filter_view_type'] == 'RENDERED':
-        return 1
-    elif self['filter_view_type'] == 'SOLID':
-        return 2
-    elif type(self['filter_view_type']) == int:
-        return self['filter_view_type']
-    return 3
-
-
-def set_filter_view_type(self, value):
-    # self['filter_view_type'] = value
-    bpy.data.scenes['Scene']['filter_view_type'] = value
-    change_view3d()
-
-
-def change_to_rendered_brain():
-    set_filter_view_type(None, 1)
-
-
-def change_to_solid_brain():
-    set_filter_view_type(None, 2)
-
-
-def make_brain_solid_or_transparent(self=None, context=None):
-    bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
-        'Fac'].default_value = bpy.context.scene.appearance_solid_slider
-    if 'subcortical_activity_mat' in bpy.data.materials:
-        subcortical_mat = bpy.data.materials['subcortical_activity_mat']
-        subcortical_mat.node_tree.nodes['transparency_node'].inputs['Fac'].default_value = \
-            bpy.context.scene.appearance_solid_slider
-
-
-def update_layers():
-    if bpy.context.scene.appearance_depth_Bool:
-        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[
-            1].default_value = bpy.context.scene.appearance_depth_slider
-    else:
-        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = 0
-
-
-def appearance_draw(self, context):
-    layout = self.layout
-    col1 = self.layout.column(align=True)
-    col1.prop(context.scene, 'appearance_show_ROIs_layer', text="Show ROIs", icon='RESTRICT_VIEW_OFF')
-    col1.prop(context.scene, 'appearance_show_activity_layer', text="Show activity maps", icon='RESTRICT_VIEW_OFF')
-    col1.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
-    col1.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
-    split = layout.split()
-    split.prop(context.scene, "filter_view_type", text="")
-    # print(context.scene.filter_view_type)
-    # if context.scene.filter_view_type == '1' and bpy.context.scene.appearance_show_activity_layer is True:
-    # # if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer is True:
-    #     # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-    #     layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
-    #     split2 = layout.split()
-    #     split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
-    #     split2.prop(context.scene, 'appearance_depth_slider', text="Depth")
-    #     layout.operator("ohad.appearance_update", text="Update")
-
-
-def update_solidity(self, context):
-    print('in update')
-    make_brain_solid_or_transparent()
-    update_layers()
-    AppearanceMakerPanel.draw()
-
-
-bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
-                                                                          get=get_appearance_show_electrodes_layer,
-                                                                          set=set_appearance_show_electrodes_layer)
-bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
-                                                                    get=get_appearance_show_rois_layer,
-                                                                    set=set_appearance_show_rois_layer)
-bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
-                                                                        get=get_appearance_show_activity_layer,
-                                                                        set=set_appearance_show_activity_layer)
-bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-                                                                        get=get_appearance_show_connections_layer,
-                                                                        set=set_appearance_show_connections_layer)
-
-bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
-    items=[("1", "Rendered Brain", "", 1), ("2", " Solid Brain", "", 2)],description="Brain appearance",
-    get=get_filter_view_type, set=set_filter_view_type, default='2')
-
-
-class AppearanceMakerPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Appearance"
-
-    def draw(self, context):
-        # make_brain_solid_or_transparent(self, context)
-        appearance_draw(self, context)
-
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+setup_layers = appearance_panel.setup_layers
+change_view3d = appearance_panel.change_view3d
+show_rois = appearance_panel.show_rois
+show_activity = appearance_panel.show_activity
+show_electrodes = appearance_panel.show_electrodes
+change_to_rendered_brain = appearance_panel.change_to_rendered_brain
+change_to_solid_brain = appearance_panel.change_to_solid_brain
+make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
+update_layers = appearance_panel.update_layers
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2090,104 +1746,104 @@ class RenderingMakerPanel(bpy.types.Panel):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-class helper_class():
-    brain_imported = False
-    electrodes_imported = False
-    brain_data_exist = False
-    electrodes_data_exist = False
-    closest_curve_str = ''
-    filter_is_on = False
-    # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-    closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
-    filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-    filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-    filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-    filter_to = bpy.props.IntProperty(default=1000, min=0, description="When to filter to")
-    filter_curves_type = bpy.props.EnumProperty(
-        items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
-        description="Type of curve to be filtered", update=filter_draw)
-    filter_curves_func = bpy.props.EnumProperty(
-        items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)],
-        description="Filtering function", update=filter_draw)
-    objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere", update=show_hide_lh)
-    objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",
-                                                  update=show_hide_rh)
-    objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
-                                                            update=show_hide_sub_cortical)
-    appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
-                                                              get=get_appearance_show_electrodes_layer,
-                                                              set=set_appearance_show_electrodes_layer)
-    appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
-                                                        get=get_appearance_show_rois_layer,
-                                                        set=set_appearance_show_rois_layer)
-    appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
-                                                            get=get_appearance_show_activity_layer,
-                                                            set=set_appearance_show_activity_layer)
-    appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-                                                            get=get_appearance_show_connections_layer,
-                                                            set=set_appearance_show_connections_layer)
-
-    filter_view_type = bpy.props.EnumProperty(
-        items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
-        get=get_filter_view_type, set=set_filter_view_type)
-    appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
-    appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
-    appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
-    coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
-    coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-    coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-    where_am_i_str = ''
-    where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
-    output_path = bpy.props.StringProperty(name="Output Path", default="",
-                                           description="Define the path for the output files", subtype='DIR_PATH')
-    X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis",
-                                         update=update_rotation)
-    Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis",
-                                         update=update_rotation)
-    Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis",
-                                         update=update_rotation)
-    quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage",
-                                      update=update_quality)
-    smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
-
-
-def register():
-    tmp = helper_class()
-    # bpy.types.Scene.conf_path = tmp.conf_path
-    bpy.types.Scene.brain_imported = tmp.brain_imported
-    bpy.types.Scene.electrodes_imported = tmp.electrodes_imported
-    bpy.types.Scene.brain_data_exist = tmp.brain_data_exist
-    bpy.types.Scene.electrodes_data_exist = tmp.electrodes_data_exist
-    bpy.types.Scene.closest_curve_str = tmp.closest_curve_str
-    bpy.types.Scene.filter_is_on = tmp.filter_is_on
-    # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-    bpy.types.Scene.closest_curve = tmp.closest_curve
-    bpy.types.Scene.filter_topK = tmp.filter_topK
-    bpy.types.Scene.filter_topK = tmp.filter_topK
-    bpy.types.Scene.filter_from = tmp.filter_from
-    bpy.types.Scene.filter_to = tmp.filter_to
-    bpy.types.Scene.filter_curves_type = tmp.filter_curves_type
-    bpy.types.Scene.filter_curves_func = tmp.filter_curves_func
-    bpy.types.Scene.objects_show_hide_lh = tmp.objects_show_hide_lh
-    bpy.types.Scene.objects_show_hide_rh = tmp.objects_show_hide_rh
-    bpy.types.Scene.objects_show_hide_sub_cortical = tmp.objects_show_hide_sub_cortical
-    bpy.types.Scene.appearance_show_electrodes_layer = tmp.appearance_show_electrodes_layer
-    bpy.types.Scene.appearance_show_ROIs_layer = tmp.appearance_show_ROIs_layer
-    bpy.types.Scene.appearance_show_activity_layer = tmp.appearance_show_activity_layer
-    bpy.types.Scene.appearance_show_connections_layer = tmp.appearance_show_connections
-    bpy.types.Scene.filter_view_type = tmp.filter_view_type
-    bpy.types.Scene.appearance_solid_slider = tmp.appearance_solid_slider
-    bpy.types.Scene.appearance_depth_slider = tmp.appearance_depth_slider
-    bpy.types.Scene.appearance_depth_Bool = tmp.appearance_depth_Bool
-    bpy.types.Scene.coloring_fmri = tmp.coloring_fmri
-    bpy.types.Scene.coloring_electrodes = tmp.coloring_electrodes
-    bpy.types.Scene.coloring_threshold = tmp.coloring_threshold
-    bpy.types.Scene.where_am_i_str = tmp.where_am_i_str
-    bpy.types.Scene.X_rotation = tmp.X_rotation
-    bpy.types.Scene.Y_rotation = tmp.Y_rotation
-    bpy.types.Scene.Z_rotation = tmp.Z_rotation
-    bpy.types.Scene.quality = tmp.quality
-    bpy.types.Scene.smooth_figure = tmp.smooth_figure
+# class helper_class():
+#     brain_imported = False
+#     electrodes_imported = False
+#     brain_data_exist = False
+#     electrodes_data_exist = False
+#     closest_curve_str = ''
+#     filter_is_on = False
+#     # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
+#     closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
+#     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
+#     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
+#     filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
+#     filter_to = bpy.props.IntProperty(default=1000, min=0, description="When to filter to")
+#     filter_curves_type = bpy.props.EnumProperty(
+#         items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
+#         description="Type of curve to be filtered", update=filter_draw)
+#     filter_curves_func = bpy.props.EnumProperty(
+#         items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)],
+#         description="Filtering function", update=filter_draw)
+#     objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere", update=show_hide_lh)
+#     objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",
+#                                                   update=show_hide_rh)
+#     objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
+#                                                             update=show_hide_sub_cortical)
+#     appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
+#                                                               get=get_appearance_show_electrodes_layer,
+#                                                               set=set_appearance_show_electrodes_layer)
+#     appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
+#                                                         get=get_appearance_show_rois_layer,
+#                                                         set=set_appearance_show_rois_layer)
+#     appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
+#                                                             get=get_appearance_show_activity_layer,
+#                                                             set=set_appearance_show_activity_layer)
+#     appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
+#                                                             get=get_appearance_show_connections_layer,
+#                                                             set=set_appearance_show_connections_layer)
+#
+#     filter_view_type = bpy.props.EnumProperty(
+#         items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
+#         get=get_filter_view_type, set=set_filter_view_type)
+#     appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
+#     appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
+#     appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
+#     coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
+#     coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
+#     coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+#     where_am_i_str = ''
+#     where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
+#     output_path = bpy.props.StringProperty(name="Output Path", default="",
+#                                            description="Define the path for the output files", subtype='DIR_PATH')
+#     X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis",
+#                                          update=update_rotation)
+#     Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis",
+#                                          update=update_rotation)
+#     Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis",
+#                                          update=update_rotation)
+#     quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage",
+#                                       update=update_quality)
+#     smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
+#
+#
+# def register():
+#     tmp = helper_class()
+#     # bpy.types.Scene.conf_path = tmp.conf_path
+#     bpy.types.Scene.brain_imported = tmp.brain_imported
+#     bpy.types.Scene.electrodes_imported = tmp.electrodes_imported
+#     bpy.types.Scene.brain_data_exist = tmp.brain_data_exist
+#     bpy.types.Scene.electrodes_data_exist = tmp.electrodes_data_exist
+#     bpy.types.Scene.closest_curve_str = tmp.closest_curve_str
+#     bpy.types.Scene.filter_is_on = tmp.filter_is_on
+#     # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
+#     bpy.types.Scene.closest_curve = tmp.closest_curve
+#     bpy.types.Scene.filter_topK = tmp.filter_topK
+#     bpy.types.Scene.filter_topK = tmp.filter_topK
+#     bpy.types.Scene.filter_from = tmp.filter_from
+#     bpy.types.Scene.filter_to = tmp.filter_to
+#     bpy.types.Scene.filter_curves_type = tmp.filter_curves_type
+#     bpy.types.Scene.filter_curves_func = tmp.filter_curves_func
+#     bpy.types.Scene.objects_show_hide_lh = tmp.objects_show_hide_lh
+#     bpy.types.Scene.objects_show_hide_rh = tmp.objects_show_hide_rh
+#     bpy.types.Scene.objects_show_hide_sub_cortical = tmp.objects_show_hide_sub_cortical
+#     bpy.types.Scene.appearance_show_electrodes_layer = tmp.appearance_show_electrodes_layer
+#     bpy.types.Scene.appearance_show_ROIs_layer = tmp.appearance_show_ROIs_layer
+#     bpy.types.Scene.appearance_show_activity_layer = tmp.appearance_show_activity_layer
+#     bpy.types.Scene.appearance_show_connections_layer = tmp.appearance_show_connections
+#     bpy.types.Scene.filter_view_type = tmp.filter_view_type
+#     bpy.types.Scene.appearance_solid_slider = tmp.appearance_solid_slider
+#     bpy.types.Scene.appearance_depth_slider = tmp.appearance_depth_slider
+#     bpy.types.Scene.appearance_depth_Bool = tmp.appearance_depth_Bool
+#     bpy.types.Scene.coloring_fmri = tmp.coloring_fmri
+#     bpy.types.Scene.coloring_electrodes = tmp.coloring_electrodes
+#     bpy.types.Scene.coloring_threshold = tmp.coloring_threshold
+#     bpy.types.Scene.where_am_i_str = tmp.where_am_i_str
+#     bpy.types.Scene.X_rotation = tmp.X_rotation
+#     bpy.types.Scene.Y_rotation = tmp.Y_rotation
+#     bpy.types.Scene.Z_rotation = tmp.Z_rotation
+#     bpy.types.Scene.quality = tmp.quality
+#     bpy.types.Scene.smooth_figure = tmp.smooth_figure
 
 
 def main():
@@ -2207,6 +1863,7 @@ def main():
         electrodes_panel.init(current_module)
         freeview_panel.init(current_module)
         search_panel.init(current_module)
+        appearance_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
@@ -2231,7 +1888,6 @@ def main():
         bpy.utils.register_class(ImportRoisClass)
         bpy.utils.register_class(RenderFigure)
 
-        bpy.utils.register_class(AppearanceMakerPanel)
         bpy.utils.register_class(TransparencyPanel)
         bpy.utils.register_class(ShowHideObjectsPanel)
         bpy.utils.register_class(SelectionMakerPanel)
