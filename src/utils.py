@@ -1088,7 +1088,11 @@ def _read_labels_parallel(files_chunk):
 
 
 def merge_two_dics(dic1, dic2):
-    return {**dic1, **dic2}
+    # Only for python >= 3.5
+    # return {**dic1, **dic2}
+    ret = dic1.copy()
+    ret.update(dic2)
+    return ret
 
 
 def color_name_to_rgb(color_name):

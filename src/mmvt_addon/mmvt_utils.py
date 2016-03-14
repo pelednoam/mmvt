@@ -458,7 +458,7 @@ def profileit(prof_fname, sort_field='cumtime'):
         def wrapper(*args, **kwargs):
             prof = cProfile.Profile()
             retval = prof.runcall(func, *args, **kwargs)
-            stat_fname = '{}_stat'.format(prof_fname)
+            stat_fname = '{}.stat'.format(prof_fname)
             prof.dump_stats(prof_fname)
             print_profiler(prof_fname, stat_fname, sort_field)
             print('dump stat in {}'.format(stat_fname))

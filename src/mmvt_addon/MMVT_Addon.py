@@ -1305,6 +1305,16 @@ change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
+get_appearance_show_electrodes_layer = appearance_panel.get_appearance_show_electrodes_layer
+set_appearance_show_electrodes_layer = appearance_panel.set_appearance_show_electrodes_layer
+get_appearance_show_rois_layer = appearance_panel.get_appearance_show_rois_layer
+set_appearance_show_rois_layer = appearance_panel.set_appearance_show_rois_layer
+get_appearance_show_activity_layer = appearance_panel.get_appearance_show_activity_layer
+set_appearance_show_activity_layer = appearance_panel.set_appearance_show_activity_layer
+get_appearance_show_connections_layer = appearance_panel.get_appearance_show_connections_layer
+set_appearance_show_connections_layer = appearance_panel.set_appearance_show_connections_layer
+get_filter_view_type = appearance_panel.get_filter_view_type
+set_filter_view_type = appearance_panel.set_filter_view_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

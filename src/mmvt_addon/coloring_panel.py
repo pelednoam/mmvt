@@ -93,13 +93,13 @@ def load_meg_subcortical_activity():
     return meg_sub_activity
 
 
-def activity_map_coloring(map_type):
+def activity_map_coloring(map_type, clusters=False):
     faces_verts = init_activity_map_coloring(map_type)
     threshold = bpy.context.scene.coloring_threshold
     meg_sub_activity = None
     if map_type == 'MEG':
         meg_sub_activity = load_meg_subcortical_activity()
-    plot_activity(map_type, faces_verts, threshold, meg_sub_activity)
+    plot_activity(map_type, faces_verts, threshold, meg_sub_activity, clusters=clusters)
     # setup_environment_settings()
 
 
@@ -138,7 +138,7 @@ def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_v
 
 
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
-        plot_subcorticals=True, override_current_mat=True):
+        plot_subcorticals=True, override_current_mat=True, clusters=False):
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
@@ -148,7 +148,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         if map_type == 'MEG':
             f = np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
         elif map_type == 'FMRI':
-            f = np.load(op.join(current_root_path, 'fmri_' + hemi + '.npy'))
+            fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
+            f = np.load(fname)
         cur_obj = bpy.data.objects[hemi]
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
@@ -320,6 +321,17 @@ class ColorFmri(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorClustersFmri(bpy.types.Operator):
+    bl_idname = "ohad.fmri_clusters_color"
+    bl_label = "ohad fmri clusters color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        activity_map_coloring('FMRI', clusters=True)
+        return {"FINISHED"}
+
+
 class ClearColors(bpy.types.Operator):
     bl_idname = "ohad.colors_clear"
     bl_label = "ohad colors clear"
@@ -353,6 +365,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         aparc_name = bpy.context.scene.atlas
         faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
         fmri_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+        fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
@@ -368,7 +381,9 @@ class ColoringMakerPanel(bpy.types.Panel):
             if meg_labels_files_exist:
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if fmri_files_exist:
-                layout.operator(ColorFmri.bl_idname, text="Plot FMRI ", icon='POTATO')
+                layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
+            if fmri_clusters_files_exist:
+                layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
             if manually_color_file_exist:
                 layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
         if electrodes_files_exist:
@@ -389,6 +404,7 @@ def register():
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorFmri)
+        bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         print('Freeview Panel was registered!')
@@ -403,6 +419,7 @@ def unregister():
         bpy.utils.unregister_class(ColorMeg)
         bpy.utils.unregister_class(ColorMegLabels)
         bpy.utils.unregister_class(ColorFmri)
+        bpy.utils.unregister_class(ColorClustersFmri)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:

@@ -1,7 +1,8 @@
 import bpy
 import connections_panel
-from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
-        BRAIN_EMPTY_LAYER, EMPTY_LAYER)
+# shouldn't decalred twice (also in MMVT_Addon
+(CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
+    BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
 
 def setup_layers():
