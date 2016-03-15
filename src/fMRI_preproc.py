@@ -88,7 +88,8 @@ def save_fmri_colors(subject, hemi, fmri_file, surf_name, output_file, threshold
     np.save(output_file, colors)
 
 
-def find_clusters(subject, input_file):
+def find_clusters(subject, input_file, atlas, load_from_annotation=False, n_jobs=1):
+    cluster_labels = {}
     for hemi in utils.HEMIS:
         x = nib.load(input_file.format(hemi=hemi))
         constrast = x.get_data().ravel()
@@ -97,11 +98,14 @@ def find_clusters(subject, input_file):
         clusters, _ = mne_clusters._find_clusters(constrast, 2, connectivity=connectivity)
         output_file = op.join(BLENDER_SUBJECT_DIR, 'fmri_clusters_{}.npy'.format(hemi))
         save_clusters_for_blender(clusters, constrast, output_file)
+        cluster_labels[hemi] = find_clusters_overlapped_labeles(
+            subject, clusters, atlas, hemi, load_from_annotation, n_jobs)
+    utils.save(cluster_labels, op.join(BLENDER_ROOT_DIR, subject, 'fmri_cluster_labels.npy'))
 
 
 def save_clusters_for_blender(clusters, constrast, output_file):
     vertices_num = len(constrast)
-    data = np.ones((vertices_num, 4))
+    data = np.ones((vertices_num, 4)) * -1
     colors = utils.get_spaced_colors(len(clusters))
     for ind, (cluster, color) in enumerate(zip(clusters, colors)):
         x = constrast[cluster]
@@ -110,6 +114,27 @@ def save_clusters_for_blender(clusters, constrast, output_file):
         cluster_color = np.tile(color, (len(cluster), 1))
         data[cluster, :] = np.hstack((cluster_data, cluster_color))
     np.save(output_file, data)
+
+
+def find_clusters_overlapped_labeles(subject, clusters, atlas, hemi, load_from_annotation=False, n_jobs=1):
+    cluster_labels = []
+    annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+    if load_from_annotation and op.isfile(annot_fname):
+        labels = mne.read_labels_from_annot(annot_fname)
+    else:
+        # todo: read only the labels from the current hemi
+        labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
+        labels = [l for l in labels if l.hemi == hemi]
+
+    for cluster in clusters:
+        inter_labels = []
+        for label in labels:
+            overlapped_vertices = np.intersect1d(cluster, label.vertices)
+            if len(overlapped_vertices) > 0:
+                inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
+        max_inter = max([(il['num'], il['name']) for il in inter_labels])
+        cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=max_inter[1]))
+    return cluster_labels
 
 
 def show_fMRI_using_pysurfer(subject, input_file, hemi='both'):
@@ -261,7 +286,8 @@ if __name__ == '__main__':
     constrast = 'non-interference-v-interference'
     constrast_file=constrast_file_template.format(
         contrast=constrast, hemi='{hemi}', format='mgz')
-    find_clusters(SUBJECT, input_file=constrast_file)
+    atlas = 'laus250'
+    find_clusters(SUBJECT, constrast_file, atlas,  load_from_annotation=False, n_jobs=6)
     # show_fMRI_using_pysurfer(SUBJECT, input_file=constrast_file, hemi='lh')
 
     # root = op.join('/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003')

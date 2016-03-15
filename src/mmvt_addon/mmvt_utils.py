@@ -322,8 +322,8 @@ def get_subfolders(fol):
 
 
 def hemi_files_exists(fname):
-    return os.path.isfile(os.path.join(fname.format(hemi='rh'))) and \
-           os.path.isfile(os.path.join(fname.format(hemi='lh')))
+    return os.path.isfile(fname.format(hemi='rh')) and \
+           os.path.isfile(fname.format(hemi='lh'))
 
 
 def atoi(text):

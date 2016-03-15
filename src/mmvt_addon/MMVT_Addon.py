@@ -48,6 +48,8 @@ import search_panel
 importlib.reload(search_panel)
 import appearance_panel
 importlib.reload(appearance_panel)
+import fMRI_panel
+importlib.reload(fMRI_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -1874,6 +1876,7 @@ def main():
         freeview_panel.init(current_module)
         search_panel.init(current_module)
         appearance_panel.init(current_module)
+        fMRI_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
