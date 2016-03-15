@@ -66,14 +66,15 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
     print('Finished coloring!!')
 
 
-def init_activity_map_coloring(map_type):
+def init_activity_map_coloring(map_type, subcorticals=True):
     ColoringMakerPanel.addon.set_appearance_show_activity_layer(bpy.context.scene, True)
     ColoringMakerPanel.addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
-    ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
-    ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    if subcorticals:
+        ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+        ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+    else:
+        ColoringMakerPanel.addon.show_hide_sub_corticals(True)
     # change_view3d()
-    faces_verts = load_faces_verts()
-    return faces_verts
 
 
 def load_faces_verts():
@@ -93,25 +94,28 @@ def load_meg_subcortical_activity():
     return meg_sub_activity
 
 
-def activity_map_coloring(map_type, clusters=False):
-    faces_verts = init_activity_map_coloring(map_type)
-    threshold = bpy.context.scene.coloring_threshold
+def activity_map_coloring(map_type, clusters=False, threshold=None):
+    init_activity_map_coloring(map_type)
+    if not threshold is None:
+        threshold = bpy.context.scene.coloring_threshold
     meg_sub_activity = None
     if map_type == 'MEG':
         meg_sub_activity = load_meg_subcortical_activity()
-    plot_activity(map_type, faces_verts, threshold, meg_sub_activity, clusters=clusters)
+    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters)
     # setup_environment_settings()
 
 
 def meg_labels_coloring(self, context, override_current_mat=True):
-    faces_verts = init_activity_map_coloring('MEG')
+    init_activity_map_coloring('MEG')
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
     for hemi_ind, hemi in enumerate(hemispheres):
-        labels_names, labels_vertices = mu.load(op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        labels_names, labels_vertices = mu.load(
+            op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
         labels_data = np.load(op.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
-        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat)
+        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts,
+                                 hemi, threshold, override_current_mat)
 
 
 def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat=True):
@@ -148,8 +152,9 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         if map_type == 'MEG':
             f = np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
         elif map_type == 'FMRI':
-            fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
-            f = np.load(fname)
+            # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
+            # f = np.load(fname)
+            f = ColoringMakerPanel.fMRI_clusters[hemi] if clusters else ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
@@ -197,8 +202,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     vcol_layer = mesh.vertex_colors.new()
     # else:
     #     vcol_layer = mesh.vertex_colors.active
-        # loop_indices = set()
-    print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
+    # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x>-1]:
@@ -212,7 +216,6 @@ def color_manually():
     subject_fol = mu.get_user_fol()
     labels_names, labels_vertices = mu.load(
         op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
-    faces_verts = load_faces_verts()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
         obj_name, color_name = line
@@ -226,7 +229,7 @@ def color_manually():
     for hemi in HEMIS:
         obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
-        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, 0)
+        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
         color_subcortical_region(region, color)
 
@@ -358,6 +361,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "Activity Maps"
     addon = None
+    fMRI = {}
+    fMRI_clusters = {}
 
     def draw(self, context):
         layout = self.layout
@@ -391,8 +396,27 @@ class ColoringMakerPanel(bpy.types.Panel):
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
+def get_fMRI_activity(hemi, clusters=False):
+    return ColoringMakerPanel.fMRI_clusters[hemi] if clusters else ColoringMakerPanel.fMRI[hemi]
+
+
+def get_faces_verts():
+    return ColoringMakerPanel.faces_verts
+
+
 def init(addon):
     ColoringMakerPanel.addon = addon
+    # Load fMRI data
+    user_fol = mu.get_user_fol()
+    fmri_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
+    for hemi in mu.HEMIS:
+        if fmri_files_exist:
+            ColoringMakerPanel.fMRI[hemi] = np.load(op.join(user_fol, 'fmri_{}.npy'.format(hemi)))
+        if fmri_clusters_files_exist:
+            ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
+                op.join(user_fol, 'fmri_clusters_{}.npy'.format(hemi)))
+    ColoringMakerPanel.faces_verts = load_faces_verts()
     register()
 
 

@@ -777,87 +777,29 @@ class FitSelection(bpy.types.Operator):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def object_coloring(obj, rgb):
-    return coloring_panel.object_coloring(obj, rgb)
-
-
-def clear_subcortical_fmri_activity():
-    return coloring_panel.clear_subcortical_fmri_activity()
-
-
-def clear_cortex():
-    return coloring_panel.clear_cortex()
-
-
-def clear_object_vertex_colors(cur_obj):
-    return coloring_panel.clear_object_vertex_colors(cur_obj)
-
-
-def color_object_homogeneously(data, postfix_str='', threshold=0):
-    return coloring_panel.color_object_homogeneously(data, postfix_str, threshold)
-
-
-def init_activity_map_coloring(map_type):
-    return coloring_panel.init_activity_map_coloring(map_type)
-
-
-def load_faces_verts():
-    return coloring_panel.load_faces_verts()
-
-
-def load_meg_subcortical_activity():
-    return coloring_panel.load_meg_subcortical_activity()
-
-
-def activity_map_coloring(map_type):
-    return coloring_panel.activity_map_coloring(map_type)
-
-
-def meg_labels_coloring(self, context, override_current_mat=True):
-    return coloring_panel.meg_labels_coloring(self, context, override_current_mat)
-
-
-def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold,
-                             override_current_mat=True):
-    return coloring_panel.meg_labels_coloring_hemi(
-        labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat)
-
-
-def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None, plot_subcorticals=True,
-                  override_current_mat=True):
-    return coloring_panel.plot_activity(map_type, faces_verts, threshold, meg_sub_activity,
-        plot_subcorticals, override_current_mat)
-
-
-def fmri_subcortex_activity_color(threshold, override_current_mat=True):
-    return coloring_panel.fmri_subcortex_activity_color(threshold, override_current_mat)
-
-
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
-    return coloring_panel.activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat)
-
-
-def color_manually():
-    return coloring_panel.color_manually()
-
-
-def color_subcortical_region(region_name, rgb):
-    return coloring_panel.color_subcortical_region(region_name, rgb)
-
-
-def clear_subcortical_regions():
-    return coloring_panel.clear_subcortical_regions()
-
-
-def clear_colors_from_parent_childrens(parent_object):
-    return coloring_panel.clear_colors_from_parent_childrens(parent_object)
-
-
-def default_coloring(loop_indices):
-    return coloring_panel.default_coloring(loop_indices)
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+object_coloring = coloring_panel.object_coloring
+clear_subcortical_fmri_activity = coloring_panel.clear_subcortical_fmri_activity
+clear_cortex = coloring_panel.clear_cortex
+clear_object_vertex_colors = coloring_panel.clear_object_vertex_colors
+color_object_homogeneously = coloring_panel.color_object_homogeneously
+init_activity_map_coloring = coloring_panel.init_activity_map_coloring
+load_faces_verts = coloring_panel.load_faces_verts
+load_meg_subcortical_activity = coloring_panel.load_meg_subcortical_activity
+activity_map_coloring = coloring_panel.activity_map_coloring
+meg_labels_coloring = coloring_panel.meg_labels_coloring
+meg_labels_coloring_hemi = coloring_panel.meg_labels_coloring_hemi
+plot_activity = coloring_panel.plot_activity
+fmri_subcortex_activity_color = coloring_panel.fmri_subcortex_activity_color
+activity_map_obj_coloring = coloring_panel.activity_map_obj_coloring
+color_manually = coloring_panel.color_manually
+color_subcortical_region = coloring_panel.color_subcortical_region
+clear_subcortical_regions = coloring_panel.clear_subcortical_regions
+clear_colors_from_parent_childrens = coloring_panel.clear_colors_from_parent_childrens
+default_coloring = coloring_panel.default_coloring
+get_fMRI_activity = coloring_panel.get_fMRI_activity
+get_faces_verts = coloring_panel.get_faces_verts
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.closest_curve_str = ''
 bpy.types.Scene.filter_is_on = False
@@ -1266,13 +1208,18 @@ def show_hide_lh(self, context):
     show_hide_hemi(bpy.context.scene.objects_show_hide_lh, "lh", "Cortex-lh")
 
 
-def show_hide_sub_cortical(self, context):
-    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_structures")
+def show_hide_sub_cortical_update(self, context):
+    show_hide_sub_corticals(bpy.context.scene.objects_show_hide_sub_cortical)
+
+
+def show_hide_sub_corticals(val):
+    show_hide_hierarchy(val, "Subcortical_structures")
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
     # We split the activity map into two types: meg for the same activation for the each structure, and fmri
     # for a better resolution, like on the cortex.
-    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_fmri_activity_map")
-    show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_meg_activity_map")
+    # todo: can't display both subcortical activity
+    show_hide_hierarchy(val, "Subcortical_fmri_activity_map")
+    show_hide_hierarchy(val, "Subcortical_meg_activity_map")
 
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere",
@@ -1280,7 +1227,7 @@ bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, desc
 bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",
                                                               update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
-                                                                        update=show_hide_sub_cortical)
+                                                                        update=show_hide_sub_cortical_update)
 
 class ShowHideObjectsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -1297,7 +1244,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show / Hide objects ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance stubs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
 show_rois = appearance_panel.show_rois
@@ -1307,17 +1254,20 @@ change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
+update_solidity = appearance_panel.update_solidity
+
 get_appearance_show_electrodes_layer = appearance_panel.get_appearance_show_electrodes_layer
 set_appearance_show_electrodes_layer = appearance_panel.set_appearance_show_electrodes_layer
-get_appearance_show_rois_layer = appearance_panel.get_appearance_show_rois_layer
-set_appearance_show_rois_layer = appearance_panel.set_appearance_show_rois_layer
 get_appearance_show_activity_layer = appearance_panel.get_appearance_show_activity_layer
 set_appearance_show_activity_layer = appearance_panel.set_appearance_show_activity_layer
+get_appearance_show_rois_layer = appearance_panel.get_appearance_show_rois_layer
+set_appearance_show_rois_layer = appearance_panel.set_appearance_show_rois_layer
 get_appearance_show_connections_layer = appearance_panel.get_appearance_show_connections_layer
 set_appearance_show_connections_layer = appearance_panel.set_appearance_show_connections_layer
 get_filter_view_type = appearance_panel.get_filter_view_type
 set_filter_view_type = appearance_panel.set_filter_view_type
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class TransparencyPanel(bpy.types.Panel):

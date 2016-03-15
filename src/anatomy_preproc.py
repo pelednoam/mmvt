@@ -391,15 +391,15 @@ if __name__ == '__main__':
     # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, fsaverage, n_jobs)
 
-    # subject = 'mg96'
-    # aparc_name = 'aparc.DKTatlas40' # 'laus250'
+
+    aparc_name = 'laus250'
     users_flags = {}
-    # subjects = ['mg96']
+    subjects = ['mg78']
     for subject in subjects:
         users_flags[subject] = {}
-        users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, True, True)
+        users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite=True, overwrite_ply_files=True)
         users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
     for subject in subjects:
         for flag_type, val in users_flags[subject].items():
-            print('{}: {}'.format(flag_type, val))
+            print('{}: {} {}'.format(subject, flag_type, val))
     print('finish!')

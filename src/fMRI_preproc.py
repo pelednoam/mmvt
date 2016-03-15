@@ -99,7 +99,7 @@ def find_clusters(subject, input_file, atlas, load_from_annotation=False, n_jobs
         output_file = op.join(BLENDER_SUBJECT_DIR, 'fmri_clusters_{}.npy'.format(hemi))
         save_clusters_for_blender(clusters, constrast, output_file)
         cluster_labels[hemi] = find_clusters_overlapped_labeles(
-            subject, clusters, atlas, hemi, load_from_annotation, n_jobs)
+            subject, clusters, constrast, atlas, hemi, load_from_annotation, n_jobs)
     utils.save(cluster_labels, op.join(BLENDER_ROOT_DIR, subject, 'fmri_cluster_labels.npy'))
 
 
@@ -116,7 +116,7 @@ def save_clusters_for_blender(clusters, constrast, output_file):
     np.save(output_file, data)
 
 
-def find_clusters_overlapped_labeles(subject, clusters, atlas, hemi, load_from_annotation=False, n_jobs=1):
+def find_clusters_overlapped_labeles(subject, clusters, constrast, atlas, hemi, load_from_annotation=False, n_jobs=1):
     cluster_labels = []
     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
     if load_from_annotation and op.isfile(annot_fname):
@@ -127,13 +127,15 @@ def find_clusters_overlapped_labeles(subject, clusters, atlas, hemi, load_from_a
         labels = [l for l in labels if l.hemi == hemi]
 
     for cluster in clusters:
+        x = constrast[cluster]
+        cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
         inter_labels = []
         for label in labels:
             overlapped_vertices = np.intersect1d(cluster, label.vertices)
             if len(overlapped_vertices) > 0:
                 inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
         max_inter = max([(il['num'], il['name']) for il in inter_labels])
-        cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=max_inter[1]))
+        cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=max_inter[1], max=cluster_max))
     return cluster_labels
 
 

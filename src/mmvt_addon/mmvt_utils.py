@@ -491,3 +491,9 @@ def get_all_children(parents):
 
 def get_non_functional_objects():
     return get_all_children((['Cortex-lh', 'Cortex-rh', 'Subcortical_structures', 'Deep_electrodes']))
+
+
+def add_box_line(col, text1, text2, percentage=0.3, align=True):
+    row = col.split(percentage=percentage, align=align)
+    row.label(text=text1)
+    row.label(text=text2)

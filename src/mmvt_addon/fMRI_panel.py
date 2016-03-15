@@ -11,7 +11,23 @@ def clusters_update(self, context):
 def _clusters_update():
     if fMRIPanel.addon is None or not fMRIPanel.init:
         return
+    fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
+    if bpy.context.scene.plot_current_cluster:
+        if bpy.context.scene.fmri_what_to_plot == 'blob':
+            plot_blob()
 
+
+def plot_blob():
+    # fMRIPanel.addon.clear_cortex()
+    fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
+    faces_verts = fMRIPanel.addon.get_faces_verts()
+    hemis = [hemi for hemi in mu.HEMIS if not bpy.data.objects[hemi].hide]
+    for hemi in hemis:
+        activity = fMRIPanel.addon.get_fMRI_activity(hemi)
+        blob_activity = activity[fMRIPanel.cluster_labels['vertices']]
+        cur_obj = bpy.data.objects[hemi]
+        fMRIPanel.addon.activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[hemi], 2, True)
+    # fMRIPanel.addon.show_hide_sub_corticals(False)
 
 class NextCluster(bpy.types.Operator):
     bl_idname = 'ohad.next_cluster'
@@ -51,13 +67,22 @@ def fMRI_draw(self, context):
     row.operator(PrevCluster.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "clusters", text="")
     row.operator(NextCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
-    box = layout.box()
-    col = box.column()
-    # for cluster_label in fMRIPanel.clusters_labels
-    #     row = col.split(percentage=0.8, align=True)
-    #     row.label(text=cortical_name)
-    #     row.label(text='{:.2f}'.format(cortical_prob))
+    layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
+    layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
+    if not fMRIPanel.cluster_labels is None:
+        col = layout.box().column()
+        mu.add_box_line(col, 'Max val', '{:.2f}'.format(fMRIPanel.cluster_labels['max']), 0.8)
+        mu.add_box_line(col, 'Size', str(len(fMRIPanel.cluster_labels['vertices'])), 0.8)
+        col = layout.box().column()
+        for inter_labels in fMRIPanel.cluster_labels['intersects']:
+            mu.add_box_line(col, inter_labels['name'], str(inter_labels['num']), 0.8)
 
+
+bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
+    default=False, description="Plot current cluster")
+bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
+    items=[('cluster', 'Plot cluster', '', 1), ('blob', 'Plot blob', '', 2)],
+    description='What do plot')
 
 
 class fMRIPanel(bpy.types.Panel):
@@ -67,9 +92,14 @@ class fMRIPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "fMRI"
     addon = None
+    init = False
+    clusters_labels = None
+    cluster_labels = None
+    clusters = []
 
     def draw(self, context):
-        fMRI_draw(self, context)
+        if fMRIPanel.init:
+            fMRI_draw(self, context)
 
 
 def cluster_name(x):
@@ -92,6 +122,8 @@ def init(addon):
         items=clusters_items, description="electrodes", update=clusters_update)
     bpy.context.scene.clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
     addon.clear_cortex()
+    fMRIPanel.lookup = create_lookup_table(fMRIPanel.clusters_labels)
+    fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
     register()
     fMRIPanel.init = True
     print('fMRI panel initialization completed successfully!')
@@ -101,7 +133,8 @@ def create_lookup_table(clusters_labels):
     lookup = {}
     for hemi in mu.HEMIS:
         for cluster_label in clusters_labels[hemi]:
-            lookup[cluster_label['name']] = cluster_label
+            lookup[cluster_name(cluster_label)] = cluster_label
+    return lookup
 
 
 def register():

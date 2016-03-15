@@ -140,21 +140,24 @@ def elecs_draw(self, context):
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
     layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
     if not bpy.context.scene.listen_to_keyboard:
-        layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='NEXT_KEYFRAME')
+        layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
     else:
-        layout.operator(KeyboardListener.bl_idname, text="Stop listen to keyboard", icon='NEXT_KEYFRAME')
+        layout.operator(KeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
+        box = layout.box()
+        col = box.column()
+        mu.add_box_line(col, 'Left', 'Previous electrodes')
+        mu.add_box_line(col, 'Right', 'Next electrodes')
+        mu.add_box_line(col, 'Down', 'Previous lead')
+        mu.add_box_line(col, 'Up', 'Next lead')
     if len(ElecsPanel.subcortical_rois) > 0 or len(ElecsPanel.cortical_rois) > 0:
         box = layout.box()
         col = box.column()
     for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
-        row = col.split(percentage=0.8, align=True)
-        row.label(text=subcortical_name)
-        row.label(text='{:.2f}'.format(subcortical_prob))
+        mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
     for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
-        row = col.split(percentage=0.8, align=True)
-        row.label(text=cortical_name)
-        row.label(text='{:.2f}'.format(cortical_prob))
+        mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
 
+    # Color picker:
     # row = layout.row(align=True)
     # row.label(text='Selected electrode color:')
     # row = layout.row(align=True)
@@ -346,10 +349,10 @@ def create_lookup_table(electrodes_locs, electrodes):
 def find_first_electrode_per_group(electrodes):
     groups = defaultdict(list)
     first_electrodes = {}
-    for elc in ElecsPanel.electrodes:
+    for elc in electrodes:
         groups[mu.elec_group(elc, bpy.context.scene.bipolar)].append(elc)
-    for group, electrodes in groups.items():
-        first_electrode = sorted(electrodes)[0]
+    for group, group_electrodes in groups.items():
+        first_electrode = sorted(group_electrodes)[0]
         first_electrodes[group] = first_electrode
     return first_electrodes
 

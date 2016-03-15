@@ -273,7 +273,8 @@ def init_plotting():
         PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
     else:
         print('No electrodes data file!')
-    PlayPanel.faces_verts = PlayPanel.addon.init_activity_map_coloring('MEG')
+    PlayPanel.addon.init_activity_map_coloring('MEG')
+    PlayPanel.faces_verts = PlayPanel.addon.get_faces_verts()
     PlayPanel.meg_sub_activity = PlayPanel.addon.load_meg_subcortical_activity()
     # connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
     # if not op.isfile(connections_file):

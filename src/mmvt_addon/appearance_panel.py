@@ -1,6 +1,7 @@
 import bpy
 import connections_panel
-# shouldn't decalred twice (also in MMVT_Addon
+# from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
+#         BRAIN_EMPTY_LAYER, EMPTY_LAYER)
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
@@ -77,7 +78,10 @@ def set_appearance_show_activity_layer(self, value):
     bpy.context.scene.layers[ACTIVITY_LAYER] = value
     if value:
         set_appearance_show_rois_layer(self, False)
-        # bpy.context.scene.layers[LIGHTS_LAYER] = True
+        # todo: decide which one to show
+        if not AppearanceMakerPanel.addon is None:
+            AppearanceMakerPanel.addon.show_hide_hierarchy(value, "Subcortical_fmri_activity_map")
+            AppearanceMakerPanel.addon.show_hide_hierarchy(not value, "Subcortical_meg_activity_map")
 
 
 def get_appearance_show_connections_layer(self):
@@ -177,14 +181,18 @@ class AppearanceMakerPanel(bpy.types.Panel):
     bl_context = "objectmode"
     bl_category = "Ohad"
     bl_label = "Appearance"
+    addon = None
+    init = False
 
     def draw(self, context):
-        appearance_draw(self, context)
+        if AppearanceMakerPanel.init:
+            appearance_draw(self, context)
 
 
 def init(addon):
     AppearanceMakerPanel.addon = addon
     register()
+    AppearanceMakerPanel.init = True
 
 
 def register():
