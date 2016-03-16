@@ -22,7 +22,6 @@ def _leads_update():
     _show_only_current_lead_update()
 
 
-# todo: Solve the bugs with the wrong lead
 def electrodes_update(self, context):
     _electrodes_update()
 
@@ -55,6 +54,13 @@ def select_electrode(current_electrode):
 
 
 def color_electrodes(current_electrode, prev_electrode):
+    current_electrode_group = mu.elec_group(current_electrode, bpy.context.scene.bipolar)
+    current_electrode_hemi = ElecsPanel.groups_hemi[current_electrode_group]
+    prev_electrode_group = mu.elec_group(prev_electrode, bpy.context.scene.bipolar)
+    prev_electrode_hemi = ElecsPanel.groups_hemi[prev_electrode_group]
+    if current_electrode_hemi != prev_electrode_hemi:
+        print('flip hemis! clear {}'.format(prev_electrode_hemi))
+        ElecsPanel.addon.clear_cortex([prev_electrode_hemi])
     color = bpy.context.scene.electrode_color
     ElecsPanel.addon.object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
     if prev_electrode != current_electrode:
@@ -298,6 +304,8 @@ class ElecsPanel(bpy.types.Panel):
     subcortical_probs = []
     cortical_rois = []
     cortical_probs = []
+    sorted_groups = {'rh':[], 'lh':[]}
+    groups_hemi = {}
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -315,9 +323,10 @@ def init(addon):
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
-    sorted_groups = mu.load(op.join(mu.get_user_fol(), 'sorted_groups.pkl'))
+    ElecsPanel.sorted_groups = mu.load(op.join(mu.get_user_fol(), 'sorted_groups.pkl'))
+    ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
     # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
-    ElecsPanel.leads = sorted_groups['lh'] + sorted_groups['rh']
+    ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
     leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
     bpy.types.Scene.leads = bpy.props.EnumProperty(
         items=leads_items, description="leads", update=leads_update)
@@ -383,6 +392,14 @@ def create_groups_electrodes_lookup(electrodes):
         group = mu.elec_group(elc, bpy.context.scene.bipolar)
         groups[group].append(elc)
     return groups
+
+
+def create_groups_hemi_lookup(sorted_groups):
+    groups_hemi = {}
+    for hemi, groups in sorted_groups.items():
+        for group in groups:
+            groups_hemi[group] = hemi
+    return groups_hemi
 
 
 def register():

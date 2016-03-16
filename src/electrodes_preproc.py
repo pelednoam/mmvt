@@ -260,7 +260,7 @@ def find_groups_hemi(electrodes, transformed_positions):
     groups_hemi = {}
     for group, positions in groups.items():
         trans_pos = np.array(positions)
-        hemi = 'lh' if sum(trans_pos[:, 1] < 0) > 0 else 'rh'
+        hemi = 'rh' if sum(trans_pos[:, 1] < 0) > 0 else 'lh'
         groups_hemi[group] = hemi
     return groups_hemi
 
@@ -344,5 +344,5 @@ if __name__ == '__main__':
     add_activity = True
 
     # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
-    # sort_electrodes_groups(subject, bipolar, do_plot=True)
+    sort_electrodes_groups(subject, bipolar, do_plot=True)
     print('finish!')
