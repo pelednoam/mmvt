@@ -318,12 +318,16 @@ def init(addon):
     if parent is None or len(parent.children) == 0:
         print("Can't register electrodes panel, no Deep_electrodes object!")
         return
+    sorted_groups_fname = op.join(mu.get_user_fol(), 'sorted_groups.pkl')
+    if not op.isfile(sorted_groups_fname):
+        print("Can't register electrodes panel, no sorted groups file!")
+        return
     ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
-    ElecsPanel.sorted_groups = mu.load(op.join(mu.get_user_fol(), 'sorted_groups.pkl'))
+    ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
     ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
     # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
     ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
