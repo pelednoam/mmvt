@@ -13,21 +13,24 @@ def _clusters_update():
         return
     fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
     if bpy.context.scene.plot_current_cluster:
+        faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
-            plot_blob()
+            plot_blob(fMRIPanel.cluster_labels, faces_verts)
 
 
-def plot_blob():
+def plot_blob(cluster_labels, faces_verts):
+    # todo: clear the cortex if the hemi flip
     # fMRIPanel.addon.clear_cortex()
     fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
-    faces_verts = fMRIPanel.addon.get_faces_verts()
-    hemis = [hemi for hemi in mu.HEMIS if not bpy.data.objects[hemi].hide]
-    for hemi in hemis:
-        activity = fMRIPanel.addon.get_fMRI_activity(hemi)
-        blob_activity = activity[fMRIPanel.cluster_labels['vertices']]
-        cur_obj = bpy.data.objects[hemi]
-        fMRIPanel.addon.activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[hemi], 2, True)
+    blob_vertices = cluster_labels['vertices']
+    hemi = cluster_labels['hemi']
+    activity = fMRIPanel.addon.get_fMRI_activity(hemi)
+    blob_activity = np.zeros((len(activity), 4))
+    blob_activity[blob_vertices] = activity[blob_vertices]
+    cur_obj = bpy.data.objects[hemi]
+    fMRIPanel.addon.activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[hemi], 2, True)
     # fMRIPanel.addon.show_hide_sub_corticals(False)
+
 
 class NextCluster(bpy.types.Operator):
     bl_idname = 'ohad.next_cluster'
