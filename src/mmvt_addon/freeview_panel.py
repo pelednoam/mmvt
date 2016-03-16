@@ -46,8 +46,8 @@ class FreeviewOpen(bpy.types.Operator):
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
         sig = op.join(root, 'freeview', 'sig_subject.mgz')
-        sig_cmd = '-v {}:colormap=heat' if op.isfile(sig) else ''
-        T1 = op.join(root, 'freeview', 'T1.mgz')
+        sig_cmd = '' #'-v {}:colormap=heat' if op.isfile(sig) else ''
+        T1 = op.join(root, 'freeview', 'orig.mgz')
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes = self.get_electrodes_groups(root)

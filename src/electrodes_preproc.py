@@ -5,7 +5,7 @@ import os.path as op
 import shutil
 import mne
 import scipy.io as sio
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from src import utils
 import matplotlib.pyplot as plt
 
@@ -232,10 +232,12 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
 
 
 def find_first_electrode_per_group(electrodes, positions, bipolar=False):
-    groups = defaultdict(list)
-    first_electrodes = {}
+    groups = OrderedDict()  # defaultdict(list)
+    first_electrodes = OrderedDict()
     for elc, pos in zip(electrodes, positions):
         elc_group = utils.elec_group(elc, bipolar)
+        if elc_group not in groups:
+            groups[elc_group] = []
         groups[elc_group].append((elc, pos))
     first_pos = np.empty((len(groups), 3))
     for ind, (group, group_electrodes) in enumerate(groups.items()):
@@ -252,6 +254,7 @@ def get_groups_pos(electrodes, positions):
         groups[elc_group].append(pos)
     return groups
 
+
 def find_groups_hemi(electrodes, transformed_positions):
     groups = get_groups_pos(electrodes, transformed_positions)
     groups_hemi = {}
@@ -265,29 +268,37 @@ def find_groups_hemi(electrodes, transformed_positions):
 def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
     sorted_groups = {}
     for hemi in ['rh', 'lh']:
-        groups_pos = sorted([(pos[0], group) for (group, elc), pos in zip(
-            first_electrodes.items(), transformed_first_pos) if groups_hemi[utils.elec_group(elc, bipolar)] == hemi])
-        sorted_groups[hemi] = [groups_pos[1] for groups_pos in groups_pos]
+        # groups_pos = sorted([(pos[0], group) for (group, elc), pos in zip(
+        #     first_electrodes.items(), transformed_first_pos) if groups_hemi[utils.elec_group(elc, bipolar)] == hemi])
+        groups_pos = []
+        for (group, elc), pos in zip(first_electrodes.items(), transformed_first_pos):
+            group_hemi = groups_hemi[utils.elec_group(elc, bipolar)]
+            if group_hemi == hemi:
+                groups_pos.append((pos[0], group))
+        groups_pos = sorted(groups_pos)
+        sorted_groups[hemi] = [group_pos[1] for group_pos in groups_pos]
     return sorted_groups
 
 
-def show_first_electrodes(subject, bipolar, do_plot=True):
+def sort_electrodes_groups(subject, bipolar, do_plot=True):
     from sklearn.decomposition import PCA
     electrodes, pos = read_electrodes_file(subject, bipolar)
     first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
     pca = PCA(n_components=2)
     pca.fit(first_pos)
     transformed_pos = pca.transform(pos)
-    transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
+    # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
     transformed_first_pos = pca.transform(first_pos)
     groups_hemi = find_groups_hemi(electrodes, transformed_pos)
     sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
     print(sorted_groups)
+    utils.save(sorted_groups, op.join(BLENDER_ROOT_DIR, subject, 'sorted_groups.pkl'))
     if do_plot:
-        utils.plot_3d_scatter(transformed_pos_3d, names=electrodes.tolist(), labels=first_electrodes.values())
+        # utils.plot_3d_scatter(pos, names=electrodes.tolist(), labels=first_electrodes.values())
         # electrodes_3d_scatter_plot(pos, first_pos)
-        # electrodes_2d_scatter_plot(transformed_pos)
-    print('finish!')
+        first_electrodes_names = list(first_electrodes.values())
+        utils.plot_2d_scatter(transformed_first_pos, names=first_electrodes_names)
+        # utils.plot_2d_scatter(transformed_pos, names=electrodes.tolist(), labels=first_electrodes_names)
 
 
 def electrodes_2d_scatter_plot(pos):
@@ -308,6 +319,7 @@ def electrodes_3d_scatter_plot(pos, pos2=None):
 def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=True):
     # *) Read the electrodes data
     electrodes_file = convert_electrodes_file_to_npy(subject, bipolar=bipolar)
+    sort_electrodes_groups(subject, bipolar, do_plot=False)
     if electrodes_file and add_activity:
         for stat in [STAT_AVG, STAT_DIFF]:
             create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
@@ -332,5 +344,5 @@ if __name__ == '__main__':
     add_activity = True
 
     # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
-    show_first_electrodes(subject, bipolar)
+    # sort_electrodes_groups(subject, bipolar, do_plot=True)
     print('finish!')

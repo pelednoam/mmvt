@@ -773,10 +773,33 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None):
     plt.show()
 
 
-def add_annotation(ax, text, x, y, z):
+def plot_2d_scatter(X, names=None, labels=None, classifier=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.scatter(X[:, 0], X[:, 1])
+
+    if not names is None:
+        if not labels is None:
+            for label in labels:
+                ind = names.index(label)
+                add_annotation(ax, label, X[ind, 0], X[ind, 1])
+        else:
+            for x, y, name in zip(X[:, 0], X[:, 1], names):
+                add_annotation(ax, name, x, y)
+
+    if not classifier is None:
+        make_ellipses(classifier, ax)
+
+    plt.show()
+
+
+def add_annotation(ax, text, x, y, z=None):
     from mpl_toolkits.mplot3d import proj3d
     import pylab
-    x2, y2, _ = proj3d.proj_transform(x,y,z, ax.get_proj())
+    if not z is None:
+        x2, y2, _ = proj3d.proj_transform(x,y,z, ax.get_proj())
+    else:
+        x2, y2 = x, y
     pylab.annotate(
         text, xy = (x2, y2), xytext = (-20, 20),
         textcoords = 'offset points', ha = 'right', va = 'bottom',

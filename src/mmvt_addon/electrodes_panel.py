@@ -18,7 +18,7 @@ def _leads_update():
     ElecsPanel.addon.show_electrodes()
     ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
     bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
-    bpy.context.scene.show_only_lead = True
+    # bpy.context.scene.show_only_lead = True
     _show_only_current_lead_update()
 
 
@@ -177,11 +177,15 @@ class NextElectrode(bpy.types.Operator):
 
 
 def next_electrode():
-    index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
-    if index < len(ElecsPanel.electrodes) - 1:
-        next_elc = ElecsPanel.electrodes[index + 1]
-        bpy.context.scene.electrodes = next_elc
-
+    # index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
+    electrode_lead = mu.elec_group(bpy.context.scene.electrodes, bpy.context.scene.bipolar)
+    lead_electrodes = ElecsPanel.groups_electrodes[electrode_lead]
+    index = lead_electrodes.index(bpy.context.scene.electrodes)
+    if index < len(lead_electrodes) - 1:
+        next_elc = lead_electrodes[index + 1]
+    else:
+        next_elc = lead_electrodes[0]
+    bpy.context.scene.electrodes = next_elc
 
 
 class PrevElectrode(bpy.types.Operator):
@@ -195,10 +199,14 @@ class PrevElectrode(bpy.types.Operator):
 
 
 def prev_electrode():
-    index = ElecsPanel.electrodes.index(bpy.context.scene.electrodes)
+    electrode_lead = mu.elec_group(bpy.context.scene.electrodes, bpy.context.scene.bipolar)
+    lead_electrodes = ElecsPanel.groups_electrodes[electrode_lead]
+    index = lead_electrodes.index(bpy.context.scene.electrodes)
     if index > 0:
-        prev_elc = ElecsPanel.electrodes[index - 1]
-        bpy.context.scene.electrodes = prev_elc
+        prev_elc = lead_electrodes[index - 1]
+    else:
+        prev_elc = lead_electrodes[-1]
+    bpy.context.scene.electrodes = prev_elc
 
 
 class NextLead(bpy.types.Operator):
@@ -241,7 +249,7 @@ class KeyboardListener(bpy.types.Operator):
     funcs = {'LEFT_ARROW':prev_electrode, 'RIGHT_ARROW':next_electrode, 'UP_ARROW':prev_lead, 'DOWN_ARROW':next_lead}
 
     def modal(self, context, event):
-        if time.time() - self.press_time > 0.6 and bpy.context.scene.listen_to_keyboard and \
+        if time.time() - self.press_time > 1 and bpy.context.scene.listen_to_keyboard and \
                 event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE', 'INBETWEEN_MOUSEMOVE', 'TIMER_REPORT', 'NONE']:
             self.press_time = time.time()
             print(event.type)
@@ -256,6 +264,7 @@ class KeyboardListener(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             bpy.context.scene.listener_is_running = True
         bpy.context.scene.listen_to_keyboard = not bpy.context.scene.listen_to_keyboard
+        _leads_update()
         return {'RUNNING_MODAL'}
 
 
@@ -306,14 +315,17 @@ def init(addon):
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
-    ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
+    sorted_groups = mu.load(op.join(mu.get_user_fol(), 'sorted_groups.pkl'))
+    # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
+    ElecsPanel.leads = sorted_groups['lh'] + sorted_groups['rh']
     leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
     bpy.types.Scene.leads = bpy.props.EnumProperty(
         items=leads_items, description="leads", update=leads_update)
-    bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.electrodes[0]
-    bpy.context.scene.leads = ElecsPanel.current_lead = mu.elec_group(ElecsPanel.electrodes[0], bipolar)
-    ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
     ElecsPanel.groups_first_electrode = find_first_electrode_per_group(ElecsPanel.electrodes)
+    bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
+    bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[ElecsPanel.leads[0]]
+    ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
+    ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.electrodes)
     loc_files = glob.glob(op.join(mu.get_user_fol(), '{}_{}_electrodes*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)))
     if len(loc_files) > 0:
         # todo: there could be 2 files, one for bipolar and one for non bipolar
@@ -360,8 +372,16 @@ def find_first_electrode_per_group(electrodes):
 def create_groups_lookup_table(electrodes):
     groups = {}
     for elc in electrodes:
-        group, num = mu.elec_group_number(elc, bpy.context.scene.bipolar)
+        group = mu.elec_group(elc, bpy.context.scene.bipolar)
         groups[elc] = group
+    return groups
+
+
+def create_groups_electrodes_lookup(electrodes):
+    groups = defaultdict(list)
+    for elc in electrodes:
+        group = mu.elec_group(elc, bpy.context.scene.bipolar)
+        groups[group].append(elc)
     return groups
 
 
