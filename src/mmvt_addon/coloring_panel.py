@@ -96,7 +96,7 @@ def load_meg_subcortical_activity():
 
 def activity_map_coloring(map_type, clusters=False, threshold=None):
     init_activity_map_coloring(map_type)
-    if not threshold is None:
+    if threshold is None:
         threshold = bpy.context.scene.coloring_threshold
     meg_sub_activity = None
     if map_type == 'MEG':

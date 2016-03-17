@@ -12,6 +12,8 @@ def _clusters_update():
     if fMRIPanel.addon is None or not fMRIPanel.init:
         return
     fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
+    # prev_cluster = fMRIPanel.current_electrode
+
     if bpy.context.scene.plot_current_cluster:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
