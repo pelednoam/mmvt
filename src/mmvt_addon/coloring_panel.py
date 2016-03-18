@@ -228,6 +228,8 @@ def color_manually():
     # coloring
     for hemi in HEMIS:
         obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
+        if len(objects_names[obj_type]) == 0:
+            continue
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
         meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):

@@ -50,6 +50,9 @@ import appearance_panel
 importlib.reload(appearance_panel)
 import fMRI_panel
 importlib.reload(fMRI_panel)
+import render_panel
+importlib.reload(render_panel)
+
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -1599,113 +1602,6 @@ class DataInVertMakerPanel(bpy.types.Panel):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bpy.types.Scene.output_path = bpy.props.StringProperty(name="Output Path", default="",
-                                                       description="Define the path for the output files",
-                                                       subtype='DIR_PATH')
-
-
-def render_draw(self, context):
-    layout = self.layout
-    col = layout.column(align=True)
-    col.prop(context.scene, "X_rotation", text='X rotation')
-    col.prop(context.scene, "Y_rotation", text='Y rotation')
-    col.prop(context.scene, "Z_rotation", text='Z rotation')
-    layout.prop(context.scene, "quality", text='Quality')
-    layout.prop(context.scene, 'output_path')
-    layout.prop(context.scene, 'smooth_figure')
-    layout.operator("ohad.rendering", text="Render", icon='SCENE')
-
-
-def update_rotation(self, context):
-    bpy.data.objects['Target'].rotation_euler.x = math.radians(bpy.context.scene.X_rotation)
-    bpy.data.objects['Target'].rotation_euler.y = math.radians(bpy.context.scene.Y_rotation)
-    bpy.data.objects['Target'].rotation_euler.z = math.radians(bpy.context.scene.Z_rotation)
-
-
-def update_quality(self, context):
-    print(bpy.context.scene.quality)
-    bpy.context.scene.quality = bpy.context.scene.quality
-
-
-bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around x axis",
-                                                     update=update_rotation)
-bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around y axis",
-                                                     update=update_rotation)
-bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around z axis",
-                                                     update=update_rotation)
-bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100,
-                                                  description="quality of figure in parentage", update=update_quality)
-bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image',
-                                                       description="This significantly affect rendering speed")
-
-
-class RenderFigure(bpy.types.Operator):
-    bl_idname = "ohad.rendering"
-    bl_label = "Render figure"
-    bl_options = {"UNDO"}
-    current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
-    x_rotation = bpy.context.scene.X_rotation
-    y_rotation = bpy.context.scene.Y_rotation
-    z_rotation = bpy.context.scene.Z_rotation
-    quality = bpy.context.scene.quality
-
-    def invoke(self, context, event=None):
-        render_image()
-        return {"FINISHED"}
-
-
-def render_image():
-    x_rotation = bpy.context.scene.X_rotation
-    y_rotation = bpy.context.scene.Y_rotation
-    z_rotation = bpy.context.scene.Z_rotation
-    quality = bpy.context.scene.quality
-    use_square_samples = bpy.context.scene.smooth_figure
-
-    print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$In Render$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-    bpy.data.objects['Target'].rotation_euler.x = math.radians(x_rotation)
-    bpy.data.objects['Target'].rotation_euler.y = math.radians(y_rotation)
-    bpy.data.objects['Target'].rotation_euler.z = math.radians(z_rotation)
-    bpy.context.scene.render.resolution_percentage = quality
-    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-    print(use_square_samples)
-    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-    bpy.context.scene.cycles.use_square_samples = use_square_samples
-
-    # print('Output folder:')
-    # print(self.current_output_path)
-    cur_frame = bpy.context.scene.frame_current
-    print('file name:')
-    # print('f'+str(cur_frame))
-    # print('folder:'+self.current_output_path)
-    file_name = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
-    # file_name = op.join(mmvt_utils.get_user_fol(), 'images', mmvt_utils.rand_letters(5))
-    print(file_name)
-    bpy.context.scene.render.filepath = file_name
-    # Render and save the rendered scene to file. ------------------------------
-    print('Image quality:')
-    print(bpy.context.scene.render.resolution_percentage)
-    print("Rendering...")
-    bpy.ops.render.render(write_still=True)
-    print("Finished")
-
-
-class RenderingMakerPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Render"
-
-    def draw(self, context):
-        current_root_path = mmvt_utils.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-        render_draw(self, context)
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RENDER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 # class helper_class():
@@ -1816,7 +1712,6 @@ def main():
 
     setup_layers()
     try:
-        # mmvt_utils.insert_external_path()
         current_module = sys.modules[__name__]
         coloring_panel.init(current_module)
         connections_panel.init(current_module)
@@ -1827,6 +1722,7 @@ def main():
         search_panel.init(current_module)
         appearance_panel.init(current_module)
         fMRI_panel.init(current_module)
+        render_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
@@ -1849,7 +1745,6 @@ def main():
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(ImportRoisClass)
-        bpy.utils.register_class(RenderFigure)
 
         bpy.utils.register_class(TransparencyPanel)
         bpy.utils.register_class(ShowHideObjectsPanel)
@@ -1858,7 +1753,6 @@ def main():
         bpy.utils.register_class(WhereAmIMakerPanel)
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(DataMakerPanel)
-        bpy.utils.register_class(RenderingMakerPanel)
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())

@@ -15,7 +15,8 @@ def leads_update(self, context):
 def _leads_update():
     if ElecsPanel.addon is None or not ElecsPanel.init:
         return
-    ElecsPanel.addon.show_electrodes()
+    # ElecsPanel.addon.show_electrodes()
+    show_elecs_hemi_update()
     ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
     bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
     # bpy.context.scene.show_only_lead = True
@@ -29,7 +30,8 @@ def electrodes_update(self, context):
 def _electrodes_update():
     if ElecsPanel.addon is None or not ElecsPanel.init:
         return
-    ElecsPanel.addon.show_electrodes()
+    # ElecsPanel.addon.show_electrodes()
+    show_elecs_hemi_update()
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
@@ -85,6 +87,57 @@ def update_cursor():
     ElecsPanel.addon.freeview_panel.save_cursor_position()
 
 
+def show_lh_update(self, context):
+    hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+    updade_lead_hemis()
+
+
+def show_rh_update(self, context):
+    hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+    updade_lead_hemis()
+
+
+def show_elecs_hemi_update():
+    hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+    hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+    updade_lead_hemis()
+
+
+def hide_show_hemi_electrodes(hemi, val):
+    for elec_obj in ElecsPanel.parent.children:
+        elec_hemi = get_elec_hemi(elec_obj.name)
+        if elec_hemi == hemi:
+            elec_obj.hide = not val
+            elec_obj.hide_render = not val
+
+
+def get_elec_hemi(elec_name):
+    return ElecsPanel.groups_hemi[ElecsPanel.groups[elec_name]]
+
+
+def updade_lead_hemis():
+    if bpy.context.scene.show_lh_electrodes and bpy.context.scene.show_rh_electrodes:
+        ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
+        hemis = ['rh', 'lh']
+    elif bpy.context.scene.show_lh_electrodes and not bpy.context.scene.show_rh_electrodes:
+        ElecsPanel.leads = ElecsPanel.sorted_groups['lh']
+        hemis = ['lh']
+    elif not bpy.context.scene.show_lh_electrodes and bpy.context.scene.show_rh_electrodes:
+        ElecsPanel.leads = ElecsPanel.sorted_groups['rh']
+        hemis = ['rh']
+    else:
+        ElecsPanel.leads = []
+        hemis = []
+    leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
+    bpy.types.Scene.leads = bpy.props.EnumProperty(
+        items=leads_items, description="leads", update=leads_update)
+    ElecsPanel.electrodes = [el.name for el in ElecsPanel.parent.children if get_elec_hemi(el.name) in hemis]
+    ElecsPanel.electrodes.sort(key=mu.natural_keys)
+    electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
+    bpy.types.Scene.electrodes = bpy.props.EnumProperty(
+        items=electrodes_items, description="electrodes", update=electrodes_update)
+
+
 def color_labels_update(self, context):
     if not bpy.context.scene.color_lables:
         ElecsPanel.addon.clear_cortex()
@@ -98,11 +151,10 @@ def show_only_current_lead_update(self, context):
 def _show_only_current_lead_update():
     if bpy.context.scene.show_only_lead:
         bpy.context.scene.current_lead = ElecsPanel.groups[ElecsPanel.current_electrode]
-        for elec_obj in bpy.data.objects['Deep_electrodes'].children:
+        for elec_obj in ElecsPanel.parent.children:
             elec_obj.hide = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
     else:
-        for elec_obj in bpy.data.objects['Deep_electrodes'].children:
-            elec_obj.hide = False
+        show_elecs_hemi_update()
 
 
 def plot_labels_probs(elc):
@@ -145,6 +197,10 @@ def elecs_draw(self, context):
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
     layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
+    row = layout.row(align=True)
+    row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
+    row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
+
     if not bpy.context.scene.listen_to_keyboard:
         layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
     else:
@@ -278,6 +334,10 @@ bpy.types.Scene.show_only_lead = bpy.props.BoolProperty(
     default=False, description="Show only the current lead", update=show_only_current_lead_update)
 bpy.types.Scene.color_lables = bpy.props.BoolProperty(
     default=False, description="Color the relevant lables", update=color_labels_update)
+bpy.types.Scene.show_lh_electrodes = bpy.props.BoolProperty(
+    default=True, description="Left Hemi", update=show_lh_update)
+bpy.types.Scene.show_rh_electrodes = bpy.props.BoolProperty(
+    default=True, description="Right Hemi", update=show_rh_update)
 bpy.types.Scene.listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.listener_is_running = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.current_lead = bpy.props.StringProperty()
@@ -291,8 +351,9 @@ class ElecsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "Ohad"
-    bl_label = "Electrodes localizator"
+    bl_label = "Electrodes"
     addon = None
+    parent = None
     init = False
     electrodes = []
     leads = []
@@ -313,8 +374,7 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
-    bipolar = bpy.context.scene.bipolar
-    parent = bpy.data.objects.get('Deep_electrodes')
+    ElecsPanel.parent = parent = bpy.data.objects.get('Deep_electrodes')
     if parent is None or len(parent.children) == 0:
         print("Can't register electrodes panel, no Deep_electrodes object!")
         return
@@ -356,6 +416,8 @@ def init(addon):
     bpy.context.scene.show_only_lead = False
     bpy.context.scene.listen_to_keyboard = False
     bpy.context.scene.listener_is_running = False
+    bpy.context.scene.show_lh_electrodes = True
+    bpy.context.scene.show_rh_electrodes = True
     register()
     ElecsPanel.init = True
     print('Electrodes panel initialization completed successfully!')
