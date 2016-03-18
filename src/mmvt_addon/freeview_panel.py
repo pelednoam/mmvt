@@ -69,6 +69,7 @@ class FreeviewPanel(bpy.types.Panel):
     bl_context = "objectmode"
     bl_category = "Ohad"
     bl_label = "Freeview Panel"
+    addon = None
 
     def draw(self, context):
         layout = self.layout
@@ -80,7 +81,7 @@ class FreeviewPanel(bpy.types.Panel):
 
 
 def init(addon):
-    _addon = addon
+    FreeviewPanel.addon = addon
     register()
 
 

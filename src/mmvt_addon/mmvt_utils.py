@@ -403,13 +403,13 @@ def get_obj_hemi(obj_name):
 #         do_work(item)
 #         q.task_done()
 
-def run_command_in_new_thread(cmd):
-    thread = Thread(target=run_command, args=(cmd, ))
+def run_command_in_new_thread(cmd, shell=True):
+    thread = Thread(target=run_command, args=(cmd, shell, ))
     print('start!')
     thread.start()
 
 # p = None
-def run_command(cmd):
+def run_command(cmd, shell=True):
     # global p
     from subprocess import Popen, PIPE, STDOUT
     print('run: {}'.format(cmd))
@@ -417,7 +417,7 @@ def run_command(cmd):
         os.system(cmd)
         return None
     else:
-        subprocess.call(cmd, shell=True)
+        subprocess.call(cmd, shell=shell)
         # p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         # p.stdin.write(b'-zoom 2\n')
         # return p
@@ -501,19 +501,51 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
         row.label(text=text2)
 
 
+def current_path():
+    return os.path.dirname(os.path.realpath(__file__))
+
+
 class connection_to_listener(object):
     # http://stackoverflow.com/a/6921402/1060738
+
     conn = None
+    handle_is_open = False
+
+    def check_if_open(self):
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = s.connect_ex(('localhost', 6000))
+
+        if result == 0:
+            print('socket is open')
+        s.close()
 
     def init(self):
-        address = ('localhost', 6000)
-        self.conn = Client(address, authkey=b'mmvt')
+        try:
+            self.check_if_open()
+            cmd = 'python {}'.format(op.join(current_path(), 'addon_listener.py'))
+            run_command_in_new_thread(cmd, shell=True)
+            time.sleep(1)
+            address = ('localhost', 6000)
+            self.conn = Client(address, authkey=b'mmvt')
+            self.handle_is_open = True
+            return True
+        except:
+            print('Error in connection_to_listener.init()!')
+            return False
+
 
     def send_command(self, cmd):
-        self.conn.send(cmd)
-
+        if self.handle_is_open:
+            self.conn.send(cmd)
+            return True
+        else:
+            print('Handle is close')
+            return False
 
     def close(self):
+        self.send_command('close\n')
         self.conn.close()
+        self.handle_is_open = False
 
 conn_to_listener = connection_to_listener()

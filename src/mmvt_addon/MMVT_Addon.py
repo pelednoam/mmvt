@@ -52,7 +52,8 @@ import fMRI_panel
 importlib.reload(fMRI_panel)
 import render_panel
 importlib.reload(render_panel)
-
+import listener_panel
+importlib.reload(listener_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -1709,13 +1710,6 @@ def main():
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
     bpy.context.scene.appearance_show_connections_layer = False
-    try:
-        mmvt_utils.conn_to_listener.init()
-        mmvt_utils.conn_to_listener.send_command('Hey!\n')
-        mmvt_utils.conn_to_listener.send_command(dict(cmd='plot', data=[np.arange(10), np.arange(10) * 3]))
-    except:
-        print("Can't open connection to listener")
-        print(traceback.format_exc())
     setup_layers()
     try:
         current_module = sys.modules[__name__]
@@ -1729,6 +1723,7 @@ def main():
         appearance_panel.init(current_module)
         fMRI_panel.init(current_module)
         render_panel.init(current_module)
+        listener_panel.init(current_module)
         bpy.utils.register_class(UpdateAppearance)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(SelectAllSubcorticals)
