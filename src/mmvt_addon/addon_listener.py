@@ -55,6 +55,10 @@ def plot_data(x, y):
     plt.show()
 
 
-if __name__ == '__main__':
+def main():
     listener, conn = init_listener()
     listen(listener, conn)
+
+
+if __name__ == '__main__':
+    main()
