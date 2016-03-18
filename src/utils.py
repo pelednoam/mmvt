@@ -911,9 +911,9 @@ def how_many_subplots(pics_num):
 
 
 def chunks(l, n):
+    # todo: change the code to use np.array_split
     n = max(1, int(n))
     return [l[i:i + n] for i in range(0, len(l), n)]
-
 
 def powerset(iterable):
     from itertools import chain, combinations

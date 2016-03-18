@@ -48,6 +48,8 @@ import search_panel
 importlib.reload(search_panel)
 import appearance_panel
 importlib.reload(appearance_panel)
+import where_am_i_panel
+importlib.reload(where_am_i_panel)
 import fMRI_panel
 importlib.reload(fMRI_panel)
 import render_panel
@@ -1316,155 +1318,6 @@ bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=1, min=1
 bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bpy.types.Scene.where_am_i_str = ''
-
-
-def where_i_am_draw(self, context):
-    try:
-        layout = self.layout
-        # col = layout.column(align=True)
-        layout.operator("ohad.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
-        layout.operator("ohad.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
-        layout.label(text=bpy.types.Scene.where_am_i_str)
-    except:
-        #Noam: try not to write pass in except, then we'll never know the try block failed
-        print('Error in where_i_am_draw!')
-
-
-class WhereAmI(bpy.types.Operator):
-    bl_idname = "ohad.where_i_am"
-    bl_label = "ohad where i am"
-    bl_options = {"UNDO"}
-
-    where_am_I_selected_obj = None
-    where_am_I_selected_obj_org_hide = True
-
-    @staticmethod
-    def setup_environment(self):
-        set_appearance_show_rois_layer(bpy.context.scene, True)
-        # pass
-
-    @staticmethod
-    def main_func(self):
-        distances = []
-        names = []
-
-        bpy.data.objects['Brain'].select = False
-        for subHierarchy in bpy.data.objects['Brain'].children:
-            if subHierarchy == bpy.data.objects['Subcortical_structures']:
-                cur_material = bpy.data.materials['unselected_label_Mat_subcortical']
-            else:
-                cur_material = bpy.data.materials['unselected_label_Mat_cortex']
-            for obj in subHierarchy.children:
-                obj.active_material = cur_material
-                obj.select = False
-                obj.hide = subHierarchy.hide
-
-                # 3d cursor relative to the object data
-                cursor = bpy.context.scene.cursor_location
-                # try:
-                #     if bpy.context.object.parent == bpy.data.objects['Deep_electrodes']:
-                #         cursor = bpy.context.object.location
-                # except KeyError:
-                #     pass
-
-                # Noam: Maybe this is better?
-                if bpy.context.object.parent == bpy.data.objects.get('Deep_electrodes', None):
-                    cursor = bpy.context.object.location
-
-                co_find = cursor * obj.matrix_world.inverted()
-
-                mesh = obj.data
-                size = len(mesh.vertices)
-                kd = mathutils.kdtree.KDTree(size)
-
-                for i, v in enumerate(mesh.vertices):
-                    kd.insert(v.co, i)
-
-                kd.balance()
-
-                # Find the closest 10 points to the 3d cursor
-                # print("Close 1 points")
-                for (co, index, dist) in kd.find_n(co_find, 1):
-                    # print("    ", obj.name,co, index, dist)
-                    if 'unknown' not in obj.name:
-                        distances.append(dist)
-                        names.append(obj.name)
-
-        # print(np.argmin(np.array(distances)))
-        min_index = np.argmin(np.array(distances))
-        closest_area = names[np.argmin(np.array(distances))]
-        bpy.types.Scene.where_am_i_str = closest_area
-
-        print('closest area is: '+closest_area)
-        print('dist: {}'.format(np.min(np.array(distances))))
-        print('closets vert is {}'.format(bpy.data.objects[closest_area].data.vertices[min_index].co))
-        WhereAmI.where_am_I_selected_obj = bpy.data.objects[closest_area]
-        WhereAmI.where_am_I_selected_obj_org_hide = bpy.data.objects[closest_area].hide
-
-        bpy.context.scene.objects.active = bpy.data.objects[closest_area]
-        bpy.data.objects[closest_area].select = True
-        bpy.data.objects[closest_area].hide = False
-        bpy.data.objects[closest_area].active_material = bpy.data.materials['selected_label_Mat']
-
-    def invoke(self, context, event=None):
-        self.setup_environment(self)
-        self.main_func(self)
-        return {"FINISHED"}
-
-
-class ClearWhereAmI(bpy.types.Operator):
-    bl_idname = "ohad.where_am_i_clear"
-    bl_label = "where am i clear"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        for subHierarchy in bpy.data.objects['Brain'].children:
-            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierarchy.name == 'Subcortical_structures':
-                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-            for obj in subHierarchy.children:
-                obj.active_material = new_mat
-
-        # Noam: I think this is better than a try block
-        if 'Deep_electrodes' in bpy.data.objects:
-            for obj in bpy.data.objects['Deep_electrodes'].children:
-                obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-        if bpy.data.objects.get(' '):
-            context.scene.objects.active = bpy.data.objects[' ']
-
-        for obj in bpy.data.objects:
-            obj.select = False
-
-        if WhereAmI.where_am_I_selected_obj is not None:
-            WhereAmI.where_am_I_selected_obj.hide = WhereAmI.where_am_I_selected_obj_org_hide
-            WhereAmI.where_am_I_selected_obj = None
-
-        bpy.types.Scene.where_am_i_str = ''
-        where_i_am_draw(self, context)
-        return {"FINISHED"}
-
-
-bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
-                                                      update=where_i_am_draw)
-
-
-class WhereAmIMakerPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Where Am I"
-
-    def draw(self, context):
-        where_i_am_draw(self, context)
-        layout = self.layout
-        # layout.operator("ohad.where_i_am", text="Where Am I?", icon = 'SNAP_SURFACE')
-        # layout.operator("ohad.where_am_i_clear", text="Clear", icon = 'PANEL_CLOSE')
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Where am I Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class ClearVertexData(bpy.types.Operator):
@@ -1601,109 +1454,7 @@ class DataInVertMakerPanel(bpy.types.Panel):
         layout.operator("ohad.vertex_data_create", text="Get data in vertex", icon='ROTATE')
         layout.operator("ohad.vertex_data_clear", text="Clear", icon='PANEL_CLOSE')
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# class helper_class():
-#     brain_imported = False
-#     electrodes_imported = False
-#     brain_data_exist = False
-#     electrodes_data_exist = False
-#     closest_curve_str = ''
-#     filter_is_on = False
-#     # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-#     closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
-#     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-#     filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-#     filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-#     filter_to = bpy.props.IntProperty(default=1000, min=0, description="When to filter to")
-#     filter_curves_type = bpy.props.EnumProperty(
-#         items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
-#         description="Type of curve to be filtered", update=filter_draw)
-#     filter_curves_func = bpy.props.EnumProperty(
-#         items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2)],
-#         description="Filtering function", update=filter_draw)
-#     objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere", update=show_hide_lh)
-#     objects_show_hide_rh = bpy.props.BoolProperty(default=True, description="Show right hemisphere",
-#                                                   update=show_hide_rh)
-#     objects_show_hide_sub_cortical = bpy.props.BoolProperty(default=True, description="Show sub cortical",
-#                                                             update=show_hide_sub_cortical)
-#     appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
-#                                                               get=get_appearance_show_electrodes_layer,
-#                                                               set=set_appearance_show_electrodes_layer)
-#     appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
-#                                                         get=get_appearance_show_rois_layer,
-#                                                         set=set_appearance_show_rois_layer)
-#     appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
-#                                                             get=get_appearance_show_activity_layer,
-#                                                             set=set_appearance_show_activity_layer)
-#     appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-#                                                             get=get_appearance_show_connections_layer,
-#                                                             set=set_appearance_show_connections_layer)
-#
-#     filter_view_type = bpy.props.EnumProperty(
-#         items=[('1', "Rendered Brain", ""), ('2', " Solid Brain", "")], description="Brain appearance",
-#         get=get_filter_view_type, set=set_filter_view_type)
-#     appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="", update=appearance_draw)
-#     appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
-#     appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
-#     coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
-#     coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-#     coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-#     where_am_i_str = ''
-#     where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor", update=where_i_am_draw)
-#     output_path = bpy.props.StringProperty(name="Output Path", default="",
-#                                            description="Define the path for the output files", subtype='DIR_PATH')
-#     X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around x axis",
-#                                          update=update_rotation)
-#     Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around y axis",
-#                                          update=update_rotation)
-#     Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360, description="Camera rotation around z axis",
-#                                          update=update_rotation)
-#     quality = bpy.props.FloatProperty(default=20, min=1, max=100, description="quality of figure in parentage",
-#                                       update=update_quality)
-#     smooth_figure = bpy.props.BoolProperty(name='smooth image', description="This significantly affect rendering speed")
-#
-#
-# def register():
-#     tmp = helper_class()
-#     # bpy.types.Scene.conf_path = tmp.conf_path
-#     bpy.types.Scene.brain_imported = tmp.brain_imported
-#     bpy.types.Scene.electrodes_imported = tmp.electrodes_imported
-#     bpy.types.Scene.brain_data_exist = tmp.brain_data_exist
-#     bpy.types.Scene.electrodes_data_exist = tmp.electrodes_data_exist
-#     bpy.types.Scene.closest_curve_str = tmp.closest_curve_str
-#     bpy.types.Scene.filter_is_on = tmp.filter_is_on
-#     # files_names = {'MEG': 'labels_data_', 'Electrodes': 'electrodes_data.npz'}
-#     bpy.types.Scene.closest_curve = tmp.closest_curve
-#     bpy.types.Scene.filter_topK = tmp.filter_topK
-#     bpy.types.Scene.filter_topK = tmp.filter_topK
-#     bpy.types.Scene.filter_from = tmp.filter_from
-#     bpy.types.Scene.filter_to = tmp.filter_to
-#     bpy.types.Scene.filter_curves_type = tmp.filter_curves_type
-#     bpy.types.Scene.filter_curves_func = tmp.filter_curves_func
-#     bpy.types.Scene.objects_show_hide_lh = tmp.objects_show_hide_lh
-#     bpy.types.Scene.objects_show_hide_rh = tmp.objects_show_hide_rh
-#     bpy.types.Scene.objects_show_hide_sub_cortical = tmp.objects_show_hide_sub_cortical
-#     bpy.types.Scene.appearance_show_electrodes_layer = tmp.appearance_show_electrodes_layer
-#     bpy.types.Scene.appearance_show_ROIs_layer = tmp.appearance_show_ROIs_layer
-#     bpy.types.Scene.appearance_show_activity_layer = tmp.appearance_show_activity_layer
-#     bpy.types.Scene.appearance_show_connections_layer = tmp.appearance_show_connections
-#     bpy.types.Scene.filter_view_type = tmp.filter_view_type
-#     bpy.types.Scene.appearance_solid_slider = tmp.appearance_solid_slider
-#     bpy.types.Scene.appearance_depth_slider = tmp.appearance_depth_slider
-#     bpy.types.Scene.appearance_depth_Bool = tmp.appearance_depth_Bool
-#     bpy.types.Scene.coloring_fmri = tmp.coloring_fmri
-#     bpy.types.Scene.coloring_electrodes = tmp.coloring_electrodes
-#     bpy.types.Scene.coloring_threshold = tmp.coloring_threshold
-#     bpy.types.Scene.where_am_i_str = tmp.where_am_i_str
-#     bpy.types.Scene.X_rotation = tmp.X_rotation
-#     bpy.types.Scene.Y_rotation = tmp.Y_rotation
-#     bpy.types.Scene.Z_rotation = tmp.Z_rotation
-#     bpy.types.Scene.quality = tmp.quality
-#     bpy.types.Scene.smooth_figure = tmp.smooth_figure
-
 
 def main():
     bpy.context.scene.appearance_show_electrodes_layer = False
@@ -1720,6 +1471,7 @@ def main():
         electrodes_panel.init(current_module)
         freeview_panel.init(current_module)
         search_panel.init(current_module)
+        where_am_i_panel.init(current_module)
         appearance_panel.init(current_module)
         fMRI_panel.init(current_module)
         render_panel.init(current_module)
@@ -1736,8 +1488,6 @@ def main():
         bpy.utils.register_class(GrabFromFiltering)
         bpy.utils.register_class(GrabToFiltering)
         bpy.utils.register_class(ClearFiltering)
-        bpy.utils.register_class(WhereAmI)
-        bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(CreateVertexData)
         bpy.utils.register_class(ClearVertexData)
         bpy.utils.register_class(AddDataToElectrodes)
@@ -1751,7 +1501,6 @@ def main():
         bpy.utils.register_class(ShowHideObjectsPanel)
         bpy.utils.register_class(SelectionMakerPanel)
         bpy.utils.register_class(FilteringMakerPanel)
-        bpy.utils.register_class(WhereAmIMakerPanel)
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(DataMakerPanel)
     except:

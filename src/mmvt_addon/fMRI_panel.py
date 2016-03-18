@@ -81,6 +81,17 @@ def fMRI_draw(self, context):
         col = layout.box().column()
         for inter_labels in fMRIPanel.cluster_labels['intersects']:
             mu.add_box_line(col, inter_labels['name'], str(inter_labels['num']), 0.8)
+    row.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
+
+
+class NearestCluster(bpy.types.Operator):
+    bl_idname = "ohad.nearest_cluster"
+    bl_label = "Nearest Cluster"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        coo = bpy.context.scene.cursor_location
+        return {'PASS_THROUGH'}
 
 
 bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
@@ -148,6 +159,7 @@ def register():
         bpy.utils.register_class(fMRIPanel)
         bpy.utils.register_class(NextCluster)
         bpy.utils.register_class(PrevCluster)
+        bpy.utils.register_class(NearestCluster)
         print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
@@ -158,5 +170,6 @@ def unregister():
         bpy.utils.unregister_class(fMRIPanel)
         bpy.utils.unregister_class(NextCluster)
         bpy.utils.unregister_class(PrevCluster)
+        bpy.utils.unregister_class(NearestCluster)
     except:
         print("Can't unregister fMRI Panel!")
