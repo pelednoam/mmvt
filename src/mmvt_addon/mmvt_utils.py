@@ -8,6 +8,7 @@ import uuid
 from collections import OrderedDict
 import time
 import subprocess
+from multiprocessing.connection import Client
 from threading import Thread
 import cProfile
 from itertools import chain
@@ -498,3 +499,20 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
     row.label(text=text1)
     if text2 != '':
         row.label(text=text2)
+
+
+class connection_to_listener(object):
+    conn = None
+
+    def init(self):
+        address = ('localhost', 6000)
+        self.conn = Client(address, authkey=b'mmvt')
+
+    def send_command(self, cmd):
+        self.conn.send(cmd)
+
+
+    def close(self):
+        self.conn.close()
+
+conn_to_listener = connection_to_listener()

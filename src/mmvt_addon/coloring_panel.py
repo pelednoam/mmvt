@@ -219,6 +219,8 @@ def color_manually():
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
         obj_name, color_name = line
+        if obj_name[0] == '#':
+            continue
         obj_type = mu.check_obj_type(obj_name)
         color_rgb = cu.name_to_rgb(color_name)
         if obj_type is not None:
@@ -234,7 +236,7 @@ def color_manually():
         meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
         color_subcortical_region(region, color)
-
+    ColoringMakerPanel.addon.show_activity()
 
 def color_subcortical_region(region_name, rgb):
     obj = bpy.data.objects.get(region_name + '_meg_activity', None)

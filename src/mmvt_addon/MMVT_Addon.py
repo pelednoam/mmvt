@@ -1709,7 +1709,13 @@ def main():
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
     bpy.context.scene.appearance_show_connections_layer = False
-
+    try:
+        mmvt_utils.conn_to_listener.init()
+        mmvt_utils.conn_to_listener.send_command('Hey!\n')
+        mmvt_utils.conn_to_listener.send_command(dict(cmd='plot', data=[np.arange(10), np.arange(10) * 3]))
+    except:
+        print("Can't open connection to listener")
+        print(traceback.format_exc())
     setup_layers()
     try:
         current_module = sys.modules[__name__]
