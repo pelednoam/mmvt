@@ -1,7 +1,7 @@
 from multiprocessing.connection import Listener
 import matplotlib.pyplot as plt
 
-
+# http://stackoverflow.com/a/6921402/1060738
 def init_listener():
     address = ('localhost', 6000)
     listener = Listener(address, authkey=b'mmvt')

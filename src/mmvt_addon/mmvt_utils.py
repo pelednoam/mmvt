@@ -502,6 +502,7 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
 
 
 class connection_to_listener(object):
+    # http://stackoverflow.com/a/6921402/1060738
     conn = None
 
     def init(self):
