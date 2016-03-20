@@ -408,7 +408,7 @@ def run_command_in_new_thread(cmd, shell=True):
     print('start!')
     thread.start()
 
-# p = None
+
 def run_command(cmd, shell=True):
     # global p
     from subprocess import Popen, PIPE, STDOUT
@@ -511,7 +511,8 @@ class connection_to_listener(object):
     conn = None
     handle_is_open = False
 
-    def check_if_open(self):
+    @staticmethod
+    def check_if_open():
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         result = s.connect_ex(('localhost', 6000))
@@ -522,18 +523,22 @@ class connection_to_listener(object):
 
     def init(self):
         try:
-            self.check_if_open()
-            cmd = 'python {}'.format(op.join(current_path(), 'addon_listener.py'))
-            run_command_in_new_thread(cmd, shell=True)
-            time.sleep(1)
+            connection_to_listener.check_if_open()
+            connection_to_listener.run_addon_listener()
             address = ('localhost', 6000)
             self.conn = Client(address, authkey=b'mmvt')
             self.handle_is_open = True
             return True
         except:
             print('Error in connection_to_listener.init()!')
+            print(traceback.format_exc())
             return False
 
+    @staticmethod
+    def run_addon_listener():
+        cmd = 'python {}'.format(op.join(current_path(), 'addon_listener.py'))
+        run_command_in_new_thread(cmd, shell=True)
+        time.sleep(1)
 
     def send_command(self, cmd):
         if self.handle_is_open:

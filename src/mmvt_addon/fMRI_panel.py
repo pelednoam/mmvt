@@ -81,6 +81,7 @@ def fMRI_draw(self, context):
         col = layout.box().column()
         for inter_labels in fMRIPanel.cluster_labels['intersects']:
             mu.add_box_line(col, inter_labels['name'], str(inter_labels['num']), 0.8)
+    row = layout.row(align=True)
     row.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
 
 

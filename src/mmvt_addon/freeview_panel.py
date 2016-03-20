@@ -24,7 +24,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        goto_cursor_position
+        goto_cursor_position()
         return {"FINISHED"}
 
 
@@ -35,6 +35,26 @@ class FreeviewSaveCursor(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         save_cursor_position()
+        cursor_position = np.array(bpy.context.scene.cursor_location) * 10
+        ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
+            position=cursor_position)))
+        if not ret:
+            mu.message(self, 'Listener was stopped! Try to restart')
+        return {"FINISHED"}
+
+
+class SliceViewerOpen(bpy.types.Operator):
+    bl_idname = "ohad.slice_viewer"
+    bl_label = "Slice Viewer"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        mri_fname = op.join(mu.get_user_fol(), 'freeview', 'orig.mgz')
+        cursor_position = np.array(bpy.context.scene.cursor_location) * 10.0
+        ret = mu.conn_to_listener.send_command(dict(cmd='open_slice_viewer',data=dict(
+            mri_fname=mri_fname, position=cursor_position)))
+        if not ret:
+            mu.message(self, 'Listener was stopped! Try to restart')
         return {"FINISHED"}
 
 
@@ -78,6 +98,8 @@ class FreeviewPanel(bpy.types.Panel):
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
+        row = layout.row(align=0)
+        row.operator(SliceViewerOpen.bl_idname, text="Slice Viewer", icon='PARTICLES')
 
 
 def init(addon):
@@ -92,6 +114,7 @@ def register():
         bpy.utils.register_class(FreeviewSaveCursor)
         bpy.utils.register_class(FreeviewOpen)
         bpy.utils.register_class(FreeviewPanel)
+        bpy.utils.register_class(SliceViewerOpen)
         print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
@@ -103,6 +126,6 @@ def unregister():
         bpy.utils.unregister_class(FreeviewSaveCursor)
         bpy.utils.unregister_class(FreeviewOpen)
         bpy.utils.unregister_class(FreeviewPanel)
-
+        bpy.utils.unregister_class(SliceViewerOpen)
     except:
         print("Can't unregister Freeview Panel!")
