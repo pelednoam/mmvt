@@ -5,6 +5,9 @@ from multiprocessing.connection import Listener
 from multiprocessing import Process
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
+import subprocess
+import os.path as op
+import os
 
 import traceback
 import numpy as np
@@ -19,17 +22,17 @@ def check_if_open():
     s.close()
 
 
-def open_slicer(mri):
-    import subprocess
-    import os.path as op
-    import os
-    print('open_slicer!')
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    x, y, z = mri['position']
-    cmd = 'python {}'.format(op.join(current_path, 'slicer.py {} {} {} {}'.format(
-        mri['mri_fname'], x, y, z)))
-    subprocess.call(cmd, shell=True)
-    # self.p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+# def open_slicer(mri):
+#     import subprocess
+#     import os.path as op
+#     import os
+#     print('open_slicer!')
+#     current_path = os.path.dirname(os.path.realpath(__file__))
+#     x, y, z = mri['position']
+#     cmd = 'python {}'.format(op.join(current_path, 'slicer.py {} {} {} {}'.format(
+#         mri['mri_fname'], x, y, z)))
+#     subprocess.call(cmd, shell=True)
+#     # self.p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
 
 
 # http://stackoverflow.com/a/6921402/1060738
@@ -90,19 +93,15 @@ class AddonListener(object):
         if not viewer_exist:
             return
 
-        self._open_slicer()
+        self._open_slicer('load')
 
-    def _open_slicer(self):
-        import subprocess
-        import os.path as op
-        import os
+    def _open_slicer(self, func):
         print('open_slicer!')
         current_path = os.path.dirname(os.path.realpath(__file__))
         x, y, z = self.mri['position']
-        cmd = 'python {}'.format(op.join(current_path, 'slicer.py {} {} {} {}'.format(
-            self.mri['mri_fname'], x, y, z)))
+        cmd = 'python {}'.format(op.join(current_path, 'slicer.py {} {} {} {} {}'.format(
+            self.mri['mri_fname'], x, y, z, func)))
         self.p = Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
-
 
     def slice_viewer_change_pos(self, data):
         print('Goto position {}'.format(data['position']))
@@ -110,20 +109,7 @@ class AddonListener(object):
         self.mri['position'] = data['position']
         print(self.mri)
         self.p.kill()
-        self._open_slicer()
-
-    #
-    # def slice_viewer_change_pos(self, data):
-    #     print('Goto position {}'.format(data['position']))
-    #     self.p.terminate()
-    #     print('after terminate')
-    #     x, y, z = data['position']
-    #     self.viewer._set_position(x, y, z)
-    #     self.show_slicer()
-    #     # self.position = data['position']
-    #     # self.viewer.set_position(data['position'])
-    #     # self.viewer.draw()
-
+        self._open_slicer('update')
 
 
 def main():

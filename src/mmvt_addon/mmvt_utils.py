@@ -29,8 +29,7 @@ def namebase(file_name):
 
 def save(obj, fname):
     with open(fname, 'wb') as fp:
-        # protocol=2 so we'll be able to load in python 2.7
-        pickle.dump(obj, fp)
+        pickle.dump(obj, fp, protocol=4)
 
 
 def load(fname):
