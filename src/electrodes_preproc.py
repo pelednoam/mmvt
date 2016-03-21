@@ -328,7 +328,7 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=
 
 
 if __name__ == '__main__':
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg96'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT

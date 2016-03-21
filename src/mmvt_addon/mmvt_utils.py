@@ -8,8 +8,10 @@ import uuid
 from collections import OrderedDict
 import time
 import subprocess
+from subprocess import Popen, PIPE, STDOUT
 from multiprocessing.connection import Client
-from threading import Thread
+import threading
+from queue import Queue
 import cProfile
 from itertools import chain
 
@@ -394,21 +396,36 @@ def get_obj_hemi(obj_name):
     return hemi
 
 
-# from queue import Queue
-# q = Queue()
-# def worker():
-#     while True:
-#         item = q.get()
-#         do_work(item)
-#         q.task_done()
-
 def run_command_in_new_thread(cmd, shell=True):
-    thread = Thread(target=run_command, args=(cmd, shell, ))
+    q = Queue()
+    thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q, shell))
+    # thread = threading.Thread(target=run_command, args=(cmd, shell, ))
     print('start!')
     thread.start()
+    return q
 
 
-def run_command(cmd, shell=True):
+_sentinel = object()
+def run_command_and_read_queue(cmd, in_q, shell=True, pipe=False):
+    # p = subprocess.call(cmd, shell=shell)
+    #todo: use the params
+    p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+
+    while True:
+        # Get some data
+        data = in_q.get()
+        # Check for termination
+        if data is _sentinel:
+            in_q.put(_sentinel)
+            break
+        else:
+            print('Writing data into stdin: {}'.format(data))
+            output = p.stdin.write(data)
+            p.stdin.flush()
+            print(output)
+
+
+def run_command(cmd, shell=True, pipe=False):
     # global p
     from subprocess import Popen, PIPE, STDOUT
     print('run: {}'.format(cmd))
@@ -416,10 +433,13 @@ def run_command(cmd, shell=True):
         os.system(cmd)
         return None
     else:
-        subprocess.call(cmd, shell=shell)
+        if pipe:
+            p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        else:
+            p = subprocess.call(cmd, shell=shell)
         # p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         # p.stdin.write(b'-zoom 2\n')
-        # return p
+        return p
 
 
 def make_dir(fol):

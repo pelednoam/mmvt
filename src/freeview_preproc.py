@@ -145,6 +145,18 @@ def copy_T1(subject):
         utils.copy_file(subject_T1, blender_T1)
 
 
+def read_vox2ras0():
+    import nibabel as nib
+    from nibabel.affines import apply_affine
+    mri = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz'))
+    mri_header = mri.get_header()
+    ras_tkr2vox = np.linalg.inv(mri_header.get_vox2ras_tkr())
+    vox2ras = mri_header.get_vox2ras()
+    ras_rkr2ras = np.dot(ras_tkr2vox, vox2ras)
+    print(np.dot([-22.37, 22.12, -11.70], ras_rkr2ras))
+    print('sdf')
+
+
 def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
     # Create the files for freeview bridge
     create_freeview_cmd(subject, aparc_name, bipolar)
@@ -156,15 +168,15 @@ def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_
 
 if __name__ == '__main__':
     import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg96'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
     aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'aparc.DKTatlas40'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True
     print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
     # main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
-
-    create_electrodes_points(subject, bipolar, create_volume_file=False)
-    create_freeview_cmd(subject, aparc_name, bipolar)
+    read_vox2ras0()
+    # create_electrodes_points(subject, bipolar, create_volume_file=False)
+    # create_freeview_cmd(subject, aparc_name, bipolar)
     # create_lut_file_for_atlas(subject, aparc_name)
     print('finish!')

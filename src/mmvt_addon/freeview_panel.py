@@ -7,6 +7,8 @@ import os.path as op
 def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
+    freeview_cmd = 'freeview --ras {} {} {}\n'.format(point[0], point[1], point[2]).encode()
+    FreeviewPanel.freeview_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
@@ -67,12 +69,12 @@ class FreeviewOpen(bpy.types.Operator):
         root = mu.get_user_fol()
         sig = op.join(root, 'freeview', 'sig_subject.mgz')
         sig_cmd = '' #'-v {}:colormap=heat' if op.isfile(sig) else ''
-        T1 = op.join(root, 'freeview', 'orig.mgz')
+        T1 = op.join(root, 'freeview', 'T1.mgz')#'orig.mgz')
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes = self.get_electrodes_groups(root)
         cmd = 'freeview {} {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(sig_cmd, T1, aseg, lut, electrodes)
-        mu.run_command_in_new_thread(cmd)
+        FreeviewPanel.freeview_queue = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
     def get_electrodes_groups(self, root):
@@ -90,6 +92,7 @@ class FreeviewPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "Freeview Panel"
     addon = None
+    freeview_queue = None
 
     def draw(self, context):
         layout = self.layout

@@ -367,6 +367,7 @@ class ElecsPanel(bpy.types.Panel):
     cortical_probs = []
     sorted_groups = {'rh':[], 'lh':[]}
     groups_hemi = {}
+    groups_electrodes = []
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -376,11 +377,11 @@ def init(addon):
     ElecsPanel.addon = addon
     ElecsPanel.parent = parent = bpy.data.objects.get('Deep_electrodes')
     if parent is None or len(parent.children) == 0:
-        print("Can't register electrodes panel, no Deep_electrodes object!")
+        print("!!!! Can't register electrodes panel, no Deep_electrodes object!!!!")
         return
     sorted_groups_fname = op.join(mu.get_user_fol(), 'sorted_groups.pkl')
     if not op.isfile(sorted_groups_fname):
-        print("Can't register electrodes panel, no sorted groups file!")
+        print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
         return
     ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
