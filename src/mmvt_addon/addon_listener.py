@@ -101,15 +101,20 @@ class AddonListener(object):
         x, y, z = self.mri['position']
         cmd = 'python {}'.format(op.join(current_path, 'slicer.py {} {} {} {} {}'.format(
             self.mri['mri_fname'], x, y, z, func)))
-        self.p = Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        p = Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        try:
+            self.p.kill()
+        except:
+            pass
+        self.p = p
 
     def slice_viewer_change_pos(self, data):
         print('Goto position {}'.format(data['position']))
         # self.thread.stop()
         self.mri['position'] = data['position']
-        print(self.mri)
-        self.p.kill()
+        # print(self.mri)
         self._open_slicer('update')
+
 
 
 def main():

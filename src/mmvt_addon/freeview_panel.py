@@ -10,6 +10,11 @@ def save_cursor_position():
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
+    cursor_position = np.array(bpy.context.scene.cursor_location) * 10
+    ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
+        position=cursor_position)))
+    if not ret:
+        mu.message(None, 'Listener was stopped! Try to restart')
 
 
 def goto_cursor_position():
@@ -35,11 +40,6 @@ class FreeviewSaveCursor(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         save_cursor_position()
-        cursor_position = np.array(bpy.context.scene.cursor_location) * 10
-        ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
-            position=cursor_position)))
-        if not ret:
-            mu.message(self, 'Listener was stopped! Try to restart')
         return {"FINISHED"}
 
 

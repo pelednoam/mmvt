@@ -39,7 +39,7 @@ def load(fname):
 
 
 def save(obj, fname):
-    print('dump protocol 4!')
+    # print('dump protocol 4!')
     with open(fname, 'wb') as fp:
         # pickle.dump(obj, fp, protocol=4)
         dill.dump(obj, fp, protocol=4)

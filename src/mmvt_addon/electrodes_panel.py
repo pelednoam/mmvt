@@ -36,8 +36,8 @@ def _electrodes_update():
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     select_electrode(current_electrode)
-    color_electrodes(current_electrode, prev_electrode)
     update_cursor()
+    color_electrodes(current_electrode, prev_electrode)
     if prev_electrode != '':
         unselect_prev_electrode(prev_electrode)
         if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
