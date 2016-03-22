@@ -32,6 +32,7 @@ def _electrodes_update():
         return
     # ElecsPanel.addon.show_electrodes()
     show_elecs_hemi_update()
+    _show_only_current_lead_update()
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
@@ -40,8 +41,8 @@ def _electrodes_update():
     color_electrodes(current_electrode, prev_electrode)
     if prev_electrode != '':
         unselect_prev_electrode(prev_electrode)
-        if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
-             _show_only_current_lead_update()
+        # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
+        #      _show_only_current_lead_update()
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup[current_electrode]
         print_electrode_loc(loc)
@@ -214,10 +215,11 @@ def elecs_draw(self, context):
     if len(ElecsPanel.subcortical_rois) > 0 or len(ElecsPanel.cortical_rois) > 0:
         box = layout.box()
         col = box.column()
-    for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
-        mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
-    for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
-        mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+        for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
+            mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
+        for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
+            mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+    layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
     # Color picker:
     # row = layout.row(align=True)
@@ -226,6 +228,16 @@ def elecs_draw(self, context):
     # row.label(text='             ')
     # row.prop(context.scene, 'electrode_color', text='')
     # row.label(text='             ')
+
+
+class ClearElectrodes(bpy.types.Operator):
+    bl_idname = 'ohad.electrodes_clear'
+    bl_label = 'clearElectrodes'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        ElecsPanel.addon.clear_colors()
+        return {'FINISHED'}
 
 
 class NextElectrode(bpy.types.Operator):
@@ -280,7 +292,7 @@ class NextLead(bpy.types.Operator):
         next_lead()
         return {'FINISHED'}
 
-# @mu.profileit
+
 def next_lead():
     index = ElecsPanel.leads.index(bpy.context.scene.leads)
     next_lead = ElecsPanel.leads[index + 1] if index < len(ElecsPanel.leads) - 1 else ElecsPanel.leads[0]
@@ -325,8 +337,9 @@ class KeyboardListener(bpy.types.Operator):
         if not bpy.context.scene.listener_is_running:
             context.window_manager.modal_handler_add(self)
             bpy.context.scene.listener_is_running = True
+            ElecsPanel.addon.show_electrodes()
+            _leads_update()
         bpy.context.scene.listen_to_keyboard = not bpy.context.scene.listen_to_keyboard
-        _leads_update()
         return {'RUNNING_MODAL'}
 
 
@@ -478,6 +491,7 @@ def register():
         bpy.utils.register_class(NextLead)
         bpy.utils.register_class(PrevLead)
         bpy.utils.register_class(KeyboardListener)
+        bpy.utils.register_class(ClearElectrodes)
         print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
@@ -491,6 +505,7 @@ def unregister():
         bpy.utils.unregister_class(NextLead)
         bpy.utils.unregister_class(PrevLead)
         bpy.utils.unregister_class(KeyboardListener)
+        bpy.utils.unregister_class(ClearElectrodes)
     except:
         print("Can't unregister Electrodes Panel!")
 

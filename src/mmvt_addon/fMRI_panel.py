@@ -34,6 +34,23 @@ def plot_blob(cluster_labels, faces_verts):
     # fMRIPanel.addon.show_hide_sub_corticals(False)
 
 
+@mu.timeit
+def find_closest_cluster():
+    cursor = np.array([bpy.context.scene.cursor_location])
+    # hemis_objs = [bpy.data.objects[hemi_obj] for hemi_obj in ['Cortex-lh', 'Cortex-rh']]
+    # for hemi_obj, hemi in zip(hemis_objs, ['lh', 'rh']):
+    clusters = fMRIPanel.clusters_labels['rh']
+    clusters.extend(fMRIPanel.clusters_labels['lh'])
+    dists = []
+    for ind, cluster in enumerate(clusters):
+        # co_find = cursor * hemi_obj.matrix_world.inverted()
+        # clusters_hemi = fMRIPanel.clusters_labels['rh']
+        dists.append(np.min(mu.cdist(cluster['coordinates'], cursor)))
+    min_index = np.argmin(np.array(dists))
+    closest_cluster = clusters[min_index]
+    bpy.context.scene.clusters = cluster_name(closest_cluster)
+
+
 class NextCluster(bpy.types.Operator):
     bl_idname = 'ohad.next_cluster'
     bl_label = 'nextCluster'
@@ -91,7 +108,7 @@ class NearestCluster(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        coo = bpy.context.scene.cursor_location
+        find_closest_cluster()
         return {'PASS_THROUGH'}
 
 

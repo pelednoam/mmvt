@@ -805,6 +805,7 @@ clear_colors_from_parent_childrens = coloring_panel.clear_colors_from_parent_chi
 default_coloring = coloring_panel.default_coloring
 get_fMRI_activity = coloring_panel.get_fMRI_activity
 get_faces_verts = coloring_panel.get_faces_verts
+clear_colors = coloring_panel.clear_colors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Filter Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 bpy.types.Scene.closest_curve_str = ''

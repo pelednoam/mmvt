@@ -14,10 +14,15 @@ import threading
 from queue import Queue
 import cProfile
 from itertools import chain
+from sys import platform as _platform
+IS_LINUX = _platform == "linux" or _platform == "linux2"
+IS_MAC = _platform == "darwin"
+IS_WINDOWS = _platform == "win32"
+print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
 OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_SUBCORTEX, OBJ_TYPE_ELECTRODE = range(4)
-IS_WINDOWS = (os.name == 'nt')
+# IS_WINDOWS = (os.name == 'nt')
 
 try:
     import cPickle as pickle
@@ -573,3 +578,20 @@ class connection_to_listener(object):
         self.handle_is_open = False
 
 conn_to_listener = connection_to_listener()
+
+
+def cdist(X, Y):
+    import mathutils
+    kd = mathutils.kdtree.KDTree(X.shape[0])
+    for ind, x in enumerate(X):
+        kd.insert(x, ind)
+    kd.balance()
+    # Find the closest point to the 3d cursor
+    res = []
+    for y in Y:
+        res.append(kd.find_n(y, 1)[0])
+    return res
+
+
+# def cdist(x, y):
+#     return np.sqrt(np.dot(x, x) - 2 * np.dot(x, y) + np.dot(y, y))

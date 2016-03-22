@@ -346,11 +346,15 @@ class ClearColors(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        clear_cortex()
-        clear_subcortical_fmri_activity()
-        for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
-            clear_colors_from_parent_childrens(root)
+        clear_colors()
         return {"FINISHED"}
+
+
+def clear_colors():
+    clear_cortex()
+    clear_subcortical_fmri_activity()
+    for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
+        clear_colors_from_parent_childrens(root)
 
 
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
