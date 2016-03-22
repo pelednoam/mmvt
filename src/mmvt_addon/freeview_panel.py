@@ -77,6 +77,7 @@ class FreeviewOpen(bpy.types.Operator):
         electrodes = self.get_electrodes_groups(root)
         freeview_app = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview' #if mu.is_mac() else 'freeview'
         cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}" -c {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes)
+        print(cmd)
         FreeviewPanel.freeview_queue = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
@@ -84,7 +85,7 @@ class FreeviewOpen(bpy.types.Operator):
         groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
         groups_files = ''
         for group in groups:
-            groups_files += '"{}"'.format(op.join(root, 'freeview', '{}.dat '.format(group)))
+            groups_files += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
         return groups_files
 
 
