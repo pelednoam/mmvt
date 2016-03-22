@@ -253,6 +253,7 @@ def project_on_surface(subject, volume_file, reg_file):
         zstat = project_volume_data(volume_file, hemi, reg_file, surf='pial')
         brain.add_overlay(zstat, hemi=hemi)
 
+
 def mask_volume(volume, mask, masked_volume):
     vol_nib = nib.load(volume)
     vol_data = vol_nib.get_data()
