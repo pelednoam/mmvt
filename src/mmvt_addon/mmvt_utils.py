@@ -30,6 +30,18 @@ except:
     import pickle
 
 
+def is_mac():
+    return IS_MAC
+
+
+def is_windows():
+    return IS_WINDOWS
+
+
+def is_linux():
+    return IS_LINUX
+
+
 def namebase(file_name):
     return op.splitext(op.basename(file_name))[0]
 

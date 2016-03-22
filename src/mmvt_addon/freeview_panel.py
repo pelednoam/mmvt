@@ -7,7 +7,7 @@ import os.path as op
 def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
-    freeview_app = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview' if mu.IS_MAC else 'freeview'
+    freeview_app = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview' if mu.is_mac() else 'freeview'
     freeview_cmd = '{} --ras {} {} {}\n'.format(freeview_app, point[0], point[1], point[2]).encode()
     if FreeviewPanel.freeview_queue:
         FreeviewPanel.freeview_queue.put(freeview_cmd)
