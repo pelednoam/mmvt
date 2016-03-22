@@ -75,7 +75,8 @@ class FreeviewOpen(bpy.types.Operator):
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes = self.get_electrodes_groups(root)
-        cmd = 'freeview {} {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(sig_cmd, T1, aseg, lut, electrodes)
+        freeview_app = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview' #if mu.is_mac() else 'freeview'
+        cmd = '{} {} {}:opacity=0.3 {}:opacity=0.05:colormap=lut:lut={} -c {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes)
         FreeviewPanel.freeview_queue = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
