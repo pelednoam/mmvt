@@ -426,7 +426,7 @@ _sentinel = object()
 def run_command_and_read_queue(cmd, in_q, shell=True, pipe=False):
     # p = subprocess.call(cmd, shell=shell)
     #todo: use the params
-    p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True)
 
     while True:
         # Get some data
@@ -437,9 +437,12 @@ def run_command_and_read_queue(cmd, in_q, shell=True, pipe=False):
             break
         else:
             print('Writing data into stdin: {}'.format(data))
-            output = p.stdin.write(data)
+            output = p.stdin.write(data.decode('utf-8'))
             p.stdin.flush()
-            print(output)
+            print('stdin output: {}'.format(output))
+        # line = p.stdout.readline()
+        # if line != '':
+        #     print('stdout: {}'.format(line))
 
 
 def run_command(cmd, shell=True, pipe=False):
@@ -457,6 +460,19 @@ def run_command(cmd, shell=True, pipe=False):
         # p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         # p.stdin.write(b'-zoom 2\n')
         return p
+
+
+# class Unbuffered(object):
+#    def __init__(self, stream):
+#        self.stream = stream
+#    def write(self, data):
+#        self.stream.write(data)
+#        self.stream.flush()
+#    def __getattr__(self, attr):
+#        return getattr(self.stream, attr)
+#
+# import sys
+# sys.stdout = Unbuffered(sys.stdout)
 
 
 def make_dir(fol):
@@ -581,7 +597,7 @@ class connection_to_listener(object):
             self.conn.send(cmd)
             return True
         else:
-            print('Handle is close')
+            # print('Handle is close')
             return False
 
     def close(self):

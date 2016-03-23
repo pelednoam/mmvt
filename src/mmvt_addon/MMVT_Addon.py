@@ -165,7 +165,7 @@ def import_subcorticals(base_path):
                 curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
                 if curMat is None:
                     # todo: Fix the succortical_activity_Mat to succortical_activity_mat
-                    curMat = bpy.data.materials['succortical_activity_Mat'].copy()
+                    curMat = bpy.data.materials['subcortical_activity_Mat'].copy()
                     curMat.name = '{}_mat'.format(cur_obj.name)
                 cur_obj.active_material = bpy.data.materials[curMat.name]
                 cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']

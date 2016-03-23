@@ -96,4 +96,5 @@ def unregister():
         bpy.utils.unregister_class(StartListening)
         bpy.utils.unregister_class(TestListener)
     except:
-        print("Can't unregister Listener Panel!")
+        pass
+        # print("Can't unregister Listener Panel!")

@@ -138,5 +138,6 @@ def unregister():
         bpy.utils.unregister_class(DTIPanel)
         bpy.utils.unregister_class(PlotPathway)
     except:
-        print("Can't unregister DTI Panel!")
+        pass
+        # print("Can't unregister DTI Panel!")
 

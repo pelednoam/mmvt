@@ -507,5 +507,6 @@ def unregister():
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
     except:
-        print("Can't unregister Electrodes Panel!")
+        pass
+        # print("Can't unregister Electrodes Panel!")
 

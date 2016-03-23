@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
-    <orderEntry type="inheritedJdk" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/electrodes_parcellation" />
+      <excludeFolder url="file://$MODULE_DIR$/figs" />
+      <excludeFolder url="file://$MODULE_DIR$/links" />
+      <excludeFolder url="file://$MODULE_DIR$/matlab_scripts" />
+      <excludeFolder url="file://$MODULE_DIR$/pkls" />
+    </content>
+    <orderEntry type="jdk" jdkName="Python 3.5.1 (/autofs/space/franklin_003/users/npeled/anaconda3/bin/python3.5)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">

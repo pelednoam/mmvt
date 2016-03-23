@@ -2,15 +2,19 @@ import bpy
 import mmvt_utils as mu
 import numpy as np
 import os.path as op
+import time
 from sys import platform as _platform
 
 MAC_FREEVIEW_CMD = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview'
+
+bpy.types.Scene.freeview_listen_to_keyboard = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=False)
 
 
 def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
-    freeview_cmd = 'freeview --ras {} {} {}\n'.format(point[0], point[1], point[2]).encode()
+    freeview_cmd = 'freeview --ras {} {} {} tkreg\n'.format(point[0], point[1], point[2]).encode()
     if FreeviewPanel.freeview_queue:
         FreeviewPanel.freeview_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
@@ -19,14 +23,39 @@ def save_cursor_position():
     cursor_position = np.array(bpy.context.scene.cursor_location) * 10
     ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
         position=cursor_position)))
-    if not ret:
-        mu.message(None, 'Listener was stopped! Try to restart')
+    # if not ret:
+    #     mu.message(None, 'Listener was stopped! Try to restart')
 
 
 def goto_cursor_position():
     root = mu.get_user_fol()
     point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
     bpy.context.scene.cursor_location = point / 10.0
+
+
+class FreeviewKeyboardListener(bpy.types.Operator):
+    bl_idname = 'ohad.freeview_keyboard_listener'
+    bl_label = 'freeview_keyboard_listener'
+    bl_options = {'UNDO'}
+    press_time = time.time()
+
+    def modal(self, context, event):
+        if time.time() - self.press_time > 1 and bpy.context.scene.freeview_listen_to_keyboard and \
+                event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE', 'INBETWEEN_MOUSEMOVE', 'TIMER_REPORT', 'NONE']:
+            self.press_time = time.time()
+            print(event.type)
+            if event.type == 'LEFTMOUSE':
+                save_cursor_position()
+            else:
+                pass
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event=None):
+        if not bpy.context.scene.freeview_listener_is_running:
+            context.window_manager.modal_handler_add(self)
+            bpy.context.scene.freeview_listener_is_running = True
+        bpy.context.scene.freeview_listen_to_keyboard = not bpy.context.scene.freeview_listen_to_keyboard
+        return {'RUNNING_MODAL'}
 
 
 class FreeviewGotoCursor(bpy.types.Operator):
@@ -91,6 +120,7 @@ class FreeviewOpen(bpy.types.Operator):
         return groups_files
 
 
+
 class FreeviewPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -109,10 +139,16 @@ class FreeviewPanel(bpy.types.Panel):
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
         row = layout.row(align=0)
         row.operator(SliceViewerOpen.bl_idname, text="Slice Viewer", icon='PARTICLES')
+        if not bpy.context.scene.freeview_listen_to_keyboard:
+            layout.operator(FreeviewKeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
+        else:
+            layout.operator(FreeviewKeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
 
 
 def init(addon):
     FreeviewPanel.addon = addon
+    bpy.context.scene.freeview_listen_to_keyboard = False
+    bpy.context.scene.freeview_listener_is_running = False
     register()
 
 
@@ -124,6 +160,7 @@ def register():
         bpy.utils.register_class(FreeviewOpen)
         bpy.utils.register_class(FreeviewPanel)
         bpy.utils.register_class(SliceViewerOpen)
+        bpy.utils.register_class(FreeviewKeyboardListener)
         print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
@@ -136,5 +173,7 @@ def unregister():
         bpy.utils.unregister_class(FreeviewOpen)
         bpy.utils.unregister_class(FreeviewPanel)
         bpy.utils.unregister_class(SliceViewerOpen)
+        bpy.utils.unregister_class(FreeviewKeyboardListener)
     except:
-        print("Can't unregister Freeview Panel!")
+        pass
+        # print("Can't unregister Freeview Panel!")

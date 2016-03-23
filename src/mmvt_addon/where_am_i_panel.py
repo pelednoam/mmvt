@@ -163,4 +163,5 @@ def unregister():
         bpy.utils.unregister_class(WhereAmI)
         bpy.utils.unregister_class(ClearWhereAmI)
     except:
-        print("Can't unregister Where am I Panel!")
+        # print("Can't unregister Where am I Panel!")
+        pass

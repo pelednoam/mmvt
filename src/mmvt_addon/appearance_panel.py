@@ -208,5 +208,6 @@ def unregister():
     try:
         bpy.utils.unregister_class(AppearanceMakerPanel)
     except:
-        print("Can't unregister Appearance Panel!")
+        pass
+        # print("Can't unregister Appearance Panel!")
 

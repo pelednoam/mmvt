@@ -97,7 +97,6 @@ class RenderingMakerPanel(bpy.types.Panel):
     addon = None
 
     def draw(self, context):
-        current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
         render_draw(self, context)
 
 
@@ -121,4 +120,5 @@ def unregister():
         bpy.utils.unregister_class(RenderingMakerPanel)
         bpy.utils.unregister_class(RenderFigure)
     except:
-        print("Can't unregister Render Panel!")
+        pass
+        # print("Can't unregister Render Panel!")

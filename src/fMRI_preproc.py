@@ -1,7 +1,7 @@
 try:
     from surfer import Brain
     from surfer import viz
-    from surfer import project_volume_data
+    # from surfer import project_volume_data
     SURFER = True
 except:
     SURFER = False
@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from src import utils
+from src import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -70,7 +71,7 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def save_fmri_colors(subject, hemi, fmri_file, surf_name, output_file, threshold=2):
+def save_fmri_colors(subject, hemi, fmri_file, surf_name, threshold=2):
     old, brain = get_hemi_data(subject, hemi, fmri_file.format(hemi), surf_name)
     x = old.mlab_data
 
@@ -79,12 +80,20 @@ def save_fmri_colors(subject, hemi, fmri_file, surf_name, output_file, threshold
     print('{}.pial.ply vertices: {}'.format(hemi, verts.shape[0]))
     if verts.shape[0] != brain.geo[hemi].coords.shape[0]:
         raise Exception("Brain and ply objects doesn't have the same verices number!")
+    _save_fmri_colors(subject, hemi, x, threshold, verts=verts)
+
+
+def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None):
+    if verts is None:
+        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
     if len(x) != verts.shape[0]:
         raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
 
     colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
         threshold=threshold, default_val=1)
     colors = np.hstack((x.reshape((len(x), 1)), colors))
+    if output_file != '':
+        op.join(BLENDER_SUBJECT_DIR, 'fmri_{}.npy'.format(hemi))
     np.save(output_file, colors)
 
 
@@ -247,11 +256,17 @@ def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
         plt.close()
 
 
-def project_on_surface(subject, volume_file, reg_file):
-    brain = Brain(subject, 'both', 'pial', curv=False, offscreen=False)
+def project_on_surface(subject, volume_file, data_output_fname, colors_output_fname, target_subject=None, threshold=2,
+                       overwrite_surf_data=False):
+    # brain = Brain(subject, 'both', 'pial', curv=False, offscreen=False)
     for hemi in ['rh', 'lh']:
-        zstat = project_volume_data(volume_file, hemi, reg_file, surf='pial')
-        brain.add_overlay(zstat, hemi=hemi)
+        if not op.isfile(data_output_fname) or overwrite_surf_data:
+            surf_data = fu.project_volume_data(
+                volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3, target_subject=target_subject)
+            np.save(data_output_fname.format(hemi=hemi), surf_data)
+        else:
+            surf_data = np.load(data_output_fname.format(hemi=hemi))
+        _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi))
 
 
 def mask_volume(volume, mask, masked_volume):
@@ -291,9 +306,17 @@ if __name__ == '__main__':
     constrast_file=constrast_file_template.format(
         contrast=constrast, hemi='{hemi}', format='mgz')
     atlas = 'laus250'
-    find_clusters(SUBJECT, constrast_file, atlas,  load_from_annotation=False, n_jobs=6)
-    # show_fMRI_using_pysurfer(SUBJECT, input_file=constrast_file, hemi='lh')
+    # find_clusters(SUBJECT, constrast_file, atlas,  load_from_annotation=False, n_jobs=6)
 
+    SUBJECT = 'pp009'
+    TASK = 'ARC'
+    volume_file = op.join(FMRI_DIR, TASK, SUBJECT, 'con_0011.nii')
+    data_output_fname = op.join(FMRI_DIR, TASK, SUBJECT, 'con_0011_{hemi}_colin27.npy')
+    colors_output_fname = op.join(FMRI_DIR, TASK, SUBJECT, 'con_0011_{hemi}_colin27_colors.npy')
+    project_on_surface(SUBJECT, volume_file, data_output_fname, colors_output_fname, target_subject='colin27')
+
+
+    # show_fMRI_using_pysurfer(SUBJECT, input_file=constrast_file, hemi='lh')
     # root = op.join('/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003')
     # volume_file = op.join(root, 'sig.anat.mgz')
     # mask_file = op.join(root, 'VLPFC.mask.mgz')
@@ -302,15 +325,13 @@ if __name__ == '__main__':
     # constrast_masked_file = op.join(root, 'sig.masked.{hemi}.mgz')
 
     # for hemi in ['rh', 'lh']:
-    #     save_fmri_colors(SUBJECT, hemi, constrast_masked_file.format(hemi=hemi), 'pial',
-    #          op.join(BLENDER_SUBJECT_DIR, 'fmri_{}.npy'.format(hemi)),  threshold=2)
+    #     save_fmri_colors(SUBJECT, hemi, constrast_masked_file.format(hemi=hemi), 'pial', threshold=2)
     # Show the fRMI in pysurfer
     # show_fMRI_using_pysurfer(SUBJECT, input_file=constrast_masked_file, hemi='both')
 
     # load_and_show_npy(SUBJECT, '/homes/5/npeled/space3/visualization_blender/mg79/fmri_lh.npy', 'lh')
 
     # mask_volume(volume_file, mask_file, masked_file)
-    # project_on_surface(SUBJECT, volume_file, '/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003/register.lta')
     # show_fMRI_using_pysurfer(SUBJECT, input_file='/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003/sig.{hemi}.masked.mgz', hemi='both')
     # calculate_subcorticals_activity('/homes/5/npeled/space3/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
     #              '/autofs/space/franklin_003/users/npeled/MSIT/mg78/aseg_stats.csv')

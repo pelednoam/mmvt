@@ -518,4 +518,5 @@ def unregister():
         bpy.utils.unregister_class(FilterElectrodes)
         # bpy.utils.unregister_class(ExportGraph)
     except:
-        print("Can't unregister ConnectionsPanel!")
+        pass
+        # print("Can't unregister ConnectionsPanel!")

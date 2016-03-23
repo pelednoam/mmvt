@@ -464,5 +464,6 @@ def unregister():
         bpy.utils.unregister_class(ModalTimerOperator)
         bpy.utils.unregister_class(ExportGraph)
     except:
-        print("Can't unregister PlayPanel!")
-        print(traceback.format_exc())
+        pass
+        # print("Can't unregister PlayPanel!")
+        # print(traceback.format_exc())

@@ -140,5 +140,6 @@ def unregister():
         bpy.utils.unregister_class(SearchFilter)
         bpy.utils.unregister_class(SearchExport)
     except:
-        print("Can't unregister Search Panel!")
+        pass
+        # print("Can't unregister Search Panel!")
 

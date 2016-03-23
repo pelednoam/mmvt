@@ -190,4 +190,5 @@ def unregister():
         bpy.utils.unregister_class(PrevCluster)
         bpy.utils.unregister_class(NearestCluster)
     except:
-        print("Can't unregister fMRI Panel!")
+        pass
+        # print("Can't unregister fMRI Panel!")

@@ -455,4 +455,5 @@ def unregister():
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:
-        print("Can't unregister Freeview Panel!")
+        pass
+        # print("Can't unregister Freeview Panel!")
