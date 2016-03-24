@@ -20,15 +20,15 @@ def create_freeview_cmd(subject, atlas, bipolar, create_points_files=True, way_p
     electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format(
         '_bipolar' if bipolar else ''))
     blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
-    elecs = np.load(electrodes_file)
-    if create_points_files:
+    freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
+        '{}+aseg.mgz:opacity=0.05:colormap=lut:lut={}ColorLUT.txt '.format(atlas, atlas)
+    if op.isfile(electrodes_file) and create_points_files:
+        elecs = np.load(electrodes_file)
         groups = set([utils.elec_group(name, bipolar) for name in elecs['names']])
-        freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
-            '{}+aseg.mgz:opacity=0.05:colormap=lut:lut={}ColorLUT.txt '.format(atlas, atlas) + \
-            ('-w ' if way_points else '-c ')
+        freeview_command += '-w ' if way_points else '-c '
+        postfix = '.label' if way_points else '.dat'
         for group in groups:
-            postfix = '.label' if way_points else '.dat'
-            freeview_command = freeview_command + group + postfix + ' '
+            freeview_command += group + postfix + ' '
     utils.make_dir(blender_freeview_fol)
     with open(op.join(blender_freeview_fol, 'run_freeview.sh'), 'w') as sh_file:
         sh_file.write(freeview_command)
@@ -96,6 +96,9 @@ def create_electrodes_points(subject, bipolar=False, create_points_files=True, c
                              way_points=False):
     electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes',
         'electrodes{}_positions.npz'.format('_bipolar' if bipolar else ''))
+    if not op.isfile(electrodes_file):
+        return
+
     elecs = np.load(electrodes_file)
     elecs_pos, names = elecs['pos'], [name.astype(str) for name in elecs['names']]
 
@@ -168,14 +171,13 @@ def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_
 
 if __name__ == '__main__':
     import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg78'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'pp009'
     aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'aparc.DKTatlas40'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True
     print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
-    # main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
-    read_vox2ras0()
+    main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
     # create_electrodes_points(subject, bipolar, create_volume_file=False)
     # create_freeview_cmd(subject, aparc_name, bipolar)
     # create_lut_file_for_atlas(subject, aparc_name)

@@ -436,10 +436,13 @@ def run_command_and_read_queue(cmd, in_q, shell=True, pipe=False):
             in_q.put(_sentinel)
             break
         else:
-            print('Writing data into stdin: {}'.format(data))
-            output = p.stdin.write(data.decode('utf-8'))
-            p.stdin.flush()
-            print('stdin output: {}'.format(output))
+            try:
+                print('Writing data into stdin: {}'.format(data))
+                output = p.stdin.write(data.decode('utf-8'))
+                p.stdin.flush()
+                print('stdin output: {}'.format(output))
+            except:
+                print("Pipe is close, can't write to stdin")
         # line = p.stdout.readline()
         # if line != '':
         #     print('stdout: {}'.format(line))

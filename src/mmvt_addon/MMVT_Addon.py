@@ -165,7 +165,7 @@ def import_subcorticals(base_path):
                 curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
                 if curMat is None:
                     # todo: Fix the succortical_activity_Mat to succortical_activity_mat
-                    curMat = bpy.data.materials['subcortical_activity_Mat'].copy()
+                    curMat = bpy.data.materials['succortical_activity_Mat'].copy()
                     curMat.name = '{}_mat'.format(cur_obj.name)
                 cur_obj.active_material = bpy.data.materials[curMat.name]
                 cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
@@ -1313,8 +1313,7 @@ class UpdateAppearance(bpy.types.Operator):
             self.report({'ERROR'}, 'You should change the view to Rendered Brain first.')
         return {"FINISHED"}
 
-bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="",
-                                                                  update=transparency_draw)
+bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="")
 bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
 bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
 

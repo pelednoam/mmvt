@@ -10,11 +10,17 @@ from nibabel.spatialimages import ImageFileError
 import logging
 logger = logging.getLogger('surfer')
 
+from src import utils
+
+mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.dat'
+mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
+
+
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
                         projmeth="frac", projsum="avg", projarg=[0, 1, .1],
                         surf="white", smooth_fwhm=3, mask_label=None,
-                        target_subject=None, verbose=None):
+                        target_subject=None, output_fname=None, verbose=None):
     """Sample MRI volume onto cortical manifold.
     Note: this requires Freesurfer to be installed with correct
     SUBJECTS_DIR definition (it uses mri_vol2surf internally).
@@ -57,7 +63,7 @@ def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
         cmd = ['bash', '-c', 'source {} && env'.format(
                os.path.join(env['FREESURFER_HOME'], 'FreeSurferEnv.sh'))]
         envout = check_output(cmd)
-        env = dict(line.split('=', 1) for line in envout.split('\n') if '=' in line)
+        env = dict(line.split(b'=', 1) for line in envout.split(b'\n') if b'=' in line)
 
     # Set the basic commands
     cmd_list = ["mri_vol2surf",
@@ -93,19 +99,21 @@ def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
         cmd_list.extend(["--trgsubject", target_subject])
 
     # Execute the command
-    out_file = mktemp(prefix="pysurfer-v2s", suffix='.mgz')
-    cmd_list.extend(["--o", out_file])
+    if output_fname is None:
+        output_fname = mktemp(prefix="pysurfer-v2s", suffix='.mgz')
+    cmd_list.extend(["--o", output_fname])
     logger.info(" ".join(cmd_list))
     p = Popen(cmd_list, stdout=PIPE, stderr=PIPE, env=env)
     stdout, stderr = p.communicate()
     out = p.returncode
     if out:
-        raise RuntimeError(("mri_vol2surf command failed "
-                            "with command-line: ") + " ".join(cmd_list))
+        raise RuntimeError('mri_vol2surf command failed: {}, {}, {}'.format(out, stdout, stderr))
+
 
     # Read in the data
-    surf_data = read_scalar_data(out_file)
-    os.remove(out_file)
+    surf_data = read_scalar_data(output_fname)
+    if output_fname is None:
+        os.remove(output_fname)
     return surf_data
 
 
@@ -166,3 +174,15 @@ def read_scalar_data(filepath):
         fobj.close()
 
     return scalar_data
+
+
+# def transform_mni_to_subject(subject, contrast_name, contrast, mn305_contrast_file_name='sig.mgz',
+#         subject_contrast_file_name='sig_subject.mgz', print_only=False):
+#    sig_fol = os.path.join('{}.sm05.mni305'.format(contrast_name), contrast)
+def transform_mni_to_subject(subject, volue_fol, volume_fname='sig.mgz',
+        subject_contrast_file_name='sig_subject.mgz', print_only=False):
+    mni305_sig_file = os.path.join(volue_fol, volume_fname)
+    subject_sig_file = os.path.join(volue_fol, subject_contrast_file_name)
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(mni305_to_subject_reg)
+    rs(mni305_to_subject)

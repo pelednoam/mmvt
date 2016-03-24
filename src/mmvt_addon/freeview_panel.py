@@ -3,6 +3,7 @@ import mmvt_utils as mu
 import numpy as np
 import os.path as op
 import time
+import glob
 from sys import platform as _platform
 
 MAC_FREEVIEW_CMD = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview'
@@ -30,7 +31,7 @@ def save_cursor_position():
 def goto_cursor_position():
     root = mu.get_user_fol()
     point = np.genfromtxt(op.join(root, 'freeview', 'edit.dat'))
-    bpy.context.scene.cursor_location = point / 10.0
+    bpy.context.scene.cursor_location = tuple(point / 10.0)
 
 
 class FreeviewKeyboardListener(bpy.types.Operator):
@@ -100,25 +101,36 @@ class FreeviewOpen(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
-        sig = op.join(root, 'freeview', 'sig_subject.mgz')
-        sig_cmd = '' #'-v {}:colormap=heat' if op.isfile(sig) else ''
+        if bpy.context.scene.fMRI_files_exist:
+            sig_fname = op.join(root, 'freeview', '{}.mgz'.format(bpy.context.scene.fmri_files))
+            sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
+        else:
+            sig_cmd = ''
         T1 = op.join(root, 'freeview', 'T1.mgz')#'orig.mgz')
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
-        electrodes = self.get_electrodes_groups(root)
+        electrodes_cmd = self.get_electrodes_command(root)
         freeview_app = MAC_FREEVIEW_CMD if _platform == "darwin" else 'freeview'
-        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}" -c {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes)
+        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}" {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes_cmd)
         print(cmd)
         FreeviewPanel.freeview_queue = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
-    def get_electrodes_groups(self, root):
-        groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
-        groups_files = ''
-        for group in groups:
-            groups_files += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
-        return groups_files
+    def get_electrodes_command(self, root):
+        if bpy.data.objects.get('Deep_electrodes'):
+            cmd = '-c '
+            groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
+            for group in groups:
+                cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
+        else:
+            cmd = ''
+        return cmd
 
+
+bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=True, description='Load electrodes')
+bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
 
 
 class FreeviewPanel(bpy.types.Panel):
@@ -132,8 +144,12 @@ class FreeviewPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        row = layout.row(align=0)
-        row.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
+        # row = layout.row(align=0)
+        layout.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
+        if bpy.data.objects.get('Deep_electrodes'):
+            layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
+        if bpy.context.scene.fMRI_files_exist:
+            layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
@@ -149,6 +165,9 @@ def init(addon):
     FreeviewPanel.addon = addon
     bpy.context.scene.freeview_listen_to_keyboard = False
     bpy.context.scene.freeview_listener_is_running = False
+    bpy.context.scene.fMRI_files_exist = len(glob.glob(op.join(mu.get_user_fol(), 'fmri', '*_lh.npy'))) > 0
+        #mu.hemi_files_exists(op.join(mu.get_user_fol(), 'fmri_{hemi}.npy'))
+    bpy.context.scene.electrodes_exist = not bpy.data.objects.get('Deep_electrodes', None) is None
     register()
 
 

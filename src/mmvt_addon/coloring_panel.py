@@ -265,6 +265,14 @@ def default_coloring(loop_indices):
             vcol_layer.data[loop_ind].color = [1, 1, 1]
 
 
+def fmri_files_update(self, context):
+    user_fol = mu.get_user_fol()
+    # fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
+    for hemi in mu.HEMIS:
+        fname = op.join(user_fol, 'fmri', '{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
+        ColoringMakerPanel.fMRI[hemi] = np.load(fname)
+
+
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_color"
     bl_label = "ohad electrodes color"
@@ -377,7 +385,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         user_fol = mu.get_user_fol()
         aparc_name = bpy.context.scene.atlas
         faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
-        fmri_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+        fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
         fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
@@ -393,7 +401,9 @@ class ColoringMakerPanel(bpy.types.Panel):
                 pass
             if meg_labels_files_exist:
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
-            if fmri_files_exist:
+            if len(fmri_files) > 1:
+                layout.prop(context.scene, "fmri_files", text="")
+            if len(fmri_files) > 0:
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
             if fmri_clusters_files_exist:
                 layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
@@ -416,14 +426,22 @@ def init(addon):
     ColoringMakerPanel.addon = addon
     # Load fMRI data
     user_fol = mu.get_user_fol()
-    fmri_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
-    for hemi in mu.HEMIS:
-        if fmri_files_exist:
-            ColoringMakerPanel.fMRI[hemi] = np.load(op.join(user_fol, 'fmri_{}.npy'.format(hemi)))
+    if len(fmri_files) > 0:
+        if len(fmri_files) > 0:
+            files_names = [mu.namebase(fname)[:-3] for fname in fmri_files]
+            clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+            bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
+                items=clusters_items, description="fMRI files", update=fmri_files_update)
+        else:
+            for hemi in mu.HEMIS:
+                ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
         if fmri_clusters_files_exist:
-            ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
-                op.join(user_fol, 'fmri_clusters_{}.npy'.format(hemi)))
+            for hemi in mu.HEMIS:
+                ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
+                    op.join(user_fol, 'fmri_clusters_{}.npy'.format(hemi)))
+
     ColoringMakerPanel.faces_verts = load_faces_verts()
     register()
 
