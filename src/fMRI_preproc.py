@@ -277,6 +277,8 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
         if not op.isfile(colors_output_fname.format(hemi=hemi)) or overwrite_colors_file:
             print('Calulating the activaton colors for {}'.format(surf_output_fname))
             _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi))
+        shutil.copyfile(colors_output_fname.format(hemi=hemi), op.join(BLENDER_ROOT_DIR, subject, 'fmri',
+            op.basename(colors_output_fname.format(hemi=hemi))))
 
 
 def load_images_file(image_fname):
@@ -310,12 +312,12 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
     if not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz:
-        mri_convert(volume_fname_template, 'nii', 'mgz')
+        mri_convert(volume_fname_template, 'mgh', 'mgz')
     volume_fname = volume_fname_template.format(format='mgz')
     shutil.copyfile(volume_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', op.basename(volume_fname)))
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
-    colors_output_fname = '{}{}_{}.npy'.format(volume_fname, target_subject_prefix, '{hemi}')
-    surf_output_fname = '{}{}_{}.mgz'.format(volume_fname, target_subject_prefix, '{hemi}')
+    colors_output_fname = op.join(data_fol, '{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
+    surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
         
     project_on_surface(target_subject, volume_fname, colors_output_fname, surf_output_fname,
                        target_subject, overwrite_surf_data, overwrite_colors_file)
@@ -350,8 +352,8 @@ if __name__ == '__main__':
 
     overwrite_volume_mgz = False
     data_fol = op.join(FMRI_DIR, TASK, 'pp009')
-    # project_volue_to_surface(SUBJECT, data_fol, 'pp009_ARC_High_Risk_Linear_Reward_contrast')
-    project_volue_to_surface(SUBJECT, data_fol, 'pp009_ARC_PPI_highrisk_L_VLPFC')
+    project_volue_to_surface(SUBJECT, data_fol, 'pp009_ARC_High_Risk_Linear_Reward_contrast')
+    # project_volue_to_surface(SUBJECT, data_fol, 'pp009_ARC_PPI_highrisk_L_VLPFC')
     # find_clusters(SUBJECT, constrast_file, atlas,  load_from_annotation=False, n_jobs=6)
 
 
