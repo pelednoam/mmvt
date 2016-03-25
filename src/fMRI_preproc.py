@@ -33,6 +33,7 @@ FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME'
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
 os.environ['FREESURFER_HOME'] = FREE_SURFER_HOME
+os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 # SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
 # # SUBJECTS_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
 # # SUBJECTS_DIR =  '/home/noam/subjects/mri'
@@ -152,15 +153,14 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
         for label in labels:
             overlapped_vertices = np.intersect1d(cluster, label.vertices)
             if len(overlapped_vertices) > 0:
-                inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
+                if 'unknown' not in label.name:
+                    inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
         if len(inter_labels) > 0:
             max_inter = max([(il['num'], il['name']) for il in inter_labels])
             cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=max_inter[1],
                 coordinates=verts[cluster], max=cluster_max, hemi=hemi))
         else:
             print('No intersected labels!')
-            cluster_labels = None
-            break
     return cluster_labels
 
 

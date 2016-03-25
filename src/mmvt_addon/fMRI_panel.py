@@ -11,7 +11,8 @@ def clusters_update(self, context):
 def _clusters_update():
     if fMRIPanel.addon is None or not fMRIPanel.init:
         return
-    fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
     # prev_cluster = fMRIPanel.current_electrode
 
     if bpy.context.scene.plot_current_cluster:
@@ -36,19 +37,22 @@ def plot_blob(cluster_labels, faces_verts):
 
 @mu.timeit
 def find_closest_cluster():
-    cursor = np.array([bpy.context.scene.cursor_location])
+    cursor = np.array(bpy.context.scene.cursor_location)
     # hemis_objs = [bpy.data.objects[hemi_obj] for hemi_obj in ['Cortex-lh', 'Cortex-rh']]
     # for hemi_obj, hemi in zip(hemis_objs, ['lh', 'rh']):
-    clusters = fMRIPanel.clusters_labels['rh']
-    clusters.extend(fMRIPanel.clusters_labels['lh'])
-    dists = []
-    for ind, cluster in enumerate(clusters):
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    dists, indices = [], []
+    for ind, cluster in enumerate(fMRIPanel.all_clusters_labels[clusters_labels_file]):
         # co_find = cursor * hemi_obj.matrix_world.inverted()
         # clusters_hemi = fMRIPanel.clusters_labels['rh']
-        dists.append(np.min(mu.cdist(cluster['coordinates'], cursor)))
+        _, _, dist = mu.min_cdist(cluster['coordinates'], [cursor])[0]
+        dists.append(dist)
     min_index = np.argmin(np.array(dists))
-    closest_cluster = clusters[min_index]
-    bpy.context.scene.clusters = cluster_name(closest_cluster)
+    closest_cluster = fMRIPanel.all_clusters_labels[clusters_labels_file][min_index]
+    bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
+    fMRIPanel.cluster_labels = closest_cluster
+    print('Closest cluster: {}'.format(bpy.context.scene.fmri_clusters))
+    _clusters_update()
 
 
 class NextCluster(bpy.types.Operator):
@@ -62,9 +66,9 @@ class NextCluster(bpy.types.Operator):
 
 
 def next_cluster():
-    index = fMRIPanel.clusters.index(bpy.context.scene.clusters)
+    index = fMRIPanel.clusters.index(bpy.context.scene.fmri_clusters)
     next_cluster = fMRIPanel.clusters[index + 1] if index < len(fMRIPanel.clusters) - 1 else fMRIPanel.clusters[0]
-    bpy.context.scene.clusters = next_cluster
+    bpy.context.scene.fmri_clusters = next_cluster
 
 
 class PrevCluster(bpy.types.Operator):
@@ -78,16 +82,66 @@ class PrevCluster(bpy.types.Operator):
 
 
 def prev_cluster():
-    index = fMRIPanel.clusters.index(bpy.context.scene.clusters)
+    index = fMRIPanel.clusters.index(bpy.context.scene.fmri_clusters)
     prev_cluster = fMRIPanel.clusters[index - 1] if index > 0 else fMRIPanel.clusters[-1]
-    bpy.context.scene.clusters = prev_cluster
+    bpy.context.scene.fmri_clusters = prev_cluster
+
+
+def fmri_clusters_labels_files_update(self, context):
+    if fMRIPanel.init:
+        update_clusters()
+
+
+def update_clusters():
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    val_threshold = bpy.context.scene.fmri_cluster_val_threshold
+    size_threshold = bpy.context.scene.fmri_cluster_size_threshold
+    # current_clusters_labels = fMRIPanel.clusters_labels[clusters_labels_file]
+    # all_clusters_labels = current_clusters_labels['rh'] + current_clusters_labels['lh']
+    fMRIPanel.clusters_labels_filtered = [c for c in fMRIPanel.all_clusters_labels[clusters_labels_file]
+                           if abs(c['max']) > val_threshold and len(c['vertices']) > size_threshold]
+    clusters_tup = sorted([(x['max'], cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
+    fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
+    # fMRIPanel.clusters.sort(key=mu.natural_keys)
+    clusters_items = [(c, c, '', ind) for ind, c in enumerate(fMRIPanel.clusters)]
+    bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(
+        items=clusters_items, description="fmri clusters", update=clusters_update)
+    if len(fMRIPanel.clusters) > 0:
+        bpy.context.scene.fmri_clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
+        fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
+
+
+def plot_all_blobs():
+    faces_verts = fMRIPanel.addon.get_faces_verts()
+    fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
+    fmri_contrast, blobs_activity = {}, {}
+    for hemi in mu.HEMIS:
+        fmri_contrast[hemi] = fMRIPanel.addon.get_fMRI_activity(hemi)
+        blobs_activity[hemi] = np.zeros((len(fmri_contrast[hemi]), 4))
+
+    for cluster_labels in fMRIPanel.clusters_labels_filtered:
+        if bpy.context.scene.fmri_what_to_plot == 'blob':
+            blob_vertices = cluster_labels['vertices']
+            hemi = cluster_labels['hemi']
+            blobs_activity[hemi][blob_vertices] = fmri_contrast[hemi][blob_vertices]
+
+    for hemi in mu.HEMIS:
+        fMRIPanel.addon.activity_map_obj_coloring(
+            bpy.data.objects[hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
 
 
 def fMRI_draw(self, context):
     layout = self.layout
+    user_fol = mu.get_user_fol()
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
+    if len(clusters_labels_files) > 1:
+        layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
+    layout.prop(context.scene, 'fmri_cluster_val_threshold', text='clusters t-val threshold')
+    layout.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
+    layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
     row = layout.row(align=True)
     row.operator(PrevCluster.bl_idname, text="", icon='PREV_KEYFRAME')
-    row.prop(context.scene, "clusters", text="")
+    row.prop(context.scene, 'fmri_clusters', text="")
     row.operator(NextCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
     layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
@@ -98,8 +152,9 @@ def fMRI_draw(self, context):
         col = layout.box().column()
         for inter_labels in fMRIPanel.cluster_labels['intersects']:
             mu.add_box_line(col, inter_labels['name'], str(inter_labels['num']), 0.8)
-    row = layout.row(align=True)
-    row.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
+    # row = layout.row(align=True)
+    layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
+    layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
 
 
 class NearestCluster(bpy.types.Operator):
@@ -112,11 +167,35 @@ class NearestCluster(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class PlotAllBlobs(bpy.types.Operator):
+    bl_idname = "ohad.plot_all_blobs"
+    bl_label = "Plot all blobs"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        plot_all_blobs()
+        return {'PASS_THROUGH'}
+
+
+class FilterfMRIBlobs(bpy.types.Operator):
+    bl_idname = "ohad.filter_fmri_blobs"
+    bl_label = "Filter fMRI blobs"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        update_clusters()
+        return {'PASS_THROUGH'}
+
+
 bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
     default=False, description="Plot current cluster")
 bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
     items=[('cluster', 'Plot cluster', '', 1), ('blob', 'Plot blob', '', 2)],
     description='What do plot')
+bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
+    description='clusters t-val threshold', min=2, max=20)
+bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
+    description='clusters size threshold', min=1, max=2000)
 
 
 class fMRIPanel(bpy.types.Panel):
@@ -130,6 +209,7 @@ class fMRIPanel(bpy.types.Panel):
     clusters_labels = None
     cluster_labels = None
     clusters = []
+    clusters_labels_filtered = []
 
     def draw(self, context):
         if fMRIPanel.init:
@@ -137,28 +217,35 @@ class fMRIPanel(bpy.types.Panel):
 
 
 def cluster_name(x):
-    return '{}_{}'.format(x['name'], len(x['vertices']))
+    return '{}_{:.2f}'.format(x['name'], x['max'])
 
 
 def init(addon):
     user_fol = mu.get_user_fol()
-    fmri_clusters_labels = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
-    fMRI_clusters_files_exist = len(fmri_clusters_labels) > 0 and len(fmri_blobs) > 0
+    fMRI_clusters_files_exist = len(clusters_labels_files) > 0 and len(fmri_blobs) > 0
     if not fMRI_clusters_files_exist:
         return None
     fMRIPanel.addon = addon
-    fMRIPanel.clusters_labels = np.load(op.join(mu.get_user_fol(), 'fmri_cluster_labels.npy'))
-    fMRIPanel.clusters = [cluster_name(x) for x in fMRIPanel.clusters_labels['rh']]
-    fMRIPanel.clusters.extend([cluster_name(x) for x in fMRIPanel.clusters_labels['lh']])
-    fMRIPanel.clusters.sort(key=mu.natural_keys)
-    clusters_items = [(c, c, '', ind) for ind, c in enumerate(fMRIPanel.clusters)]
-    bpy.types.Scene.clusters = bpy.props.EnumProperty(
-        items=clusters_items, description="electrodes", update=clusters_update)
-    bpy.context.scene.clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
+    fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
+    fMRIPanel.cluster_labels, fMRIPanel.all_clusters_labels = {}, {}
+    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+    bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
+        items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
+    bpy.context.scene.fmri_clusters_labels_files = files_names[0]
+    for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
+        fMRIPanel.clusters_labels[file_name] = np.load(clusters_labels_file)
+        fMRIPanel.all_clusters_labels[file_name] = fMRIPanel.clusters_labels[file_name]['rh'] + \
+                                                   fMRIPanel.clusters_labels[file_name]['lh']
+        fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
+
+    bpy.context.scene.fmri_cluster_val_threshold = 3
+    bpy.context.scene.fmri_cluster_size_threshold = 50
+
+    update_clusters()
     addon.clear_cortex()
-    fMRIPanel.lookup = create_lookup_table(fMRIPanel.clusters_labels)
-    fMRIPanel.cluster_labels = fMRIPanel.lookup[bpy.context.scene.clusters]
     register()
     fMRIPanel.init = True
     print('fMRI panel initialization completed successfully!')
@@ -179,6 +266,8 @@ def register():
         bpy.utils.register_class(NextCluster)
         bpy.utils.register_class(PrevCluster)
         bpy.utils.register_class(NearestCluster)
+        bpy.utils.register_class(FilterfMRIBlobs)
+        bpy.utils.register_class(PlotAllBlobs)
         print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
@@ -190,6 +279,8 @@ def unregister():
         bpy.utils.unregister_class(NextCluster)
         bpy.utils.unregister_class(PrevCluster)
         bpy.utils.unregister_class(NearestCluster)
+        bpy.utils.unregister_class(FilterfMRIBlobs)
+        bpy.utils.unregister_class(PlotAllBlobs)
     except:
         pass
         # print("Can't unregister fMRI Panel!")

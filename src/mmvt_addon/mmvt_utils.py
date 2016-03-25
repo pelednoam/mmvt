@@ -611,7 +611,7 @@ class connection_to_listener(object):
 conn_to_listener = connection_to_listener()
 
 
-def cdist(X, Y):
+def min_cdist(X, Y):
     import mathutils
     kd = mathutils.kdtree.KDTree(X.shape[0])
     for ind, x in enumerate(X):
@@ -621,6 +621,7 @@ def cdist(X, Y):
     res = []
     for y in Y:
         res.append(kd.find_n(y, 1)[0])
+    # co, index, dist
     return res
 
 
