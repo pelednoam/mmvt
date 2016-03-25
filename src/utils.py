@@ -428,6 +428,10 @@ def namebase(file_name):
     return os.path.splitext(os.path.basename(file_name))[0]
 
 
+def file_type(file_name):
+    return os.path.splitext(os.path.basename(file_name))[1][1:]
+
+
 def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     if subjects_dir=='':

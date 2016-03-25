@@ -426,17 +426,17 @@ def init(addon):
     ColoringMakerPanel.addon = addon
     # Load fMRI data
     user_fol = mu.get_user_fol()
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
     if len(fmri_files) > 0:
-        if len(fmri_files) > 0:
+        if len(fmri_files) > 1:
             files_names = [mu.namebase(fname)[:-3] for fname in fmri_files]
             clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
             bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
                 items=clusters_items, description="fMRI files", update=fmri_files_update)
-        else:
-            for hemi in mu.HEMIS:
-                ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
+            bpy.context.scene.fmri_files = files_names[0]
+        for hemi in mu.HEMIS:
+            ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
         if fmri_clusters_files_exist:
             for hemi in mu.HEMIS:
                 ColoringMakerPanel.fMRI_clusters[hemi] = np.load(

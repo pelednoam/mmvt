@@ -2,7 +2,7 @@ import bpy
 import os.path as op
 import numpy as np
 import mmvt_utils as mu
-
+import glob
 
 def clusters_update(self, context):
     _clusters_update()
@@ -141,9 +141,10 @@ def cluster_name(x):
 
 
 def init(addon):
-    fMRI_clusters_files_exist = mu.hemi_files_exists(
-        op.join(mu.get_user_fol(), 'fmri_clusters_{hemi}.npy')) and \
-        op.isfile(op.join(mu.get_user_fol(), 'fmri_cluster_labels.npy'))
+    user_fol = mu.get_user_fol()
+    fmri_clusters_labels = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
+    fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
+    fMRI_clusters_files_exist = len(fmri_clusters_labels) > 0 and len(fmri_blobs) > 0
     if not fMRI_clusters_files_exist:
         return None
     fMRIPanel.addon = addon

@@ -11,9 +11,6 @@ selxavg3_sess_mni = 'selxavg3-sess -s {subject} -analysis {contrast_name}.sm05.m
 tksurfer_sess = 'tksurfer-sess -s {subject} -analysis {contrast_name}.sm05.{hemi} -c {contrasts_names[0]} -c {contrasts_names[1]} -c {contrasts_names[2]} -c {contrasts_names[3]}'
 tksurfer_sess_mni = 'tksurfer-sess -s {subject} -analysis {contrast_name}.sm05.mni305 -c {contrasts_names[0]} -c {contrasts_names[1]} -c {contrasts_names[2]} -c {contrasts_names[3]}'
 
-mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.dat'
-mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
-
 """
 mri_label2vol --annot rh.laus250.annot --temp T1.mgz --subject mg78 --hemi rh --identity --o rh.laus250.mgz
 mri_label2vol --annot rh.laus250.annot --temp T1.mgz --subject mg78 --hemi rh --identity --proj frac 0 1 .1 --o rh.laus250_2.mgz
@@ -46,17 +43,6 @@ def plot_contrast(subject, root_dir, contrast_name, contrasts, hemi):
     rs = utils.partial_run_script(locals())
     rs(tksurfer_sess)
     os.chdir(current_dir)
-
-
-def transform_mni_to_subject(subject, contrast_name, contrast, mn305_contrast_file_name='sig.mgz',
-        subject_contrast_file_name='sig_subject.mgz', print_only=False):
-
-    sig_fol = os.path.join('{}.sm05.mni305'.format(contrast_name), contrast)
-    mni305_sig_file = os.path.join(sig_fol, mn305_contrast_file_name)
-    subject_sig_file = os.path.join(sig_fol, subject_contrast_file_name)
-    rs = utils.partial_run_script(locals(), print_only=print_only)
-    rs(mni305_to_subject_reg)
-    rs(mni305_to_subject)
 
 
 if __name__ == '__main__':
