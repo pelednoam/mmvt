@@ -284,6 +284,40 @@ def save_labels_vertices(subject, aparc_name):
     return op.isfile(output_fname)
 
 
+# def find_hemis_boarders(subject):
+#     from scipy.spatial.distance import cdist
+#     verts = {}
+#     for hemi in utils.HEMIS:
+#         ply_file = op.join(SUBJECTS_DIR)
+#         verts[hemi], _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+#     dists = cdist(verts['rh'], verts['lh'])
+#
+#
+# def find_hemis_axis(subject):
+#     from sklearn.decomposition import PCA
+#     import matplotlib.pyplot as plt
+#     all_verts = []
+#     for hemi in utils.HEMIS:
+#         ply_file = op.join(SUBJECTS_DIR)
+#         verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+#         all_verts.extend(verts)
+#     pca = PCA(n_components=2)
+#     model = pca.fit(all_verts)
+#     trans_verts = pca.transform(all_verts)
+#     print ('explained variance (first {} components): {:.2f}'.format(2, sum(pca.explained_variance_ratio_)))
+#     plt.scatter(trans_verts[:, 0], trans_verts[:, 1])
+#     plt.show()
+#
+#
+# def plot_hyperplane(clf, min_x, max_x, linestyle, label):
+#     import matplotlib.pyplot as plt
+#     # get the separating hyperplane
+#     w = clf.coef_[0]
+#     a = -w[0] / w[1]
+#     xx = np.linspace(min_x - 5, max_x + 5)  # make sure the line is long enough
+#     yy = a * xx - (clf.intercept_[0]) / w[1]
+#     plt.plot(xx, yy, linestyle, label=label)
+
 def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, fsaverage='fsaverage',
          overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
          overwrite_ply_files=False, overwrite_faces_verts=False, solve_labels_collisions=False,
@@ -394,8 +428,8 @@ if __name__ == '__main__':
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
     subjects = ['em20'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
+    # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
 
 
     # aparc_name = 'laus250'

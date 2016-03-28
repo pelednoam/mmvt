@@ -149,15 +149,19 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
     for cluster in clusters:
         x = contrast[cluster]
         cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
-        inter_labels = []
+        inter_labels, inter_labels_tups = [], []
         for label in labels:
             overlapped_vertices = np.intersect1d(cluster, label.vertices)
             if len(overlapped_vertices) > 0:
                 if 'unknown' not in label.name:
-                    inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
+                    inter_labels_tups.append((len(overlapped_vertices), label.name))
+                    # inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
+        inter_labels_tups = sorted(inter_labels_tups)[::-1]
+        for inter_labels_tup in inter_labels_tups:
+            inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
         if len(inter_labels) > 0:
-            max_inter = max([(il['num'], il['name']) for il in inter_labels])
-            cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=max_inter[1],
+            # max_inter = max([(il['num'], il['name']) for il in inter_labels])
+            cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
                 coordinates=verts[cluster], max=cluster_max, hemi=hemi))
         else:
             print('No intersected labels!')

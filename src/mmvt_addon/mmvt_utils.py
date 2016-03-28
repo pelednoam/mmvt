@@ -484,7 +484,7 @@ def make_dir(fol):
     return fol
 
 
-def profileit(prof_fname, sort_field='cumtime'):
+def profileit(sort_field='cumtime'):
     """
     Parameters
     ----------
@@ -510,10 +510,13 @@ def profileit(prof_fname, sort_field='cumtime'):
     None
 
     """
+
     def actual_profileit(func):
         def wrapper(*args, **kwargs):
             prof = cProfile.Profile()
             retval = prof.runcall(func, *args, **kwargs)
+            make_dir(op.join(get_user_fol(), 'profileit'))
+            prof_fname = op.join(get_user_fol(), 'profileit', func.__name__)
             stat_fname = '{}.stat'.format(prof_fname)
             prof.dump_stats(prof_fname)
             print_profiler(prof_fname, stat_fname, sort_field)
@@ -538,6 +541,23 @@ def timeit(func):
         print('{} took {:.2f}s'.format(func.__name__, time.time() - now))
         return retval
 
+    return wrapper
+
+
+def dump_args(func):
+    # Decorator to print function call details - parameters names and effective values
+    # http://stackoverflow.com/a/25206079/1060738
+    def wrapper(*func_args, **func_kwargs):
+        arg_names = func.__code__.co_varnames[:func.__code__.co_argcount]
+        args = func_args[:len(arg_names)]
+        defaults = func.__defaults__ or ()
+        args = args + defaults[len(defaults) - (func.__code__.co_argcount - len(args)):]
+        params = list(zip(arg_names, args))
+        args = func_args[len(arg_names):]
+        if args: params.append(('args', args))
+        if func_kwargs: params.append(('kwargs', func_kwargs))
+        print(func.__name__ + ' (' + ', '.join('%s = %r' % p for p in params) + ' )')
+        return func(*func_args, **func_kwargs)
     return wrapper
 
 
@@ -611,6 +631,21 @@ class connection_to_listener(object):
 conn_to_listener = connection_to_listener()
 
 
+def min_cdist_from_obj(obj, Y):
+    import mathutils
+    vertices = obj.data.vertices
+    kd = mathutils.kdtree.KDTree(len(vertices))
+    for ind, x in enumerate(vertices):
+        kd.insert(x.co, ind)
+    kd.balance()
+    # Find the closest point to the 3d cursor
+    res = []
+    for y in Y:
+        res.append(kd.find_n(y, 1)[0])
+    # co, index, dist
+    return res
+
+
 def min_cdist(X, Y):
     import mathutils
     kd = mathutils.kdtree.KDTree(X.shape[0])
@@ -637,3 +672,7 @@ def obj_has_activity(obj):
             activity = True
             break
     return activity
+
+
+def other_hemi(hemi):
+    return 'lh' if hemi == 'rh' else 'rh'
