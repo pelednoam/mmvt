@@ -19,6 +19,7 @@ def _clusters_update():
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             plot_blob(fMRIPanel.cluster_labels, faces_verts)
+    other_hemi = 'lh' if fMRIPanel.cluster_labels['hemi'] == 'rh' else 'rh'
 
 
 def plot_blob(cluster_labels, faces_verts):
@@ -37,18 +38,21 @@ def plot_blob(cluster_labels, faces_verts):
 
 @mu.timeit
 def find_closest_cluster():
-    cursor = np.array(bpy.context.scene.cursor_location)
+    cursor = np.array(bpy.context.scene.cursor_location) * 10
     # hemis_objs = [bpy.data.objects[hemi_obj] for hemi_obj in ['Cortex-lh', 'Cortex-rh']]
     # for hemi_obj, hemi in zip(hemis_objs, ['lh', 'rh']):
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    # cluster_to_search_in = fMRIPanel.all_clusters_labels[clusters_labels_file]
+    cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     dists, indices = [], []
-    for ind, cluster in enumerate(fMRIPanel.all_clusters_labels[clusters_labels_file]):
+    # for ind, cluster in enumerate(fMRIPanel.all_clusters_labels[clusters_labels_file]):
+    for ind, cluster in enumerate(cluster_to_search_in):
         # co_find = cursor * hemi_obj.matrix_world.inverted()
         # clusters_hemi = fMRIPanel.clusters_labels['rh']
         _, _, dist = mu.min_cdist(cluster['coordinates'], [cursor])[0]
         dists.append(dist)
     min_index = np.argmin(np.array(dists))
-    closest_cluster = fMRIPanel.all_clusters_labels[clusters_labels_file][min_index]
+    closest_cluster = cluster_to_search_in[min_index]
     bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
     fMRIPanel.cluster_labels = closest_cluster
     print('Closest cluster: {}'.format(bpy.context.scene.fmri_clusters))
@@ -193,9 +197,9 @@ bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
     items=[('cluster', 'Plot cluster', '', 1), ('blob', 'Plot blob', '', 2)],
     description='What do plot')
 bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
-    description='clusters t-val threshold', min=2, max=20)
+    description='clusters t-val threshold', min=2, max=20, update=fmri_clusters_labels_files_update)
 bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
-    description='clusters size threshold', min=1, max=2000)
+    description='clusters size threshold', min=1, max=2000, update=fmri_clusters_labels_files_update)
 
 
 class fMRIPanel(bpy.types.Panel):

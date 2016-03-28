@@ -151,6 +151,9 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
     input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes_data.mat')
     output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
+    if not op.isfile(input_file):
+        print('No electrodes data file!!!')
+        return
     if task==TASK_ECR:
         read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
             electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t,
@@ -323,6 +326,7 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=
     if electrodes_file and add_activity:
         for stat in [STAT_AVG, STAT_DIFF]:
             create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
+    sort_electrodes_groups(subject, bipolar, do_plot=True)
     # misc
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
@@ -343,6 +347,5 @@ if __name__ == '__main__':
     bipolar = False
     add_activity = True
 
-    # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
-    sort_electrodes_groups(subject, bipolar, do_plot=True)
+    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
     print('finish!')

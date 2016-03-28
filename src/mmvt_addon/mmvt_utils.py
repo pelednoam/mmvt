@@ -627,3 +627,13 @@ def min_cdist(X, Y):
 
 # def cdist(x, y):
 #     return np.sqrt(np.dot(x, x) - 2 * np.dot(x, y) + np.dot(y, y))
+
+
+# Warning! This method is really slow, ~3s per hemi
+def obj_has_activity(obj):
+    activity = False
+    for mesh_loop_color_layer_data in obj.data.vertex_colors.active.data:
+        if tuple(mesh_loop_color_layer_data.color) != (1, 1, 1):
+            activity = True
+            break
+    return activity

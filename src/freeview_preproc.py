@@ -162,11 +162,11 @@ def read_vox2ras0():
 
 def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
     # Create the files for freeview bridge
+    copy_T1(subject)
     create_freeview_cmd(subject, aparc_name, bipolar)
     create_electrodes_points(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
     create_aparc_aseg_file(subject, aparc_name, overwrite=overwrite_aseg_file)
     create_lut_file_for_atlas(subject, aparc_name)
-    copy_T1(subject)
 
 
 if __name__ == '__main__':
