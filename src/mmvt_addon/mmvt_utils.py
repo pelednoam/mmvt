@@ -453,9 +453,9 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
     # p = subprocess.call(cmd, shell=shell)
     p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True)
     thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
-    thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+    # thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
     thread_write_to_stdin.start()
-    thread_read_from_stdout.start()
+    # thread_read_from_stdout.start()
 
 
 def run_command(cmd, shell=True, pipe=False):
