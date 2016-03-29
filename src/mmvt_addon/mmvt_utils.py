@@ -414,38 +414,48 @@ def get_obj_hemi(obj_name):
 
 
 def run_command_in_new_thread(cmd, shell=True):
-    q = Queue()
-    thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q, shell))
+    q_in, q_out = Queue(), Queue()
+    thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q_in, q_out, shell))
     # thread = threading.Thread(target=run_command, args=(cmd, shell, ))
     print('start!')
     thread.start()
-    return q
+    return q_in, q_out
 
 
-_sentinel = object()
-def run_command_and_read_queue(cmd, in_q, shell=True, pipe=False):
-    # p = subprocess.call(cmd, shell=shell)
-    #todo: use the params
-    p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True)
+# _sentinel = object()
+def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
 
-    while True:
-        # Get some data
-        data = in_q.get()
-        # Check for termination
-        if data is _sentinel:
-            in_q.put(_sentinel)
-            break
-        else:
+    def write_to_stdin(proc, q_in):
+        while True:
+            # Get some data
+            data = q_in.get()
+            # Check for termination
+            # if data is _sentinel:
+            #     q_in.put(_sentinel)
+            #     break
+            # else:
             try:
                 print('Writing data into stdin: {}'.format(data))
-                output = p.stdin.write(data.decode('utf-8'))
-                p.stdin.flush()
+                output = proc.stdin.write(data.decode('utf-8'))
+                proc.stdin.flush()
                 print('stdin output: {}'.format(output))
             except:
                 print("Pipe is close, can't write to stdin")
-        # line = p.stdout.readline()
-        # if line != '':
-        #     print('stdout: {}'.format(line))
+
+    def read_from_stdout(proc, q_out):
+        while True:
+            line = proc.stdout.readline()
+            if 'RAS' in line:
+            # if line != b'':
+            #     q_out.put(line)
+                print('stdout: {}'.format(line))
+
+    # p = subprocess.call(cmd, shell=shell)
+    p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True)
+    thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
+    thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+    thread_write_to_stdin.start()
+    thread_read_from_stdout.start()
 
 
 def run_command(cmd, shell=True, pipe=False):

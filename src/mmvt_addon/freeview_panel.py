@@ -113,7 +113,7 @@ class FreeviewOpen(bpy.types.Operator):
         freeview_app = MAC_FREEVIEW_CMD if _platform == "darwin" else 'freeview'
         cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}" {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes_cmd)
         print(cmd)
-        FreeviewPanel.freeview_queue = mu.run_command_in_new_thread(cmd)
+        FreeviewPanel.freeview_queue, q_out = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
     def get_electrodes_command(self, root):

@@ -20,8 +20,9 @@ class run_mmvt_addon(bpy.types.Operator):
 
     def execute(self, context):
         root = bpy.path.abspath('//')
-        print(root)
-        sys.path.append(os.path.join(root, 'mmvt_addon'))
+        mmvt_root = os.path.join(root, 'mmvt_addon')
+        print('mmvt_root: {}'.format(mmvt_root))
+        sys.path.append(mmvt_root)
         import MMVT_Addon
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(MMVT_Addon)
