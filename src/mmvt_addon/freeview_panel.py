@@ -111,14 +111,14 @@ class FreeviewOpen(bpy.types.Operator):
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes_cmd = self.get_electrodes_command(root)
         freeview_app = MAC_FREEVIEW_CMD if _platform == "darwin" else 'freeview'
-        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}" {}'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes_cmd)
+        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}"{} -verbose'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes_cmd)
         print(cmd)
         FreeviewPanel.freeview_queue, q_out = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
     def get_electrodes_command(self, root):
         if bpy.data.objects.get('Deep_electrodes'):
-            cmd = '-c '
+            cmd = ' -c '
             groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
             for group in groups:
                 cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))

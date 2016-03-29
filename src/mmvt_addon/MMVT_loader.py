@@ -14,6 +14,8 @@ import sys
 import os
 import importlib as imp
 
+# How to crate a launcher in mac:
+# http://apple.stackexchange.com/questions/115114/how-to-put-a-custom-launcher-in-the-dock-mavericks
 
 # https://github.com/sybrenstuvel/random-blender-addons/blob/master/remote_debugger.py
 class MMVTLoaderAddonPreferences(AddonPreferences):
@@ -22,7 +24,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     bl_idname = __name__
 
     mmvt_folder = StringProperty(
-        name='Path of the mmvt folder',
+        name='Path of the mmvt addon folder',
         description='',
         subtype='DIR_PATH',
         default=''
@@ -31,7 +33,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, 'mmvt_folder')
-        layout.label(text='Path of the mmvt folder')
+        layout.label(text='')
 
 
 class MMVTLoaderAddon(bpy.types.Operator):

@@ -445,8 +445,8 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
     def read_from_stdout(proc, q_out):
         while True:
             line = proc.stdout.readline()
-            if 'RAS' in line:
-            # if line != b'':
+            # if 'RAS' in line:
+            if line != b'':
             #     q_out.put(line)
                 print('stdout: {}'.format(line))
 
