@@ -16,8 +16,8 @@ def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
     freeview_cmd = 'freeview --ras {} {} {} tkreg\n'.format(point[0], point[1], point[2]).encode()
-    if FreeviewPanel.freeview_queue:
-        FreeviewPanel.freeview_queue.put(freeview_cmd)
+    if FreeviewPanel.freeview_in_queue:
+        FreeviewPanel.freeview_in_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
@@ -115,7 +115,7 @@ class FreeviewOpen(bpy.types.Operator):
             ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
             ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
         print(cmd)
-        FreeviewPanel.freeview_queue, q_out = mu.run_command_in_new_thread(cmd)
+        FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
 
     def get_electrodes_command(self, root):
@@ -142,7 +142,8 @@ class FreeviewPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "Freeview Panel"
     addon = None
-    freeview_queue = None
+    freeview_in_queue = None
+    freeview_out_queue = None
 
     def draw(self, context):
         layout = self.layout
