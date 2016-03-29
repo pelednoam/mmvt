@@ -110,9 +110,10 @@ class FreeviewOpen(bpy.types.Operator):
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes_cmd = self.get_electrodes_command(root)
-        # freeview_app = MAC_FREEVIEW_CMD if _platform == "darwin" else 'freeview'
-        freeview_app = FreeviewPanel.freeview_cmd # 'freeview'
-        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}"{} -verbose'.format(freeview_app, sig_cmd, T1, aseg, lut, electrodes_cmd)
+        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
+            FreeviewPanel.addon_prefs.freeview_cmd, sig_cmd, T1, aseg, lut, electrodes_cmd,
+            ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
+            ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
         print(cmd)
         FreeviewPanel.freeview_queue, q_out = mu.run_command_in_new_thread(cmd)
         return {"FINISHED"}
@@ -162,10 +163,12 @@ class FreeviewPanel(bpy.types.Panel):
             layout.operator(FreeviewKeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
 
 
-def init(addon, freeview_cmd='freeview'):
+def init(addon, addon_prefs=None):
     FreeviewPanel.addon = addon
-    print('freeview command: {}'.format(freeview_cmd))
-    FreeviewPanel.freeview_cmd = freeview_cmd
+    print('freeview command: {}'.format(addon_prefs.freeview_cmd))
+    print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
+    print('Use -stdin? {}'.format(addon_prefs.freeview_cmd_stdin))
+    FreeviewPanel.addon_prefs = addon_prefs
     bpy.context.scene.freeview_listen_to_keyboard = False
     bpy.context.scene.freeview_listener_is_running = False
     bpy.context.scene.fMRI_files_exist = len(glob.glob(op.join(mu.get_user_fol(), 'fmri', '*_lh.npy'))) > 0

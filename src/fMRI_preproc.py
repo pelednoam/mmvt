@@ -333,7 +333,7 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
     if not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz:
         mri_convert(volume_fname_template, 'mgh', 'mgz')
     volume_fname = volume_fname_template.format(format='mgz')
-    shutil.copyfile(volume_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', op.basename(volume_fname)))
+    shutil.copyfile(volume_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'frmi_'.format(op.basename(volume_fname))))
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, '{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))

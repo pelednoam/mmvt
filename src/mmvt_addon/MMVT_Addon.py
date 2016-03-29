@@ -1469,7 +1469,7 @@ def main(addon_prefs=None):
         play_panel.init(current_module)
         dti_panel.init(current_module)
         electrodes_panel.init(current_module)
-        freeview_panel.init(current_module, addon_prefs.freeview_cmd)
+        freeview_panel.init(current_module, addon_prefs)
         search_panel.init(current_module)
         where_am_i_panel.init(current_module)
         appearance_panel.init(current_module)

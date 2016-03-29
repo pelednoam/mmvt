@@ -422,18 +422,12 @@ def run_command_in_new_thread(cmd, shell=True):
     return q_in, q_out
 
 
-# _sentinel = object()
 def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
 
     def write_to_stdin(proc, q_in):
         while True:
             # Get some data
             data = q_in.get()
-            # Check for termination
-            # if data is _sentinel:
-            #     q_in.put(_sentinel)
-            #     break
-            # else:
             try:
                 print('Writing data into stdin: {}'.format(data))
                 output = proc.stdin.write(data.decode('utf-8'))
@@ -451,11 +445,11 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
                 print('stdout: {}'.format(line))
 
     # p = subprocess.call(cmd, shell=shell)
-    p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True)
+    p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1) #, universal_newlines=True)
     thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
-    # thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+    thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
     thread_write_to_stdin.start()
-    # thread_read_from_stdout.start()
+    thread_read_from_stdout.start()
 
 
 def run_command(cmd, shell=True, pipe=False):

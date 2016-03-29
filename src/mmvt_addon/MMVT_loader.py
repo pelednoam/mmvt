@@ -9,7 +9,7 @@ bl_info = {
 
 import bpy
 from bpy.types import AddonPreferences
-from bpy.props import StringProperty
+from bpy.props import StringProperty, BoolProperty
 import sys
 import os
 import importlib as imp
@@ -24,26 +24,18 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     bl_idname = __name__
 
     mmvt_folder = StringProperty(
-        name='Path of the mmvt addon folder',
-        description='',
-        subtype='DIR_PATH',
-        default=''
-    )
-
+        name='Path of the mmvt addon folder', description='', subtype='DIR_PATH', default='')
     freeview_cmd = StringProperty(
-        name='Path to freeview command',
-        description='',
-        subtype='FILE_PATH',
-        default='freeview'
-    )
-
+        name='Path to freeview command', description='', subtype='FILE_PATH', default='freeview')
+    freeview_cmd_verbose = BoolProperty( name='Use the verbose flag', default=False)
+    freeview_cmd_stdin = BoolProperty(name='Use the stdin flag', default=False)
 
     def draw(self, context):
-            layout = self.layout
-            layout.prop(self, 'mmvt_folder')
-            # layout.label(text='mmvt_folder')
-            layout.prop(self, 'freeview_cmd')
-            # layout.label(text='freeview_cmd')
+        layout = self.layout
+        layout.prop(self, 'mmvt_folder')
+        layout.prop(self, 'freeview_cmd')
+        layout.prop(self, 'freeview_cmd_verbose')
+        layout.prop(self, 'freeview_cmd_stdin')
 
 
 class MMVTLoaderAddon(bpy.types.Operator):
@@ -55,10 +47,7 @@ class MMVTLoaderAddon(bpy.types.Operator):
 
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
-        root = os.path.abspath(addon_prefs.mmvt_folder)
-        print('root: {}'.format(root))
-        # root = bpy.path.abspath('//')
-        mmvt_root = os.path.join(root, 'mmvt_addon')
+        mmvt_root = os.path.abspath(addon_prefs.mmvt_folder)
         print('mmvt_root: {}'.format(mmvt_root))
         sys.path.append(mmvt_root)
         import MMVT_Addon
