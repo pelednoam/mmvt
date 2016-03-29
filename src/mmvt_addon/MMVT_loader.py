@@ -8,18 +8,43 @@ bl_info = {
 }
 
 import bpy
+from bpy.types import AddonPreferences
 import sys
 import os
 import importlib as imp
 
 
-class run_mmvt_addon(bpy.types.Operator):
+# https://github.com/sybrenstuvel/random-blender-addons/blob/master/remote_debugger.py
+class MMVTLoaderAddonPreferences(AddonPreferences):
+    # this must match the addon name, use '__package__'
+    # when defining this in a submodule of a python package.
+    bl_idname = __name__
+
+    mmvt_folder = StringProperty(
+        name='Path of the mmvt folder',
+        description='',
+        subtype='DIR_PATH',
+        default=bpy.path.abspath('//')
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, 'mmvt_folder')
+        layout.label(text='Path of the mmvt folder')
+
+
+class MMVTLoaderAddon(bpy.types.Operator):
     bl_idname = 'mmvt_addon.run_addon'
     bl_label = 'Run MMVT addon'
     bl_description = 'Runs the mmvt_addon addon'
 
     def execute(self, context):
-        root = bpy.path.abspath('//')
+
+        user_preferences = context.user_preferences
+        addon_prefs = user_preferences.addons[__name__].preferences
+        root = os.path.abspath(addon_prefs.mmvt_folder)
+
+        # root = bpy.path.abspath('//')
         mmvt_root = os.path.join(root, 'mmvt_addon')
         print('mmvt_root: {}'.format(mmvt_root))
         sys.path.append(mmvt_root)
@@ -30,12 +55,15 @@ class run_mmvt_addon(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
 def register():
-    bpy.utils.register_class(run_mmvt_addon)
+    bpy.utils.register_class(MMVTLoaderAddon)
+    bpy.utils.register_class(MMVTLoaderAddonPreferences)
 
 
 def unregister():
-    bpy.utils.unregister_class(run_mmvt_addon)
+    bpy.utils.unregister_class(MMVTLoaderAddon)
+    bpy.utils.unregister_class(MMVTLoaderAddonPreferences)
 
 
 if __name__ == '__main__':
