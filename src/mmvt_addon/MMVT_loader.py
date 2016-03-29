@@ -30,7 +30,15 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
         default=''
     )
 
-    def draw(self, context):
+    freeview_cmd = StringProperty(
+        name='Path to freeview command',
+        description='',
+        subtype='FILE_PATH',
+        default='freeview'
+    )
+
+
+def draw(self, context):
         layout = self.layout
         layout.prop(self, 'mmvt_folder')
         layout.label(text='')
@@ -54,7 +62,7 @@ class MMVTLoaderAddon(bpy.types.Operator):
         import MMVT_Addon
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(MMVT_Addon)
-        MMVT_Addon.main()
+        MMVT_Addon.main(addon_prefs)
 
         return {'FINISHED'}
 

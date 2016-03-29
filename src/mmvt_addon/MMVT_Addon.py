@@ -1456,7 +1456,7 @@ class DataInVertMakerPanel(bpy.types.Panel):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show data of vertex Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def main():
+def main(addon_prefs=None):
     bpy.context.scene.appearance_show_electrodes_layer = False
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
@@ -1469,7 +1469,7 @@ def main():
         play_panel.init(current_module)
         dti_panel.init(current_module)
         electrodes_panel.init(current_module)
-        freeview_panel.init(current_module)
+        freeview_panel.init(current_module, addon_prefs.freeview_cmd)
         search_panel.init(current_module)
         where_am_i_panel.init(current_module)
         appearance_panel.init(current_module)
