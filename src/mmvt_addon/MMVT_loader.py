@@ -25,7 +25,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
         name='Path of the mmvt folder',
         description='',
         subtype='DIR_PATH',
-        default=bpy.path.abspath('//')
+        default=''
     )
 
     def draw(self, context):
