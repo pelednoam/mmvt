@@ -43,7 +43,7 @@ class MMVTLoaderAddon(bpy.types.Operator):
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
         root = os.path.abspath(addon_prefs.mmvt_folder)
-
+        print('root: {}'.format(root))
         # root = bpy.path.abspath('//')
         mmvt_root = os.path.join(root, 'mmvt_addon')
         print('mmvt_root: {}'.format(mmvt_root))
