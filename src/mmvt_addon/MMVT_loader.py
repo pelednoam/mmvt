@@ -9,6 +9,7 @@ bl_info = {
 
 import bpy
 from bpy.types import AddonPreferences
+from bpy.props import StringProperty
 import sys
 import os
 import importlib as imp
