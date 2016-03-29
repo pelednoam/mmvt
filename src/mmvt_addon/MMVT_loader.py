@@ -41,7 +41,9 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
 def draw(self, context):
         layout = self.layout
         layout.prop(self, 'mmvt_folder')
-        layout.label(text='')
+        layout.label(text='mmvt_folder')
+        layout.prop(self, 'freeview_cmd')
+        layout.label(text='freeview_cmd')
 
 
 class MMVTLoaderAddon(bpy.types.Operator):
