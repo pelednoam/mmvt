@@ -17,6 +17,12 @@ import importlib as imp
 # How to crate a launcher in mac:
 # http://apple.stackexchange.com/questions/115114/how-to-put-a-custom-launcher-in-the-dock-mavericks
 
+def current_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+def mmvt_dir():
+    return bpy.path.abspath('//')
+
 # https://github.com/sybrenstuvel/random-blender-addons/blob/master/remote_debugger.py
 class MMVTLoaderAddonPreferences(AddonPreferences):
     # this must match the addon name, use '__package__'
@@ -25,7 +31,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
 
     mmvt_folder = StringProperty(
         name='Path of the mmvt addon folder', description='', subtype='DIR_PATH',
-        default=os.path.join(current_dir(), 'mmvt_addon'))
+        default=os.path.join(mmvt_dir(), 'mmvt_addon'))
     freeview_cmd = StringProperty(
         name='Path to freeview command', description='', subtype='FILE_PATH', default='freeview')
     freeview_cmd_verbose = BoolProperty( name='Use the verbose flag', default=False)
@@ -38,13 +44,6 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
         layout.prop(self, 'freeview_cmd_verbose')
         layout.prop(self, 'freeview_cmd_stdin')
 
-
-def current_dir():
-    return os.path.dirname(os.path.realpath(__file__))
-
-
-def mmvt_dir():
-    return bpy.path.abspath('//')
 
 class MMVTLoaderAddon(bpy.types.Operator):
     bl_idname = 'mmvt_addon.run_addon'
