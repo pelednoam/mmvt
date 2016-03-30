@@ -371,8 +371,8 @@ if __name__ == '__main__':
 
     overwrite_volume_mgz = False
     data_fol = op.join(FMRI_DIR, TASK, 'pp009')
-    # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
-    contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
+    contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
+    # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
     # project_volue_to_surface(SUBJECT, data_fol, contrast)
     find_clusters(SUBJECT, contrast, atlas,  load_from_annotation=True, n_jobs=6)
 

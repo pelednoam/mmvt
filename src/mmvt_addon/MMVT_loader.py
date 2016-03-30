@@ -24,7 +24,8 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     bl_idname = __name__
 
     mmvt_folder = StringProperty(
-        name='Path of the mmvt addon folder', description='', subtype='DIR_PATH', default='')
+        name='Path of the mmvt addon folder', description='', subtype='DIR_PATH',
+        default=os.path.join(current_dir(), 'mmvt_addon'))
     freeview_cmd = StringProperty(
         name='Path to freeview command', description='', subtype='FILE_PATH', default='freeview')
     freeview_cmd_verbose = BoolProperty( name='Use the verbose flag', default=False)
@@ -38,13 +39,19 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
         layout.prop(self, 'freeview_cmd_stdin')
 
 
+def current_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+
+def mmvt_dir():
+    return bpy.path.abspath('//')
+
 class MMVTLoaderAddon(bpy.types.Operator):
     bl_idname = 'mmvt_addon.run_addon'
     bl_label = 'Run MMVT addon'
     bl_description = 'Runs the mmvt_addon addon'
 
     def execute(self, context):
-
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
         mmvt_root = os.path.abspath(addon_prefs.mmvt_folder)
@@ -54,7 +61,6 @@ class MMVTLoaderAddon(bpy.types.Operator):
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(MMVT_Addon)
         MMVT_Addon.main(addon_prefs)
-
         return {'FINISHED'}
 
 
