@@ -74,23 +74,28 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', threshold=2):
+def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', threshold=2, output_fol=''):
     if not op.isfile(fmri_file.format(hemi)):
         print('No such file {}!'.format(fmri_file.format(hemi)))
         return
     fmri = nib.load(fmri_file.format(hemi))
     x = fmri.get_data().ravel()
-    output_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
+    if output_fol == '':
+        output_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
     utils.make_dir(output_fol)
     output_name = op.join(output_fol, 'fmri_{}_{}'.format(contrast_name, hemi))
     _save_fmri_colors(subject, hemi, x, threshold, output_name, surf_name=surf_name)
 
 
-def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None, surf_name='pial'):
+def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, surf_name='pial'):
     if verts is None:
-        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name)))
-    if len(x) != verts.shape[0]:
-        raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
+        ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
+        if op.isfile(ply_file):
+            verts, _ = utils.read_ply_file()
+            if len(x) != verts.shape[0]:
+                raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
+        else:
+            print("No ply file, Can't check the vertices number")
 
     colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
         threshold=threshold, default_val=1)
@@ -101,8 +106,10 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None, surf
     np.save(output_file, colors)
 
 
-def find_clusters(subject, contrast_name, atlas, load_from_annotation=False, n_jobs=1):
-    input_fname = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
+def find_clusters(subject, contrast_name, atlas, input_fname='', blobs_output_fname='',
+                  clusters_labels_output_fname='', load_from_annotation=False, n_jobs=1):
+    if input_fname == '':
+        input_fname = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
     clusters_labels = []
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
@@ -116,12 +123,17 @@ def find_clusters(subject, contrast_name, atlas, load_from_annotation=False, n_j
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         connectivity = mne.spatial_tris_connectivity(faces)
         clusters, _ = mne_clusters._find_clusters(contrast, 2, connectivity=connectivity)
-        output_file = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'blobs_{}_{}.npy'.format(contrast_name, hemi))
-        save_clusters_for_blender(clusters, contrast, output_file)
+        if blobs_output_fname == '':
+            blobs_output_fname = op.join(
+                BLENDER_ROOT_DIR, subject, 'fmri', 'blobs_{}_{}.npy'.format(contrast_name, hemi))
+        save_clusters_for_blender(clusters, contrast, blobs_output_fname)
         clusters_labels_hemi = find_clusters_overlapped_labeles(
             subject, clusters, contrast, atlas, hemi, verts, load_from_annotation, n_jobs)
         clusters_labels.extend(clusters_labels_hemi)
-    utils.save(clusters_labels, op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
+    if clusters_labels_output_fname == '':
+        clusters_labels_output_fname = op.join(
+            BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
+    utils.save(clusters_labels, clusters_labels_output_fname)
 
 
 def save_clusters_for_blender(clusters, contrast, output_file):
@@ -172,16 +184,18 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
     return cluster_labels
 
 
-def create_functional_rois(subject, contrast_name):
-    clusters_labels = utils.load(op.join(
-        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
-    func_rois_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
-    utils.make_dir(func_rois_fol)
+def create_functional_rois(subject, contrast_name, clusters_labels_fname='', func_rois_folder=''):
+    if clusters_labels_fname == '':
+        clusters_labels = utils.load(op.join(
+            BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
+    if func_rois_folder == '':
+        func_rois_folder = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
+    utils.make_dir(func_rois_folder)
     for cl in clusters_labels:
         cl_name = 'fmri_{}_{:.2f}'.format(cl['name'], cl['max'])
         new_label = mne.Label(cl['vertices'], cl['coordinates'], hemi=cl['hemi'], name=cl_name,
             filename=None, subject=subject, verbose=None)
-        new_label.save(op.join(func_rois_fol, cl_name))
+        new_label.save(op.join(func_rois_folder, cl_name))
 
 
 def show_fMRI_using_pysurfer(subject, input_file, hemi='both'):
@@ -196,14 +210,15 @@ def show_fMRI_using_pysurfer(subject, input_file, hemi='both'):
         brain.add_overlay(input_file.format(hemi=hemi), hemi=hemi)
 
 
-def mri_convert_hemis(contrast_file_template, contrasts):
-    for hemi in ['rh', 'lh']:
-        for contrast in contrasts.keys():
+def mri_convert_hemis(contrast_file_template, contrasts, existing_format='nii.gz'):
+    for hemi in utils.HEMIS:
+        for contrast in contrasts:
             contrast_fname = contrast_file_template.format(hemi=hemi, contrast=contrast, format='{format}')
-            mri_convert(contrast_fname, 'nii.gz', 'mgz')
+            if not op.isfile(contrast_fname.format(format='mgz')):
+                mri_convert(contrast_fname, 'nii.gz', 'mgz')
 
 
-def mri_convert(volume_fname, from_format='nii', to_format='mgz'):
+def mri_convert(volume_fname, from_format='nii.gz', to_format='mgz'):
     try:
         print('convert {} to {}'.format(volume_fname.format(format=from_format), volume_fname.format(format=to_format)))
         utils.run_script('mri_convert {} {}'.format(volume_fname.format(format=from_format),
@@ -372,12 +387,34 @@ def calc_meg_activity_for_functional_rois(subject, atlas, task, contrast_name, i
             labels_fol=labels_fol, stcs=None, inverse_method=inverse_method, do_plot=False)
 
 
-def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial'):
-    for contrast in contrasts.keys():
-        contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format='mgz')
+def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
+         existing_format='nii.gz'):
+    '''
+
+    Parameters
+    ----------
+    subject: subject's name
+    atlas: pacellation name
+    contrasts: list of contrasts names
+    contrast_file_template: template for the contrast file name. To get a full name the user should run:
+          contrast_file_template.format(hemi=hemi, constrast=constrast, format=format)
+    surface_name: Just for output name
+    contrast_format: The contrast format (mgz, nii, nii.gz, ...)
+    existing_format: The exsiting format (mgz, nii, nii.gz, ...)
+    Returns
+    -------
+
+    '''
+    # Check if the contrast is in mgz, and if not convert it to mgz
+    mri_convert_hemis(contrast_file_template, contrasts, existing_format='nii.gz')
+    for contrast in contrasts:
+        contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
         for hemi in ['rh', 'lh']:
+            # Save the contrast values with corresponding colors
             save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2)
-        find_clusters(subject, contrast, atlas,  load_from_annotation=True, n_jobs=6)
+        # Find the fMRI blobs (clusters of activation)
+        find_clusters(subject, contrast, atlas, load_from_annotation=True, n_jobs=6)
+        # Create functional rois out of the blobs
         create_functional_rois(subject, contrast)
 
 
@@ -392,7 +429,7 @@ if __name__ == '__main__':
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
     contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    main(subject, atlas, contrasts, contrast_file_template, surface_name='pial')
+    main(subject, atlas, list(contrasts.keys()), contrast_file_template, surface_name='pial')
 
     # inverse_method = 'dSPM'
     # calc_meg_activity_for_functional_rois(subject, task, contrast_name, inverse_method)
@@ -412,7 +449,7 @@ if __name__ == '__main__':
 
     # fsfast.run(subject, root_dir=ROOT_DIR, par_file = 'msit.par', contrast_name=contrast_name, tr=TR, contrasts=contrasts, print_only=False)
     # fsfast.plot_contrast(subject, ROOT_DIR, contrast_name, contrasts, hemi='rh')
-    # mri_convert_hemis(contrast_file_template, contrasts)
+    # mri_convert_hemis(contrast_file_template, list(contrasts.keys())
 
 
     # show_fMRI_using_pysurfer(subject, input_file=contrast_file, hemi='lh')
