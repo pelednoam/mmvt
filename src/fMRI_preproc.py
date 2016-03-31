@@ -18,7 +18,11 @@ import numpy as np
 # import math
 # import glob
 # import fsfast
-from sklearn.neighbors import BallTree
+try:
+    from sklearn.neighbors import BallTree
+except:
+    print('No sklearn!')
+
 import shutil
 
 import matplotlib.pyplot as plt
@@ -30,9 +34,9 @@ from src import meg_preproc as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
+SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+BLENDER_ROOT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
 os.environ['FREESURFER_HOME'] = FREE_SURFER_HOME
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
@@ -106,10 +110,10 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
     np.save(output_file, colors)
 
 
-def find_clusters(subject, contrast_name, atlas, input_fname='', blobs_output_fname='',
-                  clusters_labels_output_fname='', load_from_annotation=False, n_jobs=1):
-    if input_fname == '':
-        input_fname = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
+def find_clusters(subject, contrast_name, atlas, input_fol='', load_from_annotation=False, n_jobs=1):
+    if input_fol == '':
+        input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
+    input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
     clusters_labels = []
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
@@ -123,16 +127,13 @@ def find_clusters(subject, contrast_name, atlas, input_fname='', blobs_output_fn
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         connectivity = mne.spatial_tris_connectivity(faces)
         clusters, _ = mne_clusters._find_clusters(contrast, 2, connectivity=connectivity)
-        if blobs_output_fname == '':
-            blobs_output_fname = op.join(
-                BLENDER_ROOT_DIR, subject, 'fmri', 'blobs_{}_{}.npy'.format(contrast_name, hemi))
+        blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
         save_clusters_for_blender(clusters, contrast, blobs_output_fname)
         clusters_labels_hemi = find_clusters_overlapped_labeles(
             subject, clusters, contrast, atlas, hemi, verts, load_from_annotation, n_jobs)
         clusters_labels.extend(clusters_labels_hemi)
-    if clusters_labels_output_fname == '':
-        clusters_labels_output_fname = op.join(
-            BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
+    clusters_labels_output_fname = op.join(
+        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
 
@@ -149,7 +150,8 @@ def save_clusters_for_blender(clusters, contrast, output_file):
     np.save(output_file, data)
 
 
-def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, verts, load_from_annotation=False, n_jobs=1):
+def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, verts, load_from_annotation=False,
+                                     n_jobs=1):
     cluster_labels = []
     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
     if load_from_annotation and op.isfile(annot_fname):
@@ -388,7 +390,7 @@ def calc_meg_activity_for_functional_rois(subject, atlas, task, contrast_name, i
 
 
 def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
-         existing_format='nii.gz'):
+         existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, n_jobs=2):
     '''
 
     Parameters
@@ -401,19 +403,23 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
     surface_name: Just for output name
     contrast_format: The contrast format (mgz, nii, nii.gz, ...)
     existing_format: The exsiting format (mgz, nii, nii.gz, ...)
+    fmri_files_fol: The fmri files output folder
+    load_labels_from_annotation: For finding the intersected labels, if True the function tries to read the labels from
+        the annotation file, if False it tries to read the labels files.
     Returns
     -------
 
     '''
     # Check if the contrast is in mgz, and if not convert it to mgz
-    mri_convert_hemis(contrast_file_template, contrasts, existing_format='nii.gz')
+    mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
     for contrast in contrasts:
         contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
         for hemi in ['rh', 'lh']:
             # Save the contrast values with corresponding colors
-            save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2)
+            save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2,
+                             output_fol=fmri_files_fol)
         # Find the fMRI blobs (clusters of activation)
-        find_clusters(subject, contrast, atlas, load_from_annotation=True, n_jobs=6)
+        find_clusters(subject, contrast, atlas, fmri_files_fol, load_labels_from_annotation, n_jobs)
         # Create functional rois out of the blobs
         create_functional_rois(subject, contrast)
 
