@@ -56,10 +56,10 @@ def find_closest_cluster():
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     else:
         clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
-        cluster_to_search_in = fMRIPanel.all_clusters_labels[clusters_labels_file]
+        cluster_to_search_in = fMRIPanel.clusters_labels[clusters_labels_file]
         unfilter_clusters()
     dists, indices = [], []
-    # for ind, cluster in enumerate(fMRIPanel.all_clusters_labels[clusters_labels_file]):
+    # for ind, cluster in enumerate(fMRIPanel.clusters_labels[clusters_labels_file]):
     for ind, cluster in enumerate(cluster_to_search_in):
         # if cluster['hemi'] != closest_hemi:
         #     continue
@@ -118,9 +118,9 @@ def update_clusters(val_threshold=None, size_threshold=None):
     if size_threshold is None:
         size_threshold = bpy.context.scene.fmri_cluster_size_threshold
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
-    fMRIPanel.clusters_labels_filtered = [c for c in fMRIPanel.all_clusters_labels[clusters_labels_file]
+    fMRIPanel.clusters_labels_filtered = [c for c in fMRIPanel.clusters_labels[clusters_labels_file]
                            if abs(c['max']) >= val_threshold and len(c['vertices']) >= size_threshold]
-    clusters_tup = sorted([(x['max'], cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
+    clusters_tup = sorted([(abs(x['max']), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind) for ind, c in enumerate(fMRIPanel.clusters)]
@@ -264,7 +264,7 @@ def init(addon):
         return None
     fMRIPanel.addon = addon
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
-    fMRIPanel.cluster_labels, fMRIPanel.all_clusters_labels = {}, {}
+    fMRIPanel.cluster_labels = {}
     files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
@@ -272,8 +272,6 @@ def init(addon):
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         fMRIPanel.clusters_labels[file_name] = np.load(clusters_labels_file)
-        fMRIPanel.all_clusters_labels[file_name] = fMRIPanel.clusters_labels[file_name]['rh'] + \
-                                                   fMRIPanel.clusters_labels[file_name]['lh']
         fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
 
     bpy.context.scene.fmri_cluster_val_threshold = 3
@@ -289,8 +287,7 @@ def init(addon):
 
 def create_lookup_table(clusters_labels):
     lookup = {}
-    for hemi in mu.HEMIS:
-        for cluster_label in clusters_labels[hemi]:
+    for cluster_label in clusters_labels:
             lookup[cluster_name(cluster_label)] = cluster_label
     return lookup
 

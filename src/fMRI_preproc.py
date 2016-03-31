@@ -26,9 +26,11 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from src import utils
 from src import freesurfer_utils as fu
+from src import meg_preproc as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
+SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
@@ -72,21 +74,21 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def save_fmri_colors(subject, hemi, fmri_file, surf_name, threshold=2):
-    old, brain = get_hemi_data(subject, hemi, fmri_file.format(hemi), surf_name)
-    x = old.mlab_data
+def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', threshold=2):
+    if not op.isfile(fmri_file.format(hemi)):
+        print('No such file {}!'.format(fmri_file.format(hemi)))
+        return
+    fmri = nib.load(fmri_file.format(hemi))
+    x = fmri.get_data().ravel()
+    output_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
+    utils.make_dir(output_fol)
+    output_name = op.join(output_fol, 'fmri_{}_{}'.format(contrast_name, hemi))
+    _save_fmri_colors(subject, hemi, x, threshold, output_name, surf_name=surf_name)
 
-    # Do some sanity checks
-    verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-    print('{}.pial.ply vertices: {}'.format(hemi, verts.shape[0]))
-    if verts.shape[0] != brain.geo[hemi].coords.shape[0]:
-        raise Exception("Brain and ply objects doesn't have the same verices number!")
-    _save_fmri_colors(subject, hemi, x, threshold, verts=verts)
 
-
-def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None):
+def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None, surf_name='pial'):
     if verts is None:
-        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name)))
     if len(x) != verts.shape[0]:
         raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
 
@@ -94,13 +96,14 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file, verts=None):
         threshold=threshold, default_val=1)
     colors = np.hstack((x.reshape((len(x), 1)), colors))
     if output_file != '':
-        op.join(BLENDER_SUBJECT_DIR, 'fmri_{}.npy'.format(hemi))
+        op.join(BLENDER_ROOT_DIR, subject, 'fmri_{}.npy'.format(hemi))
+    print('Saving {}'.format(output_file))
     np.save(output_file, colors)
 
 
 def find_clusters(subject, contrast_name, atlas, load_from_annotation=False, n_jobs=1):
-    input_fname = op.join(BLENDER_ROOT_DIR, SUBJECT, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
-    cluster_labels = {}
+    input_fname = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
+    clusters_labels = []
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
         if utils.file_type(input_fname) == 'npy':
@@ -113,11 +116,12 @@ def find_clusters(subject, contrast_name, atlas, load_from_annotation=False, n_j
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         connectivity = mne.spatial_tris_connectivity(faces)
         clusters, _ = mne_clusters._find_clusters(contrast, 2, connectivity=connectivity)
-        output_file = op.join(BLENDER_SUBJECT_DIR, 'fmri', 'blobs_{}_{}.npy'.format(contrast_name, hemi))
+        output_file = op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'blobs_{}_{}.npy'.format(contrast_name, hemi))
         save_clusters_for_blender(clusters, contrast, output_file)
-        cluster_labels[hemi] = find_clusters_overlapped_labeles(
+        clusters_labels_hemi = find_clusters_overlapped_labeles(
             subject, clusters, contrast, atlas, hemi, verts, load_from_annotation, n_jobs)
-    utils.save(cluster_labels, op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
+        clusters_labels.extend(clusters_labels_hemi)
+    utils.save(clusters_labels, op.join(BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
 
 
 def save_clusters_for_blender(clusters, contrast, output_file):
@@ -166,6 +170,18 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
         else:
             print('No intersected labels!')
     return cluster_labels
+
+
+def create_functional_rois(subject, contrast_name):
+    clusters_labels = utils.load(op.join(
+        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
+    func_rois_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
+    utils.make_dir(func_rois_fol)
+    for cl in clusters_labels:
+        cl_name = 'fmri_{}_{:.2f}'.format(cl['name'], cl['max'])
+        new_label = mne.Label(cl['vertices'], cl['coordinates'], hemi=cl['hemi'], name=cl_name,
+            filename=None, subject=subject, verbose=None)
+        new_label.save(op.join(func_rois_fol, cl_name))
 
 
 def show_fMRI_using_pysurfer(subject, input_file, hemi='both'):
@@ -240,8 +256,8 @@ def calculate_subcorticals_activity(volume_file, subcortical_codes_file='', aseg
         if do_plot:
             plot_points(verts, colors=verts_colors, fig_name=seg_name, ax=ax)
         # print(pts)
-    utils.rmtree(op.join(BLENDER_SUBJECT_DIR, 'subcortical_fmri_activity'))
-    shutil.copytree(out_folder, op.join(BLENDER_SUBJECT_DIR, 'subcortical_fmri_activity'))
+    utils.rmtree(op.join(BLENDER_ROOT_DIR, subject, 'subcortical_fmri_activity'))
+    shutil.copytree(out_folder, op.join(BLENDER_ROOT_DIR, subject, 'subcortical_fmri_activity'))
     if do_plot:
         plt.savefig('/home/noam/subjects/mri/mg78/subcortical_fmri_activity/figures/brain.jpg')
         plt.show()
@@ -344,41 +360,62 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
     # load_images_file(surf_output_fname)
 
 
+def calc_meg_activity_for_functional_rois(subject, atlas, task, contrast_name, inverse_method):
+    fname_format, events_id, event_digit = meg.get_fname_format(task)
+    raw_cleaning_method = 'nTSSS'
+    files_includes_cond = True
+    meg.init_globals(subject, subject, fname_format, files_includes_cond, raw_cleaning_method, contrast_name,
+        SUBJECTS_MEG_DIR, task, SUBJECTS_DIR, BLENDER_ROOT_DIR)
+    labels_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
+    for hemi in ['rh', 'lh']:
+        meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
+            labels_fol=labels_fol, stcs=None, inverse_method=inverse_method, do_plot=False)
+
+
+def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial'):
+    for contrast in contrasts.keys():
+        contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format='mgz')
+        for hemi in ['rh', 'lh']:
+            save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2)
+        find_clusters(subject, contrast, atlas,  load_from_annotation=True, n_jobs=6)
+        create_functional_rois(subject, contrast)
+
+
 if __name__ == '__main__':
-    SUBJECT = 'colin27'
-    os.environ['SUBJECT'] = SUBJECT
-    TASK = 'ARC'#'MSIT'
+    subject = 'mg78' # 'colin27'
+    os.environ['SUBJECT'] = subject
+    task = 'MSIT' # 'ARC'
     atlas = 'laus250'
 
-    BLENDER_SUBJECT_DIR = op.join(BLENDER_ROOT_DIR, SUBJECT)
-
     contrast_name = 'interference'
-    contrasts  ={'non-interference-v-base': '-a 1', 'interference-v-base': '-a 2',
+    contrasts = {'non-interference-v-base': '-a 1', 'interference-v-base': '-a 2',
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
-    contrast_file_template = op.join(FMRI_DIR, TASK, SUBJECT, 'bold',
+    contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    contrast = 'non-interference-v-interference'
-    contrast_file = contrast_file_template.format(
-        contrast=contrast, hemi='{hemi}', format='mgz')
-    TR = 1.75
+    main(subject, atlas, contrasts, contrast_file_template, surface_name='pial')
 
-    # show_fMRI_using_pysurfer(SUBJECT, '/homes/5/npeled/space3/fMRI/ECR/hc004/bold/congruence.sm05.lh/congruent-v-incongruent/sig.mgz', 'rh')
+    # inverse_method = 'dSPM'
+    # calc_meg_activity_for_functional_rois(subject, task, contrast_name, inverse_method)
 
-    # fsfast.run(SUBJECT, root_dir=ROOT_DIR, par_file = 'msit.par', contrast_name=contrast_name, tr=TR, contrasts=contrasts, print_only=False)
-    # fsfast.plot_contrast(SUBJECT, ROOT_DIR, contrast_name, contrasts, hemi='rh')
+    # overwrite_volume_mgz = False
+    # data_fol = op.join(FMRI_DIR, task, 'pp009')
+    # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
+    # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
+    # project_volue_to_surface(subject, data_fol, contrast)
+    # find_clusters(subject, contrast, atlas,  load_from_annotation=True, n_jobs=6)
+    # create_functional_rois(subject, contrast, data_fol)
+
+    # # todo: find the TR automatiaclly
+    # TR = 1.75
+
+    # show_fMRI_using_pysurfer(subject, '/homes/5/npeled/space3/fMRI/ECR/hc004/bold/congruence.sm05.lh/congruent-v-incongruent/sig.mgz', 'rh')
+
+    # fsfast.run(subject, root_dir=ROOT_DIR, par_file = 'msit.par', contrast_name=contrast_name, tr=TR, contrasts=contrasts, print_only=False)
+    # fsfast.plot_contrast(subject, ROOT_DIR, contrast_name, contrasts, hemi='rh')
     # mri_convert_hemis(contrast_file_template, contrasts)
 
 
-    overwrite_volume_mgz = False
-    data_fol = op.join(FMRI_DIR, TASK, 'pp009')
-    contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
-    # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
-    # project_volue_to_surface(SUBJECT, data_fol, contrast)
-    find_clusters(SUBJECT, contrast, atlas,  load_from_annotation=True, n_jobs=6)
-
-
-
-    # show_fMRI_using_pysurfer(SUBJECT, input_file=contrast_file, hemi='lh')
+    # show_fMRI_using_pysurfer(subject, input_file=contrast_file, hemi='lh')
     # root = op.join('/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003')
     # volume_file = op.join(root, 'sig.anat.mgz')
     # mask_file = op.join(root, 'VLPFC.mask.mgz')
@@ -387,14 +424,14 @@ if __name__ == '__main__':
     # contrast_masked_file = op.join(root, 'sig.masked.{hemi}.mgz')
 
     # for hemi in ['rh', 'lh']:
-    #     save_fmri_colors(SUBJECT, hemi, contrast_masked_file.format(hemi=hemi), 'pial', threshold=2)
+    #     save_fmri_colors(subject, hemi, contrast_masked_file.format(hemi=hemi), 'pial', threshold=2)
     # Show the fRMI in pysurfer
-    # show_fMRI_using_pysurfer(SUBJECT, input_file=contrast_masked_file, hemi='both')
+    # show_fMRI_using_pysurfer(subject, input_file=contrast_masked_file, hemi='both')
 
-    # load_and_show_npy(SUBJECT, '/homes/5/npeled/space3/visualization_blender/mg79/fmri_lh.npy', 'lh')
+    # load_and_show_npy(subject, '/homes/5/npeled/space3/visualization_blender/mg79/fmri_lh.npy', 'lh')
 
     # mask_volume(volume_file, mask_file, masked_file)
-    # show_fMRI_using_pysurfer(SUBJECT, input_file='/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003/sig.{hemi}.masked.mgz', hemi='both')
+    # show_fMRI_using_pysurfer(subject, input_file='/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003/sig.{hemi}.masked.mgz', hemi='both')
     # calculate_subcorticals_activity('/homes/5/npeled/space3/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
     #              '/autofs/space/franklin_003/users/npeled/MSIT/mg78/aseg_stats.csv')
     # calculate_subcorticals_activity('/home/noam/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
@@ -412,7 +449,7 @@ if __name__ == '__main__':
     #     subject = utils.namebase(subject_fol)
     #     print(subject)
     #     contrast_masked_file = op.join(subject_fol, '{}_VLPFC_{}.mgz'.format(subject, '{hemi}'))
-    #     show_fMRI_using_pysurfer(SUBJECT, input_file=contrast_masked_file, hemi='rh')
+    #     show_fMRI_using_pysurfer(subject, input_file=contrast_masked_file, hemi='rh')
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
     print('finish!')

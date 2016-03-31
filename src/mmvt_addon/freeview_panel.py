@@ -4,9 +4,11 @@ import numpy as np
 import os.path as op
 import time
 import glob
+import sys
 from sys import platform as _platform
+import re
 
-MAC_FREEVIEW_CMD = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview'
+# MAC_FREEVIEW_CMD = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview'
 
 bpy.types.Scene.freeview_listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=False)
@@ -98,10 +100,43 @@ class FreeviewOpen(bpy.types.Operator):
     bl_idname = "ohad.freeview_open"
     bl_label = "Open Freeview"
     bl_options = {"UNDO"}
+    _updating = False
+    _calcs_done = False
+    _timer = None
+
+    def modal(self, context, event):
+        if event.type == 'TIMER' and not self._updating:
+            self._updating = True
+            # print('Listening to the queue')
+            if not FreeviewPanel.freeview_out_queue is None:
+                from queue import Empty
+                try:
+                    data = FreeviewPanel.freeview_out_queue.get(block=False)
+                    try:
+                        print('stdout from freeview: {}'.format(data))
+                        data_deocded = data.decode(sys.getfilesystemencoding(), 'ignore')
+                        if 'tkReg' in data_deocded:
+                            point = mu.read_numbers_rx(data_deocded)
+                            point = [x for x in point if x != '5']
+                            print(point)
+                            bpy.context.scene.cursor_location = tuple(np.array(point, dtype=np.float) / 10)
+                    except:
+                        print("Can't read the stdout from freeview")
+                except Empty:
+                    pass
+            self._updating = False
+        if self._calcs_done:
+            self.cancel(context)
+        return {'PASS_THROUGH'}
+
+    def cancel(self, context):
+        context.window_manager.event_timer_remove(self._timer)
+        self._timer = None
+        return {'CANCELLED'}
 
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
-        if bpy.context.scene.fMRI_files_exist:
+        if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
             sig_fname = op.join(root, 'freeview', '{}.mgz'.format(bpy.context.scene.fmri_files))
             sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
         else:
@@ -116,7 +151,11 @@ class FreeviewOpen(bpy.types.Operator):
             ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
         print(cmd)
         FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(cmd)
-        return {"FINISHED"}
+        context.window_manager.modal_handler_add(self)
+        self._updating = False
+        self._timer = context.window_manager.event_timer_add(0.1, context.window)
+        return {'RUNNING_MODAL'}
+        # return {"FINISHED"}
 
     def get_electrodes_command(self, root):
         if bpy.data.objects.get('Deep_electrodes'):

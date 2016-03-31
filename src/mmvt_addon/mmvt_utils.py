@@ -29,6 +29,33 @@ try:
 except:
     import pickle
 
+import re
+floats_const_pattern = r"""
+     [-+]?
+     (?: \d* \. \d+ )
+     """
+floats_pattern_rx = re.compile(floats_const_pattern, re.VERBOSE)
+
+numeric_const_pattern = r"""
+     [-+]? # optional sign
+     (?:
+         (?: \d* \. \d+ ) # .1 .12 .123 etc 9.1 etc 98.1 etc
+         |
+         (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
+     )
+     # followed by optional exponent part if desired
+     (?: [Ee] [+-]? \d+ ) ?
+     """
+numeric_pattern_rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+
+def read_floats_rx(str):
+    return floats_pattern_rx.findall(str)
+
+
+def read_numbers_rx(str):
+    return numeric_pattern_rx.findall(str)
+
 
 def is_mac():
     return IS_MAC

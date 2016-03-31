@@ -26,8 +26,8 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
-TASK_MSIT, TASK_ECR = range(2)
-TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
+# TASK_MSIT, TASK_ECR = range(2)
+# TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
@@ -36,15 +36,15 @@ MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, S
     NOISE_COV, DATA_CSD, NOISE_CSD = '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
                 '', '', '', '', '', ''
 
-def init_globals(subject, mri_subject, fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
-        subjects_meg_dir='', tasks='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR=''):
+def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
+        subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR=''):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, INV, INV_SUB, INV_X, \
         MRI, SRC, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
-    SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, tasks[task], SUBJECT)
+    SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     BLENDER_SUBJECT_FOLDER = op.join(BLENDER_ROOT_DIR, MRI_SUBJECT)
     if files_includes_cond:
@@ -76,7 +76,7 @@ def init_globals(subject, mri_subject, fname_format='', files_includes_cond=Fals
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
     STC_HEMI_SMOOTH_SAVE = get_file_name('{method}-smoothed', '', fname_format)[:-1]
-    STC_MORPH = op.join(SUBJECTS_MEG_DIR, tasks[task], '{}', '{}-{}-inv.stc') # cond, method
+    STC_MORPH = op.join(SUBJECTS_MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
     ACT = op.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
@@ -1170,28 +1170,34 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
     calc_activity_significance(events_id, stcs_conds)
 
 
-if __name__ == '__main__':
-    subject, martinos_subject = 'mg78', 'ep001'
-    # subject_id, martinos_subject_id = 'hc008', 'hc008'
-
-    TASK = TASK_MSIT
-    if TASK==TASK_MSIT:
+def get_fname_format(task):
+    if task=='MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
         fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
         events_id = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events_id = dict(Fear=1, Happy=2)
         event_digit = 1
-    elif TASK==TASK_ECR:
+    elif TASK=='ECR':
         fname_format = '{cond}-{ana_type}.{file_type}'
         events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
         event_digit = 3
+    else:
+        raise Exception('No fname for this task!')
+    return fname_format, events_id, event_digit
 
+
+if __name__ == '__main__':
+    subject, martinos_subject = 'mg78', 'ep001'
+    # subject_id, martinos_subject_id = 'hc008', 'hc008'
+
+    TASK = 'MSIT'
+    fname_format, events_id, event_digit = get_fname_format(TASK)
     constrast='interference'
-    raw_cleaning_method='nTSSS'
-    files_includes_cond=True
+    raw_cleaning_method = 'nTSSS'
+    files_includes_cond = True
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
     init_globals(martinos_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, constrast,
-                 SUBJECTS_MEG_DIR, TASKS, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
+                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
     inverse_methods = ['dSPM', 'MNE', 'sLORETA']

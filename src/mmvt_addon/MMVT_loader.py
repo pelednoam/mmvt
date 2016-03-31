@@ -31,7 +31,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
 
     mmvt_folder = StringProperty(
         name='Path of the mmvt addon folder', description='', subtype='DIR_PATH',
-        default=os.path.join(mmvt_dir(), 'mmvt_addon'))
+        default='') #os.path.join(mmvt_dir(), 'mmvt_addon'))
     freeview_cmd = StringProperty(
         name='Path to freeview command', description='', subtype='FILE_PATH', default='freeview')
     freeview_cmd_verbose = BoolProperty( name='Use the verbose flag', default=False)
@@ -53,7 +53,8 @@ class MMVTLoaderAddon(bpy.types.Operator):
     def execute(self, context):
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
-        mmvt_root = os.path.abspath(addon_prefs.mmvt_folder)
+        # mmvt_root = os.path.abspath(addon_prefs.mmvt_folder)
+        mmvt_root = bpy.path.abspath(addon_prefs.mmvt_folder)
         print('mmvt_root: {}'.format(mmvt_root))
         sys.path.append(mmvt_root)
         import MMVT_Addon

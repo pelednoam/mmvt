@@ -430,7 +430,7 @@ def init(addon):
     fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
     if len(fmri_files) > 0:
         if len(fmri_files) > 1:
-            files_names = [mu.namebase(fname)[:-3] for fname in fmri_files]
+            files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
             clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
             bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
                 items=clusters_items, description="fMRI files", update=fmri_files_update)
