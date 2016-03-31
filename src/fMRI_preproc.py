@@ -93,7 +93,7 @@ def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', 
 
 def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, surf_name='pial'):
     if verts is None:
-        # Try to read the hemi ply file to check if the vertices number is correct  
+        # Try to read the hemi ply file to check if the vertices number is correct   
         ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
         if op.isfile(ply_file):
             verts, _ = utils.read_ply_file(ply_file)
