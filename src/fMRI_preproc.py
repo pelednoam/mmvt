@@ -95,7 +95,7 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
     if verts is None:
         ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
         if op.isfile(ply_file):
-            verts, _ = utils.read_ply_file()
+            verts, _ = utils.read_ply_file(ply_file)
             if len(x) != verts.shape[0]:
                 raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
         else:
