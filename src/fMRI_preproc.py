@@ -387,10 +387,11 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
     root_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois')
     labels_fol = op.join(root_fol, '{}_labels'.format(contrast))
     labels_output_fname = op.join(root_fol, '{}_labels_data_{}'.format(contrast, '{hemi}'))
+    src = meg.create_smooth_src(subject)
     for hemi in ['rh', 'lh']:
         meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
             labels_fol=labels_fol, stcs=None, inverse_method=inverse_method,
-            labels_output_fname_template=labels_output_fname)
+            labels_output_fname_template=labels_output_fname, src=src)
 
 
 def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',

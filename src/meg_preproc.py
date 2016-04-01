@@ -216,7 +216,7 @@ def check_src_ply_vertices_num(src):
 
 
 def make_smoothed_forward_solution(events_id, n_jobs=4, usingEEG=True):
-    src = mne.setup_source_space(MRI_SUBJECT, surface='pial',  overwrite=False, spacing='all', fname=SRC_SMOOTH)
+    src = create_smooth_src(MRI_SUBJECT)
     if '{cond}' not in EPO:
         fwd = _make_forward_solution(src, EPO, usingEEG, n_jobs)
         mne.write_forward_solution(FWD_SMOOTH, fwd, overwrite=True)
@@ -225,6 +225,11 @@ def make_smoothed_forward_solution(events_id, n_jobs=4, usingEEG=True):
             fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingEEG, n_jobs)
             mne.write_forward_solution(get_cond_fname(FWD_SMOOTH, cond), fwd, overwrite=True)
     return fwd
+
+
+def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH):
+    src = mne.setup_source_space(subject, surface=surface, overwrite=overwrite, spacing='all', fname=fname)
+    return src
 
 
 def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usingEEG=True, calc_corticals=True,
@@ -997,7 +1002,7 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
 
 def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', norm_by_percentile=True, norm_percs=(1,99),
-        labels_output_fname_template='', do_plot=False):
+        labels_output_fname_template='', src=None, do_plot=False):
     labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', 'aparc250') if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
@@ -1022,8 +1027,9 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
     global_inverse_operator = False
     if '{cond}' not in INV:
         global_inverse_operator = True
-        inverse_operator = read_inverse_operator(INV)
-        src = inverse_operator['src']
+        if src is None:
+            inverse_operator = read_inverse_operator(INV)
+            src = inverse_operator['src']
 
     if do_plot:
         plt.close('all')
@@ -1036,8 +1042,9 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
     for (cond_name, cond_id), stc in zip(events_id.items(), stcs.values()):
         conditions.append(cond_id)
         if not global_inverse_operator:
-            inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
-            src = inverse_operator['src']
+            if src is None:
+                inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
+                src = inverse_operator['src']
         for ind, label in enumerate(labels):
             mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
             mean_flip = np.squeeze(mean_flip)
@@ -1238,7 +1245,7 @@ if __name__ == '__main__':
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
-    make_smoothed_forward_solution(events_id, n_jobs=1)
+    # make_smoothed_forward_solution(events_id, n_jobs=1)
     # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
     # stcs = calc_stc_per_condition(events_id, inverse_method)
     # test_labels_coloring(subject, 'laus250')
