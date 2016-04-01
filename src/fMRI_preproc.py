@@ -378,16 +378,19 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
     # load_images_file(surf_output_fname)
 
 
-def calc_meg_activity_for_functional_rois(subject, atlas, task, contrast_name, inverse_method):
+def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method):
     fname_format, events_id, event_digit = meg.get_fname_format(task)
     raw_cleaning_method = 'nTSSS'
     files_includes_cond = True
-    meg.init_globals(subject, subject, fname_format, files_includes_cond, raw_cleaning_method, contrast_name,
+    meg.init_globals(meg_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, contrast_name,
         SUBJECTS_MEG_DIR, task, SUBJECTS_DIR, BLENDER_ROOT_DIR)
-    labels_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
+    root_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois')
+    labels_fol = op.join(root_fol, '{}_labels'.format(contrast))
+    labels_output_fname = op.join(root_fol, '{}_labels_data_{}'.format(contrast, '{hemi}'))
     for hemi in ['rh', 'lh']:
         meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
-            labels_fol=labels_fol, stcs=None, inverse_method=inverse_method, do_plot=False)
+            labels_fol=labels_fol, stcs=None, inverse_method=inverse_method,
+            labels_output_fname_template=labels_output_fname)
 
 
 def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
@@ -436,10 +439,12 @@ if __name__ == '__main__':
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
     contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    main(subject, atlas, list(contrasts.keys()), contrast_file_template, surface_name='pial')
+    # main(subject, atlas, list(contrasts.keys()), contrast_file_template, surface_name='pial')
 
-    # inverse_method = 'dSPM'
-    # calc_meg_activity_for_functional_rois(subject, task, contrast_name, inverse_method)
+    contrast = 'non-interference-v-interference'
+    inverse_method = 'dSPM'
+    meg_subject = 'ep001'
+    calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
 
     # overwrite_volume_mgz = False
     # data_fol = op.join(FMRI_DIR, task, 'pp009')
