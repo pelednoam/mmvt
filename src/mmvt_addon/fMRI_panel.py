@@ -181,8 +181,11 @@ def fMRI_draw(self, context):
         mu.add_box_line(col, 'Max val', '{:.2f}'.format(fMRIPanel.cluster_labels['max']), 0.8)
         mu.add_box_line(col, 'Size', str(blob_size), 0.8)
         col = layout.box().column()
-        for inter_labels in fMRIPanel.cluster_labels['intersects']:
+        labels_num_to_show = min(7, len(fMRIPanel.cluster_labels['intersects']))
+        for inter_labels in fMRIPanel.cluster_labels['intersects'][:labels_num_to_show]:
             mu.add_box_line(col, inter_labels['name'], '{:.0%}'.format(inter_labels['num'] / float(blob_size)), 0.8)
+        if labels_num_to_show < len(fMRIPanel.cluster_labels['intersects']):
+            layout.label(text='Out of {} labels'.format(len(fMRIPanel.cluster_labels['intersects'])))
     # row = layout.row(align=True)
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')

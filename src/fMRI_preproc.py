@@ -364,15 +364,21 @@ def load_and_show_npy(subject, npy_file, hemi):
     brain.add_overlay(x[:, 0], hemi=hemi)
 
 
-def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
-                             overwrite_surf_data=True, overwrite_colors_file=True):
-    if target_subject == '':
-        target_subject = subject
-    volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
+def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_mgz=True):
     if not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz:
         mri_convert(volume_fname_template, 'mgh', 'mgz')
     volume_fname = volume_fname_template.format(format='mgz')
-    shutil.copyfile(volume_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'frmi_'.format(op.basename(volume_fname))))
+    blender_volume_fname = op.basename(volume_fname) if contrast=='' else '{}.mgz'.format(contrast)
+    shutil.copyfile(volume_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', blender_volume_fname))
+    return volume_fname
+
+
+def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
+                             overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True):
+    if target_subject == '':
+        target_subject = subject
+    volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
+    volume_fname = copy_volume_to_blender(volume_fname_template, overwrite_volume_mgz)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, '{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
@@ -400,7 +406,7 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
 
 
 def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
-         existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, n_jobs=2):
+         existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
 
     Parameters
@@ -427,8 +433,12 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
     for contrast in contrasts:
         if '{contrast}' in contrast_file_template:
             contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
+            volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
         else:
             contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
+            volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
+        copy_volume_to_blender(volume_file, contrast, overwrite_volume_mgz=True)
+        return
         for hemi in ['rh', 'lh']:
             # Save the contrast values with corresponding colors
             save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2,
@@ -440,9 +450,9 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
 
 
 if __name__ == '__main__':
-    subject = 'mg78' # 'colin27'
+    subject = 'fscopy' # 'mg78' # 'colin27'
     os.environ['SUBJECT'] = subject
-    task = 'MSIT' # 'ARC'
+    task = 'ARC' # 'MSIT' # 'ARC'
     atlas = 'laus250'
 
     contrast_name = 'interference'
@@ -451,12 +461,12 @@ if __name__ == '__main__':
     contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
     contrast_file_template = op.join(FMRI_DIR, task, subject, 'sig.{hemi}.{format}')
-    # main(subject, atlas, None, contrast_file_template, surface_name='pial', existing_format='mgh')
+    main(subject, atlas, None, contrast_file_template, surface_name='pial', existing_format='mgh')
 
     contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'
     meg_subject = 'ep001'
-    calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
+    # calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
 
     # overwrite_volume_mgz = False
     # data_fol = op.join(FMRI_DIR, task, 'pp009')
