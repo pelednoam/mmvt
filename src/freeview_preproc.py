@@ -162,6 +162,7 @@ def read_vox2ras0():
 
 def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
     # Create the files for freeview bridge
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
     copy_T1(subject)
     create_freeview_cmd(subject, aparc_name, bipolar)
     create_electrodes_points(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
@@ -171,8 +172,8 @@ def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_
 
 if __name__ == '__main__':
     import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'pp009'
-    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'aparc.DKTatlas40'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'fscopy'
+    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'laus250'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True

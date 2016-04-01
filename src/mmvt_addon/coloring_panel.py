@@ -154,7 +154,10 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         elif map_type == 'FMRI':
             # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
             # f = np.load(fname)
-            f = ColoringMakerPanel.fMRI_clusters[hemi] if clusters else ColoringMakerPanel.fMRI[hemi]
+            if clusters:
+                f = [c for c in ColoringMakerPanel.fMRI_clusters if c['hemi'] == hemi]
+            else:
+                f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
@@ -269,7 +272,7 @@ def fmri_files_update(self, context):
     user_fol = mu.get_user_fol()
     # fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
     for hemi in mu.HEMIS:
-        fname = op.join(user_fol, 'fmri', '{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
+        fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
 
 
@@ -368,6 +371,8 @@ def clear_colors():
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
+    items=[], description="fMRI files", update=fmri_files_update)
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -415,7 +420,12 @@ class ColoringMakerPanel(bpy.types.Panel):
 
 
 def get_fMRI_activity(hemi, clusters=False):
-    return ColoringMakerPanel.fMRI_clusters[hemi] if clusters else ColoringMakerPanel.fMRI[hemi]
+    if clusters:
+        f = [c for c in ColoringMakerPanel.fMRI_clusters if c['hemi'] == hemi]
+    else:
+        f = ColoringMakerPanel.fMRI[hemi]
+    return f
+    # return ColoringMakerPanel.fMRI_clusters[hemi] if clusters else ColoringMakerPanel.fMRI[hemi]
 
 
 def get_faces_verts():
@@ -429,14 +439,14 @@ def init(addon):
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
     if len(fmri_files) > 0:
-        if len(fmri_files) > 1:
-            files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
-            clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-            bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
-                items=clusters_items, description="fMRI files", update=fmri_files_update)
-            bpy.context.scene.fmri_files = files_names[0]
-        for hemi in mu.HEMIS:
-            ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
+        # if len(fmri_files) > 1:
+        files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
+        clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
+            items=clusters_items, description="fMRI files", update=fmri_files_update)
+        bpy.context.scene.fmri_files = files_names[0]
+        # for hemi in mu.HEMIS:
+        #     ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
         if fmri_clusters_files_exist:
             for hemi in mu.HEMIS:
                 ColoringMakerPanel.fMRI_clusters[hemi] = np.load(

@@ -277,9 +277,10 @@ def init(addon):
     bpy.context.scene.fmri_cluster_val_threshold = 3
     bpy.context.scene.fmri_cluster_size_threshold = 50
     bpy.context.scene.search_closest_cluster_only_in_filtered = True
+    bpy.context.scene.fmri_what_to_plot = 'blob'
 
     update_clusters()
-    addon.clear_cortex()
+    # addon.clear_cortex()
     register()
     fMRIPanel.init = True
     print('fMRI panel initialization completed successfully!')

@@ -1245,9 +1245,9 @@ if __name__ == '__main__':
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
-    # make_smoothed_forward_solution(events_id, n_jobs=1)
-    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
+    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    stcs = calc_stc_per_condition(events_id, inverse_method)
     # test_labels_coloring(subject, 'laus250')
     # save_activity_map(events_id, STAT_DIFF, None, inverse_method=inverse_method)
     print('finish!')

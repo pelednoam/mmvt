@@ -681,7 +681,8 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
                 print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
                 all_files_exists = False
     if not all_files_exists:
-        raise Exception('Not all files exist in the local subject folder!!!')
+        # raise Exception('Not all files exist in the local subject folder!!!')
+        return False
 
 
 def to_ras(points, round_coo=False):

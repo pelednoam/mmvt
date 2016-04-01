@@ -213,12 +213,17 @@ def show_fMRI_using_pysurfer(subject, input_file, hemi='both'):
         brain.add_overlay(input_file.format(hemi=hemi), hemi=hemi)
 
 
-def mri_convert_hemis(contrast_file_template, contrasts, existing_format='nii.gz'):
+def mri_convert_hemis(contrast_file_template, contrasts=None, existing_format='nii.gz'):
     for hemi in utils.HEMIS:
+        if contrasts is None:
+            contrasts = ['']
         for contrast in contrasts:
-            contrast_fname = contrast_file_template.format(hemi=hemi, contrast=contrast, format='{format}')
+            if '{contrast}' in contrast_file_template:
+                contrast_fname = contrast_file_template.format(hemi=hemi, contrast=contrast, format='{format}')
+            else:
+                contrast_fname = contrast_file_template.format(hemi=hemi, format='{format}')
             if not op.isfile(contrast_fname.format(format='mgz')):
-                mri_convert(contrast_fname, 'nii.gz', 'mgz')
+                mri_convert(contrast_fname, existing_format, 'mgz')
 
 
 def mri_convert(volume_fname, from_format='nii.gz', to_format='mgz'):
@@ -387,11 +392,11 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
     root_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois')
     labels_fol = op.join(root_fol, '{}_labels'.format(contrast))
     labels_output_fname = op.join(root_fol, '{}_labels_data_{}'.format(contrast, '{hemi}'))
-    src = meg.create_smooth_src(subject)
+    # src = meg.create_smooth_src(subject)
     for hemi in ['rh', 'lh']:
         meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
             labels_fol=labels_fol, stcs=None, inverse_method=inverse_method,
-            labels_output_fname_template=labels_output_fname, src=src)
+            labels_output_fname_template=labels_output_fname)
 
 
 def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
@@ -417,8 +422,13 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
     '''
     # Check if the contrast is in mgz, and if not convert it to mgz
     mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
+    if contrasts is None:
+        contrasts = ['group-avg']
     for contrast in contrasts:
-        contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
+        if '{contrast}' in contrast_file_template:
+            contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
+        else:
+            contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
         for hemi in ['rh', 'lh']:
             # Save the contrast values with corresponding colors
             save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2,
@@ -440,7 +450,8 @@ if __name__ == '__main__':
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
     contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    # main(subject, atlas, list(contrasts.keys()), contrast_file_template, surface_name='pial')
+    contrast_file_template = op.join(FMRI_DIR, task, subject, 'sig.{hemi}.{format}')
+    # main(subject, atlas, None, contrast_file_template, surface_name='pial', existing_format='mgh')
 
     contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'

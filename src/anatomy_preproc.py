@@ -113,6 +113,10 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             os.rename(surf_wavefront_name, surf_new_name)
             print('{}: convert asc to ply'.format(hemi))
             convert_hemis_srf_to_ply(subject, hemi)
+        else:
+            for hemi in utils.get_hemis(hemi):
+                shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)),
+                                op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi)))
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
 
 
@@ -324,7 +328,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
          morph_labels_from_fsaverage=True, n_jobs=1):
     flags = {}
     # *) Prepare the local subject's folder
-    utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR,
+    flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         print_traceback=False)
 
     # *) Create annotation file from fsaverage
@@ -427,10 +431,10 @@ if __name__ == '__main__':
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
-    subjects = ['em20'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
+    subjects = ['fscopy'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
     # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
-
+    freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
 
     # aparc_name = 'laus250'
     # users_flags = {}
