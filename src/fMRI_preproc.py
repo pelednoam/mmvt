@@ -14,6 +14,7 @@ import mne
 # from mne import spatial_tris_connectivity, grade_to_tris
 
 import numpy as np
+import time
 # import pickle
 # import math
 # import glob
@@ -111,31 +112,89 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
     np.save(output_file, colors)
 
 
-def find_clusters(subject, contrast_name, atlas, input_fol='', load_from_annotation=False, n_jobs=1):
+def init_clusters(subject, contrast_name, input_fol=''):
     if input_fol == '':
         input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
     input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
-    clusters_labels = []
+    contrast_per_hemi, connectivity_per_hemi, verts_per_hemi = {}, {}, {}
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
         if utils.file_type(input_fname) == 'npy':
             x = np.load(fmri_fname)
-            contrast = x[:, 0]
+            contrast_per_hemi[hemi] = x[:, 0]
         else:
             # try nibabel
             x = nib.load(fmri_fname)
-            contrast = x.get_data().ravel()
-        verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        connectivity = mne.spatial_tris_connectivity(faces)
-        clusters, _ = mne_clusters._find_clusters(contrast, 2, connectivity=connectivity)
+            contrast_per_hemi[hemi] = x.get_data().ravel()
+        verts_per_hemi[hemi], faces = utils.read_ply_file(
+            op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(faces)
+    return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
+
+
+def find_clusters(subject, contrast_name, t_val, atlas, input_fol='', load_from_annotation=False, n_jobs=1):
+    contrast, connectivity, verts = init_clusters(subject, contrast_name, input_fol)
+    # if input_fol == '':
+    #     input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
+    # input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
+    # clusters_labels = []
+    # for hemi in utils.HEMIS:
+    #     fmri_fname = input_fname.format(hemi=hemi)
+    #     if utils.file_type(input_fname) == 'npy':
+    #         x = np.load(fmri_fname)
+    #         contrast = x[:, 0]
+    #     else:
+    #         # try nibabel
+    #         x = nib.load(fmri_fname)
+    #         contrast = x.get_data().ravel()
+    #     verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+    clusters_labels = []
+    for hemi in utils.HEMIS:
+        clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
         blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
-        save_clusters_for_blender(clusters, contrast, blobs_output_fname)
+        save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
         clusters_labels_hemi = find_clusters_overlapped_labeles(
-            subject, clusters, contrast, atlas, hemi, verts, load_from_annotation, n_jobs)
+            subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], load_from_annotation, n_jobs)
         clusters_labels.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
         BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
     utils.save(clusters_labels, clusters_labels_output_fname)
+
+
+def find_clusters_tval_hist(subject, contrast_name, output_fol, input_fol='', n_jobs=1):
+    contrast, connectivity, _ = init_clusters(subject, contrast_name, input_fol)
+    clusters = {}
+    tval_values = np.arange(2, 20, 0.1)
+    now = time.time()
+    for ind, tval in enumerate(tval_values):
+        try:
+            # utils.time_to_go(now, ind, len(tval_values), 5)
+            clusters[tval] = {}
+            for hemi in utils.HEMIS:
+                clusters[tval][hemi], _ = mne_clusters._find_clusters(
+                    contrast[hemi], tval, connectivity=connectivity[hemi])
+            print('tval: {:.2f}, len rh: {}, lh: {}'.format(tval, max(map(len, clusters[tval]['rh'])),
+                                                        max(map(len, clusters[tval]['rh']))))
+        except:
+            print('error with tval {}'.format(tval))
+    utils.save(clusters, op.join(output_fol, 'clusters_tval_hist.pkl'))
+
+
+def load_clusters_tval_hist(input_fol):
+    clusters = utils.load(op.join(input_fol, 'clusters_tval_hist.pkl'))
+    res = []
+    for t_val, clusters_tval in clusters.items():
+        tval = float('{:.2f}'.format(t_val))
+        max_size = max([max([len(c) for c in clusters_tval[hemi]]) for hemi in utils.HEMIS])
+        res.append((tval, max_size))
+    res = sorted(res)
+    # res = sorted([(t_val, max([len(c) for c in [c_tval[hemi] for hemi in utils.HEMIS]])) for t_val, c_tval in clusters.items()])
+    # tvals = [float('{:.2f}'.format(t_val)) for t_val, c_tval in clusters.items()]
+    sizes = [r[1] for r in res]
+    tvals = [float('{:.2f}'.format(r[0])) for r in res]
+    plt.plot(tvals, sizes)
+    plt.show()
+    print('sdfsd')
 
 
 def save_clusters_for_blender(clusters, contrast, output_file):
@@ -405,7 +464,7 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
             labels_output_fname_template=labels_output_fname)
 
 
-def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial', contrast_format='mgz',
+def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
 
@@ -416,6 +475,7 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
     contrasts: list of contrasts names
     contrast_file_template: template for the contrast file name. To get a full name the user should run:
           contrast_file_template.format(hemi=hemi, constrast=constrast, format=format)
+    t_val: tval cutt off for finding clusters
     surface_name: Just for output name
     contrast_format: The contrast format (mgz, nii, nii.gz, ...)
     existing_format: The exsiting format (mgz, nii, nii.gz, ...)
@@ -438,13 +498,12 @@ def main(subject, atlas, contrasts, contrast_file_template, surface_name='pial',
             contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
             volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
         copy_volume_to_blender(volume_file, contrast, overwrite_volume_mgz=True)
-        return
         for hemi in ['rh', 'lh']:
             # Save the contrast values with corresponding colors
             save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2,
                              output_fol=fmri_files_fol)
         # Find the fMRI blobs (clusters of activation)
-        find_clusters(subject, contrast, atlas, fmri_files_fol, load_labels_from_annotation, n_jobs)
+        find_clusters(subject, contrast, t_val, atlas, fmri_files_fol, load_labels_from_annotation, n_jobs)
         # Create functional rois out of the blobs
         create_functional_rois(subject, contrast)
 
@@ -454,14 +513,19 @@ if __name__ == '__main__':
     os.environ['SUBJECT'] = subject
     task = 'ARC' # 'MSIT' # 'ARC'
     atlas = 'laus250'
+    fol = op.join(FMRI_DIR, task, subject)
 
     contrast_name = 'interference'
     contrasts = {'non-interference-v-base': '-a 1', 'interference-v-base': '-a 2',
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
-    contrast_file_template = op.join(FMRI_DIR, task, subject, 'bold',
+    contrast_file_template = op.join(fol, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    contrast_file_template = op.join(FMRI_DIR, task, subject, 'sig.{hemi}.{format}')
-    main(subject, atlas, None, contrast_file_template, surface_name='pial', existing_format='mgh')
+    contrast_file_template = op.join(fol, 'sig.{hemi}.{format}')
+
+    contrast_name = 'group-avg'
+    # main(subject, atlas, None, contrast_file_template, t_val=3, surface_name='pial', existing_format='mgh')
+    # find_clusters_tval_hist(subject, contrast_name, fol, input_fol='', n_jobs=1)
+    load_clusters_tval_hist(fol)
 
     contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'
