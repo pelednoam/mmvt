@@ -4,6 +4,7 @@ import numpy as np
 import mmvt_utils as mu
 import glob
 
+
 def clusters_update(self, context):
     _clusters_update()
 
@@ -13,18 +14,13 @@ def _clusters_update():
         return
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
-    # prev_cluster = fMRIPanel.current_electrode
-
     if bpy.context.scene.plot_current_cluster:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             plot_blob(fMRIPanel.cluster_labels, faces_verts)
-    # other_hemi = 'lh' if fMRIPanel.cluster_labels['hemi'] == 'rh' else 'rh'
 
 
 def plot_blob(cluster_labels, faces_verts):
-    # todo: clear the cortex if the hemi flip
-    # fMRIPanel.addon.clear_cortex()
     fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
     blob_vertices = cluster_labels['vertices']
     hemi = cluster_labels['hemi']
@@ -43,15 +39,6 @@ def plot_blob(cluster_labels, faces_verts):
 # @mu.profileit()
 def find_closest_cluster():
     cursor = np.array(bpy.context.scene.cursor_location) * 10
-    # hemis_objs = [bpy.data.objects[hemi_obj] for hemi_obj in ['rh', 'lh']]
-    # dists, indices = [], []
-    # for hemi_obj, hemi in zip(hemis_objs, mu.HEMIS):
-    #     _, _, dist = mu.min_cdist_from_obj(hemi_obj, [cursor])[0]
-    #     dists.append(dist)
-    # min_index = np.argmin(np.array(dists))
-    # closest_hemi = mu.HEMIS[min_index]
-    # print('closest hemi: {}'.format(closest_hemi))
-
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     else:
@@ -59,12 +46,7 @@ def find_closest_cluster():
         cluster_to_search_in = fMRIPanel.clusters_labels[clusters_labels_file]
         unfilter_clusters()
     dists, indices = [], []
-    # for ind, cluster in enumerate(fMRIPanel.clusters_labels[clusters_labels_file]):
     for ind, cluster in enumerate(cluster_to_search_in):
-        # if cluster['hemi'] != closest_hemi:
-        #     continue
-        # co_find = cursor * hemi_obj.matrix_world.inverted()
-        # clusters_hemi = fMRIPanel.clusters_labels['rh']
         _, _, dist = mu.min_cdist(cluster['coordinates'], [cursor])[0]
         dists.append(dist)
     min_index = np.argmin(np.array(dists))
@@ -112,6 +94,11 @@ def fmri_clusters_labels_files_update(self, context):
         update_clusters()
 
 
+def fmri_how_to_sort_update(self, context):
+    if fMRIPanel.init:
+        update_clusters()
+
+
 def update_clusters(val_threshold=None, size_threshold=None):
     if val_threshold is None:
         val_threshold = bpy.context.scene.fmri_cluster_val_threshold
@@ -120,7 +107,8 @@ def update_clusters(val_threshold=None, size_threshold=None):
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     fMRIPanel.clusters_labels_filtered = [c for c in fMRIPanel.clusters_labels[clusters_labels_file]
                            if abs(c['max']) >= val_threshold and len(c['vertices']) >= size_threshold]
-    clusters_tup = sorted([(abs(x['max']), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
+    sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
+    clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind) for ind, c in enumerate(fMRIPanel.clusters)]
@@ -160,6 +148,15 @@ def plot_all_blobs():
         fMRIPanel.addon.clear_cortex([hemi])
 
 
+def cluster_name(x):
+    return _cluster_name(x, bpy.context.scene.fmri_how_to_sort)
+
+
+def _cluster_name(x, sort_mode):
+    return '{}_{:.2f}'.format(x['name'], x['max']) if sort_mode == 'tval' else\
+        '{}_{:.2f}'.format(x['name'], x['size'])
+
+
 def fMRI_draw(self, context):
     layout = self.layout
     user_fol = mu.get_user_fol()
@@ -175,11 +172,14 @@ def fMRI_draw(self, context):
     row.operator(NextCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
+    row = layout.row(align=True)
+    row.label(text='Sort: ')
+    row.prop(context.scene, 'fmri_how_to_sort', expand=True)
     if not fMRIPanel.cluster_labels is None:
-        blob_size = len(fMRIPanel.cluster_labels['vertices'])
+        blob_size = fMRIPanel.cluster_labels['size']
         col = layout.box().column()
-        mu.add_box_line(col, 'Max val', '{:.2f}'.format(fMRIPanel.cluster_labels['max']), 0.8)
-        mu.add_box_line(col, 'Size', str(blob_size), 0.8)
+        mu.add_box_line(col, 'Max val', '{:.2f}'.format(fMRIPanel.cluster_labels['max']), 0.7)
+        mu.add_box_line(col, 'Size', str(blob_size), 0.7)
         col = layout.box().column()
         labels_num_to_show = min(7, len(fMRIPanel.cluster_labels['intersects']))
         for inter_labels in fMRIPanel.cluster_labels['intersects'][:labels_num_to_show]:
@@ -229,6 +229,9 @@ bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty
 bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
     items=[('cluster', 'Plot cluster', '', 1), ('blob', 'Plot blob', '', 2)],
     description='What do plot')
+bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
+    items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
+    description='How to sort', update=fmri_how_to_sort_update)
 bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
     description='clusters t-val threshold', min=2, max=20, update=fmri_clusters_labels_files_update)
 bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
@@ -254,9 +257,6 @@ class fMRIPanel(bpy.types.Panel):
             fMRI_draw(self, context)
 
 
-def cluster_name(x):
-    return '{}_{:.2f}'.format(x['name'], x['max'])
-
 
 def init(addon):
     user_fol = mu.get_user_fol()
@@ -281,6 +281,7 @@ def init(addon):
     bpy.context.scene.fmri_cluster_size_threshold = 50
     bpy.context.scene.search_closest_cluster_only_in_filtered = True
     bpy.context.scene.fmri_what_to_plot = 'blob'
+    bpy.context.scene.fmri_how_to_sort = 'tval'
 
     update_clusters()
     # addon.clear_cortex()
@@ -292,7 +293,8 @@ def init(addon):
 def create_lookup_table(clusters_labels):
     lookup = {}
     for cluster_label in clusters_labels:
-            lookup[cluster_name(cluster_label)] = cluster_label
+        lookup[_cluster_name(cluster_label, 'tval')] = cluster_label
+        lookup[_cluster_name(cluster_label, 'size')] = cluster_label
     return lookup
 
 

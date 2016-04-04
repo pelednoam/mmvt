@@ -96,6 +96,30 @@ class SliceViewerOpen(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def decode_freesurfer_output(fv_str):
+    # fv_str = str(b'\xc0\x8ak\x01tkReg: -8.23399;\x0f(\xa45 0\x96o) 1.28009\n')
+    fv_str = str(fv_str)
+    fv_str = fv_str.replace('\\xc0\\x8ak\\x01', '')
+    fv_str = fv_str.replace('\\n', '')
+    from_ind = fv_str.find('\\')
+    ind = from_ind
+    while from_ind != -1:
+        ind2 = fv_str[ind + 1:].find(' ')
+        ind3 = fv_str[ind + 1:].find('\\')
+        if ind2 == -1 and ind3 == -1:
+            ind_to = len(fv_str) - ind
+        elif ind2 == -1 or ind3 == -1:
+            ind_to = ind2 if ind3 == -1 else ind3
+        else:
+            ind_to = min([ind2, ind3])
+        str_to_remove = fv_str[ind:ind_to + ind + 1]
+        fv_str = fv_str.replace(str_to_remove, '')
+        from_ind = fv_str[ind:].find('\\')
+        ind += from_ind
+    print('stdout after cleaning: {}'.format(fv_str))
+    return fv_str
+
+
 class FreeviewOpen(bpy.types.Operator):
     bl_idname = "ohad.freeview_open"
     bl_label = "Open Freeview"
@@ -111,13 +135,13 @@ class FreeviewOpen(bpy.types.Operator):
             if not FreeviewPanel.freeview_out_queue is None:
                 from queue import Empty
                 try:
-                    data = FreeviewPanel.freeview_out_queue.get(block=False)
+                    freeview_data = FreeviewPanel.freeview_out_queue.get(block=False)
                     try:
-                        print('stdout from freeview: {}'.format(data))
-                        data_deocded = data.decode(sys.getfilesystemencoding(), 'ignore')
+                        print('stdout from freeview: {}'.format(freeview_data))
+                        # data_deocded = freeview_data.decode(sys.getfilesystemencoding(), 'ignore')
+                        data_deocded = decode_freesurfer_output(freeview_data)
                         if 'tkReg' in data_deocded:
                             point = mu.read_numbers_rx(data_deocded)
-                            point = [x for x in point if x != '5']
                             print(point)
                             bpy.context.scene.cursor_location = tuple(np.array(point, dtype=np.float) / 10)
                     except:

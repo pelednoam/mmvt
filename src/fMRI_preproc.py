@@ -51,6 +51,12 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 # FREE_SURFER_HOME = utils.get_exisiting_dir([os.environ.get('FREESURFER_HOME', ''),
 #     '/usr/local/freesurfer/stable5_3_0', '/home/noam/freesurfer'])
 
+
+_bbregister = 'bbregister --mov {fsl_input}.nii --bold --s {subject} --init-fsl --lta register.lta'
+_mri_robust_register = 'mri_robust_register --mov {fsl_input}.nii --dst $SUBJECTS_DIR/colin27/mri/orig.mgz' +\
+                       ' --lta register.lta --satit --vox2vox --cost mi --mapmov {subject}_reg_mi.mgz'
+
+
 conds = ['congruent-v-base', 'incongruent-v-base',  'congruent-v-incongruent', 'task.avg-v-base']
 x, xfs = {}, {}
 # show_fsaverage = False
@@ -181,18 +187,29 @@ def find_clusters_tval_hist(subject, contrast_name, output_fol, input_fol='', n_
 
 
 def load_clusters_tval_hist(input_fol):
+    from itertools import chain
     clusters = utils.load(op.join(input_fol, 'clusters_tval_hist.pkl'))
     res = []
     for t_val, clusters_tval in clusters.items():
         tval = float('{:.2f}'.format(t_val))
         max_size = max([max([len(c) for c in clusters_tval[hemi]]) for hemi in utils.HEMIS])
-        res.append((tval, max_size))
+        avg_size = np.mean(list(chain.from_iterable(([[len(c) for c in clusters_tval[hemi]] for hemi in utils.HEMIS]))))
+        clusters_num = sum(map(len, [clusters_tval[hemi] for hemi in utils.HEMIS]))
+        res.append((tval, max_size, avg_size, clusters_num))
     res = sorted(res)
     # res = sorted([(t_val, max([len(c) for c in [c_tval[hemi] for hemi in utils.HEMIS]])) for t_val, c_tval in clusters.items()])
     # tvals = [float('{:.2f}'.format(t_val)) for t_val, c_tval in clusters.items()]
-    sizes = [r[1] for r in res]
+    max_sizes = [r[1] for r in res]
+    avg_sizes = [r[2] for r in res]
     tvals = [float('{:.2f}'.format(r[0])) for r in res]
-    plt.plot(tvals, sizes)
+    clusters_num = [r[3] for r in res]
+    fig, ax1 = plt.subplots()
+    ax1.plot(tvals, max_sizes, 'b')
+    ax1.set_ylabel('max size', color='b')
+    ax2 = ax1.twinx()
+    ax2.plot(tvals, clusters_num, 'r')
+    # ax2.plot(tvals, avg_sizes, 'g')
+    ax2.set_ylabel('#clusters', color='r')
     plt.show()
     print('sdfsd')
 
@@ -240,7 +257,7 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
         if len(inter_labels) > 0:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
             cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
-                coordinates=verts[cluster], max=cluster_max, hemi=hemi))
+                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster)))
         else:
             print('No intersected labels!')
     return cluster_labels
@@ -252,7 +269,7 @@ def create_functional_rois(subject, contrast_name, clusters_labels_fname='', fun
             BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name)))
     if func_rois_folder == '':
         func_rois_folder = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois', '{}_labels'.format(contrast_name))
-    utils.make_dir(func_rois_folder)
+    utils.delete_folder_files(func_rois_folder)
     for cl in clusters_labels:
         cl_name = 'fmri_{}_{:.2f}'.format(cl['name'], cl['max'])
         new_label = mne.Label(cl['vertices'], cl['coordinates'], hemi=cl['hemi'], name=cl_name,
@@ -294,7 +311,7 @@ def mri_convert(volume_fname, from_format='nii.gz', to_format='mgz'):
         print('Error running mri_convert!')
 
 
-def calculate_subcorticals_activity(volume_file, subcortical_codes_file='', aseg_stats_file_name='',
+def calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file='', aseg_stats_file_name='',
         method='max', k_points=100, do_plot=False):
     x = nib.load(volume_file)
     x_data = x.get_data()
@@ -313,16 +330,16 @@ def calculate_subcorticals_activity(volume_file, subcortical_codes_file='', aseg
     else:
         raise Exception('No segmentation file!')
     # Find the segmentation file
-    aseg_fname = op.join(SUBJECTS_DIR, SUBJECT, 'mri', 'aseg.mgz')
+    aseg_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
-    out_folder = op.join(SUBJECTS_DIR, SUBJECT, 'subcortical_fmri_activity')
+    out_folder = op.join(SUBJECTS_DIR, subject, 'subcortical_fmri_activity')
     if not op.isdir(out_folder):
         os.mkdir(out_folder)
     sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, 5, False, FREE_SURFER_HOME)
     for pts, seg_name, seg_id in sub_cortical_generator:
         print(seg_name)
-        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, SUBJECT, 'subcortical', '{}.ply'.format(seg_name)))
+        verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'subcortical', '{}.ply'.format(seg_name)))
         vals = np.array([x_data[i, j, k] for i, j, k in pts])
         is_sig = np.max(np.abs(vals)) >= 2
         print(seg_name, seg_id, np.mean(vals), is_sig)
@@ -388,7 +405,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
             nans = np.sum(np.isnan(surf_data))
             if nans > 0:
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
-            np.save(surf_output_fname.format(hemi=hemi), surf_data)
+            # np.save(surf_output_fname.format(hemi=hemi), surf_data)
         else:
             surf_data = np.load(surf_output_fname.format(hemi=hemi))
         if not op.isfile(colors_output_fname.format(hemi=hemi)) or overwrite_colors_file:
@@ -439,7 +456,7 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
     volume_fname = copy_volume_to_blender(volume_fname_template, overwrite_volume_mgz)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
-    colors_output_fname = op.join(data_fol, '{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
+    colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
         
     project_on_surface(target_subject, volume_fname, colors_output_fname, surf_output_fname,
@@ -509,7 +526,7 @@ def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_nam
 
 
 if __name__ == '__main__':
-    subject = 'fscopy' # 'mg78' # 'colin27'
+    subject = 'colin27' #'fscopy' # 'mg78' # 'colin27'
     os.environ['SUBJECT'] = subject
     task = 'ARC' # 'MSIT' # 'ARC'
     atlas = 'laus250'
@@ -523,9 +540,9 @@ if __name__ == '__main__':
     contrast_file_template = op.join(fol, 'sig.{hemi}.{format}')
 
     contrast_name = 'group-avg'
-    # main(subject, atlas, None, contrast_file_template, t_val=3, surface_name='pial', existing_format='mgh')
+    # main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
     # find_clusters_tval_hist(subject, contrast_name, fol, input_fol='', n_jobs=1)
-    load_clusters_tval_hist(fol)
+    # load_clusters_tval_hist(fol)
 
     contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'
@@ -533,11 +550,12 @@ if __name__ == '__main__':
     # calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
 
     # overwrite_volume_mgz = False
-    # data_fol = op.join(FMRI_DIR, task, 'pp009')
+    data_fol = op.join(FMRI_DIR, task, 'pp003')
+    contrast = 'pp003_vs_healthy'
     # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
-    # project_volue_to_surface(subject, data_fol, contrast)
-    # find_clusters(subject, contrast, atlas,  load_from_annotation=True, n_jobs=6)
+    # project_volue_to_surface(subject, data_fol,     contrast)
+    find_clusters(subject, contrast, 2, atlas)
     # create_functional_rois(subject, contrast, data_fol)
 
     # # todo: find the TR automatiaclly
@@ -567,16 +585,16 @@ if __name__ == '__main__':
 
     # mask_volume(volume_file, mask_file, masked_file)
     # show_fMRI_using_pysurfer(subject, input_file='/autofs/space/franklin_003/users/npeled/fMRI/MSIT/pp003/sig.{hemi}.masked.mgz', hemi='both')
-    # calculate_subcorticals_activity('/homes/5/npeled/space3/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
+    # calculate_subcorticals_activity(subject, '/homes/5/npeled/space3/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
     #              '/autofs/space/franklin_003/users/npeled/MSIT/mg78/aseg_stats.csv')
-    # calculate_subcorticals_activity('/home/noam/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
+    # calculate_subcorticals_activity(subject, '/home/noam/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig.anat.mgh',
     #              '/home/noam/fMRI/MSIT/mg78/aseg_stats.csv')
     # volume_file = nib.load('/autofs/space/franklin_003/users/npeled/fMRI/MSIT/mg78/bold/interference.sm05.mni305/non-interference-v-interference/sig_subject.mgz')
     # vol_data, vol_header = volume_file.get_data(), volume_file.get_header()
 
     # contrast_file=contrast_file_template.format(
     #     contrast='non-interference-v-interference', hemi='mni305', format='mgz')
-    # calculate_subcorticals_activity(volume_file, subcortical_codes_file=op.join(BLENDER_DIR, 'sub_cortical_codes.txt'),
+    # calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file=op.join(BLENDER_DIR, 'sub_cortical_codes.txt'),
     #     method='dist')
 
     # SPM_ROOT = '/homes/5/npeled/space3/spm_subjects'
