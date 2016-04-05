@@ -58,6 +58,8 @@ import listener_panel
 importlib.reload(listener_panel)
 import data_panel
 importlib.reload(data_panel)
+import selection_panel
+importlib.reload(selection_panel)
 
 print("Neuroscience add on started!")
 # todo: should change that in the code!!!
@@ -74,157 +76,13 @@ bpy.context.scene.electrode_radius = 0.15
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
-HEMIS = ['rh', 'lh']
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ data Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# bpy.types.Scene.conf_path = bpy.props.StringProperty(name="Root Path", default="",
-#                                                      description="Define the root path of the project",
-#                                                      subtype='DIR_PATH')
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# select all ROIs
-# Select all Electrodes
-# select brain
-# select Deep_electrodes
-# clear selections
-
-bpy.types.Scene.selection_type = bpy.props.EnumProperty(
-    items=[("diff", "Conditions difference", "", 1), ("conds", "Both conditions", "", 2)],
-    description="Selection type")
-
-
-def deselect_all():
-    for obj in bpy.data.objects:
-        obj.select = False
-    if bpy.data.objects.get(' '):
-        bpy.data.objects[' '].select = True
-        bpy.context.scene.objects.active = bpy.data.objects[' ']
-
-
-def select_all_rois():
-    select_brain_objects('Brain', bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children)
-
-
-def select_only_subcorticals():
-    select_brain_objects('Subcortical_structures', bpy.data.objects['Subcortical_structures'].children)
-
-
-def select_all_electrodes():
-    select_brain_objects('Deep_electrodes', bpy.data.objects['Deep_electrodes'].children)
-
-
-def select_all_connections():
-    select_brain_objects('connections', bpy.data.objects['connections'].children)
-
-
-def select_brain_objects(parent_obj_name, children):
-    parent_obj = bpy.data.objects[parent_obj_name]
-    if parent_obj.animation_data and bpy.context.scene.selection_type == 'diff':
-        mmvt_utils.show_hide_obj_and_fcurves(children, False)
-        parent_obj.select = True
-        for fcurve in parent_obj.animation_data.action.fcurves:
-            fcurve.hide = False
-            fcurve.select = True
-    else:
-        mmvt_utils.show_hide_obj_and_fcurves(children, True)
-        parent_obj.select = False
-
-
-class SelectionMakerPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "Ohad"
-    bl_label = "Selection Panel"
-
-    @staticmethod
-    def draw(self, context):
-        layout = self.layout
-        # col = self.layout.column(align=True)
-        # col1.operator("select.ROIs", text="ROIs")
-        layout.prop(context.scene, "selection_type", text="")
-        layout.operator("ohad.roi_selection", text="Select all cortical ROIs", icon='BORDER_RECT')
-        layout.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
-        layout.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
-        layout.operator("ohad.connections_selection", text="Select all Connections", icon='BORDER_RECT')
-        layout.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
-        layout.operator("ohad.fit_selection", text="Fit graph window", icon='MOD_ARMATURE')
-
-
-class SelectAllRois(bpy.types.Operator):
-    bl_idname = "ohad.roi_selection"
-    bl_label = "select2 ROIs"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        select_all_rois()
-        mmvt_utils.view_all_in_graph_editor(context)
-        return {"FINISHED"}
-
-
-class SelectAllSubcorticals(bpy.types.Operator):
-    bl_idname = "ohad.subcorticals_selection"
-    bl_label = "select only subcorticals"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        select_only_subcorticals()
-        mmvt_utils.view_all_in_graph_editor(context)
-        return {"FINISHED"}
-
-
-class SelectAllElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_selection"
-    bl_label = "select2 Electrodes"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        select_all_electrodes()
-        mmvt_utils.view_all_in_graph_editor(context)
-        return {"FINISHED"}
-
-
-class SelectAllConnections(bpy.types.Operator):
-    bl_idname = "ohad.connections_selection"
-    bl_label = "select connections"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        select_all_connections()
-        mmvt_utils.view_all_in_graph_editor(context)
-        return {"FINISHED"}
-
-
-class ClearSelection(bpy.types.Operator):
-    bl_idname = "ohad.clear_selection"
-    bl_label = "deselect all"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        for obj in bpy.data.objects:
-            obj.select = False
-        if bpy.data.objects.get(' '):
-            bpy.data.objects[' '].select = True
-            bpy.context.scene.objects.active = bpy.data.objects[' ']
-
-        return {"FINISHED"}
-
-
-class FitSelection(bpy.types.Operator):
-    bl_idname = "ohad.fit_selection"
-    bl_label = "Fit selection"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        mmvt_utils.view_all_in_graph_editor(context)
-        return {"FINISHED"}
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+select_brain_objects = selection_panel.select_brain_objects
+select_all_connections = selection_panel.select_all_connections
+select_all_electrodes = selection_panel.select_all_electrodes
+select_only_subcorticals = selection_panel.select_only_subcorticals
+select_all_rois = selection_panel.select_all_rois
+deselect_all = selection_panel.deselect_all
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 clear_subcortical_fmri_activity = coloring_panel.clear_subcortical_fmri_activity
@@ -573,7 +431,7 @@ class Filtering(bpy.types.Operator):
         print('filter_ROIs')
         set_appearance_show_rois_layer(bpy.context.scene, True)
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
-                        in HEMIS]
+                        in mmvt_utils.HEMIS]
         objects_indices, names = self.get_object_to_filter(source_files)
         for obj in bpy.data.objects:
             obj.select = False
@@ -796,7 +654,7 @@ class CreateVertexData(bpy.types.Operator):
         # base_obj = bpy.data.objects['Functional maps']
         # meshes = HEMIS
         #        for obj in base_obj.children:
-        for cur_obj in HEMIS:
+        for cur_obj in mmvt_utils.HEMIS:
             obj = bpy.data.objects[cur_obj]
             co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
             mesh = obj.data
@@ -919,14 +777,9 @@ def main(addon_prefs=None):
         render_panel.init(current_module)
         listener_panel.init(current_module)
         data_panel.init(current_module)
+        selection_panel.init(current_module)
 
         bpy.utils.register_class(UpdateAppearance)
-        bpy.utils.register_class(SelectAllRois)
-        bpy.utils.register_class(SelectAllSubcorticals)
-        bpy.utils.register_class(SelectAllElectrodes)
-        bpy.utils.register_class(SelectAllConnections)
-        bpy.utils.register_class(ClearSelection)
-        bpy.utils.register_class(FitSelection)
         bpy.utils.register_class(Filtering)
         bpy.utils.register_class(FindCurveClosestToCursor)
         bpy.utils.register_class(GrabFromFiltering)
@@ -937,7 +790,6 @@ def main(addon_prefs=None):
 
         bpy.utils.register_class(TransparencyPanel)
         bpy.utils.register_class(ShowHideObjectsPanel)
-        bpy.utils.register_class(SelectionMakerPanel)
         bpy.utils.register_class(FilteringMakerPanel)
         bpy.utils.register_class(DataInVertMakerPanel)
     except:

@@ -530,6 +530,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_context = "objectmode"
     bl_category = "Ohad"
     bl_label = "Data Panel"
+    addon = None
 
     def draw(self, context):
         layout = self.layout
