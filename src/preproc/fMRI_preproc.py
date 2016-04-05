@@ -33,7 +33,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from src import utils
 from src import freesurfer_utils as fu
-from src.preprocessing import meg_preproc as meg
+from src.preproc import meg_preproc as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')

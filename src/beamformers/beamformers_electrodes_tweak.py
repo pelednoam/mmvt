@@ -29,8 +29,8 @@ from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV, ElasticNetCV
 from src import dtw
 from src import utils
 from src.beamformers import tf_dics as tf
-from src.preprocessing import meg_preproc
-from src.preprocessing.meg_preproc import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
+from src.preproc import meg_preproc
+from src.preproc.meg_preproc import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
 
 warnings.filterwarnings("ignore")
 
@@ -2532,7 +2532,7 @@ if __name__ == '__main__':
     EVENTS_TRANS_INV = {v:k for k, v in EVENTS_TRANS.items()}
     meg_preproc.init_globals(MEG_SUBJECT, MRI_SUBJECT, fname_format, True, raw_cleaning_method, constrast,
                              SUBJECTS_MEG_DIR, TASKS, task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
-    from src.preprocessing.meg_preproc import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV, \
+    from src.preproc.meg_preproc import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV, \
         DATA_CSD, NOISE_CSD, NOISE_CSD_EMPTY_ROOM
     now = time.time()
     main()
