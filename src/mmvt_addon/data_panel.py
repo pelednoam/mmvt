@@ -263,13 +263,6 @@ class ImportElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
-    bpy.context.scene.objects.active = obj
-    obj.select = True
-    obj[prop_name] = value
-    obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
-
-
 def add_data_to_brain():
     base_path = mu.get_user_fol()
     source_files = [op.join(base_path, 'labels_data_lh.npz'), op.join(base_path, 'labels_data_rh.npz'),
@@ -297,14 +290,14 @@ def add_data_to_brain():
                 #     cond_str = cond_str[2:-1]
                 cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
 
                 print('keyframing ' + obj_name + ' object')
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
                     # print('keyframing '+obj_name+' object')
-                    insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, timepoint, ind + 2)
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, timepoint, ind + 2)
 
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
@@ -373,8 +366,8 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         data = sources[source_name]
         # Set the values to zeros in the first and last frame for Brain object
-        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
 
         # For every time point insert keyframe to the main Brain object
         # If you want to delete prints make sure no sleep is needed
@@ -382,7 +375,7 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
         for ind in range(data.shape[0]):
             # if len(data[ind]) == 2:
             # print('keyframing Brain object')
-            insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
             # print('keyframed')
 
         # remove the orange keyframe sign in the fcurves window
@@ -419,13 +412,6 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
-    bpy.context.scene.objects.active = obj
-    obj.select = True
-    obj[prop_name] = value
-    obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
-
-
 def add_data_to_electrodes(self, source_files):
     print('Adding data to Electrodes')
     for input_file in source_files:
@@ -445,13 +431,13 @@ def add_data_to_electrodes(self, source_files):
             for cond_ind, cond_str in enumerate(f['conditions']):
                 cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-                insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
-                    insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
@@ -486,11 +472,11 @@ def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
     for obj_counter, source_name in enumerate(sources_names):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         data = sources[source_name]
-        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
 
         for ind in range(data.shape[0]):
-            insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
 
         fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
         mod = fcurves.modifiers.new(type='LIMITS')
