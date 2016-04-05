@@ -724,3 +724,17 @@ def obj_has_activity(obj):
 
 def other_hemi(hemi):
     return 'lh' if hemi == 'rh' else 'rh'
+
+
+def show_progress(job_name):
+    sys.stdout.write('{}: '.format(job_name))
+    sys.stdout.flush()
+    some_list = [0] * 100
+    for idx, item in enumerate(some_list):
+        msg = "item %i of %i" % (idx, len(some_list)-1)
+        sys.stdout.write(msg + chr(8) * len(msg))
+        sys.stdout.flush()
+        sleep(0.02)
+
+    sys.stdout.write("DONE" + " "*len(msg)+"\n")
+    sys.stdout.flush()

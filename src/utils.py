@@ -215,7 +215,7 @@ def check_hemi(hemi):
     return hemi
 
 
-def get_data_max_min(data, norm_by_percentile, norm_percs, data_per_hemi=False, hemis = HEMIS):
+def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis = HEMIS):
     if data_per_hemi:
         if norm_by_percentile:
             data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
@@ -237,7 +237,7 @@ def get_max_abs(data_max, data_min):
     return max(map(abs, [data_max, data_min]))
 
 
-def normalize_data(data, norm_by_percentile, norm_percs):
+def normalize_data(data, norm_by_percentile, norm_percs=None):
     data_max, data_min = get_data_max_min(data, norm_by_percentile, norm_percs)
     max_abs = get_max_abs(data_max, data_min)
     norm_data = data / max_abs

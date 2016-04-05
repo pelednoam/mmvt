@@ -296,16 +296,6 @@ def add_data_to_brain():
         pass
 
     bpy.types.Scene.maximal_time_steps = number_of_maximal_time_steps
-    # print(bpy.types.Scene.maximal_time_steps)
-
-    # for obj in bpy.data.objects:
-    #     try:
-    #         if (obj.parent is 'Cortex-lh') or ((obj.parent is 'Cortex-rh') or (obj.parent is 'Subcortical_structures')):
-    #             obj.select = True
-    #         else:
-    #             obj.select = False
-    #     except:
-    #         obj.select = False
     for obj in bpy.data.objects:
         obj.select = False
     if bpy.data.objects.get(' '):
@@ -490,7 +480,7 @@ class AddDataToElectrodes(bpy.types.Operator):
             print('No electrodes data file!')
         else:
             print('Loading electordes data from {}'.format(source_file))
-            # add_data_to_electrodes(self, [source_file])
+            add_data_to_electrodes(self, [source_file])
             add_data_to_electrodes_parent_obj(self, parent_obj, [source_file], STAT_DIFF)
             bpy.types.Scene.electrodes_data_exist = True
             if bpy.data.objects.get(' '):

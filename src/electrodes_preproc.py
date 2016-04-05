@@ -329,9 +329,9 @@ def read_edf(edf_fname, from_t, to_t):
     print('sdf')
 
 
-def create_raw_data_for_blender(subject, edf_name, conds, stat=STAT_DIFF, bipolar=False, norm_by_percentile=True,
+def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by_percentile=True,
                                 norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
-                                flip_cm_small=True, moving_average_win_size=0):
+                                flip_cm_small=True, moving_average_win_size=0, do_plot=False):
     import mne.io
     edf_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', edf_name)
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
@@ -346,24 +346,45 @@ def create_raw_data_for_blender(subject, edf_name, conds, stat=STAT_DIFF, bipola
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
     for cond_id, cond in enumerate(conds):
-        cond_data, _ = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
+        cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         if cond_id == 0:
             data = np.zeros((cond_data.shape[0], cond_data.shape[1], len(conds)))
         data[:, :, cond_id] = cond_data
 
     conditions = [c['name'] for c in conds]
-    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    stat_data = calc_stat_data(data, stat)
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))
+    data = utils.normalize_data(data, norm_by_percentile=False)
+    stat_data = calc_stat_data(data, STAT_DIFF)
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data_{}.npz'.format(
+        '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if moving_average_win_size > 0:
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
         colors_mv = calc_colors(
             stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
-        np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+        np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv,
+                 times=times)
     else:
         colors = calc_colors(
             stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
-        np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors)
+        np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
+
+    # if do_plot:
+    #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')
+    #     utils.make_dir(figs_fol)
+    #     plot_stat_data(data, conds, labels, figs_fol)
+
+
+def plot_stat_data(data, conds, channels, figs_fol):
+    plt.plot((data[:, :, 0] - data[:, :, 1]).T)
+    plt.savefig(op.join(figs_fol, 'diff.jpg'))
+    for ch in range(data.shape[0]):
+        plt.figure()
+        plt.plot(data[ch, :, 0], label=conds[0]['name'])
+        plt.plot(data[ch, :, 1], label=conds[1]['name'])
+        plt.plot(data[ch, :, 0] - data[ch, :, 1], label='diff')
+        plt.legend()
+        plt.title(channels[ch])
+        plt.savefig(op.join(figs_fol, '{}.jpg'.format(channels[ch])))
+        plt.close()
 
 
 def get_data_channels(edf_raw):
@@ -451,5 +472,5 @@ if __name__ == '__main__':
 
     # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
     conds = [dict(name='seizure', from_t=16, to_t=20), dict(name='baseline', from_t=12, to_t=16)]
-    create_raw_data_for_blender(subject, '3_30_16Sz.edf', conds)
+    create_raw_data_for_blender(subject, '3_30_16Sz.edf', conds, do_plot=True)
     print('finish!')
