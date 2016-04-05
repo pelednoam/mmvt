@@ -530,6 +530,9 @@ def add_data_to_electrodes(self, source_files):
             mmvt_utils.time_to_go(now, obj_counter, N, runs_num_to_print=10)
             obj_name = obj_name.astype(str)
             # print(obj_name)
+            if bpy.data.objects.get(obj_name, None) is None:
+                print("{} doesn't exist!".format(obj_name))
+                continue
             cur_obj = bpy.data.objects[obj_name]
             for cond_ind, cond_str in enumerate(f['conditions']):
                 cond_str = cond_str.astype(str)
@@ -595,15 +598,19 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mmvt_utils.get_user_fol()
-        source_files = [op.join(base_path, 'electrodes_data_{}.npz'.format(
-            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))]
-
-        # add_data_to_electrodes(self, source_files)
-        add_data_to_electrodes_parent_obj(self, parent_obj, source_files, STAT_DIFF)
-        bpy.types.Scene.electrodes_data_exist = True
-        if bpy.data.objects.get(' '):
-            bpy.context.scene.objects.active = bpy.data.objects[' ']
-
+        source_file = op.join(base_path, 'electrodes_data_{}.npz'.format(
+            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+        if not op.isfile(source_file):
+            source_file = op.join(base_path, 'electrodes_data.npz')
+        if not op.isfile(source_file):
+            print('No electrodes data file!')
+        else:
+            print('Loading electordes data from {}'.format(source_file))
+            add_data_to_electrodes(self, [source_file])
+            add_data_to_electrodes_parent_obj(self, parent_obj, [source_file], STAT_DIFF)
+            bpy.types.Scene.electrodes_data_exist = True
+            if bpy.data.objects.get(' '):
+                bpy.context.scene.objects.active = bpy.data.objects[' ']
         return {"FINISHED"}
 
 

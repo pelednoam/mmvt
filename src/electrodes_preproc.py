@@ -207,6 +207,7 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
         field = field_cond_template.format(cond_name)
         # initialize the data matrix (electrodes_num x T x 2)
         if cond_id == 0:
+            #todo: fix to_t - from_t
             data = np.zeros((d[field].shape[0], to_t - from_t, 2))
         # times = np.arange(0, to_t*2, 2)
         # todo: Need to do some interpulation for the MEG
@@ -304,6 +305,91 @@ def sort_electrodes_groups(subject, bipolar, do_plot=True):
         # utils.plot_2d_scatter(transformed_pos, names=electrodes.tolist(), labels=first_electrodes_names)
 
 
+def read_edf(edf_fname, from_t, to_t):
+    import mne.io
+    edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
+    edf_raw.notch_filter(np.arange(60, 241, 60))
+    dt = (edf_raw.times[1] - edf_raw.times[0])
+    hz = int(1/ dt)
+    T = edf_raw.times[-1] # sec
+    live_channels = find_live_channels(edf_raw, hz)
+
+    ylim = [-0.0015, 0.0015]
+    from_t = 17
+    window = to_t - from_t
+    # plot_window(edf_raw, live_channels, t_start, window, hz, ylim)
+    # plot_all_windows(edf_raw, live_channels, T, hz, window, edf_fname, ylim)
+
+    data, times = edf_raw[:, int(from_t*hz):int(from_t*hz) + hz * window]
+    # plot_power(data[0], dt)
+    # edf_raw.plot(None, 1, 20, 20)
+    print('sdf')
+
+
+def create_raw_data_for_blender(subject, edf_name, to_t, from_t, condition_name, bipolar=False, norm_by_percentile=True,
+        norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True):
+    import mne.io
+    edf_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', edf_name)
+    edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
+    edf_raw.notch_filter(np.arange(60, 241, 60))
+    dt = (edf_raw.times[1] - edf_raw.times[0])
+    hz = int(1/ dt)
+    # T = edf_raw.times[-1] # sec
+    window = to_t - from_t
+    live_channels = find_live_channels(edf_raw, hz)
+    no_stim_channels = get_data_channels(edf_raw)
+    channels_indices = [ind for ind in range(len(edf_raw.ch_names))
+                        if ind in np.intersect1d(live_channels, no_stim_channels)]
+    channels = [c for ind, c in enumerate(edf_raw.ch_names) if ind in set(channels_indices)]
+    data, times = edf_raw[channels_indices, int(from_t*hz):int(from_t*hz) + hz * window]
+    colors = calc_colors(data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+    data = data[:, :, np.newaxis]
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data.npz'.format(
+            '_bipolar' if bipolar else ''))
+    np.savez(output_fname, data=data, names=channels, conditions=[condition_name], colors=colors)
+
+
+
+def get_data_channels(edf_raw):
+    return [ind for ind, ch in enumerate(edf_raw.ch_names) if 'STI' not in ch and 'REF' not in ch]
+
+
+def plot_window(edf_raw, live_channels, t_start, window, hz, ylim=[-0.0015, 0.0015]):
+    data, times = edf_raw[:, int(t_start*hz):int(t_start*hz) + hz * window]
+    data = data[live_channels, :]
+    plt.figure()
+    plt.plot(times, data.T)
+    plt.xlim([t_start, t_start + window])
+    plt.ylim(ylim)
+
+
+def plot_all_windows(edf_raw, live_channels, T, hz, window, edf_fname, ylim):
+    pics_fol = op.join(op.split(edf_fname)[0], 'pics')
+    utils.make_dir(pics_fol)
+    for t_start in np.arange(0, T-window, window):
+        plot_window(edf_raw, live_channels, t_start, window, hz, ylim)
+        print('plotting {}-{}'.format(t_start, t_start+window))
+        plt.savefig(op.join(pics_fol, '{}-{}.jpg'.format(t_start, t_start+window)))
+        plt.close()
+
+
+def find_live_channels(edf_raw, hz, threshold=1e-6):
+    t_start = 0
+    secs = 50
+    data, times = edf_raw[:, int(t_start*hz):int(t_start*hz) + hz * secs]
+    live_channels = np.where(abs(np.sum(np.diff(data, 1), 1)) > threshold)[0]
+    print('live channels num: {}'.format(len(live_channels)))
+    return live_channels
+
+
+def plot_power(data, time_step):
+    ps = np.abs(np.fft.fft(data))**2
+    freqs = np.fft.fftfreq(data.size, time_step)
+    idx = np.argsort(freqs)
+    plt.plot(freqs[idx], ps[idx])
+    plt.show()
+
+
 def electrodes_2d_scatter_plot(pos):
     plt.scatter(pos[:, 0], pos[:, 1])
     plt.show()
@@ -332,7 +418,7 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=
 
 
 if __name__ == '__main__':
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg96'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'em20'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT
@@ -347,5 +433,8 @@ if __name__ == '__main__':
     bipolar = False
     add_activity = True
 
-    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
+    # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
+    from_t, to_t = 16, 20
+    condition_name = 'seizure'
+    create_raw_data_for_blender(subject, '3_30_16Sz.edf', to_t, from_t, condition_name)
     print('finish!')
