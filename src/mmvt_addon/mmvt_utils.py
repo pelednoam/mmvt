@@ -338,6 +338,13 @@ def show_only_group_objects(context, objects, group_name):
     dopesheet.show_only_group_objects = True
 
 
+def create_sphere(loc, rad, my_layers, name):
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        ring_count=30, size=rad, view_align=False, enter_editmode=False, location=loc, layers=my_layers)
+    bpy.ops.object.shade_smooth()
+    bpy.context.active_object.name = name
+
+
 def create_spline(points, layers_array, bevel_depth=0.045, resolution_u=5):
     # points = [ [1,1,1], [-1,1,1], [-1,-1,1], [1,-1,-1] ]
     curvedata = bpy.data.curves.new(name="Curve", type='CURVE')

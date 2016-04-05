@@ -216,13 +216,7 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
         data[:, :, cond_id] = cond_data_downsample[:, from_t:to_t]
 
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    if stat == STAT_AVG:
-        stat_data = np.squeeze(np.mean(data, axis=2))
-    elif stat == STAT_DIFF:
-        stat_data = np.squeeze(np.diff(data, axis=2))
-    else:
-        raise Exception('Wrong stat value!')
-
+    stat_data = calc_stat_data(data, stat)
     if moving_average_win_size > 0:
         # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
@@ -234,6 +228,15 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
             stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
         np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
 
+
+def calc_stat_data(data, stat):
+    if stat == STAT_AVG:
+        stat_data = np.squeeze(np.mean(data, axis=2))
+    elif stat == STAT_DIFF:
+        stat_data = np.squeeze(np.diff(data, axis=2))
+    else:
+        raise Exception('Wrong stat value!')
+    return stat_data
 
 def find_first_electrode_per_group(electrodes, positions, bipolar=False):
     groups = OrderedDict()  # defaultdict(list)
@@ -326,8 +329,9 @@ def read_edf(edf_fname, from_t, to_t):
     print('sdf')
 
 
-def create_raw_data_for_blender(subject, edf_name, to_t, from_t, condition_name, bipolar=False, norm_by_percentile=True,
-        norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True):
+def create_raw_data_for_blender(subject, edf_name, conds, stat=STAT_DIFF, bipolar=False, norm_by_percentile=True,
+                                norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
+                                flip_cm_small=True, moving_average_win_size=0):
     import mne.io
     edf_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', edf_name)
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
@@ -335,19 +339,30 @@ def create_raw_data_for_blender(subject, edf_name, to_t, from_t, condition_name,
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
-    window = to_t - from_t
-    live_channels = find_live_channels(edf_raw, hz)
-    no_stim_channels = get_data_channels(edf_raw)
-    channels_indices = [ind for ind in range(len(edf_raw.ch_names))
-                        if ind in np.intersect1d(live_channels, no_stim_channels)]
-    channels = [c for ind, c in enumerate(edf_raw.ch_names) if ind in set(channels_indices)]
-    data, times = edf_raw[channels_indices, int(from_t*hz):int(from_t*hz) + hz * window]
-    colors = calc_colors(data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
-    data = data[:, :, np.newaxis]
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data.npz'.format(
-            '_bipolar' if bipolar else ''))
-    np.savez(output_fname, data=data, names=channels, conditions=[condition_name], colors=colors)
+    data_channels, _ = read_electrodes_file(subject, bipolar)
+    # live_channels = find_live_channels(edf_raw, hz)
+    # no_stim_channels = get_data_channels(edf_raw)
+    channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
+    channels_indices = [c[0] for c in channels_tup]
+    labels = [c[1] for c in channels_tup]
+    for cond_id, cond in enumerate(conds):
+        cond_data, _ = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
+        if cond_id == 0:
+            data = np.zeros((cond_data.shape[0], cond_data.shape[1], len(conds)))
+        data[:, :, cond_id] = cond_data
 
+    conditions = [c['name'] for c in conds]
+    stat_data = calc_stat_data(data, stat)
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))
+    if moving_average_win_size > 0:
+        stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
+        colors_mv = calc_colors(
+            stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+    else:
+        colors = calc_colors(
+            stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors)
 
 
 def get_data_channels(edf_raw):
@@ -434,7 +449,6 @@ if __name__ == '__main__':
     add_activity = True
 
     # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
-    from_t, to_t = 16, 20
-    condition_name = 'seizure'
-    create_raw_data_for_blender(subject, '3_30_16Sz.edf', to_t, from_t, condition_name)
+    conds = [dict(name='seizure', from_t=16, to_t=20), dict(name='baseline', from_t=12, to_t=16)]
+    create_raw_data_for_blender(subject, '3_30_16Sz.edf', conds)
     print('finish!')
