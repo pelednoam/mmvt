@@ -8,9 +8,11 @@ except:
     print('no pysurfer!')
 import os
 import os.path as op
-import nibabel as nib
-import mne.stats.cluster_level as mne_clusters
+
 import mne
+import mne.stats.cluster_level as mne_clusters
+import nibabel as nib
+
 # from mne import spatial_tris_connectivity, grade_to_tris
 
 import numpy as np
@@ -31,7 +33,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from src import utils
 from src import freesurfer_utils as fu
-from src import meg_preproc as meg
+from src.preprocessing import meg_preproc as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
