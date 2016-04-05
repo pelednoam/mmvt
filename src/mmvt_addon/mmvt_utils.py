@@ -117,6 +117,19 @@ def insert_keyframe_to_custom_prop(obj, prop_name, value, keyframe):
     obj.keyframe_insert(data_path='[' + '"' + prop_name + '"' + ']', frame=keyframe)
 
 
+def create_and_set_material(obj):
+    # curMat = bpy.data.materials['OrigPatchesMat'].copy()
+    if obj.active_material is None or obj.active_material.name != obj.name + '_Mat':
+        if obj.name + '_Mat' in bpy.data.materials:
+            cur_mat = bpy.data.materials[obj.name + '_Mat']
+        else:
+            cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
+            cur_mat.name = obj.name + '_Mat'
+        # Wasn't it originally (0, 0, 1, 1)?
+        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (0, 0, 1, 1) # (0, 1, 0, 1)
+        obj.active_material = cur_mat
+
+
 def mark_objects(objs_names):
     for obj_name in objs_names:
         if bpy.data.objects.get(obj_name):

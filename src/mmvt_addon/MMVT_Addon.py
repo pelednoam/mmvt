@@ -294,7 +294,7 @@ def de_select_electrode(obj, call_create_and_set_material=True):
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
     # safety check, if something happened to the electrode's material
     if call_create_and_set_material:
-        create_and_set_material(obj)
+        mmvt_utils.create_and_set_material(obj)
     # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
     # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 

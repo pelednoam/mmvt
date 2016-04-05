@@ -119,9 +119,10 @@ class ImportBrain(bpy.types.Operator):
     bl_label = "import2 brain"
     bl_options = {"UNDO"}
     current_root_path = ''
-    brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
+    brain_layer = -1
 
     def invoke(self, context, event=None):
+        self.brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
         self.current_root_path = mu.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         print("importing ROIs")
         import_rois(self.current_root_path)
@@ -203,19 +204,6 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def create_and_set_material(obj):
-    # curMat = bpy.data.materials['OrigPatchesMat'].copy()
-    if obj.active_material is None or obj.active_material.name != obj.name + '_Mat':
-        if obj.name + '_Mat' in bpy.data.materials:
-            cur_mat = bpy.data.materials[obj.name + '_Mat']
-        else:
-            cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
-            cur_mat.name = obj.name + '_Mat'
-        # Wasn't it originally (0, 0, 1, 1)?
-        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (0, 0, 1, 1) # (0, 1, 0, 1)
-        obj.active_material = cur_mat
-
-
 def import_electrodes():
     # input_file = op.join(base_path, "electrodes.npz")
     bipolar = bpy.context.scene.bipolar
@@ -248,7 +236,7 @@ def import_electrodes():
         cur_obj.select = True
         cur_obj.parent = bpy.data.objects['Deep_electrodes']
         # cur_obj.active_material = bpy.data.materials['Deep_electrode_mat']
-        create_and_set_material(cur_obj)
+        mu.create_and_set_material(cur_obj)
 
 
 class ImportElectrodes(bpy.types.Operator):

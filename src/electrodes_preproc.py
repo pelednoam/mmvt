@@ -352,6 +352,7 @@ def create_raw_data_for_blender(subject, edf_name, conds, stat=STAT_DIFF, bipola
         data[:, :, cond_id] = cond_data
 
     conditions = [c['name'] for c in conds]
+    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     stat_data = calc_stat_data(data, stat)
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data.npz'.format('_bipolar' if bipolar else ''))
     if moving_average_win_size > 0:
