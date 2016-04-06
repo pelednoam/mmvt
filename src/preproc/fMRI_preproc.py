@@ -529,6 +529,7 @@ if __name__ == '__main__':
     import sys
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all')
     parser.add_argument('-c', '--contrast', help='contrast name', required=True)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus250')
     parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
@@ -541,6 +542,7 @@ if __name__ == '__main__':
     task = args['task'] # 'ARC' # 'MSIT' # 'ARC'
     contrast = args['contrast']  # 'arc_healthy'
     atlas = args['atlas'] # 'laus250'
+    func = args['function']
     fol = op.join(FMRI_DIR, task, subject)
 
     contrast_name = 'interference'
@@ -567,7 +569,8 @@ if __name__ == '__main__':
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
     # project_volue_to_surface(subject, data_fol, threshold, contrast)
 
-    # find_clusters(subject, contrast, threshold, atlas)
+    if 'find_clusters' in func:
+        find_clusters(subject, contrast, threshold, atlas)
     # create_functional_rois(subject, contrast, data_fol)
 
     # # todo: find the TR automatiaclly
