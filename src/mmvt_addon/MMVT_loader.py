@@ -32,6 +32,8 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     mmvt_folder = StringProperty(
         name='Path of the mmvt addon folder', description='', subtype='DIR_PATH',
         default='') #os.path.join(mmvt_dir(), 'mmvt_addon'))
+    python_cmd = StringProperty(
+        name='Path to python (anaconda 3.5)', description='', subtype='FILE_PATH', default='python')
     freeview_cmd = StringProperty(
         name='Path to freeview command', description='', subtype='FILE_PATH', default='freeview')
     freeview_cmd_verbose = BoolProperty( name='Use the verbose flag', default=False)
@@ -40,6 +42,7 @@ class MMVTLoaderAddonPreferences(AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, 'mmvt_folder')
+        layout.prop(self, 'python_cmd')
         layout.prop(self, 'freeview_cmd')
         layout.prop(self, 'freeview_cmd_verbose')
         layout.prop(self, 'freeview_cmd_stdin')

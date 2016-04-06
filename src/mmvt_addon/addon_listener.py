@@ -43,14 +43,15 @@ class AddonListener(object):
 
     def __init__(self, port, authkey):
         try:
-            check_if_open()
+            # check_if_open()
             address = ('localhost', port)
+            print('addon_listener: trying to listen to localhost, {}'.format(port))
             self.listener = Listener(address, authkey=authkey)
             self.conn = self.listener.accept()
             print('connection accepted from', self.listener.last_accepted)
         except:
-            # print(traceback.format_exc())
             print('Error in init_listener')
+            print(traceback.format_exc())
 
     def listen(self):
         while True:
@@ -122,4 +123,8 @@ def main():
     listener.listen()
 
 if __name__ == '__main__':
+    import sys
+    sys.stdout.write('In addon_listener!')
+    sys.stdout.flush()
+    # print()
     main()

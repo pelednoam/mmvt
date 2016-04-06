@@ -406,7 +406,7 @@ class ColoringMakerPanel(bpy.types.Panel):
                 pass
             if meg_labels_files_exist:
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
-            if len(fmri_files) > 1:
+            if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
             if len(fmri_files) > 0:
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')

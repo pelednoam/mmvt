@@ -1,7 +1,9 @@
 import bpy
 import traceback
 import math
+import mathutils
 import numpy as np
+import sys
 import os
 import os.path as op
 import uuid
@@ -15,6 +17,7 @@ from queue import Queue
 import cProfile
 from itertools import chain
 from sys import platform as _platform
+
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
@@ -489,11 +492,19 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
                 q_out.put(line)
                 print('stdout: {}'.format(line))
 
+    def read_from_stderr(proc):
+        while True:
+            line = proc.stderr.readline()
+            if line != b'':
+                print('stderr: {}'.format(line))
+
     p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1) #, universal_newlines=True)
     thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
     thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+    thread_read_from_stderr = threading.Thread(target=read_from_stderr, args=(p, ))
     thread_write_to_stdin.start()
     thread_read_from_stdout.start()
+    thread_read_from_stderr.start()
 
 
 def run_command(cmd, shell=True, pipe=False):
@@ -628,6 +639,20 @@ def current_path():
     return os.path.dirname(os.path.realpath(__file__))
 
 
+def get_parent_fol():
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    return os.path.split(curr_dir)[0]
+
+
+def get_mmvt_root():
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    return os.path.dirname(os.path.split(curr_dir)[0])
+
+
+def change_fol_to_mmvt_root():
+    os.chdir(get_mmvt_root())
+
+
 class connection_to_listener(object):
     # http://stackoverflow.com/a/6921402/1060738
 
@@ -647,7 +672,7 @@ class connection_to_listener(object):
     def init(self):
         try:
             connection_to_listener.check_if_open()
-            connection_to_listener.run_addon_listener()
+            # connection_to_listener.run_addon_listener()
             address = ('localhost', 6000)
             self.conn = Client(address, authkey=b'mmvt')
             self.handle_is_open = True
@@ -660,6 +685,7 @@ class connection_to_listener(object):
     @staticmethod
     def run_addon_listener():
         cmd = 'python {}'.format(op.join(current_path(), 'addon_listener.py'))
+        print('Running {}'.format(cmd))
         run_command_in_new_thread(cmd, shell=True)
         time.sleep(1)
 
@@ -680,7 +706,6 @@ conn_to_listener = connection_to_listener()
 
 
 def min_cdist_from_obj(obj, Y):
-    import mathutils
     vertices = obj.data.vertices
     kd = mathutils.kdtree.KDTree(len(vertices))
     for ind, x in enumerate(vertices):
@@ -695,7 +720,6 @@ def min_cdist_from_obj(obj, Y):
 
 
 def min_cdist(X, Y):
-    import mathutils
     kd = mathutils.kdtree.KDTree(X.shape[0])
     for ind, x in enumerate(X):
         kd.insert(x, ind)
@@ -726,6 +750,7 @@ def other_hemi(hemi):
     return 'lh' if hemi == 'rh' else 'rh'
 
 
+# http://blender.stackexchange.com/a/30739/16364
 def show_progress(job_name):
     sys.stdout.write('{}: '.format(job_name))
     sys.stdout.flush()
@@ -734,7 +759,23 @@ def show_progress(job_name):
         msg = "item %i of %i" % (idx, len(some_list)-1)
         sys.stdout.write(msg + chr(8) * len(msg))
         sys.stdout.flush()
-        sleep(0.02)
+        time.sleep(0.02)
 
     sys.stdout.write("DONE" + " "*len(msg)+"\n")
     sys.stdout.flush()
+
+
+def update_progress(job_title, progress):
+    length = 20 # modify this to change the length
+    block = int(round(length*progress))
+    msg = "\r{0}: [{1}] {2}%".format(job_title, "#"*block + "-"*(length-block), round(progress*100, 2))
+    if progress >= 1: msg += " DONE\r\n"
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+
+    def test():
+        for i in range(100):
+            time.sleep(0.1)
+            update_progress("Some job", i / 100.0)
+        update_progress("Some job", 1)
+

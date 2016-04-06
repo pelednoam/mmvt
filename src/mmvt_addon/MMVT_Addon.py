@@ -266,6 +266,13 @@ bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, de
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+_listener_in_queue, _listener__out_queue = None, None
+def start_listener():
+    cmd = 'python {}'.format(op.join(mmvt_utils.current_path(), 'addon_listener.py'))
+    listener_in_queue, listener__out_queue = mmvt_utils.run_command_in_new_thread(cmd)
+    return listener_in_queue, listener__out_queue
+
+
 def main(addon_prefs=None):
     bpy.context.scene.appearance_show_electrodes_layer = False
     bpy.context.scene.appearance_show_activity_layer = False
@@ -273,6 +280,7 @@ def main(addon_prefs=None):
     bpy.context.scene.appearance_show_connections_layer = False
     setup_layers()
     try:
+        # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
         coloring_panel.init(current_module)
         connections_panel.init(current_module)
@@ -283,7 +291,7 @@ def main(addon_prefs=None):
         search_panel.init(current_module)
         where_am_i_panel.init(current_module)
         appearance_panel.init(current_module)
-        fMRI_panel.init(current_module)
+        fMRI_panel.init(current_module, addon_prefs)
         render_panel.init(current_module)
         listener_panel.init(current_module)
         data_panel.init(current_module)

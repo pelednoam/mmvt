@@ -1,3 +1,7 @@
+import sys
+import platform
+print(sys.version)
+print(platform.python_version())
 try:
     from surfer import Brain
     from surfer import viz
@@ -6,6 +10,8 @@ try:
 except:
     SURFER = False
     print('no pysurfer!')
+
+
 import os
 import os.path as op
 
@@ -120,9 +126,7 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
     np.save(output_file, colors)
 
 
-def init_clusters(subject, contrast_name, input_fol=''):
-    if input_fol == '':
-        input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
+def init_clusters(subject, contrast_name, input_fol):
     input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
     contrast_per_hemi, connectivity_per_hemi, verts_per_hemi = {}, {}, {}
     for hemi in utils.HEMIS:
@@ -141,31 +145,21 @@ def init_clusters(subject, contrast_name, input_fol=''):
 
 
 def find_clusters(subject, contrast_name, t_val, atlas, input_fol='', load_from_annotation=False, n_jobs=1):
+    if input_fol == '':
+        input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
     contrast, connectivity, verts = init_clusters(subject, contrast_name, input_fol)
-    # if input_fol == '':
-    #     input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
-    # input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
-    # clusters_labels = []
-    # for hemi in utils.HEMIS:
-    #     fmri_fname = input_fname.format(hemi=hemi)
-    #     if utils.file_type(input_fname) == 'npy':
-    #         x = np.load(fmri_fname)
-    #         contrast = x[:, 0]
-    #     else:
-    #         # try nibabel
-    #         x = nib.load(fmri_fname)
-    #         contrast = x.get_data().ravel()
-    #     verts, faces = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-    clusters_labels = []
+    clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
-        blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
-        save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
+        # blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
+        # print('Saving blobs: {}'.format(blobs_output_fname))
+        # save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
         clusters_labels_hemi = find_clusters_overlapped_labeles(
             subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], load_from_annotation, n_jobs)
-        clusters_labels.extend(clusters_labels_hemi)
+        clusters_labels['values'].extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
         BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
+    print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
 
@@ -398,7 +392,9 @@ def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
 
 
 def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fname,
-                       target_subject=None, threshold=2, overwrite_surf_data=False, overwrite_colors_file=False):
+                       target_subject=None, threshold=2, overwrite_surf_data=False, overwrite_colors_file=True):
+    if target_subject is None:
+        target_subject = subject
     for hemi in ['rh', 'lh']:
         print('project {} to {}'.format(volume_file, hemi))
         if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
@@ -414,7 +410,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
             print('Calulating the activaton colors for {}'.format(surf_output_fname))
             _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi))
         shutil.copyfile(colors_output_fname.format(hemi=hemi), op.join(BLENDER_ROOT_DIR, subject, 'fmri',
-            'fmri_'.format(op.basename(colors_output_fname.format(hemi=hemi)))))
+            op.basename(colors_output_fname.format(hemi=hemi))))
 
 
 def load_images_file(image_fname):
@@ -451,7 +447,7 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
     return volume_fname
 
 
-def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
+def project_volue_to_surface(subject, data_fol, threshold, volume_name, target_subject='',
                              overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True):
     if target_subject == '':
         target_subject = subject
@@ -461,8 +457,9 @@ def project_volue_to_surface(subject, data_fol, volume_name, target_subject='',
     colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
         
-    project_on_surface(target_subject, volume_fname, colors_output_fname, surf_output_fname,
-                       target_subject, overwrite_surf_data, overwrite_colors_file)
+    project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
+                       target_subject, threshold, overwrite_surf_data=overwrite_surf_data,
+                       overwrite_colors_file=overwrite_colors_file)
     # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
     # load_images_file(surf_output_fname)
 
@@ -528,10 +525,22 @@ def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_nam
 
 
 if __name__ == '__main__':
-    subject = 'colin27' #'fscopy' # 'mg78' # 'colin27'
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-c', '--contrast', help='contrast name', required=True)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus250')
+    parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
+    parser.add_argument('-T', '--task', help='task', required=True)
+    args = vars(parser.parse_args())
+    print(args)
+    subject = args['subject']  #'colin27' #'fscopy' # 'mg78'
     os.environ['SUBJECT'] = subject
-    task = 'ARC' # 'MSIT' # 'ARC'
-    atlas = 'laus250'
+    threshold = float(args['threshold'])
+    task = args['task'] # 'ARC' # 'MSIT' # 'ARC'
+    contrast = args['contrast']  # 'arc_healthy'
+    atlas = args['atlas'] # 'laus250'
     fol = op.join(FMRI_DIR, task, subject)
 
     contrast_name = 'interference'
@@ -546,18 +555,19 @@ if __name__ == '__main__':
     # find_clusters_tval_hist(subject, contrast_name, fol, input_fol='', n_jobs=1)
     # load_clusters_tval_hist(fol)
 
-    contrast = 'non-interference-v-interference'
+    # contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'
     meg_subject = 'ep001'
     # calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
 
     # overwrite_volume_mgz = False
-    data_fol = op.join(FMRI_DIR, task, 'pp003')
-    contrast = 'pp003_vs_healthy'
+    data_fol = op.join(FMRI_DIR, task, 'healthy_group')
+    # contrast = 'pp003_vs_healthy'
     # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
-    # project_volue_to_surface(subject, data_fol,     contrast)
-    find_clusters(subject, contrast, 2, atlas)
+    # project_volue_to_surface(subject, data_fol, threshold, contrast)
+
+    # find_clusters(subject, contrast, threshold, atlas)
     # create_functional_rois(subject, contrast, data_fol)
 
     # # todo: find the TR automatiaclly
