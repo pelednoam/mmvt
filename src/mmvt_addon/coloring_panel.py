@@ -5,7 +5,7 @@ import numpy as np
 import os.path as op
 import time
 import itertools
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import glob
 
 HEMIS = mu.HEMIS
@@ -118,15 +118,15 @@ def meg_labels_coloring(self, context, override_current_mat=True):
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
     for hemi_ind, hemi in enumerate(hemispheres):
-        labels_names, labels_vertices = mu.load(
-            op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
         labels_data = np.load(op.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
-        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts,
+        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
                                  hemi, threshold, override_current_mat)
 
 
-def meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, faces_verts, hemi, threshold, override_current_mat=True):
+def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override_current_mat=True):
     now = time.time()
+    labels_names = ColoringMakerPanel.labels_vertices['labels_names']
+    labels_vertices = ColoringMakerPanel.labels_vertices['labels_vertices']
     vertices_num = max(itertools.chain.from_iterable(labels_vertices[hemi])) + 1
     colors_data = np.ones((vertices_num, 4))
     colors_data[:, 0] = 0
@@ -220,12 +220,27 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
             d.color = vert_values[vert, 1:]
 
 
+def color_groups_manually():
+    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_meg_activity_map')
+    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_fmri_activity_map')
+    init_activity_map_coloring('FMRI')
+    labels = ColoringMakerPanel.labels_groups[bpy.context.scene.labels_groups]
+    objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
+    for label in labels:
+        obj_type = mu.check_obj_type(label['name'])
+        if obj_type is not None:
+            objects_names[obj_type].append(label['name'])
+            colors[obj_type].append(np.array(label['color']) / 255.0)
+            data[obj_type].append(1.)
+    clear_subcortical_fmri_activity()
+    color_objects(objects_names, colors, data)
+
+
 def color_manually():
-    ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
-    ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
+    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_meg_activity_map')
+    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_fmri_activity_map')
+    init_activity_map_coloring('FMRI')
     subject_fol = mu.get_user_fol()
-    labels_names, labels_vertices = mu.load(
-        op.join(subject_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
         obj_name, color_name = line
@@ -237,21 +252,36 @@ def color_manually():
             objects_names[obj_type].append(obj_name)
             colors[obj_type].append(color_rgb)
             data[obj_type].append(1.)
-    # coloring
+
+    color_objects(objects_names, colors, data)
+
+
+def color_objects(objects_names, colors, data):
     for hemi in HEMIS:
         obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
         if len(objects_names[obj_type]) == 0:
             continue
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
-        meg_labels_coloring_hemi(labels_names, labels_vertices, labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
+        # print('color hemi {}: {}'.format(hemi, labels_names))
+        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
+        print('color {}: {}'.format(region, color))
         color_subcortical_region(region, color)
+    bpy.context.scene.subcortical_layer = 'fmri'
     ColoringMakerPanel.addon.show_activity()
 
-def color_subcortical_region(region_name, rgb):
-    obj = bpy.data.objects.get(region_name + '_meg_activity', None)
-    if not obj is None:
-        object_coloring(obj, rgb)
+
+def color_subcortical_region(region_name, color):
+    # obj = bpy.data.objects.get(region_name + '_meg_activity', None)
+    # if not obj is None:
+    #     object_coloring(obj,     color)
+    cur_obj = bpy.data.objects.get(region_name + '_fmri_activity', None)
+    if not cur_obj is None:
+        vertices, _ = mu.read_ply_file(op.join(mu.get_user_fol(), 'subcortical', '{}.ply'.format(region_name)))
+        lookup = np.load(op.join(mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(region_name)))
+        region_colors_data = np.hstack((np.array([1.]), color))
+        region_colors_data = np.tile(region_colors_data, (len(vertices), 1))
+        activity_map_obj_coloring(cur_obj, region_colors_data, lookup, 0, True)
 
 
 def clear_subcortical_regions():
@@ -309,6 +339,17 @@ class ColorManually(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         color_manually()
+        return {"FINISHED"}
+
+
+class ColorGroupsManually(bpy.types.Operator):
+    bl_idname = "ohad.man_groups_color"
+    bl_label = "ohad man groups color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_groups_manually()
         return {"FINISHED"}
 
 
@@ -391,6 +432,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     addon = None
     fMRI = {}
     fMRI_clusters = {}
+    labels_vertices = {}
 
     def draw(self, context):
         layout = self.layout
@@ -405,6 +447,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(),'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         manually_color_file_exist = op.isfile(op.join(user_fol, 'coloring.csv'))
+        manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
         if faces_verts_exist:
@@ -421,6 +464,9 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
             if manually_color_file_exist:
                 layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+            if manually_groups_file_exist:
+                layout.prop(context.scene, 'labels_groups', text="")
+                layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
@@ -439,10 +485,38 @@ def get_faces_verts():
     return ColoringMakerPanel.faces_verts
 
 
+def read_groups_labels(colors):
+    groups_fname = op.join(mu.get_parent_fol(mu.get_user_fol()), '{}_groups.csv'.format(bpy.context.scene.atlas))
+    if not op.isfile(groups_fname):
+        return {}
+    groups = defaultdict(list) # OrderedDict() # defaultdict(list)
+    color_ind = 0
+    for line in mu.csv_file_reader(groups_fname):
+        group_name = line[0]
+        group_color = line[1]
+        labels = line[2:]
+        if group_name[0] == '#':
+            continue
+        groups[group_name] = []
+        for label in labels:
+            # group_color = cu.name_to_rgb(colors[color_ind])
+            groups[group_name].append(dict(name=label, color=cu.name_to_rgb(group_color)))
+            color_ind += 1
+    order_groups = OrderedDict()
+    groups_names = sorted(list(groups.keys()))
+    for group_name in groups_names:
+        order_groups[group_name] = groups[group_name]
+    return order_groups
+
+
 def init(addon):
+    from random import shuffle
     ColoringMakerPanel.addon = addon
     # Load fMRI data
     user_fol = mu.get_user_fol()
+    labels_names, labels_vertices = mu.load(
+        op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+    ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
     if len(fmri_files) > 0:
@@ -459,6 +533,14 @@ def init(addon):
                 ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
                     op.join(user_fol, 'fmri_clusters_{}.npy'.format(hemi)))
 
+    ColoringMakerPanel.colors = list(set(list(cu.NAMES_TO_HEX.keys())) - set(['black']))
+    shuffle(ColoringMakerPanel.colors)
+    ColoringMakerPanel.labels_groups = read_groups_labels(ColoringMakerPanel.colors)
+    if len(ColoringMakerPanel.labels_groups) > 0:
+        groups_items = [(gr, gr, '', ind) for ind, gr in enumerate(list(ColoringMakerPanel.labels_groups.keys()))]
+        bpy.types.Scene.labels_groups = bpy.props.EnumProperty(
+            items=groups_items, description="Groups")
+
     ColoringMakerPanel.faces_verts = load_faces_verts()
     register()
 
@@ -468,6 +550,7 @@ def register():
         unregister()
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(ColorManually)
+        bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorFmri)
@@ -483,6 +566,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(ColorManually)
+        bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)
         bpy.utils.unregister_class(ColorMegLabels)
         bpy.utils.unregister_class(ColorFmri)

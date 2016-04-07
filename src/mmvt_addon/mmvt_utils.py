@@ -225,10 +225,6 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
             print ("Could not delete object")
 
 
-def get_user():
-    return namebase(bpy.data.filepath).split('_')[0]
-
-
 def get_atlas(default='laus250'):
     name_split = namebase(bpy.data.filepath).split('_')
     if len(name_split) > 1:
@@ -635,13 +631,18 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
         row.label(text=text2)
 
 
+def get_user():
+    return namebase(bpy.data.filepath).split('_')[0]
+
+
 def current_path():
     return os.path.dirname(os.path.realpath(__file__))
 
 
-def get_parent_fol():
-    curr_dir = os.path.dirname(os.path.realpath(__file__))
-    return os.path.split(curr_dir)[0]
+def get_parent_fol(fol=None):
+    if fol is None:
+        fol = os.path.dirname(os.path.realpath(__file__))
+    return os.path.split(fol)[0]
 
 
 def get_mmvt_root():
@@ -779,3 +780,14 @@ def update_progress(job_title, progress):
             update_progress("Some job", i / 100.0)
         update_progress("Some job", 1)
 
+
+def read_ply_file(ply_file):
+    with open(ply_file, 'r') as f:
+        lines = f.readlines()
+        verts_num = int(lines[2].split(' ')[-1])
+        faces_num = int(lines[6].split(' ')[-1])
+        verts_lines = lines[9:9 + verts_num]
+        faces_lines = lines[9 + verts_num:]
+        verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
+        faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
+    return verts, faces

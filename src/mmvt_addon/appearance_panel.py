@@ -78,10 +78,11 @@ def set_appearance_show_activity_layer(self, value):
     bpy.context.scene.layers[ACTIVITY_LAYER] = value
     if value:
         set_appearance_show_rois_layer(self, False)
-        # todo: decide which one to show
         if not AppearanceMakerPanel.addon is None:
-            AppearanceMakerPanel.addon.show_hide_hierarchy(value, "Subcortical_fmri_activity_map")
-            AppearanceMakerPanel.addon.show_hide_hierarchy(not value, "Subcortical_meg_activity_map")
+            fmri_hide = not value if bpy.context.scene.subcortical_layer == 'fmri' else value
+            meg_hide = not value if bpy.context.scene.subcortical_layer == 'meg' else value
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
 
 
 def get_appearance_show_connections_layer(self):
@@ -169,6 +170,8 @@ bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=
 bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
                                                                         get=get_appearance_show_connections_layer,
                                                                         set=set_appearance_show_connections_layer)
+bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
+
 
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("1", "Rendered Brain", "", 1), ("2", " Solid Brain", "", 2)],description="Brain appearance",
@@ -193,6 +196,7 @@ def init(addon):
     AppearanceMakerPanel.addon = addon
     register()
     AppearanceMakerPanel.init = True
+    bpy.context.scene.subcortical_layer = 'fmri'
 
 
 def register():

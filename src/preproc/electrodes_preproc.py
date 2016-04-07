@@ -455,7 +455,7 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=
 
 
 if __name__ == '__main__':
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'em20'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg99'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT
@@ -470,7 +470,7 @@ if __name__ == '__main__':
     bipolar = False
     add_activity = True
 
-    # main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
-    conds = [dict(name='seizure', from_t=16, to_t=20), dict(name='baseline', from_t=12, to_t=16)]
-    create_raw_data_for_blender(subject, '3_30_16Sz.edf', conds, do_plot=True)
+    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
+    # conds = [dict(name='seizure', from_t=16, to_t=20), dict(name='baseline', from_t=12, to_t=16)]
+    # create_raw_data_for_blender(subject, '3_30_16Sz.edf', conds, do_plot=True)
     print('finish!')

@@ -112,6 +112,15 @@ get_fMRI_activity = coloring_panel.get_fMRI_activity
 get_faces_verts = coloring_panel.get_faces_verts
 clear_colors = coloring_panel.clear_colors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+find_obj_with_val = filter_panel.find_obj_with_val
+filter_draw = filter_panel.filter_draw
+clear_filtering = filter_panel.clear_filtering
+de_select_electrode = filter_panel.de_select_electrode
+filter_roi_func = filter_panel.filter_roi_func
+filter_electrode_func = filter_panel.filter_electrode_func
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 def get_max_time_steps():
     # Check if maximal_time_steps is in bpy.types.Scene
@@ -172,9 +181,9 @@ def show_hide_sub_corticals(val):
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
     # We split the activity map into two types: meg for the same activation for the each structure, and fmri
     # for a better resolution, like on the cortex.
-    # todo: can't display both subcortical activity
-    show_hide_hierarchy(val, "Subcortical_fmri_activity_map")
-    show_hide_hierarchy(val, "Subcortical_meg_activity_map")
+    # todo: might cause some problems in the future
+    show_hide_hierarchy(True, "Subcortical_fmri_activity_map")
+    show_hide_hierarchy(True if not val else False, "Subcortical_meg_activity_map")
 
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(default=True, description="Show left hemisphere",

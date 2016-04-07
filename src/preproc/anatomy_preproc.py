@@ -393,7 +393,7 @@ def run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation=False, o
                 errors[subject].append(flag_type)
     print('Errors:')
     for subject, error in errors.items():
-        print('{}: {}'.subject, error)
+        print('{}: {}'.format(subject, error))
 
 
 
@@ -421,20 +421,20 @@ if __name__ == '__main__':
     overwrite_hemis_srf = False
     overwrite_labels_ply_files = False
     overwrite_faces_verts = False
-    solve_labels_collisions = True
-    morph_labels_from_fsaverage = True
+    solve_labels_collisions = False
+    morph_labels_from_fsaverage = False
     fsaverage = 'fsaverage'
-    aparc_name = 'laus250' # 'aparc.DKTatlas40'
+    aparc_name = 'aparc.DKTatlas40' #'laus250' #
     n_jobs = 6
 
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
-    subjects = ['fscopy'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
-    freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
+    subjects = ['mg99'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
+    run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
+    # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
 
     # aparc_name = 'laus250'
     # users_flags = {}

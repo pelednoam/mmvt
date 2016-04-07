@@ -159,8 +159,9 @@ def _show_only_current_lead_update():
 
 
 def plot_labels_probs(elc):
-    ElecsPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
-    ElecsPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
+    ElecsPanel.addon.init_activity_map_coloring('FMRI')
+    # ElecsPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
+    # ElecsPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
     # todo: Find how not clear the cortex every time, just when the hemi flips
     # ElecsPanel.addon.clear_cortex()
     if len(elc['cortical_rois']) > 0:
@@ -168,8 +169,7 @@ def plot_labels_probs(elc):
         if not hemi is None:
             # if no matplotlib should calculate the colors offline :(
             labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
-            ElecsPanel.addon.meg_labels_coloring_hemi(
-                ElecsPanel.labels_names, ElecsPanel.labels_vertices, labels_data, ElecsPanel.faces_verts, hemi, 0)
+            ElecsPanel.addon.meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0)
         else:
             print("Can't get the rois hemi!")
     else:
@@ -418,8 +418,6 @@ def init(addon):
         # todo: there could be 2 files, one for bipolar and one for non bipolar
         ElecsPanel.electrodes_locs = mu.load(loc_files[0])
         ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
-        ElecsPanel.labels_names, ElecsPanel.labels_vertices = mu.load(
-            op.join(mu.get_user_fol(), 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
         # todo: Should be done only once in the main addon
         ElecsPanel.faces_verts = addon.load_faces_verts()
     else:
