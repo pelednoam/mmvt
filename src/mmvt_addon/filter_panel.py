@@ -1,5 +1,6 @@
 import bpy
 import mmvt_utils as mu
+import colors_utils as cu
 import numpy as np
 import os.path as op
 import glob
@@ -79,12 +80,14 @@ def filter_draw(self, context):
     row.operator(GrabToFiltering.bl_idname, text="", icon='BORDERMOVE')
     layout.prop(context.scene, "filter_curves_type", text="")
     layout.prop(context.scene, "filter_curves_func", text="")
+    layout.prop(context.scene, 'mark_filter_items', text="Mark selected items")
     layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
-    if bpy.types.Scene.filter_is_on:
-        layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
+    # if bpy.types.Scene.filter_is_on:
+    layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
     col = layout.column(align=0)
     col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
-    col.label(text=bpy.types.Scene.closest_curve_str)
+    if bpy.types.Scene.closest_curve_str != '':
+        col.label(text=bpy.types.Scene.closest_curve_str)
 
     # bpy.context.area.type = 'GRAPH_EDITOR'
     # filter_to = bpy.context.scence.frame_preview_end
@@ -108,6 +111,8 @@ def de_select_electrode(obj, call_create_and_set_material=True):
     if call_create_and_set_material:
         mu.create_and_set_material(obj)
     # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
+    if obj.name in FilteringMakerPanel.electrodes_colors:
+        FilteringMakerPanel.addon.object_coloring(obj, FilteringMakerPanel.electrodes_colors[obj.name])
     # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 
 
@@ -123,13 +128,19 @@ def filter_roi_func(closet_object_name, closest_curve_name=None):
     bpy.types.Scene.filter_is_on = True
 
 
-def filter_electrode_func(closet_object_name, closest_curve_name=None):
-    bpy.data.objects[closet_object_name].active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+def filter_electrode_func(elec_name):
+    elec_obj = bpy.data.objects[elec_name]
+    if bpy.context.scene.mark_filter_items:
+        FilteringMakerPanel.electrodes_colors[elec_name] = FilteringMakerPanel.addon.get_obj_color(elec_obj)
+        FilteringMakerPanel.addon.object_coloring(elec_obj, cu.name_to_rgb('green'))
+    else:
+        elec_obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+
     # todo: selecting the electrode will show both of their conditions time series
     # We don't want it to happen if selection_type == 'conds'...
     if bpy.context.scene.selection_type == 'conds':
-        bpy.data.objects[closet_object_name].select = True
-    bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
+        bpy.data.objects[elec_name].select = True
+    bpy.context.scene.objects.active = bpy.data.objects[elec_name]
     bpy.types.Scene.filter_is_on = True
 
 
@@ -355,6 +366,9 @@ bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
     items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
            ("threshold", "Above threshold", "", 3)],
     description="Filtering function", update=filter_draw)
+bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(
+    default=False, description="Mark selected items")
+
 
 
 class FilteringMakerPanel(bpy.types.Panel):
@@ -364,6 +378,7 @@ class FilteringMakerPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "Filter number of curves"
     addon = None
+    electrodes_colors = {}
 
     def draw(self, context):
         filter_draw(self, context)

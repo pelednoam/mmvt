@@ -18,6 +18,13 @@ def object_coloring(obj, rgb):
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
     cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
+    # new_color = get_obj_color(obj)
+    # print(new_color)
+
+
+def get_obj_color(obj):
+    cur_mat = obj.active_material
+    return tuple(cur_mat.node_tree.nodes["RGB"].outputs[0].default_value)
 
 
 def clear_subcortical_fmri_activity():
@@ -59,7 +66,7 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
         if obj and not obj.hide:
             # print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
             object_coloring(obj, new_color)
-            print(obj_name, value, new_color)
+            # print(obj_name, value, new_color)
         # else:
         #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
 

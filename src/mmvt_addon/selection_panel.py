@@ -33,12 +33,15 @@ def select_all_connections():
 
 def select_brain_objects(parent_obj_name, children):
     parent_obj = bpy.data.objects[parent_obj_name]
-    if parent_obj.animation_data and bpy.context.scene.selection_type == 'diff':
-        mu.show_hide_obj_and_fcurves(children, False)
-        parent_obj.select = True
-        for fcurve in parent_obj.animation_data.action.fcurves:
-            fcurve.hide = False
-            fcurve.select = True
+    if bpy.context.scene.selection_type == 'diff':
+        if parent_obj.animation_data is None:
+            print('parent_obj.animation_data is None!')
+        else:
+            mu.show_hide_obj_and_fcurves(children, False)
+            parent_obj.select = True
+            for fcurve in parent_obj.animation_data.action.fcurves:
+                fcurve.hide = False
+                fcurve.select = True
     else:
         mu.show_hide_obj_and_fcurves(children, True)
         parent_obj.select = False

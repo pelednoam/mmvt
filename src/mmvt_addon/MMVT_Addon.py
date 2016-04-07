@@ -89,6 +89,7 @@ select_all_rois = selection_panel.select_all_rois
 deselect_all = selection_panel.deselect_all
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
+get_obj_color = coloring_panel.get_obj_color
 clear_subcortical_fmri_activity = coloring_panel.clear_subcortical_fmri_activity
 clear_cortex = coloring_panel.clear_cortex
 clear_object_vertex_colors = coloring_panel.clear_object_vertex_colors
