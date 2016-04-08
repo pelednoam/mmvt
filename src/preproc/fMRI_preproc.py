@@ -128,7 +128,7 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
 
 def init_clusters(subject, contrast_name, input_fol):
     input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
-    contrast_per_hemi, connectivity_per_hemi, verts_per_hemi = {}, {}, {}
+    contrast_per_hemi, verts_per_hemi = {}, {}
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
         if utils.file_type(input_fname) == 'npy':
@@ -138,9 +138,12 @@ def init_clusters(subject, contrast_name, input_fol):
             # try nibabel
             x = nib.load(fmri_fname)
             contrast_per_hemi[hemi] = x.get_data().ravel()
-        verts_per_hemi[hemi], faces = utils.read_ply_file(
-            op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(faces)
+        d = np.load(op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi)))
+        verts_per_hemi[hemi] = d['vertices']
+        # verts_per_hemi[hemi], faces = utils.read_ply_file(
+        #     op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        # connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(faces)
+    connectivity_per_hemi = utils.load(op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl'))
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 

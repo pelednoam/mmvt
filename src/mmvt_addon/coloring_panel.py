@@ -277,10 +277,11 @@ def color_subcortical_region(region_name, color):
     #     object_coloring(obj,     color)
     cur_obj = bpy.data.objects.get(region_name + '_fmri_activity', None)
     if not cur_obj is None:
-        vertices, _ = mu.read_ply_file(op.join(mu.get_user_fol(), 'subcortical', '{}.ply'.format(region_name)))
+        # vertices, _ = mu.read_ply_file(op.join(mu.get_user_fol(), 'subcortical', '{}.ply'.format(region_name)))
+        d = np.load(op.join(mu.get_user_fol(), 'subcortical', '{}.npz'.format(region_name)))
         lookup = np.load(op.join(mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(region_name)))
         region_colors_data = np.hstack((np.array([1.]), color))
-        region_colors_data = np.tile(region_colors_data, (len(vertices), 1))
+        region_colors_data = np.tile(region_colors_data, (len(d['vertices']), 1))
         activity_map_obj_coloring(cur_obj, region_colors_data, lookup, 0, True)
 
 
