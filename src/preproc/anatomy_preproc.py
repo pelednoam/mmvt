@@ -114,10 +114,13 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             os.rename(surf_wavefront_name, surf_new_name)
             print('{}: convert asc to ply'.format(hemi))
             convert_hemis_srf_to_ply(subject, hemi)
-        else:
-            for hemi in utils.get_hemis(hemi):
-                shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)),
-                                op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi)))
+        for hemi in utils.get_hemis(hemi):
+            ply_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi))
+            verts, faces = utils.read_ply_file(ply_fname)
+            np.savez(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial'.format(hemi)), verts=verts, faces=faces)
+            shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)),
+                            op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi)))
+
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
 
 
@@ -294,6 +297,21 @@ def save_labels_vertices(subject, aparc_name):
     return op.isfile(output_fname)
 
 
+def create_spatial_connectivity(subject):
+    try:
+        connectivity_per_hemi = {}
+        for hemi in utils.HEMIS:
+            d = np.load(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)))
+            connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
+        utils.save(connectivity_per_hemi, op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl'))
+        success = True
+    except:
+        print('Error in create_spatial_connectivity!')
+        print(traceback.format_exc())
+        success = False
+    return success
+
+
 # def find_hemis_boarders(subject):
 #     from scipy.spatial.distance import cdist
 #     verts = {}
@@ -332,16 +350,16 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
          overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
          overwrite_ply_files=False, overwrite_faces_verts=False, solve_labels_collisions=False,
          morph_labels_from_fsaverage=True, n_jobs=1):
-    flags = {}
+    flags = dict()
+    utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
     # *) Prepare the local subject's folder
-    flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR,
-        print_traceback=False)
+    flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
+        neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=False)
 
     # *) Create annotation file from fsaverage
     flags['annot'] = create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
         overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
         morph_labels_from_fsaverage, n_jobs)
-
 
     # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
     flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
@@ -359,6 +377,9 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
 
     # *) Save the labels vertices for meg label plotting
     flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
+
+    # *) Create the subject's connectivity
+    flags['connectivity'] = create_spatial_connectivity(subject)
 
     # *) Check the pial surfaces
     flags['ply_files'] = check_ply_files(subject)
@@ -438,14 +459,15 @@ if __name__ == '__main__':
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
     subjects = ['mg99'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
+    # run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage, n_jobs)
     # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
 
     # aparc_name = 'laus250'
     # users_flags = {}
     # subjects = ['mg78']
-    # for subject in subjects:
+    for subject in subjects:
+        freesurfer_surface_to_blender_surface(subject)
     #     users_flags[subject] = {}
     #     users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite=True, overwrite_ply_files=True)
     #     users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
