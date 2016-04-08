@@ -10,6 +10,7 @@ import traceback
 from src import utils
 from src import matlab_utils
 from src import labels_utils as lu
+from src import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -203,6 +204,14 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
 def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
         overwrite_annotation=False, overwrite_morphing=False, solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, n_jobs=6):
+    annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
+        aparc_name))) for hemi in HEMIS])
+    existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
+    if '{}.annot'.format(aparc_name) in existing_freesurfer_annotations:
+        morph_labels_from_fsaverage = False
+        solve_labels_collisions = False
+        if not annotations_exist:
+            fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
     if morph_labels_from_fsaverage:
         utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing)
@@ -210,9 +219,6 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
         backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
         lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
         lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
-    if not overwrite_annotation:
-        annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
-            aparc_name))) for hemi in HEMIS])
     # Note that using the current mne version this code won't work, because of collissions between hemis
     # You need to change the mne.write_labels_to_annot code for that.
     if overwrite_annotation or not annotations_exist:
