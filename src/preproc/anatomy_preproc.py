@@ -48,7 +48,8 @@ def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
     ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
     if len(ply_files) < len(lookup) or overwrite_subcortical_objs:
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
-    flag_ok = len(glob.glob(op.join(renamed_output_fol, '*.ply'))) == len(lookup)
+    flag_ok = len(glob.glob(op.join(renamed_output_fol, '*.ply'))) == len(lookup) and \
+        len(glob.glob(op.join(renamed_output_fol, '*.npz'))) == len(lookup)
     return flag_ok
 
 
@@ -67,6 +68,8 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
         new_name = lookup.get(num, '')
         if new_name != '':
             utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
+            verts, faces = utils.read_ply_file(op.join(new_fol, '{}.ply'.format(new_name)))
+            np.savez(op.join(new_fol, '{}.npz'.format(new_name)), verts=verts, faces=faces)
     blender_fol = op.join(BLENDER_ROOT_DIR, subject, 'subcortical')
     if op.isdir(blender_fol):
         shutil.rmtree(blender_fol)
@@ -350,6 +353,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
          overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
          overwrite_ply_files=False, overwrite_faces_verts=False, solve_labels_collisions=False,
          morph_labels_from_fsaverage=True, n_jobs=1):
+    # todo: When possivble, read verts and faces from the nzp and not from ply files
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
     # *) Prepare the local subject's folder
@@ -467,7 +471,7 @@ if __name__ == '__main__':
     # users_flags = {}
     # subjects = ['mg78']
     for subject in subjects:
-        freesurfer_surface_to_blender_surface(subject)
+        subcortical_segmentation(subject)
     #     users_flags[subject] = {}
     #     users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite=True, overwrite_ply_files=True)
     #     users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
