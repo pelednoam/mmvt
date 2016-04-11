@@ -138,12 +138,18 @@ def init_clusters(subject, contrast_name, input_fol):
             # try nibabel
             x = nib.load(fmri_fname)
             contrast_per_hemi[hemi] = x.get_data().ravel()
-        d = np.load(op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi)))
-        verts_per_hemi[hemi] = d['vertices']
-        # verts_per_hemi[hemi], faces = utils.read_ply_file(
-        #     op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        # connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(faces)
-    connectivity_per_hemi = utils.load(op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl'))
+        pial_npz_fname = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi))
+        if not op.isfile(pial_npz_fname):
+            print('No pial npz file (), creating one'.format(pial_npz_fname))
+            verts, faces = utils.read_ply_file(op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi)))
+            np.savez(pial_npz_fname[:-4], verts=verts, faces=faces)
+        d = np.load(pial_npz_fname)
+        verts_per_hemi[hemi] = d['verts']
+    connectivity_fname = op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl')
+    if not op.isfile(connectivity_fname):
+        from src.preproc import anatomy_preproc
+        anatomy_preproc.create_spatial_connectivity(subject)
+    connectivity_per_hemi = utils.load(connectivity_fname)
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 

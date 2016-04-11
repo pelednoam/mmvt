@@ -226,9 +226,15 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
 
 
 def get_atlas(default='laus250'):
-    name_split = namebase(bpy.data.filepath).split('_')
-    if len(name_split) > 1:
-        return name_split[1]
+    # name_split = namebase(bpy.data.filepath).split('_')
+    # if len(name_split) > 1:
+    #     return name_split[1]
+    # else:
+    #     return default
+    blend_fname = namebase(bpy.data.filepath)
+    sep_ind = blend_fname.find('_')
+    if sep_ind != -1:
+        return blend_fname[sep_ind + 1:]
     else:
         return default
 

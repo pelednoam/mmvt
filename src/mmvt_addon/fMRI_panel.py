@@ -203,6 +203,17 @@ def fMRI_draw(self, context):
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
+    layout.operator(LoadMEGData.bl_idname, text="Load MEG data", icon='IPO')
+
+
+class LoadMEGData(bpy.types.Operator):
+    bl_idname = "ohad.load_meg_data"
+    bl_label = "Load MEG"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+
+        return {'PASS_THROUGH'}
 
 
 class RefinefMRIClusters(bpy.types.Operator):
@@ -358,6 +369,7 @@ def register():
         bpy.utils.register_class(FilterfMRIBlobs)
         bpy.utils.register_class(PlotAllBlobs)
         bpy.utils.register_class(RefinefMRIClusters)
+        bpy.utils.register_class(LoadMEGData)
         print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
@@ -372,6 +384,7 @@ def unregister():
         bpy.utils.unregister_class(FilterfMRIBlobs)
         bpy.utils.unregister_class(PlotAllBlobs)
         bpy.utils.unregister_class(RefinefMRIClusters)
+        bpy.utils.unregister_class(LoadMEGData)
     except:
         pass
         # print("Can't unregister fMRI Panel!")

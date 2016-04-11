@@ -662,7 +662,6 @@ def fsaverage_vertices():
 
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=False):
-    mmvt_files_fol = op.join(SUBJECTS_DIR)
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     for fol, files in neccesary_files.items():
         if not os.path.isdir(os.path.join(local_subject_dir, fol)):
