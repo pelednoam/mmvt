@@ -9,25 +9,19 @@ from functools import partial
 from collections import defaultdict
 import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
-                              write_inverse_operator, read_inverse_operator, apply_inverse_epochs)
+                              write_inverse_operator, read_inverse_operator)
 
 from src import utils
-# from make_ecr_events import make_ecr_events
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
-# BEHAVIOR_FILE = utils.get_exisiting_file(
-#     ['/space/lilli/1/users/DARPA-MEG/ecr/behavior/hc004_ECR_MEG_2015_03_08_14_11_13.csv',
-#      '/home/noam/subjects/meg/ECR/hc004_ECR_MEG_2015_03_08_14_11_13.csv'])
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
-# TASK_MSIT, TASK_ECR = range(2)
-# TASKS = {TASK_MSIT: 'MSIT', TASK_ECR: 'ECR'}
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
@@ -1215,6 +1209,9 @@ def get_fname_format(task):
         fname_format = '{cond}-{ana_type}.{file_type}'
         events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
         event_digit = 3
+    elif TASK=='ARC':
+        fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
+        events_id = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
         raise Exception('No fname for this task!')
     return fname_format, events_id, event_digit
@@ -1245,7 +1242,7 @@ if __name__ == '__main__':
     aparc_name = 'laus250'#'aparc250'
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
-    make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
+    # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
     calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
     stcs = calc_stc_per_condition(events_id, inverse_method)
     # test_labels_coloring(subject, 'laus250')
