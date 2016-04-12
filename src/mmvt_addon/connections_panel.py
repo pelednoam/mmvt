@@ -26,7 +26,10 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     mu.create_empty_if_doesnt_exists(PARENT_OBJ, ConnectionsPanel.addon.BRAIN_EMPTY_LAYER, None, 'Functional maps')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     T = ConnectionsPanel.addon.get_max_time_steps()
-    windows_num = d.con_colors.shape[1]
+    if d.con_colors.ndim == 4:
+        windows_num = d.con_colors.shape[1]
+    else:
+        windows_num = 1
     norm_fac = T / windows_num
     # todo: Check if we really want to let the user create connection according to the first option
     # if bpy.context.scene.selection_type == 'conds':
@@ -467,15 +470,19 @@ class ConnectionsPanel(bpy.types.Panel):
 
 
 def init(addon):
-    # colors = mu.arr_to_colors(10)
-    # print(colors)
-    connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
-    if not os.path.isfile(connections_file):
-        print('No connections file! {}'.format(connections_file))
+    connections_file = ''
+    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
+    meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
+    if os.path.isfile(electrodes_connections_file):
+        connections_file = electrodes_connections_file
+    elif os.path.isfile(meg_bev_connections_file):
+        connections_file = meg_bev_connections_file
     else:
+        print('No connections file!')
+
+    if connections_file != '':
         print('loading {}'.format(connections_file))
         d = mu.Bag(np.load(connections_file))
-        # d.data = d.data.astype(np.double)
         d.labels = [l.astype(str) for l in d.labels]
         d.hemis = [l.astype(str) for l in d.hemis]
         d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)

@@ -172,8 +172,8 @@ def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_
 
 if __name__ == '__main__':
     import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'fscopy'
-    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'laus250'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'pp009'
+    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'arc_april2016'
     bipolar = False
     overwrite_aseg_file = False
     create_volume_file = True

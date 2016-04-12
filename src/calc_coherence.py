@@ -54,8 +54,9 @@ def save_electrodes_coh_to_blender(subject,  stat, threshold=0.8, bipolar=False)
     d = {}
     d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
+    coh = get_electrodes_coh(subject, d['labels'])
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_electrodes_coh_colors(subject, d['labels'], d['hemis'], stat)
+        calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat)
     d['conditions'] = ['interference', 'neutral']
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh'), **d)
 
@@ -101,19 +102,18 @@ def get_electrodes_coh(subject, labels):
     return sorted_coh
 
 
-def calc_electrodes_coh_colors(subject, labels, hemis, stat, threshold=0, color_map='jet',
-        norm_by_percentile=True, norm_percs=(1,99)):
+def calc_connections_colors(subject, data, labels, hemis, stat, threshold=0, color_map='jet',
+                            norm_by_percentile=True, norm_percs=(1,99)):
         # cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
-    coh = get_electrodes_coh(subject, labels)
-    M = coh.shape[0]
-    W = coh.shape[2]
+    M = data.shape[0]
+    W = data.shape[2]
     L = int((M*M+M)/2-M)
     # con_colors = np.zeros((L, W, 3))
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, 2))
     con_names = [None] * L
     con_type = np.zeros((L))
-    coh_stat = utils.calc_stat_data(coh, stat, axis=3)
+    coh_stat = utils.calc_stat_data(data, stat, axis=3)
     x = coh_stat.ravel()
     data_max, data_min = utils.get_data_max_min(x, norm_by_percentile, norm_percs)
     data_minmax = max(map(abs, [data_max, data_min]))
@@ -125,7 +125,7 @@ def calc_electrodes_coh_colors(subject, labels, hemis, stat, threshold=0, color_
             # win_colors = utils.arr_to_colors(coh_arr, threshold, max_x, color_map, sm)
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
                 # con_colors[ind, w, cond, :] = win_colors[ind][:3]
-                con_values[ind, w, cond] = coh[i, j, w, cond]
+                con_values[ind, w, cond] = data[i, j, w, cond]
     stat_data = utils.calc_stat_data(con_values, stat)
     con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
 

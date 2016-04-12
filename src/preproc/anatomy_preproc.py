@@ -315,6 +315,29 @@ def create_spatial_connectivity(subject):
     return success
 
 
+def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol=''):
+    if (read_from_annotation):
+        labels = mne.read_labels_from_annot(subject, atlas, 'both', surf_name, subjects_dir=SUBJECTS_DIR)
+        if len(labels) == 0:
+            print('No labels were found in {} annotation file!'.format(atlas))
+    else:
+        labels = []
+        for label_file in glob.glob(op.join(labels_fol, '{}.label')):
+            label = mne.read_label(label_file)
+            labels.append(label)
+        if len(labels) == 0:
+            print('No labels were found in {}!'.format(labels_fol))
+    if len(labels) > 0:
+        center_of_mass = {}
+        for label in labels:
+            center_of_mass[label.name] = np.mean(label.pos, 0)
+        com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
+        blend_fname = op.join(BLENDER_ROOT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
+        utils.save(center_of_mass, com_fname)
+        shutil.copyfile(com_fname, blend_fname)
+    return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
+
+
 # def find_hemis_boarders(subject):
 #     from scipy.spatial.distance import cdist
 #     verts = {}
@@ -387,6 +410,10 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
 
     # *) Check the pial surfaces
     flags['ply_files'] = check_ply_files(subject)
+
+    # *) Calc the labels center of mass
+    flags['center_of_msas'] =  calc_lavels_center_of_mass(
+        subject, aparc_name, read_from_annotation=True, surf_name='pial')
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))
@@ -466,12 +493,13 @@ if __name__ == '__main__':
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
     subjects = ['pp009'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    run_on_subjects(
-        subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
-        fs_labels_fol, n_jobs)
-    # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
+    # run_on_subjects(
+    #     subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
+    #     fs_labels_fol, n_jobs)
 
+    # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
+    calc_lavels_center_of_mass('pp009', aparc_name, read_from_annotation=True)
     # aparc_name = 'laus250'
     # users_flags = {}
     # subjects = ['mg78']

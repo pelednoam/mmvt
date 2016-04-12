@@ -73,9 +73,7 @@ def filter_draw(self, context):
     layout.prop(context.scene, "filter_topK", text="Top K")
     row = layout.row(align=0)
     row.prop(context.scene, "filter_from", text="From")
-    # row.label(str(GrabFromFiltering.value))
     row.operator(GrabFromFiltering.bl_idname, text="", icon='BORDERMOVE')
-    # row.operator("ohad.grab_from", text="", icon = 'BORDERMOVE')
     row.prop(context.scene, "filter_to", text="To")
     row.operator(GrabToFiltering.bl_idname, text="", icon='BORDERMOVE')
     layout.prop(context.scene, "filter_curves_type", text="")
@@ -88,9 +86,16 @@ def filter_draw(self, context):
     col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
     if bpy.types.Scene.closest_curve_str != '':
         col.label(text=bpy.types.Scene.closest_curve_str)
+    layout.prop(context.scene, 'filter_items_one_by_one', text="Show one by one")
+    if bpy.context.scene.filter_items_one_by_one:
+        row = layout.row(align=0)
+        row.operator(PrevFilterItem.bl_idname, text="", icon='PREV_KEYFRAME')
+        row.prop(context.scene, 'filter_items', text="")
+        row.operator(NextFilterItem.bl_idname, text="", icon='NEXT_KEYFRAME')
 
-    # bpy.context.area.type = 'GRAPH_EDITOR'
+        # bpy.context.area.type = 'GRAPH_EDITOR'
     # filter_to = bpy.context.scence.frame_preview_end
+
 
 def clear_filtering():
     for subhierarchy in bpy.data.objects['Brain'].children:
@@ -142,6 +147,58 @@ def filter_electrode_func(elec_name):
         bpy.data.objects[elec_name].select = True
     bpy.context.scene.objects.active = bpy.data.objects[elec_name]
     bpy.types.Scene.filter_is_on = True
+
+
+def deselect_all_objects():
+    for obj in bpy.data.objects:
+        obj.select = False
+        if obj.parent == bpy.data.objects['Subcortical_structures']:
+            obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
+        elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
+            obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+
+
+def filter_items_update(self, context):
+    deselect_all_objects()
+    filter_roi_func(bpy.context.scene.filter_items)
+    mu.view_all_in_graph_editor(context)
+
+
+def update_fitler_items(topk, objects_indices, filter_objects):
+    filter_items = []
+    FilteringMakerPanel.filter_items = []
+    if topk == 0:
+        topk = len(objects_indices)
+    for loop_ind, ind in enumerate(range(min(topk, len(objects_indices)) - 1, -1, -1)):
+        filter_item = filter_objects[objects_indices[ind]]
+        if 'unknown' in filter_item:
+            continue
+        filter_items.append((filter_item, '{}) {}'.format(ind + 1, filter_item), '', loop_ind))
+        FilteringMakerPanel.filter_items.append(filter_item)
+    bpy.types.Scene.filter_items = bpy.props.EnumProperty(
+        items=filter_items, description="filter items", update=filter_items_update)
+    if len(filter_items) > 0:
+        bpy.context.scene.filter_items = FilteringMakerPanel.filter_items[-1]
+
+
+def show_one_by_one_update(self, context):
+    if bpy.context.scene.filter_items_one_by_one:
+        update_fitler_items(bpy.context.scene.filter_topK, Filtering.objects_indices, Filtering.filter_objects)
+    else:
+        #todo: do something here
+        pass
+
+def next_filter_item():
+    index = FilteringMakerPanel.filter_items.index(bpy.context.scene.filter_items)
+    next_item = FilteringMakerPanel.filter_items[index + 1] if index < len(FilteringMakerPanel.filter_items) -1 \
+        else FilteringMakerPanel.filter_items[0]
+    bpy.context.scene.filter_items = next_item
+
+
+def prev_filter_item():
+    index = FilteringMakerPanel.filter_items.index(bpy.context.scene.filter_items)
+    prev_cluster = FilteringMakerPanel.filter_items[index - 1] if index > 0 else FilteringMakerPanel.filter_items[-1]
+    bpy.context.scene.filter_items = prev_cluster
 
 
 class FindCurveClosestToCursor(bpy.types.Operator):
@@ -199,6 +256,26 @@ class ClearFiltering(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PrevFilterItem(bpy.types.Operator):
+    bl_idname = 'ohad.next_filter_item'
+    bl_label = 'next_filter_item'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        next_filter_item()
+        return {'FINISHED'}
+
+
+class NextFilterItem(bpy.types.Operator):
+    bl_idname = 'ohad.prev_filter_item'
+    bl_label = 'prev_filter_item'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        prev_filter_item()
+        return {'FINISHED'}
+
+
 class Filtering(bpy.types.Operator):
     bl_idname = "ohad.filter"
     bl_label = "Filter deep elctrodes"
@@ -211,7 +288,9 @@ class Filtering(bpy.types.Operator):
     type_of_func = None
     current_file_to_upload = ''
     current_root_path = mu.get_user_fol()
-    addon = None
+    objects_indices = []
+    filter_objects = []
+    filter_values = []
 
     def get_object_to_filter(self, source_files):
         data, names = [], []
@@ -255,12 +334,13 @@ class Filtering(bpy.types.Operator):
         else:
             objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
         print(dd[objects_to_filtter_in])
-        return objects_to_filtter_in, names
+        return objects_to_filtter_in, names, dd
 
     def filter_electrodes(self, current_file_to_upload):
         print('filter_electrodes')
         source_files = [op.join(self.current_activity_path, current_file_to_upload)]
-        objects_indices, names = self.get_object_to_filter(source_files)
+        objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
+        Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         if objects_indices is None:
             return
 
@@ -293,13 +373,9 @@ class Filtering(bpy.types.Operator):
         FilteringMakerPanel.addon.set_appearance_show_rois_layer(bpy.context.scene, True)
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in mu.HEMIS]
-        objects_indices, names = self.get_object_to_filter(source_files)
-        for obj in bpy.data.objects:
-            obj.select = False
-            if obj.parent == bpy.data.objects['Subcortical_structures']:
-                obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
-                obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+        objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
+        Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
+        deselect_all_objects()
 
         if bpy.context.scene.selection_type == 'diff':
             filter_obj_names = [names[ind] for ind in objects_indices]
@@ -312,8 +388,9 @@ class Filtering(bpy.types.Operator):
 
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
-                orig_name = bpy.data.objects[names[objects_indices[ind]]].name
-                filter_roi_func(orig_name)
+                orig_name = names[objects_indices[ind]]
+                if 'unknown' not in orig_name:
+                    filter_roi_func(orig_name)
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 
@@ -348,6 +425,10 @@ class Filtering(bpy.types.Operator):
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
 
+        if bpy.context.scene.filter_items_one_by_one:
+            update_fitler_items(self.topK, self.objects_indices, self.filter_objects)
+        else:
+            mu.view_all_in_graph_editor(context)
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
         return {"FINISHED"}
 
@@ -355,23 +436,22 @@ class Filtering(bpy.types.Operator):
 bpy.types.Scene.closest_curve_str = ''
 bpy.types.Scene.filter_is_on = False
 
-bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor", update=filter_draw)
-#bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
+bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor")
 bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
 bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-# bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.data.scenes['Scene'].frame_preview_end, min=0, description="When to filter to")
 bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
                                                   description="When to filter to")
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
     items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
-    description="Type of curve to be filtered", update=filter_draw)
+    description="Type of curve to be filtered")
 bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
     items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
            ("threshold", "Above threshold", "", 3)],
-    description="Filtering function", update=filter_draw)
-bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(
-    default=False, description="Mark selected items")
-
+    description="Filtering function")
+bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=False, description="Mark selected items")
+bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
+bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
+    default=False, description="Show one by one", update=show_one_by_one_update)
 
 
 class FilteringMakerPanel(bpy.types.Panel):
@@ -382,6 +462,7 @@ class FilteringMakerPanel(bpy.types.Panel):
     bl_label = "Filter number of curves"
     addon = None
     electrodes_colors = {}
+    filter_items = []
 
     def draw(self, context):
         filter_draw(self, context)
@@ -401,6 +482,8 @@ def register():
         bpy.utils.register_class(GrabToFiltering)
         bpy.utils.register_class(GrabFromFiltering)
         bpy.utils.register_class(FindCurveClosestToCursor)
+        bpy.utils.register_class(PrevFilterItem)
+        bpy.utils.register_class(NextFilterItem)
         print('Filtering Panel was registered!')
     except:
         print("Can't register Filtering Panel!")
@@ -414,6 +497,8 @@ def unregister():
         bpy.utils.unregister_class(GrabToFiltering)
         bpy.utils.unregister_class(GrabFromFiltering)
         bpy.utils.unregister_class(FindCurveClosestToCursor)
+        bpy.utils.unregister_class(PrevFilterItem)
+        bpy.utils.unregister_class(NextFilterItem)
     except:
         pass
 

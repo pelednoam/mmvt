@@ -86,7 +86,10 @@ def set_appearance_show_activity_layer(self, value):
 
 
 def get_appearance_show_connections_layer(self):
-    return self['appearance_show_connections_layer']
+    try:
+        return self['appearance_show_connections_layer']
+    except:
+        pass
 
 
 def set_appearance_show_connections_layer(self, value):

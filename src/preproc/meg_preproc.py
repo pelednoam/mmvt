@@ -1036,7 +1036,7 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
     for (cond_name, cond_id), stc in zip(events_id.items(), stcs.values()):
         if do_plot:
             plt.figure()
-        conditions.append(cond_name)
+        conditions.append(cond_id)
         if not global_inverse_operator:
             if src is None:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))

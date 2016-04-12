@@ -47,7 +47,7 @@ numeric_const_pattern = r"""
          (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
      )
      # followed by optional exponent part if desired
-     (?: [Ee] [+-]? \d+ ) ?
+     # (?: [Ee] [+-]? \d+ ) ?
      """
 numeric_pattern_rx = re.compile(numeric_const_pattern, re.VERBOSE)
 

@@ -12,6 +12,7 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 AFFINE_TRANS = np.genfromtxt('/homes/5/npeled/space3/fMRI/DTI/hc008/dmri/xfms/diff2anatorig.bbr.mat')
 
+# http://freesurfer.net/fswiki/FsTutorial/Diffusion
 
 def load_tracula_merged(subject):
     dti_fname = op.join(SUBJECTS_DIR, subject, 'dti', 'merged_avg33_mni_bbr.mgz')
