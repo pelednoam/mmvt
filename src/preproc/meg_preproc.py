@@ -31,7 +31,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
                 '', '', '', '', '', '', '', '', ''
 
 def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
-        subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR=''):
+        subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
@@ -41,12 +41,11 @@ def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=F
     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     BLENDER_SUBJECT_FOLDER = op.join(BLENDER_ROOT_DIR, MRI_SUBJECT)
-    if files_includes_cond:
-        _get_fif_name = partial(get_file_name, fname_format=fname_format, file_type='fif',
-            raw_cleaning_method=raw_cleaning_method, constrast=constrast)
-    else:
-        _get_fif_name = partial(get_file_name, fname_format=fname_format, file_type='fif',
-            raw_cleaning_method=raw_cleaning_method, constrast=constrast, cond='')
+    _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
+        raw_cleaning_method=raw_cleaning_method, constrast=constrast)
+    _get_fif_name_no_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
+        raw_cleaning_method=raw_cleaning_method, constrast=constrast, cond='')
+    _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
         raw_cleaning_method=raw_cleaning_method, constrast=constrast)
     _get_stc_name = partial(get_file_name, fname_format=fname_format, file_type='stc', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
@@ -60,14 +59,14 @@ def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=F
     DATA_CSD = _get_pkl_name('data-csd')
     NOISE_CSD = _get_pkl_name('noise-csd')
     EPO = _get_fif_name('epo')
-    FWD = _get_fif_name('fwd')
-    FWD_SUB = _get_fif_name('sub-cortical-fwd')
-    FWD_X = _get_fif_name('{region}-fwd')
-    FWD_SMOOTH = _get_fif_name('smooth-fwd')
-    INV = _get_fif_name('inv')
-    INV_SUB = _get_fif_name('sub-cortical-inv')
-    INV_X = _get_fif_name('{region}-inv')
-    INV_SMOOTH = _get_fif_name('smooth-inv')
+    FWD = _get_fif_name_no_cond('fwd') if fwd_inv_no_cond else _get_fif_name_cond('fwd')
+    FWD_SUB = _get_fif_name_no_cond('sub-cortical-fwd') if fwd_inv_no_cond else _get_fif_name_cond('sub-cortical-fwd')
+    FWD_X = _get_fif_name_no_cond('{region}-fwd') if fwd_inv_no_cond else _get_fif_name_cond('{region}-fwd')
+    FWD_SMOOTH = _get_fif_name_no_cond('smooth-fwd') if fwd_inv_no_cond else _get_fif_name_cond('smooth-fwd')
+    INV = _get_fif_name_no_cond('inv') if fwd_inv_no_cond else _get_fif_name_cond('inv')
+    INV_SUB = _get_fif_name_no_cond('sub-cortical-inv') if fwd_inv_no_cond else _get_fif_name_cond('sub-cortical-inv')
+    INV_X = _get_fif_name_no_cond('{region}-inv') if fwd_inv_no_cond else _get_fif_name_cond('{region}-inv')
+    INV_SMOOTH = _get_fif_name_no_cond('smooth-inv') if fwd_inv_no_cond else _get_fif_name_cond('smooth-inv')
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
@@ -96,6 +95,8 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
     fname = fname_format.format(**args)
     while '__' in fname:
         fname = fname.replace('__', '_')
+    if '_-' in fname:
+        fname = fname.replace('_-', '-')
     if root_dir == '':
         root_dir = SUBJECT_MEG_FOLDER
     return op.join(root_dir, fname)
@@ -412,9 +413,9 @@ def calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_co
 
 def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
     fwd = mne.read_forward_solution(fwd_name)
-    inverse_operator_sub = make_inverse_operator(epochs.info, fwd, noise_cov,
+    inverse_operator = make_inverse_operator(epochs.info, fwd, noise_cov,
         loose=None, depth=None)
-    write_inverse_operator(inv_name, inverse_operator_sub)
+    write_inverse_operator(inv_name, inverse_operator)
 
 
 def calc_stc(inverse_method='dSPM'):
@@ -994,10 +995,10 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
     utils.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
 
 
-def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
+def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', norm_by_percentile=True, norm_percs=(1,99),
         labels_output_fname_template='', src=None, do_plot=False):
-    labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', 'aparc250') if labels_fol=='' else labels_fol
+    labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', atlas) if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
         for cond in events_id.keys():
@@ -1007,7 +1008,7 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
             stcs[cond] = mne.read_source_estimate(stc_fname)
 
     if (labels_from_annot):
-        labels = mne.read_labels_from_annot(MRI_SUBJECT, parc, hemi, surf_name)
+        labels = mne.read_labels_from_annot(MRI_SUBJECT, atlas, hemi, surf_name)
         if len(labels) == 0:
             raise Exception('No labels were found for {}, {}, {}!'.format(labels_fol))
     else:
@@ -1026,15 +1027,16 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
             src = inverse_operator['src']
 
     if do_plot:
-        plt.close('all')
-        plt.figure()
+        utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'figures'))
 
     T = len(stcs[list(stcs.keys())[0]].times)
     labels_data = np.zeros((len(labels), T, len(stcs)))
     conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events_id.values())}
     conditions = []
     for (cond_name, cond_id), stc in zip(events_id.items(), stcs.values()):
-        conditions.append(cond_id)
+        if do_plot:
+            plt.figure()
+        conditions.append(cond_name)
         if not global_inverse_operator:
             if src is None:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
@@ -1047,10 +1049,11 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
                 plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
 
         if do_plot:
-            # plt.legend()
             plt.xlabel('time (ms)')
-            plt.title('{}: {} {}'.format(cond_name, hemi, parc))
-            plt.show()
+            plt.title('{}: {} {}'.format(cond_name, hemi, atlas))
+            plt.legend()
+            # plt.show()
+            plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
     data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
     max_abs = utils.get_max_abs(data_max, data_min)
@@ -1059,6 +1062,7 @@ def calc_labels_avg_per_condition(parc, hemi, surf_name, events_id, labels_fol='
         labels_output_fname_template.format(hemi=hemi)
     print('Saving to {}'.format(labels_output_fname))
     np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+    shutil.copyfile(labels_output_fname, op.join(BLENDER_ROOT_DIR, subject, op.basename(LBL.format(hemi))))
 
 
 def plot_labels_data(plot_each_label=False):
@@ -1157,7 +1161,7 @@ def misc():
     pass
 
 
-def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs):
+def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs):
     stcs = None
     # 1) Load the raw data
     # raw = loadRaw()
@@ -1182,14 +1186,14 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
     # *) equalize_epoch_counts
     # equalize_epoch_counts(events_id, method='mintime')
     # *) Calc stc for all the conditions
-    calc_stc(inverse_method)
+    # calc_stc(inverse_method)
     # *) Calc stc per condition
     stcs = calc_stc_per_condition(events_id, inverse_method)
-    morph_labels_from_fsaverage(aparc_name=aparc_name)
-    labels_to_annot(parc_name=aparc_name, overwrite=True)
+    # morph_labels_from_fsaverage(aparc_name=aparc_name)
+    # labels_to_annot(parc_name=aparc_name, overwrite=True)
     # *) Calc labelse average per condition
     for hemi in HEMIS:
-        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=False,
+        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
             labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
     # plot_labels_data(plot_each_label=True)
     # *) Save the activity map
@@ -1200,6 +1204,7 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
 
 
 def get_fname_format(task):
+    event_digit = 0
     if task=='MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
         fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
@@ -1218,18 +1223,18 @@ def get_fname_format(task):
 
 
 if __name__ == '__main__':
-    subject, martinos_subject = 'mg78', 'ep001'
+    subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
-    TASK = 'MSIT'
+    TASK = 'ARC' #'MSIT'
     fname_format, events_id, event_digit = get_fname_format(TASK)
-    constrast='interference'
-    raw_cleaning_method = 'nTSSS'
+    constrast = '' #''interference'
+    raw_cleaning_method = 'tsss' # 'nTSSS'
     files_includes_cond = True
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
     init_globals(martinos_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, constrast,
-                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
+                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_inv_no_cond=True)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
     inverse_methods = ['dSPM', 'MNE', 'sLORETA']
@@ -1239,12 +1244,23 @@ if __name__ == '__main__':
     T_MAX = 2
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    aparc_name = 'laus250'#'aparc250'
+    aparc_name = 'arc_april2016' # 'laus250'#'aparc250'
+    read_labels_from_annot = True
     n_jobs = 6
-    # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, n_jobs)
+    # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
+
+
+    for hemi in HEMIS:
+        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
+            labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
+
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
-    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    stcs = calc_stc_per_condition(events_id, inverse_method)
+    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
+    # save_activity_map(events_id, stat, None, inverse_method=inverse_method)
+    # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
+
     # test_labels_coloring(subject, 'laus250')
     # save_activity_map(events_id, STAT_DIFF, None, inverse_method=inverse_method)
     print('finish!')

@@ -27,9 +27,15 @@ def calc_evoked(indices, epochs_fname):
     epochs = mne.read_epochs(epochs_fname, preload=False)
     print(epochs.events.shape)
     for event_name, event_indices in indices.items():
-        evoked_fname = meg_preproc.get_cond_fname(meg_preproc.EVO, event_name)
-        print('Saving {} evoked to {}'.format(event_name, evoked_fname))
-        mne.write_evokeds(evoked_fname, epochs[event_indices].average())
+        evoked_event_fname = meg_preproc.get_cond_fname(meg_preproc.EVO, event_name)
+        epochs_event_fname = meg_preproc.get_cond_fname(meg_preproc.EPO, event_name)
+        if not op.isfile(epochs_event_fname):
+            print('Saving {} epochs to {}'.format(event_name, epochs_event_fname))
+            event_epochs = epochs[event_indices]
+            event_epochs.save(epochs_event_fname)
+        if not op.isfile(evoked_event_fname):
+            print('Saving {} evoked to {}'.format(event_name, evoked_event_fname))
+            mne.write_evokeds(evoked_event_fname, event_epochs.average())
 
 
 def plot_evoked(indices):
@@ -48,11 +54,11 @@ if __name__ == '__main__':
     epochs_fname = 'pp009_arc_rer_tsss-epo.fif'
     events_fname = 'pp009_arc_rer_tsss-epo.csv'
     root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
-    root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
+    # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
     meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
                              BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True)
     print('evoked fname: {}'.format(meg_preproc.EVO))
     indices = find_events_indices(op.join(root_fol, events_fname))
-    # calc_evoked(indices, op.join(root_fol, epochs_fname))
-    plot_evoked(indices)
+    calc_evoked(indices, op.join(root_fol, epochs_fname))
+    # plot_evoked(indices)

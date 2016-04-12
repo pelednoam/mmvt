@@ -70,12 +70,6 @@ print("Neuroscience add on started!")
 # Should be here bpy.types.Scene.maximal_time_steps
 T = 2500
 
-bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
-bpy.context.scene.atlas = mmvt_utils.get_atlas()
-bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
-bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
-bpy.context.scene.electrode_radius = 0.15
-
 # LAYERS
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14

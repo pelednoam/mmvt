@@ -233,7 +233,10 @@ class Filtering(bpy.types.Operator):
         print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         if self.type_of_func == 'RMS':
-            dd = np.squeeze(np.diff(d[:, t_range, :], axis=2)) # d[:, t_range, 0] - d[:, t_range, 1]
+            dd = np.diff(d[:, t_range, :], axis=2)
+            if dd.shape[2] > 1:
+                dd = np.sum(dd, axis=2)
+            dd = np.squeeze(dd)
             dd = np.sqrt(np.sum(np.power(dd, 2), 1))
         elif self.type_of_func == 'SumAbs':
             dd = np.sum(abs(d[:, t_range, :]), (1, 2))

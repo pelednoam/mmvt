@@ -13,6 +13,11 @@ bpy.types.Scene.electrodes_imported = False
 bpy.types.Scene.brain_data_exist = False
 bpy.types.Scene.electrodes_data_exist = False
 
+bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
+bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
+bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
+bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
+
 
 def import_brain():
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
@@ -268,6 +273,8 @@ def add_data_to_brain():
         for obj_name, data in zip(f['names'], f['data']):
             # print('in label loop')
             obj_name = obj_name.astype(str)
+            if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
+                continue
             print(obj_name)
             cur_obj = bpy.data.objects[obj_name]
             # print('cur_obj name = '+cur_obj.name)
@@ -327,6 +334,8 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
             obj_name = obj_name.astype(str)
             if bpy.data.objects.get(obj_name) is None:
                 continue
+            if not bpy.context.scene.import_unknown and 'unkown' in obj_name:
+                continue
             if stat == STAT_AVG:
                 data_stat = np.squeeze(np.mean(data, axis=1))
             elif stat == STAT_DIFF:
@@ -374,7 +383,6 @@ class AddDataToBrain(bpy.types.Operator):
     def invoke(self, context, event=None):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         add_data_to_brain()
-        add_data_to_parent_brain_obj(self)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -499,25 +507,28 @@ class DataMakerPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         # layout.prop(context.scene, 'conf_path')
-        col1 = self.layout.column(align=True)
-        col1.prop(context.scene, 'atlas', text="Atlas")
+        col = self.layout.column(align=True)
+        col.prop(context.scene, 'atlas', text="Atlas")
         # if not bpy.types.Scene.brain_imported:
-        col1.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
+        col.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
-        col1.prop(context.scene, 'bipolar', text="Bipolar")
-        col1.prop(context.scene, 'electrode_radius', text="Electrodes' radius")
-        col1.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+        col.prop(context.scene, 'bipolar', text="Bipolar")
+        col.prop(context.scene, 'electrode_radius', text="Electrodes' radius")
+        col.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
-        col2 = self.layout.column(align=True)
-        col2.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
-        col2.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
+        col = self.layout.column(align=True)
+        col.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
+        col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
+        col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
-        col2.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
+        col.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
 
 
 def init(addon):
     DataMakerPanel.addon = addon
+    bpy.context.scene.atlas = mu.get_atlas()
+    bpy.context.scene.electrode_radius = 0.15
     register()
 
 

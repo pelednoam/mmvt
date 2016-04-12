@@ -450,11 +450,9 @@ class ColoringMakerPanel(bpy.types.Panel):
         manually_color_file_exist = op.isfile(op.join(user_fol, 'coloring.csv'))
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
-        layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
         if faces_verts_exist:
             if meg_files_exist:
-                # layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-                pass
+                layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
             if meg_labels_files_exist:
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
