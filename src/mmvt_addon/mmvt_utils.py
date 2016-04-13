@@ -787,6 +787,15 @@ def update_progress(job_title, progress):
         update_progress("Some job", 1)
 
 
+def get_spaced_colors(n):
+    import colorsys
+    # if n <= 7:
+    #     colors = ['r', 'g', 'c', 'm', 'y', 'b', 'k'][:n]
+    # else:
+    HSV_tuples = [(x*1.0/n, 0.5, 0.5) for x in range(n)]
+    colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples))
+    return colors
+
 # def read_ply_file(ply_file):
 #     with open(ply_file, 'r') as f:
 #         lines = f.readlines()

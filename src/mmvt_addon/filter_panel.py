@@ -386,11 +386,27 @@ class Filtering(bpy.types.Operator):
                 fcurve.select = not fcurve.hide
             brain_obj.select = True
 
+        curves_num = 0
+        for ind in range(min(self.topK, len(objects_indices))):
+            orig_name = names[objects_indices[ind]]
+            if 'unknown' not in orig_name:
+                obj = bpy.data.objects.get(orig_name)
+                if not obj is None and not obj.animation_data is None:
+                    curves_num += len(obj.animation_data.action.fcurves)
+
+        colors = np.array(list(cu.kelly_colors.values())) / 255.0
+        color_ind = 0
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
                 orig_name = names[objects_indices[ind]]
                 if 'unknown' not in orig_name:
                     filter_roi_func(orig_name)
+                    for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
+                        fcurve.color_mode = 'CUSTOM'
+                        fcurve.color = tuple(colors[color_ind])
+                        color_ind += 1
+                        if color_ind == len(colors):
+                            color_ind = 0
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 

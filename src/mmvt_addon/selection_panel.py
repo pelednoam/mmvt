@@ -56,6 +56,11 @@ class SelectAllRois(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_all_rois()
         mu.view_all_in_graph_editor(context)
+        for obj in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children:
+            if obj.animation_data is None:
+                continue
+            for fcurve in obj.animation_data.action.fcurves:
+                fcurve.color_mode = 'CUSTOM'
         return {"FINISHED"}
 
 

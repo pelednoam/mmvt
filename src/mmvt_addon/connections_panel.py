@@ -40,7 +40,7 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     #     mask = mask1 | mask2
     # else:
     stat_data = calc_stat_data(d.con_values, stat)
-    mask = np.max(abs(stat_data), axis=1) > threshold
+    mask = calc_mask(stat_data, threshold, windows_num)
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[PARENT_OBJ]
     parent_obj.animation_data_clear()
@@ -52,6 +52,16 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     print('finish keyframing!')
 
 
+def calc_mask(stat_data, threshold, windows_num):
+    threshold_type = bpy.context.scene.above_below_threshold
+    if stat_data.ndim == 1:
+        mask = abs(stat_data) >= threshold if threshold_type == 'above' else abs(stat_data) <= threshold
+    else:
+        mask = np.max(abs(stat_data), axis=1) >= threshold if threshold_type == 'above' else \
+            np.max(abs(stat_data), axis=1) <= threshold
+    return mask
+
+
 def create_conncection_for_both_conditions(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius):
     N = len(indices)
     parent_obj = bpy.data.objects[PARENT_OBJ]
@@ -59,13 +69,20 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
     now = time.time()
     for run, (ind, conn_name, (i, j)) in enumerate(zip(indices, d.con_names[mask], d.con_indices[mask])):
         mu.time_to_go(now, run, N, runs_num_to_print=10)
+        if d.con_colors.ndim == 3:
+            con_color = np.hstack((d.con_colors[ind, 0, :], [0.]))
+        else:
+            con_color = np.hstack((d.con_colors[ind, :], [0.]))
         p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
         mu.cylinder_between(p1, p2, radius, layers_rods)
-        mu.create_material('{}_mat'.format(conn_name), (0, 0, 1, 1), 1)
+        # mu.create_material('{}_mat'.format(conn_name), (0, 0, 1, 1), 1)
+        mu.create_material('{}_mat'.format(conn_name), con_color, 1)
         cur_obj = bpy.context.active_object
         cur_obj.name = conn_name
         cur_obj.parent = parent_obj
         # cur_obj.animation_data_clear()
+        if windows_num == 1:
+            continue
         for cond_id, cond in enumerate(d.conditions):
             insert_frame_keyframes(cur_obj, '{}-{}'.format(conn_name, cond), d.con_values[ind, -1, cond_id], T)
             for t in range(windows_num):
@@ -77,6 +94,8 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
 
 def create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
     # Create keyframes for the parent obj (conditions diff)
+    if windows_num == 1:
+        return
     if stat not in [STAT_DIFF, STAT_AVG]:
         mu.message(self, "Wrong type of stat!")
         return
@@ -95,10 +114,13 @@ def create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num
 
 
 def calc_stat_data(data, stat):
+    axis = data.ndim - 1
+    if data.ndim == 2 and data.shape[1] == 1:
+        stat = STAT_AVG
     if stat == STAT_AVG:
-        stat_data = np.squeeze(np.mean(data, axis=2))
+        stat_data = np.squeeze(np.mean(data, axis=axis))
     elif stat == STAT_DIFF:
-        stat_data = np.squeeze(np.diff(data, axis=2))
+        stat_data = np.squeeze(np.diff(data, axis=axis))
     else:
         raise Exception('Wrong stat value!')
     return stat_data
@@ -133,17 +155,23 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
     mu.show_hide_hierarchy(False, PARENT_OBJ)
     masked_con_names = calc_masked_con_names(d, threshold, connections_type, condition, stat)
     parent_obj = bpy.data.objects[PARENT_OBJ]
-    now = time.time()
-    fcurves_num = len(parent_obj.animation_data.action.fcurves)
-    for fcurve_index, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
-        # mu.time_to_go(now, fcurve_index, fcurves_num, runs_num_to_print=10)
-        con_name = mu.fcurve_name(fcurve)
+    for con_name in d.con_names:
         cur_obj = bpy.data.objects[con_name]
         cur_obj.hide = con_name not in masked_con_names
         cur_obj.hide_render = con_name not in masked_con_names
         if bpy.context.scene.selection_type == 'conds':
             cur_obj.select = not cur_obj.hide
-        else:
+    if parent_obj.animation_data is None:
+        return
+    now = time.time()
+    fcurves_num = len(parent_obj.animation_data.action.fcurves)
+    for fcurve_index, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+        # mu.time_to_go(now, fcurve_index, fcurves_num, runs_num_to_print=10)
+        con_name = mu.fcurve_name(fcurve)
+        # cur_obj = bpy.data.objects[con_name]
+        # cur_obj.hide = con_name not in masked_con_names
+        # cur_obj.hide_render = con_name not in masked_con_names
+        if bpy.context.scene.selection_type != 'conds':
             fcurve.hide = con_name not in masked_con_names
             fcurve.select = not fcurve.hide
 
@@ -153,13 +181,18 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
 
 def calc_masked_con_names(d, threshold, connections_type, condition, stat):
     # For now, we filter only according to both conditions, not each one seperatly
-    if bpy.context.scene.selection_type == 'conds':
-        mask1 = np.max(d.con_values[:, :, 0], axis=1) > threshold
-        mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
+    if bpy.context.scene.selection_type == 'conds' and d.con_values.ndim == 3:
+        threshold_type = bpy.context.scene.above_below_threshold
+        mask1 = np.max(d.con_values[:, :, 0], axis=1) >= threshold if threshold_type == 'above' else \
+            np.max(d.con_values[:, :, 0], axis=1) <= threshold
+        mask2 = np.max(d.con_values[:, :, 1], axis=1) >= threshold if threshold_type == 'above' else \
+            np.max(d.con_values[:, :, 1], axis=1) <= threshold
         threshold_mask = mask1 | mask2
     else:
         stat_data = calc_stat_data(d.con_values, stat)
-        threshold_mask = np.max(stat_data, axis=1) > threshold
+        windows_num = d.con_colors.shape[1]
+        threshold_mask = calc_mask(stat_data, threshold, windows_num)
+        # threshold_mask = np.max(stat_data, axis=1) > threshold
     if connections_type == 'between':
         con_names_hemis = set(d.con_names[d.con_types == HEMIS_BETWEEN])
     elif connections_type == 'within':
@@ -314,7 +347,7 @@ class CreateConnections(bpy.types.Operator):
         abs_threshold = False  # bpy.context.scene.abs_threshold
         # condition = bpy.context.scene.conditions
         # print(connections_type, condition, threshold, abs_threshold)
-        create_keyframes(self, context, ConnectionsPanel.d, threshold)
+        create_keyframes(self, context, ConnectionsPanel.d, threshold, stat=STAT_DIFF)
         return {"FINISHED"}
 
 
@@ -424,6 +457,7 @@ def connections_draw(self, context):
     layout.prop(context.scene, "connections_origin", text="")
     layout.operator("ohad.create_connections", text="Create connections ", icon='RNA_ADD')
     layout.prop(context.scene, 'connections_threshold', text="Threshold")
+    layout.prop(context.scene, 'above_below_threshold', text='')
     # layout.prop(context.scene, 'abs_threshold')
     layout.prop(context.scene, "connections_type", text="")
     # layout.prop(context.scene, "conditions", text="")
@@ -449,8 +483,9 @@ bpy.types.Scene.abs_threshold = bpy.props.BoolProperty(name='abs threshold',
                                                        description="check if abs(val) > threshold")
 bpy.types.Scene.connections_type = bpy.props.EnumProperty(
         items=[("all", "All connections", "", 1), ("between", "Only between hemispheres", "", 2),
-               ("within", "Only within hemispheres", "", 3)],
-        description="Conetions type")
+               ("within", "Only within hemispheres", "", 3)], description="Connections type")
+bpy.types.Scene.above_below_threshold = bpy.props.EnumProperty(
+        items=[("above", "Above threshold", "", 1), ("below", "Below threshold", "", 2)], description="Threshold type")
 bpy.types.Scene.conditions = bpy.props.EnumProperty(items=[], description="Conditions")
 
 
@@ -477,6 +512,7 @@ def init(addon):
         connections_file = electrodes_connections_file
     elif os.path.isfile(meg_bev_connections_file):
         connections_file = meg_bev_connections_file
+        bpy.context.scene.above_below_threshold = 'below'
     else:
         print('No connections file!')
 

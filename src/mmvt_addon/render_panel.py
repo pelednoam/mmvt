@@ -26,7 +26,7 @@ def update_rotation(self, context):
 
 def update_quality(self, context):
     print(bpy.context.scene.quality)
-    bpy.context.scene.quality = bpy.context.scene.quality
+    # bpy.context.scene.quality = bpy.context.scene.quality
 
 
 bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
