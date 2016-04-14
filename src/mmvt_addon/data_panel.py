@@ -17,9 +17,10 @@ bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250'
 bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
 bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
+bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 
 
-def import_brain():
+def import_brain(current_root_path):
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers
@@ -36,7 +37,7 @@ def import_brain():
     # # for cur_val in bpy.context.scene.layers:
     # #     print(cur_val)
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    base_path = mu.get_user_fol()
+    base_path = current_root_path
     for ply_fname in glob.glob(op.join(base_path, '*.ply')):
         bpy.ops.object.select_all(action='DESELECT')
         print(ply_fname)
@@ -131,7 +132,7 @@ class ImportBrain(bpy.types.Operator):
         self.current_root_path = mu.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
         print("importing ROIs")
         import_rois(self.current_root_path)
-        import_brain()
+        import_brain(self.current_root_path)
         import_subcorticals(op.join(self.current_root_path, 'subcortical'))
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
@@ -256,10 +257,10 @@ class ImportElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_brain():
-    base_path = mu.get_user_fol()
-    source_files = [op.join(base_path, 'labels_data_lh.npz'), op.join(base_path, 'labels_data_rh.npz'),
-                    op.join(base_path, 'sub_cortical_activity.npz')]
+def add_data_to_brain(base_path, files_prefix='', objs_prefix=''):
+    source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
+                    op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
+                    op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
     print('Adding data to Brain')
     number_of_maximal_time_steps = -1
     obj_counter = 0
@@ -275,6 +276,7 @@ def add_data_to_brain():
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
+            obj_name = '{}{}'.format(objs_prefix, obj_name)
             print(obj_name)
             cur_obj = bpy.data.objects[obj_name]
             # print('cur_obj name = '+cur_obj.name)
@@ -382,7 +384,7 @@ class AddDataToBrain(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        add_data_to_brain()
+        add_data_to_brain(mu.get_user_fol())
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -404,24 +406,9 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        return {"FINISHED"}
-
-
-class PrevMEGEEvoked(bpy.types.Operator):
-    bl_idname = "ohad.prev_meg_evoked"
-    bl_label = "prev_meg_evoked"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        return {"FINISHED"}
-
-
-class NextMEGEEvoked(bpy.types.Operator):
-    bl_idname = "ohad.prev_meg_evoked"
-    bl_label = "prev_meg_evoked"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
+        evoked_name = bpy.context.scene.meg_evoked_files
+        base_path = op.join(mu.get_user_fol(), )
+        add_data_to_brain(base_path, files_prefix='', objs_prefix='')
         return {"FINISHED"}
 
 
@@ -531,6 +518,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_category = "Ohad"
     bl_label = "Data Panel"
     addon = None
+    meg_evoked_files = []
 
     def draw(self, context):
         layout = self.layout
@@ -551,17 +539,27 @@ class DataMakerPanel(bpy.types.Panel):
         col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
-        row = layout.row(align=0)
-        row.operator(PrevMEGEEvoked.bl_idname, text="", icon='PREV_KEYFRAME')
-        row.prop(context.scene, 'meg_evoked_files', text="")
-        row.operator(NextMEGEEvoked.bl_idname, text="", icon='NEXT_KEYFRAME')
-        col.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
+        if len(DataMakerPanel.evoked_files) > 0:
+            row = layout.row(align=0)
+            row.prop(context.scene, 'meg_evoked_files', text="")
+            col = self.layout.column(align=True)
+            col.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
 
+
+def load_meg_evoked():
+    evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
+    if op.isdir(evoked_fol):
+        DataMakerPanel.evoked_files = evoked_files = glob.glob(op.join(evoked_fol, '*_labels_data_rh.npz'))
+        basenames = [mu.namebase(fname).split('_')[0] for fname in evoked_files]
+        files_items = [(name, name, '', ind) for ind, name in enumerate(basenames)]
+        bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(
+            items=files_items, description="meg_evoked_files")
 
 def init(addon):
     DataMakerPanel.addon = addon
     bpy.context.scene.atlas = mu.get_atlas()
     bpy.context.scene.electrode_radius = 0.15
+    load_meg_evoked()
     register()
 
 
@@ -575,8 +573,6 @@ def register():
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
-        bpy.utils.register_class(PrevMEGEEvoked)
-        bpy.utils.register_class(NextMEGEEvoked)
         bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         print('Data Panel was registered!')
     except:
@@ -592,8 +588,6 @@ def unregister():
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportBrain)
-        bpy.utils.unregister_class(PrevMEGEEvoked)
-        bpy.utils.unregister_class(NextMEGEEvoked)
         bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
     except:
         pass

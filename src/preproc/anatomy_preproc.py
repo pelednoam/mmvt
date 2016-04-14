@@ -131,6 +131,7 @@ def convert_hemis_srf_to_ply(subject, hemi='both'):
     for hemi in utils.get_hemis(hemi):
         ply_file = utils.srf2ply(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.srf'.format(hemi)),
                                  op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
         shutil.copyfile(ply_file, op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi)))
 
 
@@ -392,13 +393,13 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
     flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
         neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=False)
 
+    # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
+    flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
+
     # *) Create annotation file from fsaverage
     flags['annot'] = create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
         overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
         morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
-
-    # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-    flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
 
     # *) Calls Matlab 'splitting_cortical.m' script
     flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, overwrite_ply_files)
@@ -507,8 +508,9 @@ if __name__ == '__main__':
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
     #     fs_labels_fol, n_jobs)
 
-    subject = 'fscopy'
-    # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
+    subject = 'mg82'
+    utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+    freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
     create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
         overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
         morph_labels_from_fsaverage, fs_labels_fol, n_jobs)

@@ -455,7 +455,8 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
                 if not surf_loaded:
                     verts = {}
                     for hemi in HEMIS:
-                        verts[hemi], _ = read_ply_file(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+                        d = np.load(op.join(subjects_dir, subject, 'mmvt', '{}.pial.npz'.format(hemi)))
+                        verts[hemi] = d['verts']
                     surf_loaded = True
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
@@ -677,7 +678,7 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
         for file_name in files:
             try:
                 if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
-                    shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
+                    shutil.copyfile(os.path.join(remote_subject_dir, subject, fol, file_name),
                                 os.path.join(local_subject_dir, fol, file_name))
             except:
                 if print_traceback:

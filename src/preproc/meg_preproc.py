@@ -394,18 +394,22 @@ def calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_co
                           spec_subcortical_fwd=None, region=None):
     conds = ['all'] if '{cond}' not in EPO else events_id.keys()
     for cond in conds:
+        if (not calc_for_cortical_fwd or op.isfile(get_cond_fname(INV, cond))) and \
+                (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
+                (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region))):
+            continue
         epo = get_cond_fname(EPO, cond)
         epochs = mne.read_epochs(epo)
         noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
-        if calc_for_cortical_fwd:
+        if calc_for_cortical_fwd and not op.isfile(get_cond_fname(INV, cond)):
             if cortical_fwd is None:
                 cortical_fwd = get_cond_fname(FWD, cond)
             _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov)
-        if calc_for_sub_cortical_fwd:
+        if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
             if subcortical_fwd is None:
                 subcortical_fwd = get_cond_fname(FWD_SUB, cond)
             _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov)
-        if calc_for_spec_sub_cortical:
+        if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
             if spec_subcortical_fwd is None:
                 spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
             _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs, noise_cov)
@@ -1062,7 +1066,7 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
         labels_output_fname_template.format(hemi=hemi)
     print('Saving to {}'.format(labels_output_fname))
     np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-    shutil.copyfile(labels_output_fname, op.join(BLENDER_ROOT_DIR, subject, op.basename(LBL.format(hemi))))
+    shutil.copyfile(labels_output_fname, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
 
 
 def plot_labels_data(plot_each_label=False):
@@ -1210,11 +1214,11 @@ def get_fname_format(task):
         fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
         events_id = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events_id = dict(Fear=1, Happy=2)
         event_digit = 1
-    elif TASK=='ECR':
+    elif task=='ECR':
         fname_format = '{cond}-{ana_type}.{file_type}'
         events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
         event_digit = 3
-    elif TASK=='ARC':
+    elif task=='ARC':
         fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
         events_id = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
@@ -1223,7 +1227,7 @@ def get_fname_format(task):
 
 
 if __name__ == '__main__':
-    subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
+    subject, martinos_subject = 'hc016', 'hc016'# 'mg78', 'ep001'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
     TASK = 'ARC' #'MSIT'
@@ -1245,18 +1249,19 @@ if __name__ == '__main__':
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
     aparc_name = 'arc_april2016' # 'laus250'#'aparc250'
-    read_labels_from_annot = True
+    read_labels_from_annot = False
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
-
+    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
             labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
 
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
-    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
+
+
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
     # save_activity_map(events_id, stat, None, inverse_method=inverse_method)
     # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
