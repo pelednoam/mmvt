@@ -394,7 +394,10 @@ class Filtering(bpy.types.Operator):
                 if not obj is None and not obj.animation_data is None:
                     curves_num += len(obj.animation_data.action.fcurves)
 
-        colors = np.array(list(cu.kelly_colors.values())) / 255.0
+        if curves_num > len(cu.boynton_colors):
+            colors = np.array(list(cu.kelly_colors.values())) / 255.0
+        else:
+            colors = np.array([cu.name_to_rgb(c) for c in cu.boynton_colors])
         color_ind = 0
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):

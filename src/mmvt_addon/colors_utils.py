@@ -2,6 +2,8 @@ import re
 
 # Light version of webcolors
 
+# http://stackoverflow.com/a/4382138/1060738
+# Kelly's 22 colors of maximum contrast
 kelly_colors = dict(vivid_yellow=(255, 179, 0),
                     strong_purple=(128, 62, 117),
                     vivid_orange=(255, 104, 0),
@@ -24,6 +26,10 @@ kelly_colors = dict(vivid_yellow=(255, 179, 0),
                     deep_yellowish_brown=(89, 51, 21),
                     vivid_reddish_orange=(241, 58, 19),
                     dark_olive_green=(35, 44, 22))
+
+# Boynton's list of 11 colors that are almost never confused.
+boynton_colors = ["Blue", "Red", "Green", "Yellow", "Magenta", "Pink", "Gray", "Brown", "Orange" ]
+
 
 NAMES_TO_HEX = {
     u'aliceblue': u'#f0f8ff',
