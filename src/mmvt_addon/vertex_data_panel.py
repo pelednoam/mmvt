@@ -68,11 +68,8 @@ class CreateVertexData(bpy.types.Operator):
 
     @staticmethod
     def create_empty_in_vertex_location(self, vertex_location):
-        layer = [False] * 20
-        #todo: Why 11 (activity layer)?
-        layer[11] = True
-        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=vertex_location, layers=layer)
-        bpy.context.object.name = "Activity_in_vertex"
+        mu.create_empty_in_vertex(vertex_location, 'Activity_in_vertex', DataInVertMakerPanel.addon.ACTIVITY_LAYER)
+
 
     @staticmethod
     def keyframe_empty(self, empty_name, closest_mesh_name, vertex_ind, data_path):

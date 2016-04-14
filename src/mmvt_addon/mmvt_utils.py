@@ -796,6 +796,14 @@ def get_spaced_colors(n):
     colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples))
     return colors
 
+
+def create_empty_in_vertex(vertex_location, obj_name, layer):
+    layers = [False] * 20
+    layers[layer] = True
+    bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=vertex_location, layers=layers)
+    bpy.context.object.name = obj_name
+
+
 # def read_ply_file(ply_file):
 #     with open(ply_file, 'r') as f:
 #         lines = f.readlines()

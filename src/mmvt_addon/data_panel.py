@@ -257,7 +257,7 @@ class ImportElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_brain(base_path, files_prefix='', objs_prefix=''):
+def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=()):
     source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
                     op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
                     op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
@@ -407,8 +407,19 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         evoked_name = bpy.context.scene.meg_evoked_files
-        base_path = op.join(mu.get_user_fol(), )
-        add_data_to_brain(base_path, files_prefix='', objs_prefix='')
+        base_path = op.join(mu.get_user_fol(), 'meg_evoked_files')
+        files_prefix = objs_prefix = '{}_'.format(evoked_name)
+        source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
+                        op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
+                        op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+        for input_file in source_files:
+            if not op.isfile(input_file):
+                continue
+            f = np.load(input_file)
+            for label_name in f['names']:
+                mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
+                                          DataMakerPanel.addon.ACTIVITY_LAYER)
+        add_data_to_brain(base_path, files_prefix, objs_prefix)
         return {"FINISHED"}
 
 

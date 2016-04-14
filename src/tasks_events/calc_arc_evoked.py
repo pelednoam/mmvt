@@ -62,8 +62,8 @@ if __name__ == '__main__':
     inverse_method = 'dSPM'
     # fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
     fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
-    epochs_fname = '{}_arc_rer_tsss-epo.fif'.format(subject)
-    events_fname = '{}_arc_rer_tsss-epo.csv'.format(subject)
+    epochs_fname = '{}_arc_rer_{}-epo.fif'.format(subject, raw_cleaning_method)
+    events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
     root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
     fwd_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/fwd/'
     remote_subjects_dir = '/autofs/space/lilli_001/users/DARPA-Recons'
