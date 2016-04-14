@@ -444,12 +444,20 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
     labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
     if len(labels_files) == 0:
         raise Exception('morph_labels_from_fsaverage: No labels files found in {}!'.format(labels_fol))
+    surf_loaded = False
     for label_file in labels_files:
         local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
         if not os.path.isfile(local_label_name) or overwrite:
             fs_label = mne.read_label(label_file)
             fs_label.values.fill(1.0)
             sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
+            if np.all(sub_label.pos == 0):
+                if not surf_loaded:
+                    verts = {}
+                    for hemi in HEMIS:
+                        verts[hemi], _ = read_ply_file(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+                    surf_loaded = True
+                sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
 
 

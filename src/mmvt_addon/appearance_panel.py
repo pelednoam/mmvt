@@ -89,7 +89,7 @@ def get_appearance_show_connections_layer(self):
     try:
         return self['appearance_show_connections_layer']
     except:
-        pass
+        return 0
 
 
 def set_appearance_show_connections_layer(self, value):

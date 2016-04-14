@@ -228,7 +228,10 @@ def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaver
     # Note that using the current mne version this code won't work, because of collissions between hemis
     # You need to change the mne.write_labels_to_annot code for that.
     if overwrite_annotation or not annotations_exist:
-        utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        try:
+            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        except:
+            print("Can't write labels to annotation!")
     return utils.both_hemi_files_exist(op.join(
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
@@ -316,21 +319,27 @@ def create_spatial_connectivity(subject):
 
 
 def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol=''):
+    import csv
     if (read_from_annotation):
         labels = mne.read_labels_from_annot(subject, atlas, 'both', surf_name, subjects_dir=SUBJECTS_DIR)
         if len(labels) == 0:
             print('No labels were found in {} annotation file!'.format(atlas))
     else:
         labels = []
-        for label_file in glob.glob(op.join(labels_fol, '{}.label')):
+        if labels_fol == '':
+            labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
+        for label_file in glob.glob(op.join(labels_fol, '*.label')):
             label = mne.read_label(label_file)
             labels.append(label)
         if len(labels) == 0:
             print('No labels were found in {}!'.format(labels_fol))
     if len(labels) > 0:
         center_of_mass = {}
-        for label in labels:
-            center_of_mass[label.name] = np.mean(label.pos, 0)
+        with open(op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.csv'.format(atlas)), 'w') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',')
+            for label in labels:
+                center_of_mass[label.name] = np.mean(label.pos, 0)
+                writer.writerow([label.name, *center_of_mass[label.name]])
         com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
         blend_fname = op.join(BLENDER_ROOT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
         utils.save(center_of_mass, com_fname)
@@ -484,7 +493,7 @@ if __name__ == '__main__':
     morph_labels_from_fsaverage = True
     fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
 
-    fsaverage = 'fscopy'# 'fsaverage'
+    fsaverage = 'fscopy' # 'fsaverage'
     aparc_name = 'arc_april2016' #''aparc.DKTatlas40' #'laus250' #
     n_jobs = 6
 
@@ -498,8 +507,12 @@ if __name__ == '__main__':
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
     #     fs_labels_fol, n_jobs)
 
+    subject = 'fscopy'
     # freesurfer_surface_to_blender_surface('fscopy', overwrite=overwrite_hemis_srf)
-    calc_lavels_center_of_mass('pp009', aparc_name, read_from_annotation=True)
+    create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
+        overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+        morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
+    calc_lavels_center_of_mass(subject, aparc_name, read_from_annotation=False)
     # aparc_name = 'laus250'
     # users_flags = {}
     # subjects = ['mg78']

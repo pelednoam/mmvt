@@ -33,7 +33,7 @@ def load_tatiana_meg_coh(subject, atlas, d):
     d['labels'] = [l.strip()[:-len('label')-1] for l in d['ROIs']]
     d['hemis'] = [l[-2:] for l in d['labels']]
     locations = utils.load(op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas)))
-    d['locations'] = np.array([locations[l] for l in d['labels']]) * 1000.0
+    d['locations'] = np.array([locations[l] for l in d['labels']]) # * 1000.0
     d['conditions'] = ['high_vs_low'] # ['high', 'low']
     low_high = np.zeros((d['high'].shape[0], d['high'].shape[1], 2))
     low_high[:, :, 0] = np.mean(d['high'], 2)
@@ -95,13 +95,13 @@ def create_meg_coh_data(data, labels, hemis, conds, high_low):
     return con_colors, con_indices, con_names, con_values, con_types
 
 if __name__ == '__main__':
-    subject = 'pp009'
+    subject = 'fscopy'
     atlas = 'arc_april2016'
     # load_tatiana_data()
     # load_meg_coh_python_data()
 
-    # root = '/autofs/space/sophia_002/users/DARPA-MEG/arc/noam'
-    root = '/home/noam/MEG/ARC/pp009/misc/'
+    root = '/autofs/space/sophia_002/users/DARPA-MEG/arc/noam'
+    # root = '/home/noam/MEG/ARC/pp009/misc/'
     coh_d = sio.loadmat(op.join(root, 'alpha_risk.mat'))
     meta_d = sio.loadmat(op.join(root, 'ARC12_30all_bw8wpli.mat'))
     meta_d['conty_data'] = []

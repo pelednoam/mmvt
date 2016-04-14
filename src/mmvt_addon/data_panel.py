@@ -398,6 +398,34 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
+    bl_idname = "ohad.other_subject_meg_evoked"
+    bl_label = "other_subject_meg_evoked"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        return {"FINISHED"}
+
+
+class PrevMEGEEvoked(bpy.types.Operator):
+    bl_idname = "ohad.prev_meg_evoked"
+    bl_label = "prev_meg_evoked"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        return {"FINISHED"}
+
+
+class NextMEGEEvoked(bpy.types.Operator):
+    bl_idname = "ohad.prev_meg_evoked"
+    bl_label = "prev_meg_evoked"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        return {"FINISHED"}
+
+
+
 def add_data_to_electrodes(self, source_files):
     print('Adding data to Electrodes')
     for input_file in source_files:
@@ -523,6 +551,11 @@ class DataMakerPanel(bpy.types.Panel):
         col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
+        row = layout.row(align=0)
+        row.operator(PrevMEGEEvoked.bl_idname, text="", icon='PREV_KEYFRAME')
+        row.prop(context.scene, 'meg_evoked_files', text="")
+        row.operator(NextMEGEEvoked.bl_idname, text="", icon='NEXT_KEYFRAME')
+        col.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
 
 
 def init(addon):
@@ -542,6 +575,9 @@ def register():
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
+        bpy.utils.register_class(PrevMEGEEvoked)
+        bpy.utils.register_class(NextMEGEEvoked)
+        bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         print('Data Panel was registered!')
     except:
         print("Can't register Data Panel!")
@@ -556,6 +592,9 @@ def unregister():
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportBrain)
+        bpy.utils.unregister_class(PrevMEGEEvoked)
+        bpy.utils.unregister_class(NextMEGEEvoked)
+        bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
     except:
         pass
 
