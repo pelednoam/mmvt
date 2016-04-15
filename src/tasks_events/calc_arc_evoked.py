@@ -73,7 +73,7 @@ def average_all_evoked_responses(root_fol, moving_average_win_size=50):
         plt.figure()
         for label_data in mean_win_evoked:
             plt.plot(label_data)
-        plt.savefig(op.join(root_fol, '{}_avg_evoked_win_{}.jpg'.format(hemi, moving_average_win_size)))
+        plt.savefig(op.join(root_fol, '{}_avg_evoked_win_{}_{}.jpg'.format(hemi, moving_average_win_size, hemi)))
 
 
 def plot_evoked(indices):
@@ -164,11 +164,11 @@ if __name__ == '__main__':
     overwrite_evoked = True
     # # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
 
-    create_evoked_responses(root_fol, task, atlas, events_id, fname_format,
-        fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
-        overwrite_epochs, overwrite_evoked)
-    copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
-    # average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
+    # create_evoked_responses(root_fol, task, atlas, events_id, fname_format,
+    #     fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
+    #     overwrite_epochs, overwrite_evoked)
+    # copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
+    average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
 
     # calc_subject_evoked_response('hc022', root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
     #         remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=[],
