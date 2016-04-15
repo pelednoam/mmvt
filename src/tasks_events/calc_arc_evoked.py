@@ -119,25 +119,25 @@ def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
 
 
 if __name__ == '__main__':
-#     target_subject = 'pp009'
-#     raw_cleaning_method = 'tsss'
-#     task = 'ARC'
-#     atlas = 'arc_april2016'
-#     fsaverage = 'fscopy'
-#     inverse_method = 'dSPM'
-#     # fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
-#     fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
-#     root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
-#     fwd_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/fwd/'
-#     remote_subjects_dir = '/autofs/space/lilli_001/users/DARPA-Recons'
-#     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-#         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
-#     overwrite_epochs = True
-#     overwrite_evoked = True
-#     # # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
+    target_subject = 'pp009'
+    raw_cleaning_method = 'tsss'
+    task = 'ARC'
+    atlas = 'arc_april2016'
+    fsaverage = 'fscopy'
+    inverse_method = 'dSPM'
+    # fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
+    fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
+    root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
+    fwd_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/fwd/'
+    remote_subjects_dir = '/autofs/space/lilli_001/users/DARPA-Recons'
+    neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+    overwrite_epochs = True
+    overwrite_evoked = True
+    # # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
 
-    # create_evoked_responses(root_fol, task, atlas, events_id, fname_format,
-    #     fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
-    #     overwrite_epochs, overwrite_evoked)
-    # copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
-    average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
+    create_evoked_responses(root_fol, task, atlas, events_id, fname_format,
+        fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
+        overwrite_epochs, overwrite_evoked)
+    copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
+    # average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
