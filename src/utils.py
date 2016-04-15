@@ -1148,3 +1148,17 @@ def color_name_to_rgb(rgb):
     except:
         print('No webcolors!')
         return None
+
+
+def make_evoked_smooth_and_positive(evoked, positive=True, moving_average_win_size=100):
+    evoked_smooth = None
+    for cond_ind in range(evoked.shape[2]):
+        for label_ind in range(evoked.shape[0]):
+            x = evoked[label_ind, :, cond_ind]
+            if positive:
+                x *= np.sign(x[np.argmax(np.abs(x))])
+            evoked[label_ind, :, cond_ind] = x
+        if moving_average_win_size > 0:
+            evoked_smooth_cond = moving_avg(evoked[:, :, cond_ind], moving_average_win_size)
+            evoked[:, :, cond_ind] = evoked_smooth_cond
+    return evoked_smooth

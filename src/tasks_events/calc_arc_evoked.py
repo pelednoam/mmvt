@@ -6,6 +6,7 @@ from src.preproc import anatomy_preproc
 from src import utils
 import glob
 import shutil
+import traceback
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -95,6 +96,8 @@ def create_evoked_responses(root_fol, task, atlas, events_id, fname_format, fwd_
                 remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
                 overwrite_epochs, overwrite_evoked)
         except:
+            print('******* Error with {} *******'.format(subject))
+            print(traceback.format_exc())
             errors.append(subject)
 
     for subject_err in errors:

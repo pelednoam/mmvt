@@ -1005,8 +1005,8 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
 
 
 def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
-        extract_mode='mean_flip', inverse_method='dSPM', norm_by_percentile=True, norm_percs=(1,99),
-        labels_output_fname_template='', src=None, do_plot=False):
+        extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
+        norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None, do_plot=False):
     labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', atlas) if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
@@ -1067,6 +1067,7 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
     data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
     max_abs = utils.get_max_abs(data_max, data_min)
     labels_data = labels_data / max_abs
+    labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
     labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
         labels_output_fname_template.format(hemi=hemi)
     print('Saving to {}'.format(labels_output_fname))
@@ -1203,7 +1204,8 @@ def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_code
     # *) Calc labelse average per condition
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
+            labels_fol='', stcs=None, inverse_method=inverse_method, positive=False, moving_average_win_size=0,
+            do_plot=False)
     # plot_labels_data(plot_each_label=True)
     # *) Save the activity map
     stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
@@ -1232,7 +1234,7 @@ def get_fname_format(task):
 
 
 if __name__ == '__main__':
-    subject, martinos_subject = 'hc016', 'hc016'# 'mg78', 'ep001'
+    subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
     TASK = 'ARC' #'MSIT'
@@ -1262,7 +1264,7 @@ if __name__ == '__main__':
     stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=None, inverse_method=inverse_method, do_plot=False)
+            labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=1000, do_plot=False)
 
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
