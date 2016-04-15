@@ -410,6 +410,7 @@ class SelectExternalMEGEvoked(bpy.types.Operator):
         evoked_obj = bpy.data.objects.get(evoked_name)
         if not evoked_obj is None:
             evoked_obj.select = not evoked_obj.select
+        mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -571,6 +572,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_label = "Data Panel"
     addon = None
     meg_evoked_files = []
+    evoked_files = []
     externals = []
 
     def draw(self, context):

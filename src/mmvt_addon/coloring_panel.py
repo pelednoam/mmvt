@@ -247,11 +247,15 @@ def color_manually():
         if obj_name[0] == '#':
             continue
         obj_type = mu.check_obj_type(obj_name)
-        color_rgb = cu.name_to_rgb(color_name)
-        if obj_type is not None:
-            objects_names[obj_type].append(obj_name)
-            colors[obj_type].append(color_rgb)
-            data[obj_type].append(1.)
+        if color_name.startswith('mark'):
+            import filter_panel
+            filter_panel.filter_roi_func(obj_name, mark=color_name)
+        else:
+            color_rgb = cu.name_to_rgb(color_name)
+            if obj_type is not None:
+                objects_names[obj_type].append(obj_name)
+                colors[obj_type].append(color_rgb)
+                data[obj_type].append(1.)
 
     color_objects(objects_names, colors, data)
 

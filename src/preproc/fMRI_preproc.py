@@ -165,7 +165,10 @@ def find_clusters(subject, contrast_name, t_val, atlas, input_fol='', load_from_
         # save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
         clusters_labels_hemi = find_clusters_overlapped_labeles(
             subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], load_from_annotation, n_jobs)
-        clusters_labels['values'].extend(clusters_labels_hemi)
+        if clusters_labels_hemi is None:
+            print("Can't find clusters in {}!".format(hemi))
+        else:
+            clusters_labels['values'].extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
         BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
@@ -572,14 +575,18 @@ if __name__ == '__main__':
     # calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
 
     # overwrite_volume_mgz = False
-    data_fol = op.join(FMRI_DIR, task, 'healthy_group')
+    # data_fol = op.join(FMRI_DIR, task, 'healthy_group')
     # contrast = 'pp003_vs_healthy'
     # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
-    # project_volue_to_surface(subject, data_fol, threshold, contrast)
+
 
     if 'find_clusters' in func:
         find_clusters(subject, contrast, threshold, atlas)
+    if 'main' in func:
+        main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
+    if 'project_volue_to_surface' in func:
+        project_volue_to_surface(subject, fol, threshold, contrast)
     # create_functional_rois(subject, contrast, data_fol)
 
     # # todo: find the TR automatiaclly

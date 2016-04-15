@@ -55,7 +55,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         raise Exception('Duplicate electrodes names!')
     if pos.shape[0] != len(names):
         raise Exception('pos dim ({}) != names dim ({})'.format(pos.shape[0], len(names)))
-    print(np.hstack((names.reshape((len(names), 1)), pos)))
+    # print(np.hstack((names.reshape((len(names), 1)), pos)))
     np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
 
 
@@ -455,7 +455,7 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity=
 
 
 if __name__ == '__main__':
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg99'
+    subject = sys.argv[1] if len(sys.argv) > 1 else 'mg82'
     print('subject: {}'.format(subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     task = TASK_MSIT
@@ -467,8 +467,8 @@ if __name__ == '__main__':
         raise Exception('unknown task id!')
     from_t, to_t = -500, 2000
     from_t_ind, to_t_ind = 500, 3000
-    bipolar = False
-    add_activity = True
+    bipolar = True
+    add_activity = False
 
     main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, add_activity)
     # conds = [dict(name='seizure', from_t=16, to_t=20), dict(name='baseline', from_t=12, to_t=16)]

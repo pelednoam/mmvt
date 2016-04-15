@@ -502,19 +502,23 @@ if __name__ == '__main__':
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
     remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
-    subjects = ['pp009'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
+    subjects = ['mg78', 'mg82'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
     # run_on_subjects(
     #     subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
     #     fs_labels_fol, n_jobs)
 
-    subject = 'mg82'
+    subject = 'colin27'
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
-    create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
-        overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
-    calc_lavels_center_of_mass(subject, aparc_name, read_from_annotation=False)
+    freesurfer_surface_to_blender_surface(subject, overwrite=False)
+    create_spatial_connectivity(subject)
+
+    # freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
+    # create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
+    #     overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+    #     morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
+    # calc_lavels_center_of_mass(subject, aparc_name, read_from_annotation=False)
+
     # aparc_name = 'laus250'
     # users_flags = {}
     # subjects = ['mg78']

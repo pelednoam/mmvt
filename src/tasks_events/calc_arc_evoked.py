@@ -45,10 +45,12 @@ def calc_evoked(indices, epochs_fname, overwrite_epochs=False, overwrite_evoked=
             mne.write_evokeds(evoked_event_fname, event_epochs.average())
 
 
-def average_all_evoked_responses(root_fol, moving_average_win_size=50):
+def average_all_evoked_responses(root_fol, moving_average_win_size=100, do_plot=True):
     import matplotlib.pyplot as plt
     for hemi in utils.HEMIS:
-        evoked_files = glob.glob(op.join(root_fol, '*labels_data_{}.npz'.format(hemi)))
+        if do_plot:
+            plt.figure()
+        evoked_files = glob.glob(op.join(root_fol, 'hc*labels_data_{}.npz'.format(hemi)))
         all_data = None
         all_data_win = None
         for evoked_ind, evoked_fname in enumerate(evoked_files):
@@ -62,19 +64,29 @@ def average_all_evoked_responses(root_fol, moving_average_win_size=50):
                     x *= np.sign(x[np.argmax(np.abs(x))])
                     all_data[label_ind, :, cond_ind, evoked_ind] = x
                 win_avg = utils.moving_avg(all_data[:, :, cond_ind, evoked_ind], moving_average_win_size)
+                win_avg = win_avg[:, :-moving_average_win_size]
+                if do_plot:
+                    for label_data in win_avg:
+                        plt.plot(label_data)
                 if all_data_win is None:
                     all_data_win = np.zeros((*win_avg.shape, data.shape[2], len(evoked_files)))
                 all_data_win[:, :, cond_ind, evoked_ind] = win_avg
+        if do_plot:
+            plt.savefig(op.join(root_fol, 'evoked_win_{}_{}.jpg'.format(hemi, moving_average_win_size, hemi)))
+            plt.close()
         mean_evoked = np.mean(all_data, 3)
         mean_win_evoked = np.mean(all_data_win, 3)
-        np.savez(op.join(root_fol, 'avg_labels_data.npz'), data=mean_evoked, names=f['names'], conditions=f['conditions'])
-        np.savez(op.join(root_fol, 'avg_labels_data_win_{}.npz'.format(moving_average_win_size)),
+        np.savez(op.join(root_fol, 'healthy_labels_data_{}.npz'.format(hemi)), data=mean_evoked, names=f['names'], conditions=f['conditions'])
+        np.savez(op.join(root_fol, 'healthy_labels_data_win_{}_{}.npz'.format(moving_average_win_size, hemi)),
                  data=mean_win_evoked, names=f['names'], conditions=f['conditions'])
-        plt.figure()
-        for label_data in mean_win_evoked:
-            plt.plot(label_data)
-        plt.savefig(op.join(root_fol, '{}_avg_evoked_win_{}_{}.jpg'.format(hemi, moving_average_win_size, hemi)))
-
+        shutil.copy(op.join(root_fol, 'healthy_labels_data_win_{}_{}.npz'.format(moving_average_win_size, hemi)),
+                    op.join(root_fol, 'healthy_labels_data_{}.npz'.format(hemi)))
+        if do_plot:
+            plt.figure()
+            for label_data in mean_win_evoked:
+                plt.plot(label_data)
+            plt.savefig(op.join(root_fol, 'avg_evoked_win_{}_{}.jpg'.format(hemi, moving_average_win_size, hemi)))
+            plt.close()
 
 def plot_evoked(indices):
     for event_name in indices.keys():
@@ -106,7 +118,7 @@ def create_evoked_responses(root_fol, task, atlas, events_id, fname_format, fwd_
 
 def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
             remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=None,
-            overwrite_epochs=False, overwrite_evoked=False):
+            overwrite_epochs=False, overwrite_evoked=False, positive=True, moving_average_win_size=100):
     meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
                              BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True)
@@ -126,12 +138,14 @@ def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fnam
         fwd_fname = '{}_arc_rer_tsss-fwd.fif'.format(subject)
         if not op.isfile(op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname)):
             shutil.copy(op.join(fwd_fol, fwd_fname), op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname))
-        meg_preproc.calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-        stcs = meg_preproc.calc_stc_per_condition(events_id, inverse_method)
+        # meg_preproc.calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+        # stcs = meg_preproc.calc_stc_per_condition(events_id, inverse_method)
+        stcs = None
         for hemi in utils.HEMIS:
             meg_preproc.calc_labels_avg_per_condition(
                 atlas, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=stcs,
-                inverse_method=inverse_method, do_plot=False)
+                inverse_method=inverse_method, positive=positive, moving_average_win_size=moving_average_win_size,
+                do_plot=True)
 
 
 def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
@@ -144,6 +158,23 @@ def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
             for hemi in utils.HEMIS:
                 shutil.copy(op.join(SUBJECTS_MEG_DIR, task, subject, 'labels_data_{}.npz'.format(hemi)),
                             op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files', '{}_labels_data_{}.npz'.format(subject, hemi)))
+
+
+def create_labels_colors(subject, atlas, labels_names):
+    from collections import defaultdict
+    import src.mmvt_addon.colors_utils as cu
+    labels_names_hemi = defaultdict(list)
+    for label_name in labels_names:
+        label_fname = op.join(SUBJECTS_DIR, subject, 'label', atlas, '{}.label'.format(label_name))
+        label = mne.read_label(label_fname)
+        labels_names_hemi[label.hemi].append(label.name)
+
+    colors = np.array([cu.name_to_rgb(col) for col in cu.boynton_colors])
+    for hemi in utils.HEMIS:
+        L = len(labels_names_hemi[hemi])
+        data_no_t = np.ones((L))
+        np.savez(op.join(BLENDER_ROOT_DIR, subject, 'meg_labels_coloring_{}.npz'.format(hemi)),
+                 data=data_no_t, colors=colors, names=labels_names_hemi[hemi])
 
 
 if __name__ == '__main__':
@@ -168,8 +199,8 @@ if __name__ == '__main__':
     #     fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
     #     overwrite_epochs, overwrite_evoked)
     # copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
-    average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
-
-    # calc_subject_evoked_response('hc022', root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
+    # average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
+    create_labels_colors(target_subject, atlas, ['ofc-lh', 'vlpfc-rh'])
+    # calc_subject_evoked_response('pp009', root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
     #         remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=[],
     #         overwrite_epochs=False, overwrite_evoked=False)

@@ -121,7 +121,7 @@ def de_select_electrode(obj, call_create_and_set_material=True):
     # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 
 
-def filter_roi_func(closet_object_name, closest_curve_name=None):
+def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
     if bpy.context.scene.selection_type == 'conds':
         bpy.data.objects[closet_object_name].select = True
 
@@ -129,7 +129,10 @@ def filter_roi_func(closet_object_name, closest_curve_name=None):
     if bpy.data.objects[closet_object_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
         bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
     else:
-        bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
+        if mark == 'mark_green':
+            bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
+        elif mark == 'mark_blue':
+            bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
     bpy.types.Scene.filter_is_on = True
 
 
@@ -164,7 +167,7 @@ def filter_items_update(self, context):
     mu.view_all_in_graph_editor(context)
 
 
-def update_fitler_items(topk, objects_indices, filter_objects):
+def update_filter_items(topk, objects_indices, filter_objects):
     filter_items = []
     FilteringMakerPanel.filter_items = []
     if topk == 0:
@@ -183,7 +186,7 @@ def update_fitler_items(topk, objects_indices, filter_objects):
 
 def show_one_by_one_update(self, context):
     if bpy.context.scene.filter_items_one_by_one:
-        update_fitler_items(bpy.context.scene.filter_topK, Filtering.objects_indices, Filtering.filter_objects)
+        update_filter_items(bpy.context.scene.filter_topK, Filtering.objects_indices, Filtering.filter_objects)
     else:
         #todo: do something here
         pass
@@ -445,7 +448,7 @@ class Filtering(bpy.types.Operator):
             self.filter_rois(current_file_to_upload)
 
         if bpy.context.scene.filter_items_one_by_one:
-            update_fitler_items(self.topK, self.objects_indices, self.filter_objects)
+            update_filter_items(self.topK, self.objects_indices, self.filter_objects)
         else:
             mu.view_all_in_graph_editor(context)
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
