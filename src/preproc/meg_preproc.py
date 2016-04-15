@@ -1264,7 +1264,7 @@ if __name__ == '__main__':
     # stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=1000, do_plot=False)
+            labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=100, do_plot=False)
 
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
