@@ -18,7 +18,7 @@ bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bip
 bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
-
+bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 
 def import_brain(current_root_path):
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
@@ -400,6 +400,28 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class SelectExternalMEGEvoked(bpy.types.Operator):
+    bl_idname = "ohad.select_external_meg_evoked"
+    bl_label = "select_external_meg_evoked"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
+        evoked_obj = bpy.data.objects.get(evoked_name)
+        if not evoked_obj is None:
+            evoked_obj.select = not evoked_obj.select
+        return {"FINISHED"}
+
+
+def get_external_meg_evoked_selected():
+    evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
+    evoked_obj = bpy.data.objects.get(evoked_name)
+    if not evoked_obj is None:
+        return evoked_obj.select
+    else:
+        return False
+
+
 class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
     bl_idname = "ohad.other_subject_meg_evoked"
     bl_label = "other_subject_meg_evoked"
@@ -412,16 +434,21 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
                         op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
                         op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+        empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
+        layers_array = bpy.context.scene.layers
+        parent_obj_name = 'External'
+        create_empty_if_doesnt_exists(parent_obj_name, empty_layer, layers_array, parent_obj_name)
         for input_file in source_files:
             if not op.isfile(input_file):
                 continue
             f = np.load(input_file)
             for label_name in f['names']:
                 mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
-                                          DataMakerPanel.addon.ACTIVITY_LAYER)
-        add_data_to_brain(base_path, files_prefix, objs_prefix)
-        return {"FINISHED"}
+                    DataMakerPanel.addon.ACTIVITY_LAYER, parent_obj_name)
 
+        add_data_to_brain(base_path, files_prefix, objs_prefix)
+        _meg_evoked_files_update()
+        return {"FINISHED"}
 
 
 def add_data_to_electrodes(self, source_files):
@@ -496,6 +523,20 @@ def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
+def meg_evoked_files_update(self, context):
+    _meg_evoked_files_update()
+
+
+def _meg_evoked_files_update():
+    evoked_name = bpy.context.scene.meg_evoked_files
+    external_obj = bpy.data.objects.get('External', None)
+    if not external_obj is None:
+        DataMakerPanel.externals = [ext.name[len(evoked_name) + 1:] for ext in external_obj.children \
+                                    if ext.name.startswith(evoked_name)]
+        items = [(name, name, '', ind) for ind, name in enumerate(DataMakerPanel.externals)]
+        bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=items, description="meg_evoked_types")
+
+
 class AddDataToElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_add_data"
     bl_label = "add_data2 electrodes"
@@ -530,6 +571,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_label = "Data Panel"
     addon = None
     meg_evoked_files = []
+    externals = []
 
     def draw(self, context):
         layout = self.layout
@@ -551,10 +593,14 @@ class DataMakerPanel(bpy.types.Panel):
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:
-            row = layout.row(align=0)
-            row.prop(context.scene, 'meg_evoked_files', text="")
-            col = self.layout.column(align=True)
-            col.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
+            layout.label(text='External MEG evoked files:')
+            layout.prop(context.scene, 'meg_evoked_files', text="")
+            layout.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
+            if len(DataMakerPanel.externals) > 0:
+                layout.prop(context.scene, 'evoked_objects', text="")
+                select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
+                select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
+                layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
 
 
 def load_meg_evoked():
@@ -564,13 +610,15 @@ def load_meg_evoked():
         basenames = [mu.namebase(fname).split('_')[0] for fname in evoked_files]
         files_items = [(name, name, '', ind) for ind, name in enumerate(basenames)]
         bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(
-            items=files_items, description="meg_evoked_files")
+            items=files_items, description="meg_evoked_files", update=meg_evoked_files_update)
+
 
 def init(addon):
     DataMakerPanel.addon = addon
     bpy.context.scene.atlas = mu.get_atlas()
     bpy.context.scene.electrode_radius = 0.15
     load_meg_evoked()
+    _meg_evoked_files_update()
     register()
 
 
@@ -585,6 +633,7 @@ def register():
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
+        bpy.utils.register_class(SelectExternalMEGEvoked)
         print('Data Panel was registered!')
     except:
         print("Can't register Data Panel!")
@@ -600,6 +649,7 @@ def unregister():
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportBrain)
         bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
+        bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:
         pass
 

@@ -29,19 +29,24 @@ def find_events_indices(events_fname):
     return indices
 
 
-def calc_evoked(indices, epochs_fname):
+def calc_evoked(indices, epochs_fname, overwrite_epochs=False, overwrite_evoked=False):
     epochs = mne.read_epochs(epochs_fname, preload=False)
     print(epochs.events.shape)
     for event_name, event_indices in indices.items():
         evoked_event_fname = meg_preproc.get_cond_fname(meg_preproc.EVO, event_name)
         epochs_event_fname = meg_preproc.get_cond_fname(meg_preproc.EPO, event_name)
-        if not op.isfile(epochs_event_fname):
+        if not op.isfile(epochs_event_fname) or overwrite_epochs:
             print('Saving {} epochs to {}, events num: {}'.format(event_name, epochs_event_fname, len(event_indices)))
             event_epochs = epochs[event_indices]
             event_epochs.save(epochs_event_fname)
-        if not op.isfile(evoked_event_fname):
+        if not op.isfile(evoked_event_fname) or overwrite_evoked:
             print('Saving {} evoked to {}'.format(event_name, evoked_event_fname))
             mne.write_evokeds(evoked_event_fname, event_epochs.average())
+
+
+def average_all_evoked_responses(root_fol):
+    pass
+    # pca_anat *= np.sign(pca_anat[np.argmax(np.abs(pca_anat))])
 
 
 def plot_evoked(indices):
@@ -52,8 +57,51 @@ def plot_evoked(indices):
         evoked.plot()
 
 
+def create_evoked_responses(root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
+            remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
+            overwrite_epochs=False, overwrite_evoked=False):
+    hc_subjects_epo_filess = glob.glob(op.join(root_fol, 'hc*arc*epo.fif'))
+    for subject_epo_fname in hc_subjects_epo_filess:
+        subject = utils.namebase(subject_epo_fname).split('_')[0]
+        meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
+                                 subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
+                                 BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_inv_no_cond=True)
+        epochs_fname = '{}_arc_rer_{}-epo.fif'.format(subject, raw_cleaning_method)
+        events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
+        indices = find_events_indices(op.join(root_fol, events_fname))
+        if not indices is None:
+            utils.make_dir(op.join(SUBJECTS_MEG_DIR, task, subject))
+            utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+            utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+            utils.prepare_local_subjects_folder(
+                neccesary_files, subject, remote_subjects_dir, SUBJECTS_DIR, print_traceback=False)
+            # anatomy_preproc.freesurfer_surface_to_blender_surface(subject, overwrite=False)
+            # anatomy_preproc.create_annotation_file_from_fsaverage(subject, atlas, fsaverage, False, False, False, True)
+            calc_evoked(indices, op.join(root_fol, epochs_fname), overwrite_epochs, overwrite_evoked)
+            fwd_fname = '{}_arc_rer_tsss-fwd.fif'.format(subject)
+            if not op.isfile(op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname)):
+                shutil.copy(op.join(fwd_fol, fwd_fname), op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname))
+            meg_preproc.calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+            stcs = meg_preproc.calc_stc_per_condition(events_id, inverse_method)
+            for hemi in utils.HEMIS:
+                meg_preproc.calc_labels_avg_per_condition(
+                    atlas, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=stcs,
+                    inverse_method=inverse_method, do_plot=False)
+
+
+def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
+    hc_subjects_epo_filess = glob.glob(op.join(root_fol, 'hc*arc*epo.fif'))
+    for subject_epo_fname in hc_subjects_epo_filess:
+        subject = utils.namebase(subject_epo_fname).split('_')[0]
+        events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
+        indices = find_events_indices(op.join(root_fol, events_fname))
+        if not indices is None:
+            for hemi in utils.HEMIS:
+                shutil.copy(op.join(SUBJECTS_MEG_DIR, task, subject, 'labels_data_{}.npz'.format(hemi)),
+                            op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files', '{}_labels_data_{}.npz'.format(subject, hemi)))
+
+
 if __name__ == '__main__':
-    subject = 'hc016'
     target_subject = 'pp009'
     raw_cleaning_method = 'tsss'
     task = 'ARC'
@@ -62,38 +110,17 @@ if __name__ == '__main__':
     inverse_method = 'dSPM'
     # fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
     fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
-    epochs_fname = '{}_arc_rer_{}-epo.fif'.format(subject, raw_cleaning_method)
-    events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
     root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
     fwd_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/fwd/'
     remote_subjects_dir = '/autofs/space/lilli_001/users/DARPA-Recons'
     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
-    # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
-    hc_subjects_epo_filess = glob.glob(op.join(root_fol, 'hc*arc*epo.fif'))
-    for subject_epo_fname in hc_subjects_epo_filess:
-        subject = utils.namebase(subject_epo_fname).split('_')[0]
-        meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
-                                 subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
-                                 BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_inv_no_cond=True)
-        indices = find_events_indices(op.join(root_fol, events_fname))
-        if not indices is None:
-            utils.make_dir(op.join(SUBJECTS_MEG_DIR, task, subject))
-            utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-            utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-            utils.prepare_local_subjects_folder(
-                neccesary_files, subject, remote_subjects_dir, SUBJECTS_DIR, print_traceback=False)
-            anatomy_preproc.freesurfer_surface_to_blender_surface(subject, overwrite=False)
-            anatomy_preproc.create_annotation_file_from_fsaverage(subject, atlas, fsaverage, False, False, False, True)
-            calc_evoked(indices, op.join(root_fol, epochs_fname))
-            fwd_fname = '{}_arc_rer_tsss-fwd.fif'.format(subject)
-            if not op.isfile(op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname)):
-                shutil.copy(op.join(fwd_fol, fwd_fname), op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname))
-            meg_preproc.calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-            stcs = meg_preproc.calc_stc_per_condition(events_id, inverse_method)
-            for hemi in utils.HEMIS:
-                meg_preproc.calc_labels_avg_per_condition(
-                    atlas, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=None,
-                    inverse_method=inverse_method, do_plot=False)
-                shutil.copy(op.join(SUBJECTS_MEG_DIR, task, subject, 'labels_data_{}.npz'.format(hemi)),
-                            op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files', '{}_labels_data_{}.npz'.format(subject, hemi)))
+    overwrite_epochs = True
+    overwrite_evoked = True
+    # # root_fol = op.join(SUBJECTS_MEG_DIR, task, subject)
+    # '/home/noam/mmvt/pp009/meg_evoked_files'
+
+    create_evoked_responses(root_fol, task, atlas, events_id, fname_format,
+        fwd_fol, neccesary_files, remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
+        overwrite_epochs, overwrite_evoked)
+    # copy_evokes(task, root_fol, target_subject, raw_cleaning_method)

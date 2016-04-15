@@ -797,11 +797,14 @@ def get_spaced_colors(n):
     return colors
 
 
-def create_empty_in_vertex(vertex_location, obj_name, layer):
+def create_empty_in_vertex(vertex_location, obj_name, layer, parent_name=''):
     layers = [False] * 20
     layers[layer] = True
     bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=vertex_location, layers=layers)
     bpy.context.object.name = obj_name
+    if parent_name != '' and not bpy.data.objects.get(parent_name, None) is None:
+        bpy.context.object.parent = bpy.data.objects[parent_name]
+
 
 
 # def read_ply_file(ply_file):
