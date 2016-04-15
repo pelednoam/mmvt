@@ -31,7 +31,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
                 '', '', '', '', '', '', '', '', ''
 
 def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
-        subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_inv_no_cond=False):
+                 subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
@@ -59,14 +59,14 @@ def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=F
     DATA_CSD = _get_pkl_name('data-csd')
     NOISE_CSD = _get_pkl_name('noise-csd')
     EPO = _get_fif_name('epo')
-    FWD = _get_fif_name_no_cond('fwd') if fwd_inv_no_cond else _get_fif_name_cond('fwd')
-    FWD_SUB = _get_fif_name_no_cond('sub-cortical-fwd') if fwd_inv_no_cond else _get_fif_name_cond('sub-cortical-fwd')
-    FWD_X = _get_fif_name_no_cond('{region}-fwd') if fwd_inv_no_cond else _get_fif_name_cond('{region}-fwd')
-    FWD_SMOOTH = _get_fif_name_no_cond('smooth-fwd') if fwd_inv_no_cond else _get_fif_name_cond('smooth-fwd')
-    INV = _get_fif_name_no_cond('inv') if fwd_inv_no_cond else _get_fif_name_cond('inv')
-    INV_SUB = _get_fif_name_no_cond('sub-cortical-inv') if fwd_inv_no_cond else _get_fif_name_cond('sub-cortical-inv')
-    INV_X = _get_fif_name_no_cond('{region}-inv') if fwd_inv_no_cond else _get_fif_name_cond('{region}-inv')
-    INV_SMOOTH = _get_fif_name_no_cond('smooth-inv') if fwd_inv_no_cond else _get_fif_name_cond('smooth-inv')
+    FWD = _get_fif_name_no_cond('fwd') if fwd_no_cond else _get_fif_name_cond('fwd')
+    FWD_SUB = _get_fif_name_no_cond('sub-cortical-fwd') if fwd_no_cond else _get_fif_name_cond('sub-cortical-fwd')
+    FWD_X = _get_fif_name_no_cond('{region}-fwd') if fwd_no_cond else _get_fif_name_cond('{region}-fwd')
+    FWD_SMOOTH = _get_fif_name_no_cond('smooth-fwd') if inv_no_cond else _get_fif_name_cond('smooth-fwd')
+    INV = _get_fif_name_no_cond('inv') if inv_no_cond else _get_fif_name_cond('inv')
+    INV_SUB = _get_fif_name_no_cond('sub-cortical-inv') if inv_no_cond else _get_fif_name_cond('sub-cortical-inv')
+    INV_X = _get_fif_name_no_cond('{region}-inv') if inv_no_cond else _get_fif_name_cond('{region}-inv')
+    INV_SMOOTH = _get_fif_name_no_cond('smooth-inv') if inv_no_cond else _get_fif_name_cond('smooth-inv')
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
@@ -398,22 +398,24 @@ def calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_co
                 (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
                 (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region))):
             continue
-        epo = get_cond_fname(EPO, cond)
-        epochs = mne.read_epochs(epo)
-        noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
-        if calc_for_cortical_fwd and not op.isfile(get_cond_fname(INV, cond)):
-            if cortical_fwd is None:
-                cortical_fwd = get_cond_fname(FWD, cond)
-            _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov)
-        if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
-            if subcortical_fwd is None:
-                subcortical_fwd = get_cond_fname(FWD_SUB, cond)
-            _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov)
-        if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
-            if spec_subcortical_fwd is None:
-                spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
-            _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs, noise_cov)
-
+        try:
+            epo = get_cond_fname(EPO, cond)
+            epochs = mne.read_epochs(epo)
+            noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
+            if calc_for_cortical_fwd and not op.isfile(get_cond_fname(INV, cond)):
+                if cortical_fwd is None:
+                    cortical_fwd = get_cond_fname(FWD, cond)
+                _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov)
+            if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
+                if subcortical_fwd is None:
+                    subcortical_fwd = get_cond_fname(FWD_SUB, cond)
+                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov)
+            if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
+                if spec_subcortical_fwd is None:
+                    spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
+                _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs, noise_cov)
+        except:
+            print('Error in calculating inv for {}'.format(cond))
 
 def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
     fwd = mne.read_forward_solution(fwd_name)
@@ -442,12 +444,15 @@ def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0),
         inverse_operator = read_inverse_operator(INV)
         global_inverse_operator = True
     for cond_name in events_id.keys():
-        if not global_inverse_operator:
-            inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
-        evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
-        stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method,
-                                        pick_ori=None)
-        stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
+        try:
+            if not global_inverse_operator:
+                inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
+            evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+            stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method,
+                                            pick_ori=None)
+            stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
+        except:
+            print('Error with {}!'.format(cond_name))
     return stcs
 
 
@@ -1238,7 +1243,7 @@ if __name__ == '__main__':
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
     init_globals(martinos_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, constrast,
-                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_inv_no_cond=True)
+                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_no_cond=True)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
     inverse_methods = ['dSPM', 'MNE', 'sLORETA']

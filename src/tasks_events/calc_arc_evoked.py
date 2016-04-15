@@ -44,11 +44,35 @@ def calc_evoked(indices, epochs_fname, overwrite_epochs=False, overwrite_evoked=
             mne.write_evokeds(evoked_event_fname, event_epochs.average())
 
 
-def average_all_evoked_responses(root_fol):
-    evoked_files = glob.glob(op.join(root_fol, '*_lh.npz'))
-    for evoked_fname in evoked_files:
-        f = np.load(evoked_fname)
-    # pca_anat *= np.sign(pca_anat[np.argmax(np.abs(pca_anat))])
+def average_all_evoked_responses(root_fol, moving_average_win_size=50):
+    import matplotlib.pyplot as plt
+    for hemi in utils.HEMIS:
+        evoked_files = glob.glob(op.join(root_fol, '*labels_data_{}.npz'.format(hemi)))
+        all_data = None
+        all_data_win = None
+        for evoked_ind, evoked_fname in enumerate(evoked_files):
+            f = np.load(evoked_fname)
+            data = f['data'] # labels x time x conditions
+            if all_data is None:
+                all_data = np.zeros((*data.shape, len(evoked_files)))
+            for cond_ind in range(data.shape[2]):
+                for label_ind in range(data.shape[0]):
+                    x = data[label_ind, :, cond_ind]
+                    x *= np.sign(x[np.argmax(np.abs(x))])
+                    all_data[label_ind, :, cond_ind, evoked_ind] = x
+                win_avg = utils.moving_avg(all_data[:, :, cond_ind, evoked_ind], moving_average_win_size)
+                if all_data_win is None:
+                    all_data_win = np.zeros((*win_avg.shape, data.shape[2], len(evoked_files)))
+                all_data_win[:, :, cond_ind, evoked_ind] = win_avg
+        mean_evoked = np.mean(all_data, 3)
+        mean_win_evoked = np.mean(all_data_win, 3)
+        np.savez(op.join(root_fol, 'avg_labels_data.npz'), data=mean_evoked, names=f['names'], conditions=f['conditions'])
+        np.savez(op.join(root_fol, 'avg_labels_data_win_{}.npz'.format(moving_average_win_size)),
+                 data=mean_win_evoked, names=f['names'], conditions=f['conditions'])
+        plt.figure()
+        for label_data in mean_win_evoked:
+            plt.plot(label_data)
+        plt.savefig(op.join(root_fol, '{}_avg_evoked_win_{}.jpg'.format(hemi, moving_average_win_size)))
 
 
 def plot_evoked(indices):
@@ -78,23 +102,24 @@ def create_evoked_responses(root_fol, task, atlas, events_id, fname_format, fwd_
 
 
 def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
-            remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method,
+            remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=None,
             overwrite_epochs=False, overwrite_evoked=False):
     meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
-                             BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_inv_no_cond=True)
+                             BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True)
     epochs_fname = '{}_arc_rer_{}-epo.fif'.format(subject, raw_cleaning_method)
     events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
-    indices = find_events_indices(op.join(root_fol, events_fname))
+    if indices is None:
+        indices = find_events_indices(op.join(root_fol, events_fname))
     if not indices is None:
         utils.make_dir(op.join(SUBJECTS_MEG_DIR, task, subject))
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-        utils.prepare_local_subjects_folder(
-            neccesary_files, subject, remote_subjects_dir, SUBJECTS_DIR, print_traceback=False)
+        # utils.prepare_local_subjects_folder(
+        #     neccesary_files, subject, remote_subjects_dir, SUBJECTS_DIR, print_traceback=False)
         # anatomy_preproc.freesurfer_surface_to_blender_surface(subject, overwrite=False)
         # anatomy_preproc.create_annotation_file_from_fsaverage(subject, atlas, fsaverage, False, False, False, True)
-        calc_evoked(indices, op.join(root_fol, epochs_fname), overwrite_epochs, overwrite_evoked)
+        # calc_evoked(indices, op.join(root_fol, epochs_fname), overwrite_epochs, overwrite_evoked)
         fwd_fname = '{}_arc_rer_tsss-fwd.fif'.format(subject)
         if not op.isfile(op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname)):
             shutil.copy(op.join(fwd_fol, fwd_fname), op.join(SUBJECTS_MEG_DIR, task, subject, fwd_fname))
@@ -141,3 +166,7 @@ if __name__ == '__main__':
         overwrite_epochs, overwrite_evoked)
     copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
     # average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
+
+    # calc_subject_evoked_response('hc022', root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
+    #         remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=[],
+    #         overwrite_epochs=False, overwrite_evoked=False)
