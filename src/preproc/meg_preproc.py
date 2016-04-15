@@ -1260,8 +1260,8 @@ if __name__ == '__main__':
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
-    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    stcs = calc_stc_per_condition(events_id, inverse_method)
+    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    # stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
             labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=1000, do_plot=False)

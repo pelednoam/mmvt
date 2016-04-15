@@ -1160,5 +1160,7 @@ def make_evoked_smooth_and_positive(evoked, positive=True, moving_average_win_si
             evoked[label_ind, :, cond_ind] = x
         if moving_average_win_size > 0:
             evoked_smooth_cond = moving_avg(evoked[:, :, cond_ind], moving_average_win_size)
-            evoked[:, :, cond_ind] = evoked_smooth_cond
+            if evoked_smooth is None:
+                evoked_smooth = np.zeros((evoked_smooth_cond.shape[0], evoked_smooth_cond.shape[1], evoked.shape[2]))
+            evoked_smooth[:, :, cond_ind] = evoked_smooth_cond
     return evoked_smooth
