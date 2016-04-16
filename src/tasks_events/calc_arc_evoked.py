@@ -6,6 +6,7 @@ from src.preproc import anatomy_preproc
 from src import utils
 import glob
 import shutil
+from collections import defaultdict
 import traceback
 
 LINKS_DIR = utils.get_links_dir()
@@ -45,20 +46,24 @@ def calc_evoked(indices, epochs_fname, overwrite_epochs=False, overwrite_evoked=
             mne.write_evokeds(evoked_event_fname, event_epochs.average())
 
 
-def average_all_evoked_responses(root_fol, moving_average_win_size=100, do_plot=True):
+def average_all_evoked_responses(root_fol, moving_average_win_size=100, do_plot=False):
     import matplotlib.pyplot as plt
     for hemi in utils.HEMIS:
+        print(hemi)
         if do_plot:
             plt.figure()
         evoked_files = glob.glob(op.join(root_fol, 'hc*labels_data_{}.npz'.format(hemi)))
         all_data = None
         all_data_win = None
         for evoked_ind, evoked_fname in enumerate(evoked_files):
+            print(evoked_fname)
             f = np.load(evoked_fname)
             data = f['data'] # labels x time x conditions
+            print(data.shape)
             if all_data is None:
                 all_data = np.zeros((*data.shape, len(evoked_files)))
             for cond_ind in range(data.shape[2]):
+                print(cond_ind)
                 for label_ind in range(data.shape[0]):
                     x = data[label_ind, :, cond_ind]
                     x *= np.sign(x[np.argmax(np.abs(x))])
@@ -76,9 +81,12 @@ def average_all_evoked_responses(root_fol, moving_average_win_size=100, do_plot=
             plt.close()
         mean_evoked = np.mean(all_data, 3)
         mean_win_evoked = np.mean(all_data_win, 3)
-        np.savez(op.join(root_fol, 'healthy_labels_data_{}.npz'.format(hemi)), data=mean_evoked, names=f['names'], conditions=f['conditions'])
+        np.savez(op.join(root_fol, 'healthy_labels_data_{}.npz'.format(hemi)),
+                 data=mean_evoked, names=f['names'], conditions=f['conditions'])
         np.savez(op.join(root_fol, 'healthy_labels_data_win_{}_{}.npz'.format(moving_average_win_size, hemi)),
                  data=mean_win_evoked, names=f['names'], conditions=f['conditions'])
+        np.savez(op.join(root_fol, 'healthy_labels_all_data_win_{}_{}.npz'.format(moving_average_win_size, hemi)),
+                 data=all_data_win, names=f['names'], conditions=f['conditions'])
         shutil.copy(op.join(root_fol, 'healthy_labels_data_win_{}_{}.npz'.format(moving_average_win_size, hemi)),
                     op.join(root_fol, 'healthy_labels_data_{}.npz'.format(hemi)))
         if do_plot:
@@ -160,22 +168,66 @@ def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
                             op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files', '{}_labels_data_{}.npz'.format(subject, hemi)))
 
 
-def create_labels_colors(subject, atlas, labels_names):
-    from collections import defaultdict
-    import src.mmvt_addon.colors_utils as cu
-    labels_names_hemi = defaultdict(list)
-    for label_name in labels_names:
-        label_fname = op.join(SUBJECTS_DIR, subject, 'label', atlas, '{}.label'.format(label_name))
-        label = mne.read_label(label_fname)
-        labels_names_hemi[label.hemi].append(label.name)
+def plot_labels(subject, labels_names, title_dict):
+    import seaborn as sns
+    from src.mmvt_addon import colors_utils as cu
+    sns.set(style="darkgrid")
+    sns.set(color_codes=True)
+    healthy_data = defaultdict(dict)
+    subject_data = defaultdict(dict)
+    root_fol = op.join(BLENDER_ROOT_DIR, subject, 'meg_evoked_files')
+    if not op.isfile(op.join(root_fol, 'all_data.pkl')):
+        for hemi in utils.HEMIS:
+            d = np.load(op.join(root_fol, 'healthy_labels_all_data_win_100_{}.npz'.format(hemi)))
+            f = np.load(op.join(BLENDER_ROOT_DIR, subject, 'labels_data_{}.npz'.format(hemi)))
+            for label_ind, label_name in enumerate(d['names']):
+                if label_name in labels_names.keys():
+                    for cond_id, cond_name in enumerate(d['conditions']):
+                        healthy_data[cond_name][label_name] = d['data'][label_ind, :, cond_id, :]
+                        subject_data[cond_name][label_name] = f['data'][label_ind, :, cond_id]
+        T = f['data'].shape[1]
+        utils.save((subject_data, healthy_data, T), op.join(root_fol, 'all_data.pkl'))
+    else:
+        subject_data, healthy_data, T = utils.load(op.join(root_fol, 'all_data.pkl'))
+    colors = cu.boynton_colors
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'pics'))
+    x_axis = range(0, T, 1000)
+    x_labels = [str(int(t / 1000)) for t in x_axis]
+    # x_labels[2] = '(Risk onset) 2'
+    # x_labels[3] = '(Reward onset) 3'
+    img_width, img_height = 1024, 768
+    dpi = 200
+    ylim = 1.6
+    w, h = img_width/dpi, img_height/dpi
+    for cond_name in healthy_data.keys():
+        sns.plt.figure(figsize=(w, h), dpi=dpi)
+        sns.plt.xticks(x_axis, x_labels)
+        sns.plt.xlabel('Time (s)')
+        sns.plt.title(title_dict[cond_name])
+        sns.plt.subplots_adjust(bottom=0.14)
 
-    colors = np.array([cu.name_to_rgb(col) for col in cu.boynton_colors])
-    for hemi in utils.HEMIS:
-        L = len(labels_names_hemi[hemi])
-        data_no_t = np.ones((L))
-        np.savez(op.join(BLENDER_ROOT_DIR, subject, 'meg_labels_coloring_{}.npz'.format(hemi)),
-                 data=data_no_t, colors=colors, names=labels_names_hemi[hemi])
-
+        labels = []
+        color_ind = 0
+        for label_name, label_real_name in labels_names.items():
+            sns.tsplot(data=healthy_data[cond_name][label_name].T, color=colors[color_ind])
+            labels.append('healthy {}'.format(label_real_name))
+            color_ind += 1
+        for label_name, label_real_name in labels_names.items():
+            sns.tsplot(data=subject_data[cond_name][label_name].T, color=colors[color_ind])
+            labels.append('{} {}'.format(subject, label_real_name))
+            color_ind += 1
+        sns.plt.legend(labels)
+        sns.plt.axvline(2000, color='k', linestyle='--', lw=1)
+        sns.plt.axvline(3000, color='k', linestyle='--', lw=1)
+        sns.plt.text(1600, ylim * 0.8, 'Risk onset', rotation=90, fontsize=10)
+        sns.plt.text(2600, ylim * 0.83, 'Reward onset', rotation=90, fontsize=10)
+        sns.plt.ylim([0, ylim])
+        sns.plt.xlim([0, 9000])
+        # sns.plt.show()
+        pic_fname = op.join(BLENDER_ROOT_DIR, subject, 'pics', '{}_vs_health_{}.jpg'.format(subject, cond_name))
+        print('Saving {}'.format(pic_fname))
+        sns.plt.savefig(pic_fname, dpi=dpi)
+        # sns.plt.close()
 
 if __name__ == '__main__':
     target_subject = 'pp009'
@@ -200,7 +252,9 @@ if __name__ == '__main__':
     #     overwrite_epochs, overwrite_evoked)
     # copy_evokes(task, root_fol, target_subject, raw_cleaning_method)
     # average_all_evoked_responses(op.join(BLENDER_ROOT_DIR, target_subject, 'meg_evoked_files'))
-    create_labels_colors(target_subject, atlas, ['ofc-lh', 'vlpfc-rh'])
+    plot_labels(target_subject, {'vlpfc-rh': 'right VLPFC', 'ofc-lh': 'left OFC'},
+                {'low_risk': 'Low Risk', 'med_risk': 'Medium Risk', 'high_risk': 'High Risk'})
+    # test()
     # calc_subject_evoked_response('pp009', root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
     #         remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=[],
     #         overwrite_epochs=False, overwrite_evoked=False)
