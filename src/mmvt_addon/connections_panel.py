@@ -3,6 +3,7 @@ import numpy as np
 import os.path as op
 import time
 import mmvt_utils as mu
+import colors_utils as cu
 import os
 
 try:
@@ -25,11 +26,13 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     mu.delete_hierarchy(PARENT_OBJ)
     mu.create_empty_if_doesnt_exists(PARENT_OBJ, ConnectionsPanel.addon.BRAIN_EMPTY_LAYER, None, 'Functional maps')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    T = ConnectionsPanel.addon.get_max_time_steps()
-    if d.con_colors.ndim == 4:
+    if d.con_colors.ndim == 3:
         windows_num = d.con_colors.shape[1]
     else:
         windows_num = 1
+    T = ConnectionsPanel.addon.get_max_time_steps()
+    if T == 0:
+        T = windows_num
     norm_fac = T / windows_num
     # todo: Check if we really want to let the user create connection according to the first option
     # if bpy.context.scene.selection_type == 'conds':
@@ -84,9 +87,10 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
         if windows_num == 1:
             continue
         for cond_id, cond in enumerate(d.conditions):
-            insert_frame_keyframes(cur_obj, '{}-{}'.format(conn_name, cond), d.con_values[ind, -1, cond_id], T)
+            # insert_frame_keyframes(cur_obj, '{}-{}'.format(conn_name, cond), d.con_values[ind, -1, cond_id], T)
             for t in range(windows_num):
-                timepoint = t * norm_fac + 2
+                extra_time_points = 0 if norm_fac ==1 else 2
+                timepoint = t * norm_fac + extra_time_points
                 mu.insert_keyframe_to_custom_prop(cur_obj, '{}-{}'.format(conn_name, cond),
                                                   d.con_values[ind, t, cond_id], timepoint)
         finalize_fcurves(cur_obj)
@@ -105,9 +109,10 @@ def create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num
     now = time.time()
     for run, (ind, conn_name) in enumerate(zip(indices, d.con_names[mask])):
         mu.time_to_go(now, run, N, runs_num_to_print=100)
-        insert_frame_keyframes(parent_obj, conn_name, stat_data[ind, -1], T)
+        # insert_frame_keyframes(parent_obj, conn_name, stat_data[ind, -1], T)
         for t in range(windows_num):
-            timepoint = t * norm_fac + 2
+            extra_time_points = 0 if norm_fac ==1 else 2
+            timepoint = t * norm_fac + extra_time_points
             mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, stat_data[ind, t], timepoint)
     finalize_fcurves(parent_obj)
     finalize_objects_creations()
@@ -115,7 +120,7 @@ def create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num
 
 def calc_stat_data(data, stat):
     axis = data.ndim - 1
-    if data.ndim == 2 and data.shape[1] == 1:
+    if data.shape[axis] == 1:
         stat = STAT_AVG
     if stat == STAT_AVG:
         stat_data = np.squeeze(np.mean(data, axis=axis))
@@ -132,11 +137,21 @@ def insert_frame_keyframes(parent_obj, conn_name, last_data, T):
     mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, 0, T + 2)
 
 
-def finalize_fcurves(parent_obj):
+def finalize_fcurves(parent_obj, interpolation=''):
+    colors_num = len(parent_obj.animation_data.action.fcurves)
+    colors = cu.get_distinct_colors(colors_num)
+    color_ind = 0
     for fcurve in parent_obj.animation_data.action.fcurves:
         fcurve.modifiers.new(type='LIMITS')
+        fcurve.color_mode = 'CUSTOM'
+        fcurve.color = tuple(colors[color_ind])
+        color_ind += 1
+        if color_ind == len(colors):
+            color_ind = 0
+        if interpolation == '':
+            interpolation = 'BEZIER' if len(fcurve.keyframe_points) > 10 else 'LINEAR'
         for kf in fcurve.keyframe_points:
-            kf.interpolation = 'BEZIER'
+            kf.interpolation = interpolation
 
 
 def finalize_objects_creations():
@@ -316,7 +331,7 @@ def filter_electrodes_via_connections(context, do_filter):
 
 def capture_graph_data(per_condition):
     parent_obj = bpy.data.objects[PARENT_OBJ]
-    time_range = range(ConnectionsPanel.addon.get_max_time_steps())
+    time_range = range(0, ConnectionsPanel.addon.get_max_time_steps(), bpy.context.scene.play_dt)
     if per_condition:
         #todo: implement
         pass

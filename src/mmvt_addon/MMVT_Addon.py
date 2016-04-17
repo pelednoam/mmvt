@@ -114,7 +114,9 @@ de_select_electrode = filter_panel.de_select_electrode
 filter_roi_func = filter_panel.filter_roi_func
 filter_electrode_func = filter_panel.filter_electrode_func
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Rendering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+render_image = render_panel.render_image
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Rendering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def get_max_time_steps():
     # Check if maximal_time_steps is in bpy.types.Scene
@@ -140,7 +142,7 @@ def get_max_time_steps():
         print('No deep electrodes data')
 
     # Bad fallback...
-    return T
+    return 2500
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show / Hide objects ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def show_hide_hierarchy(do_hide, obj):

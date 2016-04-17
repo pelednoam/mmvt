@@ -191,7 +191,7 @@ def plot_labels(subject, labels_names, title_dict):
         subject_data, healthy_data, T = utils.load(op.join(root_fol, 'all_data.pkl'))
     colors = cu.boynton_colors
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'pics'))
-    x_axis = range(0, T, 1000)
+    x_axis = np.arange(-2000, T - 2000, 1000)
     x_labels = [str(int(t / 1000)) for t in x_axis]
     # x_labels[2] = '(Risk onset) 2'
     # x_labels[3] = '(Reward onset) 3'
@@ -205,24 +205,28 @@ def plot_labels(subject, labels_names, title_dict):
         sns.plt.xlabel('Time (s)')
         sns.plt.title(title_dict[cond_name])
         sns.plt.subplots_adjust(bottom=0.14)
+        # sns.set_style('white')
+        sns.despine()
 
         labels = []
         color_ind = 0
         for label_name, label_real_name in labels_names.items():
-            sns.tsplot(data=healthy_data[cond_name][label_name].T, color=colors[color_ind])
+            sns.tsplot(data=healthy_data[cond_name][label_name].T,
+                time=np.arange(-2000, healthy_data[cond_name][label_name].shape[0] - 2000), color=colors[color_ind])
             labels.append('healthy {}'.format(label_real_name))
             color_ind += 1
         for label_name, label_real_name in labels_names.items():
-            sns.tsplot(data=subject_data[cond_name][label_name].T, color=colors[color_ind])
+            sns.tsplot(data=subject_data[cond_name][label_name].T,
+                time=np.arange(-2000, subject_data[cond_name][label_name].shape[0] - 2000), color=colors[color_ind])
             labels.append('{} {}'.format(subject, label_real_name))
             color_ind += 1
         sns.plt.legend(labels)
-        sns.plt.axvline(2000, color='k', linestyle='--', lw=1)
-        sns.plt.axvline(3000, color='k', linestyle='--', lw=1)
-        sns.plt.text(1600, ylim * 0.8, 'Risk onset', rotation=90, fontsize=10)
-        sns.plt.text(2600, ylim * 0.83, 'Reward onset', rotation=90, fontsize=10)
+        sns.plt.axvline(0, color='k', linestyle='--', lw=1)
+        sns.plt.axvline(1000, color='k', linestyle='--', lw=1)
+        sns.plt.text(-400, ylim * 0.8, 'Risk onset', rotation=90, fontsize=10)
+        sns.plt.text(600, ylim * 0.83, 'Reward onset', rotation=90, fontsize=10)
         sns.plt.ylim([0, ylim])
-        sns.plt.xlim([0, 9000])
+        sns.plt.xlim([-2000, 7000])
         # sns.plt.show()
         pic_fname = op.join(BLENDER_ROOT_DIR, subject, 'pics', '{}_vs_health_{}.jpg'.format(subject, cond_name))
         print('Saving {}'.format(pic_fname))

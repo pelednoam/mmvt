@@ -1,10 +1,11 @@
 import re
-
+from collections import OrderedDict
+import numpy as np
 # Light version of webcolors
 
 # http://stackoverflow.com/a/4382138/1060738
 # Kelly's 22 colors of maximum contrast
-kelly_colors = dict(vivid_yellow=(255, 179, 0),
+kelly_colors = OrderedDict(vivid_yellow=(255, 179, 0),
                     strong_purple=(128, 62, 117),
                     vivid_orange=(255, 104, 0),
                     very_light_blue=(166, 189, 215),
@@ -28,8 +29,14 @@ kelly_colors = dict(vivid_yellow=(255, 179, 0),
                     dark_olive_green=(35, 44, 22))
 
 # Boynton's list of 11 colors that are almost never confused.
-boynton_colors = ["Blue", "Red", "Green", "Yellow", "Magenta", "Pink", "Gray", "Brown", "Orange" ]
+boynton_colors = ["blue", "red", "green", "yellow", "magenta", "pink", "orange", "brown", "gray"]
 
+
+def get_distinct_colors(colors_num):
+    if colors_num <= len(boynton_colors):
+        return [name_to_rgb(c) for c in boynton_colors]
+    else:
+        return np.array(list(kelly_colors.values())) / 255.0
 
 NAMES_TO_HEX = {
     u'aliceblue': u'#f0f8ff',
