@@ -279,6 +279,7 @@ def evaluate_fcurves(parent_obj, time_range):
             continue
         name = fcurve.data_path.split('"')[1]
         print('{} extrapolation'.format(name))
+        # todo: we should return the interpolation to its previous vlaue
         for kf in fcurve.keyframe_points:
             kf.interpolation = 'BEZIER'
         data[name] = []
