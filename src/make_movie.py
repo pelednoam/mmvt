@@ -243,6 +243,47 @@ def get_pics(fol, pics_type='png'):
     return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:re.findall('\d+', utils.namebase(x)))
 
 
+def cut_movie(movie_fol, movie_name, out_movie_name):
+    from moviepy import editor
+    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
+    clip1 = video.subclip(3, 4)
+    clip2 = video.subclip(6, 17)
+    clip3 = video.subclip(38, 42)
+    final_clip = editor.concatenate_videoclips([clip1, clip2, clip3])
+    final_clip.write_videofile(op.join(movie_fol, out_movie_name))
+
+
+def crop_movie(movie_fol, movie_name, out_movie_name):
+    from moviepy import editor
+    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
+    crop_video = video.crop(y1=60, y2=1170)
+    crop_video.write_videofile(op.join(movie_fol, out_movie_name))
+
+
+def add_text_to_movie(movie_fol, movie_name, out_movie_name):
+    from moviepy import editor
+    from functools import partial
+
+    w, h = 1920, (1200 - 60 - 30)
+    moviesize = w, h
+
+    def annotate(clip, txt, txt_color='red', fontsize=50, font='Xolonium-Bold'):
+        """ Writes a text at the bottom of the clip. """
+        txtclip = editor.TextClip(txt, fontsize=fontsize, font=font, color=txt_color)
+        # txtclip = txtclip.on_color((clip.w, txtclip.h + 6), color=(0, 0, 255), pos=(6, 'center'))
+        cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
+        return cvc.set_duration(clip.duration)
+
+    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
+    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
+            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
+            ((9, 12), 'Finding the closest activation in the coordinates'),
+            ((12, 16), 'The activation is displayed with its statistics')]
+    annotated_clips = [annotate(video.subclip(from_t, to_t), txt) for (from_t, to_t), txt in subs]
+    final_clip = editor.concatenate_videoclips(annotated_clips)
+    final_clip.write_videofile(op.join(movie_fol, out_movie_name))
+
+
 if __name__ == '__main__':
     subject = 'mg78'
     fol = '/home/noam/Pictures/mmvt/movie1'
@@ -306,5 +347,10 @@ if __name__ == '__main__':
     # ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname,
     #           cb_data_type, data_to_show_in_graph, cb_title, bitrate, fol2=fol2, ylabels=ylabels, pics_type=pics_type)
 
-    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
+    # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+    #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
+
+    movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
+    # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
+    # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
+    add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4')
