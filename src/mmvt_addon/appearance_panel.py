@@ -1,5 +1,6 @@
 import bpy
 import connections_panel
+import electrodes_panel
 # from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
 #         BRAIN_EMPTY_LAYER, EMPTY_LAYER)
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
@@ -13,15 +14,14 @@ def setup_layers():
         bpy.context.scene.layers[layer_ind] = layer_ind == empty_layer
 
     bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
-    bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_ROIs_layer
-    bpy.context.scene.layers[ACTIVITY_LAYER] = bpy.context.scene.appearance_show_activity_layer
+    bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'rois'
+    bpy.context.scene.layers[ACTIVITY_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'activity'
     bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
 def change_view3d():
     viewport_shade = bpy.context.scene.filter_view_type
-    # if viewport_shade == 'RENDERED':
-    if viewport_shade == '1':
+    if viewport_shade == 'rendered':
         bpy.context.scene.layers[LIGHTS_LAYER] = True
         viewport_shade_str = 'RENDERED'
     else:
@@ -31,99 +31,53 @@ def change_view3d():
     for ii in range(len(bpy.context.screen.areas)):
         if bpy.context.screen.areas[ii].type == 'VIEW_3D':
             bpy.context.screen.areas[ii].spaces[0].viewport_shade = viewport_shade_str
+            break
 
 
-def get_appearance_show_electrodes_layer(self):
-    return self['appearance_show_electrodes_layer']
-
-
-def set_appearance_show_electrodes_layer(self, value):
-    self['appearance_show_electrodes_layer'] = value
-    bpy.context.scene.layers[ELECTRODES_LAYER] = value
-
-
-def get_appearance_show_rois_layer(self):
-    return self['appearance_show_ROIs_layer']
-
-
-def set_appearance_show_rois_layer(self, value):
-    self['appearance_show_ROIs_layer'] = value
-    bpy.context.scene.layers[ROIS_LAYER] = value
-    if value:
-        set_appearance_show_activity_layer(self, False)
-        # bpy.context.scene.layers[LIGHTS_LAYER] = False
+def appearance_show_electrodes_layer_update():
+    bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
 
 
 def show_rois():
-    if not get_appearance_show_rois_layer(bpy.context.scene):
-        set_appearance_show_rois_layer(bpy.context.scene, True)
+    bpy.context.scene.appearance_show_rois_activity = 'rois'
 
 
 def show_activity():
-    if not get_appearance_show_electrodes_layer(bpy.context.scene):
-        set_appearance_show_activity_layer(bpy.context.scene, True)
+    bpy.context.scene.appearance_show_rois_activity = 'activity'
 
 
 def show_electrodes():
-    if not get_appearance_show_electrodes_layer(bpy.context.scene):
-        set_appearance_show_electrodes_layer(bpy.context.scene, True)
+    bpy.context.scene.appearance_show_electrodes_layer = True
 
 
-def get_appearance_show_activity_layer(self):
-    return self['appearance_show_activity_layer']
+def appearance_show_rois_activity_update(self, context):
+    show_activity = bpy.context.scene.appearance_show_rois_activity == 'activity'
+    show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
+    bpy.context.scene.layers[ROIS_LAYER] = show_rois
+    bpy.context.scene.layers[ACTIVITY_LAYER] = show_activity
+    if not AppearanceMakerPanel.addon is None and show_activity:
+        fmri_hide = not show_activity if bpy.context.scene.subcortical_layer == 'fmri' else show_activity
+        meg_hide = not show_activity if bpy.context.scene.subcortical_layer == 'meg' else show_activity
+        AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
+        AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
 
 
-def set_appearance_show_activity_layer(self, value):
-    self['appearance_show_activity_layer'] = value
-    bpy.context.scene.layers[ACTIVITY_LAYER] = value
-    if value:
-        set_appearance_show_rois_layer(self, False)
-        if not AppearanceMakerPanel.addon is None:
-            fmri_hide = not value if bpy.context.scene.subcortical_layer == 'fmri' else value
-            meg_hide = not value if bpy.context.scene.subcortical_layer == 'meg' else value
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
-
-
-def get_appearance_show_connections_layer(self):
-    try:
-        return self['appearance_show_connections_layer']
-    except:
-        return 0
-
-
-def set_appearance_show_connections_layer(self, value):
+def appearance_show_connections_layer_update(self, context):
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        self['appearance_show_connections_layer'] = value
-        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = value
-        bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
+            bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
-def get_filter_view_type(self):
-    # print('in get_filter_view_type')
-    # print(self['filter_view_type'])
-    # print(type(self['filter_view_type']))
-    if self['filter_view_type'] == 'RENDERED':
-        return 1
-    elif self['filter_view_type'] == 'SOLID':
-        return 2
-    elif type(self['filter_view_type']) == int:
-        return self['filter_view_type']
-    return 3
-
-
-def set_filter_view_type(self, value):
-    # self['filter_view_type'] = value
-    bpy.data.scenes['Scene']['filter_view_type'] = value
+def filter_view_type_update(self, context):
     change_view3d()
 
 
 def change_to_rendered_brain():
-    set_filter_view_type(None, 1)
+    bpy.context.scene.filter_view_type = 'rendered'
 
 
 def change_to_solid_brain():
-    set_filter_view_type(None, 2)
+    bpy.context.scene.filter_view_type = 'solid'
 
 
 def make_brain_solid_or_transparent():
@@ -145,40 +99,29 @@ def update_layers():
 
 def appearance_draw(self, context):
     layout = self.layout
-    col1 = self.layout.column(align=True)
-    col1.prop(context.scene, 'appearance_show_ROIs_layer', text="Show ROIs", icon='RESTRICT_VIEW_OFF')
-    col1.prop(context.scene, 'appearance_show_activity_layer', text="Show activity maps", icon='RESTRICT_VIEW_OFF')
-    col1.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
+    layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
+    if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
+        layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        col1.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
-    split = layout.split()
-    split.prop(context.scene, "filter_view_type", text="")
+        layout.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
+    layout.prop(context.scene, "filter_view_type", expand=True)
 
 
 def update_solidity(self, context):
     make_brain_solid_or_transparent()
     update_layers()
-    AppearanceMakerPanel.draw()
 
 
-bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(default=False, description="Show electrodes",
-                                                                          get=get_appearance_show_electrodes_layer,
-                                                                          set=set_appearance_show_electrodes_layer)
-bpy.types.Scene.appearance_show_ROIs_layer = bpy.props.BoolProperty(default=True, description="Show ROIs",
-                                                                    get=get_appearance_show_rois_layer,
-                                                                    set=set_appearance_show_rois_layer)
-bpy.types.Scene.appearance_show_activity_layer = bpy.props.BoolProperty(default=False, description="Show activity maps",
-                                                                        get=get_appearance_show_activity_layer,
-                                                                        set=set_appearance_show_activity_layer)
-bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(default=False, description="Show connectivity",
-                                                                        get=get_appearance_show_connections_layer,
-                                                                        set=set_appearance_show_connections_layer)
+bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
+    items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
+    update=appearance_show_rois_activity_update)
+bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(
+    default=False, description="Show connectivity", update=appearance_show_connections_layer_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 
-
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
-    items=[("1", "Rendered Brain", "", 1), ("2", " Solid Brain", "", 2)],description="Brain appearance",
-    get=get_filter_view_type, set=set_filter_view_type, default='2')
+    items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
+    update = filter_view_type_update)
 
 
 class AppearanceMakerPanel(bpy.types.Panel):
@@ -200,6 +143,8 @@ def init(addon):
     register()
     AppearanceMakerPanel.init = True
     bpy.context.scene.subcortical_layer = 'fmri'
+    bpy.context.scene.filter_view_type = 'rendered'
+    bpy.context.scene.appearance_show_rois_activity = 'activity'
 
 
 def register():

@@ -143,9 +143,9 @@ def register():
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(CreateVertexData)
         bpy.utils.register_class(ClearVertexData)
-        print('Selection Panel was registered!')
+        print('Vertex Panel was registered!')
     except:
-        print("Can't register Selection Panel!")
+        print("Can't register Vertex Panel!")
 
 
 def unregister():

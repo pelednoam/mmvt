@@ -215,17 +215,17 @@ change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
 update_solidity = appearance_panel.update_solidity
-
-get_appearance_show_electrodes_layer = appearance_panel.get_appearance_show_electrodes_layer
-set_appearance_show_electrodes_layer = appearance_panel.set_appearance_show_electrodes_layer
-get_appearance_show_activity_layer = appearance_panel.get_appearance_show_activity_layer
-set_appearance_show_activity_layer = appearance_panel.set_appearance_show_activity_layer
-get_appearance_show_rois_layer = appearance_panel.get_appearance_show_rois_layer
-set_appearance_show_rois_layer = appearance_panel.set_appearance_show_rois_layer
-get_appearance_show_connections_layer = appearance_panel.get_appearance_show_connections_layer
-set_appearance_show_connections_layer = appearance_panel.set_appearance_show_connections_layer
-get_filter_view_type = appearance_panel.get_filter_view_type
-set_filter_view_type = appearance_panel.set_filter_view_type
+show_activity_layer = appearance_panel.show_activity_layer
+# get_appearance_show_electrodes_layer = appearance_panel.get_appearance_show_electrodes_layer
+# set_appearance_show_electrodes_layer = appearance_panel.set_appearance_show_electrodes_layer
+# get_appearance_show_activity_layer = appearance_panel.get_appearance_show_activity_layer
+# set_appearance_show_activity_layer = appearance_panel.set_appearance_show_activity_layer
+# get_appearance_show_rois_layer = appearance_panel.get_appearance_show_rois_layer
+# set_appearance_show_rois_layer = appearance_panel.set_appearance_show_rois_layer
+# get_appearance_show_connections_layer = appearance_panel.get_appearance_show_connections_layer
+# set_appearance_show_connections_layer = appearance_panel.set_appearance_show_connections_layer
+# get_filter_view_type = appearance_panel.get_filter_view_type
+# set_filter_view_type = appearance_panel.set_filter_view_type
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Transparency Panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,7 +242,7 @@ class TransparencyPanel(bpy.types.Panel):
 
 
 def transparency_draw(self, context):
-    if context.scene.filter_view_type == '1' and bpy.context.scene.appearance_show_activity_layer is True:
+    if context.scene.filter_view_type == 'rendered' and bpy.context.scene.appearance_show_rois_activity == 'activity':
     # if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer is True:
         layout = self.layout
         layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
@@ -259,11 +259,11 @@ class UpdateAppearance(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        if context.scene.filter_view_type == '1' and bpy.context.scene.appearance_show_activity_layer is True:
-            make_brain_solid_or_transparent()
-            update_layers()
-        else:
-            self.report({'ERROR'}, 'You should change the view to Rendered Brain first.')
+        # if context.scene.filter_view_type == 'rendered' and bpy.context.scene.appearance_show_activity_layer is True:
+        make_brain_solid_or_transparent()
+        update_layers()
+        # else:
+        #     self.report({'ERROR'}, 'You should change the view to Rendered Brain first.')
         return {"FINISHED"}
 
 bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="")
@@ -284,7 +284,6 @@ def main(addon_prefs=None):
     bpy.context.scene.appearance_show_activity_layer = False
     bpy.context.scene.appearance_show_ROIs_layer = True
     bpy.context.scene.appearance_show_connections_layer = False
-    setup_layers()
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
@@ -312,7 +311,7 @@ def main(addon_prefs=None):
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
-
+    # setup_layers()
 
 if __name__ == "__main__":
     main()

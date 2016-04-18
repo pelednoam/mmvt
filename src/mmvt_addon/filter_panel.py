@@ -418,7 +418,8 @@ class Filtering(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         FilteringMakerPanel.addon.change_view3d()
-        FilteringMakerPanel.addon.setup_layers()
+        #todo: why should we call setup layers here??
+        # FilteringMakerPanel.addon.setup_layers()
         self.topK = bpy.context.scene.filter_topK
         self.filter_from = bpy.context.scene.filter_from
         self.filter_to = bpy.context.scene.filter_to

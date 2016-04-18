@@ -260,7 +260,7 @@ def crop_movie(movie_fol, movie_name, out_movie_name):
     crop_video.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def add_text_to_movie(movie_fol, movie_name, out_movie_name):
+def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs):
     from moviepy import editor
 
     def annotate(clip, txt, txt_color='red', fontsize=50, font='Xolonium-Bold'):
@@ -271,10 +271,6 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name):
         return cvc.set_duration(clip.duration)
 
     video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
-            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
-            ((9, 12), 'Finding the closest activation in the coordinates'),
-            ((12, 16), 'The activation is displayed with its statistics')]
     annotated_clips = [annotate(video.subclip(from_t, to_t), txt) for (from_t, to_t), txt in subs]
     final_clip = editor.concatenate_videoclips(annotated_clips)
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
@@ -349,4 +345,8 @@ if __name__ == '__main__':
     movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
     # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
     # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
-    add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4')
+    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
+            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
+            ((9, 12), 'Finding the closest activation in the coordinates'),
+            ((12, 16), 'The activation is displayed with its statistics')]
+    add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)

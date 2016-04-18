@@ -6,6 +6,7 @@ import glob
 import time
 from collections import defaultdict
 
+PARENT_OBJ = 'Deep_electrodes'
 
 def leads_update(self, context):
     _leads_update()

@@ -445,7 +445,7 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
             f = np.load(input_file)
             for label_name in f['names']:
                 mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
-                    DataMakerPanel.addon.ACTIVITY_LAYER, parent_obj_name)
+                    DataMakerPanel.addon.BRAIN_EMPTY_LAYER, parent_obj_name)
 
         add_data_to_brain(base_path, files_prefix, objs_prefix)
         _meg_evoked_files_update()
