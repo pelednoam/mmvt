@@ -262,10 +262,6 @@ def crop_movie(movie_fol, movie_name, out_movie_name):
 
 def add_text_to_movie(movie_fol, movie_name, out_movie_name):
     from moviepy import editor
-    from functools import partial
-
-    w, h = 1920, (1200 - 60 - 30)
-    moviesize = w, h
 
     def annotate(clip, txt, txt_color='red', fontsize=50, font='Xolonium-Bold'):
         """ Writes a text at the bottom of the clip. """
