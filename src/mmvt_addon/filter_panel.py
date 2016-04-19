@@ -397,12 +397,7 @@ class Filtering(bpy.types.Operator):
                 if not obj is None and not obj.animation_data is None:
                     curves_num += len(obj.animation_data.action.fcurves)
 
-        # if curves_num > len(cu.boynton_colors):
-        #     colors = np.array(list(cu.kelly_colors.values())) / 255.0
-        # else:
-        #     colors = np.array([cu.name_to_rgb(c) for c in cu.boynton_colors])
         colors = cu.get_distinct_colors(curves_num)
-        color_ind = 0
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
                 orig_name = names[objects_indices[ind]]
@@ -410,10 +405,7 @@ class Filtering(bpy.types.Operator):
                     filter_roi_func(orig_name)
                     for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
                         fcurve.color_mode = 'CUSTOM'
-                        fcurve.color = tuple(colors[color_ind])
-                        color_ind += 1
-                        if color_ind == len(colors):
-                            color_ind = 0
+                        fcurve.color = tuple(next(colors))
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 

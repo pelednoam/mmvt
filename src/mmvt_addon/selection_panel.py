@@ -73,7 +73,10 @@ class SelectAllSubcorticals(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_only_subcorticals()
         mu.view_all_in_graph_editor(context)
-        mu.change_fcurves_colors(bpy.data.objects['Subcortical_structures'].children)
+        if bpy.context.scene.selection_type == 'diff':
+            mu.change_fcurves_colors([bpy.data.objects['Subcortical_structures']])
+        else:
+            mu.change_fcurves_colors(bpy.data.objects['Subcortical_structures'].children)
         return {"FINISHED"}
 
 
@@ -86,7 +89,10 @@ class SelectAllElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_all_electrodes()
         mu.view_all_in_graph_editor(context)
-        mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
+        if bpy.context.scene.selection_type == 'diff':
+            mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
+        else:
+            mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
         return {"FINISHED"}
 
 
