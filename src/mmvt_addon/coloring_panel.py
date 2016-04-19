@@ -83,7 +83,8 @@ def init_activity_map_coloring(map_type, subcorticals=True):
         ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
         ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
     else:
-        ColoringMakerPanel.addon.show_hide_sub_corticals(True)
+        hide_subcorticals = not subcorticals
+        ColoringMakerPanel.addon.show_hide_sub_corticals(hide_subcorticals)
     # change_view3d()
 
 
@@ -448,7 +449,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         aparc_name = bpy.context.scene.atlas
         faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
         fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
-        fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
+        fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
@@ -464,7 +465,6 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
-            if len(fmri_files) > 0:
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
             if fmri_clusters_files_exist:
                 layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
@@ -524,7 +524,7 @@ def init(addon):
         op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
-    fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri_clusters_{hemi}.npy'))
+    # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
     if len(fmri_files) > 0:
         # if len(fmri_files) > 1:
         files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
@@ -532,12 +532,12 @@ def init(addon):
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
         bpy.context.scene.fmri_files = files_names[0]
-        # for hemi in mu.HEMIS:
-        #     ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
-        if fmri_clusters_files_exist:
-            for hemi in mu.HEMIS:
-                ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
-                    op.join(user_fol, 'fmri_clusters_{}.npy'.format(hemi)))
+        for hemi in mu.HEMIS:
+            ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
+        # if fmri_clusters_files_exist:
+        #     for hemi in mu.HEMIS:
+        #         ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
+        #             op.join(user_fol, 'fmri', 'fmri_clusters_{}.npy'.format(hemi)))
 
     ColoringMakerPanel.colors = list(set(list(cu.NAMES_TO_HEX.keys())) - set(['black']))
     shuffle(ColoringMakerPanel.colors)

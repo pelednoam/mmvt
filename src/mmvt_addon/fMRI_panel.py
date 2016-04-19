@@ -183,7 +183,7 @@ def support_old_verions(clusters_labels):
 def fMRI_draw(self, context):
     layout = self.layout
     user_fol = mu.get_user_fol()
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
+    # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
     row = layout.row(align=True)
@@ -351,8 +351,7 @@ def init(addon, addon_prefs):
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         fMRIPanel.clusters_labels[file_name] = np.load(clusters_labels_file)
         fMRIPanel.clusters_labels[file_name] = support_old_verions(fMRIPanel.clusters_labels[file_name])
-
-    fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
+        fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
 
     bpy.context.scene.fmri_cluster_val_threshold = 3
     bpy.context.scene.fmri_cluster_size_threshold = 50
