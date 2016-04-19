@@ -210,12 +210,12 @@ change_view3d = appearance_panel.change_view3d
 show_rois = appearance_panel.show_rois
 show_activity = appearance_panel.show_activity
 show_electrodes = appearance_panel.show_electrodes
+show_connections = appearance_panel.show_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
 update_solidity = appearance_panel.update_solidity
-show_activity_layer = appearance_panel.show_activity_layer
 # get_appearance_show_electrodes_layer = appearance_panel.get_appearance_show_electrodes_layer
 # set_appearance_show_electrodes_layer = appearance_panel.set_appearance_show_electrodes_layer
 # get_appearance_show_activity_layer = appearance_panel.get_appearance_show_activity_layer
@@ -280,10 +280,9 @@ def start_listener():
 
 
 def main(addon_prefs=None):
-    bpy.context.scene.appearance_show_electrodes_layer = False
-    bpy.context.scene.appearance_show_activity_layer = False
-    bpy.context.scene.appearance_show_ROIs_layer = True
-    bpy.context.scene.appearance_show_connections_layer = False
+    show_activity()
+    show_electrodes(False)
+    show_connections(False)
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]

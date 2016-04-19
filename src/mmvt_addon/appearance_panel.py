@@ -34,7 +34,7 @@ def change_view3d():
             break
 
 
-def appearance_show_electrodes_layer_update():
+def appearance_show_electrodes_layer_update(self, context):
     bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
 
 
@@ -46,8 +46,8 @@ def show_activity():
     bpy.context.scene.appearance_show_rois_activity = 'activity'
 
 
-def show_electrodes():
-    bpy.context.scene.appearance_show_electrodes_layer = True
+def show_electrodes(value=True):
+    bpy.context.scene.appearance_show_electrodes_layer = value
 
 
 def appearance_show_rois_activity_update(self, context):
@@ -66,6 +66,10 @@ def appearance_show_connections_layer_update(self, context):
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
         bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
             bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
+
+
+def show_connections(value=True):
+    bpy.context.scene.appearance_show_connections_layer = value
 
 
 def filter_view_type_update(self, context):
@@ -90,21 +94,18 @@ def make_brain_solid_or_transparent():
 
 
 def update_layers():
-    if bpy.context.scene.appearance_depth_Bool:
-        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[
-            1].default_value = bpy.context.scene.appearance_depth_slider
-    else:
-        bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = 0
+    depth = bpy.context.scene.appearance_depth_slider if bpy.context.scene.appearance_depth_Bool else 0
+    bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = depth
 
 
 def appearance_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
+    layout.prop(context.scene, "filter_view_type", expand=True)
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
         layout.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
-    layout.prop(context.scene, "filter_view_type", expand=True)
 
 
 def update_solidity(self, context):
@@ -117,6 +118,8 @@ bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
     update=appearance_show_rois_activity_update)
 bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(
     default=False, description="Show connectivity", update=appearance_show_connections_layer_update)
+bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(
+    default=False, description="Show electrodes", update=appearance_show_electrodes_layer_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(

@@ -124,7 +124,8 @@ def update_clusters(val_threshold=None, size_threshold=None):
         items=clusters_items, description="fmri clusters", update=clusters_update)
     if len(fMRIPanel.clusters) > 0:
         bpy.context.scene.fmri_clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
-        fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
+        if bpy.context.scene.fmri_clusters in fMRIPanel.lookup:
+            fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
 
 
 def unfilter_clusters():
@@ -163,6 +164,20 @@ def cluster_name(x):
 def _cluster_name(x, sort_mode):
     return '{}_{:.2f}'.format(x['name'], x['max']) if sort_mode == 'tval' else\
         '{}_{:.2f}'.format(x['name'], x['size'])
+
+
+def support_old_verions(clusters_labels):
+    # support old versions
+    if not isinstance(clusters_labels, dict):
+        data = clusters_labels
+        new_clusters_labels = dict(values=data, threshold=2)
+    else:
+        new_clusters_labels = clusters_labels
+    if not 'size' in new_clusters_labels['values'][0]:
+        for cluster_labels in new_clusters_labels['values']:
+            if not 'size' in cluster_labels:
+                cluster_labels['size'] = len(cluster_labels['vertices'])
+    return new_clusters_labels
 
 
 def fMRI_draw(self, context):
@@ -335,7 +350,9 @@ def init(addon, addon_prefs):
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         fMRIPanel.clusters_labels[file_name] = np.load(clusters_labels_file)
-        fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
+        fMRIPanel.clusters_labels[file_name] = support_old_verions(fMRIPanel.clusters_labels[file_name])
+
+    fMRIPanel.lookup[file_name] = create_lookup_table(fMRIPanel.clusters_labels[file_name])
 
     bpy.context.scene.fmri_cluster_val_threshold = 3
     bpy.context.scene.fmri_cluster_size_threshold = 50

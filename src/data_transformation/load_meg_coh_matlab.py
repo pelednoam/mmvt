@@ -31,6 +31,7 @@ def load_meg_coh_python_data():
 
 def load_tatiana_meg_coh(subject, fsaverage, atlas, ds_all, ds_subject, hc_indices, subject_index, conditions, labels):
     for sub, ds, indices in zip([subject, fsaverage], [ds_subject, ds_all], [hc_indices, subject_index]):
+        print(sub)
         d = {}
         N = len(labels)
         d['labels'] = labels
@@ -92,7 +93,7 @@ def create_meg_coh_data(data, conds_num, high_low):
                 if i > j:
                     if cond == 0:
                         high_low_diff[ind] = high_low[i, j, 0] - high_low[i, j, 1]
-                    con_values[ind, cond] = data[i, j, cond] * np.sign(high_low_diff[ind])
+                    con_values[ind, cond] = -np.log10(data[i, j, cond]) * np.sign(high_low_diff[ind])
                     ind += 1
     return con_values, high_low_diff
 
@@ -119,10 +120,13 @@ def calc_con_colors(con_values, high_low_diff):
         for w in range(W):
             stat_w = stat_data[:, w]
             high_low_diff_w = high_low_diff[:, w]
-            con_colors[(stat_w <= 0.05) & (high_low_diff_w >= 0), w] = red
-            con_colors[(stat_w <= 0.05) & (high_low_diff_w < 0), w] = blue
-            con_colors[(stat_w > 0.05) & (high_low_diff_w >= 0), w] = magenta
-            con_colors[(stat_w > 0.05) & (high_low_diff_w < 0), w] = green
+            sig_high = (abs(stat_w) >= -np.log10(0.05)) & (high_low_diff_w >= 0)
+            sig_low =  (abs(stat_w) >= -np.log10(0.05)) & (high_low_diff_w < 0)
+            print(w, sig_high, sig_low)
+            con_colors[sig_high, w] = red
+            con_colors[sig_low, w] = blue
+            con_colors[(abs(stat_w) < -np.log10(0.05)) & (high_low_diff_w >= 0), w] = (1, 1, 1)
+            con_colors[(abs(stat_w) < -np.log10(0.05)) & (high_low_diff_w < 0), w] = (1, 1, 1)
     # con_colors = con_colors[:, :, :, np.newaxis]
     return con_colors
 

@@ -529,9 +529,9 @@ def meg_evoked_files_update(self, context):
 
 
 def _meg_evoked_files_update():
-    evoked_name = bpy.context.scene.meg_evoked_files
     external_obj = bpy.data.objects.get('External', None)
     if not external_obj is None:
+        evoked_name = bpy.context.scene.meg_evoked_files
         DataMakerPanel.externals = [ext.name[len(evoked_name) + 1:] for ext in external_obj.children \
                                     if ext.name.startswith(evoked_name)]
         items = [(name, name, '', ind) for ind, name in enumerate(DataMakerPanel.externals)]

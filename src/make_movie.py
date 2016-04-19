@@ -20,7 +20,13 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
         data_to_show_in_graph, fol, fol2, cb_title='', bitrate=5000, images2=(), ylabels=(), xlabels=(),
         xlabel='Time (ms)', show_first_pic=False):
     def get_t(image_index):
-        return int(re.findall('\d+', utils.namebase(images[image_index]))[0])
+        pic_name = utils.namebase(images[image_index])
+        if '_t' in pic_name:
+            t = int(pic_name.split('_t')[1])
+            t = time_range[1:-1:4][t]
+        else:
+            t = int(re.findall('\d+', pic_name)[0])
+        return t
 
     def plot_graph(graph1_ax, data_to_show_in_graph, fol, fol2='', graph2_ax=None, ylabels=()):
         graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
@@ -34,6 +40,8 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
             axes = [graph1_ax, graph2_ax]
 
         ind = 0
+        from src.mmvt_addon import colors_utils as cu
+        # colors = cu.get_distinct_colors(6) / 255# ['r', 'b', 'g']
         colors = ['r', 'b', 'g']
         for data_type, data_values in graph_data.items():
             if isinstance(data_values, numbers.Number):
@@ -52,20 +60,36 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
                 color = colors[ind] if graph2_ax else tuple(graph_colors[data_type][k])
                 # todo: tuple doesn't have ndim, not sure what to do here
                 # if graph_colors[data_type][k].ndim > 1:
-                #     color = graph_colors[data_type][k][0]
-                ax.plot(time_range, values, label=k, color=color, alpha=0.2)# color=tuple(graph_colors[data_type][k]))
+                if data_type[-1] == '2':
+                    data_type = data_type[:-1]
+                # color = graph_colors[data_type][k]
+                # alpha = 0.2
+                # dash = [5, 5] if ind == 1 else []
+                # if color == (1.0, 1.0, 1.0):
+                #     color = np.array(cu.name_to_rgb('orange')) / 255.0
+                ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
             ind += 1
 
         graph1_ax.set_xlabel(xlabel)
         # labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
         # labels[labels.index(0)] = 'stimuli'
         if len(xlabels) > 0:
-            graph1_ax.set_xticks([0, 1, 2])
+            graph1_ax.set_xticks(time_range[1:-1:4])
             graph1_ax.set_xticklabels(xlabels)
 
-        ymin, ymax = graph1_ax.get_ylim()
+        graph1_ax.set_xlim([time_range[0], time_range[-1]])
+        if graph2_ax:
+            ymin1, ymax1 = graph1_ax.get_ylim()
+            ymin2, ymax2 = graph2_ax.get_ylim()
+            ymin = min([ymin1, ymin2])
+            ymax = max([ymax1, ymax2])
+            graph1_ax.set_ylim([ymin, ymax])
+            graph2_ax.set_ylim([ymin, ymax])
+        else:
+            ymin, ymax = graph1_ax.get_ylim()
         t0 = get_t(0)
         t_line, = graph1_ax.plot([t0, t0], [ymin, ymax], 'g-')
+        # plt.legend()
         return graph_data, graph_colors, t_line, ymin, ymax
 
     def two_brains_two_graphs():
@@ -97,7 +121,7 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
         if cb_data_type != '':
             resize_and_move_ax(ax_cb, ddw=0.5, ddh=0.8, dx=-0.01, dy=0.06)
         for graph_ax in [graph1_ax, graph2_ax]:
-            resize_and_move_ax(graph_ax, dx=0.04, dy=0.05, ddw=0.89)
+            resize_and_move_ax(graph_ax, dx=0.04, dy=0.03, ddw=0.89)
         return ax_cb, im, im2, graph1_ax, graph2_ax
 
     def one_brain_one_graph(gs, g2):
@@ -160,7 +184,7 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
         t_line.set_data([current_t, current_t], [ymin, ymax])
         return [im]
 
-    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=True)
+    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=False)
     writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
     ani.save(op.join(fol, video_fname),writer=writer,dpi=dpi)
     return ani
@@ -238,9 +262,31 @@ def _create_movie_parallel(params):
         data_to_show_in_graph, fol, fol2, cb_title, bitrate, images2, ylabels, xlabels, xlabel, show_first_pic)
 
 
+def sort_pics_key(pic_fname):
+    pic_name = utils.namebase(pic_fname)
+    if '_t' in pic_name:
+        pic_name = pic_name.split('_t')[0]
+    return int(re.findall('\d+', pic_name)[0])
+
+
 def get_pics(fol, pics_type='png'):
     # return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:int(utils.namebase(x)[1:]))
-    return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:re.findall('\d+', utils.namebase(x)))
+    # return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:re.findall('\d+', utils.namebase(x)))
+    return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=sort_pics_key)
+
+
+def duplicate_frames(fol, multiplier=50, pics_type='png'):
+    import shutil
+    pics = get_pics(fol, pics_type)
+    new_fol = '{}_dup'.format(fol)
+    utils.delete_folder_files(new_fol)
+    pic_ind = 0
+    shutil.copy(op.join(fol, 'data.pkl'), op.join(new_fol, 'data.pkl'))
+    for t, pic in enumerate(pics):
+        for _ in range(multiplier):
+            new_pic_name = op.join(new_fol, '{}_t{}.{}'.format(pic_ind, t, pics_type))
+            shutil.copy(pic, new_pic_name)
+            pic_ind += 1
 
 
 def cut_movie(movie_fol, movie_name, out_movie_name):
@@ -321,17 +367,18 @@ if __name__ == '__main__':
     video_fname = 'pp009_healthy_meg_coh.mp4'
     cb_title = ''
     ms_before_stimuli, labels_time_dt = 0, 1
-    time_range = range(3)
+    time_range = range(11)
     ylabels = ['Healthy', 'pp009']
-    xlabels = ['Risk onset', 'Reward onset', 'Shock?']
+    # xlabels = ['', 'Risk onset', '', '', '', 'Reward onset', '', '', '', 'Shock?', '']
+    xlabels = ['Risk onset','Reward onset','Shock?']
     xlabel = ''
     cb_data_type = ''
-    fps = 100
+    fps = 10
 
     dpi = 100
     bitrate = 5000
     pics_type = 'png'
-    show_first_pic = True
+    show_first_pic = False
     n_jobs = 1
 
     # images = get_pics(fol, pics_type)
@@ -339,6 +386,10 @@ if __name__ == '__main__':
     # ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname,
     #           cb_data_type, data_to_show_in_graph, cb_title, bitrate, fol2=fol2, ylabels=ylabels, pics_type=pics_type)
 
+    # duplicate_frames(fol, 30)
+    # duplicate_frames(fol2, 30)
+    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
     # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
     #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
 

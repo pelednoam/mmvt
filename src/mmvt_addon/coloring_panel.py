@@ -76,7 +76,7 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
 def init_activity_map_coloring(map_type, subcorticals=True):
     # ColoringMakerPanel.addon.set_appearance_show_activity_layer(bpy.context.scene, True)
     # ColoringMakerPanel.addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
-    ColoringMakerPanel.addon.show_activity_layer()
+    ColoringMakerPanel.addon.show_activity()
     ColoringMakerPanel.addon.change_to_rendered_brain()
 
     if subcorticals:
