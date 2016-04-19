@@ -33,8 +33,8 @@ importlib.reload(mmvt_utils)
 # importlib.reload(colors_utils)
 import show_hide_panel
 importlib.reload(show_hide_panel)
-import trasparency_panel
-importlib.reload(trasparency_panel)
+import transparency_panel
+importlib.reload(transparency_panel)
 import coloring_panel
 importlib.reload(coloring_panel)
 import connections_panel
@@ -179,7 +179,7 @@ def main(addon_prefs=None):
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
         show_hide_panel.init(current_module)
-        trasparency_panel.init(current_module)
+        transparency_panel.init(current_module)
         coloring_panel.init(current_module)
         connections_panel.init(current_module)
         play_panel.init(current_module)
