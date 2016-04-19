@@ -141,7 +141,7 @@ class ImportBrain(bpy.types.Operator):
             bpy.data.objects[' '].select = True
             context.scene.objects.active = bpy.data.objects[' ']
         bpy.data.objects[last_obj].select = False
-        DataMakerPanel.addon.set_appearance_show_rois_layer(bpy.context.scene, True)
+        DataMakerPanel.addon.show_rois()
         bpy.types.Scene.brain_imported = True
         print('cleaning up')
         for obj in bpy.data.objects['Subcortical_structures'].children:
@@ -319,6 +319,7 @@ def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
     brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in mu.HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
+
     add_data_to_parent_obj(self, brain_obj, brain_sources, stat)
     add_data_to_parent_obj(self, subcorticals_obj, subcorticals_sources, stat)
 
@@ -335,7 +336,10 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
             if bpy.data.objects.get(obj_name) is None:
-                continue
+                if obj_name.startswith('rh') or obj_name.startswith('lh'):
+                    obj_name = obj_name[3:]
+                if bpy.data.objects.get(obj_name) is None:
+                    continue
             if not bpy.context.scene.import_unknown and 'unkown' in obj_name:
                 continue
             if stat == STAT_AVG:
@@ -395,7 +399,7 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        add_data_to_parent_brain_obj(self, None)
+        add_data_to_parent_brain_obj(self, STAT_DIFF)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 

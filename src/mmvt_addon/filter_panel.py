@@ -373,7 +373,7 @@ class Filtering(bpy.types.Operator):
 
     def filter_rois(self, current_file_to_upload):
         print('filter_ROIs')
-        FilteringMakerPanel.addon.set_appearance_show_rois_layer(bpy.context.scene, True)
+        FilteringMakerPanel.addon.show_rois()
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in mu.HEMIS]
         objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
@@ -397,10 +397,11 @@ class Filtering(bpy.types.Operator):
                 if not obj is None and not obj.animation_data is None:
                     curves_num += len(obj.animation_data.action.fcurves)
 
-        if curves_num > len(cu.boynton_colors):
-            colors = np.array(list(cu.kelly_colors.values())) / 255.0
-        else:
-            colors = np.array([cu.name_to_rgb(c) for c in cu.boynton_colors])
+        # if curves_num > len(cu.boynton_colors):
+        #     colors = np.array(list(cu.kelly_colors.values())) / 255.0
+        # else:
+        #     colors = np.array([cu.name_to_rgb(c) for c in cu.boynton_colors])
+        colors = cu.get_distinct_colors(curves_num)
         color_ind = 0
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):

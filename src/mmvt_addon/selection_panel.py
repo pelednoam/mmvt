@@ -1,6 +1,7 @@
 import bpy
 import mmvt_utils as mu
-
+import colors_utils as cu
+import connections_panel
 
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
     items=[("diff", "Conditions difference", "", 1), ("conds", "Both conditions", "", 2)],
@@ -56,11 +57,11 @@ class SelectAllRois(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_all_rois()
         mu.view_all_in_graph_editor(context)
-        for obj in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children:
-            if obj.animation_data is None:
-                continue
-            for fcurve in obj.animation_data.action.fcurves:
-                fcurve.color_mode = 'CUSTOM'
+        if bpy.context.scene.selection_type == 'diff':
+            mu.change_fcurves_colors([bpy.data.objects['Brain']])
+        else:
+            corticals_labels = mu.get_corticals_labels()
+            mu.change_fcurves_colors(corticals_labels)
         return {"FINISHED"}
 
 
@@ -72,6 +73,7 @@ class SelectAllSubcorticals(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_only_subcorticals()
         mu.view_all_in_graph_editor(context)
+        mu.change_fcurves_colors(bpy.data.objects['Subcortical_structures'].children)
         return {"FINISHED"}
 
 
@@ -84,6 +86,7 @@ class SelectAllElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_all_electrodes()
         mu.view_all_in_graph_editor(context)
+        mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
         return {"FINISHED"}
 
 
@@ -143,7 +146,8 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator("ohad.roi_selection", text="Select all cortical ROIs", icon='BORDER_RECT')
         layout.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
         layout.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
-        layout.operator("ohad.connections_selection", text="Select all Connections", icon='BORDER_RECT')
+        if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+            layout.operator("ohad.connections_selection", text="Select all Connections", icon='BORDER_RECT')
         layout.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
         layout.operator("ohad.fit_selection", text="Fit graph window", icon='MOD_ARMATURE')
 

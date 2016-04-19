@@ -18,6 +18,8 @@ import cProfile
 from itertools import chain
 from sys import platform as _platform
 
+import colors_utils as cu
+
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
@@ -631,6 +633,9 @@ def get_non_functional_objects():
     return get_all_children((['Cortex-lh', 'Cortex-rh', 'Subcortical_structures', 'Deep_electrodes']))
 
 
+def get_corticals_labels():
+    return bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
+
 def add_box_line(col, text1, text2='', percentage=0.3, align=True):
     row = col.split(percentage=percentage, align=align)
     row.label(text=text1)
@@ -817,3 +822,23 @@ def read_ply_file(ply_file):
         verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
         faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
     return verts, faces
+
+
+def change_fcurves_colors(objs):
+    colors_num = count_fcurves(objs)
+    colors = cu.get_distinct_colors(colors_num)
+    for obj in objs:
+        if obj.animation_data is None:
+            continue
+        for fcurve in obj.animation_data.action.fcurves:
+            fcurve.color_mode = 'CUSTOM'
+            fcurve.color = tuple(next(colors))
+
+
+def count_fcurves(objects):
+    curves_num = 0
+    for obj in objects:
+        if 'unknown' not in obj.name:
+            if not obj is None and not obj.animation_data is None:
+                curves_num += len(obj.animation_data.action.fcurves)
+    return curves_num

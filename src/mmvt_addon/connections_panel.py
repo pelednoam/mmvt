@@ -555,11 +555,8 @@ def register():
         bpy.utils.register_class(ConnectionsPanel)
         bpy.utils.register_class(CreateConnections)
         bpy.utils.register_class(PlotConnections)
-        # bpy.utils.register_class(ShowHideConnections)
-        # bpy.utils.register_class(ClearConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
-        # bpy.utils.register_class(ExportGraph)
         print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
@@ -570,11 +567,8 @@ def unregister():
         bpy.utils.unregister_class(ConnectionsPanel)
         bpy.utils.unregister_class(CreateConnections)
         bpy.utils.unregister_class(PlotConnections)
-        # bpy.utils.unregister_class(ShowHideConnections)
-        # bpy.utils.unregister_class(ClearConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
-        # bpy.utils.unregister_class(ExportGraph)
     except:
         pass
         # print("Can't unregister ConnectionsPanel!")

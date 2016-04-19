@@ -73,7 +73,7 @@ class WhereAmI(bpy.types.Operator):
 
     @staticmethod
     def setup_environment(self):
-        WhereAmIMakerPanel.addon.set_appearance_show_rois_layer(bpy.context.scene, True)
+        WhereAmIMakerPanel.addon.show_rois()
 
     @staticmethod
     def main_func(self):

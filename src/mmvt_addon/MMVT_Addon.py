@@ -29,8 +29,8 @@ from collections import defaultdict
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
-# import colors_utils
-# importlib.reload(colors_utils)
+import colors_utils
+importlib.reload(colors_utils)
 import show_hide_panel
 importlib.reload(show_hide_panel)
 import transparency_panel
