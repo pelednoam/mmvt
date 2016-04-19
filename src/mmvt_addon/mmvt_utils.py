@@ -807,14 +807,13 @@ def create_empty_in_vertex(vertex_location, obj_name, layer, parent_name=''):
         bpy.context.object.parent = bpy.data.objects[parent_name]
 
 
-
-# def read_ply_file(ply_file):
-#     with open(ply_file, 'r') as f:
-#         lines = f.readlines()
-#         verts_num = int(lines[2].split(' ')[-1])
-#         faces_num = int(lines[6].split(' ')[-1])
-#         verts_lines = lines[9:9 + verts_num]
-#         faces_lines = lines[9 + verts_num:]
-#         verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
-#         faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
-#     return verts, faces
+def read_ply_file(ply_file):
+    with open(ply_file, 'r') as f:
+        lines = f.readlines()
+        verts_num = int(lines[2].split(' ')[-1])
+        faces_num = int(lines[6].split(' ')[-1])
+        verts_lines = lines[9:9 + verts_num]
+        faces_lines = lines[9 + verts_num:]
+        verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
+        faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
+    return verts, faces

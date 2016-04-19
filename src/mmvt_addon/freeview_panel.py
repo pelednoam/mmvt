@@ -214,7 +214,8 @@ class FreeviewPanel(bpy.types.Panel):
         layout.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
         if bpy.data.objects.get('Deep_electrodes'):
             layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
-        if bpy.context.scene.fMRI_files_exist:
+        if bpy.context.scene.fMRI_files_exist and \
+                op.isfile(op.join(mu.get_user_fol(), 'freeview', '{}.mgz'.format(bpy.context.scene.fmri_files))):
             layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')

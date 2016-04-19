@@ -120,8 +120,8 @@ render_image = render_panel.render_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
-show_hide_rh = show_hide_panel.show_hide_rh
-show_hide_lh = show_hide_panel.show_hide_lh
+# show_hide_rh = show_hide_panel.show_hide_rh
+# show_hide_lh = show_hide_panel.show_hide_lh
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers

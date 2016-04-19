@@ -563,7 +563,8 @@ if __name__ == '__main__':
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
     contrast_file_template = op.join(fol, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
-    contrast_file_template = op.join(fol, 'sig.{hemi}.{format}')
+    # contrast_file_template = op.join(fol, 'sig.{hemi}.{format}')
+
 
     contrast_name = 'group-avg'
     # main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
@@ -588,6 +589,30 @@ if __name__ == '__main__':
         main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
     if 'project_volue_to_surface' in func:
         project_volue_to_surface(subject, fol, threshold, contrast)
+    if 'copy_volumes' in func:
+        contrast_format = 'mgz'
+        volume_type = 'mni305'
+        for contrast in contrasts.keys():
+            if '{contrast}' in contrast_file_template:
+                contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}',
+                                                              format=contrast_format)
+                volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
+            else:
+                contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
+                volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
+            if not op.isfile(volume_file.format(format=contrast_format)):
+                mri_convert(volume_file, 'nii.gz', contrast_format)
+            volume_fname = volume_file.format(format=contrast_format)
+            subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
+            if not op.isfile(subject_volume_fname):
+                volume_fol, volume_name = op.split(volume_fname)
+                fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
+            blender_volume_fname = op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
+            if not op.isfile(blender_volume_fname):
+                print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))
+                shutil.copyfile(subject_volume_fname, blender_volume_fname)
+
+
     # create_functional_rois(subject, contrast, data_fol)
 
     # # todo: find the TR automatiaclly

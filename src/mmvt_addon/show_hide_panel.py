@@ -54,7 +54,7 @@ class ShowHideRH(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_rh = not bpy.context.scene.objects_show_hide_rh
-        show_hide_hemi(bpy.context.scene.objects_show_hide_rh, "rh", "Cortex-lh")
+        show_hide_hemi(bpy.context.scene.objects_show_hide_rh, "rh", "Cortex-rh")
         return {"FINISHED"}
 
 

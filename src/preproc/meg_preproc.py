@@ -890,6 +890,7 @@ def calc_activity_significance(events_id, stcs_conds=None):
              cluster_p_values=cluster_p_values, H0=H0, good_cluster_inds=good_cluster_inds)
     print('good_cluster_inds: {}'.format(good_cluster_inds))
 
+
 def get_subject_tris():
     from mne import read_surface
     _, tris_lh = read_surface(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', 'lh.white'))
