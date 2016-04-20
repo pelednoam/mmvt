@@ -17,14 +17,16 @@ PARENT_OBJ = 'connections'
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 STAT_AVG, STAT_DIFF = range(2)
 
+CONNECTIONS_LAYER, BRAIN_EMPTY_LAYER = 3,5
+
 
 # d(Bag): labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
 def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     layers_rods = [False] * 20
-    rods_layer = ConnectionsPanel.addon.CONNECTIONS_LAYER
+    rods_layer = CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
     mu.delete_hierarchy(PARENT_OBJ)
-    mu.create_empty_if_doesnt_exists(PARENT_OBJ, ConnectionsPanel.addon.BRAIN_EMPTY_LAYER, None, 'Functional maps')
+    mu.create_empty_if_doesnt_exists(PARENT_OBJ, BRAIN_EMPTY_LAYER, None, 'Functional maps')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     if d.con_colors.ndim == 3:
         windows_num = d.con_colors.shape[1]
@@ -138,20 +140,13 @@ def insert_frame_keyframes(parent_obj, conn_name, last_data, T):
 
 
 def finalize_fcurves(parent_obj, interpolation=''):
-    colors_num = len(parent_obj.animation_data.action.fcurves)
-    colors = cu.get_distinct_colors(colors_num)
-    color_ind = 0
     for fcurve in parent_obj.animation_data.action.fcurves:
         fcurve.modifiers.new(type='LIMITS')
-        fcurve.color_mode = 'CUSTOM'
-        fcurve.color = tuple(colors[color_ind])
-        color_ind += 1
-        if color_ind == len(colors):
-            color_ind = 0
         if interpolation == '':
             interpolation = 'BEZIER' if len(fcurve.keyframe_points) > 10 else 'LINEAR'
         for kf in fcurve.keyframe_points:
             kf.interpolation = interpolation
+    mu.change_fcurves_colors([parent_obj])
 
 
 def finalize_objects_creations():
@@ -171,11 +166,12 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
     masked_con_names = calc_masked_con_names(d, threshold, connections_type, condition, stat)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     for con_name in d.con_names:
-        cur_obj = bpy.data.objects[con_name]
-        cur_obj.hide = con_name not in masked_con_names
-        cur_obj.hide_render = con_name not in masked_con_names
-        if bpy.context.scene.selection_type == 'conds':
-            cur_obj.select = not cur_obj.hide
+        cur_obj = bpy.data.objects.get(con_name)
+        if cur_obj:
+            cur_obj.hide = con_name not in masked_con_names
+            cur_obj.hide_render = con_name not in masked_con_names
+            if bpy.context.scene.selection_type == 'conds':
+                cur_obj.select = not cur_obj.hide
     if parent_obj.animation_data is None:
         return
     now = time.time()
@@ -238,7 +234,7 @@ def plot_connections(self, context, d, plot_time, connections_type, condition, t
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
             # vals.append(np.diff(d.con_values[ind, t])[0])
         bpy.data.objects[PARENT_OBJ].select = True
-        ConnectionsPanel.addon.set_appearance_show_connections_layer(bpy.data.scenes['Scene'], True)
+        ConnectionsPanel.addon.show_connections()
         # print(max(vals), min(vals))
         # print(con_color, d.con_values[ind, t, cond_id])
 
@@ -527,7 +523,7 @@ def init(addon):
         connections_file = electrodes_connections_file
     elif os.path.isfile(meg_bev_connections_file):
         connections_file = meg_bev_connections_file
-        bpy.context.scene.above_below_threshold = 'below'
+        bpy.context.scene.above_below_threshold = 'above'
     else:
         print('No connections file!')
 

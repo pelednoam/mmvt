@@ -344,7 +344,7 @@ class ColorElectrodes(bpy.types.Operator):
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
         # mu.select_hierarchy('Deep_electrodes', False)
-        ColoringMakerPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
+        ColoringMakerPanel.addon.show_electrodes()
         ColoringMakerPanel.addon.change_to_rendered_brain()
         return {"FINISHED"}
 

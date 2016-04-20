@@ -621,7 +621,6 @@ def load_meg_evoked():
 
 def init(addon):
     DataMakerPanel.addon = addon
-    bpy.context.scene.atlas = mu.get_atlas()
     bpy.context.scene.electrode_radius = 0.15
     load_meg_evoked()
     _meg_evoked_files_update()

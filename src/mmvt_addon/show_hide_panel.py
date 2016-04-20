@@ -75,19 +75,20 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "Ohad"
-    bl_label = "Show Hide Objects"
+    bl_label = "Show Hide Brain"
     addon = None
 
     def draw(self, context):
         layout = self.layout
         vis = dict(Right = not bpy.context.scene.objects_show_hide_rh, Left = not bpy.context.scene.objects_show_hide_lh)
         show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
-        for hemi in ['Right', 'Left']:
+        row = layout.row(align=True)
+        for hemi in ['Left', 'Right']:
             action = 'show' if vis[hemi] else 'hide'
-            show_text = '{} {} Hemi'.format('Hide' if vis[hemi] else 'Show', hemi)
+            show_text = '{} {}'.format('Hide' if vis[hemi] else 'Show', hemi)
             show_icon = show_hide_icon[action]
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
-            layout.operator(bl_idname, text=show_text, icon=show_icon)
+            row.operator(bl_idname, text=show_text, icon=show_icon)
         sub_vis = not bpy.context.scene.objects_show_hide_sub_cortical
         sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
         sub_icon = show_hide_icon['show' if sub_vis else 'hide']

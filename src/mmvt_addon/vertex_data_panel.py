@@ -96,8 +96,8 @@ class CreateVertexData(bpy.types.Operator):
         data = data_file[line_num, :].squeeze()
 
         number_of_time_points = len(data)
-        self.insert_keyframe_to_custom_prop(self, obj, 'data', 0, 0)
-        self.insert_keyframe_to_custom_prop(self, obj, 'data', 0, number_of_time_points + 1)
+        mu.insert_keyframe_to_custom_prop(obj, 'data', 0, 0)
+        mu.insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
             print(ii)
             frame_str = str(ii)

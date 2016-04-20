@@ -47,6 +47,7 @@ class ModalTimerOperator(bpy.types.Operator):
             return {'PASS_THROUGH'}
 
         if event.type in {'RIGHTMOUSE', 'ESC'} or self.limits > bpy.context.scene.play_to:
+            plot_something(self, context, bpy.context.scene.play_to, ModalTimerOperator._uuid)
             self.limits = bpy.context.scene.play_from
             PlayPanel.is_playing = False
             bpy.context.scene.update()

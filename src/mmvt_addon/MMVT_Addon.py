@@ -175,6 +175,7 @@ def main(addon_prefs=None):
     show_activity()
     show_electrodes(False)
     show_connections(False)
+    bpy.context.scene.atlas = mmvt_utils.get_atlas()
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]

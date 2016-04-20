@@ -495,7 +495,7 @@ if __name__ == '__main__':
     fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
 
     fsaverage = 'fscopy' # 'fsaverage'
-    aparc_name = 'arc_april2016' #''aparc.DKTatlas40' #'laus250' #
+    aparc_name = 'laus250' # 'arc_april2016' #''aparc.DKTatlas40' #' #
     n_jobs = 6
 
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
@@ -508,10 +508,11 @@ if __name__ == '__main__':
     #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
     #     fs_labels_fol, n_jobs)
 
-    subject = 'colin27'
+    subject = 'fsaverage'
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    freesurfer_surface_to_blender_surface(subject, overwrite=False)
-    create_spatial_connectivity(subject)
+    save_labels_vertices(subject, aparc_name)
+    # freesurfer_surface_to_blender_surface(subject, overwrite=False)
+    # create_spatial_connectivity(subject)
 
     # freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
     # create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
