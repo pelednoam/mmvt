@@ -304,6 +304,7 @@ def color_subcortical_region(region_name, color):
 
 def clear_subcortical_regions():
     clear_colors_from_parent_childrens('Subcortical_meg_activity_map')
+    clear_subcortical_fmri_activity()
 
 
 def clear_colors_from_parent_childrens(parent_object):

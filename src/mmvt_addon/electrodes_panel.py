@@ -154,7 +154,7 @@ def _show_only_current_lead_update():
     if bpy.context.scene.show_only_lead:
         bpy.context.scene.current_lead = ElecsPanel.groups[ElecsPanel.current_electrode]
         for elec_obj in ElecsPanel.parent.children:
-            elec_obj.hide = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
+            elec_obj.hide = elec_obj.hide_render = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
     else:
         show_elecs_hemi_update()
 
