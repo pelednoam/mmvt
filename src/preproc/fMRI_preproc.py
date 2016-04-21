@@ -606,7 +606,7 @@ if __name__ == '__main__':
             subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
             if not op.isfile(subject_volume_fname):
                 volume_fol, volume_name = op.split(volume_fname)
-                fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
+                fu.transform_mni_to_subject(subject, SUBJECTS_DIR, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
             blender_volume_fname = op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
             if not op.isfile(blender_volume_fname):
                 print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))

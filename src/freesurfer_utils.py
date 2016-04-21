@@ -5,6 +5,7 @@ from tempfile import mktemp
 from subprocess import Popen, PIPE, check_output
 import gzip
 import numpy as np
+import shutil
 import nibabel as nib
 from nibabel.spatialimages import ImageFileError
 
@@ -178,17 +179,29 @@ def read_scalar_data(filepath):
     return scalar_data
 
 
-# def transform_mni_to_subject(subject, contrast_name, contrast, mn305_contrast_file_name='sig.mgz',
-#         subject_contrast_file_name='sig_subject.mgz', print_only=False):
-#    sig_fol = os.path.join('{}.sm05.mni305'.format(contrast_name), contrast)
-def transform_mni_to_subject(subject, volue_fol, volume_fname='sig.mgz',
+
+def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig.mgz',
         subject_contrast_file_name='sig_subject.mgz', print_only=False):
     mni305_sig_file = os.path.join(volue_fol, volume_fname)
     subject_sig_file = os.path.join(volue_fol, subject_contrast_file_name)
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(mni305_to_subject_reg)
     rs(mni305_to_subject)
+    subject_fol = op.join(subjects_dir, subject, 'mmvt')
+    utils.make_dir(subject_fol)
+    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject),
+                    op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))))
 
+
+def transform_subject_to_mni_coordinates(subject, coords, subjects_dir, print_only=False):
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(mni305_to_subject_reg)
+    subject_fol = op.join(subjects_dir, subject, 'mmvt')
+    utils.make_dir(subject_fol)
+    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject),
+                op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))))
+
+    nib.affines.apply_affine(AFFINE_TRANS, track)
 
 def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):
     '''
