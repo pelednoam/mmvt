@@ -322,6 +322,12 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs):
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
 
 
+def create_animated_gif(movie_fol, movie_name, out_movie_name):
+    from moviepy import editor
+    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
+    video.write_gif(op.join(movie_fol, out_movie_name), fps=12)
+
+
 if __name__ == '__main__':
     subject = 'mg78'
     fol = '/home/noam/Pictures/mmvt/movie1'
@@ -388,16 +394,18 @@ if __name__ == '__main__':
 
     # duplicate_frames(fol, 30)
     # duplicate_frames(fol2, 30)
-    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
+    # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+    #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
     # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
     #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
 
     movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
+    movie_fol = '/cluster/neuromind/npeled/Documents/brain-map'
     # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
     # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
     subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
             ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
             ((9, 12), 'Finding the closest activation in the coordinates'),
             ((12, 16), 'The activation is displayed with its statistics')]
-    add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)
+    # add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)
+    create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
