@@ -13,7 +13,7 @@ For our best knowledge, currently there is no neuroimaging 3d tool which
 can visualize both EEG, fMRI and invasive electrodes (ECOG, depth
 electrodes, DBS,  etc.). Here we present the multi-modality
 visualization tool (MMVT). The tool was built for researchers who wish to
-have a better understating of their neuroimaging anatomical and functional
+have a better understanding of their neuroimaging anatomical and functional
 data. The true power of the tool is by visualizing and analyzing data from
 multi-modalities. MMVT is built as two separated modules: The first is
 implemented as an add-on in 'Blender”, an open-source 3d visualization
