@@ -11,9 +11,9 @@ real three-dimensional (3d) depictions are helpful for showing the spatial
 distribution of a functional network, as well as its temporal evolution.
 For our best knowledge, currently there is no neuroimaging 3d tool which
 can visualize both EEG, fMRI and invasive electrodes (ECOG, depth
-electrodes, DBS,  etc.). Here present the multi-modality
+electrodes, DBS,  etc.). Here we present the multi-modality
 visualization tool (MMVT). The tool was built for researchers who wish to
-have a better understating of their neuroimaging anatomical and functional
+have a better understanding of their neuroimaging anatomical and functional
 data. The true power of the tool is by visualizing and analyzing data from
 multi-modalities. MMVT is built as two separated modules: The first is
 implemented as an add-on in 'Blender”, an open-source 3d visualization
@@ -35,18 +35,23 @@ sensor and source-space analysis of MEG and EEG data).
 ## Videos
 
 ![Example](resources/MEG-ttest.gif "spatial and temporal ttest result of MEG activation")
+![Example](resources/meg-electrodes-coherence.gif "MEG & Electrodes & Coherence")
 
 ## Installation
 
 - [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
 - [Windows installtion](https://docs.google.com/document/d/1uUCgElXcY884qb-vZ4EZGqLPbRWZH7ni6qVPQbkwXn8/edit?usp=sharing)
 
-After the installation, you'll need to a blend file of a template subject. For that, please contact me: npeled@mgh.harvard.edu
+After the installation, you'll need a blend file of a template subject. For that, please contact me: npeled@mgh.harvard.edu
 
 
 The tool itself, can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
 Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need a os with freesurfer.
 Beside of that, you can use the tool also on windows.
+
+## Contributors
+- Ohad Felsenstein (ohadfel@gmail.com)
+- Noam Peled (npeled@mgh.harvard.edu)
 
 ## Licensing
 
