@@ -131,7 +131,7 @@ def create_and_set_material(obj):
             cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
             cur_mat.name = obj.name + '_Mat'
         # Wasn't it originally (0, 0, 1, 1)?
-        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (0, 0, 1, 1) # (0, 1, 0, 1)
+        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1) # (0, 0, 1, 1) # (0, 1, 0, 1)
         obj.active_material = cur_mat
 
 

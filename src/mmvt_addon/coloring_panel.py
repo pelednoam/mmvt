@@ -11,20 +11,34 @@ import glob
 HEMIS = mu.HEMIS
 
 
+def can_color_obj(obj):
+    cur_mat = obj.active_material
+    return 'RGB' in cur_mat.node_tree.nodes
+
+
 def object_coloring(obj, rgb):
     bpy.context.scene.objects.active = obj
     # todo: do we need to select the object here? In diff mode it's a problem
     # obj.select = True
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
-    cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
+    if can_color_obj(obj):
+        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
     # new_color = get_obj_color(obj)
     # print(new_color)
 
 
 def get_obj_color(obj):
     cur_mat = obj.active_material
-    return tuple(cur_mat.node_tree.nodes["RGB"].outputs[0].default_value)
+    try:
+        if can_color_obj(obj):
+            cur_color = tuple(cur_mat.node_tree.nodes["RGB"].outputs[0].default_value)
+        else:
+            cur_color = (1, 1, 1)
+    except:
+        cur_color = (1, 1, 1)
+        print("Can't get the color!")
+    return cur_color
 
 
 def clear_subcortical_fmri_activity():

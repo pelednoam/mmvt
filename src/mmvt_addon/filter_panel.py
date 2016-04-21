@@ -159,6 +159,8 @@ def deselect_all_objects():
             obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
         elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
             obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+        elif obj.parent == bpy.data.objects['Deep_electrodes']:
+            de_select_electrode(obj)
 
 
 def filter_items_update(self, context):
@@ -190,6 +192,7 @@ def show_one_by_one_update(self, context):
     else:
         #todo: do something here
         pass
+
 
 def next_filter_item():
     index = FilteringMakerPanel.filter_items.index(bpy.context.scene.filter_items)
@@ -260,22 +263,22 @@ class ClearFiltering(bpy.types.Operator):
 
 
 class PrevFilterItem(bpy.types.Operator):
-    bl_idname = 'ohad.next_filter_item'
-    bl_label = 'next_filter_item'
-    bl_options = {'UNDO'}
-
-    def invoke(self, context, event=None):
-        next_filter_item()
-        return {'FINISHED'}
-
-
-class NextFilterItem(bpy.types.Operator):
     bl_idname = 'ohad.prev_filter_item'
     bl_label = 'prev_filter_item'
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
         prev_filter_item()
+        return {'FINISHED'}
+
+
+class NextFilterItem(bpy.types.Operator):
+    bl_idname = 'ohad.next_filter_item'
+    bl_label = 'next_filter_item'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        next_filter_item()
         return {'FINISHED'}
 
 
