@@ -60,10 +60,10 @@ class MMVTLoaderAddon(bpy.types.Operator):
         mmvt_root = bpy.path.abspath(addon_prefs.mmvt_folder)
         print('mmvt_root: {}'.format(mmvt_root))
         sys.path.append(mmvt_root)
-        import MMVT_Addon
+        import mmvt_addon
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
-        imp.reload(MMVT_Addon)
-        MMVT_Addon.main(addon_prefs)
+        imp.reload(mmvt_addon)
+        mmvt_addon.main(addon_prefs)
         return {'FINISHED'}
 
 
