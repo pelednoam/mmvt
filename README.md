@@ -49,6 +49,10 @@ The tool itself, can run on windows, mac and linux. If you want to connect it to
 Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need a os with freesurfer.
 Beside of that, you can use the tool also on windows.
 
+## Contributors
+- Ohad Felsenstein (ohadfel@gmail.com)
+- Noam Peled (npeled@mgh.harvard.edu)
+
 ## Licensing
 
 MMVT is **BSD-licenced** (3 clause):
