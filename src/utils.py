@@ -288,7 +288,8 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
 def get_links_dir():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
     proj_dir = os.path.split(curr_dir)[0]
-    links_dir = os.path.join(proj_dir, 'links')
+    parent_dir = os.path.split(proj_dir)[0]
+    links_dir = os.path.join(parent_dir, 'links')
     return links_dir
 
 

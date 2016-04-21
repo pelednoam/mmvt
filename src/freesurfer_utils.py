@@ -189,19 +189,22 @@ def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig
     rs(mni305_to_subject)
     subject_fol = op.join(subjects_dir, subject, 'mmvt')
     utils.make_dir(subject_fol)
-    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject),
-                    op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))))
+    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject)),
+                op.join(subject_fol, 'mn305_to_{}.dat'.format(subject)))
 
 
 def transform_subject_to_mni_coordinates(subject, coords, subjects_dir, print_only=False):
     rs = utils.partial_run_script(locals(), print_only=print_only)
-    rs(mni305_to_subject_reg)
+    # rs(mni305_to_subject_reg)
     subject_fol = op.join(subjects_dir, subject, 'mmvt')
     utils.make_dir(subject_fol)
-    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject),
-                op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))))
+    subject_trans_file = op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))
+    # shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject)), subject_trans_file)
+    trans_mat = np.genfromtxt(subject_trans_file, delimiter=' ', skip_header=4, skip_footer=1)
+    inv_trans = np.linalg.inv(trans_mat)
+    coords_mni = nib.affines.apply_affine(inv_trans, coords)
+    return coords_mni
 
-    nib.affines.apply_affine(AFFINE_TRANS, track)
 
 def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):
     '''

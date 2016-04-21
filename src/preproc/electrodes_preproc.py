@@ -66,6 +66,12 @@ def read_electrodes_file(subject, bipolar):
     return d['names'], d['pos']
 
 
+def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):
+    output_fname = 'electrodes{}_positions{}.npz'.format('_bipolar' if bipolar else '', fname_postfix)
+    output_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', output_fname)
+    np.savez(output_fname, pos=elecs_coordinates, names=elecs_names, pos_org=[])
+
+
 def fix_str_items_in_csv(csv):
     lines = []
     for line in csv:
