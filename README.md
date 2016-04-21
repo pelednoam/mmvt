@@ -32,6 +32,8 @@ structures for the invasive electrodes. The users can also reprocess raw
 data using a wrappers for FaFast and mne-python (a python package for
 sensor and source-space analysis of MEG and EEG data).
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/tL0_snoJ_b8/0.jpg)](https://www.youtube.com/watch?v=tL0_snoJ_b8)
+
 ## Installation
 
 - [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
