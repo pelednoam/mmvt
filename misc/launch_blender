@@ -1,0 +1,4 @@
+#!/bin/tcsh
+
+source path_to_freesurfer/nmr-dev-env
+path_to_blender/blender
