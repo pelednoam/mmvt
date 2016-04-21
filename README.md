@@ -42,7 +42,7 @@ sensor and source-space analysis of MEG and EEG data).
 - [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
 - [Windows installtion](https://docs.google.com/document/d/1uUCgElXcY884qb-vZ4EZGqLPbRWZH7ni6qVPQbkwXn8/edit?usp=sharing)
 
-After the installation, you'll need to a blend file of a template subject. For that, please contact me: npeled@mgh.harvard.edu
+After the installation, you'll need a blend file of a template subject. For that, please contact me: npeled@mgh.harvard.edu
 
 
 The tool itself, can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
