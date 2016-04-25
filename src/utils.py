@@ -1192,3 +1192,13 @@ def get_hemi_indifferent_roi(roi):
 
 def get_hemi_indifferent_rois(rois):
     return set(map(lambda roi:get_hemi_indifferent_roi(roi), rois))
+
+
+def get_args_list(args, key):
+    if ',' in args[key]:
+        ret = args[key].split(',')
+    elif len(args[key]) == 0:
+        ret = []
+    else:
+        ret = [args[key]]
+    return ret

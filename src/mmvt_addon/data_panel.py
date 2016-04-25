@@ -15,10 +15,11 @@ bpy.types.Scene.electrodes_data_exist = False
 
 bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
 bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
-bpy.types.Scene.electrode_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
+bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
+bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
 
 def import_brain(current_root_path):
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
@@ -212,15 +213,17 @@ class ImportRois(bpy.types.Operator):
 
 def import_electrodes():
     # input_file = op.join(base_path, "electrodes.npz")
+    mu.delete_hierarchy('Deep_electrodes')
     bipolar = bpy.context.scene.bipolar
-    input_file = op.join(mu.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
+    # input_file = op.join(mu.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
+    input_file = op.join(mu.get_user_fol(), 'electrodes', '{}.npz'.format(bpy.context.scene.electrodes_positions_files))
 
     print('Adding deep electrodes')
     f = np.load(input_file)
     print('loaded')
 
     deep_electrodes_layer = 1
-    electrode_size = bpy.context.scene.electrode_radius
+    electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
     create_empty_if_doesnt_exists('Deep_electrodes', DataMakerPanel.addon.BRAIN_EMPTY_LAYER, layers_array, 'Deep_electrodes')
 
@@ -587,9 +590,12 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.brain_imported:
         col.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
-        col.prop(context.scene, 'bipolar', text="Bipolar")
-        col.prop(context.scene, 'electrode_radius', text="Electrodes' radius")
-        col.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+        electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
+        if len(electrodes_positions_files) > 0:
+            col.prop(context.scene, 'bipolar', text="Bipolar")
+            col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
+            col.prop(context.scene, 'electrodes_positions_files', text="")
+            col.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
         col = self.layout.column(align=True)
@@ -621,9 +627,16 @@ def load_meg_evoked():
 
 def init(addon):
     DataMakerPanel.addon = addon
-    bpy.context.scene.electrode_radius = 0.15
+    bpy.context.scene.electrodes_radius = 0.15
     load_meg_evoked()
     _meg_evoked_files_update()
+    electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
+    if len(electrodes_positions_files) > 0:
+        files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
+        positions_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
+            items=positions_items,description="Electrodes positions")
+        bpy.context.scene.electrodes_positions_files = files_names[0]
     register()
 
 
