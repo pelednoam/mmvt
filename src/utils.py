@@ -7,6 +7,7 @@ import time
 import re
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.image as mpimg
 import matplotlib.cm as cmx
 import subprocess
 from functools import partial
@@ -304,8 +305,6 @@ def get_electrodes_labeling(subject, atlas, bipolar=False, error_radius=3, elec_
         return load(electrode_labeling_fname)
     else:
         return None
-
-
 
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
 #     names = {}
@@ -1202,3 +1201,11 @@ def get_args_list(args, key):
     else:
         ret = [args[key]]
     return ret
+
+
+def show_image(image_fname):
+    image = mpimg.imread(image_fname)
+    plt.axis("off")
+    plt.imshow(image)
+    plt.tight_layout()
+    plt.show()

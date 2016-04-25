@@ -77,6 +77,8 @@ T = 2500
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
+bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
@@ -176,6 +178,7 @@ def main(addon_prefs=None):
     show_electrodes(False)
     show_connections(False)
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
+    bpy.context.scene.python_cmd = addon_prefs.python_cmd
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
@@ -190,7 +193,7 @@ def main(addon_prefs=None):
         search_panel.init(current_module)
         where_am_i_panel.init(current_module)
         appearance_panel.init(current_module)
-        fMRI_panel.init(current_module, addon_prefs)
+        fMRI_panel.init(current_module)
         render_panel.init(current_module)
         listener_panel.init(current_module)
         data_panel.init(current_module)

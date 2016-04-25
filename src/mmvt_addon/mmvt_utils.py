@@ -471,9 +471,13 @@ def get_obj_hemi(obj_name):
     return hemi
 
 
-def run_command_in_new_thread(cmd, shell=True):
-    q_in, q_out = Queue(), Queue()
-    thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q_in, q_out, shell))
+def run_command_in_new_thread(cmd, queues=True, shell=True):
+    if queues:
+        q_in, q_out = Queue(), Queue()
+        thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q_in, q_out, shell))
+    else:
+        thread = threading.Thread(target=run_command, args=(cmd, shell))
+        q_in, q_out = None, None
     print('start!')
     thread.start()
     return q_in, q_out

@@ -534,6 +534,8 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, args):
             create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
     if func in ['labeling_coloring', 'all'] and 'labeling_coloring' not in ex_func:
         create_electrodes_labeling_coloring(subject, bipolar, atlas)
+    if func in ['show_labeling_coloring', 'all'] and 'show_labeling_coloring' not in ex_func:
+        utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'electrodes_legend.jpg'))
     if func in ['raw_data', 'all'] and 'raw_data' not in ex_func:
         create_raw_data_for_blender(subject, raw_data_fname, conditions, do_plot=do_plot)
 

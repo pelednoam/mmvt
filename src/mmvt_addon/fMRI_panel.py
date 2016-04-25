@@ -258,7 +258,7 @@ class RefinefMRIClusters(bpy.types.Operator):
         self._timer = context.window_manager.event_timer_add(0.1, context.window)
         mu.change_fol_to_mmvt_root()
         cmd = '{} -m src.preproc.fMRI_preproc -s {} -T {} -c {} -t {} -a {} -f find_clusters'.format(
-            fMRIPanel.python_cmd, subject, task, contrast, threshold, atlas)
+            bpy.context.scene.python_cmd, subject, task, contrast, threshold, atlas)
         print('Running {}'.format(cmd))
         self.in_q, self.out_q = mu.run_command_in_new_thread(cmd)
         return {'RUNNING_MODAL'}
@@ -332,7 +332,7 @@ class fMRIPanel(bpy.types.Panel):
             fMRI_draw(self, context)
 
 
-def init(addon, addon_prefs):
+def init(addon):
     user_fol = mu.get_user_fol()
     clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
@@ -340,7 +340,6 @@ def init(addon, addon_prefs):
     if not fMRI_clusters_files_exist:
         return None
     fMRIPanel.addon = addon
-    fMRIPanel.python_cmd = addon_prefs.python_cmd
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
     fMRIPanel.cluster_labels = {}
     files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]

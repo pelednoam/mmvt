@@ -280,6 +280,14 @@ def color_manually():
                 data[obj_type].append(1.)
 
     color_objects(objects_names, colors, data)
+    if op.isfile(op.join(subject_fol, 'coloring', '{}_legend.jpg'.format(bpy.context.scene.coloring_files))):
+        fol = mu.get_parent_fol(mu.get_parent_fol())
+        import os
+        os.chdir(fol)
+        cmd = '{} -m src.preproc.electrodes_preproc -s {} -a {} -f show_labeling_coloring'.format(
+            bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
+        print('Running {}'.format(cmd))
+        mu.run_command_in_new_thread(cmd, False)
 
 
 def color_objects(objects_names, colors, data):
