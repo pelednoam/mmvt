@@ -1,7 +1,11 @@
-import bpy
+try:
+    import bpy
+    import mathutils
+    import colors_utils as cu
+except:
+    print("Can't import bpy, mathutils and color_utils")
 import traceback
 import math
-import mathutils
 import numpy as np
 import sys
 import os
@@ -18,7 +22,6 @@ import cProfile
 from itertools import chain
 from sys import platform as _platform
 
-import colors_utils as cu
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"

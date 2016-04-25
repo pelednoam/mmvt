@@ -68,7 +68,7 @@ importlib.reload(vertex_data_panel)
 import filter_panel
 importlib.reload(filter_panel)
 
-print("Neuroscience add on started!")
+print("MMVT addon started!")
 # todo: should change that in the code!!!
 # Should be here bpy.types.Scene.maximal_time_steps
 T = 2500

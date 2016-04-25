@@ -288,9 +288,23 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
 def get_links_dir():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
     proj_dir = os.path.split(curr_dir)[0]
-    parent_dir = os.path.split(proj_dir)[0]
-    links_dir = os.path.join(parent_dir, 'links')
+    code_dir = os.path.split(proj_dir)[0]
+    links_dir = os.path.join(code_dir, 'links')
     return links_dir
+
+
+def get_electrodes_labeling(subject, atlas, bipolar=False, error_radius=3, elec_length=4):
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    proj_dir = os.path.split(curr_dir)[0]
+    code_dir = os.path.split(proj_dir)[0]
+    electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
+        '{}_{}_electrodes_all_rois_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
+        '_bipolar_stretch' if bipolar else ''))
+    if op.isfile(electrode_labeling_fname):
+        return load(electrode_labeling_fname)
+    else:
+        return None
+
 
 
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
@@ -1165,3 +1179,16 @@ def make_evoked_smooth_and_positive(evoked, positive=True, moving_average_win_si
                 evoked_smooth = np.zeros((evoked_smooth_cond.shape[0], evoked_smooth_cond.shape[1], evoked.shape[2]))
             evoked_smooth[:, :, cond_ind] = evoked_smooth_cond
     return evoked_smooth
+
+
+def get_hemi_indifferent_roi(roi):
+    return roi.replace('-rh', '').replace('-lh', '').replace('rh-', '').replace('lh-', '').\
+        replace('.rh', '').replace('.lh', '').replace('rh.', '').replace('lh.', '').\
+        replace('Right-', '').replace('Left-', '').replace('-Right', '').replace('-Left', '').\
+        replace('Right.', '').replace('Left.', '').replace('.Right', '').replace('.Left', '').\
+        replace('right-', '').replace('left-', '').replace('-right', '').replace('-left', '').\
+        replace('right.', '').replace('left.', '').replace('.right', '').replace('.left', '')
+
+
+def get_hemi_indifferent_rois(rois):
+    return set(map(lambda roi:get_hemi_indifferent_roi(roi), rois))

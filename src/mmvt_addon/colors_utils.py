@@ -6,7 +6,8 @@ from itertools import cycle
 
 # http://stackoverflow.com/a/4382138/1060738
 # Kelly's 22 colors of maximum contrast
-kelly_colors = OrderedDict(vivid_yellow=(255, 179, 0),
+kelly_colors = OrderedDict()
+kelly_colors_dic = dict(vivid_yellow=(255, 179, 0),
                     strong_purple=(128, 62, 117),
                     vivid_orange=(255, 104, 0),
                     very_light_blue=(166, 189, 215),
@@ -28,6 +29,8 @@ kelly_colors = OrderedDict(vivid_yellow=(255, 179, 0),
                     deep_yellowish_brown=(89, 51, 21),
                     vivid_reddish_orange=(241, 58, 19),
                     dark_olive_green=(35, 44, 22))
+for k in sorted(list(kelly_colors_dic.keys())):
+    kelly_colors[k] = kelly_colors_dic[k]
 
 # Boynton's list of 11 colors that are almost never confused.
 boynton_colors = ["blue", "red", "green", "yellow", "magenta", "pink", "orange", "brown", "gray"]
@@ -198,7 +201,7 @@ def name_to_rgb(name):
     an ``rgb()`` triplet specifying that color.
 
     """
-    return hex_to_rgb(name_to_hex(name))
+    return np.array(hex_to_rgb(name_to_hex(name))) / 255.0
 
 
 def name_to_hex(name):

@@ -239,8 +239,6 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
 
 def color_groups_manually():
-    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_meg_activity_map')
-    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_fmri_activity_map')
     init_activity_map_coloring('FMRI')
     labels = ColoringMakerPanel.labels_groups[bpy.context.scene.labels_groups]
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -255,21 +253,27 @@ def color_groups_manually():
 
 
 def color_manually():
-    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_meg_activity_map')
-    # ColoringMakerPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_fmri_activity_map')
     init_activity_map_coloring('FMRI')
     subject_fol = mu.get_user_fol()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
-    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring.csv')):
-        obj_name, color_name = line
+    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', '{}.csv'.format(bpy.context.scene.coloring_files))):
+        obj_name, color_name = line[0], line[1:]
         if obj_name[0] == '#':
             continue
         obj_type = mu.check_obj_type(obj_name)
-        if color_name.startswith('mark'):
+        if isinstance(color_name, str) and color_name.startswith('mark'):
             import filter_panel
             filter_panel.filter_roi_func(obj_name, mark=color_name)
         else:
-            color_rgb = cu.name_to_rgb(color_name)
+            if isinstance(color_name, str):
+                color_rgb = cu.name_to_rgb(color_name)
+            # Check if the color is already in RBG
+            elif len(color_name) == 3:
+                color_rgb = color_name
+            else:
+                print('Unrecognize color!')
+                continue
+            color_rgb = list(map(float, color_rgb))
             if obj_type is not None:
                 objects_names[obj_type].append(obj_name)
                 colors[obj_type].append(color_rgb)
@@ -289,6 +293,10 @@ def color_objects(objects_names, colors, data):
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
         print('color {}: {}'.format(region, color))
         color_subcortical_region(region, color)
+    for electrode, color in zip(objects_names[mu.OBJ_TYPE_ELECTRODE], colors[mu.OBJ_TYPE_ELECTRODE]):
+        obj = bpy.data.objects.get(electrode)
+        if obj and not obj.hide:
+            object_coloring(obj, color)
     bpy.context.scene.subcortical_layer = 'fmri'
     ColoringMakerPanel.addon.show_activity()
 
@@ -452,8 +460,8 @@ def clear_colors():
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
-    items=[], description="fMRI files", update=fmri_files_update)
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files", update=fmri_files_update)
+bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -479,7 +487,7 @@ class ColoringMakerPanel(bpy.types.Panel):
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(),'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
-        manually_color_file_exist = op.isfile(op.join(user_fol, 'coloring.csv'))
+        manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         if faces_verts_exist:
@@ -492,7 +500,8 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
             if fmri_clusters_files_exist:
                 layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
-            if manually_color_file_exist:
+            if manually_color_files_exist:
+                layout.prop(context.scene, "coloring_files", text="")
                 layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
             if manually_groups_file_exist:
                 layout.prop(context.scene, 'labels_groups', text="")
@@ -562,6 +571,13 @@ def init(addon):
         #     for hemi in mu.HEMIS:
         #         ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
         #             op.join(user_fol, 'fmri', 'fmri_clusters_{}.npy'.format(hemi)))
+    mu.make_dir(op.join(user_fol, 'coloring'))
+    manually_color_files = glob.glob(op.join(user_fol, 'coloring', '*.csv'))
+    if len(manually_color_files) > 0:
+        files_names = [mu.namebase(fname) for fname in manually_color_files]
+        coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items, description="Coloring files")
+        bpy.context.scene.coloring_files = files_names[0]
 
     ColoringMakerPanel.colors = list(set(list(cu.NAMES_TO_HEX.keys())) - set(['black']))
     shuffle(ColoringMakerPanel.colors)
