@@ -8,8 +8,10 @@ from collections import defaultdict
 
 PARENT_OBJ = 'Deep_electrodes'
 
+
 def leads_update(self, context):
-    _leads_update()
+    if ElecsPanel.init:
+        _leads_update()
 
 
 # @mu.profileit(op.join(mu.get_user_fol(), 'leads_update_profile'), 'cumtime')
@@ -17,23 +19,25 @@ def _leads_update():
     if ElecsPanel.addon is None or not ElecsPanel.init:
         return
     # ElecsPanel.addon.show_electrodes()
-    show_elecs_hemi_update()
+    # show_elecs_hemi_update()
     ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
+    init_electrodes_list()
     bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
     # bpy.context.scene.show_only_lead = True
     _show_only_current_lead_update()
 
 
 def electrodes_update(self, context):
-    _electrodes_update()
+    if ElecsPanel.init:
+        _electrodes_update()
 
 
 def _electrodes_update():
     if ElecsPanel.addon is None or not ElecsPanel.init:
         return
     # ElecsPanel.addon.show_electrodes()
-    show_elecs_hemi_update()
-    _show_only_current_lead_update()
+    # show_elecs_hemi_update()
+    # _show_only_current_lead_update()
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
@@ -52,7 +56,7 @@ def _electrodes_update():
 
 
 def select_electrode(current_electrode):
-    for elec in ElecsPanel.electrodes:
+    for elec in ElecsPanel.all_electrodes:
         bpy.data.objects[elec].select = elec == current_electrode
     # ElecsPanel.addon.filter_electrode_func(bpy.context.scene.electrodes)
 
@@ -90,19 +94,17 @@ def update_cursor():
 
 
 def show_lh_update(self, context):
-    hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
-    updade_lead_hemis()
+    if ElecsPanel.init:
+        hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+        updade_lead_hemis()
+        init_electrodes_list()
 
 
 def show_rh_update(self, context):
-    hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
-    updade_lead_hemis()
-
-
-def show_elecs_hemi_update():
-    hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
-    hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
-    updade_lead_hemis()
+    if ElecsPanel.init:
+        hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+        updade_lead_hemis()
+        init_electrodes_list()
 
 
 def hide_show_hemi_electrodes(hemi, val):
@@ -119,42 +121,34 @@ def get_elec_hemi(elec_name):
 
 def updade_lead_hemis():
     if bpy.context.scene.show_lh_electrodes and bpy.context.scene.show_rh_electrodes:
-        ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
-        hemis = ['rh', 'lh']
+        leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
     elif bpy.context.scene.show_lh_electrodes and not bpy.context.scene.show_rh_electrodes:
-        ElecsPanel.leads = ElecsPanel.sorted_groups['lh']
-        hemis = ['lh']
+        leads = ElecsPanel.sorted_groups['lh']
     elif not bpy.context.scene.show_lh_electrodes and bpy.context.scene.show_rh_electrodes:
-        ElecsPanel.leads = ElecsPanel.sorted_groups['rh']
-        hemis = ['rh']
+        leads = ElecsPanel.sorted_groups['rh']
     else:
-        ElecsPanel.leads = []
-        hemis = []
-    leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
-    bpy.types.Scene.leads = bpy.props.EnumProperty(
-        items=leads_items, description="leads", update=leads_update)
-    ElecsPanel.electrodes = [el.name for el in ElecsPanel.parent.children if get_elec_hemi(el.name) in hemis]
-    ElecsPanel.electrodes.sort(key=mu.natural_keys)
-    electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
-    bpy.types.Scene.electrodes = bpy.props.EnumProperty(
-        items=electrodes_items, description="electrodes", update=electrodes_update)
+        leads = []
+    init_leads_list(leads)
 
 
 def color_labels_update(self, context):
-    if not bpy.context.scene.color_lables:
-        ElecsPanel.addon.clear_cortex()
-        ElecsPanel.addon.clear_subcortical_regions()
+    if ElecsPanel.init:
+        if not bpy.context.scene.color_lables:
+            ElecsPanel.addon.clear_cortex()
+            ElecsPanel.addon.clear_subcortical_regions()
 
 
 def electrodes_labeling_files_update(self, context):
-    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
-        bpy.context.scene.electrodes_labeling_files))
-    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
-    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
+    if ElecsPanel.init:
+        labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+            bpy.context.scene.electrodes_labeling_files))
+        ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
 
 
 def show_only_current_lead_update(self, context):
-    _show_only_current_lead_update()
+    if ElecsPanel.init:
+        _show_only_current_lead_update()
 
 
 def _show_only_current_lead_update():
@@ -163,15 +157,20 @@ def _show_only_current_lead_update():
         for elec_obj in ElecsPanel.parent.children:
             elec_obj.hide = elec_obj.hide_render = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
     else:
-        show_elecs_hemi_update()
+        hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+        hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+        # updade_lead_hemis()
+
+
+# def show_elecs_hemi_update():
+#     if ElecsPanel.init:
+#         hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+#         hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+#         updade_lead_hemis()
 
 
 def plot_labels_probs(elc):
     ElecsPanel.addon.init_activity_map_coloring('FMRI')
-    # ElecsPanel.addon.show_hide_hierarchy(do_hide=False, obj='Subcortical_meg_activity_map')
-    # ElecsPanel.addon.show_hide_hierarchy(do_hide=True, obj='Subcortical_fmri_activity_map')
-    # todo: Find how not clear the cortex every time, just when the hemi flips
-    # ElecsPanel.addon.clear_cortex()
     if len(elc['cortical_rois']) > 0:
         hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
         if not hemi is None:
@@ -368,6 +367,10 @@ bpy.types.Scene.electrode_color = bpy.props.FloatVectorProperty(
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
 bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
     items=[], description='Labeling files', update=electrodes_labeling_files_update)
+bpy.types.Scene.electrodes = bpy.props.EnumProperty(
+    items=[], description="electrodes", update=electrodes_update)
+bpy.types.Scene.leads = bpy.props.EnumProperty(
+    items=[], description="leads", update=leads_update)
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -376,22 +379,15 @@ class ElecsPanel(bpy.types.Panel):
     bl_context = "objectmode"
     bl_category = "Ohad"
     bl_label = "Electrodes"
-    addon = None
-    parent = None
+    addon, parent = None, None
     init = False
-    electrodes = []
-    leads = []
+    electrodes, leads = [], []
     current_electrode = ''
-    electrodes_locs = None
-    lookup = None
-    groups = {}
-    subcortical_rois = []
-    subcortical_probs = []
-    cortical_rois = []
-    cortical_probs = []
+    electrodes_locs, lookup = None, None
+    subcortical_rois, subcortical_probs = [], []
+    cortical_rois, cortical_probs = [], []
+    groups_electrodes, groups, groups_hemi = [], {}, {}
     sorted_groups = {'rh':[], 'lh':[]}
-    groups_hemi = {}
-    groups_electrodes = []
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -399,31 +395,22 @@ class ElecsPanel(bpy.types.Panel):
 
 def init(addon):
     ElecsPanel.addon = addon
-    ElecsPanel.parent = parent = bpy.data.objects.get('Deep_electrodes')
-    if parent is None or len(parent.children) == 0:
+    ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
+    if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
         print("!!!! Can't register electrodes panel, no Deep_electrodes object!!!!")
         return
     sorted_groups_fname = op.join(mu.get_user_fol(), 'sorted_groups.pkl')
     if not op.isfile(sorted_groups_fname):
         print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
         return
-    ElecsPanel.electrodes = [] if parent is None else [el.name for el in parent.children]
-    ElecsPanel.electrodes.sort(key=mu.natural_keys)
-    electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
-    bpy.types.Scene.electrodes = bpy.props.EnumProperty(
-        items=electrodes_items, description="electrodes", update=electrodes_update)
     ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
     ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
-    # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
-    ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
-    leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
-    bpy.types.Scene.leads = bpy.props.EnumProperty(
-        items=leads_items, description="leads", update=leads_update)
-    ElecsPanel.groups_first_electrode = find_first_electrode_per_group(ElecsPanel.electrodes)
-    bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
-    bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[ElecsPanel.leads[0]]
-    ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
-    ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.electrodes)
+    ElecsPanel.all_electrodes = [el.name for el in ElecsPanel.parent.children]
+    ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.all_electrodes)
+    ElecsPanel.groups_first_electrode = find_first_electrode_per_group(ElecsPanel.all_electrodes)
+    ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.all_electrodes)
+    init_leads_list()
+    init_electrodes_list()
     init_electrodes_labeling(addon)
     addon.clear_colors_from_parent_childrens('Deep_electrodes')
     addon.clear_cortex()
@@ -432,12 +419,40 @@ def init(addon):
     bpy.context.scene.listener_is_running = False
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
-    register()
-    ElecsPanel.init = True
-    print('Electrodes panel initialization completed successfully!')
+    if not ElecsPanel.groups or not ElecsPanel.groups_first_electrode or not ElecsPanel.sorted_groups or \
+        not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
+            print('Error in electrodes panel init!')
+    else:
+        register()
+        ElecsPanel.init = True
+        print('Electrodes panel initialization completed successfully!')
+
+
+def init_leads_list(leads=None):
+    # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
+    if leads is None:
+        ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
+    else:
+        ElecsPanel.leads = leads
+    leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
+    bpy.types.Scene.leads = bpy.props.EnumProperty(
+        items=leads_items, description="leads", update=leads_update)
+    bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
+
+
+def init_electrodes_list():
+    # ElecsPanel.electrodes = [el.name for el in ElecsPanel.parent.children]
+    ElecsPanel.electrodes = ElecsPanel.groups_electrodes[ElecsPanel.current_lead]
+    ElecsPanel.electrodes.sort(key=mu.natural_keys)
+    electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
+    bpy.types.Scene.electrodes = bpy.props.EnumProperty(
+        items=electrodes_items, description="electrodes", update=electrodes_update)
+    lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
+    bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
 
 
 def init_electrodes_labeling(addon):
+    #todo: this panel should work also without labeling file
     labeling_fname = '{}_{}_electrodes_all_rois_cigar_r_*_l_*{}.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
         '_bipolar_stretch' if bpy.context.scene.bipolar else '')
     labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_fname))
