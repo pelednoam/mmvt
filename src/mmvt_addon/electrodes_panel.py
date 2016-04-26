@@ -139,11 +139,10 @@ def color_labels_update(self, context):
 
 
 def electrodes_labeling_files_update(self, context):
-    if ElecsPanel.init:
-        labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
-            bpy.context.scene.electrodes_labeling_files))
-        ElecsPanel.electrodes_locs = mu.load(labeling_fname)
-        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
+    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+        bpy.context.scene.electrodes_labeling_files))
+    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
 
 
 def show_only_current_lead_update(self, context):
@@ -419,6 +418,8 @@ def init(addon):
     bpy.context.scene.listener_is_running = False
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
+    if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
+        print("!!! Can't plot electrodes' probabilties !!!")
     if not ElecsPanel.groups or not ElecsPanel.groups_first_electrode or not ElecsPanel.sorted_groups or \
         not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
             print('Error in electrodes panel init!')
