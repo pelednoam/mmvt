@@ -146,6 +146,13 @@ def color_labels_update(self, context):
         ElecsPanel.addon.clear_subcortical_regions()
 
 
+def electrodes_labeling_files_update(self, context):
+    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+        bpy.context.scene.electrodes_labeling_files))
+    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
+
+
 def show_only_current_lead_update(self, context):
     _show_only_current_lead_update()
 
@@ -189,6 +196,7 @@ def unselect_prev_electrode(prev_electrode):
 
 def elecs_draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, "electrodes_labeling_files", text="")
     row = layout.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -358,6 +366,8 @@ bpy.types.Scene.current_lead = bpy.props.StringProperty()
 bpy.types.Scene.electrode_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
+bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
+    items=[], description='Labeling files', update=electrodes_labeling_files_update)
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -414,16 +424,7 @@ def init(addon):
     bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[ElecsPanel.leads[0]]
     ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.electrodes)
     ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.electrodes)
-    loc_files = glob.glob(op.join(mu.get_user_fol(), '{}_{}_electrodes*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)))
-    if len(loc_files) > 0:
-        # todo: there could be 2 files, one for bipolar and one for non bipolar
-        ElecsPanel.electrodes_locs = mu.load(loc_files[0])
-        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
-        # todo: Should be done only once in the main addon
-        ElecsPanel.faces_verts = addon.load_faces_verts()
-    else:
-        print("Can't find loc file!")
-    # addon.clear_filtering()
+    init_electrodes_labeling(addon)
     addon.clear_colors_from_parent_childrens('Deep_electrodes')
     addon.clear_cortex()
     bpy.context.scene.show_only_lead = False
@@ -434,6 +435,21 @@ def init(addon):
     register()
     ElecsPanel.init = True
     print('Electrodes panel initialization completed successfully!')
+
+
+def init_electrodes_labeling(addon):
+    labeling_fname = '{}_{}_electrodes_all_rois_cigar_r_*_l_*{}.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
+        '_bipolar_stretch' if bpy.context.scene.bipolar else '')
+    labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_fname))
+    files_names = [mu.namebase(fname) for fname in labling_files]
+    labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+    bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
+        items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
+    if len(labling_files) > 0:
+        bpy.context.scene.electrodes_labeling_files = files_names[0]
+        # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
+        # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
+    ElecsPanel.faces_verts = addon.get_faces_verts()
 
 
 def create_lookup_table(electrodes_locs, electrodes):

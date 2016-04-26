@@ -459,10 +459,10 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
         print('No electrodes labeling file!')
         return
     rois_colors = get_rois_colors(get_most_probable_rois(elecs_probs, p_threshold, good_channels))
-    save_rois_colors_legend(subject, rois_colors, legend_name)
+    save_rois_colors_legend(subject, rois_colors, bipolar, legend_name)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
     if coloring_fname == '':
-        coloring_fname = 'electrodes{}.csv'.format('_bipolar' if bipolar else '')
+        coloring_fname = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
     with open(op.join(BLENDER_ROOT_DIR, subject, 'coloring', coloring_fname), 'w') as colors_csv_file:
         colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
         for elec_name, elec_probs in zip(elecs_names, elecs_probs):
@@ -505,10 +505,10 @@ def get_rois_colors(rois):
     return rois_colors
 
 
-def save_rois_colors_legend(subject, rois_colors, legend_name=''):
+def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     from matplotlib import pylab
     if legend_name == '':
-        legend_name = 'electrodes_legend.jpg'
+        legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if bipolar else '')
     fig = plt.figure()
     ax = fig.add_subplot(111)
     figlegend = pylab.figure()
@@ -520,10 +520,37 @@ def save_rois_colors_legend(subject, rois_colors, legend_name=''):
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
 
-def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, args):
+def main(args):
+    subject, task, atlas = args['subject'], args['task'], args['atlas']
+    conditions = utils.get_args_list(args, 'conditions')
+    if args['to_t'].isnumeric() and args['from_t'].isnumeric():
+        from_t, to_t, indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
+        from_t_ind, to_t_ind = from_t + indices_shift, to_t + indices_shift
+    elif ',' in args['to_t'] and ',' in args['from_t'] and ',' in args['conditions']:
+        to_t = list(map(int, args['to_t'].split(',')))
+        from_t = list(map(int, args['to_t'].split(',')))
+        assert (len(to_t) == len(from_t) == len(conditions))
+    else:
+        print('No from_t, to_t and conditions!')
+    bipolar = args['bipolar'] == '1'
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+    if task == 'ECR':
+        conditions = ['happy', 'fear']
+    elif task == 'MSIT':
+        conditions = ['noninterference', 'interference']
+    elif task == 'seizure':
+        conditions = [dict(name='baseline', from_t=from_t[0], to_t=to_t[0]),
+                      dict(name='seizure', from_t=from_t[1], to_t=to_t[1])]
+        # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
+    else:
+        if isinstance(from_t, Iterable) and isinstance(to_t, Iterable):
+            conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
+                          zip(conditions, from_t, to_t)]
+
     func, raw_data_fname = args['function'], args['raw_fname']
     ex_func = utils.get_args_list(args, 'ex_func')
     do_plot = args['do_plot'] == '1'
+
     # *) Read the electrodes data
     if func in ['convert_electrodes_file', 'all'] and 'convert_electrodes_file' not in ex_func:
         electrodes_file = convert_electrodes_file_to_npy(subject, bipolar=bipolar)
@@ -535,7 +562,8 @@ def main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, args):
     if func in ['labeling_coloring', 'all'] and 'labeling_coloring' not in ex_func:
         create_electrodes_labeling_coloring(subject, bipolar, atlas)
     if func in ['show_labeling_coloring', 'all'] and 'show_labeling_coloring' not in ex_func:
-        utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'electrodes_legend.jpg'))
+        legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if bipolar else '')
+        utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
     if func in ['raw_data', 'all'] and 'raw_data' not in ex_func:
         create_raw_data_for_blender(subject, raw_data_fname, conditions, do_plot=do_plot)
 
@@ -558,31 +586,5 @@ if __name__ == '__main__':
     parser.add_argument('--do_plot', help='do plot', required=False, default='0')
     args = vars(parser.parse_args())
     print(args)
-    subject, task, atlas = args['subject'], args['task'], args['atlas']
-    conditions = utils.get_args_list(args, 'conditions')
-    if args['to_t'].isnumeric() and args['from_t'].isnumeric():
-        from_t, to_t, indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
-        from_t_ind, to_t_ind = from_t + indices_shift, to_t + indices_shift
-    elif ',' in args['to_t'] and ',' in args['from_t'] and ',' in args['conditions']:
-        to_t = list(map(int, args['to_t'].split(',')))
-        from_t = list(map(int, args['to_t'].split(',')))
-        assert(len(to_t) == len(from_t) == len(conditions))
-    else:
-        print('No from_t, to_t and conditions!')
-    bipolar = args['bipolar'] == '1'
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-    if task == 'ECR':
-        conditions = ['happy', 'fear']
-    elif task == 'MSIT':
-        conditions = ['noninterference', 'interference']
-    elif task == 'seizure':
-        conditions = [dict(name='baseline', from_t=from_t[0], to_t=to_t[0]),
-                      dict(name='seizure', from_t=from_t[1], to_t=to_t[1])]
-        # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
-    else:
-        if isinstance(from_t, Iterable) and isinstance(to_t, Iterable):
-            conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
-                      zip(conditions, from_t, to_t)]
-
-    main(subject, bipolar, conditions, task, from_t_ind, to_t_ind, args)
+    main(args)
     print('finish!')

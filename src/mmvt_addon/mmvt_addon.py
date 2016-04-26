@@ -179,6 +179,9 @@ def main(addon_prefs=None):
     show_connections(False)
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
+    code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
+    os.chdir(code_fol)
+
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]

@@ -24,8 +24,10 @@ def object_coloring(obj, rgb):
     new_color = (rgb[0], rgb[1], rgb[2], 1)
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
-    # new_color = get_obj_color(obj)
-    # print(new_color)
+        # new_color = get_obj_color(obj)
+        # print('{} new color: {}'.format(obj.name, new_color))
+    else:
+        print("Can't color {}".format(obj.name))
 
 
 def get_obj_color(obj):
@@ -77,9 +79,9 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
         new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
         # todo: check if the stat should be avg or diff
         obj = bpy.data.objects.get(obj_name+postfix_str)
-        if obj and not obj.hide:
+        # if obj and not obj.hide:
             # print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
-            object_coloring(obj, new_color)
+        object_coloring(obj, new_color)
             # print(obj_name, value, new_color)
         # else:
         #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
@@ -271,7 +273,7 @@ def color_manually():
             elif len(color_name) == 3:
                 color_rgb = color_name
             else:
-                print('Unrecognize color!')
+                print('Unrecognize color! ({})'.format(color_name))
                 continue
             color_rgb = list(map(float, color_rgb))
             if obj_type is not None:
@@ -281,9 +283,6 @@ def color_manually():
 
     color_objects(objects_names, colors, data)
     if op.isfile(op.join(subject_fol, 'coloring', '{}_legend.jpg'.format(bpy.context.scene.coloring_files))):
-        fol = mu.get_parent_fol(mu.get_parent_fol())
-        import os
-        os.chdir(fol)
         cmd = '{} -m src.preproc.electrodes_preproc -s {} -a {} -f show_labeling_coloring'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
         print('Running {}'.format(cmd))
