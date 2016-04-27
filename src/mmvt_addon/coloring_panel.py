@@ -328,7 +328,8 @@ def color_subcortical_region(region_name, color):
         region_colors_data = np.tile(region_colors_data, (len(verts), 1))
         activity_map_obj_coloring(cur_obj, region_colors_data, lookup, 0, True)
     else:
-        print("Don't have the necessary files for coloring {}!".format(region_name))
+        if cur_obj and not 'white' in cur_obj.name.lower():
+            print("Don't have the necessary files for coloring {}!".format(region_name))
 
 
 def clear_subcortical_regions():

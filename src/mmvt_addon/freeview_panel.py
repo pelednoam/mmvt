@@ -17,7 +17,7 @@ bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=Fa
 def save_cursor_position():
     root = mu.get_user_fol()
     point = bpy.context.scene.cursor_location * 10.0
-    freeview_cmd = 'freeview --ras {} {} {} tkreg\n'.format(point[0], point[1], point[2]).encode()
+    freeview_cmd = 'freeview --ras {} {} {} tkreg\n'.format(point[0], point[1], point[2]) # .encode()
     if FreeviewPanel.freeview_in_queue:
         FreeviewPanel.freeview_in_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
@@ -165,7 +165,7 @@ class FreeviewOpen(bpy.types.Operator):
             sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
         else:
             sig_cmd = ''
-        T1 = op.join(root, 'freeview', 'T1.mgz')#'orig.mgz')
+        T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes_cmd = self.get_electrodes_command(root)

@@ -491,24 +491,33 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
             data = q_in.get()
             try:
                 print('Writing data into stdin: {}'.format(data))
-                output = proc.stdin.write(data.decode('utf-8'))
+                output = proc.stdin.write(data.encode()) #  decode('utf-8'))
                 proc.stdin.flush()
                 print('stdin output: {}'.format(output))
             except:
-                print("Pipe is close, can't write to stdin")
+                print("Something is wrong with the in pipe, can't write to stdin!!!")
+                print(traceback.format_exc())
 
     def read_from_stdout(proc, q_out):
         while True:
-            line = proc.stdout.readline()
-            if line != b'':
-                q_out.put(line)
-                print('stdout: {}'.format(line))
+            try:
+                line = proc.stdout.readline()
+                if line != b'':
+                    q_out.put(line)
+                    print('stdout: {}'.format(line))
+            except:
+                print('Error in reading stdout!!!')
+                print(traceback.format_exc())
 
     def read_from_stderr(proc):
         while True:
-            line = proc.stderr.readline()
-            if line != b'':
-                print('stderr: {}'.format(line))
+            try:
+                line = proc.stderr.readline()
+                if line != b'':
+                    print('stderr: {}'.format(line))
+            except:
+                print('Error in reading stderr!!!')
+                print(traceback.format_exc())
 
     p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1) #, universal_newlines=True)
     thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
