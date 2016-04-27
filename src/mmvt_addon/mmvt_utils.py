@@ -491,7 +491,7 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
             data = q_in.get()
             try:
                 print('Writing data into stdin: {}'.format(data))
-                output = proc.stdin.write(data.encode()) #  decode('utf-8'))
+                output = proc.stdin.write(data.encode())  # decode('utf-8'))
                 proc.stdin.flush()
                 print('stdin output: {}'.format(output))
             except:
