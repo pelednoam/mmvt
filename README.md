@@ -10,7 +10,7 @@ neuroimaging data are used to display activity and statistical analysis,
 real three-dimensional (3d) depictions are helpful for showing the spatial
 distribution of a functional network, as well as its temporal evolution.
 For our best knowledge, currently there is no neuroimaging 3d tool which
-can visualize both EEG, fMRI and invasive electrodes (ECOG, depth
+can visualize both MEG, fMRI and invasive electrodes (ECOG, depth
 electrodes, DBS,  etc.). Here we present the multi-modality
 visualization tool (MMVT). The tool was built for researchers who wish to
 have a better understanding of their neuroimaging anatomical and functional
