@@ -410,6 +410,8 @@ def atoi(text):
 def natural_keys(text):
     # http://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
     import re
+    if isinstance(text, tuple):
+        text = text[0]
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
 

@@ -146,7 +146,7 @@ def filter_electrode_func(elec_name):
 
     # todo: selecting the electrode will show both of their conditions time series
     # We don't want it to happen if selection_type == 'conds'...
-    if bpy.context.scene.selection_type == 'conds':
+    if bpy.context.scene.selection_type == 'conds' or bpy.context.scene.filter_items_one_by_one:
         bpy.data.objects[elec_name].select = True
     bpy.context.scene.objects.active = bpy.data.objects[elec_name]
     bpy.types.Scene.filter_is_on = True
@@ -165,7 +165,10 @@ def deselect_all_objects():
 
 def filter_items_update(self, context):
     deselect_all_objects()
-    filter_roi_func(bpy.context.scene.filter_items)
+    if bpy.context.scene.filter_curves_type == 'Electrodes':
+        filter_electrode_func(bpy.context.scene.filter_items)
+    elif bpy.context.scene.filter_curves_type == 'MEG':
+        filter_roi_func(bpy.context.scene.filter_items)
     mu.view_all_in_graph_editor(context)
 
 
@@ -423,13 +426,14 @@ class Filtering(bpy.types.Operator):
         # self.current_activity_path = bpy.path.abspath(bpy.context.scene.activity_path)
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
-        files_names = {'MEG': 'labels_data_{hemi}.npz', 'Electrodes': 'electrodes_data_{stat}.npz'}
+        files_names = {'MEG': 'labels_data_{hemi}.npz',
+                       'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz')}
         current_file_to_upload = files_names[self.type_of_filter]
 
         # print(self.current_root_path)
         # source_files = ["/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
-            data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes_data_*.npz'))
+            data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_*.npz'))
             if len(data_files) == 0:
                 print('No data files!')
             elif len(data_files) == 1:

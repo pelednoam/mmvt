@@ -5,6 +5,7 @@ import numpy as np
 from src import freesurfer_utils as fu
 from src import utils
 from src.preproc import electrodes_preproc as elec_pre
+from src.mmvt_addon.mmvt_utils import natural_keys
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -19,22 +20,26 @@ def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, error_radius=
     elecs_coords_mni_dic = {elec_name:elec_coord for (elec_name,elec_coord) in zip(elecs_names, elecs_coords_mni)}
     elecs_probs = utils.get_electrodes_labeling(subject, atlas, bipolar, error_radius, elec_length)
     assert(len(elecs_names) == len(elecs_coords_mni) == len(elecs_probs))
-    rois_colors = elec_pre.get_rois_colors(elec_pre.get_most_probable_rois(elecs_probs, p_threshold, good_channels))
-    elec_pre.plot_rois_colors(rois_colors)
+    most_probable_rois = elec_pre.get_most_probable_rois(elecs_probs, p_threshold, good_channels)
+    rois_colors = elec_pre.get_rois_colors(most_probable_rois)
+    elec_pre.save_rois_colors_legend(subject, rois_colors, bipolar)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring'))
+    coloring_name = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
     with open(op.join(OUTPUT_DIR, '{}_electrodes_info.csv'.format(subject)), 'w') as csv_file, \
-        open(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring','electrodes.csv'.format(subject)), 'w') as colors_csv_file:
+        open(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring', coloring_name), 'w') as colors_csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',')
         colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
         elec_ind = 0
-        for elec_name, elec_probs in zip(elecs_names, elecs_probs):
+        elecs_name_probs = [(elec_name, elec_probs) for elec_name, elec_probs in zip(elecs_names, elecs_probs)]
+        elecs_name_probs.sort(key=natural_keys)
+        for elec_name, elec_probs in elecs_name_probs:
             assert(elec_name == elec_probs['name'])
             if not good_channels is None and elec_name not in good_channels:
                 continue
             roi = elec_pre.get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
                 [*elec_probs['cortical_rois'], *elec_probs['subcortical_rois']], p_threshold)
             color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
-            csv_writer.writerow([elec_ind, *elecs_coords_mni_dic[elec_name], roi, *color])
+            csv_writer.writerow([elec_name, *elecs_coords_mni_dic[elec_name], roi, *color])
             colors_csv_writer.writerow([elec_name, *color])
             elec_ind += 1
 
@@ -53,14 +58,9 @@ def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None):
 
 
 def get_good_channels():
-    from src.mmvt_addon.mmvt_utils import csv_file_reader
-    channels = []
-    for line in csv_file_reader(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank1.csv')):
-        ind = line.index('')
-        for elc_name in [''.join(line[:ind]), ''.join(line[ind + 1:])]:
-            if '0' in elc_name and elc_name[-1] != '0':
-                elc_name = elc_name.replace('0', '')
-            channels.append(elc_name)
+    channels = read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank1.csv'))
+    channels |= read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank2.csv'))
+    print('good electdeos num: {}'.format(len(channels)))
     print('good electrodes, rh:')
     print([e for e in channels if e[0]=='R'])
     print('good electrodes, lh:')
@@ -68,9 +68,22 @@ def get_good_channels():
     return set(channels)
 
 
+def read_channels_from_csv(csv_fname):
+    from src.mmvt_addon.mmvt_utils import csv_file_reader
+    channels = set()
+    for line in csv_file_reader(csv_fname):
+        elecs_names = []
+        ind = line.index('')
+        for elc_name in [''.join(line[:ind]), ''.join(line[ind + 1:])]:
+            if '0' in elc_name and elc_name[-1] != '0':
+                elc_name = elc_name.replace('0', '')
+            elecs_names.append(elc_name)
+        channels.add('{}-{}'.format(elecs_names[1], elecs_names[0]))
+    return channels
+
 if __name__ == '__main__':
     subject = 'mg96'
-    bipolar = False
+    bipolar = True
     atlas = 'aparc.DKTatlas40'
     error_radius, elec_length = 3, 4
     good_channels = get_good_channels()

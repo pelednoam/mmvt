@@ -64,6 +64,8 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
 def read_electrodes_file(subject, bipolar):
     electrodes_fname = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
     electrodes_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', electrodes_fname)
+    if not op.isfile(electrodes_fname):
+        convert_electrodes_file_to_npy(subject, bipolar, True)
     d = np.load(electrodes_fname)
     return d['names'], d['pos']
 
@@ -497,8 +499,10 @@ def get_rois_colors(rois):
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
     colors = np.array(list(cu.kelly_colors.values())) / 255.0
+    colors_names = list(cu.kelly_colors.keys())
     rois_colors = OrderedDict()
-    for roi, color in zip(not_white_rois, colors):
+    # todo: problem with 'very_light_blue':
+    for roi, color, color_name in zip(not_white_rois, colors, colors_names):
         rois_colors[roi] = color
     for white_roi in white_rois:
         rois_colors[white_roi] = cu.name_to_rgb('white').tolist()

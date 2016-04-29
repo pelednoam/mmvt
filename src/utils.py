@@ -982,9 +982,12 @@ def elec_group_number(elec_name, bipolar=False):
         _, num2 = elec_group_number(elec_name2, False)
         return group, num1, num2
     else:
-        ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
-        num = int(elec_name[ind:])
-        group = elec_name[:ind]
+        elec_name = elec_name.strip()
+        num = int(re.sub('\D', ',', elec_name).split(',')[-1])
+        group = elec_name[:elec_name.rfind(str(num))]
+        # ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
+        # num = int(elec_name[ind:])
+        # group = elec_name[:ind]
         return group, num
 
 

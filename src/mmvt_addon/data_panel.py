@@ -555,10 +555,10 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mu.get_user_fol()
-        source_file = op.join(base_path, 'electrodes_data_{}.npz'.format(
+        source_file = op.join(base_path, 'electrodes', 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
         if not op.isfile(source_file):
-            source_file = op.join(base_path, 'electrodes_data.npz')
+            source_file = op.join(base_path, 'electrodes', 'electrodes_data.npz')
         if not op.isfile(source_file):
             print('No electrodes data file!')
         else:

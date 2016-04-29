@@ -10,7 +10,7 @@ kelly_colors = OrderedDict()
 kelly_colors_dic = dict(vivid_yellow=(255, 179, 0),
                     strong_purple=(128, 62, 117),
                     vivid_orange=(255, 104, 0),
-                    very_light_blue=(166, 189, 215),
+                    #very_light_blue=(166, 189, 215),
                     vivid_red=(193, 0, 32),
                     grayish_yellow=(206, 162, 98),
                     medium_gray=(129, 112, 102),

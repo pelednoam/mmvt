@@ -370,7 +370,7 @@ class ColorElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         threshold = bpy.context.scene.coloring_threshold
-        data = np.load(op.join(mu.get_user_fol(),'electrodes_data_{}.npz'.format(
+        data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         color_object_homogeneously(data, threshold=threshold)
         # deselect_all()
@@ -493,7 +493,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
-        electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(),'electrodes_data_{}.npz'.format(
+        electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))

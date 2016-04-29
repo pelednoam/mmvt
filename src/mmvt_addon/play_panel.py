@@ -266,7 +266,7 @@ def get_electrodes_data(per_condition=True):
 
 
 def init_plotting():
-    data_fname = op.join(mu.get_user_fol(), 'electrodes_data_{}.npz'.format(
+    data_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
     if op.isfile(data_fname):
         d = np.load(data_fname)
