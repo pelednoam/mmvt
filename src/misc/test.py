@@ -2,6 +2,7 @@ import shutil
 import os.path as op
 import csv
 import numpy as np
+from collections import defaultdict
 from src import freesurfer_utils as fu
 from src import utils
 from src.preproc import electrodes_preproc as elec_pre
@@ -11,9 +12,10 @@ LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 OUTPUT_DIR = '/cluster/neuromind/npeled/Documents/darpa_electrodes_csvs'
+OUTPUT_DIR = '/home/noam/Documents/darpa_electrodes_csvs'
 
 
-def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4, p_threshold=0.05):
+def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, groups_ordering=None, error_radius=3, elec_length=4, p_threshold=0.05):
     elecs_names, elecs_coords = elec_pre.read_electrodes_file(subject, bipolar)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
     save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels)
@@ -24,24 +26,27 @@ def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, error_radius=
     rois_colors = elec_pre.get_rois_colors(most_probable_rois)
     elec_pre.save_rois_colors_legend(subject, rois_colors, bipolar)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring'))
-    coloring_name = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
+    results = defaultdict(list)
+    for elec_name, elec_probs in zip(elecs_names, elecs_probs):
+        assert(elec_name == elec_probs['name'])
+        if not good_channels is None and elec_name not in good_channels:
+            continue
+        group = get_elec_group(elec_name, bipolar)
+        roi = elec_pre.get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
+            [*elec_probs['cortical_rois'], *elec_probs['subcortical_rois']], p_threshold)
+        color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
+        results[group].append(dict(name=elec_name, roi=roi, color=color))
     with open(op.join(OUTPUT_DIR, '{}_electrodes_info.csv'.format(subject)), 'w') as csv_file, \
-        open(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring', coloring_name), 'w') as colors_csv_file:
+        open(op.join(BLENDER_ROOT_DIR, 'colin27', 'coloring','electrodes.csv'.format(subject)), 'w') as colors_csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',')
         colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
         elec_ind = 0
-        elecs_name_probs = [(elec_name, elec_probs) for elec_name, elec_probs in zip(elecs_names, elecs_probs)]
-        elecs_name_probs.sort(key=natural_keys)
-        for elec_name, elec_probs in elecs_name_probs:
-            assert(elec_name == elec_probs['name'])
-            if not good_channels is None and elec_name not in good_channels:
-                continue
-            roi = elec_pre.get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
-                [*elec_probs['cortical_rois'], *elec_probs['subcortical_rois']], p_threshold)
-            color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
-            csv_writer.writerow([elec_name, *elecs_coords_mni_dic[elec_name], roi, *color])
-            colors_csv_writer.writerow([elec_name, *color])
-            elec_ind += 1
+        for group in groups_ordering:
+            group_res = sorted(results[group], key=lambda x:natural_keys(x['name']))
+            for res in group_res:
+                csv_writer.writerow([elec_ind, res['name'], *elecs_coords_mni_dic[res['name']], res['roi'], *res['color']])
+                colors_csv_writer.writerow([elec_name, *color])
+                elec_ind += 1
 
 
 def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None):
@@ -81,10 +86,35 @@ def read_channels_from_csv(csv_fname):
         channels.add('{}-{}'.format(elecs_names[1], elecs_names[0]))
     return channels
 
+def get_groups_ordering():
+    groups_ordering = np.genfromtxt(op.join(OUTPUT_DIR, 'groups_order.txt'), dtype=str)
+    return groups_ordering
+
+
+def get_elec_group(elec_name, bipolar):
+    g = elec_group_number(elec_name, bipolar)
+    return g[0]
+
+
+def elec_group_number(elec_name, bipolar=False):
+    import re
+    if bipolar:
+        elec_name2, elec_name1 = elec_name.split('-')
+        group, num1 = elec_group_number(elec_name1, False)
+        _, num2 = elec_group_number(elec_name2, False)
+        return group, num1, num2
+    else:
+        elec_name = elec_name.strip()
+        num = int(re.sub('\D', ',', elec_name).split(',')[-1])
+        group = elec_name[:elec_name.rfind(str(num))]
+        return group, num
+
+
 if __name__ == '__main__':
     subject = 'mg96'
     bipolar = True
     atlas = 'aparc.DKTatlas40'
     error_radius, elec_length = 3, 4
     good_channels = get_good_channels()
-    prepare_darpa_csv(subject, bipolar, atlas, good_channels, error_radius, elec_length)
+    groups_ordering = get_groups_ordering()
+    prepare_darpa_csv(subject, bipolar, atlas, good_channels, groups_ordering, error_radius, elec_length)
