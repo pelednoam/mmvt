@@ -154,7 +154,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(AppearanceMakerPanel)
-        print('Appearance Panel was registered!')
+        # print('Appearance Panel was registered!')
     except:
         print("Can't register Appearance Panel!")
 

@@ -143,7 +143,7 @@ def register():
         bpy.utils.register_class(DataInVertMakerPanel)
         bpy.utils.register_class(CreateVertexData)
         bpy.utils.register_class(ClearVertexData)
-        print('Vertex Panel was registered!')
+        # print('Vertex Panel was registered!')
     except:
         print("Can't register Vertex Panel!")
 

@@ -652,7 +652,7 @@ def register():
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         bpy.utils.register_class(SelectExternalMEGEvoked)
-        print('Data Panel was registered!')
+        # print('Data Panel was registered!')
     except:
         print("Can't register Data Panel!")
 

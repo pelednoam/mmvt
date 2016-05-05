@@ -419,6 +419,10 @@ def init(addon):
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
+        if not ElecsPanel.electrodes_locs:
+            print("!!! Can't find electrodes labeling files in user/electrdes!")
+        if not ElecsPanel.lookup:
+            print('No electrodes lookup table!')
         print("!!! Can't plot electrodes' probabilties !!!")
     if not ElecsPanel.groups or not ElecsPanel.groups_first_electrode or not ElecsPanel.sorted_groups or \
         not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
@@ -426,7 +430,7 @@ def init(addon):
     else:
         register()
         ElecsPanel.init = True
-        print('Electrodes panel initialization completed successfully!')
+        # print('Electrodes panel initialization completed successfully!')
 
 
 def init_leads_list(leads=None):
@@ -523,7 +527,7 @@ def register():
         bpy.utils.register_class(PrevLead)
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
-        print('Electrodes Panel was registered!')
+        # print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
 

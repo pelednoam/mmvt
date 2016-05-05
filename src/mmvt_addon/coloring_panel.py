@@ -182,7 +182,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
             # f = np.load(fname)
             if clusters:
-                f = [c for c in ColoringMakerPanel.fMRI_clusters if c['hemi'] == hemi]
+                f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
@@ -355,6 +355,7 @@ def default_coloring(loop_indices):
 
 
 def fmri_files_update(self, context):
+    #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
     # fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
     for hemi in mu.HEMIS:
@@ -489,7 +490,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         aparc_name = bpy.context.scene.atlas
         faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
         fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
-        fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
+        # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
@@ -506,8 +507,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
-            if fmri_clusters_files_exist:
-                layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
+            # if fmri_clusters_files_exist:
+            #     layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
             if manually_color_files_exist:
                 layout.prop(context.scene, "coloring_files", text="")
                 layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
@@ -611,7 +612,7 @@ def register():
         bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
-        print('Freeview Panel was registered!')
+        # print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
 

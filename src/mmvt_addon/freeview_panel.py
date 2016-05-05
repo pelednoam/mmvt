@@ -251,7 +251,7 @@ def register():
         bpy.utils.register_class(FreeviewPanel)
         bpy.utils.register_class(SliceViewerOpen)
         bpy.utils.register_class(FreeviewKeyboardListener)
-        print('Freeview Panel was registered!')
+        # print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
 

@@ -127,7 +127,7 @@ def register():
         bpy.utils.register_class(SearchClear)
         bpy.utils.register_class(SearchFilter)
         bpy.utils.register_class(SearchExport)
-        print('Search Panel was registered!')
+        # print('Search Panel was registered!')
     except:
         print("Can't register Search Panel!")
 

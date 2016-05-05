@@ -53,7 +53,7 @@ def register():
         unregister()
         bpy.utils.register_class(TransparencyPanel)
         bpy.utils.register_class(UpdateAppearance)
-        print('Transparency Panel was registered!')
+        # print('Transparency Panel was registered!')
     except:
         print("Can't register Transparency Panel!")
 

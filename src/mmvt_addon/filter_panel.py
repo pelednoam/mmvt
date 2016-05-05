@@ -507,7 +507,7 @@ def register():
         bpy.utils.register_class(FindCurveClosestToCursor)
         bpy.utils.register_class(PrevFilterItem)
         bpy.utils.register_class(NextFilterItem)
-        print('Filtering Panel was registered!')
+        # print('Filtering Panel was registered!')
     except:
         print("Can't register Filtering Panel!")
 

@@ -121,7 +121,7 @@ def register():
         bpy.utils.register_class(ShowHideLH)
         bpy.utils.register_class(ShowHideRH)
         bpy.utils.register_class(ShowHideSubCorticals)
-        print('Show Hide Panel was registered!')
+        # print('Show Hide Panel was registered!')
     except:
         print("Can't register Show Hide Panel!")
 

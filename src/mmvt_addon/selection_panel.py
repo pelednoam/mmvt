@@ -173,7 +173,7 @@ def register():
         bpy.utils.register_class(SelectAllElectrodes)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
-        print('Selection Panel was registered!')
+        # print('Selection Panel was registered!')
     except:
         print("Can't register Selection Panel!")
 

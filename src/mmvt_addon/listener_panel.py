@@ -85,7 +85,7 @@ def register():
         bpy.utils.register_class(ListenerPanel)
         bpy.utils.register_class(StartListening)
         bpy.utils.register_class(TestListener)
-        print('Listener Panel was registered!')
+        # print('Listener Panel was registered!')
     except:
         print("Can't register Listener Panel!")
 

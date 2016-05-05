@@ -152,7 +152,7 @@ def register():
         bpy.utils.register_class(WhereAmIMakerPanel)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
-        print('Where am I Panel was registered!')
+        # print('Where am I Panel was registered!')
     except:
         print("Can't register Where am I Panel!")
 

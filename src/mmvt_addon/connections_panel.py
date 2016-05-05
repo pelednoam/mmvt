@@ -517,7 +517,7 @@ class ConnectionsPanel(bpy.types.Panel):
 
 def init(addon):
     connections_file = ''
-    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
+    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_coh.npz')
     meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
     if os.path.isfile(electrodes_connections_file):
         connections_file = electrodes_connections_file
@@ -542,7 +542,7 @@ def init(addon):
         register()
         ConnectionsPanel.addon = addon
         ConnectionsPanel.d = d
-        print('connection panel initialization completed successfully!')
+        # print('connection panel initialization completed successfully!')
 
 
 def register():
@@ -553,7 +553,7 @@ def register():
         bpy.utils.register_class(PlotConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
-        print('ConnectionsPanel was registered!')
+        # print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
 

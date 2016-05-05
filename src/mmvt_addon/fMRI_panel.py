@@ -362,7 +362,7 @@ def init(addon):
     # addon.clear_cortex()
     register()
     fMRIPanel.init = True
-    print('fMRI panel initialization completed successfully!')
+    # print('fMRI panel initialization completed successfully!')
 
 
 def create_lookup_table(clusters_labels):
@@ -385,7 +385,7 @@ def register():
         bpy.utils.register_class(PlotAllBlobs)
         bpy.utils.register_class(RefinefMRIClusters)
         bpy.utils.register_class(LoadMEGData)
-        print('fMRI Panel was registered!')
+        # print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
 

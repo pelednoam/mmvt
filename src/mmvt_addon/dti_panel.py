@@ -120,7 +120,7 @@ def init(addon):
     DTIPanel.addon = addon
     mu.create_empty_if_doesnt_exists(PARENT_OBJ, addon.BRAIN_EMPTY_LAYER, None, 'Brain')
     # DTIPanel.d = d
-    print('DRI panel initialization completed successfully!')
+    # print('DRI panel initialization completed successfully!')
 
 
 def register():
@@ -128,7 +128,7 @@ def register():
         unregister()
         bpy.utils.register_class(DTIPanel)
         bpy.utils.register_class(PlotPathway)
-        print('DTI Panel was registered!')
+        # print('DTI Panel was registered!')
     except:
         print("Can't register DTI Panel!")
 

@@ -110,7 +110,7 @@ def register():
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
         bpy.utils.register_class(RenderFigure)
-        print('Render Panel was registered!')
+        # print('Render Panel was registered!')
     except:
         print("Can't register Render Panel!")
 

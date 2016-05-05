@@ -430,7 +430,7 @@ def init(addon):
     PlayPanel.addon = addon
     bpy.context.scene.play_to = addon.get_max_time_steps()
     init_plotting()
-    print('PlayPanel initialization completed successfully!')
+    # print('PlayPanel initialization completed successfully!')
 
 
 def register():
@@ -446,7 +446,7 @@ def register():
         bpy.utils.register_class(Pause)
         bpy.utils.register_class(ModalTimerOperator)
         bpy.utils.register_class(ExportGraph)
-        print('PlayPanel was registered!')
+        # print('PlayPanel was registered!')
     except:
         print("Can't register PlayPanel!")
         print(traceback.format_exc())
