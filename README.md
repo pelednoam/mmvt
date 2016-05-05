@@ -54,8 +54,8 @@ Beside of that, you can use the tool also on windows.
 - Noam Peled (npeled@mgh.harvard.edu)
 
 ## Acknowledgments
-This tool is part of the [Transform DBS project](https://transformdbs.partners.org/).
-It's sponsored by 
+This tool is being developed as part of the [Transform DBS project](https://transformdbs.partners.org/).
+It's sponsored by:
 - The U.S. Army Research Office and Defense Advanced Research Projects Agency under Cooperative Agreement Number W911NF-14-2-0045. 
 - The NCRR (S10RR014978) and NIH (S10RR031599,R01-NS069696, 5R01-NS060918, U01MH093765)
 
