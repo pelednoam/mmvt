@@ -486,7 +486,8 @@ def get_most_probable_rois(elecs_probs, p_threshold, good_channels=None):
         elecs_probs = list(filter(lambda e:e['name'] in good_channels, elecs_probs))
     probable_rois = set([get_most_probable_roi([*elec['cortical_probs'], *elec['subcortical_probs']],
         [*elec['cortical_rois'], *elec['subcortical_rois']], p_threshold) for elec in elecs_probs])
-    probable_rois.remove('')
+    if '' in probable_rois:
+        probable_rois.remove('')
     return utils.get_hemi_indifferent_rois(probable_rois)
 
 

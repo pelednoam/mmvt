@@ -34,6 +34,6 @@ def matlab_cell_str_to_list(cell_arr):
 
 
 if __name__ == '__main__':
-    mat_fanme = 'my_mat.mat'
+    mat_fanme = '/cluster/neuromind/npeled/Documents/darpa_electrodes_csvs/ChannelPairNames2.mat'
     vars_dic = matlab_cell_arrays_to_dict(mat_fanme)
     pprint(vars_dic)
