@@ -36,8 +36,8 @@ for k in sorted(list(kelly_colors_dic.keys())):
 boynton_colors = ["blue", "red", "green", "yellow", "magenta", "pink", "orange", "brown", "gray"]
 
 
-def get_distinct_colors(colors_num):
-    if colors_num <= len(boynton_colors):
+def get_distinct_colors(colors_num=0):
+    if colors_num == 0 or colors_num <= len(boynton_colors):
         return cycle((np.array([name_to_rgb(c) for c in boynton_colors]) / 255.0).tolist())
     else:
         return cycle((np.array(list(kelly_colors.values())) / 255.0).tolist())

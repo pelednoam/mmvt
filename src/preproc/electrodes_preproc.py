@@ -9,7 +9,7 @@ import csv
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 
-from src import utils
+from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
 
 
@@ -138,7 +138,7 @@ def convert_electrodes_file_to_npy(subject, bipolar=False, copy_to_blender=True)
     output_file = op.join(SUBJECTS_DIR, subject, 'electrodes', output_file_name)
     electrodes_csv_to_npy(csv_file, output_file, bipolar)
     if copy_to_blender:
-        blender_file = op.join(BLENDER_ROOT_DIR, subject, output_file_name)
+        blender_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', output_file_name)
         shutil.copyfile(output_file, blender_file)
     return output_file
 
@@ -160,7 +160,7 @@ def rename_and_convert_electrodes_file(subject):
 
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar, moving_average_win_size=0):
     input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes_data.mat')
-    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data_{}.npz'.format(
+    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if not op.isfile(input_file):
         print('No electrodes data file!!!')
@@ -265,7 +265,7 @@ def find_first_electrode_per_group(electrodes, positions, bipolar=False):
     return first_electrodes, first_pos, groups
 
 
-def get_groups_pos(electrodes, positions):
+def get_groups_pos(electrodes, positions, bipolar):
     groups = defaultdict(list)
     for elc, pos in zip(electrodes, positions):
         elc_group = utils.elec_group(elc, bipolar)
@@ -273,8 +273,8 @@ def get_groups_pos(electrodes, positions):
     return groups
 
 
-def find_groups_hemi(electrodes, transformed_positions):
-    groups = get_groups_pos(electrodes, transformed_positions)
+def find_groups_hemi(electrodes, transformed_positions, bipolar):
+    groups = get_groups_pos(electrodes, transformed_positions, bipolar)
     groups_hemi = {}
     for group, positions in groups.items():
         trans_pos = np.array(positions)
@@ -307,10 +307,10 @@ def sort_electrodes_groups(subject, bipolar, do_plot=True):
     transformed_pos = pca.transform(pos)
     # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
     transformed_first_pos = pca.transform(first_pos)
-    groups_hemi = find_groups_hemi(electrodes, transformed_pos)
+    groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
     sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
     print(sorted_groups)
-    utils.save(sorted_groups, op.join(BLENDER_ROOT_DIR, subject, 'sorted_groups.pkl'))
+    utils.save(sorted_groups, op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
     if do_plot:
         # utils.plot_3d_scatter(pos, names=electrodes.tolist(), labels=first_electrodes.values())
         # electrodes_3d_scatter_plot(pos, first_pos)
@@ -342,7 +342,7 @@ def read_edf(edf_fname, from_t, to_t):
 
 def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by_percentile=True,
                                 norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
-                                flip_cm_small=True, moving_average_win_size=0, do_plot=False):
+                                flip_cm_small=True, moving_average_win_size=0, stat = STAT_DIFF, do_plot=False):
     import mne.io
     edf_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', edf_name)
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
@@ -365,7 +365,7 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
     conditions = [c['name'] for c in conds]
     data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes{}_data_{}.npz'.format(
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
         '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if moving_average_win_size > 0:
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
@@ -456,11 +456,14 @@ def electrodes_3d_scatter_plot(pos, pos2=None):
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
         p_threshold=0.05, legend_name='', coloring_fname=''):
     elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
-    elecs_probs = utils.get_electrodes_labeling(subject, atlas, bipolar, error_radius, elec_length)
+    elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(subject, atlas, bipolar, error_radius, elec_length)
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
-    rois_colors = get_rois_colors(get_most_probable_rois(elecs_probs, p_threshold, good_channels))
+    shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+        op.basename(electrode_labeling_fname)))
+    most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
+    rois_colors = get_rois_colors(most_probable_rois)
     save_rois_colors_legend(subject, rois_colors, bipolar, legend_name)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
     if coloring_fname == '':
@@ -473,8 +476,9 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
                 continue
             roi = get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
                 [*elec_probs['cortical_rois'], *elec_probs['subcortical_rois']], p_threshold)
-            color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
-            colors_csv_writer.writerow([elec_name, *color])
+            if roi != '':
+                color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
+                colors_csv_writer.writerow([elec_name, *color])
 
 
 def get_most_probable_rois(elecs_probs, p_threshold, good_channels=None):
@@ -482,12 +486,17 @@ def get_most_probable_rois(elecs_probs, p_threshold, good_channels=None):
         elecs_probs = list(filter(lambda e:e['name'] in good_channels, elecs_probs))
     probable_rois = set([get_most_probable_roi([*elec['cortical_probs'], *elec['subcortical_probs']],
         [*elec['cortical_rois'], *elec['subcortical_rois']], p_threshold) for elec in elecs_probs])
+    probable_rois.remove('')
     return utils.get_hemi_indifferent_rois(probable_rois)
 
 
 def get_most_probable_roi(probs, rois, p_threshold):
     probs_rois = sorted([(p, r) for p, r in zip(probs, rois)])[::-1]
-    if 'white' in probs_rois[0][1].lower():
+    if len(probs_rois) == 0:
+        roi = ''
+    elif len(probs_rois) == 1 and 'white' in probs_rois[0][1].lower():
+        roi = probs_rois[0][1]
+    elif 'white' in probs_rois[0][1].lower():
         roi = probs_rois[1][1] if probs_rois[1][0] > p_threshold else probs_rois[0][1]
     else:
         roi = probs_rois[0][1]
@@ -498,11 +507,11 @@ def get_rois_colors(rois):
     not_white_rois = set(filter(lambda r:'white' not in r.lower(), rois))
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
-    colors = np.array(list(cu.kelly_colors.values())) / 255.0
-    colors_names = list(cu.kelly_colors.keys())
+    # colors = np.array(list(cu.kelly_colors.values())) / 255.0
+    colors = cu.get_distinct_colors()
     rois_colors = OrderedDict()
     # todo: problem with 'very_light_blue':
-    for roi, color, color_name in zip(not_white_rois, colors, colors_names):
+    for roi, color in zip(not_white_rois, colors):
         rois_colors[roi] = color
     for white_roi in white_rois:
         rois_colors[white_roi] = cu.name_to_rgb('white').tolist()
@@ -524,71 +533,67 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
 
-def main(args):
-    subject, task, atlas = args['subject'], args['task'], args['atlas']
-    conditions = utils.get_args_list(args, 'conditions')
+def main(subject, args):
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
     if args['to_t'].isnumeric() and args['from_t'].isnumeric():
         from_t, to_t, indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
         from_t_ind, to_t_ind = from_t + indices_shift, to_t + indices_shift
     elif ',' in args['to_t'] and ',' in args['from_t'] and ',' in args['conditions']:
         to_t = list(map(int, args['to_t'].split(',')))
         from_t = list(map(int, args['to_t'].split(',')))
-        assert (len(to_t) == len(from_t) == len(conditions))
+        assert (len(to_t) == len(from_t) == len(args.conditions))
     else:
         print('No from_t, to_t and conditions!')
-    bipolar = args['bipolar'] == '1'
+
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-    if task == 'ECR':
+    if args.task == 'ECR':
         conditions = ['happy', 'fear']
-    elif task == 'MSIT':
+    elif args.task == 'MSIT':
         conditions = ['noninterference', 'interference']
-    elif task == 'seizure':
+    elif args.task == 'seizure':
         conditions = [dict(name='baseline', from_t=from_t[0], to_t=to_t[0]),
                       dict(name='seizure', from_t=from_t[1], to_t=to_t[1])]
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
     else:
         if isinstance(from_t, Iterable) and isinstance(to_t, Iterable):
             conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
-                          zip(conditions, from_t, to_t)]
+                          zip(args.conditions, from_t, to_t)]
 
-    func, raw_data_fname = args['function'], args['raw_fname']
-    ex_func = utils.get_args_list(args, 'ex_func')
-    do_plot = args['do_plot'] == '1'
-
-    # *) Read the electrodes data
-    if func in ['convert_electrodes_file', 'all'] and 'convert_electrodes_file' not in ex_func:
-        electrodes_file = convert_electrodes_file_to_npy(subject, bipolar=bipolar)
-    if func in ['sort_electrodes_groups', 'all'] and 'sort_electrodes_groups' not in ex_func:
-        sort_electrodes_groups(subject, bipolar, do_plot=do_plot)
-    if func in ['electrode_data', 'all'] and 'electrode_data' not in ex_func and electrodes_file:
+    if 'all' in args.function or 'convert_electrodes_file_to_npy' in args.function:
+        convert_electrodes_file_to_npy(subject, bipolar=args.bipolar)
+    if 'all' in args.function or 'sort_electrodes_groups' in args.function:
+        sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
+    if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
         for stat in [STAT_AVG, STAT_DIFF]:
-            create_electrode_data_file(subject, task, from_t_ind, to_t_ind, stat, conditions, bipolar)
-    if func in ['labeling_coloring', 'all'] and 'labeling_coloring' not in ex_func:
-        create_electrodes_labeling_coloring(subject, bipolar, atlas)
-    if func in ['show_labeling_coloring', 'all'] and 'show_labeling_coloring' not in ex_func:
-        legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if bipolar else '')
+            create_electrode_data_file(subject, args.task, from_t_ind, to_t_ind, stat, conditions, args.bipolar)
+    if 'all' in args.function or 'create_electrodes_labeling_coloring' in args.function:
+        create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
+    if 'show_image' in args.function:
+        legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
-    if func in ['raw_data', 'all'] and 'raw_data' not in ex_func:
-        create_raw_data_for_blender(subject, raw_data_fname, conditions, do_plot=do_plot)
+    if 'create_raw_data_for_blender' in args.function and not args.task is None:
+        create_raw_data_for_blender(subject, args.raw_data_fname, conditions, do_plot=args.do_plot)
 
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 if __name__ == '__main__':
+    from src.utils import args_utils as au
     import argparse
-    parser = argparse.ArgumentParser(description='electrodes preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser = argparse.ArgumentParser(description='MMVT electrodes preprocessing')
+    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-t', '--task', help='task', required=False)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=True)
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default='0')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=bool)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default='0') # was -500
     parser.add_argument('--to_t', help='to_t', required=False, default='0') # was 2000
     parser.add_argument('--indices_shift', help='indices_shift', required=False, default='0') # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
-    parser.add_argument('--ex_func', help='exclude functions', required=False, default='')
-    parser.add_argument('--do_plot', help='do plot', required=False, default='0')
-    args = vars(parser.parse_args())
+    parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=bool)
+    args = utils.Bag(au.parse_parser(parser))
     print(args)
-    main(args)
+    for subject in args.subject:
+        main(subject, args)
     print('finish!')

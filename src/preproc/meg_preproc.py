@@ -11,7 +11,7 @@ import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
-from src import utils
+from src.utils import utils
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')

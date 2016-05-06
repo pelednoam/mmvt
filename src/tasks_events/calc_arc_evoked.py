@@ -3,7 +3,7 @@ import mne
 import os.path as op
 from src.preproc import meg_preproc
 from src.preproc import anatomy_preproc
-from src import utils
+from src.utils import utils
 import glob
 import shutil
 from collections import defaultdict

@@ -3,7 +3,7 @@ import os.path as op
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src import utils
+from src.utils import utils
 # from src import preproc_for_blender
 
 LINKS_DIR = utils.get_links_dir()

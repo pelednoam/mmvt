@@ -1,5 +1,6 @@
-import sys
 import platform
+import sys
+
 print(sys.version)
 print(platform.python_version())
 try:
@@ -37,8 +38,8 @@ import shutil
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from src import utils
-from src import freesurfer_utils as fu
+from src.utils import utils
+from src.utils import freesurfer_utils as fu
 from src.preproc import meg_preproc as meg
 
 LINKS_DIR = utils.get_links_dir()

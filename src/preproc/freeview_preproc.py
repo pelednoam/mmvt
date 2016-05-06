@@ -5,7 +5,7 @@ import shutil
 import time
 import csv
 from mne.label import _read_annot
-from src import utils
+from src.utils import utils
 
 
 LINKS_DIR = utils.get_links_dir()
@@ -142,10 +142,11 @@ def create_electrodes_points(subject, bipolar=False, create_points_files=True, c
 
 
 def copy_T1(subject):
-    blender_T1 = op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz')
-    subject_T1 = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
-    if not op.isfile(blender_T1):
-        utils.copy_file(subject_T1, blender_T1)
+    for brain_file in ['T1.mgz', 'orig.mgz']:
+        blender_brain_file = op.join(BLENDER_ROOT_DIR, subject, 'freeview', brain_file)
+        subject_brain_file = op.join(SUBJECTS_DIR, subject, 'mri', brain_file)
+        if not op.isfile(blender_brain_file):
+            utils.copy_file(subject_brain_file, blender_brain_file)
 
 
 def read_vox2ras0():
@@ -160,26 +161,37 @@ def read_vox2ras0():
     print('sdf')
 
 
-def main(subject, aparc_name, bipolar, overwrite_aseg_file=False, create_volume_file=False):
+def main(subject, args):
     # Create the files for freeview bridge
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
-    copy_T1(subject)
-    create_freeview_cmd(subject, aparc_name, bipolar)
-    create_electrodes_points(subject, bipolar, create_points_files=True, create_volume_file=create_volume_file, way_points=False)
-    create_aparc_aseg_file(subject, aparc_name, overwrite=overwrite_aseg_file)
-    create_lut_file_for_atlas(subject, aparc_name)
+    if 'all' in args.function or 'copy_T1' in args.function:
+        copy_T1(subject)
+    if 'all' in args.function or 'create_freeview_cmd' in args.function:
+        create_freeview_cmd(subject, args.atlas, args.bipolar)
+    if 'all' in args.function or 'create_electrodes_points' in args.function:
+        create_electrodes_points(subject, args.bipolar, create_points_files=True,
+                                 create_volume_file=args.create_volume_file, way_points=False)
+    if 'all' in args.function or 'create_aparc_aseg_file' in args.function:
+        create_aparc_aseg_file(subject, args.aparc_name, overwrite=args.overwrite_aseg_file)
+    if 'all' in args.function or 'create_lut_file_for_atlas' in args.function:
+        create_lut_file_for_atlas(subject, args.atlas)
 
 
 if __name__ == '__main__':
-    import sys
-    subject = sys.argv[1] if len(sys.argv) > 1 else 'pp009'
-    aparc_name = sys.argv[2] if len(sys.argv) > 2 else 'arc_april2016'
-    bipolar = False
-    overwrite_aseg_file = False
-    create_volume_file = True
-    print('subject: {}, atlas: {}, bipolar: {}'.format(subject, aparc_name, bipolar))
-    main(subject, aparc_name, bipolar, overwrite_aseg_file, create_volume_file)
-    # create_electrodes_points(subject, bipolar, create_volume_file=False)
-    # create_freeview_cmd(subject, aparc_name, bipolar)
-    # create_lut_file_for_atlas(subject, aparc_name)
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')
+
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT freeview preprocessing')
+    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=bool)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=bool)
+    parser.add_argument('--create_volume_file', help='create_volume_file', required=False, default=1, type=bool)
+    args = utils.Bag(au.parse_parser(parser))
+    print(args)
+    for subject in args.subject:
+        main(subject, args)
     print('finish!')

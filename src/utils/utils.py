@@ -288,23 +288,24 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
 
 def get_links_dir():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
-    proj_dir = os.path.split(curr_dir)[0]
-    code_dir = os.path.split(proj_dir)[0]
+    code_dir = os.path.split(os.path.split(os.path.split(curr_dir)[0])[0])[0]
     links_dir = os.path.join(code_dir, 'links')
     return links_dir
 
 
 def get_electrodes_labeling(subject, atlas, bipolar=False, error_radius=3, elec_length=4):
     curr_dir = os.path.dirname(os.path.realpath(__file__))
-    proj_dir = os.path.split(curr_dir)[0]
+    src_dir = os.path.split(curr_dir)[0]
+    proj_dir = os.path.split(src_dir)[0]
     code_dir = os.path.split(proj_dir)[0]
     electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
         '{}_{}_electrodes_all_rois_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
         '_bipolar_stretch' if bipolar else ''))
     if op.isfile(electrode_labeling_fname):
-        return load(electrode_labeling_fname)
+        labeling = load(electrode_labeling_fname)
+        return labeling, electrode_labeling_fname
     else:
-        return None
+        return None, None
 
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
 #     names = {}
@@ -737,8 +738,9 @@ def run_parallel(func, params, njobs=1):
     return results
 
 
-def get_parent_fol():
-    curr_dir = os.path.dirname(os.path.realpath(__file__))
+def get_parent_fol(curr_dir=''):
+    if curr_dir == '':
+        curr_dir = os.path.dirname(os.path.realpath(__file__))
     return os.path.split(curr_dir)[0]
 
 
@@ -1196,19 +1198,19 @@ def get_hemi_indifferent_rois(rois):
     return set(map(lambda roi:get_hemi_indifferent_roi(roi), rois))
 
 
-def get_args_list(args, key):
-    if ',' in args[key]:
-        ret = args[key].split(',')
-    elif len(args[key]) == 0:
-        ret = []
-    else:
-        ret = [args[key]]
-    return ret
-
-
 def show_image(image_fname):
     image = mpimg.imread(image_fname)
     plt.axis("off")
     plt.imshow(image)
     plt.tight_layout()
     plt.show()
+
+
+def get_n_jobs(n_jobs):
+    cpu_num = multiprocessing.cpu_count()
+    n_jobs = int(n_jobs)
+    if n_jobs > cpu_num:
+        n_jobs = cpu_num
+    elif n_jobs < 0:
+        n_jobs = cpu_num + n_jobs
+    return n_jobs

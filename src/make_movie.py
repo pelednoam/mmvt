@@ -5,7 +5,7 @@ from matplotlib import gridspec
 import os.path as op
 import glob
 from PIL import Image
-from src import utils
+from src.utils import utils
 import time
 import numbers
 import os

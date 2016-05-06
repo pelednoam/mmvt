@@ -5,7 +5,7 @@ import os.path as op
 import numpy as np
 import os
 import shutil
-from src import utils
+from src.utils import utils
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')

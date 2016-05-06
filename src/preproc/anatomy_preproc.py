@@ -2,22 +2,24 @@ import glob
 import os
 import os.path as op
 import shutil
+import traceback
+from collections import Counter, defaultdict
+
+import mne
 import numpy as np
 import scipy.io as sio
-from collections import Counter, defaultdict
-import mne
-import traceback
-from src import utils
-from src import matlab_utils
-from src import labels_utils as lu
-from src import freesurfer_utils as fu
+
+from src.utils import labels_utils as lu
+from src.utils import matlab_utils
+from src.utils import utils
+
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
-BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(), 'brainder_scripts')
+BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
 ASEG_TO_SRF = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf -s "{}"') # -o {}'
 HEMIS = ['rh', 'lh']
 
@@ -208,9 +210,9 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
     return lookup
 
 
-def create_annotation_file_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
-        overwrite_annotation=False, overwrite_morphing=False, solve_labels_collisions=False,
-        morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
+def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
+                                     overwrite_annotation=False, overwrite_morphing=False, solve_labels_collisions=False,
+                                     morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
     existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
@@ -385,68 +387,78 @@ def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
 def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_annotation=False, fsaverage='fsaverage',
          overwrite_morphing_labels=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
          overwrite_ply_files=False, overwrite_faces_verts=False, solve_labels_collisions=False,
-         morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=1):
+         morph_labels_from_fsaverage=True, fs_labels_fol='', func_to_run=['all'], n_jobs=1):
     # todo: When possivble, read verts and faces from the nzp and not from ply files
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    # *) Prepare the local subject's folder
-    flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
-        neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=False)
+    if 'all' in func_to_run or 'prepare_local_subjects_folder' in func_to_run:
+        # *) Prepare the local subject's folder
+        flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
+            neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=False)
 
-    # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-    flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
+    if 'all' in func_to_run or 'freesurfer_surface_to_blender_surface' in func_to_run:
+        # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
+        flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
 
-    # *) Create annotation file from fsaverage
-    flags['annot'] = create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
-        overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-        morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
+    if 'all' in func_to_run or 'create_annotation_from_fsaverage' in func_to_run:
+        # *) Create annotation file from fsaverage
+        flags['annot'] = create_annotation_from_fsaverage(
+            subject, aparc_name, fsaverage, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
+            morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
 
-    # *) Calls Matlab 'splitting_cortical.m' script
-    flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, overwrite_ply_files)
+    if 'all' in func_to_run or 'parcelate_cortex' in func_to_run:
+        # *) Calls Matlab 'splitting_cortical.m' script
+        flags['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite_labels_ply_files, overwrite_ply_files)
 
-    # *) Create srf files for subcortical structures
-    # !!! Should source freesurfer !!!
-    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
-    flags['subcortical'] = subcortical_segmentation(subject)
+    if 'all' in func_to_run or 'subcortical_segmentation' in func_to_run:
+        # *) Create srf files for subcortical structures
+        # !!! Should source freesurfer !!!
+        # Remember that you need to have write permissions on SUBJECTS_DIR!!!
+        flags['subcortical'] = subcortical_segmentation(subject)
 
-    # *) Create a dictionary for verts and faces for both hemis
-    flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite_faces_verts)
+    if 'all' in func_to_run or 'calc_faces_verts_dic' in func_to_run:
+        # *) Create a dictionary for verts and faces for both hemis
+        flags['faces_verts'] = calc_faces_verts_dic(subject, overwrite_faces_verts)
 
-    # *) Save the labels vertices for meg label plotting
-    flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
+    if 'all' in func_to_run or 'save_labels_vertices' in func_to_run:
+        # *) Save the labels vertices for meg label plotting
+        flags['labels_vertices'] = save_labels_vertices(subject, aparc_name)
 
-    # *) Create the subject's connectivity
-    flags['connectivity'] = create_spatial_connectivity(subject)
+    if 'all' in func_to_run or 'create_spatial_connectivity' in func_to_run:
+        # *) Create the subject's connectivity
+        flags['connectivity'] = create_spatial_connectivity(subject)
 
-    # *) Check the pial surfaces
-    flags['ply_files'] = check_ply_files(subject)
+    if 'all' in func_to_run or 'check_ply_files' in func_to_run:
+        # *) Check the pial surfaces
+        flags['ply_files'] = check_ply_files(subject)
 
-    # *) Calc the labels center of mass
-    flags['center_of_msas'] =  calc_lavels_center_of_mass(
-        subject, aparc_name, read_from_annotation=True, surf_name='pial')
+    if 'all' in func_to_run or 'calc_lavels_center_of_mass' in func_to_run:
+        # *) Calc the labels center of mass
+        flags['center_of_msas'] =  calc_lavels_center_of_mass(
+            subject, aparc_name, read_from_annotation=True, surf_name='pial')
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))
     return flags
 
 
-def run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
-        solve_labels_collisions=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
-        overwrite_faces_verts=False, morph_labels_from_fsaverage=True, fsaverage='fsaverage', fs_labels_fol='', n_jobs=1):
+# def run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
+#         solve_labels_collisions=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
+#         overwrite_faces_verts=False, morph_labels_from_fsaverage=True, fsaverage='fsaverage', fs_labels_fol='', n_jobs=1):
+def run_on_subjects(subjects, neccesary_files, args, n_jobs):
     subjects_flags, subjects_errors = {}, {}
     for subject in subjects:
-        remote_subject_dir = op.join(remote_subjects_dir, subject)
+        remote_subject_dir = op.join(args.remote_subjects_dir, subject)
         utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
         try:
             print('*******************************************')
-            print('subject: {}, atlas: {}'.format(subject, aparc_name))
+            print('subject: {}, atlas: {}'.format(subject, args.atlas))
             print('*******************************************')
-            flags = main(subject, aparc_name, neccesary_files, remote_subject_dir,
-                overwrite_annotation=overwrite_annotation, overwrite_morphing_labels=overwrite_morphing_labels,
-                overwrite_hemis_srf=overwrite_hemis_srf, overwrite_labels_ply_files=overwrite_labels_ply_files,
-                overwrite_faces_verts=overwrite_faces_verts, solve_labels_collisions=solve_labels_collisions,
-                morph_labels_from_fsaverage=morph_labels_from_fsaverage, fsaverage=fsaverage,
-                fs_labels_fol=fs_labels_fol, n_jobs=n_jobs)
+            flags = main(subject, args.atlas, neccesary_files, remote_subject_dir, args.overwrite_annotation,
+                         args.fsaverage, args.overwrite_morphing_labels, args.overwrite_hemis_srf,
+                         args.overwrite_labels_ply_files, args.overwrite_labels_ply_files, args.overwrite_faces_verts,
+                         args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol,
+                         args.function, n_jobs)
             subjects_flags[subject] = flags
         except:
             subjects_errors[subject] = traceback.format_exc()
@@ -477,6 +489,30 @@ if __name__ == '__main__':
     # download the folder 'brainder_scripts' from the git,
     # and put it under the main mmvt folder.
     # ******************************************************************
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')
+
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
+    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('-fsaverage', help='fsaverage', required=False, default='fsaverage')
+    parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
+    parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=bool)
+    parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=bool)
+    parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=bool)
+    parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=bool)
+    parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=bool)
+    parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=bool)
+    parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=bool)
+    parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    args = utils.Bag(au.parse_parser(parser))
+    print(args)
+    subjects, atlas = args.subject, args.atlas # 'arc_april2016' # 'aparc.DKTatlas40' # 'laus250'
+    n_jobs = utils.get_n_jobs(args.n_jobs)
 
     # Files needed in the local subject folder
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
@@ -485,50 +521,16 @@ if __name__ == '__main__':
     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
 
-    overwrite_annotation = False
-    overwrite_morphing_labels = False
-    overwrite_hemis_srf = False
-    overwrite_labels_ply_files = False
-    overwrite_faces_verts = False
-    solve_labels_collisions = False
-    morph_labels_from_fsaverage = True
-    fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
+    run_on_subjects(subjects, neccesary_files, args, n_jobs)
 
-    fsaverage = 'fscopy' # 'fsaverage'
-    aparc_name = 'laus250' # 'arc_april2016' #''aparc.DKTatlas40' #' #
-    n_jobs = 6
-
+    # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
+    # fsaverage = 'fscopy' # 'fsaverage'
+    # aparc_name = 'laus250' # 'arc_april2016' #''aparc.DKTatlas40' #' #
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
     # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
     # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
-    remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
-    subjects = ['mg78', 'mg82'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
-    # run_on_subjects(
-    #     subjects, remote_subjects_dir, overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-    #     overwrite_hemis_srf, overwrite_labels_ply_files, overwrite_faces_verts, morph_labels_from_fsaverage, fsaverage,
-    #     fs_labels_fol, n_jobs)
+    # remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
+    # subjects = ['mg78', 'mg82'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
 
-    subject = 'fsaverage'
-    utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    save_labels_vertices(subject, aparc_name)
-    # freesurfer_surface_to_blender_surface(subject, overwrite=False)
-    # create_spatial_connectivity(subject)
 
-    # freesurfer_surface_to_blender_surface(subject, overwrite=overwrite_hemis_srf)
-    # create_annotation_file_from_fsaverage(subject, aparc_name, fsaverage,
-    #     overwrite_annotation, overwrite_morphing_labels, solve_labels_collisions,
-    #     morph_labels_from_fsaverage, fs_labels_fol, n_jobs)
-    # calc_lavels_center_of_mass(subject, aparc_name, read_from_annotation=False)
-
-    # aparc_name = 'laus250'
-    # users_flags = {}
-    # subjects = ['mg78']
-    # for subject in subjects:
-    #     subcortical_segmentation(subject)
-    #     users_flags[subject] = {}
-    #     users_flags[subject]['parc_cortex'] = parcelate_cortex(subject, aparc_name, overwrite=True, overwrite_ply_files=True)
-    #     users_flags[subject]['labels_vertices'] = save_labels_vertices(subject, aparc_name)
-    # for subject in subjects:
-    #     for flag_type, val in users_flags[subject].items():
-    #         print('{}: {} {}'.format(subject, flag_type, val))
     print('finish!')

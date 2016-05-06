@@ -1,12 +1,14 @@
-import shutil
-import os.path as op
 import csv
-import numpy as np
+import os.path as op
+import shutil
 from collections import defaultdict
-from src import freesurfer_utils as fu
-from src import utils
-from src.preproc import electrodes_preproc as elec_pre
+
+import numpy as np
+
+from src.utils import utils
 from src.mmvt_addon.mmvt_utils import natural_keys
+from src.preproc import electrodes_preproc as elec_pre
+from src.utils import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')

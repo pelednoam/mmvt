@@ -12,7 +12,7 @@ from nibabel.spatialimages import ImageFileError
 import logging
 logger = logging.getLogger('surfer')
 
-from src import utils
+from src.utils import utils
 
 mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.dat'
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'

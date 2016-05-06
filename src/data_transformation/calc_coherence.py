@@ -4,7 +4,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from mne.connectivity import spectral_connectivity
 import time
-from src import utils
+from src.utils import utils
 # from src import preproc_for_blender
 
 LINKS_DIR = utils.get_links_dir()
