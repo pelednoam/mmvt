@@ -63,13 +63,15 @@ def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None):
 
 
 def get_good_channels():
-    channels = read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank1.csv'))
-    channels |= read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank2.csv'))
+    channels1 = read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank1.csv'))
+    channels2 = read_channels_from_csv(op.join(OUTPUT_DIR, 'MG96MSITnostimChannelPairNamesBank2.csv'))
+    channels = channels1 | channels2
     print('good electdeos num: {}'.format(len(channels)))
     print('good electrodes, rh:')
     print([e for e in channels if e[0]=='R'])
     print('good electrodes, lh:')
     print([e for e in channels if e[0]=='L'])
+    print('number of electrodes: {}'.format(len(channels)))
     return set(channels)
 
 
