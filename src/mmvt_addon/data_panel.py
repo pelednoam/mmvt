@@ -121,6 +121,19 @@ def import_subcorticals(base_path):
     bpy.ops.object.select_all(action='DESELECT')
 
 
+class AnatomyPreproc(bpy.types.Operator):
+    bl_idname = "ohad.anatomy_preproc"
+    bl_label = "anatomy_preproc"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        cmd = '{} -m src.preproc.anatomy_preproc -s {} -a {}'.format(
+            bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
+        print('Running {}'.format(cmd))
+        mu.run_command_in_new_thread(cmd, False)
+        return {"FINISHED"}
+
+
 class ImportBrain(bpy.types.Operator):
     bl_idname = "ohad.brain_importing"
     bl_label = "import2 brain"
@@ -588,6 +601,7 @@ class DataMakerPanel(bpy.types.Panel):
         col = self.layout.column(align=True)
         col.prop(context.scene, 'atlas', text="Atlas")
         # if not bpy.types.Scene.brain_imported:
+        col.operator("ohad.anatomy_preproc", text="Run Preporc", icon='BLENDER')
         col.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
@@ -650,6 +664,7 @@ def register():
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
+        bpy.utils.register_class(AnatomyPreproc)
         bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         bpy.utils.register_class(SelectExternalMEGEvoked)
         # print('Data Panel was registered!')
@@ -666,6 +681,7 @@ def unregister():
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportBrain)
+        bpy.utils.unregister_class(AnatomyPreproc)
         bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
         bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:

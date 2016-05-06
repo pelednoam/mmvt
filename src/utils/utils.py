@@ -21,6 +21,7 @@ from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
 import scipy.io as sio
+from src.mmvt_addon import mmvt_utils as mu
 
 try:
     import cPickle as pickle
@@ -517,11 +518,13 @@ def rmtree(fol):
     if os.path.isdir(fol):
         shutil.rmtree(fol)
 
-def make_dir(fol):
-    if not os.path.isdir(fol):
-        os.makedirs(fol)
-    return fol
+make_dir = mu.make_dir
+# def make_dir(fol):
+#     if not os.path.isdir(fol):
+#         os.makedirs(fol)
+#     return fol
 
+hemi_files_exists = mu.hemi_files_exists
 
 def get_subfolders(fol):
     return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
@@ -975,30 +978,29 @@ def stack(arr, stack_type='v'):
     return X
 
 
-def elec_group_number(elec_name, bipolar=False):
-    if isinstance(elec_name, bytes):
-        elec_name = elec_name.decode('utf-8')
-    if bipolar:
-        elec_name2, elec_name1 = elec_name.split('-')
-        group, num1 = elec_group_number(elec_name1, False)
-        _, num2 = elec_group_number(elec_name2, False)
-        return group, num1, num2
-    else:
-        elec_name = elec_name.strip()
-        num = int(re.sub('\D', ',', elec_name).split(',')[-1])
-        group = elec_name[:elec_name.rfind(str(num))]
-        # ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
-        # num = int(elec_name[ind:])
-        # group = elec_name[:ind]
-        return group, num
+elec_group_number = mu.elec_group_number
+elec_group = mu.elec_group
+# def elec_group_number(elec_name, bipolar=False):
+#     if isinstance(elec_name, bytes):
+#         elec_name = elec_name.decode('utf-8')
+#     if bipolar:
+#         elec_name2, elec_name1 = elec_name.split('-')
+#         group, num1 = elec_group_number(elec_name1, False)
+#         _, num2 = elec_group_number(elec_name2, False)
+#         return group, num1, num2
+#     else:
+#         elec_name = elec_name.strip()
+#         num = int(re.sub('\D', ',', elec_name).split(',')[-1])
+#         group = elec_name[:elec_name.rfind(str(num))]
+#         return group, num
 
 
-def elec_group(elec_name, bipolar):
-    if bipolar:
-        group, _, _ = elec_group_number(elec_name, bipolar)
-    else:
-        group, _ = elec_group_number(elec_name, bipolar)
-    return group
+# def elec_group(elec_name, bipolar):
+#     if bipolar:
+#         group, _, _ = elec_group_number(elec_name, bipolar)
+#     else:
+#         group, _ = elec_group_number(elec_name, bipolar)
+#     return group
 
 
 def max_min_diff(x):

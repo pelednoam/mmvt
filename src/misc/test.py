@@ -69,11 +69,7 @@ def get_good_channels():
     channels1 = read_channels_from_csv(op.join(OUTPUT_DIR, 'ChannelPairNamesBank1.csv'))
     channels2 = read_channels_from_csv(op.join(OUTPUT_DIR, 'ChannelPairNamesBank2.csv'))
     channels = channels1 | channels2
-    print('good electdeos num: {}'.format(len(channels)))
     print('good electrodes, rh:')
-    print([e for e in channels if e[0]=='R'])
-    print('good electrodes, lh:')
-    print([e for e in channels if e[0]=='L'])
     print('number of electrodes: {}'.format(len(channels)))
     return set(channels)
 
@@ -99,22 +95,9 @@ def get_groups_ordering():
 
 
 def get_elec_group(elec_name, bipolar):
-    g = elec_group_number(elec_name, bipolar)
+    g = utils.elec_group_number(elec_name, bipolar)
     return g[0]
 
-
-def elec_group_number(elec_name, bipolar=False):
-    import re
-    if bipolar:
-        elec_name2, elec_name1 = elec_name.split('-')
-        group, num1 = elec_group_number(elec_name1, False)
-        _, num2 = elec_group_number(elec_name2, False)
-        return group, num1, num2
-    else:
-        elec_name = elec_name.strip()
-        num = int(re.sub('\D', ',', elec_name).split(',')[-1])
-        group = elec_name[:elec_name.rfind(str(num))]
-        return group, num
 
 
 if __name__ == '__main__':

@@ -12,6 +12,7 @@ import scipy.io as sio
 from src.utils import labels_utils as lu
 from src.utils import matlab_utils
 from src.utils import utils
+from src.utils import freesurfer_utils as fu
 
 
 LINKS_DIR = utils.get_links_dir()
@@ -211,32 +212,42 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
 
 
 def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
-                                     overwrite_annotation=False, overwrite_morphing=False, solve_labels_collisions=False,
-                                     morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
+        overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
+        morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
     existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
     if '{}.annot'.format(aparc_name) in existing_freesurfer_annotations:
         morph_labels_from_fsaverage = False
-        solve_labels_collisions = False
+        do_solve_labels_collisions = False
         if not annotations_exist:
             fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
     if morph_labels_from_fsaverage:
         utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
-    if solve_labels_collisions:
-        backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
-        lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
-        lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
+    if do_solve_labels_collisions:
+        solve_labels_collisions(subject, aparc_name, fsaverage)
     # Note that using the current mne version this code won't work, because of collissions between hemis
     # You need to change the mne.write_labels_to_annot code for that.
     if overwrite_annotation or not annotations_exist:
         try:
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
-            print("Can't write labels to annotation!")
+            print("Can't write labels to annotation! Trying to solve labels collision")
+            solve_labels_collisions(subject, aparc_name, fsaverage)
+        try:
+            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        except:
+            print("Can't write labels to annotation! Solving the labels collision didn't help...")
+            print(traceback.format_exc())
     return utils.both_hemi_files_exist(op.join(
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
+
+
+def solve_labels_collisions(subject, aparc_name, fsaverage):
+    backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
+    lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
+    lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
 
 
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):
@@ -280,6 +291,9 @@ def save_matlab_labels_vertices(subject, aparc_name):
 
 
 def save_labels_vertices(subject, aparc_name):
+    annot_fname_temp = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
+    if not utils.hemi_files_exists(annot_fname_temp):
+        pass
     labels_fnames = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))
     if len(labels_fnames) > 0:
         labels = []
@@ -290,12 +304,11 @@ def save_labels_vertices(subject, aparc_name):
         # Read from the annotation file
         labels = []
         for hemi in HEMIS:
-            annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
-            if op.isfile(annot_fname):
+            if op.isfile(annot_fname_temp.format(hemi=hemi)):
                 labels_hemi = mne.read_labels_from_annot(subject, aparc_name)
                 labels.extend(labels_hemi)
             else:
-                print("Can't find the annotation file! {}".format(annot_fname))
+                print("Can't find the annotation file! {}".format(annot_fname_temp.format(hemi=hemi)))
                 return False
     labels_names, labels_vertices = defaultdict(list), defaultdict(list)
     for label in labels:

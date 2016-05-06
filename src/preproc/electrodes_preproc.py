@@ -42,8 +42,8 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         names = []
         pos_biploar, pos_org = [], []
         for index in range(data.shape[0]-1):
-            elc_group1, elc_num1 = elec_group_number(data[index, 0])
-            elc_group2, elc_num12 = elec_group_number(data[index+1, 0])
+            elc_group1, elc_num1 = utils.elec_group_number(data[index, 0])
+            elc_group2, elc_num12 = utils.elec_group_number(data[index+1, 0])
             if elc_group1==elc_group2:
                 names.append('{}-{}'.format(data[index+1, 0],data[index, 0]))
                 pos_biploar.append(pos[index] + (pos[index+1]-pos[index])/2)
@@ -84,19 +84,6 @@ def fix_str_items_in_csv(csv):
         if not np.all([len(v)==0 for v in fix_line[1:]]):
             lines.append(fix_line)
     return np.array(lines)
-
-
-def elec_group_number(elec_name, bipolar=False):
-    if bipolar:
-        elec_name2, elec_name1 = elec_name.split('-')
-        group, num1 = elec_group_number(elec_name1, False)
-        _, num2 = elec_group_number(elec_name2, False)
-        return group, num1, num2
-    else:
-        ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
-        num = int(elec_name[ind:])
-        group = elec_name[:ind]
-        return group, num
 
 
 def read_electrodes(electrodes_file):

@@ -562,8 +562,10 @@ def init(addon):
     ColoringMakerPanel.addon = addon
     # Load fMRI data
     user_fol = mu.get_user_fol()
-    labels_names, labels_vertices = mu.load(
-        op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+    labels_vertices_fname = op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas))
+    if not op.isfile(labels_vertices_fname):
+        print("!!! Can't find {}!".format('labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+    labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))

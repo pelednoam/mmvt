@@ -10,6 +10,7 @@ import numpy as np
 import sys
 import os
 import os.path as op
+import re
 import uuid
 from collections import OrderedDict
 import time
@@ -37,7 +38,7 @@ try:
 except:
     import pickle
 
-import re
+
 floats_const_pattern = r"""
      [-+]?
      (?: \d* \. \d+ )
@@ -409,23 +410,24 @@ def atoi(text):
 
 def natural_keys(text):
     # http://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
-    import re
     if isinstance(text, tuple):
         text = text[0]
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
 
 def elec_group_number(elec_name, bipolar=False):
+    if isinstance(elec_name, bytes):
+        elec_name = elec_name.decode('utf-8')
     if bipolar:
         elec_name2, elec_name1 = elec_name.split('-')
         group, num1 = elec_group_number(elec_name1, False)
         _, num2 = elec_group_number(elec_name2, False)
-        return group, (num1, num2)
+        return group, num1, num2
     else:
-        ind = np.where([int(s.isdigit()) for s in elec_name])[-1][0]
-        num = int(elec_name[ind:])
-        group = elec_name[:ind]
-        return group, num
+        elec_name = elec_name.strip()
+        num = re.sub('\D', ',', elec_name).split(',')[-1]
+        group = elec_name[:elec_name.rfind(num)]
+        return group, int(num)
 
 
 def elec_group(elec_name, bipolar):
