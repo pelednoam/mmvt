@@ -1,5 +1,5 @@
 import numpy as np
-import sys
+from functools import partial
 import os
 import os.path as op
 import shutil
@@ -167,14 +167,14 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
 
 
-def calc_colors(data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small):
-    data_max, data_min = utils.get_data_max_min(data, norm_by_percentile, norm_percs)
-    data_minmax = max(map(abs, [data_max, data_min]))
-    print('data minmax: {}'.format(data_minmax))
-    colors = utils.mat_to_colors_two_colors_maps(data, threshold=threshold,
-        x_max=data_minmax, x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
-        default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
-    return colors
+# def calc_colors(data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small):
+#     data_max, data_min = utils.get_data_max_min(data, norm_by_percentile, norm_percs)
+#     data_minmax = max(map(abs, [data_max, data_min]))
+#     print('data minmax: {}'.format(data_minmax))
+#     colors = utils.mat_to_colors_two_colors_maps(data, threshold=threshold,
+#         x_max=data_minmax, x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+#         default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
+#     return colors
     # colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
 
 
@@ -215,15 +215,16 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, e
 
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     stat_data = calc_stat_data(data, stat)
+    calc_colors = partial(
+        utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
+        flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
     if moving_average_win_size > 0:
         # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
-        colors_mv = calc_colors(
-            stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        colors_mv = calc_colors(stat_data_mv)
         np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
     else:
-        colors = calc_colors(
-            stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        colors = calc_colors(stat_data)
         np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
 
 
@@ -354,15 +355,16 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
     stat_data = calc_stat_data(data, STAT_DIFF)
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
         '_bipolar' if bipolar else '', STAT_NAME[stat]))
+    calc_colors = partial(
+        utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
+        flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
     if moving_average_win_size > 0:
         stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
-        colors_mv = calc_colors(
-            stat_data_mv, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        colors_mv = calc_colors(stat_data_mv)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv,
                  times=times)
     else:
-        colors = calc_colors(
-            stat_data, norm_by_percentile, norm_percs, threshold, cm_big, cm_small, flip_cm_big, flip_cm_small)
+        colors = calc_colors(stat_data)
         np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
 
     # if do_plot:
