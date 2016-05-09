@@ -11,7 +11,7 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 
 def load_stim_file(subject, args):
-    stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'stim', 'psd_{}.npz'.format(args.stim_channel)))
+    stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'psd_{}.npz'.format(args.stim_channel)))
     labels, psd, time, freqs = (stim[k] for k in ['labels', 'psd', 'time', 'freqs'])
     bipolar = '-' in labels[0]
     data = None
@@ -29,10 +29,39 @@ def load_stim_file(subject, args):
         if colors is None:
             colors = np.zeros((*data.shape, 3))
         colors[:, :, freq_ind] = utils.mat_to_colors(psd_slice, data_min, data_max, colorsMap=args.colors_map)
-        conditions.append('{}-{}'.format(freq_from, freq_to))
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes{}_data.npz'.format(
-            '_bipolar' if bipolar else ''))
+        conditions.append('{}-{}Hz'.format(freq_from, freq_to))
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes{}_{}.npz'.format(
+            '_bipolar' if bipolar else '', args.stim_channel))
     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors)
+    return dict(data=data, labels=labels, conditions=conditions, colors=colors)
+
+
+def create_stim_electrodes_positions(stim_labels=None):
+    if not stim_labels:
+        stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'psd_{}.npz'.format(args.stim_channel)))
+        bipolar = '-' in stim['labels'][0]
+        stim_data = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes{}_{}.npz'.format(
+            '_bipolar' if bipolar else '', args.stim_channel)))
+        stim_labels = stim_data['names']
+    f = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
+    org_pos, org_labels = f['pos'], f['names']
+    if bipolar:
+        pos = []
+        for stim_label in stim_labels:
+            group, num1, num2 = utils.elec_group_number(stim_label, True)
+            stim_label1 = '{}{}'.format(group, num1)
+            stim_label2 = '{}{}'.format(group, num2)
+            label_ind1 = np.where(org_labels == stim_label1)[0]
+            label_ind2 = np.where(org_labels == stim_label2)[0]
+            elc_pos = org_pos[label_ind1] + (org_pos[label_ind2] - org_pos[label_ind1]) / 2
+            pos.append(elc_pos.reshape((3)))
+        pos = np.array(pos)
+    else:
+        pos = [pos for (pos, label) in zip(org_pos, org_labels) if label in stim_labels]
+
+    output_file_name = 'stim_electrodes{}_{}_positions.npz'.format('_bipolar' if bipolar else '', args.stim_channel)
+    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', output_file_name)
+    np.savez(output_file, pos=pos, names=stim_labels)
 
 
 def get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim):
@@ -53,9 +82,12 @@ def get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim):
 
 def main(subject, args, n_jobs):
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
+    stim_data = None
     if 'all' in args.function or 'load_stim_file' in args.function:
-        load_stim_file(subject, args)
-
+        stim_data = load_stim_file(subject, args)
+    if 'all' in args.function or 'create_stim_electrodes_positions' in args.function:
+        labels = stim_data['labels'] if stim_data else None
+        create_stim_electrodes_positions(labels)
 
 if __name__ == '__main__':
     import argparse

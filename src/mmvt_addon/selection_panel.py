@@ -1,11 +1,9 @@
 import bpy
 import mmvt_utils as mu
+import numpy as np
 import colors_utils as cu
 import connections_panel
-
-bpy.types.Scene.selection_type = bpy.props.EnumProperty(
-    items=[("diff", "Conditions difference", "", 1), ("conds", "Both conditions", "", 2)],
-    description="Selection type")
+import electrodes_panel
 
 
 def deselect_all():
@@ -48,6 +46,13 @@ def select_brain_objects(parent_obj_name, children):
         parent_obj.select = False
 
 
+def set_conditions_enum(conditions):
+    conditions = mu.unique_save_order(conditions)
+    selection_items = [(c, '{}'.format(c), '', ind) for ind, c in enumerate(conditions)]
+    bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(
+        items=selection_items, description="Condition Selection")
+
+
 class SelectAllRois(bpy.types.Operator):
     bl_idname = "ohad.roi_selection"
     bl_label = "select2 ROIs"
@@ -88,11 +93,14 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
-        mu.view_all_in_graph_editor(context)
+        mu.unfilter_graph_editor()
         if bpy.context.scene.selection_type == 'diff':
             mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
+        elif bpy.context.scene.selection_type == 'spec_cond':
+            mu.filter_graph_editor(bpy.context.scene.conditions_selection)
         else:
             mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
+        mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -135,6 +143,12 @@ class FitSelection(bpy.types.Operator):
         return {"FINISHED"}
 
 
+bpy.types.Scene.selection_type = bpy.props.EnumProperty(
+    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2), ("spec_cond", "Specific condition", "", 3)],
+    description="Selection type")
+bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection")
+
+
 class SelectionMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -146,16 +160,17 @@ class SelectionMakerPanel(bpy.types.Panel):
     @staticmethod
     def draw(self, context):
         layout = self.layout
-        # col = self.layout.column(align=True)
-        # col1.operator("select.ROIs", text="ROIs")
         layout.prop(context.scene, "selection_type", text="")
-        layout.operator("ohad.roi_selection", text="Select all cortical ROIs", icon='BORDER_RECT')
-        layout.operator("ohad.subcorticals_selection", text="Select all subcorticals", icon = 'BORDER_RECT' )
-        layout.operator("ohad.electrodes_selection", text="Select all Electrodes", icon='BORDER_RECT')
+        if bpy.context.scene.selection_type == 'spec_cond':
+            layout.prop(context.scene, "conditions_selection", text="")
+        layout.operator(SelectAllRois.bl_idname, text="Select all cortical ROIs", icon='BORDER_RECT')
+        layout.operator(SelectAllSubcorticals.bl_idname, text="Select all subcorticals", icon = 'BORDER_RECT' )
+        if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
+            layout.operator(SelectAllElectrodes.bl_idname, text="Select all Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-            layout.operator("ohad.connections_selection", text="Select all Connections", icon='BORDER_RECT')
-        layout.operator("ohad.clear_selection", text="Deselect all", icon='PANEL_CLOSE')
-        layout.operator("ohad.fit_selection", text="Fit graph window", icon='MOD_ARMATURE')
+            layout.operator(SelectAllConnections.bl_idname, text="Select all Connections", icon='BORDER_RECT')
+        layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
+        layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
 
 
 def init(addon):

@@ -6,12 +6,12 @@ import mmvt_utils as mu
 import colors_utils as cu
 import os
 
-try:
-    import matplotlib as mpl
-    mpl.use('Agg')
-    import matplotlib.pyplot as plt
-except ImportError:
-    print('No matplotlib!')
+# try:
+#     import matplotlib as mpl
+#     mpl.use('Agg')
+#     import matplotlib.pyplot as plt
+# except ImportError:
+#     print('No matplotlib!')
 
 PARENT_OBJ = 'connections'
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)

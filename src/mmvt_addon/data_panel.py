@@ -4,6 +4,7 @@ import glob
 import numpy as np
 import time
 import mmvt_utils as mu
+import selection_panel
 
 
 STAT_AVG, STAT_DIFF = range(2)
@@ -224,16 +225,10 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def import_electrodes():
-    # input_file = op.join(base_path, "electrodes.npz")
+def import_electrodes(input_file):
     mu.delete_hierarchy('Deep_electrodes')
-    bipolar = bpy.context.scene.bipolar
-    # input_file = op.join(mu.get_user_fol(), 'electrodes_{}positions.npz'.format('bipolar_' if bipolar else ''))
-    input_file = op.join(mu.get_user_fol(), 'electrodes', '{}.npz'.format(bpy.context.scene.electrodes_positions_files))
-
     print('Adding deep electrodes')
     f = np.load(input_file)
-    print('loaded')
 
     deep_electrodes_layer = 1
     electrode_size = bpy.context.scene.electrodes_radius
@@ -267,7 +262,9 @@ class ImportElectrodes(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        import_electrodes()
+        input_file = op.join(mu.get_user_fol(), 'electrodes',
+                             '{}.npz'.format(bpy.context.scene.electrodes_positions_files))
+        import_electrodes(input_file)
         bpy.types.Scene.electrodes_imported = True
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
@@ -280,6 +277,7 @@ def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=(
     print('Adding data to Brain')
     number_of_maximal_time_steps = -1
     obj_counter = 0
+    conditions = []
     for input_file in source_files:
         if not op.isfile(input_file):
             mu.message(None, '{} does not exist!'.format(input_file))
@@ -315,6 +313,7 @@ def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=(
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
+        conditions.extend(f['conditions'])
     try:
         bpy.ops.graph.previewrange_set()
     except:
@@ -326,6 +325,7 @@ def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=(
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
     print('Finished keyframing!!')
+    return conditions
 
 
 def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
@@ -404,7 +404,8 @@ class AddDataToBrain(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        add_data_to_brain(mu.get_user_fol())
+        conditions = add_data_to_brain(mu.get_user_fol())
+        selection_panel.set_conditions_enum(conditions)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -472,8 +473,9 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_electrodes(self, source_files):
+def add_data_to_electrodes(source_files):
     print('Adding data to Electrodes')
+    conditions = []
     for input_file in source_files:
         # todo: we don't need to load this twice (also in add_data_to_electrodes_obj
         f = np.load(input_file)
@@ -501,7 +503,9 @@ def add_data_to_electrodes(self, source_files):
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
+        conditions.extend(f['conditions'])
     print('Finished keyframing!!')
+    return conditions
 
 
 def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
@@ -576,7 +580,8 @@ class AddDataToElectrodes(bpy.types.Operator):
             print('No electrodes data file!')
         else:
             print('Loading electordes data from {}'.format(source_file))
-            add_data_to_electrodes(self, [source_file])
+            conditions = add_data_to_electrodes([source_file])
+            selection_panel.set_conditions_enum(conditions)
             add_data_to_electrodes_parent_obj(self, parent_obj, [source_file], STAT_DIFF)
             bpy.types.Scene.electrodes_data_exist = True
             if bpy.data.objects.get(' '):

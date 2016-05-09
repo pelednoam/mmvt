@@ -862,3 +862,30 @@ def count_fcurves(objects):
             if not obj is None and not obj.animation_data is None:
                 curves_num += len(obj.animation_data.action.fcurves)
     return curves_num
+
+
+def get_the_graph_editor():
+    for ii in range(len(bpy.data.screens['Neuro'].areas)):
+        if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
+            for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
+                if bpy.data.screens['Neuro'].areas[ii].spaces[jj].type == 'GRAPH_EDITOR':
+                    return bpy.data.screens['Neuro'].areas[ii].spaces[jj]
+    return None
+
+
+def filter_graph_editor(filter_str):
+    ge = get_the_graph_editor()
+    ge.dopesheet.filter_fcurve_name = filter_str
+
+
+def unfilter_graph_editor():
+    filter_graph_editor('')
+
+
+
+def unique_save_order(arr):
+    ret = []
+    for val in arr:
+        if val not in ret:
+            ret.append(val)
+    return ret

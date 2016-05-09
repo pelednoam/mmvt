@@ -310,6 +310,8 @@ bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50
     description='clusters size threshold', min=1, max=2000, update=fmri_clusters_labels_files_update)
 bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
     description='clustering threshold', min=0, max=20)
+bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
+    items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
 
 
 class fMRIPanel(bpy.types.Panel):

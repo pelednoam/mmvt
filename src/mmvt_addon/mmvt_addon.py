@@ -67,6 +67,8 @@ import vertex_data_panel
 importlib.reload(vertex_data_panel)
 import filter_panel
 importlib.reload(filter_panel)
+import stim_panel
+importlib.reload(stim_panel)
 
 print("MMVT addon started!")
 # todo: should change that in the code!!!
@@ -166,11 +168,11 @@ def get_max_time_steps():
     return 2500
 
 
-_listener_in_queue, _listener__out_queue = None, None
+_listener_in_queue, _listener_out_queue = None, None
 def start_listener():
     cmd = 'python {}'.format(op.join(mmvt_utils.current_path(), 'addon_listener.py'))
-    listener_in_queue, listener__out_queue = mmvt_utils.run_command_in_new_thread(cmd)
-    return listener_in_queue, listener__out_queue
+    listener_in_queue, listener_out_queue = mmvt_utils.run_command_in_new_thread(cmd)
+    return listener_in_queue, listener_out_queue
 
 
 def main(addon_prefs=None):
@@ -203,6 +205,7 @@ def main(addon_prefs=None):
         selection_panel.init(current_module)
         vertex_data_panel.init(current_module)
         filter_panel.init(current_module)
+        stim_panel.init(current_module)
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())

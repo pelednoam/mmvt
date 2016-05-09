@@ -485,8 +485,9 @@ def create_lookup_table(electrodes_locs, electrodes):
 def find_first_electrode_per_group(electrodes):
     groups = defaultdict(list)
     first_electrodes = {}
+    bipolar = '-' in electrodes[0]
     for elc in electrodes:
-        groups[mu.elec_group(elc, bpy.context.scene.bipolar)].append(elc)
+        groups[mu.elec_group(elc, bipolar)].append(elc)
     for group, group_electrodes in groups.items():
         first_electrode = sorted(group_electrodes)[0]
         first_electrodes[group] = first_electrode
@@ -495,16 +496,18 @@ def find_first_electrode_per_group(electrodes):
 
 def create_groups_lookup_table(electrodes):
     groups = {}
+    bipolar = '-' in electrodes[0]
     for elc in electrodes:
-        group = mu.elec_group(elc, bpy.context.scene.bipolar)
+        group = mu.elec_group(elc, bipolar)
         groups[elc] = group
     return groups
 
 
 def create_groups_electrodes_lookup(electrodes):
     groups = defaultdict(list)
+    bipolar = '-' in electrodes[0]
     for elc in electrodes:
-        group = mu.elec_group(elc, bpy.context.scene.bipolar)
+        group = mu.elec_group(elc, bipolar)
         groups[group].append(elc)
     return groups
 

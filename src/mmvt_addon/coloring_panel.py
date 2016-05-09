@@ -73,7 +73,17 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
     cur_frame = bpy.context.scene.frame_current
     for obj_name, object_colors, values in zip(data['names'], data['colors'], data['data']):
         obj_name = obj_name.astype(str)
-        value = np.diff(values[cur_frame])[0]
+        if bpy.context.scene.selection_type == 'spec_cond':
+            cond_inds = np.where(data['conditions'] == bpy.context.scene.conditions_selection)[0]
+            if len(cond_inds) == 0:
+                print("!!! Can't find the current condition in the data['conditions'] !!!")
+                return
+            else:
+                cond_ind = cond_inds[0]
+                object_colors = object_colors[:, cond_ind]
+                value = values[cur_frame, cond_ind]
+        else:
+            value = np.diff(values[cur_frame])[0]
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
         new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
@@ -381,6 +391,23 @@ class ColorElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorElectrodesStim(bpy.types.Operator):
+    bl_idname = "ohad.electrodes_color_stim"
+    bl_label = "ohad electrodes color stim"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        threshold = bpy.context.scene.coloring_threshold
+        stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
+        stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
+        data = np.load(stim_data_fname)
+        color_object_homogeneously(data, threshold=threshold)
+        ColoringMakerPanel.addon.show_electrodes()
+        ColoringMakerPanel.addon.change_to_rendered_brain()
+        return {"FINISHED"}
+
+
 class ColorManually(bpy.types.Operator):
     bl_idname = "ohad.man_color"
     bl_label = "ohad man color"
@@ -496,6 +523,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
+        electrodes_stim_files_exist = len(glob.glob(op.join(
+            mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
@@ -516,7 +545,9 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.prop(context.scene, 'labels_groups', text="")
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
         if electrodes_files_exist:
-            layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes ", icon='POTATO')
+            layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        if electrodes_stim_files_exist:
+            layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -606,6 +637,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(ColorElectrodes)
+        bpy.utils.register_class(ColorElectrodesStim)
         bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
@@ -622,6 +654,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(ColorElectrodes)
+        bpy.utils.unregister_class(ColorElectrodesStim)
         bpy.utils.unregister_class(ColorManually)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)

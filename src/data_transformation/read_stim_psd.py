@@ -18,7 +18,7 @@ def read_psd_mat_file(subject, psd_fname, stim_channel):
     freqs = [(0, 4), (4, 8), (8, 15), (15, 30), (30, 55), (65, 100)]
     # plt.plot(time, psd[0, 0, :])
     # plt.show()
-    out_fol = op.join(BLENDER_ROOT_DIR, subject, 'stim')
+    out_fol = op.join(BLENDER_ROOT_DIR, subject, 'electrodes')
     utils.make_dir(out_fol)
     np.savez(op.join(out_fol, 'psd_{}'.format(stim_channel)), labels=labels, psd=psd, time=time, freqs=freqs)
 

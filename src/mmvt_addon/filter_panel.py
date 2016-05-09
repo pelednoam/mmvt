@@ -19,21 +19,14 @@ def find_obj_with_val():
         if obj.select is True:
             cur_objects.append(obj)
 
-    for ii in range(len(bpy.data.screens['Neuro'].areas)):
-        if bpy.data.screens['Neuro'].areas[ii].type == 'GRAPH_EDITOR':
-            for jj in range(len(bpy.data.screens['Neuro'].areas[ii].spaces)):
-                if bpy.data.screens['Neuro'].areas[ii].spaces[jj].type == 'GRAPH_EDITOR':
-                    # print(dir(bpy.data.screens['Neuro'].areas[ii].spaces[jj]))
-                    target = bpy.data.screens['Neuro'].areas[ii].spaces[jj].cursor_position_y
+    graph_editor = mu.get_the_graph_editor()
+    target = graph_editor.cursor_position_y
 
     values, names, obj_names = [], [], []
     for cur_obj in cur_objects:
-        # if cur_obj.animation_data is None:
-        #     continue
-        # for fcurve in cur_obj.animation_data.action.fcurves:
-        #     val = fcurve.evaluate(bpy.context.scene.frame_current)
-        #     name = mu.fcurve_name(fcurve)
         for name, val in cur_obj.items():
+            if bpy.context.scene.selection_type == 'spec_cond' and bpy.context.scene.conditions_selection not in name:
+                continue
             if isinstance(val, numbers.Number):
                 values.append(val)
                 names.append(name)
@@ -59,7 +52,7 @@ def find_obj_with_val():
     # try:
     if parent_obj.name == 'Deep_electrodes':
         print('filtering electrodes')
-        filter_electrode_func(closet_object_name, closest_curve_name)
+        filter_electrode_func(closet_object_name)
     elif connections_panel_exist and parent_obj.name == connections_panel.PARENT_OBJ:
         connections_panel.find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target)
     else:
