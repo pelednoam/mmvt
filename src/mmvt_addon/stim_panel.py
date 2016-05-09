@@ -6,15 +6,19 @@ import mmvt_utils as mu
 import electrodes_panel
 import data_panel
 import selection_panel
+import play_panel
 
 PARENT_OBJ = electrodes_panel.PARENT_OBJ
+
+
+def stim_files_update(self, context):
+    play_panel.init_stim()
 
 
 def import_electrodes():
     electrodes_positions_fname = 'stim_electrodes_{}_positions.npz'.format(
         bpy.context.scene.stim_files.replace(' ', '_'))
     data_panel.import_electrodes(op.join(mu.get_user_fol(), 'electrodes', electrodes_positions_fname))
-
 
 def load_stim_data():
     stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
@@ -100,7 +104,8 @@ def init(addon):
     StimPanel.addon = addon
     files_names = [mu.namebase(fname)[len('stim_electrodes_'):].replace('_', ' ') for fname in stim_files]
     stim_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-    bpy.types.Scene.stim_files = bpy.props.EnumProperty(items=stim_items, description="stim files")
+    bpy.types.Scene.stim_files = bpy.props.EnumProperty(
+        items=stim_items, description='stim files', update=stim_files_update)
     bpy.context.scene.stim_files = files_names[0]
     register()
     StimPanel.init = True

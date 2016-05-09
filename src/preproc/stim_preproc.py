@@ -25,7 +25,7 @@ def load_stim_file(subject, args):
             data = np.zeros((len(labels), len(time), len(freqs)))
         psd_slice = get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim)
         data[:, :, freq_ind] = psd_slice
-        data_min, data_max = utils.check_min_max(psd_slice)
+        data_min, data_max = utils.check_min_max(psd_slice, norm_percs=args.norm_percs)
         if colors is None:
             colors = np.zeros((*data.shape, 3))
         colors[:, :, freq_ind] = utils.mat_to_colors(psd_slice, data_min, data_max, colorsMap=args.colors_map)
@@ -37,12 +37,14 @@ def load_stim_file(subject, args):
 
 
 def create_stim_electrodes_positions(stim_labels=None):
-    if not stim_labels:
+    if stim_labels is None:
         stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'psd_{}.npz'.format(args.stim_channel)))
         bipolar = '-' in stim['labels'][0]
         stim_data = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes{}_{}.npz'.format(
             '_bipolar' if bipolar else '', args.stim_channel)))
         stim_labels = stim_data['names']
+    else:
+        bipolar = '-' in stim_labels[0]
     f = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
     org_pos, org_labels = f['pos'], f['names']
     if bipolar:
@@ -97,6 +99,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('--stim_channel', help='stim channel', required=True)
     parser.add_argument('--colors_map', help='activity colors map', required=False, default='OrRd')
+    parser.add_argument('--norm_percs', help='normalization percerntiles', required=False, type=au.int_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))

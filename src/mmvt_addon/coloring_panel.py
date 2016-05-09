@@ -90,7 +90,7 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
         # todo: check if the stat should be avg or diff
         obj = bpy.data.objects.get(obj_name+postfix_str)
         # if obj and not obj.hide:
-            # print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
+        #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
         object_coloring(obj, new_color)
             # print(obj_name, value, new_color)
         # else:

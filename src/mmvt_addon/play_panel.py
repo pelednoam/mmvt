@@ -19,11 +19,12 @@ bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
 bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
-           ("elecs", "Electrodes activity", "", 4), ("elecs_coh", "Electrodes coherence", "",5),
-           ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
-           ("meg_elecs", "Meg & Electrodes activity", "", 7), ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",8)],
+           ("elecs", "Electrodes activity", "", 4),
+           ("elecs_coh", "Electrodes coherence", "",5), ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
+           ("stim", "Electrodes stimulation", "", 7),
+           ("meg_elecs", "Meg & Electrodes activity", "", 8),
+           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",9)],
            description='Type pf data to play')
-
 
 
 class ModalTimerOperator(bpy.types.Operator):
@@ -130,7 +131,9 @@ def plot_something(self, context, cur_frame, uuid):
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
         p.plot_connections(self, context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
-
+    if play_type in ['stim']:
+        # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
+        PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
     if bpy.context.scene.render_movie:
         PlayPanel.addon.render_image()
     # plot_graph(context, graph_data, graph_colors, image_fol)
@@ -207,10 +210,14 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         print('No matplotlib!')
 
 
-def plot_electrodes(cur_frame, threshold):
+def plot_electrodes(cur_frame, threshold, stim=False):
     # todo: need to use the threshold
     # threshold = bpy.context.scene.coloring_threshold
-    for obj_name, object_colors in zip(PlayPanel.electrodes_names, PlayPanel.electrodes_colors):
+    # if stim:
+    #     names, colors = PlayPanel.stim_names, PlayPanel.stim_colors
+    # else:
+    names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_colors
+    for obj_name, object_colors in zip(names, colors):
         if cur_frame < len(object_colors):
             new_color = object_colors[cur_frame]
             if bpy.data.objects.get(obj_name) is not None:
@@ -282,6 +289,15 @@ def init_plotting():
     #     print('No connections coherence file! {}'.format(connections_file))
     # else:
     #     PlayPanel.electrodes_coherence = mu.Bag(np.load(connections_file))
+
+
+def init_stim():
+    stim_fname = op.join(mu.get_user_fol(), 'electrodes',
+        'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_')))
+    if op.isfile(stim_fname):
+        PlayPanel.stim_data = np.load(stim_fname)
+        # PlayPanel.stim_colors = d['colors']
+        # PlayPanel.stim_names = [elc.astype(str) for elc in d['names']]
 
 
 class PlayPanel(bpy.types.Panel):
