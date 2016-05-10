@@ -72,7 +72,8 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
     utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
     utils.run_script(cmd)
     # clean up
+    # todo: doesn't clean the part filess
     utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
     for part_fname in parts:
-        part_name, _ = os.path.splitext(part_fname)
+        part_name, _ = op.splitext(part_fname)
         utils.remove_file('{}.avi'.format(part_name))

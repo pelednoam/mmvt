@@ -5,21 +5,20 @@ from matplotlib import gridspec
 import os.path as op
 import glob
 from PIL import Image
-from src.utils import utils
-from src.utils import movies_utils as mu
 import time
 import numbers
-import os
 import numpy as np
 import re
+from src.utils import utils
+from src.utils import movies_utils as mu
 
 LINKS_DIR = utils.get_links_dir()
-BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
+BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 
 
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
-        ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False):
+        data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
+        ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False):
 
     def get_t(image_index, time_range):
         pic_name = utils.namebase(images[image_index])
@@ -70,12 +69,10 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
                 # if color == (1.0, 1.0, 1.0):
                 #     color = np.array(cu.name_to_rgb('orange')) / 255.0
                 # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
-                ax.plot(time_range, values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+                ax.plot(time_range, values, label=k, color=color, alpha=0.9)#, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
             ind += 1
 
         graph1_ax.set_xlabel(xlabel)
-        # labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
-        # labels = ['{0:.2f}'.format(t) for t in time_range.tolist()[::labels_time_dt]]
         xticks_labels = xticks
         for xlable_time, xticklabel in xticklabels:
             if xlable_time in xticks_labels:
@@ -84,14 +81,20 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
 
         graph1_ax.set_xlim([time_range[0], time_range[-1]])
         if graph2_ax:
-            ymin1, ymax1 = graph1_ax.get_ylim()
-            ymin2, ymax2 = graph2_ax.get_ylim()
-            ymin = min([ymin1, ymin2])
-            ymax = max([ymax1, ymax2])
+            if ylim:
+                ymin, ymax = ylim
+            else:
+                ymin1, ymax1 = graph1_ax.get_ylim()
+                ymin2, ymax2 = graph2_ax.get_ylim()
+                ymin = min([ymin1, ymin2])
+                ymax = max([ymax1, ymax2])
+
             graph1_ax.set_ylim([ymin, ymax])
             graph2_ax.set_ylim([ymin, ymax])
         else:
-            ymin, ymax = graph1_ax.get_ylim()
+            ymin, ymax = ylim if ylim else graph1_ax.get_ylim()
+            graph1_ax.set_ylim([ymin, ymax])
+
         t0 = get_t(0, time_range)
         t_line, = graph1_ax.plot([t0, t0], [ymin, ymax], 'g-')
         # plt.legend()
@@ -167,7 +170,7 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     # gs.update(left=0.05, right=0.48, wspace=0.05)
     graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
         graph1_ax, data_to_show_in_graph, fol, fol2, graph2_ax, ylabels)
-    plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, min_max_eq, color_map)
+    plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
 
     now = time.time()
     if show_first_pic:
@@ -195,13 +198,13 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     return ani
 
 
-def plot_color_bar(ax, graph_data, cb_title, data_type='', min_max_eq=True, color_map='jet'):
+def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, color_map='jet'):
     if data_type == '':
         return
     import matplotlib as mpl
     data_max = max([max(v) for v in graph_data[data_type].values()])
     data_min = min([min(v) for v in graph_data[data_type].values()])
-    if min_max_eq:
+    if cb_min_max_eq:
         data_max_min = utils.get_max_abs(data_max, data_min)
         vmin, vmax = -data_max_min, data_max_min
     else:
@@ -218,9 +221,9 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax.set_position(ax_pos_new) # set a new position
 
 
-def create_movie(subject, time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
-    data_to_show_in_graph, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylabels=(),
-    xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
+def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
+    data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylim=(),
+    ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
 
     images1 = get_pics(fol, pics_type)
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
@@ -231,24 +234,24 @@ def create_movie(subject, time_range, xticks, fol, dpi, fps, video_fname, cb_dat
         images2_chunks = utils.chunks(images2, int(len(images2) / n_jobs))
     else:
         images2_chunks = [''] * int(len(images1) / n_jobs)
-    params = [(images1_chunk, images2_chunk, subject, time_range, xticks, dpi, fps,
-               video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate,
-               ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run) for run, (images1_chunk, images2_chunk) in \
-              enumerate(zip(images1_chunks, images2_chunks))]
+    params = [(images1_chunk, images2_chunk, time_range, xticks, dpi, fps,
+               video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate,
+               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run) for \
+              run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
     utils.run_parallel(_create_movie_parallel, params, n_jobs)
-    video_name, video_type = os.path.splitext(video_fname)
+    video_name, video_type = op.splitext(video_fname)
     mu.combine_movies(fol, video_name, video_type[1:])
 
 
 def _create_movie_parallel(params):
-    (images1, images2, subject, time_range, xticks, dpi, fps,
-        video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, ylabels,
+    (images1, images2, time_range, xticks, dpi, fps,
+        video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate, ylim, ylabels,
         xticklabels, xlabel, show_first_pic, fol, fol2, run) = params
-    video_name, video_type = os.path.splitext(video_fname)
+    video_name, video_type = op.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
-    ani_frame(subject, time_range, xticks, images1, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title, min_max_eq, color_map, bitrate, images2, ylabels, xticklabels,
-              xlabel, show_first_pic)
+    ani_frame(time_range, xticks, images1, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, fol, fol2, cb_title, cb_min_max_eq, color_map, bitrate, images2, ylim, ylabels,
+        xticklabels, xlabel, show_first_pic)
 
 
 def sort_pics_key(pic_fname):
@@ -288,9 +291,10 @@ if __name__ == '__main__':
     time_range = np.arange(-1, 1.5, 0.01)
     xticks = [-1, -0.5, 0, 0.5, 1]
     xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
+    ylim = (0, 500)
     xlabel = 'Time(s)'
     cb_data_type = 'stim'
-    min_max_eq = False
+    cb_min_max_eq = False
     color_map = 'OrRd'
     fps = 10
 
@@ -301,8 +305,7 @@ if __name__ == '__main__':
     n_jobs = 4
 
     # Call the function with --verbose-debug if you have problems with ffmpeg!
-    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, fol2, ylabels, xticklabels, xlabel, pics_type,
-        show_first_pic, n_jobs)
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
 
 
