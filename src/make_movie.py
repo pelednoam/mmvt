@@ -6,6 +6,7 @@ import os.path as op
 import glob
 from PIL import Image
 from src.utils import utils
+from src.utils import movies_utils as mu
 import time
 import numbers
 import os
@@ -16,17 +17,18 @@ LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
 
 
-def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, images, dpi, fps, video_fname, cb_data_type,
+def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
-        ylabels=(), xlabels=(), xlabel='Time (ms)', show_first_pic=False):
-    def get_t(image_index):
+        ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False):
+
+    def get_t(image_index, time_range):
         pic_name = utils.namebase(images[image_index])
         if '_t' in pic_name:
             t = int(pic_name.split('_t')[1])
             # t = time_range[1:-1:4][t]
         else:
             t = int(re.findall('\d+', pic_name)[0])
-        return t
+        return time_range[t]
 
     def plot_graph(graph1_ax, data_to_show_in_graph, fol, fol2='', graph2_ax=None, ylabels=()):
         graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
@@ -72,12 +74,13 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_on
             ind += 1
 
         graph1_ax.set_xlabel(xlabel)
-        labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
-        labels[labels.index(0)] = stimuli_onset_label
-        if len(xlabels) > 0:
-            # graph1_ax.set_xticks(time_range[1:-1:4])
-            graph1_ax.set_xticks(time_range)
-        graph1_ax.set_xticklabels(labels)
+        # labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
+        # labels = ['{0:.2f}'.format(t) for t in time_range.tolist()[::labels_time_dt]]
+        xticks_labels = xticks
+        for xlable_time, xticklabel in xticklabels:
+            if xlable_time in xticks_labels:
+                xticks_labels[xticks_labels.index(xlable_time)] = xticklabel
+        graph1_ax.set_xticklabels(xticks_labels)
 
         graph1_ax.set_xlim([time_range[0], time_range[-1]])
         if graph2_ax:
@@ -89,7 +92,7 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_on
             graph2_ax.set_ylim([ymin, ymax])
         else:
             ymin, ymax = graph1_ax.get_ylim()
-        t0 = get_t(0)
+        t0 = get_t(0, time_range)
         t_line, = graph1_ax.plot([t0, t0], [ymin, ymax], 'g-')
         # plt.legend()
         return graph_data, graph_colors, t_line, ymin, ymax
@@ -182,7 +185,7 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_on
             image2 = mpimg.imread(images2[image_index])
             im2.set_data(image2)
 
-        current_t = get_t(image_index)
+        current_t = get_t(image_index, time_range)
         t_line.set_data([current_t, current_t], [ymin, ymax])
         return [im]
 
@@ -215,9 +218,9 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax.set_position(ax_pos_new) # set a new position
 
 
-def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, fol, dpi, fps, video_fname, cb_data_type,
+def create_movie(subject, time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
     data_to_show_in_graph, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylabels=(),
-    xlabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
+    xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
 
     images1 = get_pics(fol, pics_type)
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
@@ -228,44 +231,23 @@ def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli
         images2_chunks = utils.chunks(images2, int(len(images2) / n_jobs))
     else:
         images2_chunks = [''] * int(len(images1) / n_jobs)
-    params = [(images1_chunk, images2_chunk, subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, dpi, fps,
+    params = [(images1_chunk, images2_chunk, subject, time_range, xticks, dpi, fps,
                video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate,
-               ylabels, xlabels, xlabel, show_first_pic, fol, fol2, run) for run, (images1_chunk, images2_chunk) in \
+               ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run) for run, (images1_chunk, images2_chunk) in \
               enumerate(zip(images1_chunks, images2_chunks))]
     utils.run_parallel(_create_movie_parallel, params, n_jobs)
     video_name, video_type = os.path.splitext(video_fname)
-    combine_movies(fol, video_name, video_type[1:])
-
-
-def combine_movies(fol, movie_name, movie_type='mp4'):
-    # First convert the part to avi, because mp4 cannot be concat
-    cmd = 'ffmpeg -i concat:"'
-    parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
-    for part_fname in parts:
-        part_name, _ = os.path.splitext(part_fname)
-        cmd = '{}{}.avi|'.format(cmd, op.join(fol, part_name))
-        utils.remove_file('{}.avi'.format(part_name))
-        utils.run_script('ffmpeg -i {} -codec copy {}.avi'.format(part_fname, op.join(fol, part_name)))
-    # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    print(cmd)
-    utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
-    utils.run_script(cmd)
-    # clean up
-    utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
-    for part_fname in parts:
-        part_name, _ = os.path.splitext(part_fname)
-        utils.remove_file('{}.avi'.format(part_name))
+    mu.combine_movies(fol, video_name, video_type[1:])
 
 
 def _create_movie_parallel(params):
-    (images1, images2, subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, dpi, fps,
+    (images1, images2, subject, time_range, xticks, dpi, fps,
         video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, ylabels,
-        xlabels, xlabel, show_first_pic, fol, fol2, run) = params
+        xticklabels, xlabel, show_first_pic, fol, fol2, run) = params
     video_name, video_type = os.path.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
-    ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, images1, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title, min_max_eq, color_map, bitrate, images2, ylabels, xlabels,
+    ani_frame(subject, time_range, xticks, images1, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, fol, fol2, cb_title, min_max_eq, color_map, bitrate, images2, ylabels, xticklabels,
               xlabel, show_first_pic)
 
 
@@ -296,129 +278,20 @@ def duplicate_frames(fol, multiplier=50, pics_type='png'):
             pic_ind += 1
 
 
-def cut_movie(movie_fol, movie_name, out_movie_name):
-    from moviepy import editor
-    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    clip1 = video.subclip(3, 4)
-    clip2 = video.subclip(6, 17)
-    clip3 = video.subclip(38, 42)
-    final_clip = editor.concatenate_videoclips([clip1, clip2, clip3])
-    final_clip.write_videofile(op.join(movie_fol, out_movie_name))
-
-
-def crop_movie(movie_fol, movie_name, out_movie_name):
-    from moviepy import editor
-    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    crop_video = video.crop(y1=60, y2=1170)
-    crop_video.write_videofile(op.join(movie_fol, out_movie_name))
-
-
-def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs):
-    from moviepy import editor
-
-    def annotate(clip, txt, txt_color='red', fontsize=50, font='Xolonium-Bold'):
-        """ Writes a text at the bottom of the clip. """
-        txtclip = editor.TextClip(txt, fontsize=fontsize, font=font, color=txt_color)
-        # txtclip = txtclip.on_color((clip.w, txtclip.h + 6), color=(0, 0, 255), pos=(6, 'center'))
-        cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
-        return cvc.set_duration(clip.duration)
-
-    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    annotated_clips = [annotate(video.subclip(from_t, to_t), txt) for (from_t, to_t), txt in subs]
-    final_clip = editor.concatenate_videoclips(annotated_clips)
-    final_clip.write_videofile(op.join(movie_fol, out_movie_name))
-
-
-def create_animated_gif(movie_fol, movie_name, out_movie_name):
-    from moviepy import editor
-    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    video.write_gif(op.join(movie_fol, out_movie_name), fps=12)
-
-
-def edit_movie_example():
-    movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
-    movie_fol = '/cluster/neuromind/npeled/Documents/brain-map'
-    # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
-    # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
-    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
-            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
-            ((9, 12), 'Finding the closest activation in the coordinates'),
-            ((12, 16), 'The activation is displayed with its statistics')]
-    # add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)
-    create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
-
-
 if __name__ == '__main__':
-    min_max_eq = True
-    color_map = 'jet'
-    stimuli_onset_label = 'stimuli onset'
-
-    subject = 'mg78'
-    fol = '/home/noam/Pictures/mmvt/movie1'
-    fol2 = '/home/noam/Pictures/mmvt/movie2'
-    data_to_show_in_graph = ('electrodes', 'coherence')
-    video_fname = 'mg78_elecs_coh_meg.mp4'
-    cb_title = 'MEG dSPM difference'
-    ms_before_stimuli, labels_time_dt = 500, 500
-    time_range = range(2500)
-    ylabels = []
-    xlabels = []
-    cb_data_type = 'meg'
-    fps = 10
-
-    fol = '/home/noam/Pictures/mmvt/fsaverage'
-    fol2 = ''
-    data_to_show_in_graph = ('meg')
-    video_fname = 'fsaverage_meg_ttest.mp4'
-    cb_title = 'MEG t values'
-    ms_before_stimuli, labels_time_dt = 0, 100
-    time_range = range(1000)
-    ylabels = ['MEG t-values']
-    xlabels = []
-    cb_data_type = 'meg'
-    fps = 10
-
-    fol = '/home/noam/Pictures/mmvt/movie1'
-    fol2 = ''
-    data_to_show_in_graph = ('meg_labels')
-    video_fname = 'mg78_labels_demo.mp4'
-    cb_title = 'MEG activity'
-    ms_before_stimuli, labels_time_dt = 500, 500
-    time_range = range(2500)
-    ylabels = ['MEG activity']
-    xlabels = []
-    cb_data_type = 'meg_labels'
-    fps = 10
-
-    subject = ['fsaverage', 'pp009']
-    fol = '/home/noam/Videos/mmvt/meg_con/healthy'
-    fol2 = '/home/noam/Videos/mmvt/meg_con/pp009'
-    data_to_show_in_graph = ('coherence', 'coherence2')
-    video_fname = 'pp009_healthy_meg_coh.mp4'
-    cb_title = ''
-    ms_before_stimuli, labels_time_dt = 0, 1
-    time_range = range(11)
-    ylabels = ['Healthy', 'pp009']
-    # xlabels = ['', 'Risk onset', '', '', '', 'Reward onset', '', '', '', 'Shock?', '']
-    xlabels = ['Risk onset','Reward onset','Shock?']
-    xlabel = ''
-    cb_data_type = ''
-    fps = 10
-
-    subject = 'mg99'
     fol = '/home/noam/Pictures/mmvt/mg99'
     fol2 = ''
     data_to_show_in_graph = 'stim'
     video_fname = 'mg99_LVF4-3_stim.mp4'
-    cb_title = 'Electrodes activity'
-    ms_before_stimuli, labels_time_dt = 100, 50
-    time_range = range(250)
-    ylabels = ['Electrodes activity']
-    xlabels = []
+    cb_title = 'Electrodes PSD'
+    ylabels = ['Electrodes PSD']
+    time_range = np.arange(-1, 1.5, 0.01)
+    xticks = [-1, -0.5, 0, 0.5, 1]
+    xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
+    xlabel = 'Time(s)'
     cb_data_type = 'stim'
     min_max_eq = False
     color_map = 'OrRd'
-    stimuli_onset_label = 'End of stimulation'
     fps = 10
 
     dpi = 100
@@ -427,15 +300,9 @@ if __name__ == '__main__':
     show_first_pic = False
     n_jobs = 4
 
-    # images = get_pics(fol, pics_type)
-    # images2 = get_pics(fol2, pics_type) if fol2 != '' else []
-    # ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname,
-    #           cb_data_type, data_to_show_in_graph, cb_title, bitrate, fol2=fol2, ylabels=ylabels, pics_type=pics_type)
-
-    # duplicate_frames(fol, 30)
-    # duplicate_frames(fol2, 30)
-    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, fol, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, fol2, ylabels, xlabels, xlabel, pics_type,
+    # Call the function with --verbose-debug if you have problems with ffmpeg!
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, fol2, ylabels, xticklabels, xlabel, pics_type,
         show_first_pic, n_jobs)
 
-    # Call the function with --verbose-debug if you have problems with ffmpeg!
+
