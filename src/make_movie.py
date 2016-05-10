@@ -16,7 +16,7 @@ LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
 
 
-def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dpi, fps, video_fname, cb_data_type,
+def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
         ylabels=(), xlabels=(), xlabel='Time (ms)', show_first_pic=False):
     def get_t(image_index):
@@ -72,11 +72,12 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
             ind += 1
 
         graph1_ax.set_xlabel(xlabel)
-        # labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
-        # labels[labels.index(0)] = 'stimuli'
+        labels = list(range(-ms_before_stimuli, len(time_range)-ms_before_stimuli, labels_time_dt))
+        labels[labels.index(0)] = stimuli_onset_label
         if len(xlabels) > 0:
-            graph1_ax.set_xticks(time_range[1:-1:4])
-            graph1_ax.set_xticklabels(xlabels)
+            # graph1_ax.set_xticks(time_range[1:-1:4])
+            graph1_ax.set_xticks(time_range)
+        graph1_ax.set_xticklabels(labels)
 
         graph1_ax.set_xlim([time_range[0], time_range[-1]])
         if graph2_ax:
@@ -214,7 +215,7 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax.set_position(ax_pos_new) # set a new position
 
 
-def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, fol, dpi, fps, video_fname, cb_data_type,
     data_to_show_in_graph, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylabels=(),
     xlabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
 
@@ -227,7 +228,7 @@ def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dp
         images2_chunks = utils.chunks(images2, int(len(images2) / n_jobs))
     else:
         images2_chunks = [''] * int(len(images1) / n_jobs)
-    params = [(images1_chunk, images2_chunk, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
+    params = [(images1_chunk, images2_chunk, subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, dpi, fps,
                video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate,
                ylabels, xlabels, xlabel, show_first_pic, fol, fol2, run) for run, (images1_chunk, images2_chunk) in \
               enumerate(zip(images1_chunks, images2_chunks))]
@@ -258,12 +259,12 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def _create_movie_parallel(params):
-    (images1, images2, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
+    (images1, images2, subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, dpi, fps,
         video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, ylabels,
         xlabels, xlabel, show_first_pic, fol, fol2, run) = params
     video_name, video_type = os.path.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
-    ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images1, dpi, fps, video_fname, cb_data_type,
+    ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, images1, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title, min_max_eq, color_map, bitrate, images2, ylabels, xlabels,
               xlabel, show_first_pic)
 
@@ -350,6 +351,7 @@ def edit_movie_example():
 if __name__ == '__main__':
     min_max_eq = True
     color_map = 'jet'
+    stimuli_onset_label = 'stimuli onset'
 
     subject = 'mg78'
     fol = '/home/noam/Pictures/mmvt/movie1'
@@ -407,7 +409,7 @@ if __name__ == '__main__':
     fol = '/home/noam/Pictures/mmvt/mg99'
     fol2 = ''
     data_to_show_in_graph = 'stim'
-    video_fname = 'mg99_LVF4-3_stim'
+    video_fname = 'mg99_LVF4-3_stim.mp4'
     cb_title = 'Electrodes activity'
     ms_before_stimuli, labels_time_dt = 100, 50
     time_range = range(250)
@@ -416,13 +418,14 @@ if __name__ == '__main__':
     cb_data_type = 'stim'
     min_max_eq = False
     color_map = 'OrRd'
+    stimuli_onset_label = 'End of stimulation'
     fps = 10
 
     dpi = 100
     bitrate = 5000
     pics_type = 'png'
     show_first_pic = False
-    n_jobs = 1
+    n_jobs = 4
 
     # images = get_pics(fol, pics_type)
     # images2 = get_pics(fol2, pics_type) if fol2 != '' else []
@@ -431,7 +434,8 @@ if __name__ == '__main__':
 
     # duplicate_frames(fol, 30)
     # duplicate_frames(fol2, 30)
-    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, stimuli_onset_label, fol, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, fol2, ylabels, xlabels, xlabel, pics_type,
         show_first_pic, n_jobs)
 
+    # Call the function with --verbose-debug if you have problems with ffmpeg!
