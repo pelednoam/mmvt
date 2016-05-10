@@ -277,15 +277,19 @@ def rand_letters(num):
     return str(uuid.uuid4())[:num]
 
 
-def evaluate_fcurves(parent_obj, time_range):
+def evaluate_fcurves(parent_obj, time_range, specific_condition=None):
     data = OrderedDict()
     colors = OrderedDict()
     for fcurve in parent_obj.animation_data.action.fcurves:
         if fcurve.hide:
             continue
         name = fcurve.data_path.split('"')[1]
+        if not specific_condition is None:
+            cond = name[len(parent_obj.name) + 1:]
+            if cond != specific_condition:
+                continue
         print('{} extrapolation'.format(name))
-        # todo: we should return the interpolation to its previous vlaue
+        # todo: we should return the interpolation to its previous value
         for kf in fcurve.keyframe_points:
             kf.interpolation = 'BEZIER'
         data[name] = []

@@ -17,13 +17,13 @@ BLENDER_ROOT_FOLDER = os.path.join(LINKS_DIR, 'mmvt')
 
 
 def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title='', bitrate=5000, images2=(), ylabels=(), xlabels=(),
-        xlabel='Time (ms)', show_first_pic=False):
+        data_to_show_in_graph, fol, fol2, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
+        ylabels=(), xlabels=(), xlabel='Time (ms)', show_first_pic=False):
     def get_t(image_index):
         pic_name = utils.namebase(images[image_index])
         if '_t' in pic_name:
             t = int(pic_name.split('_t')[1])
-            t = time_range[1:-1:4][t]
+            # t = time_range[1:-1:4][t]
         else:
             t = int(re.findall('\d+', pic_name)[0])
         return t
@@ -67,7 +67,8 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
                 # dash = [5, 5] if ind == 1 else []
                 # if color == (1.0, 1.0, 1.0):
                 #     color = np.array(cu.name_to_rgb('orange')) / 255.0
-                ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+                # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+                ax.plot(time_range, values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
             ind += 1
 
         graph1_ax.set_xlabel(xlabel)
@@ -162,7 +163,7 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
     # gs.update(left=0.05, right=0.48, wspace=0.05)
     graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
         graph1_ax, data_to_show_in_graph, fol, fol2, graph2_ax, ylabels)
-    plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type)
+    plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, min_max_eq, color_map)
 
     now = time.time()
     if show_first_pic:
@@ -184,23 +185,26 @@ def ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images, dp
         t_line.set_data([current_t, current_t], [ymin, ymax])
         return [im]
 
-    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=False)
+    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=True)
     writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
     ani.save(op.join(fol, video_fname),writer=writer,dpi=dpi)
     return ani
 
 
-def plot_color_bar(ax, graph_data, cb_title, data_type=''):
+def plot_color_bar(ax, graph_data, cb_title, data_type='', min_max_eq=True, color_map='jet'):
     if data_type == '':
         return
     import matplotlib as mpl
     data_max = max([max(v) for v in graph_data[data_type].values()])
     data_min = min([min(v) for v in graph_data[data_type].values()])
-    data_max_min = utils.get_max_abs(data_max, data_min)
-    vmin, vmax = -data_max_min, data_max_min
-    cmap = mpl.cm.jet
+    if min_max_eq:
+        data_max_min = utils.get_max_abs(data_max, data_min)
+        vmin, vmax = -data_max_min, data_max_min
+    else:
+        vmin, vmax = data_min, data_max
+    # cmap = color_map # mpl.cm.jet
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
+    cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
     cb.set_label(cb_title)
 
 
@@ -211,8 +215,8 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
 
 
 def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
-    data_to_show_in_graph, cb_title='', bitrate=5000, fol2='', ylabels=(), xlabels=(), xlabel='Time (ms)',
-    pics_type='png', show_first_pic=False, n_jobs=1):
+    data_to_show_in_graph, cb_title='', min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylabels=(),
+    xlabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
 
     images1 = get_pics(fol, pics_type)
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
@@ -224,8 +228,9 @@ def create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dp
     else:
         images2_chunks = [''] * int(len(images1) / n_jobs)
     params = [(images1_chunk, images2_chunk, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
-               video_fname, cb_data_type, data_to_show_in_graph, cb_title, bitrate, ylabels, xlabels, xlabel, show_first_pic,
-               fol, fol2, run) for run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
+               video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate,
+               ylabels, xlabels, xlabel, show_first_pic, fol, fol2, run) for run, (images1_chunk, images2_chunk) in \
+              enumerate(zip(images1_chunks, images2_chunks))]
     utils.run_parallel(_create_movie_parallel, params, n_jobs)
     video_name, video_type = os.path.splitext(video_fname)
     combine_movies(fol, video_name, video_type[1:])
@@ -254,12 +259,13 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 def _create_movie_parallel(params):
     (images1, images2, subject, time_range, ms_before_stimuli, labels_time_dt, dpi, fps,
-        video_fname, cb_data_type, data_to_show_in_graph, cb_title, bitrate, ylabels, xlabels, xlabel,
-        show_first_pic, fol, fol2, run) = params
+        video_fname, cb_data_type, data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, ylabels,
+        xlabels, xlabel, show_first_pic, fol, fol2, run) = params
     video_name, video_type = os.path.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
     ani_frame(subject, time_range, ms_before_stimuli, labels_time_dt, images1, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title, bitrate, images2, ylabels, xlabels, xlabel, show_first_pic)
+        data_to_show_in_graph, fol, fol2, cb_title, min_max_eq, color_map, bitrate, images2, ylabels, xlabels,
+              xlabel, show_first_pic)
 
 
 def sort_pics_key(pic_fname):
@@ -328,7 +334,23 @@ def create_animated_gif(movie_fol, movie_name, out_movie_name):
     video.write_gif(op.join(movie_fol, out_movie_name), fps=12)
 
 
+def edit_movie_example():
+    movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
+    movie_fol = '/cluster/neuromind/npeled/Documents/brain-map'
+    # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
+    # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
+    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
+            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
+            ((9, 12), 'Finding the closest activation in the coordinates'),
+            ((12, 16), 'The activation is displayed with its statistics')]
+    # add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)
+    create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
+
+
 if __name__ == '__main__':
+    min_max_eq = True
+    color_map = 'jet'
+
     subject = 'mg78'
     fol = '/home/noam/Pictures/mmvt/movie1'
     fol2 = '/home/noam/Pictures/mmvt/movie2'
@@ -381,6 +403,21 @@ if __name__ == '__main__':
     cb_data_type = ''
     fps = 10
 
+    subject = 'mg99'
+    fol = '/home/noam/Pictures/mmvt/mg99'
+    fol2 = ''
+    data_to_show_in_graph = 'stim'
+    video_fname = 'mg99_LVF4-3_stim'
+    cb_title = 'Electrodes activity'
+    ms_before_stimuli, labels_time_dt = 100, 50
+    time_range = range(250)
+    ylabels = ['Electrodes activity']
+    xlabels = []
+    cb_data_type = 'stim'
+    min_max_eq = False
+    color_map = 'OrRd'
+    fps = 10
+
     dpi = 100
     bitrate = 5000
     pics_type = 'png'
@@ -394,18 +431,7 @@ if __name__ == '__main__':
 
     # duplicate_frames(fol, 30)
     # duplicate_frames(fol2, 30)
-    # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
-    #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
-    # create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
-    #     data_to_show_in_graph, cb_title, bitrate, fol2, ylabels, xlabels, xlabel, pics_type, show_first_pic, n_jobs)
+    create_movie(subject, time_range, ms_before_stimuli, labels_time_dt, fol, dpi, fps, video_fname, cb_data_type,
+        data_to_show_in_graph, cb_title, min_max_eq, color_map, bitrate, fol2, ylabels, xlabels, xlabel, pics_type,
+        show_first_pic, n_jobs)
 
-    movie_fol = '/cluster/neuromind/npeled/videos/recordmydesktop'
-    movie_fol = '/cluster/neuromind/npeled/Documents/brain-map'
-    # cut_movie(movie_fol, 'out-7.ogv', 'freeview-mmvt.mp4')
-    # crop_movie(movie_fol, 'freeview-mmvt.mp4', 'freeview-mmvt_crop.mp4')
-    subs = [((0, 4), 'Clicking on the OFC activation in Freeview'),
-            ((4, 9), 'The cursor moved to the same coordinates in the MMVT'),
-            ((9, 12), 'Finding the closest activation in the coordinates'),
-            ((12, 16), 'The activation is displayed with its statistics')]
-    # add_text_to_movie(movie_fol, 'freeview-mmvt_crop.mp4', 'freeview-mmvt_crop_text.mp4', subs)
-    create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')

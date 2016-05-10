@@ -153,6 +153,8 @@ def capture_graph(context):
         graph_data['meg'], graph_colors['meg'] = get_meg_data(per_condition)
     if play_type in ['meg_labels']:
         graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
+    if play_type in ['stim']:
+        graph_data['stim'], graph_colors['stim'] = get_electrodes_data(per_condition=True, specific_condition=False)
     save_graph_data(graph_data, graph_colors, image_fol)
 
 
@@ -252,7 +254,7 @@ def get_meg_labels_data():
     return meg_data, meg_colors
 
 
-def get_electrodes_data(per_condition=True):
+def get_electrodes_data(per_condition=True, specific_condition=False):
     elecs_data = OrderedDict()
     elecs_colors = OrderedDict()
     time_range = range(PlayPanel.addon.get_max_time_steps())
@@ -263,7 +265,9 @@ def get_electrodes_data(per_condition=True):
             elec_obj = bpy.data.objects[obj_name]
             if elec_obj.hide or elec_obj.animation_data is None:
                 continue
-            data, colors = mu.evaluate_fcurves(elec_obj, time_range)
+            curr_cond = bpy.context.scene.conditions_selection if \
+                bpy.context.scene.selection_type == 'spec_cond' else None
+            data, colors = mu.evaluate_fcurves(elec_obj, time_range, curr_cond)
             elecs_data.update(data)
             elecs_colors.update(colors)
     else:
@@ -296,6 +300,7 @@ def init_stim():
         'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_')))
     if op.isfile(stim_fname):
         PlayPanel.stim_data = np.load(stim_fname)
+        PlayPanel.electrodes_names = [elc.astype(str) for elc in PlayPanel.stim_data['names']]
         # PlayPanel.stim_colors = d['colors']
         # PlayPanel.stim_names = [elc.astype(str) for elc in d['names']]
 
