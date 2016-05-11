@@ -20,85 +20,6 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
         ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False):
 
-    def get_t(image_index, time_range):
-        pic_name = utils.namebase(images[image_index])
-        if '_t' in pic_name:
-            t = int(pic_name.split('_t')[1])
-            # t = time_range[1:-1:4][t]
-        else:
-            t = int(re.findall('\d+', pic_name)[0])
-        return time_range[t]
-
-    def plot_graph(graph1_ax, data_to_show_in_graph, fol, fol2='', graph2_ax=None, ylabels=()):
-        graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
-        if fol2 != '':
-            graph_data2, graph_colors2 = utils.load(op.join(fol2, 'data.pkl'))
-            if len(graph_data.keys()) == 1 and len(graph_data2.keys()) == 1:
-                graph2_data_item = list(graph_data2.keys())[0]
-                graph_data['{}2'.format(graph2_data_item)] = graph_data2[graph2_data_item]
-        axes = [graph1_ax]
-        if graph2_ax:
-            axes = [graph1_ax, graph2_ax]
-
-        ind = 0
-        from src.mmvt_addon import colors_utils as cu
-        # colors = cu.get_distinct_colors(6) / 255# ['r', 'b', 'g']
-        colors = ['r', 'b', 'g']
-        for data_type, data_values in graph_data.items():
-            if isinstance(data_values, numbers.Number):
-                continue
-            if data_type not in data_to_show_in_graph:
-                continue
-            ax = axes[ind]
-            ylabel = data_type if len(ylabels) <= ind else ylabels[ind]
-            ax.set_ylabel(ylabel, color=colors[ind] if graph2_ax else 'k')
-            if graph2_ax:
-                for tl in ax.get_yticklabels():
-                    tl.set_color(colors[ind])
-            for k, values in data_values.items():
-                if np.allclose(values, 0):
-                    continue
-                color = colors[ind] if graph2_ax else tuple(graph_colors[data_type][k])
-                # todo: tuple doesn't have ndim, not sure what to do here
-                # if graph_colors[data_type][k].ndim > 1:
-                if data_type[-1] == '2':
-                    data_type = data_type[:-1]
-                # color = graph_colors[data_type][k]
-                # alpha = 0.2
-                # dash = [5, 5] if ind == 1 else []
-                # if color == (1.0, 1.0, 1.0):
-                #     color = np.array(cu.name_to_rgb('orange')) / 255.0
-                # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
-                ax.plot(time_range, values, label=k, color=color, alpha=0.9)#, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
-            ind += 1
-
-        graph1_ax.set_xlabel(xlabel)
-        xticks_labels = xticks
-        for xlable_time, xticklabel in xticklabels:
-            if xlable_time in xticks_labels:
-                xticks_labels[xticks_labels.index(xlable_time)] = xticklabel
-        graph1_ax.set_xticklabels(xticks_labels)
-
-        graph1_ax.set_xlim([time_range[0], time_range[-1]])
-        if graph2_ax:
-            if ylim:
-                ymin, ymax = ylim
-            else:
-                ymin1, ymax1 = graph1_ax.get_ylim()
-                ymin2, ymax2 = graph2_ax.get_ylim()
-                ymin = min([ymin1, ymin2])
-                ymax = max([ymax1, ymax2])
-
-            graph1_ax.set_ylim([ymin, ymax])
-            graph2_ax.set_ylim([ymin, ymax])
-        else:
-            ymin, ymax = ylim if ylim else graph1_ax.get_ylim()
-            graph1_ax.set_ylim([ymin, ymax])
-
-        t0 = get_t(0, time_range)
-        t_line, = graph1_ax.plot([t0, t0], [ymin, ymax], 'g-')
-        # plt.legend()
-        return graph_data, graph_colors, t_line, ymin, ymax
 
     def two_brains_two_graphs():
         brain_ax = plt.subplot(gs[:-g2, :g3])
@@ -168,8 +89,12 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         graph2_ax, im2 = None, None
 
     # gs.update(left=0.05, right=0.48, wspace=0.05)
+    # graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
+    #     graph1_ax, data_to_show_in_graph, fol, fol2, graph2_ax, ylabels)
+
     graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
-        graph1_ax, data_to_show_in_graph, fol, fol2, graph2_ax, ylabels)
+        graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2, graph2_ax, xlabel, ylabels, xticklabels, ylim)
+
     plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
 
     now = time.time()
@@ -188,7 +113,7 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
             image2 = mpimg.imread(images2[image_index])
             im2.set_data(image2)
 
-        current_t = get_t(image_index, time_range)
+        current_t = get_t(images, image_index, time_range)
         t_line.set_data([current_t, current_t], [ymin, ymax])
         return [im]
 
@@ -196,6 +121,95 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
     ani.save(op.join(fol, video_fname),writer=writer,dpi=dpi)
     return ani
+
+
+def get_t(images, image_index, time_range):
+    if images is None:
+        return 0
+    pic_name = utils.namebase(images[image_index])
+    if '_t' in pic_name:
+        t = int(pic_name.split('_t')[1])
+        # t = time_range[1:-1:4][t]
+    else:
+        t = int(re.findall('\d+', pic_name)[0])
+    return time_range[t]
+
+
+def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='', graph2_ax=None, xlabel='',
+               ylabels=(), xticklabels=(), ylim=None, images=None, green_line=True):
+    graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
+    if fol2 != '':
+        graph_data2, graph_colors2 = utils.load(op.join(fol2, 'data.pkl'))
+        if len(graph_data.keys()) == 1 and len(graph_data2.keys()) == 1:
+            graph2_data_item = list(graph_data2.keys())[0]
+            graph_data['{}2'.format(graph2_data_item)] = graph_data2[graph2_data_item]
+    axes = [graph1_ax]
+    if graph2_ax:
+        axes = [graph1_ax, graph2_ax]
+
+    ind = 0
+    from src.mmvt_addon import colors_utils as cu
+    # colors = cu.get_distinct_colors(6) / 255# ['r', 'b', 'g']
+    colors = ['r', 'b', 'g']
+    for data_type, data_values in graph_data.items():
+        if isinstance(data_values, numbers.Number):
+            continue
+        if data_type not in data_to_show_in_graph:
+            continue
+        ax = axes[ind]
+        ylabel = data_type if len(ylabels) <= ind else ylabels[ind]
+        ax.set_ylabel(ylabel, color=colors[ind] if graph2_ax else 'k')
+        if graph2_ax:
+            for tl in ax.get_yticklabels():
+                tl.set_color(colors[ind])
+        for k, values in data_values.items():
+            if np.allclose(values, 0):
+                continue
+            color = colors[ind] if graph2_ax else tuple(graph_colors[data_type][k])
+            # todo: tuple doesn't have ndim, not sure what to do here
+            # if graph_colors[data_type][k].ndim > 1:
+            if data_type[-1] == '2':
+                data_type = data_type[:-1]
+            # color = graph_colors[data_type][k]
+            # alpha = 0.2
+            # dash = [5, 5] if ind == 1 else []
+            # if color == (1.0, 1.0, 1.0):
+            #     color = np.array(cu.name_to_rgb('orange')) / 255.0
+            # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+            ax.plot(time_range, values, label=k, color=color,
+                    alpha=0.9)  # , clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+        ind += 1
+
+    graph1_ax.set_xlabel(xlabel)
+    xticks_labels = xticks
+    for xlable_time, xticklabel in xticklabels:
+        if xlable_time in xticks_labels:
+            xticks_labels[xticks_labels.index(xlable_time)] = xticklabel
+    graph1_ax.set_xticklabels(xticks_labels)
+
+    graph1_ax.set_xlim([time_range[0], time_range[-1]])
+    if graph2_ax:
+        if ylim:
+            ymin, ymax = ylim
+        else:
+            ymin1, ymax1 = graph1_ax.get_ylim()
+            ymin2, ymax2 = graph2_ax.get_ylim()
+            ymin = min([ymin1, ymin2])
+            ymax = max([ymax1, ymax2])
+
+        graph1_ax.set_ylim([ymin, ymax])
+        graph2_ax.set_ylim([ymin, ymax])
+    else:
+        ymin, ymax = ylim if ylim else graph1_ax.get_ylim()
+        graph1_ax.set_ylim([ymin, ymax])
+
+    if green_line:
+        t0 = get_t(images, 0, time_range)
+        t_line, = graph1_ax.plot([t0, t0], [ymin, ymax], 'g-')
+    else:
+        t_line = None
+    # plt.legend()
+    return graph_data, graph_colors, t_line, ymin, ymax
 
 
 def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, color_map='jet'):
@@ -267,6 +281,19 @@ def get_pics(fol, pics_type='png'):
     return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=sort_pics_key)
 
 
+def plot_only_graph(fol, data_to_show_in_graph, time_range_tup, xtick_dt, xlabel='', ylabels=(),
+        xticklabels=(), ylim=None, images=None, fol2='', graph2_ax=None):
+    import matplotlib.pyplot as plt
+    plt = plt.figure()
+    ax = plt.add_subplot(111)
+    time_range = np.arange(time_range_tup[0], time_range_tup[1], time_range_tup[2])
+    xticks = np.arange(time_range_tup[0], len(time_range), xtick_dt).tolist()
+    plot_graph(ax, data_to_show_in_graph, time_range, xticks, fol, fol2='', graph2_ax=None, xlabel=xlabel,
+               ylabels=ylabels, xticklabels=xticklabels, ylim=ylim, images=None, green_line=False)
+    plt.show()
+    plt.savefig(op.join(fol, 'graph.jpg'))
+
+
 def duplicate_frames(fol, multiplier=50, pics_type='png'):
     import shutil
     pics = get_pics(fol, pics_type)
@@ -282,31 +309,66 @@ def duplicate_frames(fol, multiplier=50, pics_type='png'):
 
 
 if __name__ == '__main__':
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT making movie')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--dpi', help='stim dpi', required=False, type=int, default=100)
+    parser.add_argument('--fps', help='fps', required=False, type=int, default=10)
+    parser.add_argument('--bitrate', help='bitrate', required=False, type=int, default=5000)
+    parser.add_argument('--pics_type', help='pics_type', required=False, default='png')
+    parser.add_argument('--show_first_pic', help='show_first_pic', required=False, type=au.is_true, default=0)
+    parser.add_argument('--images_folder', help='images_folder', required=False)
+    parser.add_argument('--data_in_graph', help='data_in_graph', required=False)
+    parser.add_argument('--time_range', help='time_range_from', required=False, type=au.float_arr_type)
+    parser.add_argument('--xtick_dt', help='xtick_dt', required=False, type=float)
+    parser.add_argument('--xlabel', help='xlabel', required=False)
+    parser.add_argument('--ylabels', help='ylabels', required=False, type=au.str_arr_type)
+    parser.add_argument('--xticklabels', help='xticklabels', required=False, type=au.str_arr_type)
+    parser.add_argument('--ylim', help='ylim', required=False, type=au.float_arr_type)
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    args = utils.Bag(au.parse_parser(parser))
+    args.xticklabels = au.str_arr_to_markers(args, 'xticklabels')
+    print(args)
+    n_jobs = utils.get_n_jobs(args.n_jobs)
+
     # fol = '/home/noam/Pictures/mmvt/mg99'
-    fol = '/homes/5/npeled/space1/Pictures/mmvt/stim/mg99'
-    fol2 = ''
-    data_to_show_in_graph = 'stim'
-    video_fname = 'mg99_LVF4-3_stim.mp4'
-    cb_title = 'Electrodes PSD'
-    ylabels = ['Electrodes PSD']
-    time_range = np.arange(-1, 1.5, 0.01)
-    xticks = [-1, -0.5, 0, 0.5, 1]
-    xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
-    ylim = (0, 500)
-    xlabel = 'Time(s)'
-    cb_data_type = 'stim'
-    cb_min_max_eq = False
-    color_map = 'OrRd'
-    fps = 10
+    # fol = '/homes/5/npeled/space1/Pictures/mmvt/stim/mg99/lvf6_5'
+    # fol2 = ''
+    # data_to_show_in_graph = 'stim'
+    # video_fname = 'mg99_LVF6-5_stim.mp4'
+    # cb_title = 'Electrodes PSD'
+    # ylabels = ['Electrodes PSD']
+    # time_range = np.arange(-1, 1.5, 0.01)
+    # xticks = [-1, -0.5, 0, 0.5, 1]
+    # xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
+    # ylim = (0, 500)
+    # xlabel = 'Time(s)'
+    # cb_data_type = 'stim'
+    # cb_min_max_eq = False
+    # color_map = 'OrRd'
 
-    dpi = 100
-    bitrate = 5000
-    pics_type = 'png'
-    show_first_pic = False
-    n_jobs = 4
 
-    # Call the function with --verbose-debug if you have problems with ffmpeg!
-    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
+    # dpi = 100
+    # bitrate = 5000
+    # pics_type = 'png'
+    # show_first_pic = False
+    # n_jobs = 4
+    # fps = 10
 
+    '''
+    Example for a call:
+    make_movie -f plot_only_graph --xticklabels '-1,stim_onset,0,end_of_stim' --data_in_graph stim --time_range '-1,1.5,0.01' --xtick_dt 0.5 --xlabel time(s) --ylabels Electrodes_PSD --ylim 0,1200 --images_folder '.'
+
+    '''
+
+    if 'all' in args.function:
+        # Call the function with --verbose-debug if you have problems with ffmpeg!
+        create_movie(time_range, xticks, fol, args.dpi, args.fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+            cb_min_max_eq, color_map, args.bitrate, fol2, ylim, ylabels, xticklabels, xlabel, args.pics_type,
+            args.show_first_pic, n_jobs)
+    if 'plot_only_graph' in args.function:
+        plot_only_graph(args.images_folder, args.data_in_graph, args.time_range, args.xtick_dt,
+                        xlabel=args.xlabel, ylabels=args.ylabels, xticklabels=args.xticklabels,
+                        ylim=args.ylim, images=None, fol2='', graph2_ax=None)
 

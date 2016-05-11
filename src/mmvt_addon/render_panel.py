@@ -6,6 +6,7 @@ import mmvt_utils as mu
 bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
+
 def render_draw(self, context):
     layout = self.layout
     col = layout.column(align=True)

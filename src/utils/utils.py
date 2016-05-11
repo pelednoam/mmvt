@@ -549,6 +549,15 @@ def get_spaced_colors(n):
     return colors
 
 
+def downsample(x, R):
+    if x.ndim == 1:
+        return x.reshape(-1, R).mean(1)
+    elif x.ndim == 2:
+        return downsample_2d(x, R)
+    else:
+        raise Exception('Currently supports only matrices with up to 2 dims!')
+
+
 def downsample_2d(x, R):
     return x.reshape(x.shape[0],-1,R).mean(2)
 
@@ -1227,8 +1236,8 @@ def get_n_jobs(n_jobs):
 
 
 def read_mat_file_into_bag(mat_fname):
-    import scipy.io as sio
     try:
+        import scipy.io as sio
         x = sio.loadmat(mat_fname)
         return Bag(**x)
     except NotImplementedError:

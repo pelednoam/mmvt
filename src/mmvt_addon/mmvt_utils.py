@@ -238,11 +238,24 @@ def get_atlas(default='laus250'):
     # else:
     #     return default
     blend_fname = namebase(bpy.data.filepath)
-    sep_ind = blend_fname.find('_')
-    if sep_ind != -1:
-        return blend_fname[sep_ind + 1:]
-    else:
-        return default
+    if blend_fname.find('_') == -1:
+        raise Exception("Can't find the atlas in the blender file! The Blender's file name needs to end with "  +
+                        "'_atlas-name.blend' (sub1_dkt.blend for example)")
+    atlas = blend_fname.split('_')[-1]
+    real_atlas_name = ''
+    csv_fname = op.join(get_mmvt_root(), 'atlas.csv')
+    for line in csv_file_reader(csv_fname, ',', 1):
+        if line[0] == atlas:
+            real_atlas_name = line[1]
+            break
+    if real_atlas_name == '':
+        raise Exception("Can't find teh atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+    return real_atlas_name
+    # sep_ind = blend_fname.find('_')
+    # if sep_ind != -1:
+    #     return blend_fname[sep_ind + 1:]
+    # else:
+    #     return default
 
 
 def get_user_fol():
@@ -443,12 +456,14 @@ def elec_group(elec_name, bipolar):
 
 
 
-def csv_file_reader(csv_fname, delimiter=','):
+def csv_file_reader(csv_fname, delimiter=',', skip_header=0):
     import csv
     with open(csv_fname, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=delimiter)
-        for row in reader:
-            yield [val.strip() for val in row]
+        for line_num, line in enumerate(reader):
+            if line_num < skip_header:
+                continue
+            yield [val.strip() for val in line]
 
 
 def check_obj_type(obj_name):
@@ -681,13 +696,17 @@ def get_parent_fol(fol=None):
     return os.path.split(fol)[0]
 
 
-def get_mmvt_root():
+def get_mmvt_code_root():
     curr_dir = os.path.dirname(os.path.realpath(__file__))
     return os.path.dirname(os.path.split(curr_dir)[0])
 
 
+def get_mmvt_root():
+    return get_parent_fol(get_user_fol())
+
+
 def change_fol_to_mmvt_root():
-    os.chdir(get_mmvt_root())
+    os.chdir(get_mmvt_code_root())
 
 
 class connection_to_listener(object):

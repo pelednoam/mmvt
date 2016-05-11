@@ -61,7 +61,10 @@ class ModalTimerOperator(bpy.types.Operator):
                 bpy.context.scene.frame_current = self.limits
                 print(self.limits, time.time() - self._time)
                 self._time = time.time()
-                plot_something(self, context, self.limits, ModalTimerOperator._uuid)
+                try:
+                    plot_something(self, context, self.limits, ModalTimerOperator._uuid)
+                except:
+                    print('Error in plotting at {}!'.format(self.limits))
                 self.limits = self.limits - bpy.context.scene.play_dt if PlayPanel.play_reverse else \
                         self.limits + bpy.context.scene.play_dt
                 bpy.context.scene.frame_current = self.limits
@@ -71,14 +74,14 @@ class ModalTimerOperator(bpy.types.Operator):
     def execute(self, context):
         # ModalTimerOperator._timer = wm.event_timer_add(time_step=bpy.context.scene.play_time_step, window=context.window)
         wm = context.window_manager
-        if ModalTimerOperator._timer:
-            print('timer is already running!')
-            print('last tick {}'.format(time.time() - self._time))
-        else:
-            self.cancel(context)
-            ModalTimerOperator._timer = wm.event_timer_add(time_step=0.05, window=context.window)
-            self._time = time.time()
-            wm.modal_handler_add(self)
+        # if ModalTimerOperator._timer:
+        #     print('timer is already running!')
+        #     print('last tick {}'.format(time.time() - self._time))
+        # else:
+        self.cancel(context)
+        ModalTimerOperator._timer = wm.event_timer_add(time_step=0.05, window=context.window)
+        self._time = time.time()
+        wm.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
@@ -141,7 +144,8 @@ def plot_something(self, context, cur_frame, uuid):
 
 def capture_graph(context):
     play_type = bpy.context.scene.play_type
-    image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+    # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
+    image_fol = bpy.context.scene.output_path
     graph_data, graph_colors = {}, {}
     per_condition = bpy.context.scene.selection_type == 'conds'
 
@@ -154,7 +158,21 @@ def capture_graph(context):
     if play_type in ['meg_labels']:
         graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
     if play_type in ['stim']:
-        graph_data['stim'], graph_colors['stim'] = get_electrodes_data(per_condition=True, specific_condition=False)
+        graph_data['stim'], graph_colors['stim'] = get_electrodes_data(per_condition=True)
+
+    # should let the user set the:
+    #  xticklabels (--xticklabels '-1,stim_onset,0,end_of_stim')
+    #  time_range (--time_range '-1,1.5,0.01')
+    #  xtick_dt (--xtick_dt 0.5)
+    cmd = "{} -m src.make_movie -f plot_only_graph --data_in_graph {} --xlabel time --images_folder {}".format(
+        bpy.context.scene.python_cmd, play_type, image_fol)
+    print('Running {}'.format(cmd))
+    mu.run_command_in_new_thread(cmd, False)
+
+    if op.isfile(op.join(image_fol, 'data.pkl')):
+        print('The file already exists!')
+        return
+
     save_graph_data(graph_data, graph_colors, image_fol)
 
 
@@ -254,7 +272,10 @@ def get_meg_labels_data():
     return meg_data, meg_colors
 
 
-def get_electrodes_data(per_condition=True, specific_condition=False):
+def get_electrodes_data(per_condition=True):
+    if bpy.context.scene.selection_type == 'spec_cond' and bpy.context.scene.conditions_selection == '':
+        print('You must choose the condition first!')
+        return None, None
     elecs_data = OrderedDict()
     elecs_colors = OrderedDict()
     time_range = range(PlayPanel.addon.get_max_time_steps())

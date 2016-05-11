@@ -42,7 +42,7 @@ def load_conditions():
 def stim_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'stim_files', text='')
-    layout.operator(ImportStimElectrodes.bl_idname, text="Import the electrodes", icon='RNA_ADD')
+    # layout.operator(ImportStimElectrodes.bl_idname, text="Import the electrodes", icon='RNA_ADD')
     if bpy.data.objects.get(PARENT_OBJ, None):
         layout.operator(LoadStim.bl_idname, text="Load the data", icon='RNA_ADD')
         layout.operator(LoadStimConditions.bl_idname, text="Load the frequencies", icon='RNA_ADD')
@@ -98,8 +98,8 @@ class StimPanel(bpy.types.Panel):
 def init(addon):
     user_fol = mu.get_user_fol()
     stim_files = glob.glob(op.join(user_fol, 'electrodes', 'stim_electrodes_*.npz'))
-    stim_positions_files = glob.glob(op.join(user_fol, 'electrodes', 'stim_electrodes*positions.npz'))
-    if len(stim_files) == 0 or len(stim_positions_files) == 0:
+    # stim_positions_files = glob.glob(op.join(user_fol, 'electrodes', 'stim_electrodes*positions.npz'))
+    if len(stim_files) == 0:
         return None
     StimPanel.addon = addon
     files_names = [mu.namebase(fname)[len('stim_electrodes_'):].replace('_', ' ') for fname in stim_files]

@@ -53,6 +53,7 @@ def find_obj_with_val():
     if parent_obj.name == 'Deep_electrodes':
         print('filtering electrodes')
         filter_electrode_func(closet_object_name)
+        bpy.context.scene.cursor_location = bpy.data.objects[closet_object_name].location
     elif connections_panel_exist and parent_obj.name == connections_panel.PARENT_OBJ:
         connections_panel.find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target)
     else:
