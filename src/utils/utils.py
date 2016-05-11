@@ -33,18 +33,26 @@ PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproper
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['lh', 'rh']
 
-class Bag( dict ):
-    """ a dict with d.key short for d["key"]
-        d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
-    """
-        # aka Dotdict
+# links to mmvt_utils
+Bag = mu.Bag
+make_dir = mu.make_dir
+hemi_files_exists = mu.hemi_files_exists
+natural_keys = mu.natural_keys
+elec_group_number = mu.elec_group_number
+elec_group = mu.elec_group
 
-    def __init__(self, *args, **kwargs):
-        dict.__init__( self, *args, **kwargs )
-        self.__dict__ = self
-
-    def __getnewargs__(self):  # for cPickle.dump( d, file, protocol=-1)
-        return tuple(self)
+# class Bag( dict ):
+#     """ a dict with d.key short for d["key"]
+#         d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
+#     """
+#         # aka Dotdict
+#
+#     def __init__(self, *args, **kwargs):
+#         dict.__init__( self, *args, **kwargs )
+#         self.__dict__ = self
+#
+#     def __getnewargs__(self):  # for cPickle.dump( d, file, protocol=-1)
+#         return tuple(self)
 
 
 def get_exisiting_dir(dirs):
@@ -522,13 +530,11 @@ def rmtree(fol):
     if os.path.isdir(fol):
         shutil.rmtree(fol)
 
-make_dir = mu.make_dir
 # def make_dir(fol):
 #     if not os.path.isdir(fol):
 #         os.makedirs(fol)
 #     return fol
 
-hemi_files_exists = mu.hemi_files_exists
 
 def get_subfolders(fol):
     return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
@@ -982,8 +988,6 @@ def stack(arr, stack_type='v'):
     return X
 
 
-elec_group_number = mu.elec_group_number
-elec_group = mu.elec_group
 # def elec_group_number(elec_name, bipolar=False):
 #     if isinstance(elec_name, bytes):
 #         elec_name = elec_name.decode('utf-8')
@@ -1220,3 +1224,18 @@ def get_n_jobs(n_jobs):
     elif n_jobs < 0:
         n_jobs = cpu_num + n_jobs
     return n_jobs
+
+
+def read_mat_file_into_bag(mat_fname):
+    import scipy.io as sio
+    try:
+        x = sio.loadmat(mat_fname)
+        return Bag(**x)
+    except NotImplementedError:
+        import tables
+        from src.utils import tables_utils as tu
+        x = tables.openFile(mat_fname)
+        ret = Bag(**tu.read_tables_into_dict(x))
+        x.close()
+        return ret
+    return None

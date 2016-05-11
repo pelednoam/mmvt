@@ -282,7 +282,8 @@ def duplicate_frames(fol, multiplier=50, pics_type='png'):
 
 
 if __name__ == '__main__':
-    fol = '/home/noam/Pictures/mmvt/mg99'
+    # fol = '/home/noam/Pictures/mmvt/mg99'
+    fol = '/homes/5/npeled/space1/Pictures/mmvt/stim/mg99'
     fol2 = ''
     data_to_show_in_graph = 'stim'
     video_fname = 'mg99_LVF4-3_stim.mp4'
