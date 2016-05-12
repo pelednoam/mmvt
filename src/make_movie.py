@@ -181,11 +181,12 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
         ind += 1
 
     graph1_ax.set_xlabel(xlabel)
-    xticks_labels = xticks
-    for xlable_time, xticklabel in xticklabels:
-        if xlable_time in xticks_labels:
-            xticks_labels[xticks_labels.index(xlable_time)] = xticklabel
-    graph1_ax.set_xticklabels(xticks_labels)
+    if not xticklabels is None:
+        x_labels = xticks
+        for xlable_time, xticklabel in xticklabels:
+            if xlable_time in xticks:
+                x_labels[x_labels.index(xlable_time)] = xticklabel
+        graph1_ax.set_xticklabels(x_labels)
 
     graph1_ax.set_xlim([time_range[0], time_range[-1]])
     if graph2_ax:
@@ -282,15 +283,20 @@ def get_pics(fol, pics_type='png'):
 
 
 def plot_only_graph(fol, data_to_show_in_graph, time_range_tup, xtick_dt, xlabel='', ylabels=(),
-        xticklabels=(), ylim=None, images=None, fol2='', graph2_ax=None):
+        xticklabels=(), ylim=None, images=None, fol2='', graph2_ax=None, do_show=False):
     import matplotlib.pyplot as plt
     plt = plt.figure()
     ax = plt.add_subplot(111)
-    time_range = np.arange(time_range_tup[0], time_range_tup[1], time_range_tup[2])
-    xticks = np.arange(time_range_tup[0], len(time_range), xtick_dt).tolist()
+    if len(time_range_tup) == 3:
+        time_range = np.arange(time_range_tup[0], time_range_tup[1], time_range_tup[2])
+        xticks = np.arange(time_range_tup[0], len(time_range), xtick_dt).tolist()
+    else:
+        time_range = np.arange(time_range_tup[0])
+        xticks = None
     plot_graph(ax, data_to_show_in_graph, time_range, xticks, fol, fol2='', graph2_ax=None, xlabel=xlabel,
                ylabels=ylabels, xticklabels=xticklabels, ylim=ylim, images=None, green_line=False)
-    plt.show()
+    if do_show:
+        plt.show()
     plt.savefig(op.join(fol, 'graph.jpg'))
 
 
@@ -326,6 +332,7 @@ if __name__ == '__main__':
     parser.add_argument('--ylabels', help='ylabels', required=False, type=au.str_arr_type)
     parser.add_argument('--xticklabels', help='xticklabels', required=False, type=au.str_arr_type)
     parser.add_argument('--ylim', help='ylim', required=False, type=au.float_arr_type)
+    parser.add_argument('--do_show', help='do_show', required=False, type=au.is_true, default=0)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     args.xticklabels = au.str_arr_to_markers(args, 'xticklabels')
@@ -370,5 +377,5 @@ if __name__ == '__main__':
     if 'plot_only_graph' in args.function:
         plot_only_graph(args.images_folder, args.data_in_graph, args.time_range, args.xtick_dt,
                         xlabel=args.xlabel, ylabels=args.ylabels, xticklabels=args.xticklabels,
-                        ylim=args.ylim, images=None, fol2='', graph2_ax=None)
+                        ylim=args.ylim, images=None, fol2='', graph2_ax=None, do_show=args.do_show)
 

@@ -5,6 +5,7 @@ import os.path as op
 import numpy as np
 import os
 import shutil
+import glob
 from src.utils import utils
 
 LINKS_DIR = utils.get_links_dir()
@@ -68,6 +69,60 @@ def backup_annotation_files(subject, subjects_dic, aparc_name, backup_str='backu
         if op.isfile(annot_fname):
             shutil.copyfile(op.join(subjects_dic, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name)),
                             op.join(subjects_dic, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)),)
+
+
+def get_atlas_labels_names(subject, atlas, delim='-', pos='end', n_jobs=1):
+    annot_fname_hemi = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
+    labels_names_hemis = dict(lh=[], rh=[])
+    if utils.both_hemi_files_exist(annot_fname_hemi):
+        for hemi in ['rh', 'lh']:
+            annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+            _, _, labels_names = mne.label._read_annot(annot_fname)
+            labels_names = fix_labels_names(labels_names, hemi, delim, pos)
+            labels_names_hemis[hemi] = labels_names
+    else:
+        labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
+        for label in labels:
+            labels_names_hemis[label.hemi].append(label.name)
+    if len(labels_names_hemis['rh']) == 0 or len(labels_names_hemis['lh']) == 0:
+        raise Exception("Can't read {} labels for atlas {}".format(subject, atlas))
+    return labels_names_hemis
+
+
+def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
+    fixed_labels_names = []
+    for label_name in labels_names:
+        if isinstance(label_name, bytes):
+            label_name = label_name.decode('utf-8')
+        if not '{}-'.format(hemi) in label_name or \
+            not '{}.'.format(hemi) in label_name or \
+            not '-{}'.format(hemi) in label_name or \
+            not '.{}'.format(hemi) in label_name:
+                if pos == 'end':
+                    label_name = '{}{}{}'.format(label_name, delim, hemi)
+                elif pos == 'start':
+                    label_name = '{}{}{}'.format(hemi, delim, label_name)
+                else:
+                    raise Exception("pos can be 'end' or 'start'")
+        fixed_labels_names.append(label_name)
+    return fixed_labels_names
+
+
+def get_hemi_delim_and_pos(label_name):
+    for hemi in ['rh', 'lh']:
+        if label_name.startswith('{}-'.format(hemi)):
+            delim, pos = '-', 'start'
+            break
+        if label_name.startswith('{}.'.format(hemi)):
+            delim, pos = '.', 'start'
+            break
+        if label_name.endswith('-{}'.format(hemi)):
+            delim, pos = '-', 'end'
+            break
+        if label_name.endswith('.{}'.format(hemi)):
+            delim, pos = '.', 'end'
+            break
+    return delim, pos
 
 
 if __name__ == '__main__':

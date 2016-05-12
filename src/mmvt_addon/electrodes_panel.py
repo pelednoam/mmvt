@@ -49,10 +49,13 @@ def _electrodes_update():
         # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
         #      _show_only_current_lead_update()
     if not ElecsPanel.lookup is None:
-        loc = ElecsPanel.lookup[current_electrode]
-        print_electrode_loc(loc)
-        if bpy.context.scene.color_lables:
-            plot_labels_probs(loc)
+        loc = ElecsPanel.lookup.get(current_electrode, None)
+        if loc is None:
+            print("Can't find {} in ElecsPanel.lookup!".format(current_electrode))
+        else:
+            print_electrode_loc(loc)
+            if bpy.context.scene.color_lables:
+                plot_labels_probs(loc)
 
 
 def select_electrode(current_electrode):
@@ -393,6 +396,7 @@ class ElecsPanel(bpy.types.Panel):
 
 
 def init(addon):
+    import shutil
     ElecsPanel.addon = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
@@ -400,8 +404,12 @@ def init(addon):
         return
     sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
     if not op.isfile(sorted_groups_fname):
-        print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
-        return
+        # Try to get the file from the subject's root folder
+        if op.isfile(op.join(mu.get_user_fol(), 'sorted_groups.pkl')):
+            shutil.move(op.join(mu.get_user_fol(), 'sorted_groups.pkl'), sorted_groups_fname)
+        else:
+            print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
+            return
     ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
     ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
     ElecsPanel.all_electrodes = [el.name for el in ElecsPanel.parent.children]

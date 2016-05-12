@@ -244,13 +244,17 @@ def get_atlas(default='laus250'):
     atlas = blend_fname.split('_')[-1]
     real_atlas_name = ''
     csv_fname = op.join(get_mmvt_root(), 'atlas.csv')
-    for line in csv_file_reader(csv_fname, ',', 1):
-        if line[0] == atlas:
-            real_atlas_name = line[1]
-            break
-    if real_atlas_name == '':
-        raise Exception("Can't find teh atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
-    return real_atlas_name
+    if op.isfile(csv_fname):
+        for line in csv_file_reader(csv_fname, ',', 1):
+            if line[0] == atlas:
+                real_atlas_name = line[1]
+                break
+        if real_atlas_name == '':
+            raise Exception("Can't find teh atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+        return real_atlas_name
+    else:
+        raise Exception('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
+                        'the columns are name in blend file, annot name, description')
     # sep_ind = blend_fname.find('_')
     # if sep_ind != -1:
     #     return blend_fname[sep_ind + 1:]

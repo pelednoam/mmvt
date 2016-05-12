@@ -145,7 +145,9 @@ def plot_something(self, context, cur_frame, uuid):
 def capture_graph(context):
     play_type = bpy.context.scene.play_type
     # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
-    image_fol = bpy.context.scene.output_path
+    image_fol = bpy.path.abspath(bpy.context.scene.output_path)
+    if not op.isdir(image_fol):
+        raise Exception('You need to set first the images folder in the Render panel!')
     graph_data, graph_colors = {}, {}
     per_condition = bpy.context.scene.selection_type == 'conds'
 
@@ -164,8 +166,9 @@ def capture_graph(context):
     #  xticklabels (--xticklabels '-1,stim_onset,0,end_of_stim')
     #  time_range (--time_range '-1,1.5,0.01')
     #  xtick_dt (--xtick_dt 0.5)
-    cmd = "{} -m src.make_movie -f plot_only_graph --data_in_graph {} --xlabel time --images_folder {}".format(
-        bpy.context.scene.python_cmd, play_type, image_fol)
+    T = PlayPanel.addon.get_max_time_steps()
+    cmd = "{} -m src.make_movie -f plot_only_graph --data_in_graph {} --time_range {} --xlabel time --images_folder '{}'".format(
+        bpy.context.scene.python_cmd, play_type, T, image_fol)
     print('Running {}'.format(cmd))
     mu.run_command_in_new_thread(cmd, False)
 

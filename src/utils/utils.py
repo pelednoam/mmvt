@@ -318,6 +318,8 @@ def get_electrodes_labeling(subject, atlas, bipolar=False, error_radius=3, elec_
         labeling = load(electrode_labeling_fname)
         return labeling, electrode_labeling_fname
     else:
+
+        print("Can't find the electrodes' labeling file in {}!".format(electrode_labeling_fname))
         return None, None
 
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
@@ -669,17 +671,6 @@ def get_labels_vertices(labels, vertno):
         label_vertidx.append(this_vertidx)
         labels_names.append(label.name)
     return label_vertidx, labels_names
-
-
-def read_labels(labels_fol, hemi='both'):
-    hemis = [hemi] if hemi != 'both' else HEMIS
-    labels = []
-    for hemi in hemis:
-        for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):
-            print('read label from {}'.format(label_file))
-            label = mne.read_label(label_file)
-            labels.append(label)
-    return labels
 
 
 def dic2bunch(dic):
@@ -1142,6 +1133,18 @@ def get_all_subjects(subjects_dir, prefix, exclude_substr):
         if subject_fol[:len(prefix)].lower() == prefix and exclude_substr not in subject_fol:
             subjects.append(subject_fol)
     return subjects
+
+
+# todo: move to labels utils
+def read_labels(labels_fol, hemi='both'):
+    hemis = [hemi] if hemi != 'both' else HEMIS
+    labels = []
+    for hemi in hemis:
+        for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):
+            print('read label from {}'.format(label_file))
+            label = mne.read_label(label_file)
+            labels.append(label)
+    return labels
 
 
 def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
