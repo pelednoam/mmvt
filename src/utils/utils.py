@@ -306,19 +306,23 @@ def get_links_dir():
     return links_dir
 
 
-def get_electrodes_labeling(subject, atlas, bipolar=False, error_radius=3, elec_length=4):
-    curr_dir = os.path.dirname(os.path.realpath(__file__))
-    src_dir = os.path.split(curr_dir)[0]
-    proj_dir = os.path.split(src_dir)[0]
-    code_dir = os.path.split(proj_dir)[0]
-    electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
-        '{}_{}_electrodes_all_rois_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
-        '_bipolar_stretch' if bipolar else ''))
+def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
+    # curr_dir = os.path.dirname(os.path.realpath(__file__))
+    # src_dir = os.path.split(curr_dir)[0]
+    # proj_dir = os.path.split(src_dir)[0]
+    # code_dir = os.path.split(proj_dir)[0]
+    # electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
+    if other_fname == '':
+        # We remove the 'all_rois' and 'stretch' for the name!
+        electrode_labeling_fname = op.join(blender_root, 'electrodes',
+            '{}_{}_electrodes_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
+            '_bipolar' if bipolar else ''))
+    else:
+        electrode_labeling_fname = other_fname
     if op.isfile(electrode_labeling_fname):
         labeling = load(electrode_labeling_fname)
         return labeling, electrode_labeling_fname
     else:
-
         print("Can't find the electrodes' labeling file in {}!".format(electrode_labeling_fname))
         return None, None
 

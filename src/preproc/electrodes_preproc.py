@@ -21,6 +21,7 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 HEMIS = utils.HEMIS
 STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
+DEPTH, GRID = range(2)
 
 
 def montage_to_npy(montage_file, output_file):
@@ -445,7 +446,8 @@ def electrodes_3d_scatter_plot(pos, pos2=None):
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
         p_threshold=0.05, legend_name='', coloring_fname=''):
     elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
-    elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(subject, atlas, bipolar, error_radius, elec_length)
+    elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(
+        subject, BLENDER_ROOT_DIR, atlas, bipolar, error_radius, elec_length)
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
@@ -521,6 +523,28 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
         labels.append(roi)
     figlegend.legend(dots, labels, 'center')
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
+
+
+def calc_electrodes_type(labels, dists, bipolar):
+    if bipolar:
+        electrodes_types = [DEPTH] * len(labels)
+    else:
+        group_dists = defaultdict(list)
+        for stim_label, dist in zip(labels, dists):
+            group, _ = utils.elec_group_number(stim_label, False)
+            group_dists[group] = dist
+        group_type = {}
+        for group, group_dists in dists.items():
+            if np.max(group_dists) > 2 * np.median(group_dists):
+                group_type[group] = GRID
+            else:
+                group_type[group] = DEPTH
+        electrodes_types =[]
+        for stim_label in labels:
+            group, _ = utils.elec_group_number(stim_label, False)
+            electrodes_types.append(group_type[group])
+    electrodes_types = np.array(electrodes_types)
+    return electrodes_types
 
 
 def main(subject, args):

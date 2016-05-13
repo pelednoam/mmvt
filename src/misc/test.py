@@ -22,7 +22,7 @@ def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, groups_orderi
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
     save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels)
     elecs_coords_mni_dic = {elec_name:elec_coord for (elec_name,elec_coord) in zip(elecs_names, elecs_coords_mni)}
-    elecs_probs, _ = utils.get_electrodes_labeling(subject, atlas, bipolar, error_radius, elec_length)
+    elecs_probs, _ = utils.get_electrodes_labeling(subject, BLENDER_ROOT_DIR, atlas, bipolar, error_radius, elec_length)
     assert(len(elecs_names) == len(elecs_coords_mni) == len(elecs_probs))
     most_probable_rois = elec_pre.get_most_probable_rois(elecs_probs, p_threshold, good_channels)
     rois_colors = elec_pre.get_rois_colors(most_probable_rois)

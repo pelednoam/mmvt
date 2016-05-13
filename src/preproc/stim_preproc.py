@@ -57,16 +57,18 @@ def get_stim_labels(subject, args, stim_labels):
 
 
 def create_stim_electrodes_positions(subject, args, stim_labels=None):
+    from src.preproc import electrodes_preproc as ep
+
     stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
     output_file_name = 'electrodes{}_stim_{}_positions.npz'.format('_bipolar' if bipolar else '', args.stim_channel)
     output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', output_file_name)
-    if op.isfile(output_file):
-        return
+    # if op.isfile(output_file):
+    #     return
 
     f = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
     org_pos, org_labels = f['pos'], f['names']
     if bipolar:
-        pos = []
+        pos, dists = [], []
         for stim_label in stim_labels:
             group, num1, num2 = utils.elec_group_number(stim_label, True)
             stim_label1 = '{}{}'.format(group, num1)
@@ -75,11 +77,36 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
             label_ind2 = np.where(org_labels == stim_label2)[0]
             elc_pos = org_pos[label_ind1] + (org_pos[label_ind2] - org_pos[label_ind1]) / 2
             pos.append(elc_pos.reshape((3)))
+            dist = np.linalg.norm(org_pos[label_ind2] - org_pos[label_ind1])
+            dists.append(dist)
         pos = np.array(pos)
     else:
         pos = [pos for (pos, label) in zip(org_pos, org_labels) if label in stim_labels]
+        dists = [np.linalg.norm(p2 - p1) for p1, p2 in zip(pos[:-1], pos[1:])]
 
-    np.savez(output_file, pos=pos, names=stim_labels)
+    elcs_oris = calc_ori(stim_labels, bipolar, pos)
+    electrodes_types = ep.calc_electrodes_type(stim_labels, dists, bipolar)
+    np.savez(output_file, pos=pos, names=stim_labels, dists=dists, electrodes_types=electrodes_types,
+             electrodes_oris=elcs_oris, bipolar=bipolar)
+
+
+def calc_ori(stim_labels, bipolar, pos):
+    elcs_oris = np.zeros((len(stim_labels), 3))
+    for ind in range(len(stim_labels) - 1):
+        # todo: really need to change elec_group_number to return always 2 values
+        if bipolar:
+            group1, _, _ = utils.elec_group_number(stim_labels[ind], bipolar)
+            group2, _, _ = utils.elec_group_number(stim_labels[ind + 1], bipolar)
+        else:
+            group1, _ = utils.elec_group_number(stim_labels[ind], bipolar)
+            group2, _ = utils.elec_group_number(stim_labels[ind + 1], bipolar)
+        ori = 1 if group1 == group2 else -1
+        elc_pos = pos[ind]
+        next_pos = pos[ind + ori]
+        dist = np.linalg.norm(next_pos - elc_pos)
+        elcs_oris[ind] = ori * (next_pos - elc_pos) / dist
+    elcs_oris[-1] = -1 * (pos[-2] - pos[-1]) / np.linalg.norm(pos[-2] - pos[-1])
+    return elcs_oris
 
 
 def get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim):
@@ -106,25 +133,38 @@ def set_labels_colors(subject, args, stim_dict=None):
                 args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
         stim_dict = np.load(stim_data_fname)
     stim_data = stim_dict['data']
+    electrode_labeling_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+            '{}_{}_electrodes_cigar_r_{}_l_{}{}_stim_{}.pkl'.format(subject, args.atlas, args.error_radius,
+            args.elec_length, '_bipolar' if bipolar else '', args.stim_channel))
     elecs_labeling, electrode_labeling_fname = utils.get_electrodes_labeling(
-        subject, args.atlas, bipolar, args.error_radius, args.elec_length)
+        subject, BLENDER_ROOT_DIR, args.atlas, bipolar, args.error_radius, args.elec_length,
+        other_fname=electrode_labeling_fname)
     if elecs_labeling is None:
         print('No electrodes labeling file!')
         return
-    labels_elecs_lookup = create_labels_electordes_lookup(subject, args.atlas, elecs_labeling, args.n_jobs)
+    electrodes = [e['name'] for e in elecs_labeling]
+    if len(set(stim_labels) - set(electrodes)) > 0:
+        print("The electrodes labeling isn't calculated for all the stim electrodes!")
+        print(set(stim_labels) - set(electrodes))
+        return
+    labels_elecs_lookup, sub_regions_elecs_lookup = create_labels_electordes_lookup(
+        subject, args.atlas, elecs_labeling, args.n_jobs)
     labels_names = list(labels_elecs_lookup.keys())
-    # todo: Need to calc electrodes' labeling for the stim electrodes
     labels_data = np.zeros((len(labels_names), stim_data.shape[1], stim_data.shape[2]))
+    colors = np.zeros((*labels_data.shape, 3))
     labels_data_names = []
     for label_ind, (label_name, electordes_data) in enumerate(labels_elecs_lookup.items()):
         labels_data_names.append(label_name)
         for elec_name, elec_prob in electordes_data:
             elec_inds = np.where(stim_labels == elec_name)[0]
-            if len(elec_inds) == 0:
-                print("Can't find {} in stim electrodes".format(elec_name))
-            else:
+            if len(elec_inds) > 0:
                 elec_data = stim_data[elec_inds[0], :, :] * elec_prob
                 labels_data[label_ind, :, :] += elec_data
+    # Calc colors for each freq
+    for freq_id in range(labels_data.shape[2]):
+        data_min, data_max = utils.check_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
+        colors[:, :, freq_id] = utils.mat_to_colors(
+            labels_data[:, :, freq_id], data_min, data_max, colorsMap=args.colors_map)
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_labels_{}{}_{}.npz'.format(
             args.file_frefix, '_bipolar' if bipolar else '', args.stim_channel))
     np.savez(output_fname, data=labels_data, names=labels_data_names,
@@ -132,16 +172,19 @@ def set_labels_colors(subject, args, stim_dict=None):
 
 
 def create_labels_electordes_lookup(subject, atlas, elecs_labeling, n_jobs):
-    delim, pos = lu.get_hemi_delim_and_pos(elecs_labeling[0]['cortical_rois'][0])
-    atlas_labels = lu.get_atlas_labels_names(subject, atlas, delim, pos, n_jobs)
+    # delim, pos = lu.get_hemi_delim_and_pos(elecs_labeling[0]['cortical_rois'][0])
+    # atlas_labels = lu.get_atlas_labels_names(subject, atlas, delim, pos, n_jobs)
     labels_elecs_lookup = defaultdict(list)
-    for label_name in atlas_labels['rh'] + atlas_labels['lh']:
-        for elec_labeling in elecs_labeling:
-            if label_name in elec_labeling['cortical_rois']:
-                label_ind = elec_labeling['cortical_rois'].index(label_name)
-                label_prob = elec_labeling['cortical_probs'][label_ind]
-                labels_elecs_lookup[label_name].append((elec_labeling['name'], label_prob))
-    return labels_elecs_lookup
+    sub_regions_elecs_lookup = defaultdict(list)
+    # for label_name in atlas_labels['rh'] + atlas_labels['lh']:
+    for elec_labeling in elecs_labeling:
+        for label_name, label_prob in zip(elec_labeling['cortical_rois'], elec_labeling['cortical_probs']):
+            # label_ind = elec_labeling['cortical_rois'].index(label_name)
+            # label_prob = elec_labeling['cortical_probs'][label_ind]
+            labels_elecs_lookup[label_name].append((elec_labeling['name'], label_prob))
+        for label_name, label_prob in zip(elec_labeling['subcortical_rois'], elec_labeling['subcortical_probs']):
+            sub_regions_elecs_lookup[label_name].append((elec_labeling['name'], label_prob))
+    return labels_elecs_lookup, sub_regions_elecs_lookup
 
 
 def main(subject, args):
@@ -165,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--stim_channel', help='stim channel', required=True)
     parser.add_argument('--colors_map', help='activity colors map', required=False, default='OrRd')
-    parser.add_argument('--norm_percs', help='normalization percerntiles', required=False, type=au.int_arr_type)
+    parser.add_argument('--norm_percs', help='normalization percerntiles', required=False, type=au.int_arr_type, default='1,95')
     parser.add_argument('--downsample', help='downsample', required=False, type=int, default=1)
     parser.add_argument('--file_frefix', help='file_frefix', required=False, default='psd_')
     parser.add_argument('--error_radius', help='error_radius', required=False, default=3, type=int)
