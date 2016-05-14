@@ -13,7 +13,7 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 
 def load_stim_file(subject, args):
-    stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}_{}.npz'.format(
+    stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}{}.npz'.format(
         args.file_frefix, args.stim_channel)))
     labels, psd, time, freqs = (stim[k] for k in ['labels', 'psd', 'time', 'freqs'])
     bipolar = '-' in labels[0]
@@ -38,7 +38,8 @@ def load_stim_file(subject, args):
         colors[:, :, freq_ind] = utils.mat_to_colors(psd_slice, data_min, data_max, colorsMap=args.colors_map)
         conditions.append('{}-{}Hz'.format(freq_from, freq_to))
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
-            args.file_frefix, '_bipolar' if bipolar else '', args.stim_channel))
+            args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
+    print('Saving {}'.format(output_fname))
     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors)
     return dict(data=data, labels=labels, conditions=conditions, colors=colors)
 
@@ -149,28 +150,40 @@ def set_labels_colors(subject, args, stim_dict=None):
         return
     labels_elecs_lookup, subcortical_elecs_lookup = create_labels_electordes_lookup(
         subject, args.atlas, elecs_labeling, args.n_jobs)
-    labels_data, labels_colors, data_labels_names = calc_labels_data(labels_elecs_lookup, stim_data, stim_labels)
+    labels_data, labels_colors, data_labels_names = {}, {}, {}
+    for hemi in utils.HEMIS:
+        labels_data[hemi], labels_colors[hemi], data_labels_names[hemi] = \
+            calc_labels_data(labels_elecs_lookup[hemi], stim_data, stim_labels, hemi)
+        output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_labels_{}{}_{}-{}.npz'.format(
+                args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel, hemi))
+        np.savez(output_fname, data=labels_data[hemi], names=data_labels_names[hemi],
+                 conditions=stim_dict['conditions'], colors=labels_colors[hemi])
+
     subcortical_data, subcortical_colors, data_subcortical_names = calc_labels_data(
         subcortical_elecs_lookup, stim_data, stim_labels)
-    for data_type, data, colors, data_names in zip(['labels', 'subcortical'], [labels_data, subcortical_data],
-            [labels_colors, subcortical_colors], [data_labels_names, data_subcortical_names]):
-        output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_{}_{}{}_{}.npz'.format(
-                data_type, args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
-        np.savez(output_fname, data=data, names=data_names, conditions=stim_dict['conditions'], colors=colors)
+    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_subcortical_{}{}_{}.npz'.format(
+            args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
+    np.savez(output_fname, data=subcortical_data, names=data_subcortical_names,
+             conditions=stim_dict['conditions'], colors=subcortical_colors)
 
 
-def calc_labels_data(elecs_lookup, stim_data, stim_labels):
+def calc_labels_data(elecs_lookup, stim_data, stim_labels, hemi=None):
     labels_names = list(elecs_lookup.keys())
     labels_data = np.zeros((len(labels_names), stim_data.shape[1], stim_data.shape[2]))
     colors = np.zeros((*labels_data.shape, 3))
     labels_data_names = []
-    for label_ind, (label_name, electordes_data) in enumerate(elecs_lookup.items()):
+    label_ind = 0
+    for label_name, electordes_data in elecs_lookup.items():
+        if not hemi is None:
+            if lu.get_hemi_from_name(label_name) != hemi:
+                continue
         labels_data_names.append(label_name)
         for elec_name, elec_prob in electordes_data:
             elec_inds = np.where(stim_labels == elec_name)[0]
             if len(elec_inds) > 0:
                 elec_data = stim_data[elec_inds[0], :, :] * elec_prob
                 labels_data[label_ind, :, :] += elec_data
+        label_ind += 1
     # Calc colors for each freq
     for freq_id in range(labels_data.shape[2]):
         data_min, data_max = utils.check_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
@@ -182,14 +195,15 @@ def calc_labels_data(elecs_lookup, stim_data, stim_labels):
 def create_labels_electordes_lookup(subject, atlas, elecs_labeling, n_jobs):
     # delim, pos = lu.get_hemi_delim_and_pos(elecs_labeling[0]['cortical_rois'][0])
     # atlas_labels = lu.get_atlas_labels_names(subject, atlas, delim, pos, n_jobs)
-    labels_elecs_lookup = defaultdict(list)
+    labels_elecs_lookup = dict(rh=defaultdict(list), lh=defaultdict(list))
     subcortical_elecs_lookup = defaultdict(list)
     # for label_name in atlas_labels['rh'] + atlas_labels['lh']:
     for elec_labeling in elecs_labeling:
         for label_name, label_prob in zip(elec_labeling['cortical_rois'], elec_labeling['cortical_probs']):
             # label_ind = elec_labeling['cortical_rois'].index(label_name)
             # label_prob = elec_labeling['cortical_probs'][label_ind]
-            labels_elecs_lookup[label_name].append((elec_labeling['name'], label_prob))
+            hemi = lu.get_hemi_from_name(label_name)
+            labels_elecs_lookup[hemi][label_name].append((elec_labeling['name'], label_prob))
         for label_name, label_prob in zip(elec_labeling['subcortical_rois'], elec_labeling['subcortical_probs']):
             subcortical_elecs_lookup[label_name].append((elec_labeling['name'], label_prob))
     return labels_elecs_lookup, subcortical_elecs_lookup

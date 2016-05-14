@@ -98,6 +98,7 @@ class StimPanel(bpy.types.Panel):
 def init(addon):
     user_fol = mu.get_user_fol()
     stim_files = glob.glob(op.join(user_fol, 'electrodes', 'stim_electrodes_*.npz'))
+    stim_files = [sf for sf in stim_files if 'positions' not in sf]
     # stim_positions_files = glob.glob(op.join(user_fol, 'electrodes', 'stim_electrodes*positions.npz'))
     if len(stim_files) == 0:
         return None

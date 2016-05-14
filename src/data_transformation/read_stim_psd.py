@@ -62,4 +62,4 @@ if __name__ == '__main__':
     stim_channels = ['LVF4-LVF3', 'LVF6-LVF5']
     for psd_fname, labels_fname, stim_channel in zip(psd_fnames, labels_fnames, stim_channels):
         labels = get_labels(op.join(root_fol, labels_fname))
-        read_new_psd_mat_file(subject, op.join(root_fol, psd_fname), stim_channel, labels)
+        read_psd_mat_file(subject, op.join(root_fol, psd_fname), stim_channel, labels)

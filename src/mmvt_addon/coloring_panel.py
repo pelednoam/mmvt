@@ -165,6 +165,13 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override
     for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
         if 'unknown' in label_name:
             continue
+        if label_colors.ndim == 3:
+            cond_inds = np.where(labels_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+            if len(cond_inds) == 0:
+                print("!!! Can't find the current condition in the data['conditions'] !!!")
+                return {"FINISHED"}
+            label_colors = label_colors[:, cond_inds[0], :]
+            label_data = label_data[:, cond_inds[0]]
         label_index = labels_names[hemi].index(label_name)
         label_vertices = np.array(labels_vertices[hemi][label_index])
         if len(label_vertices) > 0:
@@ -373,6 +380,15 @@ def fmri_files_update(self, context):
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
 
 
+def electrodes_sources_files_update(self, context):
+    labels_fname = op.join(mu.get_user_fol(), 'electrodes', '{}-{}.npz'.format(
+        bpy.context.scene.electrodes_sources_files, '{hemi}'))
+    subcorticals_fname = labels_fname.replace('labels', 'subcortical').replace('-{hemi}', '')
+    ColoringMakerPanel.electrodes_sources_labels_data = \
+        {hemi:np.load(labels_fname.format(hemi=hemi)) for hemi in mu.HEMIS}
+    ColoringMakerPanel.electrodes_sources_subcortical_data = np.load(subcorticals_fname)
+
+
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_color"
     bl_label = "ohad electrodes color"
@@ -388,6 +404,29 @@ class ColorElectrodes(bpy.types.Operator):
         # mu.select_hierarchy('Deep_electrodes', False)
         ColoringMakerPanel.addon.show_electrodes()
         ColoringMakerPanel.addon.change_to_rendered_brain()
+        return {"FINISHED"}
+
+
+class ColorElectrodesLabels(bpy.types.Operator):
+    bl_idname = "ohad.electrodes_color_labels"
+    bl_label = "ohad electrodes color labels"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        labels_data = ColoringMakerPanel.electrodes_sources_labels_data
+        subcortical_data = ColoringMakerPanel.electrodes_sources_subcortical_data
+        cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+        if len(cond_inds) == 0:
+            print("!!! Can't find the current condition in the data['conditions'] !!!")
+            return {"FINISHED"}
+        for region, color_mat in zip(subcortical_data['names'], subcortical_data['colors']):
+            color = color_mat[bpy.context.scene.frame_current, cond_inds[0], :]
+            # print('electrodes source: color {} with {}'.format(region, color))
+            color_subcortical_region(region, color)
+        for hemi in mu.HEMIS:
+            meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
+
         return {"FINISHED"}
 
 
@@ -497,6 +536,7 @@ bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files", update=fmri_files_update)
+bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 
 
@@ -510,6 +550,9 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI = {}
     fMRI_clusters = {}
     labels_vertices = {}
+    electrodes_sources_labels_data = None
+    electrodes_sources_subcortical_data = None
+
 
     def draw(self, context):
         layout = self.layout
@@ -525,8 +568,12 @@ class ColoringMakerPanel(bpy.types.Panel):
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         electrodes_stim_files_exist = len(glob.glob(op.join(
             mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
+        electrodes_labels_files_exist = len(glob.glob(op.join(
+            mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
+            len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
-        manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol), '{}_groups.csv'.format(bpy.context.scene.atlas)))
+        manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
+            '{}_groups.csv'.format(bpy.context.scene.atlas)))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         if faces_verts_exist:
             if meg_files_exist:
@@ -536,8 +583,6 @@ class ColoringMakerPanel(bpy.types.Panel):
             if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
-            # if fmri_clusters_files_exist:
-            #     layout.operator(ColorClustersFmri.bl_idname, text="Plot Clusters fMRI ", icon='POTATO')
             if manually_color_files_exist:
                 layout.prop(context.scene, "coloring_files", text="")
                 layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
@@ -546,6 +591,9 @@ class ColoringMakerPanel(bpy.types.Panel):
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        if electrodes_labels_files_exist:
+            layout.prop(context.scene, "electrodes_sources_files", text="")
+            layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
         if electrodes_stim_files_exist:
             layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
@@ -591,17 +639,14 @@ def read_groups_labels(colors):
 def init(addon):
     from random import shuffle
     ColoringMakerPanel.addon = addon
-    # Load fMRI data
     user_fol = mu.get_user_fol()
     labels_vertices_fname = op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas))
     if not op.isfile(labels_vertices_fname):
         print("!!! Can't find {}!".format('labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
     labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy')) # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
-    # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
     if len(fmri_files) > 0:
-        # if len(fmri_files) > 1:
         files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
@@ -609,10 +654,15 @@ def init(addon):
         bpy.context.scene.fmri_files = files_names[0]
         for hemi in mu.HEMIS:
             ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
-        # if fmri_clusters_files_exist:
-        #     for hemi in mu.HEMIS:
-        #         ColoringMakerPanel.fMRI_clusters[hemi] = np.load(
-        #             op.join(user_fol, 'fmri', 'fmri_clusters_{}.npy'.format(hemi)))
+
+    electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
+    if len(electrodes_source_files) > 0:
+        files_names = [mu.namebase(fname)[:-len('-rh')] for fname in electrodes_source_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(
+            items=items, description="electrodes sources", update=electrodes_sources_files_update)
+        bpy.context.scene.electrodes_sources_files = files_names[0]
+
     mu.make_dir(op.join(user_fol, 'coloring'))
     manually_color_files = glob.glob(op.join(user_fol, 'coloring', '*.csv'))
     if len(manually_color_files) > 0:
@@ -638,6 +688,7 @@ def register():
         unregister()
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(ColorElectrodesStim)
+        bpy.utils.register_class(ColorElectrodesLabels)
         bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
@@ -655,6 +706,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(ColorElectrodesStim)
+        bpy.utils.unregister_class(ColorElectrodesLabels)
         bpy.utils.unregister_class(ColorManually)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)

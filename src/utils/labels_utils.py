@@ -125,6 +125,18 @@ def get_hemi_delim_and_pos(label_name):
     return delim, pos
 
 
+def get_hemi_from_name(label_name):
+    label_hemi = ''
+    for hemi in ['rh', 'lh']:
+        if label_name.startswith('{}-'.format(hemi)) or label_name.startswith('{}.'.format(hemi)) or \
+                label_name.endswith('-{}'.format(hemi)) or label_name.endswith('.{}'.format(hemi)):
+            label_hemi = hemi
+            break
+    if label_hemi == '':
+        raise Exception("Can't find hemi in {}".format(label_name))
+    return label_hemi
+
+
 if __name__ == '__main__':
     subject = 'mg96'
     atlas = 'laus250'
