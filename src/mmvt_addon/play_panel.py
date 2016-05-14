@@ -21,9 +21,9 @@ bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
            ("elecs", "Electrodes activity", "", 4),
            ("elecs_coh", "Electrodes coherence", "",5), ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
-           ("stim", "Electrodes stimulation", "", 7),
-           ("meg_elecs", "Meg & Electrodes activity", "", 8),
-           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",9)],
+           ("stim", "Electrodes stimulation", "", 7), ("stim_sources", "Electrodes stimulation & sources", "", 8),s
+           ("meg_elecs", "Meg & Electrodes activity", "", 9),
+           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",10)],
            description='Type pf data to play')
 
 
@@ -134,9 +134,11 @@ def plot_something(self, context, cur_frame, uuid):
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
         p.plot_connections(self, context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
-    if play_type in ['stim']:
+    if play_type in ['stim', 'stim_sources']:
         # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
         PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
+    if play_type in ['stim_sources']:
+        PlayPanel.addon.color_electrodes_sources()
     if bpy.context.scene.render_movie:
         PlayPanel.addon.render_image()
     # plot_graph(context, graph_data, graph_colors, image_fol)

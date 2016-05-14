@@ -389,6 +389,21 @@ def electrodes_sources_files_update(self, context):
     ColoringMakerPanel.electrodes_sources_subcortical_data = np.load(subcorticals_fname)
 
 
+def color_electrodes_sources():
+    labels_data = ColoringMakerPanel.electrodes_sources_labels_data
+    subcortical_data = ColoringMakerPanel.electrodes_sources_subcortical_data
+    cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+    if len(cond_inds) == 0:
+        print("!!! Can't find the current condition in the data['conditions'] !!!")
+        return {"FINISHED"}
+    for region, color_mat in zip(subcortical_data['names'], subcortical_data['colors']):
+        color = color_mat[bpy.context.scene.frame_current, cond_inds[0], :]
+        # print('electrodes source: color {} with {}'.format(region, color))
+        color_subcortical_region(region, color)
+    for hemi in mu.HEMIS:
+        meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
+
+
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_color"
     bl_label = "ohad electrodes color"
@@ -414,19 +429,7 @@ class ColorElectrodesLabels(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        labels_data = ColoringMakerPanel.electrodes_sources_labels_data
-        subcortical_data = ColoringMakerPanel.electrodes_sources_subcortical_data
-        cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
-        if len(cond_inds) == 0:
-            print("!!! Can't find the current condition in the data['conditions'] !!!")
-            return {"FINISHED"}
-        for region, color_mat in zip(subcortical_data['names'], subcortical_data['colors']):
-            color = color_mat[bpy.context.scene.frame_current, cond_inds[0], :]
-            # print('electrodes source: color {} with {}'.format(region, color))
-            color_subcortical_region(region, color)
-        for hemi in mu.HEMIS:
-            meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
-
+        color_electrodes_sources()
         return {"FINISHED"}
 
 
