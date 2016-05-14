@@ -21,7 +21,7 @@ bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
            ("elecs", "Electrodes activity", "", 4),
            ("elecs_coh", "Electrodes coherence", "",5), ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
-           ("stim", "Electrodes stimulation", "", 7), ("stim_sources", "Electrodes stimulation & sources", "", 8),s
+           ("stim", "Electrodes stimulation", "", 7), ("stim_sources", "Electrodes stimulation & sources", "", 8),
            ("meg_elecs", "Meg & Electrodes activity", "", 9),
            ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",10)],
            description='Type pf data to play')
