@@ -97,7 +97,8 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     #     graph1_ax, data_to_show_in_graph, fol, fol2, graph2_ax, ylabels)
 
     graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
-        graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2, graph2_ax, xlabel, ylabels, xticklabels, ylim)
+        graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2,
+        graph2_ax, xlabel, ylabels, xticklabels, ylim, images)
 
     plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
 

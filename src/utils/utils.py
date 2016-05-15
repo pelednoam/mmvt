@@ -98,7 +98,11 @@ def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, f
 
     x_min, x_max = check_min_max(x, x_min, x_max)
     colors = arr_to_colors(x, x_min, x_max, colorsMap, scalar_map)
-    return colors[:, :, :3]
+    if colors.ndim == 2:
+        return colors[:, :3]
+    elif colors.ndim == 3:
+        return colors[:, :, :3]
+    raise Exception('colors ndim not 2 or 3!')
 
 
 def check_min_max(x, x_min=None, x_max=None, norm_percs=None):

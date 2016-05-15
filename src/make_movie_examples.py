@@ -107,16 +107,16 @@ def mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_2'
+    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4'
     fol2 = ''
     data_to_show_in_graph = ['stim']#, 'stim_sources']
     video_fname = 'mg99_LVF4-3_stim_srouces.mp4'
     cb_title = 'Electrodes PSD'
     ylabels = ['Electrodes PSD']
-    time_range = np.arange(-1, 1.5, 0.01)
-    xticks = [-1, -0.5, 0, 0.5, 1]
+    time_range = np.arange(-1, 2, 0.01)
+    xticks = [-1.5, -1, -0.5, 0, 0.5, 1]
     xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
-    ylim = (0, 500)
+    ylim = (0, 10)
     xlabel = 'Time(s)'
     cb_data_type = 'stim'
     cb_min_max_eq = False
