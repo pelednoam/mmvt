@@ -314,6 +314,7 @@ def color_objects(objects_names, colors, data):
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
         # print('color hemi {}: {}'.format(hemi, labels_names))
         meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
+    clear_subcortical_regions()
     for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
         print('color {}: {}'.format(region, color))
         color_subcortical_region(region, color)
@@ -381,12 +382,18 @@ def fmri_files_update(self, context):
 
 
 def electrodes_sources_files_update(self, context):
+    ColoringMakerPanel.electrodes_sources_labels_data, ColoringMakerPanel.electrodes_sources_subcortical_data = \
+        get_elecctrodes_sources()
+
+
+def get_elecctrodes_sources():
     labels_fname = op.join(mu.get_user_fol(), 'electrodes', '{}-{}.npz'.format(
         bpy.context.scene.electrodes_sources_files, '{hemi}'))
     subcorticals_fname = labels_fname.replace('labels', 'subcortical').replace('-{hemi}', '')
-    ColoringMakerPanel.electrodes_sources_labels_data = \
+    electrodes_sources_labels_data = \
         {hemi:np.load(labels_fname.format(hemi=hemi)) for hemi in mu.HEMIS}
-    ColoringMakerPanel.electrodes_sources_subcortical_data = np.load(subcorticals_fname)
+    electrodes_sources_subcortical_data = np.load(subcorticals_fname)
+    return electrodes_sources_labels_data, electrodes_sources_subcortical_data
 
 
 def color_electrodes_sources():
@@ -396,6 +403,7 @@ def color_electrodes_sources():
     if len(cond_inds) == 0:
         print("!!! Can't find the current condition in the data['conditions'] !!!")
         return {"FINISHED"}
+    clear_subcortical_regions()
     for region, color_mat in zip(subcortical_data['names'], subcortical_data['colors']):
         color = color_mat[bpy.context.scene.frame_current, cond_inds[0], :]
         # print('electrodes source: color {} with {}'.format(region, color))

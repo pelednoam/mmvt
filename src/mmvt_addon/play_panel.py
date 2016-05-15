@@ -161,9 +161,10 @@ def capture_graph(context):
         graph_data['meg'], graph_colors['meg'] = get_meg_data(per_condition)
     if play_type in ['meg_labels']:
         graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
-    if play_type in ['stim']:
+    if play_type in ['stim', 'stim_sources']:
         graph_data['stim'], graph_colors['stim'] = get_electrodes_data(per_condition=True)
-
+    if play_type in ['stim_sources']:
+        graph_data['stim_sources'], graph_colors['stim_sources'] = get_electrodes_sources_data()
     # should let the user set the:
     #  xticklabels (--xticklabels '-1,stim_onset,0,end_of_stim')
     #  time_range (--time_range '-1,1.5,0.01')
@@ -172,7 +173,7 @@ def capture_graph(context):
     cmd = "{} -m src.make_movie -f plot_only_graph --data_in_graph {} --time_range {} --xlabel time --images_folder '{}'".format(
         bpy.context.scene.python_cmd, play_type, T, image_fol)
     print('Running {}'.format(cmd))
-    mu.run_command_in_new_thread(cmd, False)
+    # mu.run_command_in_new_thread(cmd, False)
 
     if op.isfile(op.join(image_fol, 'data.pkl')):
         print('The file already exists!')
@@ -281,8 +282,7 @@ def get_electrodes_data(per_condition=True):
     if bpy.context.scene.selection_type == 'spec_cond' and bpy.context.scene.conditions_selection == '':
         print('You must choose the condition first!')
         return None, None
-    elecs_data = OrderedDict()
-    elecs_colors = OrderedDict()
+    elecs_data, elecs_colors = OrderedDict(), OrderedDict()
     time_range = range(PlayPanel.addon.get_max_time_steps())
     if per_condition:
         for obj_name in PlayPanel.electrodes_names:
@@ -301,6 +301,28 @@ def get_electrodes_data(per_condition=True):
         elecs_data, elecs_colors = mu.evaluate_fcurves(parent_obj, time_range)
     return elecs_data, elecs_colors
 
+
+def get_electrodes_sources_data():
+    elecs_sources_data, elecs_sources_colors = OrderedDict(), OrderedDict()
+    labels_data, subcortical_data = PlayPanel.addon.get_elecctrodes_sources()
+    cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+    if len(cond_inds) == 0:
+        print("!!! Can't find the current condition in the data['conditions'] !!!")
+        return
+    for region, color_mat, data_mat in zip(subcortical_data['names'], subcortical_data['colors'],
+                                           subcortical_data['data']):
+        color = color_mat[:, cond_inds[0], :]
+        data = data_mat[:, cond_inds[0]]
+        elecs_sources_data[region] = data
+        elecs_sources_colors[region] = color
+    for hemi in mu.HEMIS:
+        for label, color_mat, data_mat in zip(labels_data[hemi]['names'], labels_data[hemi]['colors'],
+                                              labels_data[hemi]['data']):
+            color = color_mat[:, cond_inds[0], :]
+            data = data_mat[:, cond_inds[0]]
+            elecs_sources_data[label] = data
+            elecs_sources_colors[label] = color
+    return elecs_sources_data, elecs_sources_colors
 
 def init_plotting():
     data_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(

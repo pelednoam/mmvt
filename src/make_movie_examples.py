@@ -87,10 +87,30 @@ def pp009_vs_healthy_coherence(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = '/home/noam/Pictures/mmvt/mg99'
+    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_1'
     fol2 = ''
     data_to_show_in_graph = 'stim'
     video_fname = 'mg99_LVF4-3_stim.mp4'
+    cb_title = 'Electrodes PSD'
+    ylabels = ['Electrodes PSD']
+    time_range = np.arange(-1, 1.5, 0.01)
+    xticks = [-1, -0.5, 0, 0.5, 1]
+    xticklabels = [(-1, 'stim onset'), (0, 'end of stim')]
+    ylim = (0, 500)
+    xlabel = 'Time(s)'
+    cb_data_type = 'stim'
+    cb_min_max_eq = False
+    color_map = 'OrRd'
+    fps = 10
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
+
+
+def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
+    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_2'
+    fol2 = ''
+    data_to_show_in_graph = ['stim']#, 'stim_sources']
+    video_fname = 'mg99_LVF4-3_stim_srouces.mp4'
     cb_title = 'Electrodes PSD'
     ylabels = ['Electrodes PSD']
     time_range = np.arange(-1, 1.5, 0.01)
@@ -113,4 +133,5 @@ if __name__ == '__main__':
     show_first_pic = False
     n_jobs = 4
 
-    mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)

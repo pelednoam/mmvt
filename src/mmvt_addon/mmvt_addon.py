@@ -108,6 +108,7 @@ color_manually = coloring_panel.color_manually
 color_subcortical_region = coloring_panel.color_subcortical_region
 clear_subcortical_regions = coloring_panel.clear_subcortical_regions
 color_electrodes_sources = coloring_panel.color_electrodes_sources
+get_elecctrodes_sources = coloring_panel.get_elecctrodes_sources
 clear_colors_from_parent_childrens = coloring_panel.clear_colors_from_parent_childrens
 default_coloring = coloring_panel.default_coloring
 get_fMRI_activity = coloring_panel.get_fMRI_activity

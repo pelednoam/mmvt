@@ -53,7 +53,7 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
             resize_and_move_ax(graph_ax, dx=0.04, dy=0.03, ddw=0.89)
         return ax_cb, im, im2, graph1_ax, graph2_ax
 
-    def one_brain_one_graph(gs, g2):
+    def one_brain_one_graph(gs, g2, two_graphs=False):
         brain_ax = plt.subplot(gs[:-g2, :-1])
         brain_ax.set_aspect('equal')
         brain_ax.get_xaxis().set_visible(False)
@@ -62,13 +62,16 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         image = mpimg.imread(images[0])
         im = brain_ax.imshow(image, animated=True)#, cmap='gray',interpolation='nearest')
 
-        graph_ax = plt.subplot(gs[-g2:, :])
+        graph1_ax = plt.subplot(gs[-g2:, :])
+        graph2_ax = graph1_ax.twinx() if two_graphs else None
         ax_cb = plt.subplot(gs[:-g2, -1])
         plt.tight_layout()
         # resize_and_move_ax(brain_ax, dx=0.03)
         resize_and_move_ax(ax_cb, ddw=1, dx=-0.06)
-        resize_and_move_ax(graph_ax, dx=0.05, dy=0.03, ddw=0.89)
-        return ax_cb, im, graph_ax
+        resize_and_move_ax(graph1_ax, dx=0.05, dy=0.03, ddw=0.89)
+        if not graph2_ax is None:
+            resize_and_move_ax(graph2_ax, dx=0.05, dy=0.03, ddw=0.89)
+        return ax_cb, im, graph1_ax, graph2_ax
 
     first_image = Image.open(images[0])
     img_width, img_height = first_image.size
@@ -85,8 +88,9 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     if fol2 != '':
         ax_cb, im, im2, graph1_ax, graph2_ax = two_brains_two_graphs()
     else:
-        ax_cb, im, graph1_ax = one_brain_one_graph(gs, g2)
-        graph2_ax, im2 = None, None
+        two_graphes = len(data_to_show_in_graph) == 2
+        ax_cb, im, graph1_ax, graph2_ax = one_brain_one_graph(gs, g2, two_graphes)
+        im2 = None
 
     # gs.update(left=0.05, right=0.48, wspace=0.05)
     # graph_data, graph_colors, t_line, ymin, ymax = plot_graph(

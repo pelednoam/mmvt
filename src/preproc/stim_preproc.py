@@ -19,7 +19,12 @@ def load_stim_file(subject, args):
     bipolar = '-' in labels[0]
     data = None
     freqs_dim = psd.shape.index(len(freqs))
-    time_dim = psd.shape.index(len(time))
+    labels_dim = psd.shape.index(len(labels))
+    if time.ndim > 0:
+        time_dim = psd.shape.index(len(time))
+    else:
+        time_dim = next(iter(set(range(3)) - set([freqs_dim, labels_dim])))
+    T, L, F = psd.shape[time_dim], psd.shape[labels_dim], psd.shape[freqs_dim]
     if args.downsample > 1:
         time = utils.downsample(time, args.downsample)
     colors = None
@@ -27,7 +32,7 @@ def load_stim_file(subject, args):
     for freq_ind, (freq_from, freq_to) in enumerate(freqs):
         if data is None:
             # initialize the data matrix (electrodes_num x T x freqs_num)
-            data = np.zeros((len(labels), len(time), len(freqs)))
+            data = np.zeros((L, T, F))
         psd_slice = get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim)
         if args.downsample > 1:
             psd_slice = utils.downsample(psd_slice, args.downsample)
