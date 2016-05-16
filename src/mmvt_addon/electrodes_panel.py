@@ -466,9 +466,12 @@ def init_electrodes_list():
 
 def init_electrodes_labeling(addon):
     #todo: this panel should work also without labeling file
-    labeling_fname = '{}_{}_electrodes_all_rois_cigar_r_*_l_*{}.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
-        '_bipolar_stretch' if bpy.context.scene.bipolar else '')
+    labeling_fname = '{}_{}_electrodes_cigar_r_*_l_*{}*.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
+        '_bipolar' if bpy.context.scene.bipolar else '')
     labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_fname))
+    if len(labling_files) == 0:
+        print("!!! Can't find any electrodes labeling file in {} !!!".format(
+            op.join(mu.get_user_fol(), 'electrodes', labeling_fname)))
     files_names = [mu.namebase(fname) for fname in labling_files]
     labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(

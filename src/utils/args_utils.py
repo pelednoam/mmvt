@@ -21,7 +21,10 @@ def parse_parser(parser):
         elif val.type is float_arr_type:
             args[val.dest] = get_args_list(in_args, val.dest, float)
         elif val.dest in in_args:
-            args[val.dest] = in_args[val.dest]
+            if type(in_args[val.dest]) is str:
+                args[val.dest] = in_args[val.dest].replace("'", '')
+            else:
+                args[val.dest] = in_args[val.dest]
     return args
 
 
