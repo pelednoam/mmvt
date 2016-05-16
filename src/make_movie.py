@@ -143,7 +143,7 @@ def get_t(images, image_index, time_range):
 def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='', graph2_ax=None, xlabel='',
                ylabels=(), xticklabels=(), ylim=None, images=None, green_line=True):
     graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
-    if fol2 != '':
+    if fol2 != '' and op.isfile(op.join(fol2, 'data.pkl')):
         graph_data2, graph_colors2 = utils.load(op.join(fol2, 'data.pkl'))
         if len(graph_data.keys()) == 1 and len(graph_data2.keys()) == 1:
             graph2_data_item = list(graph_data2.keys())[0]
@@ -170,7 +170,7 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
         for k, values in data_values.items():
             if np.allclose(values, 0):
                 continue
-            color = colors[ind] if graph2_ax else tuple(graph_colors[data_type][k])
+            color = colors[ind] if len(data_to_show_in_graph) == 2 else tuple(graph_colors[data_type][k])
             # todo: tuple doesn't have ndim, not sure what to do here
             # if graph_colors[data_type][k].ndim > 1:
             if data_type[-1] == '2':

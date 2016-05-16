@@ -77,3 +77,11 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
     for part_fname in parts:
         part_name, _ = op.splitext(part_fname)
         utils.remove_file('{}.avi'.format(part_name))
+
+
+if __name__ == '__main__':
+    movie_fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4_1'
+    movie_name = 'mg99_LVF4-3_stim_srouces_long.mp4'
+    out_movie_name = 'mg99_LVF4-3_stim_srouces.mp4'
+    subclips_times = [(0, 29)]
+    cut_movie(movie_fol, movie_name, out_movie_name, subclips_times)

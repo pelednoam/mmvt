@@ -107,8 +107,8 @@ def mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4'
-    fol2 = ''
+    fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4_1'
+    fol2 = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4_2'
     data_to_show_in_graph = ['stim']#, 'stim_sources']
     video_fname = 'mg99_LVF4-3_stim_srouces.mp4'
     cb_title = 'Electrodes PSD'
