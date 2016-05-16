@@ -111,18 +111,18 @@ def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
 def get_hemi_delim_and_pos(label_name):
     for hemi in ['rh', 'lh']:
         if label_name.startswith('{}-'.format(hemi)):
-            delim, pos = '-', 'start'
+            delim, pos, label = '-', 'start', label_name[3:]
             break
         if label_name.startswith('{}.'.format(hemi)):
-            delim, pos = '.', 'start'
+            delim, pos, label = '.', 'start', label_name[3:]
             break
         if label_name.endswith('-{}'.format(hemi)):
-            delim, pos = '-', 'end'
+            delim, pos, label = '-', 'end', label_name[:-3]
             break
         if label_name.endswith('.{}'.format(hemi)):
-            delim, pos = '.', 'end'
+            delim, pos, label = '.', 'end', label_name[:-3]
             break
-    return delim, pos
+    return delim, pos, label
 
 
 def get_hemi_from_name(label_name):
