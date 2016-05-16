@@ -143,4 +143,4 @@ if __name__ == '__main__':
     label_name = 'bankssts_1-lh'
     n_jobs = 6
     # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
-    solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
+    # solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
