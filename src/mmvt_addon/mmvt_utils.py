@@ -250,11 +250,11 @@ def get_atlas(default='laus250'):
                 real_atlas_name = line[1]
                 break
         if real_atlas_name == '':
-            raise Exception("Can't find teh atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+            raise Exception("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
         return real_atlas_name
     else:
         raise Exception('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
-                        'the columns are name in blend file, annot name, description')
+                        'the columns are name in blend file, annot name, description'.format(csv_fname))
     # sep_ind = blend_fname.find('_')
     # if sep_ind != -1:
     #     return blend_fname[sep_ind + 1:]
