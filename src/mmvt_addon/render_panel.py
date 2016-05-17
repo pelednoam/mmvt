@@ -13,16 +13,24 @@ def render_draw(self, context):
     col.prop(context.scene, "X_rotation", text='X rotation')
     col.prop(context.scene, "Y_rotation", text='Y rotation')
     col.prop(context.scene, "Z_rotation", text='Z rotation')
+    col = layout.column(align=True)
+    col.prop(context.scene, "X_location", text='X location')
+    col.prop(context.scene, "Y_location", text='Y location')
+    col.prop(context.scene, "Z_location", text='Z location')
     layout.prop(context.scene, "quality", text='Quality')
     layout.prop(context.scene, 'output_path')
     layout.prop(context.scene, 'smooth_figure')
-    layout.operator("ohad.rendering", text="Render", icon='SCENE')
+    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='RENDER_REGION')
+    layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
 
 
 def update_rotation(self, context):
     bpy.data.objects['Target'].rotation_euler.x = math.radians(bpy.context.scene.X_rotation)
     bpy.data.objects['Target'].rotation_euler.y = math.radians(bpy.context.scene.Y_rotation)
     bpy.data.objects['Target'].rotation_euler.z = math.radians(bpy.context.scene.Z_rotation)
+    bpy.data.objects['Target'].location.x = bpy.context.scene.X_location
+    bpy.data.objects['Target'].location.y = bpy.context.scene.Y_location
+    bpy.data.objects['Target'].location.z = bpy.context.scene.Z_location
 
 
 def update_quality(self, context):
@@ -31,18 +39,36 @@ def update_quality(self, context):
 
 
 bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around x axis",
-                                                     update=update_rotation)
+    description="Camera rotation around x axis", update=update_rotation)
 bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around y axis",
-                                                     update=update_rotation)
+    description="Camera rotation around y axis", update=update_rotation)
 bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-                                                     description="Camera rotation around z axis",
-                                                     update=update_rotation)
+    description="Camera rotation around z axis", update=update_rotation)
+bpy.types.Scene.X_location = bpy.props.FloatProperty(
+    description="Camera x location", update=update_rotation)
+bpy.types.Scene.Y_location = bpy.props.FloatProperty(
+    description="Camera y lovation", update=update_rotation)
+bpy.types.Scene.Z_location = bpy.props.FloatProperty(
+    description="Camera z locationo", update=update_rotation)
 bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100,
-                                                  description="quality of figure in parentage", update=update_quality)
+    description="quality of figure in parentage", update=update_quality)
 bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image',
-                                                       description="This significantly affect rendering speed")
+    description="This significantly affect rendering speed")
+
+
+class GrabCamera(bpy.types.Operator):
+    bl_idname = "ohad.grab_camera"
+    bl_label = "Grab Camera"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        bpy.context.scene.X_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.x)
+        bpy.context.scene.Y_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.y)
+        bpy.context.scene.Z_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.z)
+        bpy.context.scene.X_location = bpy.data.objects['Camera'].location.x
+        bpy.context.scene.Y_location = bpy.data.objects['Camera'].location.y
+        bpy.context.scene.Z_location = bpy.data.objects['Camera'].location.z
+        return {"FINISHED"}
 
 
 class RenderFigure(bpy.types.Operator):
@@ -110,6 +136,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
+        bpy.utils.register_class(GrabCamera)
         bpy.utils.register_class(RenderFigure)
         # print('Render Panel was registered!')
     except:
@@ -119,6 +146,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
+        bpy.utils.unregister_class(GrabCamera)
         bpy.utils.unregister_class(RenderFigure)
     except:
         pass
