@@ -7,6 +7,41 @@ bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
 
+def load_camera(self=None):
+    camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
+    if op.isfile(camera_fname):
+        X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location = mu.load(camera_fname)
+        RenderFigure.update_camera = False
+        bpy.context.scene.X_rotation = X_rotation
+        bpy.context.scene.Y_rotation = Y_rotation
+        bpy.context.scene.Z_rotation = Z_rotation
+        bpy.context.scene.X_location = X_location
+        bpy.context.scene.Y_location = Y_location
+        bpy.context.scene.Z_location = Z_location
+        RenderFigure.update_camera = True
+        update_camera()
+    else:
+        mu.message(self, 'No camera file was found in {}!'.format(camera_fname))
+
+
+def grab_camera(self=None, do_save=True):
+    RenderFigure.update_camera = False
+    bpy.context.scene.X_rotation = X_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.x)
+    bpy.context.scene.Y_rotation = Y_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.y)
+    bpy.context.scene.Z_rotation = Z_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.z)
+    bpy.context.scene.X_location = X_location = bpy.data.objects['Camera'].location.x
+    bpy.context.scene.Y_location = Y_location = bpy.data.objects['Camera'].location.y
+    bpy.context.scene.Z_location = Z_location = bpy.data.objects['Camera'].location.z
+    if do_save:
+        if op.isdir(bpy.path.abspath(bpy.context.scene.output_path)):
+            camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
+            mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
+            print('Camera location was saved to {}'.format(camera_fname))
+        else:
+            mu.message(self, "Can't find the folder {}".format(bpy.path.abspath(bpy.context.scene.output_path)))
+    RenderFigure.update_camera = True
+
+
 def render_draw(self, context):
     layout = self.layout
     col = layout.column(align=True)
@@ -20,40 +55,52 @@ def render_draw(self, context):
     layout.prop(context.scene, "quality", text='Quality')
     layout.prop(context.scene, 'output_path')
     layout.prop(context.scene, 'smooth_figure')
-    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='RENDER_REGION')
+    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
+    layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
+    layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
 
 
-def update_rotation(self, context):
-    bpy.data.objects['Target'].rotation_euler.x = math.radians(bpy.context.scene.X_rotation)
-    bpy.data.objects['Target'].rotation_euler.y = math.radians(bpy.context.scene.Y_rotation)
-    bpy.data.objects['Target'].rotation_euler.z = math.radians(bpy.context.scene.Z_rotation)
-    bpy.data.objects['Target'].location.x = bpy.context.scene.X_location
-    bpy.data.objects['Target'].location.y = bpy.context.scene.Y_location
-    bpy.data.objects['Target'].location.z = bpy.context.scene.Z_location
+def update_camera(self=None, context=None):
+    if RenderFigure.update_camera:
+        bpy.data.objects['Camera'].rotation_euler.x = math.radians(bpy.context.scene.X_rotation)
+        bpy.data.objects['Camera'].rotation_euler.y = math.radians(bpy.context.scene.Y_rotation)
+        bpy.data.objects['Camera'].rotation_euler.z = math.radians(bpy.context.scene.Z_rotation)
+        bpy.data.objects['Camera'].location.x = bpy.context.scene.X_location
+        bpy.data.objects['Camera'].location.y = bpy.context.scene.Y_location
+        bpy.data.objects['Camera'].location.z = bpy.context.scene.Z_location
 
 
-def update_quality(self, context):
-    print(bpy.context.scene.quality)
-    # bpy.context.scene.quality = bpy.context.scene.quality
+def mirror():
+    camera_rotation_z = bpy.context.scene.Z_rotation
+    # target_rotation_z = math.degrees(bpy.data.objects['Camera'].rotation_euler.z)
+    bpy.data.objects['Target'].rotation_euler.z += math.radians(180 - camera_rotation_z)
+    print(bpy.data.objects['Target'].rotation_euler.z)
 
 
-bpy.types.Scene.X_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-    description="Camera rotation around x axis", update=update_rotation)
-bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-    description="Camera rotation around y axis", update=update_rotation)
-bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(default=0, min=-360, max=360,
-    description="Camera rotation around z axis", update=update_rotation)
-bpy.types.Scene.X_location = bpy.props.FloatProperty(
-    description="Camera x location", update=update_rotation)
-bpy.types.Scene.Y_location = bpy.props.FloatProperty(
-    description="Camera y lovation", update=update_rotation)
-bpy.types.Scene.Z_location = bpy.props.FloatProperty(
-    description="Camera z locationo", update=update_rotation)
-bpy.types.Scene.quality = bpy.props.FloatProperty(default=20, min=1, max=100,
-    description="quality of figure in parentage", update=update_quality)
-bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(name='smooth image',
-    description="This significantly affect rendering speed")
+bpy.types.Scene.X_rotation = bpy.props.FloatProperty(
+    default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_camera)
+bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(
+    default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_camera)
+bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(
+    default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_camera)
+bpy.types.Scene.X_location = bpy.props.FloatProperty(description="Camera x location", update=update_camera)
+bpy.types.Scene.Y_location = bpy.props.FloatProperty(description="Camera y lovation", update=update_camera)
+bpy.types.Scene.Z_location = bpy.props.FloatProperty(description="Camera z locationo", update=update_camera)
+bpy.types.Scene.quality = bpy.props.FloatProperty(
+    default=20, min=1, max=100,description="quality of figure in parentage")
+bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(
+    name='smooth image', description="This significantly affect rendering speed")
+
+
+class MirrorCamera(bpy.types.Operator):
+    bl_idname = "ohad.mirror_camera"
+    bl_label = "Mirror Camera"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        mirror()
+        return {"FINISHED"}
 
 
 class GrabCamera(bpy.types.Operator):
@@ -62,12 +109,17 @@ class GrabCamera(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        bpy.context.scene.X_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.x)
-        bpy.context.scene.Y_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.y)
-        bpy.context.scene.Z_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.z)
-        bpy.context.scene.X_location = bpy.data.objects['Camera'].location.x
-        bpy.context.scene.Y_location = bpy.data.objects['Camera'].location.y
-        bpy.context.scene.Z_location = bpy.data.objects['Camera'].location.z
+        grab_camera(self)
+        return {"FINISHED"}
+
+
+class LoadCamera(bpy.types.Operator):
+    bl_idname = "ohad.load_camera"
+    bl_label = "Load Camera"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        load_camera(self)
         return {"FINISHED"}
 
 
@@ -75,11 +127,7 @@ class RenderFigure(bpy.types.Operator):
     bl_idname = "ohad.rendering"
     bl_label = "Render figure"
     bl_options = {"UNDO"}
-    current_output_path = bpy.path.abspath(bpy.context.scene.output_path)
-    x_rotation = bpy.context.scene.X_rotation
-    y_rotation = bpy.context.scene.Y_rotation
-    z_rotation = bpy.context.scene.Z_rotation
-    quality = bpy.context.scene.quality
+    update_camera = True
 
     def invoke(self, context, event=None):
         render_image()
@@ -87,16 +135,9 @@ class RenderFigure(bpy.types.Operator):
 
 
 def render_image():
-    x_rotation = bpy.context.scene.X_rotation
-    y_rotation = bpy.context.scene.Y_rotation
-    z_rotation = bpy.context.scene.Z_rotation
     quality = bpy.context.scene.quality
     use_square_samples = bpy.context.scene.smooth_figure
 
-    # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$In Render$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-    bpy.data.objects['Target'].rotation_euler.x = math.radians(x_rotation)
-    bpy.data.objects['Target'].rotation_euler.y = math.radians(y_rotation)
-    bpy.data.objects['Target'].rotation_euler.z = math.radians(z_rotation)
     bpy.context.scene.render.resolution_percentage = quality
     # print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
     print('use_square_samples: {}'.format(use_square_samples))
@@ -129,6 +170,8 @@ class RenderingMakerPanel(bpy.types.Panel):
 
 def init(addon):
     RenderingMakerPanel.addon = addon
+    bpy.data.objects['Target'].rotation_euler.z = 0
+    grab_camera(None, False)
     register()
 
 
@@ -137,6 +180,8 @@ def register():
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
         bpy.utils.register_class(GrabCamera)
+        bpy.utils.register_class(LoadCamera)
+        bpy.utils.register_class(MirrorCamera)
         bpy.utils.register_class(RenderFigure)
         # print('Render Panel was registered!')
     except:
@@ -147,6 +192,8 @@ def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
         bpy.utils.unregister_class(GrabCamera)
+        bpy.utils.unregister_class(LoadCamera)
+        bpy.utils.unregister_class(MirrorCamera)
         bpy.utils.unregister_class(RenderFigure)
     except:
         pass
