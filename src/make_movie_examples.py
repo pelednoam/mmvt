@@ -1,4 +1,5 @@
 import numpy as np
+import os.path as op
 from src.make_movie import create_movie, duplicate_frames
 
 
@@ -107,8 +108,9 @@ def mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = '/cluster/neuromind/npeled/Pictures/mg99_stim_lvf4-3_laus250_1_1'
-    fol2 = '/cluster/neuromind/npeled/Pictures/mg99_stim_lvf4-3_laus250_1_2'
+    root = '/home/noam/Pictures/mmvt/mg99'
+    fol = op.join(root, 'mg99_stim_lvf4-3_laus250_1_1')
+    fol2 = op.join(root, 'mg99_stim_lvf4-3_laus250_1_2')
     data_to_show_in_graph = ['stim']#, 'stim_sources']
     video_fname = 'mg99_LVF4-3_stim_srouces.mp4'
     cb_title = 'Electrodes PSD'

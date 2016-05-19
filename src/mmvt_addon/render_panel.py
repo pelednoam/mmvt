@@ -170,7 +170,12 @@ class RenderingMakerPanel(bpy.types.Panel):
 
 def init(addon):
     RenderingMakerPanel.addon = addon
+    bpy.data.objects['Target'].rotation_euler.x = 0
+    bpy.data.objects['Target'].rotation_euler.y = 0
     bpy.data.objects['Target'].rotation_euler.z = 0
+    bpy.data.objects['Target'].location.x = 0
+    bpy.data.objects['Target'].location.y = 0
+    bpy.data.objects['Target'].location.z = 0
     grab_camera(None, False)
     register()
 
