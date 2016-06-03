@@ -451,8 +451,10 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
-    shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
-        op.basename(electrode_labeling_fname)))
+    if electrode_labeling_fname != op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+            op.basename(electrode_labeling_fname)):
+        shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+            op.basename(electrode_labeling_fname)))
     most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
     rois_colors = get_rois_colors(most_probable_rois)
     save_rois_colors_legend(subject, rois_colors, bipolar, legend_name)
