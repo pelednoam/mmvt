@@ -318,7 +318,7 @@ def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_r
     # electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
     if other_fname == '':
         # We remove the 'all_rois' and 'stretch' for the name!
-        electrode_labeling_fname = op.join(blender_root, 'electrodes',
+        electrode_labeling_fname = op.join(blender_root, subject, 'electrodes',
             '{}_{}_electrodes_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
             '_bipolar' if bipolar else ''))
     else:

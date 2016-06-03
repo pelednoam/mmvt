@@ -246,7 +246,7 @@ def get_atlas(default='laus250'):
     csv_fname = op.join(get_mmvt_root(), 'atlas.csv')
     if op.isfile(csv_fname):
         for line in csv_file_reader(csv_fname, ',', 1):
-            if line[0] == atlas:
+            if atlas in [line[0], line[1]]:
                 real_atlas_name = line[1]
                 break
         if real_atlas_name == '':
