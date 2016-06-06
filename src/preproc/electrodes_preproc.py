@@ -527,28 +527,6 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
 
-def calc_electrodes_type(labels, dists, bipolar):
-    if bipolar:
-        electrodes_types = [DEPTH] * len(labels)
-    else:
-        group_dists = defaultdict(list)
-        for stim_label, dist in zip(labels, dists):
-            group, _ = utils.elec_group_number(stim_label, False)
-            group_dists[group] = dist
-        group_type = {}
-        for group, group_dists in dists.items():
-            if np.max(group_dists) > 2 * np.median(group_dists):
-                group_type[group] = GRID
-            else:
-                group_type[group] = DEPTH
-        electrodes_types =[]
-        for stim_label in labels:
-            group, _ = utils.elec_group_number(stim_label, False)
-            electrodes_types.append(group_type[group])
-    electrodes_types = np.array(electrodes_types)
-    return electrodes_types
-
-
 def main(subject, args):
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
