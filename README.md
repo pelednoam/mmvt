@@ -50,7 +50,7 @@ Also in the preprocessing tool there are few call to freesurfer, so mainly to cr
 Beside of that, you can use the tool also on windows.
 
 ## Contributors
-- Ohad Felsenstein (ohadfel@gmail.com)
+- Ohad Felsenstein (ohad.felsenstein@biu.ac.il)
 - Noam Peled (npeled@mgh.harvard.edu)
 
 ## Acknowledgments
