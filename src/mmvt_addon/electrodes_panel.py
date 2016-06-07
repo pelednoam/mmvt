@@ -4,9 +4,19 @@ import colors_utils as cu
 import os.path as op
 import glob
 import time
+import numpy as np
 from collections import defaultdict
 
 PARENT_OBJ = 'Deep_electrodes'
+
+
+def what_to_color_update(self, context):
+    if ElecsPanel.init:
+        _what_to_color_update()
+
+
+def _what_to_color_update():
+    pass
 
 
 def leads_update(self, context):
@@ -173,20 +183,40 @@ def _show_only_current_lead_update():
 
 def plot_labels_probs(elc):
     ElecsPanel.addon.init_activity_map_coloring('FMRI')
-    if len(elc['cortical_rois']) > 0:
-        hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
-        if not hemi is None:
-            # if no matplotlib should calculate the colors offline :(
-            labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3], names=elc['cortical_rois'])
-            ElecsPanel.addon.meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0)
+    if bpy.context.scene.electrodes_what_to_color == 'probs':
+        if len(elc['cortical_rois']) > 0:
+            hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
+            if not hemi is None:
+                # if no matplotlib should calculate the colors offline :(
+                labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3],
+                                   names=elc['cortical_rois'])
+                ElecsPanel.addon.meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0)
+            else:
+                print("Can't get the rois hemi!")
         else:
-            print("Can't get the rois hemi!")
-    else:
-        ElecsPanel.addon.clear_cortex()
-    ElecsPanel.addon.clear_subcortical_regions()
-    if len(elc['subcortical_rois']) > 0:
-        for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
-            ElecsPanel.addon.color_subcortical_region(region, color)
+            ElecsPanel.addon.clear_cortex()
+        ElecsPanel.addon.clear_subcortical_regions()
+        if len(elc['subcortical_rois']) > 0:
+            for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
+                ElecsPanel.addon.color_subcortical_region(region, color)
+    elif bpy.context.scene.electrodes_what_to_color == 'verts':
+        if len(elc['cortical_indices']) > 0:
+            hemi = bpy.data.objects[elc['hemi']]
+            if not hemi is None:
+                ElecsPanel.addon.init_activity_map_coloring('FMRI', subcorticals=True)
+                vertices_num = np.max(elc['cortical_indices']) + 1
+                activity = np.ones((vertices_num, 4))
+                activity[:, 0] = 0
+                activity[elc['cortical_indices'], 0] = 1
+                activity[elc['cortical_indices'], 1:] = np.tile(
+                    cu.name_to_rgb('blue'), (len(elc['cortical_indices']), 1))
+                print('Plot {} vertices with blue'.format(len(elc['cortical_indices'])))
+                ElecsPanel.addon.activity_map_obj_coloring(hemi, activity, ElecsPanel.faces_verts[elc['hemi']], 0, True)
+            else:
+                print("Can't get the elec's hemi!")
+        else:
+            ElecsPanel.addon.clear_cortex()
+            print('No cortical vertices for {}'.format(elc['name']))
 
 
 def unselect_prev_electrode(prev_electrode):
@@ -208,6 +238,9 @@ def elecs_draw(self, context):
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
     layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
+    # layout.label(text='What to color: ')
+    if bpy.context.scene.color_lables:
+        layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
     row = layout.row(align=True)
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
@@ -373,6 +406,9 @@ bpy.types.Scene.electrodes = bpy.props.EnumProperty(
     items=[], description="electrodes", update=electrodes_update)
 bpy.types.Scene.leads = bpy.props.EnumProperty(
     items=[], description="leads", update=leads_update)
+bpy.types.Scene.electrodes_what_to_color = bpy.props.EnumProperty(
+    items=[('probs', 'probabilities', '', 1), ('verts', 'vertices', '', 2)], description="what to color",
+    update=what_to_color_update)
 
 
 class ElecsPanel(bpy.types.Panel):
