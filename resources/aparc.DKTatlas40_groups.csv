@@ -1,0 +1,14 @@
+dlPFC, blue, rostralmiddlefrontal-lh, rostralmiddlefrontal-rh, caudalmiddlefrontal-lh, caudalmiddlefrontal-rh
+dmPFC, red, superiorfrontal-lh, superiorfrontal-rh,
+OFC, green, lateralorbitofrontal-lh, medialorbitofrontal-lh, lateralorbitofrontal-rh, medialorbitofrontal-rh,
+vlPFC, yellow, parstriangularis-rh, parstriangularis-lh, parsopercularis-lh, parsorbitalis-lh, parsopercularis-rh, parsorbitalis-rh,
+temporal lobe, purple, inferiortemporal-lh, middletemporal-lh, superiortemporal-lh, transversetemporal-lh, inferiortemporal-rh, middletemporal-rh, superiortemporal-rh, transversetemporal-rh
+rACC, orange, rostralanteriorcingulate-lh, rostralanteriorcingulate-rh,
+dACC, olive, caudalanteriorcingulate-lh, caudalanteriorcingulate-rh,
+posterior cingulate, magenta, posteriorcingulate-lh, posteriorcingulate-rh,
+Amygdala, khaki, Left-Amygdala, Right-Amygdala,
+Hippocampus, hotpink, Left-Hippocampus, Right-Hippocampus,
+Insula, darkviolet, insula-lh, insula-rh,
+Caudate, chocolate, Left-Caudate, Right-Caudate,
+Thalamus, cornsilk, Left-Thalamus-Proper, Right-Thalamus-Proper
+Accumbens, darkgoldenrod, Right-Accumbens-area, Left-Accumbens-area
