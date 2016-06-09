@@ -651,9 +651,11 @@ def init(addon):
     from random import shuffle
     ColoringMakerPanel.addon = addon
     user_fol = mu.get_user_fol()
+    ColoringMakerPanel.faces_verts = None
     labels_vertices_fname = op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas))
     if not op.isfile(labels_vertices_fname):
         print("!!! Can't find {}!".format('labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        return None
     labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
