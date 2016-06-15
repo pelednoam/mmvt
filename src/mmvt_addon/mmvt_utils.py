@@ -239,8 +239,9 @@ def get_atlas(default='laus250'):
     #     return default
     blend_fname = namebase(bpy.data.filepath)
     if blend_fname.find('_') == -1:
-        raise Exception("Can't find the atlas in the blender file! The Blender's file name needs to end with "  +
+        print("Can't find the atlas in the blender file! The Blender's file name needs to end with " + \
                         "'_atlas-name.blend' (sub1_dkt.blend for example)")
+        return ''
     atlas = blend_fname.split('_')[-1]
     real_atlas_name = ''
     csv_fname = op.join(get_mmvt_root(), 'atlas.csv')
@@ -250,11 +251,12 @@ def get_atlas(default='laus250'):
                 real_atlas_name = line[1]
                 break
         if real_atlas_name == '':
-            raise Exception("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+            print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
         return real_atlas_name
     else:
-        raise Exception('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
+        print('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
                         'the columns are name in blend file, annot name, description'.format(csv_fname))
+        return ''
     # sep_ind = blend_fname.find('_')
     # if sep_ind != -1:
     #     return blend_fname[sep_ind + 1:]
