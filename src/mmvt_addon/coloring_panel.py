@@ -703,7 +703,7 @@ def init(addon):
         bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items, description="Coloring files")
         bpy.context.scene.coloring_files = files_names[0]
     vol_color_files = glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv'))
-    if len(manually_color_files) > 0:
+    if len(vol_color_files) > 0:
         files_names = [mu.namebase(fname) for fname in vol_color_files]
         coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(
