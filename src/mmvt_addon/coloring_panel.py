@@ -326,6 +326,9 @@ def color_objects(objects_names, colors, data):
     ColoringMakerPanel.addon.show_activity()
 
 
+def color_volumetric():
+    pass
+
 def color_subcortical_region(region_name, color):
     # obj = bpy.data.objects.get(region_name + '_meg_activity', None)
     # if not obj is None:
@@ -469,6 +472,17 @@ class ColorManually(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorVol(bpy.types.Operator):
+    bl_idname = "ohad.vol_color"
+    bl_label = "ohad vol color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_volumetric()
+        return {"FINISHED"}
+
+
 class ColorGroupsManually(bpy.types.Operator):
     bl_idname = "ohad.man_groups_color"
     bl_label = "ohad man groups color"
@@ -549,6 +563,7 @@ bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0,
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files", update=fmri_files_update)
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
+bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -585,6 +600,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
             '{}_groups.csv'.format(bpy.context.scene.atlas)))
+        volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         if faces_verts_exist:
             if meg_files_exist:
@@ -600,6 +616,9 @@ class ColoringMakerPanel(bpy.types.Panel):
             if manually_groups_file_exist:
                 layout.prop(context.scene, 'labels_groups', text="")
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
+            if volumetric_coloring_files_exist:
+                layout.prop(context.scene, "vol_coloring_files", text="")
+                layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         if electrodes_labels_files_exist:
@@ -683,6 +702,13 @@ def init(addon):
         coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items, description="Coloring files")
         bpy.context.scene.coloring_files = files_names[0]
+    vol_color_files = glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv'))
+    if len(manually_color_files) > 0:
+        files_names = [mu.namebase(fname) for fname in vol_color_files]
+        coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(
+            items=coloring_items, description="Volumetric Coloring files")
+        bpy.context.scene.vol_coloring_files = files_names[0]
 
     ColoringMakerPanel.colors = list(set(list(cu.NAMES_TO_HEX.keys())) - set(['black']))
     shuffle(ColoringMakerPanel.colors)
@@ -703,6 +729,7 @@ def register():
         bpy.utils.register_class(ColorElectrodesStim)
         bpy.utils.register_class(ColorElectrodesLabels)
         bpy.utils.register_class(ColorManually)
+        bpy.utils.register_class(ColorVol)
         bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
@@ -721,6 +748,7 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodesStim)
         bpy.utils.unregister_class(ColorElectrodesLabels)
         bpy.utils.unregister_class(ColorManually)
+        bpy.utils.unregister_class(ColorVol)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)
         bpy.utils.unregister_class(ColorMegLabels)
