@@ -432,6 +432,8 @@ class SelectExternalMEGEvoked(bpy.types.Operator):
         if not evoked_obj is None:
             evoked_obj.select = not evoked_obj.select
         mu.view_all_in_graph_editor(context)
+        selected_objects = mu.get_selected_objects()
+        mu.change_fcurves_colors(selected_objects)
         return {"FINISHED"}
 
 

@@ -671,15 +671,21 @@ def dump_args(func):
 
 
 def get_all_children(parents):
-    return list(chain.from_iterable([obj for obj in [bpy.data.objects[parent].children for parent in parents]]))
+    children = [bpy.data.objects[parent].children for parent in parents if bpy.data.objects.get(parent)]
+    return list(chain.from_iterable([obj for obj in children]))
 
 
 def get_non_functional_objects():
-    return get_all_children((['Cortex-lh', 'Cortex-rh', 'Subcortical_structures', 'Deep_electrodes']))
+    return get_all_children((['Cortex-lh', 'Cortex-rh', 'Subcortical_structures', 'Deep_electrodes', 'External']))
+
+
+def get_selected_objects():
+    return [obj for obj in get_non_functional_objects() if obj.select]
 
 
 def get_corticals_labels():
     return bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
+
 
 def add_box_line(col, text1, text2='', percentage=0.3, align=True):
     row = col.split(percentage=percentage, align=align)
