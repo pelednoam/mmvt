@@ -302,14 +302,7 @@ def save_labels_vertices(subject, aparc_name):
             labels.append(label)
     else:
         # Read from the annotation file
-        labels = []
-        for hemi in HEMIS:
-            if op.isfile(annot_fname_temp.format(hemi=hemi)):
-                labels_hemi = mne.read_labels_from_annot(subject, aparc_name)
-                labels.extend(labels_hemi)
-            else:
-                print("Can't find the annotation file! {}".format(annot_fname_temp.format(hemi=hemi)))
-                return False
+        labels = utils.read_labels_from_annot(subject, aparc_name, SUBJECTS_DIR)
     labels_names, labels_vertices = defaultdict(list), defaultdict(list)
     for label in labels:
         labels_names[label.hemi].append(label.name)

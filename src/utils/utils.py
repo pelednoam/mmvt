@@ -479,14 +479,25 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
     sub_labels_fol = os.path.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not os.path.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
-    if len(labels_files) == 0:
-        raise Exception('morph_labels_from_fsaverage: No labels files found in {}!'.format(labels_fol))
+    annot_files_exist = both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
+        '{hemi}', aparc_name)))
+    if annot_files_exist:
+        labels = read_labels_from_annot(subject, aparc_name, subjects_dir)
+        if len(labels) == 0:
+            raise Exception('morph_labels_from_fsaverage: No labels files found in annot file!'.format(labels_fol))
+    else:
+        labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
+        if len(labels_files) > 0:
+            labels = read_labels_parallel(subject, subjects_dir, aparc_name, n_jobs)
+        else:
+            raise Exception('morph_labels_from_fsaverage: No labels files found in {}!'.format(labels_fol))
     surf_loaded = False
-    for label_file in labels_files:
+    # for label_file in labels_files:
+    for fs_label in labels:
+        label_file = os.path.join(labels_fol, '{}.label'.format(fs_label.name))
         local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
         if not os.path.isfile(local_label_name) or overwrite:
-            fs_label = mne.read_label(label_file)
+            # fs_label = mne.read_label(label_file)
             fs_label.values.fill(1.0)
             sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
             if np.all(sub_label.pos == 0):
@@ -498,6 +509,19 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
                     surf_loaded = True
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
+
+
+def read_labels_from_annot(subject, aparc_name, subjects_dir):
+    labels = []
+    annot_fname_temp = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
+    for hemi in HEMIS:
+        if op.isfile(annot_fname_temp.format(hemi=hemi)):
+            labels_hemi = mne.read_labels_from_annot(subject, aparc_name)
+            labels.extend(labels_hemi)
+        else:
+            print("Can't find the annotation file! {}".format(annot_fname_temp.format(hemi=hemi)))
+            return []
+    return labels
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True):
