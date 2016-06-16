@@ -161,7 +161,7 @@ class FreeviewOpen(bpy.types.Operator):
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
         if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
-            sig_fname = op.join(root, 'freeview', '{}.mgz'.format(bpy.context.scene.fmri_files))
+            sig_fname = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files)))[0]
             sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
         else:
             sig_cmd = ''
@@ -215,17 +215,18 @@ class FreeviewPanel(bpy.types.Panel):
         if bpy.data.objects.get('Deep_electrodes'):
             layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
         if bpy.context.scene.fMRI_files_exist and \
-                op.isfile(op.join(mu.get_user_fol(), 'freeview', '{}.mgz'.format(bpy.context.scene.fmri_files))):
+                len(glob.glob(op.join(mu.get_user_fol(),
+                'freeview','*{}*.mgz'.format(bpy.context.scene.fmri_files)))) > 0:
             layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
-        row = layout.row(align=0)
-        row.operator(SliceViewerOpen.bl_idname, text="Slice Viewer", icon='PARTICLES')
-        if not bpy.context.scene.freeview_listen_to_keyboard:
-            layout.operator(FreeviewKeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
-        else:
-            layout.operator(FreeviewKeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
+        # row = layout.row(align=0)
+        # row.operator(SliceViewerOpen.bl_idname, text="Slice Viewer", icon='PARTICLES')
+        # if not bpy.context.scene.freeview_listen_to_keyboard:
+        #     layout.operator(FreeviewKeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
+        # else:
+        #     layout.operator(FreeviewKeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
 
 
 def init(addon, addon_prefs=None):

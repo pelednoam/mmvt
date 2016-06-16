@@ -1230,7 +1230,7 @@ def get_fname_format(task):
         fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
         events_id = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
-        raise Exception('No fname for this task!')
+        raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
     return fname_format, events_id, event_digit
 
 

@@ -480,7 +480,7 @@ def project_volue_to_surface(subject, data_fol, threshold, volume_name, target_s
 
 def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method):
     fname_format, events_id, event_digit = meg.get_fname_format(task)
-    raw_cleaning_method = 'nTSSS'
+    raw_cleaning_method = 'tsss' # 'nTSSS'
     files_includes_cond = True
     meg.init_globals(meg_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, contrast_name,
         SUBJECTS_MEG_DIR, task, SUBJECTS_DIR, BLENDER_ROOT_DIR)
@@ -492,6 +492,30 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
         meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
             labels_fol=labels_fol, stcs=None, inverse_method=inverse_method,
             labels_output_fname_template=labels_output_fname)
+
+
+def copy_volumes(contrast_file_template):
+    contrast_format = 'mgz'
+    volume_type = 'mni305'
+    for contrast in contrasts.keys():
+        if '{contrast}' in contrast_file_template:
+            contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}',
+                                                          format=contrast_format)
+            volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
+        else:
+            contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
+            volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
+        if not op.isfile(volume_file.format(format=contrast_format)):
+            mri_convert(volume_file, 'nii.gz', contrast_format)
+        volume_fname = volume_file.format(format=contrast_format)
+        subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
+        if not op.isfile(subject_volume_fname):
+            volume_fol, volume_name = op.split(volume_fname)
+            fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
+        blender_volume_fname = op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
+        if not op.isfile(blender_volume_fname):
+            print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))
+            shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
 def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
@@ -541,6 +565,8 @@ def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_nam
 if __name__ == '__main__':
     import argparse
     import sys
+    from src.utils import args_utils as au
+
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-s', '--subject', help='subject name', required=True)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all')
@@ -548,7 +574,9 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus250')
     parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
     parser.add_argument('-T', '--task', help='task', required=True)
-    args = vars(parser.parse_args())
+    parser.add_argument('--meg_subject', help='MEG subject name', required=False, default='')
+    # args = vars(parser.parse_args())
+    args = utils.Bag(au.parse_parser(parser))
     print(args)
     subject = args['subject']  #'colin27' #'fscopy' # 'mg78'
     os.environ['SUBJECT'] = subject
@@ -574,8 +602,7 @@ if __name__ == '__main__':
 
     # contrast = 'non-interference-v-interference'
     inverse_method = 'dSPM'
-    meg_subject = 'ep001'
-    # calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
+    # meg_subject = 'ep001'
 
     # overwrite_volume_mgz = False
     # data_fol = op.join(FMRI_DIR, task, 'healthy_group')
@@ -590,29 +617,15 @@ if __name__ == '__main__':
         main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
     if 'project_volue_to_surface' in func:
         project_volue_to_surface(subject, fol, threshold, contrast)
+    if 'calc_meg_activity' in func:
+        meg_subject = args.meg_subject
+        if meg_subject == '':
+            print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
+        else:
+            calc_meg_activity_for_functional_rois(
+                subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
     if 'copy_volumes' in func:
-        contrast_format = 'mgz'
-        volume_type = 'mni305'
-        for contrast in contrasts.keys():
-            if '{contrast}' in contrast_file_template:
-                contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}',
-                                                              format=contrast_format)
-                volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
-            else:
-                contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
-                volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
-            if not op.isfile(volume_file.format(format=contrast_format)):
-                mri_convert(volume_file, 'nii.gz', contrast_format)
-            volume_fname = volume_file.format(format=contrast_format)
-            subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
-            if not op.isfile(subject_volume_fname):
-                volume_fol, volume_name = op.split(volume_fname)
-                fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
-            blender_volume_fname = op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
-            if not op.isfile(blender_volume_fname):
-                print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))
-                shutil.copyfile(subject_volume_fname, blender_volume_fname)
-
+        copy_volumes(subject, contrast_file_template)
 
     # create_functional_rois(subject, contrast, data_fol)
 
