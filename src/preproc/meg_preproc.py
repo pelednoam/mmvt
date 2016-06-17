@@ -1054,6 +1054,8 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
         for ind, label in enumerate(labels):
             mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
             mean_flip = np.squeeze(mean_flip)
+            # Set flip to be always positive
+            # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
             labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
             if do_plot:
                 plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
@@ -1065,6 +1067,9 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
             # plt.show()
             plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
+    labels_data_sp = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
+    np.savez(op.join(SUBJECT_MEG_FOLDER, 'labels_data_not_normed_{}.npz'.format(hemi)), data=labels_data_sp,
+             names=[l.name for l in labels], conditions=conditions)
     data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
     max_abs = utils.get_max_abs(data_max, data_min)
     labels_data = labels_data / max_abs
@@ -1251,23 +1256,23 @@ if __name__ == '__main__':
     # initGlobals('fsaverage', 'fsaverage', fname_format)
     inverse_methods = ['dSPM', 'MNE', 'sLORETA']
     beaformers = ['dics', 'lcmv', 'rap_music']
-    inverse_method = 'MNE' # 'dSPM'
+    inverse_method = 'dSPM' # 'MNE'
 
     T_MAX = 2
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    aparc_name = 'laus250'#'aparc250'
+    aparc_name = 'arc_april2016' # 'laus250'#'aparc250'
     read_labels_from_annot = False
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
     # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
     # stcs = calc_stc_per_condition(events_id, inverse_method)
-    # for hemi in HEMIS:
-    #     calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-    #         labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=100, do_plot=False)
-    stcs = calc_stc_per_condition(events_id, inverse_method)
-    stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method, n_jobs=1)
+    for hemi in HEMIS:
+        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
+            labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=100, do_plot=False)
+    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method, n_jobs=1)
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
 

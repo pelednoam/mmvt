@@ -38,8 +38,9 @@ class SearchClear(bpy.types.Operator):
             for obj in subHierchy.children:
                  obj.active_material = new_mat
 
-        for obj in bpy.data.objects['Deep_electrodes'].children:
-            obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
+        if bpy.data.objects.get('Deep_electrodes'):
+            for obj in bpy.data.objects['Deep_electrodes'].children:
+                obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
         for obj_name, h in SearchMark.marked_objects_hide.items():
             bpy.data.objects[obj_name].hide = bool(h)

@@ -32,6 +32,7 @@ def select_all_connections():
 
 def conditions_selection_update(self, context):
     mu.filter_graph_editor(bpy.context.scene.conditions_selection)
+    SelectionMakerPanel.addon.clear_and_recolor()
 
 
 def select_brain_objects(parent_obj_name, children):

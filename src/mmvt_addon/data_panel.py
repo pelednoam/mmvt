@@ -456,6 +456,13 @@ def get_external_meg_evoked_selected():
         return False
 
 
+def get_meg_evoked_source_files(base_path, files_prefix):
+    source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
+                    op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
+                    op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+    return source_files
+
+
 class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
     bl_idname = "ohad.other_subject_meg_evoked"
     bl_label = "other_subject_meg_evoked"
@@ -463,11 +470,9 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         evoked_name = bpy.context.scene.meg_evoked_files
+        files_prefix = '{}_'.format(evoked_name)
         base_path = op.join(mu.get_user_fol(), 'meg_evoked_files')
-        files_prefix = objs_prefix = '{}_'.format(evoked_name)
-        source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
-                        op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
-                        op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+        source_files = get_meg_evoked_source_files(base_path, files_prefix)
         empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
         layers_array = bpy.context.scene.layers
         parent_obj_name = 'External'
@@ -480,7 +485,7 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
                 mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
                     DataMakerPanel.addon.BRAIN_EMPTY_LAYER, parent_obj_name)
 
-        add_data_to_brain(base_path, files_prefix, objs_prefix)
+        add_data_to_brain(base_path, files_prefix, files_prefix)
         _meg_evoked_files_update()
         return {"FINISHED"}
 

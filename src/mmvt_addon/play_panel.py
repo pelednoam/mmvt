@@ -123,7 +123,7 @@ def plot_something(self, context, cur_frame, uuid):
         plot_electrodes(cur_frame, electrodes_threshold)
     if play_type == 'meg_labels':
         # todo: get the aparc_name
-        PlayPanel.addon.meg_labels_coloring(self, context, aparc_name='laus250', override_current_mat=True)
+        PlayPanel.addon.meg_labels_coloring(override_current_mat=True)
     if play_type == 'meg_coh':
         pass
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:

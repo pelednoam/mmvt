@@ -114,6 +114,7 @@ default_coloring = coloring_panel.default_coloring
 get_fMRI_activity = coloring_panel.get_fMRI_activity
 get_faces_verts = coloring_panel.get_faces_verts
 clear_colors = coloring_panel.clear_colors
+clear_and_recolor = coloring_panel.clear_and_recolor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

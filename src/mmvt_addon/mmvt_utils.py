@@ -252,6 +252,7 @@ def get_atlas(default='laus250'):
                 break
         if real_atlas_name == '':
             print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+            return atlas
         return real_atlas_name
     else:
         print('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
@@ -924,3 +925,9 @@ def unique_save_order(arr):
         if val not in ret:
             ret.append(val)
     return ret
+
+
+def remove_items_from_set(x, items):
+    for item in items:
+        if item in x:
+            x.remove(item)

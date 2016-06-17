@@ -7,8 +7,11 @@ import time
 import itertools
 from collections import defaultdict, OrderedDict
 import glob
+from functools import partial
 
 HEMIS = mu.HEMIS
+(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_CLUSTERS, WIC_ELECTRODES, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM,
+    WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(9)
 
 
 def can_color_obj(obj):
@@ -144,11 +147,20 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
     meg_sub_activity = None
     if map_type == 'MEG':
         meg_sub_activity = load_meg_subcortical_activity()
+        ColoringMakerPanel.what_is_colored.add(WIC_MEG)
+        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_FMRI, WIC_FMRI_CLUSTERS])
+    elif map_type == 'FMRI':
+        if not clusters:
+            ColoringMakerPanel.what_is_colored.add(WIC_FMRI)
+        else:
+            ColoringMakerPanel.what_is_colored.add(WIC_FMRI_CLUSTERS)
+        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS])
     plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters)
     # setup_environment_settings()
 
 
-def meg_labels_coloring(self, context, override_current_mat=True):
+def meg_labels_coloring(override_current_mat=True):
+    ColoringMakerPanel.what_is_colored.add(WIC_MEG_LABELS)
     init_activity_map_coloring('MEG')
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
@@ -264,6 +276,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
 
 def color_groups_manually():
+    ColoringMakerPanel.what_is_colored.add(WIC_GROUPS)
     init_activity_map_coloring('FMRI')
     labels = ColoringMakerPanel.labels_groups[bpy.context.scene.labels_groups]
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -278,6 +291,7 @@ def color_groups_manually():
 
 
 def color_manually():
+    ColoringMakerPanel.what_is_colored.add(WIC_MANUALLY)
     init_activity_map_coloring('FMRI')
     subject_fol = mu.get_user_fol()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -333,7 +347,9 @@ def color_objects(objects_names, colors, data):
 
 
 def color_volumetric():
+    ColoringMakerPanel.what_is_colored.add(WIC_VOLUMES)
     pass
+
 
 def color_subcortical_region(region_name, color):
     # obj = bpy.data.objects.get(region_name + '_meg_activity', None)
@@ -406,6 +422,7 @@ def get_elecctrodes_sources():
 
 
 def color_electrodes_sources():
+    ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES_SOURCES)
     labels_data = ColoringMakerPanel.electrodes_sources_labels_data
     subcortical_data = ColoringMakerPanel.electrodes_sources_subcortical_data
     cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
@@ -421,6 +438,53 @@ def color_electrodes_sources():
         meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
 
 
+def color_electrodes():
+    ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
+    threshold = bpy.context.scene.coloring_threshold
+    data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
+        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
+    color_object_homogeneously(data, threshold=threshold)
+    # deselect_all()
+    # mu.select_hierarchy('Deep_electrodes', False)
+    ColoringMakerPanel.addon.show_electrodes()
+    ColoringMakerPanel.addon.change_to_rendered_brain()
+
+
+def color_electrodes_stim():
+    ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES_STIM)
+    threshold = bpy.context.scene.coloring_threshold
+    stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
+    stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
+    data = np.load(stim_data_fname)
+    color_object_homogeneously(data, threshold=threshold)
+    ColoringMakerPanel.addon.show_electrodes()
+    ColoringMakerPanel.addon.change_to_rendered_brain()
+
+
+def clear_and_recolor():
+
+    color_meg = partial(activity_map_coloring, map_type='MEG')
+    color_fmri = partial(activity_map_coloring, map_type='FMRI')
+    color_fmri_clusters = partial(activity_map_coloring, map_type='FMRI', clusters=True)
+
+    wic_funcs = {
+        WIC_MEG:color_meg,
+        WIC_MEG_LABELS:meg_labels_coloring,
+        WIC_FMRI:color_fmri,
+        WIC_FMRI_CLUSTERS:color_fmri_clusters,
+        WIC_ELECTRODES:color_electrodes,
+        WIC_ELECTRODES_SOURCES:color_electrodes_sources,
+        WIC_ELECTRODES_STIM:color_electrodes_stim,
+        WIC_MANUALLY:color_manually,
+        WIC_GROUPS:color_groups_manually,
+        WIC_VOLUMES:color_volumetric}
+
+    what_is_colored = ColoringMakerPanel.what_is_colored
+    clear_colors()
+    for wic in what_is_colored:
+        wic_funcs[wic]()
+
+
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = "ohad.electrodes_color"
     bl_label = "ohad electrodes color"
@@ -428,14 +492,7 @@ class ColorElectrodes(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        threshold = bpy.context.scene.coloring_threshold
-        data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
-            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
-        color_object_homogeneously(data, threshold=threshold)
-        # deselect_all()
-        # mu.select_hierarchy('Deep_electrodes', False)
-        ColoringMakerPanel.addon.show_electrodes()
-        ColoringMakerPanel.addon.change_to_rendered_brain()
+        color_electrodes()
         return {"FINISHED"}
 
 
@@ -457,13 +514,7 @@ class ColorElectrodesStim(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        threshold = bpy.context.scene.coloring_threshold
-        stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
-        stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
-        data = np.load(stim_data_fname)
-        color_object_homogeneously(data, threshold=threshold)
-        ColoringMakerPanel.addon.show_electrodes()
-        ColoringMakerPanel.addon.change_to_rendered_brain()
+        color_electrodes_stim()
         return {"FINISHED"}
 
 
@@ -519,7 +570,7 @@ class ColorMegLabels(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         # todo: should send also aparc_name
-        meg_labels_coloring(self, context)
+        meg_labels_coloring()
         return {"FINISHED"}
 
 
@@ -561,6 +612,7 @@ def clear_colors():
     clear_subcortical_fmri_activity()
     for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
         clear_colors_from_parent_childrens(root)
+    ColoringMakerPanel.what_is_colored = set()
 
 
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
@@ -584,6 +636,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     labels_vertices = {}
     electrodes_sources_labels_data = None
     electrodes_sources_subcortical_data = None
+    what_is_colored = set()
 
 
     def draw(self, context):
