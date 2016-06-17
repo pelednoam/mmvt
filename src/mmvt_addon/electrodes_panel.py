@@ -505,6 +505,8 @@ def init_electrodes_labeling(addon):
     labeling_fname = '{}_{}_electrodes_cigar_r_*_l_*{}*.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
         '_bipolar' if bpy.context.scene.bipolar else '')
     labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_fname))
+    if not bpy.context.scene.bipolar:
+        labling_files = [fname for fname in labling_files if 'bipolar' not in fname]
     if len(labling_files) == 0:
         print("!!! Can't find any electrodes labeling file in {} !!!".format(
             op.join(mu.get_user_fol(), 'electrodes', labeling_fname)))

@@ -30,6 +30,10 @@ def select_all_connections():
     select_brain_objects('connections', bpy.data.objects['connections'].children)
 
 
+def conditions_selection_update(self, context):
+    mu.filter_graph_editor(bpy.context.scene.conditions_selection)
+
+
 def select_brain_objects(parent_obj_name, children):
     parent_obj = bpy.data.objects[parent_obj_name]
     if bpy.context.scene.selection_type == 'diff':
@@ -50,7 +54,7 @@ def set_conditions_enum(conditions):
     conditions = mu.unique_save_order(conditions)
     selection_items = [(c, '{}'.format(c), '', ind) for ind, c in enumerate(conditions)]
     bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(
-        items=selection_items, description="Condition Selection")
+        items=selection_items, description="Condition Selection", update=conditions_selection_update)
 
 
 class SelectAllRois(bpy.types.Operator):
@@ -146,7 +150,8 @@ class FitSelection(bpy.types.Operator):
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
     items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2), ("spec_cond", "Specific condition", "", 3)],
     description="Selection type")
-bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection")
+bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
+                                                              update=conditions_selection_update)
 
 
 class SelectionMakerPanel(bpy.types.Panel):

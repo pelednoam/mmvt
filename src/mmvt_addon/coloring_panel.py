@@ -17,6 +17,9 @@ def can_color_obj(obj):
 
 
 def object_coloring(obj, rgb):
+    if not obj:
+        print('object_coloring: obj is None!')
+        return False
     bpy.context.scene.objects.active = obj
     # todo: do we need to select the object here? In diff mode it's a problem
     # obj.select = True
@@ -28,7 +31,8 @@ def object_coloring(obj, rgb):
         # print('{} new color: {}'.format(obj.name, new_color))
     else:
         print("Can't color {}".format(obj.name))
-
+        return False
+    return True
 
 def get_obj_color(obj):
     cur_mat = obj.active_material
@@ -91,7 +95,9 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
         obj = bpy.data.objects.get(obj_name+postfix_str)
         # if obj and not obj.hide:
         #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
-        object_coloring(obj, new_color)
+        ret = object_coloring(obj, new_color)
+        if not ret:
+            print('color_object_homogeneously: Error in coloring the object {}!'.format(obj_name))
             # print(obj_name, value, new_color)
         # else:
         #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))

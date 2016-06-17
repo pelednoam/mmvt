@@ -20,6 +20,7 @@ def import_electrodes():
         bpy.context.scene.stim_files.replace(' ', '_'))
     data_panel.import_electrodes(op.join(mu.get_user_fol(), 'electrodes', electrodes_positions_fname))
 
+
 def load_stim_data():
     stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
     stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
@@ -108,6 +109,7 @@ def init(addon):
     bpy.types.Scene.stim_files = bpy.props.EnumProperty(
         items=stim_items, description='stim files', update=stim_files_update)
     bpy.context.scene.stim_files = files_names[0]
+    load_conditions()
     register()
     StimPanel.init = True
 

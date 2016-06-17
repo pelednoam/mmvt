@@ -14,13 +14,23 @@ bpy.types.Scene.electrodes_imported = False
 bpy.types.Scene.brain_data_exist = False
 bpy.types.Scene.electrodes_data_exist = False
 
+
+def bipolar_update(self, context):
+    try:
+        import electrodes_panel
+        electrodes_panel.init_electrodes_labeling(DataMakerPanel.addon)
+    except:
+        pass
+
+
 bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
-bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes")
+bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes", update=bipolar_update)
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
+
 
 def import_brain(current_root_path):
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
