@@ -51,9 +51,11 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
     if task == 'MSIT':
         raw_cleaning_method = 'nTSSS'
         constrast = 'interference'
+        keys_dict = {'neutral': 'noninterference', 'interference': 'interference'}
     elif task == 'ECR':
         raw_cleaning_method = ''
         constrast = ''
+        keys_dict = {'C': 'congruent', 'I': 'incongruent'}
     inverse_method = 'dSPM'
     meg_preproc.init_globals(subject, mri_subject, fname_format, fname_format_cond, raw_cleaning_method=raw_cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
@@ -65,10 +67,9 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
         # if len(elec_probs['cortical_indices_dists']) > 0:
         #     print(elec_probs['name'], len(elec_probs['cortical_indices']), np.min(elec_probs['cortical_indices_dists']))
 
-    msit_keys_dict = {'neutral':'noninterference', 'interference':'interference'}
     meg_elecs = {}
     for cond in events_id.keys():
-        meg_cond = msit_keys_dict[cond]
+        meg_cond = keys_dict[cond]
         meg_elecs[cond] = []
         if read_from_stc:
             stc_fname = meg_preproc.STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh')
@@ -79,9 +80,8 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
             for hemi in utils.HEMIS:
                 meg_evo_data[hemi] = np.load(
                     op.join(BLENDER_ROOT_DIR, mri_subject,op.basename(meg_preproc.LBL.format(hemi))))
-            meg_conds = np.array([cond.decode() for cond in meg_evo_data['rh']['conditions'] if isinstance(cond, np.bytes_)])
-            meg_labels = {hemi:np.array([cond.decode() for cond in meg_evo_data[hemi]['names'] if \
-                                         isinstance(cond, np.bytes_)]) for hemi in utils.HEMIS}
+            meg_conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in meg_evo_data['rh']['conditions']])
+            meg_labels = {hemi:np.array([name.decode() if isinstance(name, np.bytes_) else name for name in meg_evo_data[hemi]['names']]) for hemi in utils.HEMIS}
             cond_ind = np.where(cond == meg_conds)[0][0]
         for elec_probs in elecs_probs:
             # len(elec_probs['cortical_indices']) > vertices_num_threshold
