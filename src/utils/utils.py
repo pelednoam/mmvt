@@ -1283,3 +1283,17 @@ def read_mat_file_into_bag(mat_fname):
         x.close()
         return ret
     return None
+
+
+def get_fol_if_exist(fols):
+    for fol in fols:
+        if op.isdir(fol):
+            return fol
+    return None
+
+
+def get_file_if_exist(files):
+    for fname in files:
+        if op.isfile(fname):
+            return fname
+    return None

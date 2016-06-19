@@ -35,19 +35,27 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
     #     meg_data_t = np.load(meg_file)
     #     meg_data[t] = meg_data_t[vertices, 0]
     #     print("sdf")
-    f = np.load(op.join(BLENDER_ROOT_DIR, mri_subject, 'electrodes', 'electrodes_{}data_diff.npz'.format(
-        'bipolar_' if bipolar else '')))
+    electordes_data_fname = op.join(BLENDER_ROOT_DIR, mri_subject, 'electrodes', 'electrodes_{}data_diff.npz'.format(
+        'bipolar_' if bipolar else ''))
+    if not op.isfile(electordes_data_fname):
+        print('No electrodes data file!')
+        return None
+    f = np.load(electordes_data_fname)
     conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in f['conditions']])
     names = np.array([name.decode() if isinstance(name, np.bytes_) else name for name in f['names']])
     figs_fol = op.join(BLENDER_ROOT_DIR, mri_subject, 'figs')
     utils.make_dir(figs_fol)
     # subject = 'ep001'
-    task = 'MSIT'
-    fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
-    raw_cleaning_method = 'nTSSS'
-    constrast = 'interference'
+    task = 'ECR' # 'MSIT'
+    fname_format, fname_format_cond, events_id, event_digit = meg_preproc.get_fname_format(task)
+    if task == 'MSIT':
+        raw_cleaning_method = 'nTSSS'
+        constrast = 'interference'
+    elif task == 'ECR':
+        raw_cleaning_method = ''
+        constrast = ''
     inverse_method = 'dSPM'
-    meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
+    meg_preproc.init_globals(subject, mri_subject, fname_format, fname_format_cond, raw_cleaning_method=raw_cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
                              BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True,
                              constrast=constrast)
@@ -114,8 +122,8 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
 
 
 if __name__ == '__main__':
-    subject = 'ep001'
-    mri_subject = 'mg78'
+    subject = 'ep007' # 'ep009' # 'ep001'
+    mri_subject = 'mg96' # 'mg99' # 'mg78'
     atlas = 'laus250'
     bipolar = False
     meg_recon_to_electrodes(subject, mri_subject, atlas, bipolar)

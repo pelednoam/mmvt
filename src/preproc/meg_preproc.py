@@ -7,6 +7,7 @@ import shutil
 import numpy as np
 from functools import partial
 from collections import defaultdict
+import traceback
 import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
@@ -30,7 +31,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
     NOISE_COV, DATA_CSD, NOISE_CSD = '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
                 '', '', '', '', '', '', '', '', ''
 
-def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=False, raw_cleaning_method='', constrast='',
+def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False, raw_cleaning_method='', constrast='',
                  subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
@@ -48,8 +49,8 @@ def init_globals(subject, mri_subject='', fname_format='', files_includes_cond=F
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
         raw_cleaning_method=raw_cleaning_method, constrast=constrast)
-    _get_stc_name = partial(get_file_name, fname_format=fname_format, file_type='stc', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
-    _get_pkl_name = partial(get_file_name, fname_format=fname_format, file_type='pkl', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
+    _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
+    _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
     RAW = _get_fif_name('raw', constrast='', cond='')
     EVE = _get_txt_name('eve', cond='')
     EVO = _get_fif_name('ave')
@@ -156,9 +157,23 @@ def calc_epoches(raw, events_id, tmin, tmax, event_digit=0, read_events_from_fil
 
 def calc_evoked(event_digit, events_id, tmin, tmax, raw=None, read_events_from_file=False, events_file_name=''):
     # Calc evoked data for averaged data and for each condition
-    if raw is None:
-        raw = load_raw()
-    epochs = calc_epoches(raw, events_id, tmin, tmax, event_digit, read_events_from_file, events_file_name)
+    if '{cond}' in EPO:
+        epo_exist = True
+        epochs = {}
+        for event in events_id.keys():
+            if op.isfile(get_cond_fname(EPO, event)):
+                epochs[event] = mne.read_epochs(get_cond_fname(EPO, event))
+            else:
+                epo_exist = False
+                break
+    else:
+        epo_exist = op.isfile(EPO)
+        if epo_exist:
+            epochs = mne.read_epochs(EPO)
+    if not epo_exist:
+        if raw is None:
+            raw = load_raw()
+        epochs = calc_epoches(raw, events_id, tmin, tmax, event_digit, read_events_from_file, events_file_name)
     all_evoked = calc_evoked_from_epochs(epochs, events_id)
     return all_evoked, epochs
 
@@ -167,9 +182,14 @@ def calc_evoked_from_epochs(epochs, events_id):
     # evoked = epochs.average()
     # evoked1 = epochs[events_id.keys()[0]].average()
     # evoked2 = epochs[events_id.keys()[1]].average()
-    all_evoked = {event:epochs[events_id.keys()[0]].average() for event in events_id.keys()}
-    for event, evoked in all_evoked.iteritems():
-        mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+    # all_evoked = {event:epochs[events_id.keys()[0]].average() for event in events_id.keys()}
+    if '{cond}' in EVO:
+        all_evoked = {event: epochs[event].average() for event in events_id.keys()}
+        for event, evoked in all_evoked.items():
+            mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+    else:
+        all_evoked = [epochs[event].average() for event in events_id.keys()]
+        mne.write_evokeds(EVO, all_evoked)
     return all_evoked
 
 
@@ -415,6 +435,7 @@ def calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_co
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
                 _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs, noise_cov)
         except:
+            print(traceback.format_exc())
             print('Error in calculating inv for {}'.format(cond))
 
 def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
@@ -452,6 +473,7 @@ def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0),
                                             pick_ori=None)
             stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
         except:
+            print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
     return stcs
 
@@ -1224,33 +1246,39 @@ def get_fname_format(task):
     event_digit = 0
     if task=='MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
-        fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
+        fname_format_cond = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
+        fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
         events_id = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events_id = dict(Fear=1, Happy=2)
         event_digit = 1
     elif task=='ECR':
-        fname_format = '{cond}-{ana_type}.{file_type}'
-        events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
+        fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
+        fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
+        # events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
+        events_id = dict(C=1, I=2)
         event_digit = 3
     elif task=='ARC':
-        fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
+        fname_format_cond = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
+        fname_format = '{subject}_arc_rer_{raw_cleaning_method}-{ana_type}.{file_type}'
         events_id = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
         raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
-    return fname_format, events_id, event_digit
+    return fname_format, fname_format_cond, events_id, event_digit
 
 
 if __name__ == '__main__':
     subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
+    subject, martinos_subject = 'mg99', 'ep009'
+    subject, martinos_subject = 'mg96', 'ep007'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
-    TASK = 'ARC' #'MSIT'
-    fname_format, events_id, event_digit = get_fname_format(TASK)
+    TASK = 'ECR' # 'MSIT' # 'ARC'
+    files_includes_cond = False
+    fname_format, fname_format_cond, events_id, event_digit = get_fname_format(TASK)
     constrast = '' #''interference'
-    raw_cleaning_method = 'tsss' # 'nTSSS'
-    files_includes_cond = True
+    raw_cleaning_method = '' #''tsss' # 'nTSSS'
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
-    init_globals(martinos_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, constrast,
+    init_globals(martinos_subject, subject, fname_format, fname_format_cond, files_includes_cond, raw_cleaning_method, constrast,
                  SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_no_cond=True)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
@@ -1261,13 +1289,15 @@ if __name__ == '__main__':
     T_MAX = 2
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    aparc_name = 'arc_april2016' # 'laus250'#'aparc250'
+    aparc_name = 'laus250'#'aparc250' # 'arc_april2016'
     read_labels_from_annot = False
     n_jobs = 6
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
-    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
+                                 tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
+    stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
             labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=100, do_plot=False)

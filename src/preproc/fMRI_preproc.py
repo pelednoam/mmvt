@@ -479,10 +479,10 @@ def project_volue_to_surface(subject, data_fol, threshold, volume_name, target_s
 
 
 def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method):
-    fname_format, events_id, event_digit = meg.get_fname_format(task)
+    fname_format, fname_format_cond, events_id, event_digit = meg.get_fname_format(task)
     raw_cleaning_method = 'tsss' # 'nTSSS'
     files_includes_cond = True
-    meg.init_globals(meg_subject, subject, fname_format, files_includes_cond, raw_cleaning_method, contrast_name,
+    meg.init_globals(meg_subject, subject, fname_format, fname_format_cond, files_includes_cond, raw_cleaning_method, contrast_name,
         SUBJECTS_MEG_DIR, task, SUBJECTS_DIR, BLENDER_ROOT_DIR)
     root_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'fmri', 'functional_rois')
     labels_fol = op.join(root_fol, '{}_labels'.format(contrast))

@@ -17,6 +17,7 @@ LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+ELECTRODES_DIR = op.join(LINKS_DIR, 'electrodes')
 
 HEMIS = utils.HEMIS
 STAT_AVG, STAT_DIFF = range(2)
@@ -66,7 +67,7 @@ def read_electrodes_file(subject, bipolar):
     electrodes_fname = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
     electrodes_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
-        convert_electrodes_file_to_npy(subject, bipolar, True)
+        convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
     d = np.load(electrodes_fname)
     return d['names'], d['pos']
 
@@ -114,7 +115,7 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
     np.savez(output_file_name, data=data, names=sfp.ch_names, conditions=conditions, colors=colors)
 
 
-def convert_electrodes_file_to_npy(subject, bipolar=False, copy_to_blender=True):
+def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_blender=True):
     rename_and_convert_electrodes_file(subject)
     electrodes_folder = op.join(SUBJECTS_DIR, subject, 'electrodes')
     csv_file = op.join(electrodes_folder, '{}_RAS.csv'.format(subject))
@@ -147,23 +148,37 @@ def rename_and_convert_electrodes_file(subject):
 
 
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar, moving_average_win_size=0):
-    input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes_data.mat')
-    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
-            '_bipolar' if bipolar else '', STAT_NAME[stat]))
-    if not op.isfile(input_file):
+    input_file = utils.get_file_if_exist(
+        [op.join(SUBJECTS_DIR, subject, 'electrodes', 'data.mat'),
+         op.join(ELECTRODES_DIR, subject, task, 'data.mat'),
+         op.join(SUBJECTS_DIR, subject, 'electrodes', 'evo.mat'),
+         op.join(ELECTRODES_DIR, subject, task, 'evo.mat')])
+    if not input_file is None:
+        input_type = utils.namebase(input_file)
+    else:
         print('No electrodes data file!!!')
         return
+    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
+            '_bipolar' if bipolar else '', STAT_NAME[stat]))
+    if input_type == 'evo':
+        field_cond_template = 'AvgERP_{}'
+    else:
+        field_cond_template = '{}_ERP'
+
+    #     d = utils.Bag(**sio.loadmat(input_file))
+        # pass
+    # else:
     if task == 'ECR':
-        read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
-            electrodeses_names_fiels='names', field_cond_template = '{}_ERP', from_t=from_t, to_t=to_t,
+        read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
+            electrodeses_names_fiels='names', field_cond_template = field_cond_template, from_t=from_t, to_t=to_t,
             moving_average_win_size=moving_average_win_size)# from_t=0, to_t=2500)
     elif task == 'MSIT':
         if bipolar:
-            read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
+            read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
                 electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
         else:
-            read_electrodes_data_one_mat(input_file, conditions, stat, output_file,
+            read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
                 electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
 
@@ -188,30 +203,39 @@ def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
     print(montage_names - names)
 
 
-def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, electrodeses_names_fiels,
+def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodeses_names_fiels,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(3, 97), threshold=0,
         color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
-        moving_average_win_size=0):
+        moving_average_win_size=0, downsample=2):
     # load the matlab file
     d = sio.loadmat(mat_file)
     # get the labels names
-    labels = d[electrodeses_names_fiels]
-    #todo: change that!!!
-    if len(labels) == 1:
-        labels = [str(l[0]) for l in labels[0]]
+    if electrodeses_names_fiels in d:
+        labels = d[electrodeses_names_fiels]
+        #todo: change that!!!
+        if len(labels) == 1:
+            labels = [str(l[0]) for l in labels[0]]
+        else:
+            labels = [str(l[0][0]) for l in labels]
     else:
-        labels = [str(l[0][0]) for l in labels]
+        labels, _ = read_electrodes_file(subject, bipolar)
     # Loop for each condition
     for cond_id, cond_name in enumerate(conditions):
         field = field_cond_template.format(cond_name)
+        if field not in d:
+            field = field_cond_template.format(cond_name.title())
+        if field not in d:
+            print('{} not in the mat file!'.format(cond_name))
+            continue
+        # todo: downsample suppose to be a cmdline paramter
+        if to_t == 0:
+            to_t = d[field].shape[1] / downsample
         # initialize the data matrix (electrodes_num x T x 2)
         if cond_id == 0:
-            #todo: fix to_t - from_t
             data = np.zeros((d[field].shape[0], to_t - from_t, 2))
         # times = np.arange(0, to_t*2, 2)
-        # todo: Need to do some interpulation for the MEG
         cond_data = d[field] # [:, times]
-        cond_data_downsample = utils.downsample_2d(cond_data, 2)
+        cond_data_downsample = utils.downsample_2d(cond_data, downsample)
         data[:, :, cond_id] = cond_data_downsample[:, from_t:to_t]
 
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
@@ -541,8 +565,9 @@ def main(subject, args):
         print('No from_t, to_t and conditions!')
 
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+    # todo: conditions need to be a cmdline parameters!
     if args.task == 'ECR':
-        conditions = ['happy', 'fear']
+        conditions = ['congruent', 'incongruent'] # ['happy', 'fearful'] # ['happy', 'fear']
     elif args.task == 'MSIT':
         conditions = ['noninterference', 'interference']
     elif args.task == 'seizure':
@@ -555,7 +580,7 @@ def main(subject, args):
                           zip(args.conditions, from_t, to_t)]
 
     if 'all' in args.function or 'convert_electrodes_file_to_npy' in args.function:
-        convert_electrodes_file_to_npy(subject, bipolar=args.bipolar)
+        convert_electrodes_coordinates_file_to_npy(subject, bipolar=args.bipolar)
     if 'all' in args.function or 'sort_electrodes_groups' in args.function:
         sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
     if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
@@ -578,14 +603,14 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-t', '--task', help='task', required=False)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=bool)
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default='0') # was -500
     parser.add_argument('--to_t', help='to_t', required=False, default='0') # was 2000
     parser.add_argument('--indices_shift', help='indices_shift', required=False, default='0') # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
-    parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=bool)
+    parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
     print(args)
     for subject in args.subject:
