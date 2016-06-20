@@ -86,9 +86,16 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
         for elec_probs in elecs_probs:
             # len(elec_probs['cortical_indices']) > vertices_num_threshold
             if len(elec_probs['cortical_indices_dists']) > 0 and \
+                            len(elec_probs['cortical_rois']) > 0 and \
                             np.min(elec_probs['cortical_indices_dists']) < 1 and \
                             elec_probs['approx'] == 3:
                 # print(elec_probs['name'], elec_probs['hemi'], len(elec_probs['cortical_indices']))
+                elec_inds = np.where(elec_probs['name'] == names)[0]
+                if len(elec_inds) == 1:
+                    elec_ind = elec_inds[0]
+                else:
+                    print('{} found {} in names'.format(elec_probs['name'], len(elec_inds)))
+                    continue
                 if read_from_stc:
                     data = stc.rh_data if elec_probs['hemi'] == 'rh' else stc.lh_data
                     T = data.shape[1]
@@ -104,7 +111,6 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
                     data = meg_evo_data[elec_probs['hemi']]['data'][meg_labels_inds, :, cond_ind]
                     probs = elec_probs['cortical_probs']
                     elec_meg_data = np.dot(np.reshape(probs, (1, len(probs))), data)[0, :]
-                elec_ind = np.where(elec_probs['name'] == names)[0][0]
                 elec_data = f['data'][elec_ind, :, cond_ind]
                 elec_data_diff = np.max(elec_data) - np.min(elec_data)
                 elec_meg_data *= elec_data_diff / (np.max(elec_meg_data) - np.min(elec_meg_data))
@@ -122,9 +128,9 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
 
 
 if __name__ == '__main__':
-    subject = 'ep007' # 'ep009' # 'ep001'
-    mri_subject = 'mg96' # 'mg99' # 'mg78'
+    subject =  'ep009' # 'ep007' 'ep001'
+    mri_subject =  'mg99' # 'mg96' 'mg78'
     atlas = 'laus250'
-    bipolar = False
+    bipolar = True
     meg_recon_to_electrodes(subject, mri_subject, atlas, bipolar)
     print('finish!')

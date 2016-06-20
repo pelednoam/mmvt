@@ -147,7 +147,8 @@ def rename_and_convert_electrodes_file(subject):
         utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv)
 
 
-def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar, moving_average_win_size=0):
+def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar,
+                               electrodes_names_field, moving_average_win_size=0):
     input_file = utils.get_file_if_exist(
         [op.join(SUBJECTS_DIR, subject, 'electrodes', 'data.mat'),
          op.join(ELECTRODES_DIR, subject, task, 'data.mat'),
@@ -170,16 +171,16 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
     # else:
     if task == 'ECR':
         read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
-            electrodeses_names_fiels='names', field_cond_template = field_cond_template, from_t=from_t, to_t=to_t,
+            electrodes_names_field, field_cond_template = field_cond_template, from_t=from_t, to_t=to_t,
             moving_average_win_size=moving_average_win_size)# from_t=0, to_t=2500)
     elif task == 'MSIT':
         if bipolar:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
-                electrodeses_names_fiels='electrodes_bipolar', field_cond_template = '{}_bipolar_evoked',
+                electrodes_names_field, field_cond_template = '{}_bipolar_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
         else:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
-                electrodeses_names_fiels='electrodes', field_cond_template = '{}_evoked',
+                electrodes_names_field, field_cond_template = '{}_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
 
 
@@ -203,22 +204,25 @@ def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
     print(montage_names - names)
 
 
-def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodeses_names_fiels,
+def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodes_names_field,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(3, 97), threshold=0,
         color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
         moving_average_win_size=0, downsample=2):
     # load the matlab file
     d = sio.loadmat(mat_file)
     # get the labels names
-    if electrodeses_names_fiels in d:
-        labels = d[electrodeses_names_fiels]
-        #todo: change that!!!
-        if len(labels) == 1:
-            labels = [str(l[0]) for l in labels[0]]
+    if electrodes_names_field in d:
+        labels = d[electrodes_names_field]
+        if bipolar:
+            labels = fix_bipolar_labels(labels)
         else:
-            labels = [str(l[0][0]) for l in labels]
+            #todo: change that!!!
+            if len(labels) == 1:
+                labels = [str(l[0]) for l in labels[0]]
+            else:
+                labels = [str(l[0][0]) for l in labels]
     else:
-        labels, _ = read_electrodes_file(subject, bipolar)
+        raise Exception('electrodes_names_field not in the matlab file!')
     # Loop for each condition
     for cond_id, cond_name in enumerate(conditions):
         field = field_cond_template.format(cond_name)
@@ -251,6 +255,16 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, b
     else:
         colors = calc_colors(stat_data)
         np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
+
+
+def fix_bipolar_labels(labels):
+    ret = []
+    for label in labels:
+        elc1, elc2 = label.split(' ')
+        group, num1 = utils.elec_group_number(elc1, False)
+        _, num2 = utils.elec_group_number(elc2, False)
+        ret.append('{}{}-{}{}'.format(group, num2, group, num1))
+    return ret
 
 
 def calc_stat_data(data, stat):
@@ -585,7 +599,8 @@ def main(subject, args):
         sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
     if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
         for stat in [STAT_AVG, STAT_DIFF]:
-            create_electrode_data_file(subject, args.task, from_t_ind, to_t_ind, stat, conditions, args.bipolar)
+            create_electrode_data_file(subject, args.task, from_t_ind, to_t_ind, stat, conditions, args.bipolar,
+                                       args.electrodes_names_field)
     if 'all' in args.function or 'create_electrodes_labeling_coloring' in args.function:
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
     if 'show_image' in args.function:
@@ -610,6 +625,7 @@ if __name__ == '__main__':
     parser.add_argument('--indices_shift', help='indices_shift', required=False, default='0') # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
+    parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
     print(args)

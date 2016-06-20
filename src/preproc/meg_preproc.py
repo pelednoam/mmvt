@@ -36,6 +36,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
+    if files_includes_cond:
+        fname_format = fname_format_cond
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
