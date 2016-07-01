@@ -221,7 +221,8 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
         if not annotations_exist:
-            fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
+            utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
+            annotations_exist = fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
     if morph_labels_from_fsaverage:
         utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
@@ -525,7 +526,7 @@ if __name__ == '__main__':
     # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
     # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm', 'lh.smoothwm']}
 
     run_on_subjects(subjects, neccesary_files, args, n_jobs)
 
