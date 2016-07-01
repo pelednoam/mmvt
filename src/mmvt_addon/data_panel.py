@@ -30,6 +30,7 @@ bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, descripti
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
+bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 
 
 def import_brain(current_root_path):
@@ -341,7 +342,7 @@ def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=(
 def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
     base_path = mu.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
-    labels_data_file = 'labels_data_{hemi}.npz' if stat else 'labels_data_no_conds_{hemi}.npz'
+    labels_data_file = 'labels_data_{hemi}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
     brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in mu.HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
@@ -426,7 +427,8 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        add_data_to_parent_brain_obj(self, STAT_DIFF)
+        stat = STAT_DIFF if bpy.context.scene.brain_no_conds_stat == 'diff' else STAT_AVG
+        add_data_to_parent_brain_obj(self, stat)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -636,6 +638,7 @@ class DataMakerPanel(bpy.types.Panel):
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
         col = self.layout.column(align=True)
         col.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
+        col.prop(context.scene, 'brain_no_conds_stat', text="")
         col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
         col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):

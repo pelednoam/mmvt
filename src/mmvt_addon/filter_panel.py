@@ -153,7 +153,7 @@ def deselect_all_objects():
             obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
         elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
             obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-        elif obj.parent == bpy.data.objects['Deep_electrodes']:
+        elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes']:
             de_select_electrode(obj)
 
 

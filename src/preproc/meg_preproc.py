@@ -73,7 +73,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
-    STC_HEMI_SMOOTH_SAVE = get_file_name('{method}-smoothed', '', fname_format)[:-1]
+    STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(SUBJECTS_MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
     ACT = op.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
@@ -974,7 +974,7 @@ def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_metho
         for hemi in HEMIS:
             data = stc.rh_data if hemi == 'rh' else stc.lh_data
             if hemi not in stcs:
-                stcs[hemi] = np.zeros((data.shape[0], data.shape[1], 2))
+                stcs[hemi] = np.zeros((data.shape[0], data.shape[1], len(events_id)))
             stcs[hemi][:, :, cond_ind] = data
     for hemi in HEMIS:
         if stat == STAT_AVG:
@@ -1041,6 +1041,8 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
                 raise Exception("Can't find the stc file! {}".format(stc_fname))
             stcs[cond] = mne.read_source_estimate(stc_fname)
 
+    if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', '{hemi}.aparc.DKTatlas40.annot')):
+        labels_from_annot = True
     if (labels_from_annot):
         labels = mne.read_labels_from_annot(MRI_SUBJECT, atlas, hemi, surf_name)
         if len(labels) == 0:
@@ -1263,7 +1265,11 @@ def get_fname_format(task):
         fname_format = '{subject}_arc_rer_{raw_cleaning_method}-{ana_type}.{file_type}'
         events_id = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
-        raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
+        # raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
+        print('Unkown task! Known tasks are MSIT/ECR/ARC.')
+        fname_format_cond = '{subject}_{cond}-{ana_type}.{file_type}'
+        fname_format = '{subject}-{ana_type}.{file_type}'
+        events_id = dict(all=1)
     return fname_format, fname_format_cond, events_id, event_digit
 
 
@@ -1271,9 +1277,10 @@ if __name__ == '__main__':
     subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
     subject, martinos_subject = 'mg99', 'ep009'
     subject, martinos_subject = 'mg96', 'ep007'
+    subject, martinos_subject = 'ESZC25', 'KC'
     # subject_id, martinos_subject_id = 'hc008', 'hc008'
 
-    TASK = 'ECR' # 'MSIT' # 'ARC'
+    TASK = 'None' #'ECR' # 'MSIT' # 'ARC'
     files_includes_cond = False
     fname_format, fname_format_cond, events_id, event_digit = get_fname_format(TASK)
     constrast = '' #''interference'
@@ -1291,25 +1298,27 @@ if __name__ == '__main__':
     T_MAX = 2
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    aparc_name = 'laus250'#'aparc250' # 'arc_april2016'
+    aparc_name = 'aparc.DKTatlas40' # 'laus250'#'aparc250' # 'arc_april2016'
     read_labels_from_annot = False
     n_jobs = 6
+
+    stcs = None
     # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
-    calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
-                                 tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
-    stcs = calc_stc_per_condition(events_id, inverse_method)
+    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    # evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
+    #                              tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
+    # stcs = calc_stc_per_condition(events_id, inverse_method)
     for hemi in HEMIS:
         calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=None, inverse_method=inverse_method, positive=True, moving_average_win_size=100, do_plot=False)
+            labels_fol='', stcs=stcs, inverse_method=inverse_method, positive=True, do_plot=False) # moving_average_win_size=100
     # stcs = calc_stc_per_condition(events_id, inverse_method)
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method, n_jobs=1)
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
 
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    # save_activity_map(events_id, stat, None, inverse_method=inverse_method)
+    # save_activity_map(events_id, STAT_AVG, None, inverse_method=inverse_method)
     # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
 
     # test_labels_coloring(subject, 'laus250')
