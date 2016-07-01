@@ -212,7 +212,12 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     # loop_indices = {}
     for hemi in hemispheres:
         if map_type == 'MEG':
-            f = np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy'))
+            fname  = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+            if op.isfile(fname):
+                f = np.load(fname)
+            else:
+                print("Can't load {}".format(fname))
+                return False
         elif map_type == 'FMRI':
             # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
             # f = np.load(fname)
@@ -231,6 +236,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         if map_type == 'FMRI':
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
+    return True
     # return loop_indices
     # Noam: not sure this is necessary
     #deselect_all()

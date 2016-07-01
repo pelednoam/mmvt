@@ -64,6 +64,7 @@ class ModalTimerOperator(bpy.types.Operator):
                 try:
                     plot_something(self, context, self.limits, ModalTimerOperator._uuid)
                 except:
+                    print(traceback.format_exc())
                     print('Error in plotting at {}!'.format(self.limits))
                 self.limits = self.limits - bpy.context.scene.play_dt if PlayPanel.play_reverse else \
                         self.limits + bpy.context.scene.play_dt
@@ -92,6 +93,9 @@ class ModalTimerOperator(bpy.types.Operator):
 
 
 def plot_something(self, context, cur_frame, uuid):
+    if bpy.context.scene.frame_current > bpy.context.scene.play_to:
+        return
+
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
@@ -106,17 +110,18 @@ def plot_something(self, context, cur_frame, uuid):
     #     return
 
     #todo: need a different threshold value for each modality!
-    meg_threshold = 1.0
-    electrodes_threshold = 0.0
+    meg_threshold = threshold
+    electrodes_threshold = threshold
 
     #todo: Check the init_play!
     # if False: #PlayPanel.init_play:
 
+    successful_ret = True
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
         #     PlayPanel.addon.default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
-        PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, meg_threshold,
+        successful_ret = PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, meg_threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
@@ -139,7 +144,7 @@ def plot_something(self, context, cur_frame, uuid):
         PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         PlayPanel.addon.color_electrodes_sources()
-    if bpy.context.scene.render_movie:
+    if bpy.context.scene.render_movie and successful_ret:
         PlayPanel.addon.render_image()
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
