@@ -39,21 +39,40 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     except:
         data = np.delete(data, (0), axis=0)
 
-    pos = data[:, 1:].astype(float)
+    electrodes_types = grid_or_depth(data)
+    # pos = data[:, 1:].astype(float)
     if bipolar:
-        names = []
-        pos_biploar, pos_org = [], []
-        for index in range(data.shape[0]-1):
-            elc_group1, elc_num1 = utils.elec_group_number(data[index, 0])
-            elc_group2, elc_num12 = utils.elec_group_number(data[index+1, 0])
-            if elc_group1==elc_group2:
-                names.append('{}-{}'.format(data[index+1, 0],data[index, 0]))
-                pos_biploar.append(pos[index] + (pos[index+1]-pos[index])/2)
+        # names = []
+        # pos_biploar, pos_org = [], []
+        # for index in range(data.shape[0]-1):
+        #     elc_group1, elc_num1 = utils.elec_group_number(data[index, 0])
+        #     elc_group2, elc_num12 = utils.elec_group_number(data[index+1, 0])
+        #     if elc_group1==elc_group2:
+        #         names.append('{}-{}'.format(data[index+1, 0],data[index, 0]))
+        #         pos_biploar.append(pos[index] + (pos[index+1]-pos[index])/2)
+        #         pos_org.append([pos[index], pos[index+1]])
+        # pos = np.array(pos_biploar)
+        # pos_org = np.array(pos_org)
+        depth_data = data[electrodes_types == DEPTH, :]
+        pos = depth_data[:, 1:4].astype(float)
+        pos_depth, names_depth, dists_depth, pos_org = [], [], [], []
+        for index in range(depth_data.shape[0]-1):
+            elc_group1, elc_num1 = utils.elec_group_number(depth_data[index, 0])
+            elc_group2, elc_num12 = utils.elec_group_number(depth_data[index+1, 0])
+            if elc_group1 == elc_group2:
+                elec_name = '{}-{}'.format(depth_data[index+1, 0],depth_data[index, 0])
+                names_depth.append(elec_name)
+                pos_depth.append(pos[index] + (pos[index+1]-pos[index])/2)
                 pos_org.append([pos[index], pos[index+1]])
-        pos = np.array(pos_biploar)
-        pos_org = np.array(pos_org)
+        # There is no point in calculating bipolar for grid electrodes
+        grid_data = data[electrodes_types == GRID, :]
+        names_grid, pos_grid = get_names_dists_non_bipolar_electrodes(grid_data)
+        names = np.concatenate((names_depth, names_grid))
+        pos = utils.vstack(pos_depth, pos_grid)
+        # No need in pos_org for grid electordes
+        pos_org.extend([() for _ in pos_grid])
     else:
-        names = data[:, 0]
+        names, pos = get_names_dists_non_bipolar_electrodes(data)
         pos_org = []
     if len(set(names)) != len(names):
         raise Exception('Duplicate electrodes names!')
@@ -61,6 +80,34 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         raise Exception('pos dim ({}) != names dim ({})'.format(pos.shape[0], len(names)))
     # print(np.hstack((names.reshape((len(names), 1)), pos)))
     np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
+
+
+def get_names_dists_non_bipolar_electrodes(data):
+    names = data[:, 0]
+    pos = data[:, 1:4].astype(float)
+    return names, pos
+
+
+def grid_or_depth(data):
+    pos = data[:, 1:].astype(float)
+    dists = defaultdict(list)
+    group_type = {}
+    electrodes_group_type = [None] * pos.shape[0]
+    for index in range(data.shape[0] - 1):
+        elc_group1, _ = utils.elec_group_number(data[index, 0])
+        elc_group2, _ = utils.elec_group_number(data[index + 1, 0])
+        if elc_group1 == elc_group2:
+            dists[elc_group1].append(np.linalg.norm(pos[index + 1] - pos[index]))
+    for group, group_dists in dists.items():
+        #todo: not sure this is the best way to check it. Strip with 1xN will be mistaken as a depth
+        if np.max(group_dists) > 2 * np.median(group_dists):
+            group_type[group] = GRID
+        else:
+            group_type[group] = DEPTH
+    for index in range(data.shape[0]):
+        elc_group, _ = utils.elec_group_number(data[index, 0])
+        electrodes_group_type[index] = group_type[elc_group]
+    return np.array(electrodes_group_type)
 
 
 def read_electrodes_file(subject, bipolar):
@@ -133,17 +180,22 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
 
 
 def rename_and_convert_electrodes_file(subject):
+    subject_elec_fname_no_ras_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}.{postfix}')
     subject_elec_fname_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
-    subject_elec_fname_csv_upper = subject_elec_fname_pattern.format(subject=subject.upper(), postfix='csv')
     subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
-    subject_elec_fname_xlsx_upper = subject_elec_fname_pattern.format(subject=subject.upper(), postfix='xlsx')
     subject_elec_fname_xlsx = subject_elec_fname_pattern.format(subject=subject, postfix='xlsx')
 
-    if op.isfile(subject_elec_fname_csv_upper):
-        os.rename(subject_elec_fname_csv_upper, subject_elec_fname_csv)
-    elif op.isfile(subject_elec_fname_xlsx_upper):
-        os.rename(subject_elec_fname_xlsx_upper, subject_elec_fname_xlsx)
-    if op.isfile(subject_elec_fname_xlsx):
+    utils.rename_files([subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xlsx'),
+                        subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xlsx'),
+                        subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xls'),
+                        subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xls')],
+                       subject_elec_fname_pattern.format(subject=subject, postfix='xlsx'))
+    utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='csv')],
+                       subject_elec_fname_csv)
+    utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='xlsx')],
+                       subject_elec_fname_xlsx)
+    if op.isfile(subject_elec_fname_xlsx) and \
+                    (not op.isfile(subject_elec_fname_csv) or op.getsize(subject_elec_fname_csv) == 0):
         utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv)
 
 
@@ -275,6 +327,7 @@ def calc_stat_data(data, stat):
     else:
         raise Exception('Wrong stat value!')
     return stat_data
+
 
 def find_first_electrode_per_group(electrodes, positions, bipolar=False):
     groups = OrderedDict()  # defaultdict(list)

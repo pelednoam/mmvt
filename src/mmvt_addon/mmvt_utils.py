@@ -442,7 +442,7 @@ def natural_keys(text):
 def elec_group_number(elec_name, bipolar=False):
     if isinstance(elec_name, bytes):
         elec_name = elec_name.decode('utf-8')
-    if bipolar:
+    if bipolar and '-' in elec_name:
         elec_name2, elec_name1 = elec_name.split('-')
         group, num1 = elec_group_number(elec_name1, False)
         _, num2 = elec_group_number(elec_name2, False)
@@ -455,7 +455,7 @@ def elec_group_number(elec_name, bipolar=False):
 
 
 def elec_group(elec_name, bipolar):
-    if bipolar:
+    if bipolar and '-' in elec_name:
         group, _, _ = elec_group_number(elec_name, bipolar)
     else:
         group, _ = elec_group_number(elec_name, bipolar)
