@@ -144,8 +144,11 @@ def plot_something(self, context, cur_frame, uuid):
         PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         PlayPanel.addon.color_electrodes_sources()
-    if bpy.context.scene.render_movie and successful_ret:
-        PlayPanel.addon.render_image()
+    if bpy.context.scene.render_movie:
+        if successful_ret:
+            PlayPanel.addon.render_image()
+        else:
+            print("The image wasn't rendered due to an error in the plotting.")
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
