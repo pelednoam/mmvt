@@ -731,7 +731,7 @@ def fsaverage_vertices():
 
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir,
-                                  args, print_traceback=False):
+                                  args, print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
