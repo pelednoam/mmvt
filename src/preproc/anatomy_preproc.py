@@ -522,7 +522,7 @@ if __name__ == '__main__':
     args = utils.Bag(au.parse_parser(parser))
     subjects, atlas = args.subject, args.atlas # 'arc_april2016' # 'aparc.DKTatlas40' # 'laus250'
     args.neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     print(args)
 
@@ -530,8 +530,6 @@ if __name__ == '__main__':
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
     # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
     # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
-    neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm', 'lh.smoothwm']}
 
     run_on_subjects(subjects, args)
 
