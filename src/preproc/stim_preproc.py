@@ -13,8 +13,9 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 
 def load_stim_file(subject, args):
-    stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}{}.npz'.format(
-        args.file_frefix, args.stim_channel)))
+    stim_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}{}.npz'.format(
+        args.file_frefix, args.stim_channel))
+    stim = np.load(stim_fname)
     labels, psd, time, freqs = (stim[k] for k in ['labels', 'psd', 'time', 'freqs'])
     bipolar = '-' in labels[0]
     data = None
@@ -42,10 +43,10 @@ def load_stim_file(subject, args):
             colors = np.zeros((*data.shape, 3))
         for elec_ind, elec_name in enumerate(labels):
             elec_group = utils.elec_group(elec_name, bipolar)
-            if elec_group in ['LVF', 'RMT']:
-                colors[elec_ind, :, freq_ind] = utils.mat_to_colors(psd_slice[elec_ind], data_min, data_max, colorsMap='BuGn')
-            else:
-                colors[elec_ind, :, freq_ind] = utils.mat_to_colors(psd_slice[elec_ind], data_min, data_max, colorsMap=args.colors_map)
+            # if elec_group in ['LVF', 'RMT']:
+            #     colors[elec_ind, :, freq_ind] = utils.mat_to_colors(psd_slice[elec_ind], data_min, data_max, colorsMap='BuGn')
+            # else:
+            colors[elec_ind, :, freq_ind] = utils.mat_to_colors(psd_slice[elec_ind], data_min, data_max, colorsMap=args.colors_map)
         conditions.append('{}-{}Hz'.format(freq_from, freq_to))
     output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
             args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))

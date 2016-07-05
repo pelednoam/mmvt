@@ -401,7 +401,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
     if 'all' in func_to_run or 'prepare_local_subjects_folder' in func_to_run:
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
-            neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=False)
+            neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, args, print_traceback=False)
 
     if 'all' in func_to_run or 'freesurfer_surface_to_blender_surface' in func_to_run:
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -452,7 +452,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
 # def run_on_subjects(subjects, remote_subjects_dir, overwrite_annotation=False, overwrite_morphing_labels=False,
 #         solve_labels_collisions=False, overwrite_hemis_srf=False, overwrite_labels_ply_files=False,
 #         overwrite_faces_verts=False, morph_labels_from_fsaverage=True, fsaverage='fsaverage', fs_labels_fol='', n_jobs=1):
-def run_on_subjects(subjects, neccesary_files, args, n_jobs):
+def run_on_subjects(subjects, args):
     subjects_flags, subjects_errors = {}, {}
     for subject in subjects:
         remote_subject_dir = op.join(args.remote_subjects_dir, subject)
@@ -461,11 +461,11 @@ def run_on_subjects(subjects, neccesary_files, args, n_jobs):
             print('*******************************************')
             print('subject: {}, atlas: {}'.format(subject, args.atlas))
             print('*******************************************')
-            flags = main(subject, args.atlas, neccesary_files, remote_subject_dir, args.overwrite_annotation,
+            flags = main(subject, args.atlas, args.neccesary_files, remote_subject_dir, args.overwrite_annotation,
                          args.fsaverage, args.overwrite_morphing_labels, args.overwrite_hemis_srf,
                          args.overwrite_labels_ply_files, args.overwrite_labels_ply_files, args.overwrite_faces_verts,
                          args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol,
-                         args.function, n_jobs)
+                         args.function, args.n_jobs)
             subjects_flags[subject] = flags
         except:
             subjects_errors[subject] = traceback.format_exc()
@@ -505,7 +505,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('-fsaverage', help='fsaverage', required=False, default='fsaverage')
+    parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
     parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=bool)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=bool)
@@ -515,11 +515,16 @@ if __name__ == '__main__':
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=bool)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=bool)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
+    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=bool)
+    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
+    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
-    print(args)
     subjects, atlas = args.subject, args.atlas # 'arc_april2016' # 'aparc.DKTatlas40' # 'laus250'
-    n_jobs = utils.get_n_jobs(args.n_jobs)
+    args.neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    print(args)
 
     # Files needed in the local subject folder
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
@@ -528,7 +533,7 @@ if __name__ == '__main__':
     neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm', 'lh.smoothwm']}
 
-    run_on_subjects(subjects, neccesary_files, args, n_jobs)
+    run_on_subjects(subjects, args)
 
     # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
     # fsaverage = 'fscopy' # 'fsaverage'

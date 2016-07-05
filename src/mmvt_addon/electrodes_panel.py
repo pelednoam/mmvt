@@ -438,6 +438,7 @@ def init(addon):
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
         print("!!!! Can't register electrodes panel, no Deep_electrodes object!!!!")
         return
+    mu.make_dir(op.join(mu.get_user_fol(), 'electrodes'))
     sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
     if not op.isfile(sorted_groups_fname):
         # Try to get the file from the subject's root folder
