@@ -183,9 +183,9 @@ def capture_graph(context):
     print('Running {}'.format(cmd))
     # mu.run_command_in_new_thread(cmd, False)
 
-    if op.isfile(op.join(image_fol, 'data.pkl')):
-        print('The file already exists!')
-        return
+    # if op.isfile(op.join(image_fol, 'data.pkl')):
+    #     print('The file already exists!')
+    #     return
 
     save_graph_data(graph_data, graph_colors, image_fol)
 

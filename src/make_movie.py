@@ -181,6 +181,8 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
             # if color == (1.0, 1.0, 1.0):
             #     color = np.array(cu.name_to_rgb('orange')) / 255.0
             # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
+            if len(time_range) > len(values):
+                time_range = time_range[:len(values)]
             ax.plot(time_range, values, label=k, color=color,
                     alpha=0.9)  # , clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
         ind += 1

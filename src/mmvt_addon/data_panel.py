@@ -363,7 +363,7 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
     parent_obj.animation_data_clear()
     for input_file in source_files:
         if not op.isfile(input_file):
-            mu.message(self, "Can't load file {}!".format(input_file))
+            print(self, "Can't load file {}!".format(input_file))
             continue
         print('loading {}'.format(input_file))
         f = np.load(input_file)
@@ -385,6 +385,7 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
             sources[obj_name] = data_stat
     if len(sources) == 0:
         print('No sources in {}'.format(source_files))
+        return
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
     T = len(sources[sources_names[0]]) + 2

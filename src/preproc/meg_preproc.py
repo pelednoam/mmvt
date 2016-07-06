@@ -458,7 +458,7 @@ def calc_stc(inverse_method='dSPM'):
 
 
 def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
-                           add_eeg_ref=True):
+                           add_eeg_ref=True, pick_ori=None):
     stcs = {}
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
@@ -471,8 +471,7 @@ def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0),
             if not global_inverse_operator:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
             evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
-            stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method,
-                                            pick_ori=None)
+            stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
             stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
         except:
             print(traceback.format_exc())
@@ -1309,16 +1308,17 @@ if __name__ == '__main__':
     # evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
     #                              tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
     # stcs = calc_stc_per_condition(events_id, inverse_method)
-    for hemi in HEMIS:
-        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=stcs, inverse_method=inverse_method, positive=True, do_plot=False) # moving_average_win_size=100
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    # for hemi in HEMIS:
+    #     calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
+    #         labels_fol='', stcs=stcs, inverse_method=inverse_method, positive=False, do_plot=False) # moving_average_win_size=100
+    # stcs = calc_stc_per_condition(events_id, inverse_method, pick_ori='normal')
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method, n_jobs=1)
     # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
 
     # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    # save_activity_map(events_id, STAT_AVG, None, inverse_method=inverse_method)
+    save_activity_map(events_id, STAT_AVG, None, inverse_method=inverse_method, colors_map='jet')
+
     # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
 
     # test_labels_coloring(subject, 'laus250')

@@ -77,7 +77,7 @@ def meg(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     xlabel = ''
     cb_data_type = 'meg'
     fps = 10
-    cb_min_max_eq = False
+    cb_min_max_eq = True
     color_map = 'OrRd'
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
         cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
