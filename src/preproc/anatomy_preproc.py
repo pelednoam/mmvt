@@ -507,22 +507,22 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
     parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
-    parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=bool)
-    parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=bool)
-    parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=bool)
-    parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=bool)
-    parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=bool)
-    parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=bool)
-    parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=bool)
+    parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
+    parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
+    parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
-    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=bool)
+    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
     parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     subjects, atlas = args.subject, args.atlas # 'arc_april2016' # 'aparc.DKTatlas40' # 'laus250'
     args.neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white']}
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     print(args)
 
@@ -530,8 +530,6 @@ if __name__ == '__main__':
     # subcortical_to_surface: mri/aseg.mgz, mri/norm.mgz
     # freesurfer_surface_to_blender_surface: surf/rh.pial, surf/lh.pial
     # convert_srf_files_to_ply: surf/lh.sphere.reg, surf/rh.sphere.reg
-    neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm', 'lh.smoothwm']}
 
     run_on_subjects(subjects, args)
 

@@ -822,10 +822,13 @@ def run_parallel(func, params, njobs=1):
     return results
 
 
-def get_parent_fol(curr_dir=''):
+def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
         curr_dir = os.path.dirname(os.path.realpath(__file__))
-    return os.path.split(curr_dir)[0]
+    parent_fol = os.path.split(curr_dir)[0]
+    for _ in range(levels - 1):
+        parent_fol = get_parent_fol(parent_fol)
+    return parent_fol
 
 
 def get_figs_fol():

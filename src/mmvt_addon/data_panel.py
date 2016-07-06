@@ -33,7 +33,7 @@ bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], de
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 
 
-def import_brain(current_root_path):
+def import_hemis_for_functional_maps(current_root_path):
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers
@@ -146,6 +146,34 @@ class AnatomyPreproc(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def import_brain(context=None):
+    # self.brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
+    # self.current_root_path = mu.get_user_fol()  # bpy.path.abspath(bpy.context.scene.conf_path)
+    user_fol = mu.get_user_fol()
+    print("importing ROIs")
+    import_rois(user_fol)
+    import_hemis_for_functional_maps(user_fol)
+    import_subcorticals(op.join(user_fol, 'subcortical'))
+    if context:
+        last_obj = context.active_object.name
+        print('last obj is -' + last_obj)
+
+    if bpy.data.objects.get(' '):
+        bpy.data.objects[' '].select = True
+        if context:
+            context.scene.objects.active = bpy.data.objects[' ']
+    if context:
+        bpy.data.objects[last_obj].select = False
+    DataMakerPanel.addon.show_rois()
+    bpy.types.Scene.brain_imported = True
+    print('cleaning up')
+    for obj in bpy.data.objects['Subcortical_structures'].children:
+        # print(obj.name)
+        if obj.name[-1] == '1':
+            obj.name = obj.name[0:-4]
+    print('Brain importing is Finished ')
+
+
 class ImportBrain(bpy.types.Operator):
     bl_idname = "ohad.brain_importing"
     bl_label = "import2 brain"
@@ -154,28 +182,7 @@ class ImportBrain(bpy.types.Operator):
     brain_layer = -1
 
     def invoke(self, context, event=None):
-        self.brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
-        self.current_root_path = mu.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
-        print("importing ROIs")
-        import_rois(self.current_root_path)
-        import_brain(self.current_root_path)
-        import_subcorticals(op.join(self.current_root_path, 'subcortical'))
-        last_obj = context.active_object.name
-        print('last obj is -' + last_obj)
-
-        if bpy.data.objects.get(' '):
-            bpy.data.objects[' '].select = True
-            context.scene.objects.active = bpy.data.objects[' ']
-        bpy.data.objects[last_obj].select = False
-        DataMakerPanel.addon.show_rois()
-        bpy.types.Scene.brain_imported = True
-        print('cleaning up')
-        for obj in bpy.data.objects['Subcortical_structures'].children:
-            # print(obj.name)
-            if obj.name[-1] == '1':
-                obj.name = obj.name[0:-4]
-        print('Brain importing is Finished ')
-
+        import_brain()
         return {"FINISHED"}
 
 
@@ -232,7 +239,7 @@ class ImportRois(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         self.current_root_path = mu.get_user_fol() #bpy.path.abspath(bpy.context.scene.conf_path)
-        import_brain(self.current_root_path)
+        import_hemis_for_functional_maps(self.current_root_path)
         return {"FINISHED"}
 
 

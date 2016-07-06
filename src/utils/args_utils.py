@@ -48,9 +48,9 @@ def get_args_list(args, key, var_type=None):
 
 def is_true(val):
     if isinstance(val, str):
-        if val.lower() == 'true':
+        if val.lower() in ['true', 'yes', 'y']:
             return True
-        elif val.lower() == 'false':
+        elif val.lower() in ['false', 'no', 'n']:
             return False
         elif val.isnumeric():
             return bool(int(val))
