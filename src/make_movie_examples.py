@@ -63,6 +63,26 @@ def meg_labels(dpi, bitrate, pics_type, show_first_pic, n_jobs):
         cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
 
 
+def meg(dpi, bitrate, pics_type, show_first_pic, n_jobs):
+    fol = '/cluster/neuromind/npeled/mmvt/ESZC25/figs'
+    fol2 = ''
+    data_to_show_in_graph = ('meg')
+    video_fname = 'ESZC25.mp4'
+    cb_title = 'MEG activity'
+    time_range = range(300)
+    xticks = range(0, 300, 50)
+    ylim = ()
+    ylabels = ['MEG activity']
+    xticklabels = []
+    xlabel = ''
+    cb_data_type = 'meg'
+    fps = 10
+    cb_min_max_eq = False
+    color_map = 'OrRd'
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
+
+
 def pp009_vs_healthy_coherence(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     # todo: this example doesn't work
     fol = '/home/noam/Videos/mmvt/meg_con/healthy'
@@ -136,4 +156,5 @@ if __name__ == '__main__':
     n_jobs = 4
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    meg(dpi, bitrate, pics_type, show_first_pic, n_jobs)
