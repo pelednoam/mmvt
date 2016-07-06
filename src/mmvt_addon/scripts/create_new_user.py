@@ -1,7 +1,12 @@
 import sys
 import os
 import os.path as op
-from src.mmvt_addon.scripts import scripts_utils as su
+
+try:
+    from src.mmvt_addon.scripts import scripts_utils as su
+except:
+    sys.path.append(os.path.split(__file__)[0])
+    import scripts_utils as su
 
 
 def wrap_blender_call():
@@ -31,15 +36,16 @@ def wrap_blender_call():
     su.call_script(__file__, args)
 
 
+def create_new_subject(new_subject_fname):
+    mmvt_addon = su.init_mmvt_addon()
+    mmvt_addon.import_brain()
+    su.save_blend_file(new_subject_fname)
+
+
 if __name__ == '__main__':
     import sys
-    print(sys.argv)
     new_subject_fname = sys.argv[1]
     if sys.argv[2] == '--background':
-        # Run blender from command line
-        sys.path.append(os.path.split(__file__)[0])
-        import scripts_utils as su
-        su.run(new_subject_fname)
+        create_new_subject(new_subject_fname)
     else:
-        # Wrap blender
         wrap_blender_call()

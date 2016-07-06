@@ -40,7 +40,7 @@ def call_script(script_fname, args, log_name=''):
 
     logs_fol = utils.make_dir(op.join(utils.get_parent_fol(__file__, 4), 'logs'))
     if log_name == '':
-        log_name == utils.namebase(script_fname)
+        log_name = utils.namebase(script_fname)
     cmd = '{blender_exe} {blend_fname} --background --python {script_fname} > {log_fname}'.format(
         blender_exe=op.join(args.blender_fol, 'blender'),
         blend_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(args.subject, args.atlas)),
@@ -52,7 +52,7 @@ def call_script(script_fname, args, log_name=''):
     print('Finish! For more details look in {}'.format(op.join(logs_fol, 'create_new_user.log')))
 
 
-def run(new_subject_fname, mmvt_addon_fol=''):
+def init_mmvt_addon(mmvt_addon_fol=''):
     # To run this function from command line:
     # 1) Copy the empty_subject.blend file, and rename to subject-name_atlas-name.blend
     # 2) Change the directory to the mmvt/src/mmvt_addon
@@ -63,8 +63,11 @@ def run(new_subject_fname, mmvt_addon_fol=''):
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
     # imp.reload(mmvt_addon)
-    addon_prefs = su.Bag({'python_cmd':'python', 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
+    addon_prefs = Bag({'python_cmd':'python', 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})
     mmvt_addon.main(addon_prefs)
-    mmvt_addon.import_brain()
-    bpy.ops.wm.save_as_mainfile(filepath=new_subject_fname)
+    return mmvt_addon
+
+
+def save_blend_file(blend_fname):
+    bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
