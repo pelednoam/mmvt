@@ -105,7 +105,7 @@ def play_movie(play_type, play_from, play_to, play_dt=1):
             print('Error in plotting at {}!'.format(limits))
 
 
-def plot_something(self, context, cur_frame, uuid):
+def plot_something(self, context, cur_frame, uuid=''):
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
