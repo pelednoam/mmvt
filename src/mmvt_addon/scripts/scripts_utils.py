@@ -77,7 +77,7 @@ def call_script(script_fname, args, log_name=''):
     call_args = create_call_args(args)
     blend_fname = get_subject_fname(args)
     log_fname = op.join(logs_fol, '{}.log'.format(log_name))
-    cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args} > {log_fname}'.format(
+    cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
         blender_exe=op.join(args.blender_fol, 'blender'),
         blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
     mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
