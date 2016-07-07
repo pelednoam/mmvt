@@ -92,6 +92,19 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
+def play_movie(play_type, play_from, play_to, play_dt=1):
+    bpy.context.scene.play_type = play_type
+    print('In play movie!')
+    for limits in range(play_from, play_to + 1, play_dt):
+        print('limits: {}'.format(limits))
+        bpy.context.scene.frame_current = limits
+        try:
+            plot_something(None, bpy.context, limits)
+        except:
+            print(traceback.format_exc())
+            print('Error in plotting at {}!'.format(limits))
+
+
 def plot_something(self, context, cur_frame, uuid):
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
@@ -99,7 +112,7 @@ def plot_something(self, context, cur_frame, uuid):
     threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals=True
     play_type = bpy.context.scene.play_type
-    image_fol = op.join(mu.get_user_fol(), 'images', uuid)
+    # image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
     # todo: implement the imp times
     # imp_time = False
@@ -388,25 +401,6 @@ def set_play_type(play_type):
     bpy.context.scene.play_type = play_type
 
 
-def play_movie(play_type=None, play_from=None, play_to=None, play_dt=None):
-    if play_type:
-        set_play_type(play_type)
-    if play_from:
-        set_play_from(play_from)
-    if play_to:
-        set_play_to(play_to)
-    if play_dt:
-        set_play_dt(play_dt)
-    PlayPanel.is_playing = True
-    PlayPanel.play_reverse = False
-    PlayPanel.init_play = True
-    if PlayPanel.first_time:
-        print('Starting the play timer!')
-        # PlayPanel.first_time = False
-        ModalTimerOperator.limits = bpy.context.scene.play_from
-        bpy.ops.wm.modal_timer_operator()
-
-
 class PlayPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -453,7 +447,14 @@ class Play(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        play_movie()
+        PlayPanel.is_playing = True
+        PlayPanel.play_reverse = False
+        PlayPanel.init_play = True
+        if PlayPanel.first_time:
+            print('Starting the play timer!')
+            # PlayPanel.first_time = False
+            ModalTimerOperator.limits = bpy.context.scene.play_from
+            bpy.ops.wm.modal_timer_operator()
         return {"FINISHED"}
 
 
