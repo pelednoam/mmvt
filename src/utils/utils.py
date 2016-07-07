@@ -748,7 +748,7 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
             for file_name in files:
                 try:
                     if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
-                        shutil.copyfile(os.path.join(remote_subject_dir, subject, fol, file_name),
+                        shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
                                     os.path.join(local_subject_dir, fol, file_name))
                 except:
                     if print_traceback:

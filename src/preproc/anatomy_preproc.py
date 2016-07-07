@@ -401,7 +401,7 @@ def main(subject, aparc_name, neccesary_files, remote_subject_dir, overwrite_ann
     if 'all' in func_to_run or 'prepare_local_subjects_folder' in func_to_run:
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
-            neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, args, print_traceback=False)
+            neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, args, print_traceback=True)
 
     if 'all' in func_to_run or 'freesurfer_surface_to_blender_surface' in func_to_run:
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
