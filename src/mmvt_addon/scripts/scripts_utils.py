@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path as op
+import argparse
 
 try:
     from src.utils import utils
@@ -11,26 +12,6 @@ try:
     import bpy
 except:
     pass
-
-
-class Bag( dict ):
-    """ a dict with d.key short for d["key"]
-        d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
-    """
-        # aka Dotdict
-
-    def __init__(self, *args, **kwargs):
-        dict.__init__( self, *args, **kwargs )
-        self.__dict__ = self
-
-    def __getnewargs__(self):  # for cPickle.dump( d, file, protocol=-1)
-        return tuple(self)
-
-
-def make_dir(fol):
-    if not os.path.isdir(fol):
-        os.makedirs(fol)
-    return fol
 
 
 def get_parent_fol(curr_dir='', levels=1):
@@ -46,6 +27,14 @@ def get_links_dir():
     return op.join(get_parent_fol(levels=4), 'links')
 
 
+def get_mmvt_dir():
+    return op.join(get_links_dir(), 'mmvt')
+
+
+def get_blender_dir():
+    return op.join(get_links_dir(), 'blender')
+
+
 def get_utils_dir():
     return op.join(get_parent_fol(levels=2), 'utils')
 
@@ -54,13 +43,30 @@ def add_utils_to_import_path():
     sys.path.append(get_utils_dir())
 
 
-def call_script(script_fname, args, log_name=''):
-    LINKS_DIR = utils.get_links_dir()
-    MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
-    BLENDER_DIR = op.join(LINKS_DIR, 'blender')
+try:
+    from src.utils import args_utils as au
+except:
+    add_utils_to_import_path()
+    import args_utils as au
 
+is_true = au.is_true
+
+
+class Bag( dict ):
+    def __init__(self, *args, **kwargs):
+        dict.__init__( self, *args, **kwargs )
+        self.__dict__ = self
+
+
+def make_dir(fol):
+    if not os.path.isdir(fol):
+        os.makedirs(fol)
+    return fol
+
+
+def call_script(script_fname, args, log_name=''):
     if args.blender_fol == '':
-        args.blender_fol = BLENDER_DIR
+        args.blender_fol = get_blender_dir()
     if not op.isdir(args.blender_fol):
         print('No Blender folder!')
         return
@@ -69,16 +75,22 @@ def call_script(script_fname, args, log_name=''):
     if log_name == '':
         log_name = utils.namebase(script_fname)
     call_args = create_call_args(args)
+    blend_fname = get_subject_fname(args)
     cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
         blender_exe=op.join(args.blender_fol, 'blender'),
-        blend_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(args.subject, args.atlas)),
-        script_fname = script_fname, call_args=call_args,
+        blend_fname = blend_fname, script_fname = script_fname, call_args=call_args,
         log_fname = op.join(logs_fol, '{}.log'.format(log_name)))
     mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
     os.chdir(mmvt_addon_fol)
     # utils.run_command_in_new_thread(cmd, queues=True)
     utils.run_script(cmd)
     print('Finish! For more details look in {}'.format(op.join(logs_fol, 'create_new_user.log')))
+
+
+
+def get_subject_fname(args):
+    mmvt_dir = get_mmvt_dir()
+    return op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, args.atlas))
 
 
 def create_call_args(args):
@@ -88,13 +100,13 @@ def create_call_args(args):
     return call_args
 
 
-def fix_argv():
-    argv = sys.argv
-    if "--" not in argv:
-        argv = []  # as if no args are passed
-    else:
-        argv = argv[argv.index("--") + 1:]  # get all args after "--"
-    return argv
+# def fix_argv():
+#     argv = sys.argv
+#     if "--" not in argv:
+#         argv = []  # as if no args are passed
+#     else:
+#         argv = argv[argv.index("--") + 1:]  # get all args after "--"
+#     return argv
 
 
 def init_mmvt_addon(mmvt_addon_fol=''):
@@ -125,3 +137,15 @@ def exit_blender():
 def get_python_argv():
     # Remove the blender argv and return only the python argv
     return sys.argv[5:]
+
+
+def add_default_args():
+    parser = argparse.ArgumentParser(description='MMVT')
+    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
+    parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
+    return parser
+
+
+def parse_args(parser, argv):
+    return Bag(au.parse_parser(parser, argv))
