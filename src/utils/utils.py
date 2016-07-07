@@ -1367,5 +1367,5 @@ def vstack(arr1, arr2):
         return np.vstack((arr1_np, arr2_np))
 
 
-def should_run(functions, func_name):
-    return 'all' in functions or func_name in functions
+def should_run(args, func_name):
+    return ('all' in args.function or func_name in args.function) and func_name not in args.exclude

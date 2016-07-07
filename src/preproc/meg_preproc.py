@@ -1227,52 +1227,52 @@ def main(subject, mri_subject, args):
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
 
-    if utils.should_run(args.function, 'calc_evoked'):
+    if utils.should_run(args, 'calc_evoked'):
         evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, args.read_events_from_file,
                                      args.events_file_name)
 
-    if utils.should_run(args.function, 'make_forward_solution'):
+    if utils.should_run(args, 'make_forward_solution'):
         sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
         make_forward_solution(events, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
                               args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
 
-    if utils.should_run(args.function, 'calc_inverse_operator'):
+    if utils.should_run(args, 'calc_inverse_operator'):
         calc_inverse_operator(events, args.inv_calc_cortical, args.inv_calc_subcorticals)
 
     stcs_conds, stcs_conds_smooth = None, None
     stat = STAT_AVG if len(events) == 1 else STAT_DIFF
     for inverse_method in args.inverse_method:
-        if utils.should_run(args.function, 'calc_stc_per_condition'):
+        if utils.should_run(args, 'calc_stc_per_condition'):
             stcs_conds = calc_stc_per_condition(
                 events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori)
 
-        if utils.should_run(args.function, 'calc_labels_avg_per_condition'):
+        if utils.should_run(args, 'calc_labels_avg_per_condition'):
             for hemi in HEMIS:
                 calc_labels_avg_per_condition(args.atlas, hemi, events, extract_mode=args.extract_mode,
                     inverse_method=inverse_method, positive=args.evoked_flip_positive,
                     moving_average_win_size=args.evoked_moving_average_win_size,
                     norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs)
 
-        if utils.should_run(args.function, 'smooth_stc'):
+        if utils.should_run(args, 'smooth_stc'):
             stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
 
-        if utils.should_run(args.function, 'save_activity_map'):
+        if utils.should_run(args, 'save_activity_map'):
             save_activity_map(events, stat, stcs_conds_smooth, args.colors_map, inverse_method,
                               args.norm_by_percentile, args.norm_percs)
 
-        if utils.should_run(args.function, 'calc_sub_cortical_activity'):
+        if utils.should_run(args, 'calc_sub_cortical_activity'):
             calc_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
             save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method=inverse_method,
                                                  colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
                                                  norm_percs=args.norm_percs)
 
-        if utils.should_run(args.function, 'plot_sub_cortical_activity'):
+        if utils.should_run(args, 'plot_sub_cortical_activity'):
             plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=inverse_method)
 
         if 'calc_activity_significance' in args.function:
             calc_activity_significance(events, inverse_method, stcs_conds)
 
-    if utils.should_run(args.function, 'save_vertex_activity_map'):
+    if utils.should_run(args, 'save_vertex_activity_map'):
         save_vertex_activity_map(events, stat, stcs_conds_smooth, inverse_method)
 
 
@@ -1337,8 +1337,9 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-t', '--task', help='task name', required=False, default='None')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--exclude', help='function names not to run', required=False, default=[], type=au.str_arr_type)
     parser.add_argument('--fname_format', help='events', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='events', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
