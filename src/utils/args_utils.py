@@ -4,6 +4,11 @@ def int_arr_type(var): return var
 def float_arr_type(var): return var
 
 
+def add_arguments(parser, arguments):
+    for argument in arguments:
+        parser.add_argument(argument)
+
+
 def parse_parser(parser, argv=None):
     if argv is None:
         in_args = vars(parser.parse_args())
@@ -17,13 +22,13 @@ def parse_parser(parser, argv=None):
         if val.type is bool:
             args[val.dest] = is_true(in_args[val.dest])
         elif val.type is str_arr_type:
-            args[val.dest] = get_args_list(in_args, val.dest)
+            args[val.dest] = get_args_list(in_args, val.dest, str, val.default)
         elif val.type is bool_arr_type:
-            args[val.dest] = get_args_list(in_args, val.dest, is_true)
+            args[val.dest] = get_args_list(in_args, val.dest, is_true, val.default)
         elif val.type is int_arr_type:
-            args[val.dest] = get_args_list(in_args, val.dest, int)
+            args[val.dest] = get_args_list(in_args, val.dest, int, val.default)
         elif val.type is float_arr_type:
-            args[val.dest] = get_args_list(in_args, val.dest, float)
+            args[val.dest] = get_args_list(in_args, val.dest, float, val.default)
         elif val.dest in in_args:
             if type(in_args[val.dest]) is str:
                 args[val.dest] = in_args[val.dest].replace("'", '')
@@ -32,9 +37,9 @@ def parse_parser(parser, argv=None):
     return args
 
 
-def get_args_list(args, key, var_type=None):
-    if args[key] is None:
-        return []
+def get_args_list(args, key, var_type, default_val):
+    if args[key] is None or len(args[key]) == 0:
+        return default_val
     # Remove '"' if any and replace '_' with ' '
     args[key] = args[key].replace("'", '')
     if key != 'function':

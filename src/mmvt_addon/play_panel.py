@@ -114,7 +114,7 @@ def plot_something(self, context, cur_frame, uuid=''):
     play_type = bpy.context.scene.play_type
     # image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
-    # todo: implement the imp times
+    # todo: implement the important times
     # imp_time = False
     # for imp_time_range in PlayPanel.imp_times:
     #     if imp_time_range[0] <= cur_frame <= imp_time_range[1]:

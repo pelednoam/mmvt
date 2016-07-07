@@ -31,7 +31,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
     NOISE_COV, DATA_CSD, NOISE_CSD = '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
                 '', '', '', '', '', '', '', '', ''
 
-def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False, raw_cleaning_method='', constrast='',
+def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False, cleaning_method='', constrast='',
                  subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
@@ -45,14 +45,14 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     BLENDER_SUBJECT_FOLDER = op.join(BLENDER_ROOT_DIR, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
-        raw_cleaning_method=raw_cleaning_method, constrast=constrast)
+        cleaning_method=cleaning_method, constrast=constrast)
     _get_fif_name_no_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
-        raw_cleaning_method=raw_cleaning_method, constrast=constrast, cond='')
+        cleaning_method=cleaning_method, constrast=constrast, cond='')
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
-        raw_cleaning_method=raw_cleaning_method, constrast=constrast)
-    _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
-    _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl', raw_cleaning_method=raw_cleaning_method, constrast=constrast)
+        cleaning_method=cleaning_method, constrast=constrast)
+    _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc', cleaning_method=cleaning_method, constrast=constrast)
+    _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl', cleaning_method=cleaning_method, constrast=constrast)
     RAW = _get_fif_name('raw', constrast='', cond='')
     EVE = _get_txt_name('eve', cond='')
     EVO = _get_fif_name('ave')
@@ -86,13 +86,13 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
 
 
-def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', raw_cleaning_method='', constrast='', root_dir=''):
+def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='', constrast='', root_dir=''):
     if fname_format=='':
         fname_format = '{subject}-{ana_type}.{file_type}'
     if subject=='':
         subject = SUBJECT
     args = {'subject':subject, 'ana_type':ana_type, 'file_type':file_type,
-        'raw_cleaning_method':raw_cleaning_method, 'constrast':constrast}
+        'cleaning_method':cleaning_method, 'constrast':constrast}
     if '{cond}' in fname_format:
         args['cond'] = cond
     fname = fname_format.format(**args)
@@ -105,16 +105,14 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
     return op.join(root_dir, fname)
 
 
-def load_raw():
+def load_raw(args):
     # read the data
-    raw = mne.io.Raw(RAW, preload=True)
-    print(raw)
+    raw = mne.io.read_raw_fif(RAW, preload=True)
+    if len(args.bad_channels) > 0:
+        raw.info['bads'] = args.bad_channels
+        if args.l_freq or args.h_freq:
+            raw.filter(args.l_freq, args.h_freq)
     return raw
-
-
-def filter(raw):
-    raw.filter(l_freq=1.0, h_freq=50.0)
-    raw.save(RAW, overwrite=True)
 
 
 def calcNoiseCov(epoches):
@@ -128,26 +126,25 @@ def calcNoiseCov(epoches):
     # evoked.save(EVO)
 
 
-def calc_epoches(raw, events_id, tmin, tmax, event_digit=0, read_events_from_file=False, events_file_name='', file_to_save=''):
-    if events_file_name=='':
-        events_file_name = EVE
-    if file_to_save == '':
-        file_to_save = EPO
+def calc_epoches(raw, events, tmin, tmax, read_events_from_file=False):
     if read_events_from_file:
-        print('read events from {}'.format(events_file_name))
-        events = mne.read_events(events_file_name)
+        print('read events from {}'.format(EVE))
+        events = mne.read_events(EVE)
     else:
-        events = mne.find_events(raw, stim_channel='STI001')
+        events = mne.find_events(raw, stim_channel=args.stim_channels)
     if events is not None:
         print(events)
-        picks = mne.pick_types(raw.info, meg=True)
-        events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
-        epochs = find_epoches(raw, picks, events, events_id, tmin=tmin, tmax=tmax)
-        if '{cond}' in file_to_save:
-            for event in events_id.keys():
-                epochs[event].save(get_cond_fname(file_to_save, event))
+        picks = mne.pick_types(raw.info, meg=args.pick_meg, eeg=args.pick_eeg, eog=args.pick_eog,  exclude='bads')
+        # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
+        reject = dict(grad=args.reject_grad, mag=args.reject_mag, eog=args.reject_eog) if args.reject else None
+        # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
+        epochs = mne.Epochs(raw, events, events, tmin, tmax, proj=True, picks=picks,
+            baseline=(args.base_line_min, args.base_line_max), preload=True, reject=reject)
+        if '{cond}' in EPO:
+            for event in events.keys():
+                epochs[event].save(get_cond_fname(EPO, event))
         else:
-            epochs.save(file_to_save)
+            epochs.save(EPO)
         return epochs
     else:
         return None
@@ -157,12 +154,12 @@ def calc_epoches(raw, events_id, tmin, tmax, event_digit=0, read_events_from_fil
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
 
 
-def calc_evoked(event_digit, events_id, tmin, tmax, raw=None, read_events_from_file=False, events_file_name=''):
+def calc_evoked(events, tmin, tmax, raw=None, read_events_from_file=False, events_file_name=''):
     # Calc evoked data for averaged data and for each condition
     if '{cond}' in EPO:
         epo_exist = True
         epochs = {}
-        for event in events_id.keys():
+        for event in events.keys():
             if op.isfile(get_cond_fname(EPO, event)):
                 epochs[event] = mne.read_epochs(get_cond_fname(EPO, event))
             else:
@@ -174,40 +171,36 @@ def calc_evoked(event_digit, events_id, tmin, tmax, raw=None, read_events_from_f
             epochs = mne.read_epochs(EPO)
     if not epo_exist:
         if raw is None:
-            raw = load_raw()
-        epochs = calc_epoches(raw, events_id, tmin, tmax, event_digit, read_events_from_file, events_file_name)
-    all_evoked = calc_evoked_from_epochs(epochs, events_id)
+            raw = load_raw(args)
+        epochs = calc_epoches(raw, events, tmin, tmax, read_events_from_file, events_file_name)
+    all_evoked = calc_evoked_from_epochs(epochs, events)
     return all_evoked, epochs
 
 
-def calc_evoked_from_epochs(epochs, events_id):
-    # evoked = epochs.average()
-    # evoked1 = epochs[events_id.keys()[0]].average()
-    # evoked2 = epochs[events_id.keys()[1]].average()
-    # all_evoked = {event:epochs[events_id.keys()[0]].average() for event in events_id.keys()}
+def calc_evoked_from_epochs(epochs, events):
     if '{cond}' in EVO:
-        all_evoked = {event: epochs[event].average() for event in events_id.keys()}
+        all_evoked = {event: epochs[event].average() for event in events.keys()}
         for event, evoked in all_evoked.items():
             mne.write_evokeds(get_cond_fname(EVO, event), evoked)
     else:
-        all_evoked = [epochs[event].average() for event in events_id.keys()]
+        all_evoked = [epochs[event].average() for event in events.keys()]
         mne.write_evokeds(EVO, all_evoked)
     return all_evoked
 
 
-def equalize_epoch_counts(events_id, method='mintime'):
+def equalize_epoch_counts(events, method='mintime'):
     if '{cond}' not in EPO:
         epochs = mne.read_epochs(EPO)
     else:
         epochs = []
-        for cond_name in events_id.keys():
+        for cond_name in events.keys():
             epochs_cond = mne.read_epochs(EPO.format(cond=cond_name))
             epochs.append(epochs_cond)
     mne.epochs.equalize_epoch_counts(epochs, method='mintime')
     if '{cond}' not in EPO == 0:
         epochs.save(EPO)
     else:
-        for cond_name, epochs in zip(events_id.keys(), epochs):
+        for cond_name, epochs in zip(events.keys(), epochs):
             epochs.save(EPO.format(cond=cond_name))
 
 
@@ -232,13 +225,13 @@ def check_src_ply_vertices_num(src):
         print('No ply files to check the src!')
 
 
-def make_smoothed_forward_solution(events_id, n_jobs=4, usingEEG=True):
+def make_smoothed_forward_solution(events, n_jobs=4, usingEEG=True):
     src = create_smooth_src(MRI_SUBJECT)
     if '{cond}' not in EPO:
         fwd = _make_forward_solution(src, EPO, usingEEG, n_jobs)
         mne.write_forward_solution(FWD_SMOOTH, fwd, overwrite=True)
     else:
-        for cond in events_id.keys():
+        for cond in events.keys():
             fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingEEG, n_jobs)
             mne.write_forward_solution(get_cond_fname(FWD_SMOOTH, cond), fwd, overwrite=True)
     return fwd
@@ -249,8 +242,8 @@ def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH
     return src
 
 
-def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usingEEG=True, calc_corticals=True,
-        calc_subcorticals=True, recreate_the_source_space=False):
+def make_forward_solution(events, sub_corticals_codes_file='', usingEEG=True, calc_corticals=True,
+        calc_subcorticals=True, recreate_the_source_space=False, n_jobs=4):
     fwd, fwd_with_subcortical = None, None
     if not recreate_the_source_space:
         src = mne.read_source_spaces(SRC)
@@ -268,7 +261,7 @@ def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usin
             fwd_with_subcortical = _make_forward_solution(src_with_subcortical, EPO, usingEEG, n_jobs)
             mne.write_forward_solution(FWD_SUB, fwd_with_subcortical, overwrite=True)
     else:
-        for cond in events_id.keys():
+        for cond in events.keys():
             if calc_corticals:
                 fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingEEG, n_jobs)
                 mne.write_forward_solution(get_cond_fname(FWD, cond), fwd, overwrite=True)
@@ -281,19 +274,19 @@ def make_forward_solution(events_id, sub_corticals_codes_file='', n_jobs=4, usin
     return fwd, fwd_with_subcortical
 
 
-def make_forward_solution_to_specific_subcortrical(events_id, region, n_jobs=4, usingEEG=True):
+def make_forward_solution_to_specific_subcortrical(events, region, n_jobs=4, usingEEG=True):
     import nibabel as nib
     aseg_fname = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
-    for cond in events_id.keys():
+    for cond in events.keys():
         src = add_subcortical_volumes(None, [region])
         fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingEEG, n_jobs)
         mne.write_forward_solution(get_cond_fname(FWD_X, cond, region=region), fwd, overwrite=True)
     return fwd
 
 
-def make_forward_solution_to_specific_points(events_id, pts, region_name, epo_fname='', fwd_fname='',
+def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname='', fwd_fname='',
         n_jobs=4, usingEEG=True):
     from mne.source_space import _make_discrete_source_space
 
@@ -315,7 +308,7 @@ def make_forward_solution_to_specific_points(events_id, pts, region_name, epo_fn
                    seg_name=region_name))
 
     src = mne.SourceSpaces([sp])
-    for cond in events_id.keys():
+    for cond in events.keys():
         fwd = _make_forward_solution(src, get_cond_fname(epo_fname, cond), usingEEG, n_jobs)
         mne.write_forward_solution(get_cond_fname(fwd_fname, cond, region=region_name), fwd, overwrite=True)
     return fwd
@@ -411,10 +404,10 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     return src
 
 
-def calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
+def calc_inverse_operator(events, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
                           calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
                           spec_subcortical_fwd=None, region=None):
-    conds = ['all'] if '{cond}' not in EPO else events_id.keys()
+    conds = ['all'] if '{cond}' not in EPO else events.keys()
     for cond in conds:
         if (not calc_for_cortical_fwd or op.isfile(get_cond_fname(INV, cond))) and \
                 (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
@@ -457,7 +450,7 @@ def calc_stc(inverse_method='dSPM'):
     stc.save(STC.format('all', inverse_method))
 
 
-def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
+def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
                            add_eeg_ref=True, pick_ori=None):
     stcs = {}
     snr = 3.0
@@ -466,7 +459,7 @@ def calc_stc_per_condition(events_id, inverse_method='dSPM', baseline=(None, 0),
     if '{cond}' not in INV:
         inverse_operator = read_inverse_operator(INV)
         global_inverse_operator = True
-    for cond_name in events_id.keys():
+    for cond_name in events.keys():
         try:
             if not global_inverse_operator:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
@@ -509,7 +502,7 @@ def get_cond_fname(fname, cond, **kargs):
     return fname.format(**kargs)
 
 
-def calc_sub_cortical_activity(events_id, sub_corticals_codes_file=None, inverse_method='dSPM',
+def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_method='dSPM',
         evoked=None, epochs=None, regions=None, inv_include_hemis=True, n_dipoles=0):
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     evoked_given = not evoked is None
@@ -528,11 +521,11 @@ def calc_sub_cortical_activity(events_id, sub_corticals_codes_file=None, inverse
     if '{cond}' not in EVO:
         global_evo = True
         if not evoked_given:
-            evoked = {event:mne.read_evokeds(EVO, condition=event, baseline=(None, 0)) for event in events_id.keys()}
+            evoked = {event:mne.read_evokeds(EVO, condition=event, baseline=(None, 0)) for event in events.keys()}
         inv_fname = INV_SUB if len(sub_corticals) > 1 else INV_X.format(region=regions[0])
         inverse_operator = read_inverse_operator(inv_fname)
 
-    for event in events_id.keys():
+    for event in events.keys():
         sub_corticals_activity = {}
         if not global_evo:
             evo = get_cond_fname(EVO, event)
@@ -624,32 +617,32 @@ def calc_csd(csd_fname, cond, epochs, from_t, to_t, mode='multitaper', fmin=6, f
     return csd
 
 
-def calc_specific_subcortical_activity(region, inverse_methods, events_id, plot_all_vertices=False,
+def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all_vertices=False,
         overwrite_fwd=False, overwrite_inv=False, overwrite_activity=False):
-    if not x_opertor_exists(FWD_X, region, events_id) or overwrite_fwd:
-        make_forward_solution_to_specific_subcortrical(events_id, region)
-    if not x_opertor_exists(INV_X, region, events_id) or overwrite_inv:
-        calc_inverse_operator(events_id, False, False, True, region=region)
+    if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
+        make_forward_solution_to_specific_subcortrical(events, region)
+    if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
+        calc_inverse_operator(events, False, False, True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
-            '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events_id.keys()])
+            '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
         if not files_exist or overwrite_activity:
-            calc_sub_cortical_activity(events_id, None, inverse_method=inverse_method,
+            calc_sub_cortical_activity(events, None, inverse_method=inverse_method,
                 regions=[region], inv_include_hemis=False)
-        plot_sub_cortical_activity(events_id, None, inverse_method=inverse_method,
+        plot_sub_cortical_activity(events, None, inverse_method=inverse_method,
             regions=[region], all_vertices=plot_all_vertices)
 
 
-def x_opertor_exists(operator, region, events_id):
+def x_opertor_exists(operator, region, events):
     if not '{cond}' in operator:
         exists = op.isfile(op.join(SUBJECT_MEG_FOLDER, operator.format(region=region)))
     else:
         exists = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER,
-            get_cond_fname(operator, cond, region=region))) for cond in events_id.keys()])
+            get_cond_fname(operator, cond, region=region))) for cond in events.keys()])
     return exists
 
 
-def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method='dSPM', regions=None, all_vertices=False):
+def plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method='dSPM', regions=None, all_vertices=False):
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     if sub_corticals_codes_file is None:
         sub_corticals = regions
@@ -661,13 +654,13 @@ def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         activity = {}
         f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True)
         fig_name = '{} ({}): {}, {}, contrast {}'.format(sub_cortical, inverse_method,
-            events_id.keys()[0], events_id.keys()[1], '-all-vertices' if all_vertices else '')
+            events.keys()[0], events.keys()[1], '-all-vertices' if all_vertices else '')
         ax1.set_title(fig_name)
-        for event, ax in zip(events_id.keys(), [ax1, ax2]):
+        for event, ax in zip(events.keys(), [ax1, ax2]):
             data_file_name = '{}-{}-{}{}.npy'.format(event, sub_cortical, inverse_method, '-all-vertices' if all_vertices else '')
             activity[event] = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', data_file_name))
             ax.plot(activity[event].T)
-        ax3.plot(activity[events_id.keys()[0]].T - activity[events_id.keys()[1]].T)
+        ax3.plot(activity[events.keys()[0]].T - activity[events.keys()[1]].T)
         f.subplots_adjust(hspace=0.2)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         fol = op.join(SUBJECT_MEG_FOLDER, 'figures')
@@ -677,7 +670,7 @@ def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_meth
         plt.close()
 
 
-def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method='dSPM',
+def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method='dSPM',
         colors_map='OrRd', norm_by_percentile=True, norm_percs=(1,99), threshold=0,
         cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False, do_plot=False):
     if do_plot:
@@ -691,17 +684,17 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
         sub_cortical_name, _ = utils.get_numeric_index_to_label(sub_cortical_ind, lut)
         sub_cortical_name = sub_cortical_name.astype(str)
         names_for_blender.append(sub_cortical_name)
-        for cond_id, cond in enumerate(events_id.keys()):
+        for cond_id, cond in enumerate(events.keys()):
             x = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
                 '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method)))
             if first_time:
                 first_time = False
                 T = len(x)
-                data = np.zeros((len(sub_corticals), T, len(events_id.keys())))
+                data = np.zeros((len(sub_corticals), T, len(events.keys())))
             data[ind, :, cond_id] = x[:T]
         if do_plot:
             plt.plot(data[ind, :, 0] - data[ind, :, 1], label='{}-{} {}'.format(
-                events_id.keys()[0], events_id.keys()[1], sub_cortical_name))
+                events.keys()[0], events.keys()[1], sub_cortical_name))
 
     stat_data = utils.calc_stat_data(data, stat)
     # Normalize
@@ -718,7 +711,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, st
             default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
     np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
-        names=names_for_blender, conditions=list(events_id.keys()), data_minmax=data_minmax)
+        names=names_for_blender, conditions=list(events.keys()), data_minmax=data_minmax)
 
     if do_plot:
         plt.legend()
@@ -796,9 +789,9 @@ def calc_stc_for_all_vertices(stc, n_jobs=6):
     return mne.morph_data(MRI_SUBJECT, MRI_SUBJECT, stc, n_jobs=n_jobs, grade=vertices_to)
 
 
-def smooth_stc(events_id, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
+def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
     stcs = {}
-    for ind, cond in enumerate(events_id.keys()):
+    for ind, cond in enumerate(events.keys()):
         if stcs_conds is not None:
             stc = stcs_conds[cond]
         else:
@@ -822,12 +815,12 @@ def check_stc_with_ply(stc, cond_name):
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inverse_method='dSPM',
+def save_activity_map(events, stat, stcs_conds=None, colors_map='OrRd', inverse_method='dSPM',
         norm_by_percentile=True, norm_percs=(1,99), threshold=0,
         cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
     if stat not in [STAT_DIFF, STAT_AVG]:
         raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-    stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
+    stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     data_minmax = utils.get_max_abs(data_max, data_min)
     utils.save(data_minmax, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
@@ -856,7 +849,7 @@ def save_activity_map(events_id, stat, stcs_conds=None, colors_map='OrRd', inver
             np.save(op.join(fol, 't{}'.format(t)), colors)
 
 
-def calc_activity_significance(events_id, stcs_conds=None):
+def calc_activity_significance(events, inverse_method, stcs_conds=None):
     from mne import spatial_tris_connectivity, grade_to_tris
     from mne.stats import (spatio_temporal_cluster_1samp_test)
     from mne import bem
@@ -868,15 +861,15 @@ def calc_activity_significance(events_id, stcs_conds=None):
         stc_template = STC_HEMI_SMOOTH
         if stcs_conds is None:
             stcs_conds = {}
-            for cond_ind, cond in enumerate(events_id.keys()):
+            for cond_ind, cond in enumerate(events.keys()):
                 # Reading only the rh, the lh will be read too
                 print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='lh')))
                 stcs_conds[cond] = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='lh'))
 
         # Let's only deal with t > 0, cropping to reduce multiple comparisons
-        for cond in events_id.keys():
+        for cond in events.keys():
             stcs_conds[cond].crop(0, None)
-        conds = sorted(list(events_id.keys()))
+        conds = sorted(list(events.keys()))
         tmin = stcs_conds[conds[0]].tmin
         tstep = stcs_conds[conds[0]].tstep
         n_vertices_sample, n_times = stcs_conds[conds[0]].data.shape
@@ -923,14 +916,14 @@ def get_subject_tris():
     return tris
 
 
-def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
+def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', number_of_files=100):
     if stat not in [STAT_DIFF, STAT_AVG]:
         raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
     if stcs_conds is None:
         stcs_conds = {}
-        for cond in events_id.keys():
+        for cond in events.keys():
             stcs_conds[cond] = np.load(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
-    stcs = get_stat_stc_over_conditions(events_id, stat, stcs_conds, inverse_method, smoothed=True)
+    stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
     # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
 
     for hemi in HEMIS:
@@ -960,10 +953,10 @@ def save_vertex_activity_map(events_id, stat, stcs_conds=None, inverse_method='d
             np.save(file_name, x)
 
 
-def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_method='dSPM', smoothed=False):
+def get_stat_stc_over_conditions(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed=False):
     stcs = {}
     stc_template = STC_HEMI if not smoothed else STC_HEMI_SMOOTH
-    for cond_ind, cond in enumerate(events_id.keys()):
+    for cond_ind, cond in enumerate(events.keys()):
         if stcs_conds is None:
             # Reading only the rh, the lh will be read too
             print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='lh')))
@@ -973,7 +966,7 @@ def get_stat_stc_over_conditions(events_id, stat, stcs_conds=None, inverse_metho
         for hemi in HEMIS:
             data = stc.rh_data if hemi == 'rh' else stc.lh_data
             if hemi not in stcs:
-                stcs[hemi] = np.zeros((data.shape[0], data.shape[1], len(events_id)))
+                stcs[hemi] = np.zeros((data.shape[0], data.shape[1], len(events)))
             stcs[hemi][:, :, cond_ind] = data
     for hemi in HEMIS:
         if stat == STAT_AVG:
@@ -1020,32 +1013,31 @@ def calc_labels_avg(parc, hemi, surf_name, stc=None):
     plt.show()
 
 
-def morph_labels_from_fsaverage(aparc_name='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6):
-    utils.morph_labels_from_fsaverage(MRI_SUBJECT, SUBJECTS_MRI_DIR, aparc_name, fs_labels_fol, sub_labels_fol, n_jobs)
+def morph_labels_from_fsaverage(atlas='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6):
+    utils.morph_labels_from_fsaverage(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, fs_labels_fol, sub_labels_fol, n_jobs)
 
 
 def labels_to_annot(parc_name, labels_fol='', overwrite=True):
     utils.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
 
 
-def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol='', labels_from_annot=True, stcs=None,
+def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None, do_plot=False):
     labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', atlas) if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
-        for cond in events_id.keys():
+        for cond in events.keys():
             stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi)
             if not op.isfile(stc_fname):
                 raise Exception("Can't find the stc file! {}".format(stc_fname))
             stcs[cond] = mne.read_source_estimate(stc_fname)
 
-    if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', '{hemi}.aparc.DKTatlas40.annot')):
-        labels_from_annot = True
-    if (labels_from_annot):
+    annot_fname_template = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', '{}.{}.annot'.format('{hemi}', atlas))
+    if utils.both_hemi_files_exist(annot_fname_template):
         labels = mne.read_labels_from_annot(MRI_SUBJECT, atlas, hemi, surf_name)
         if len(labels) == 0:
-            raise Exception('No labels were found for {}, {}, {}!'.format(labels_fol))
+            raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
     else:
         labels = []
         for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
@@ -1066,9 +1058,9 @@ def calc_labels_avg_per_condition(atlas, hemi, surf_name, events_id, labels_fol=
 
     T = len(stcs[list(stcs.keys())[0]].times)
     labels_data = np.zeros((len(labels), T, len(stcs)))
-    conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events_id.values())}
+    conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
     conditions = []
-    for (cond_name, cond_id), stc in zip(events_id.items(), stcs.values()):
+    for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
         if do_plot:
             plt.figure()
         conditions.append(cond_name)
@@ -1131,8 +1123,8 @@ def plot_labels_data(plot_each_label=False):
                 plt.show()
 
 
-def check_both_hemi_in_stc(events_id):
-    for ind, cond in enumerate(events_id.keys()):
+def check_both_hemi_in_stc(events):
+    for ind, cond in enumerate(events.keys()):
         stcs = {}
         for hemi in HEMIS:
             stcs[hemi] = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi))
@@ -1160,9 +1152,9 @@ def check_labels():
     return objects_to_filtter_in,names
 
 
-def test_labels_coloring(subject, aparc_name):
+def test_labels_coloring(subject, atlas):
     T = 2500
-    labels_fnames = glob.glob(op.join(SUBJECTS_MRI_DIR, subject, 'label', aparc_name, '*.label'))
+    labels_fnames = glob.glob(op.join(SUBJECTS_MRI_DIR, subject, 'label', atlas, '*.label'))
     labels_names = defaultdict(list)
     for label_fname in labels_fnames:
         label = mne.read_label(label_fname)
@@ -1197,96 +1189,104 @@ def misc():
     # stc = read_source_estimate(STC)
     # plot3DActivity(stc)
     # permuationTest()
-    # check_both_hemi_in_stc(events_id)
+    # check_both_hemi_in_stc(events)
     # lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     pass
 
 
-def main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs):
-    stcs = None
-    # 1) Load the raw data
-    # raw = loadRaw()
-    # print(raw.info['sfreq'])
-    # filter(raw)
-    # createEventsFiles(behavior_file=BEHAVIOR_FILE, pattern='1.....')
-    # event_digit=0
-    evoked, epochs = None, None
-    stat = STAT_DIFF
-    evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
-                        tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
-
-    make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=True)
-    calc_inverse_operator(events_id, calc_for_cortical_fwd=False, calc_for_sub_cortical_fwd=True)
-    for inverse_method in inverse_methods:
-        calc_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, evoked=evoked, epochs=epochs)
-        plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
-    save_subcortical_activity_to_blender(sub_corticals_codes_file, events_id, stat, inverse_method=inverse_method,
-        colors_map='OrRd', norm_by_percentile=True, norm_percs=(3,97), do_plot=False)
-    # calc_specific_subcortical_activity('Left-Hippocampus', ['lcmv'], events_id, overwrite_activity=True, overwrite_fwd=True)
-
-    # *) equalize_epoch_counts
-    # equalize_epoch_counts(events_id, method='mintime')
-    # *) Calc stc for all the conditions
-    # calc_stc(inverse_method)
-    # *) Calc stc per condition
-    stcs = calc_stc_per_condition(events_id, inverse_method)
-    # morph_labels_from_fsaverage(aparc_name=aparc_name)
-    # labels_to_annot(parc_name=aparc_name, overwrite=True)
-    # *) Calc labelse average per condition
-    for hemi in HEMIS:
-        calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
-            labels_fol='', stcs=None, inverse_method=inverse_method, positive=False, moving_average_win_size=0,
-            do_plot=False)
-    # plot_labels_data(plot_each_label=True)
-    # *) Save the activity map
-    stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    save_activity_map(events_id, stat, stcs_conds, inverse_method=inverse_method)
-    save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
-    calc_activity_significance(events_id, stcs_conds)
-
-
 def get_fname_format(task):
-    event_digit = 0
     if task=='MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
-        fname_format_cond = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
-        fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
-        events_id = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events_id = dict(Fear=1, Happy=2)
-        event_digit = 1
+        fname_format_cond = '{subject}_msit_{cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
+        fname_format = '{subject}_msit_{cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
+        events = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
+        # event_digit = 1
     elif task=='ECR':
         fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
         fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
-        # events_id = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
-        events_id = dict(C=1, I=2)
-        event_digit = 3
+        # events = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
+        events = dict(C=1, I=2)
+        # event_digit = 3
     elif task=='ARC':
-        fname_format_cond = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
-        fname_format = '{subject}_arc_rer_{raw_cleaning_method}-{ana_type}.{file_type}'
-        events_id = dict(low_risk=1, med_risk=2, high_risk=3)
+        fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
+        fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
+        events = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
         # raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
-        print('Unkown task! Known tasks are MSIT/ECR/ARC.')
-        fname_format_cond = '{subject}_{cond}-{ana_type}.{file_type}'
-        fname_format = '{subject}-{ana_type}.{file_type}'
-        events_id = dict(all=1)
-    return fname_format, fname_format_cond, events_id, event_digit
+        # print('Unkown task! Known tasks are MSIT/ECR/ARC.')
+        fname_format_cond = args.fname_format_cond
+        fname_format = args.fname_format
+        events = dict((event_name, event_id + 1) for event_id, event_name in enumerate(args.events))
+        # events = dict(all=1)
+    return fname_format, fname_format_cond, events
 
 
-if __name__ == '__main__':
-    subject, martinos_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
-    subject, martinos_subject = 'mg99', 'ep009'
-    subject, martinos_subject = 'mg96', 'ep007'
-    subject, martinos_subject = 'ESZC25', 'KC'
-    # subject_id, martinos_subject_id = 'hc008', 'hc008'
+def main(subject, mri_subject, args):
+    fname_format, fname_format_cond, events = get_fname_format(args.task)
+    init_globals(mri_subject, subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
+                 args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, args.fwd_no_cond)
+
+    if utils.should_run(args.function, 'calc_evoked'):
+        evoked, epochs = calc_evoked(events, args.t_min, args.t_max, args.read_events_from_file, args.events_file_name)
+
+    if utils.should_run(args.function, 'make_forward_solution'):
+        sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
+        make_forward_solution(events, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
+                              args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
+
+    if utils.should_run(args.function, 'calc_inverse_operator'):
+        calc_inverse_operator(events, args.inv_calc_cortical, args.inv_calc_subcorticals)
+
+    stcs_conds, stcs_conds_smooth = None, None
+    stat = STAT_AVG if len(events) == 1 else STAT_DIFF
+    for inverse_method in args.inverse_method:
+        if utils.should_run(args.function, 'calc_sub_cortical_activity'):
+            calc_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method, evoked, epochs)
+            save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method=inverse_method,
+                colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs)
+
+        if utils.should_run(args.function, 'plot_sub_cortical_activity'):
+            plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
+
+        if utils.should_run(args.function, 'calc_stc_per_condition'):
+            stcs_conds = calc_stc_per_condition(events, inverse_method)
+
+        if utils.should_run(args.function, 'calc_labels_avg_per_condition'):
+            for hemi in HEMIS:
+                calc_labels_avg_per_condition(args.atlas, hemi, events, extract_mode=args.extract_mode,
+                    inverse_method=inverse_method, positive=args.evoked_flip_positive,
+                    moving_average_win_size=args.evoked_moving_average_win_size,
+                    norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs)
+
+        if utils.should_run(args.function, 'smooth_stc'):
+            stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
+
+        if utils.should_run(args.function, 'save_activity_map'):
+            save_activity_map(events, stat, stcs_conds_smooth, args.colors_map, inverse_method,
+                              args.norm_by_percentile, args.norm_percs)
+
+        if 'calc_activity_significance' in args.function:
+            calc_activity_significance(events, inverse_method, stcs_conds)
+
+    if utils.should_run(args.function, 'save_vertex_activity_map'):
+        save_vertex_activity_map(events, stat, stcs_conds_smooth, inverse_method)
+
+
+def old_main():
+    subject, mri_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
+    subject, mri_subject = 'mg99', 'ep009'
+    subject, mri_subject = 'mg96', 'ep007'
+    subject, mri_subject = 'ESZC25', 'KC'
+    # subject_id, mri_subject_id = 'hc008', 'hc008'
 
     TASK = 'None' #'ECR' # 'MSIT' # 'ARC'
     files_includes_cond = False
-    fname_format, fname_format_cond, events_id, event_digit = get_fname_format(TASK)
+    fname_format, fname_format_cond, events, event_digit = get_fname_format(TASK)
     constrast = '' #''interference'
-    raw_cleaning_method = '' #''tsss' # 'nTSSS'
+    cleaning_method = '' #''tsss' # 'nTSSS'
     # initGlobals('ep001', 'mg78', fname_format)
     # initGlobals('hc004', 'hc004', fname_format)
-    init_globals(martinos_subject, subject, fname_format, fname_format_cond, files_includes_cond, raw_cleaning_method, constrast,
+    init_globals(mri_subject, subject, fname_format, fname_format_cond, files_includes_cond, cleaning_method, constrast,
                  SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_no_cond=True)
 
     # initGlobals('fsaverage', 'fsaverage', fname_format)
@@ -1297,30 +1297,88 @@ if __name__ == '__main__':
     T_MAX = 2
     T_MIN = -0.5
     sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    aparc_name = 'aparc.DKTatlas40' # 'laus250'#'aparc250' # 'arc_april2016'
+    atlas = 'aparc.DKTatlas40' # 'laus250'#'aparc250' # 'arc_april2016'
     read_labels_from_annot = False
     n_jobs = 6
 
     stcs = None
-    # main(events_id, inverse_method, aparc_name, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
+    # main(events, inverse_method, atlas, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
 
-    # calc_inverse_operator(events_id, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    # evoked, epochs = calc_evoked(event_digit=event_digit, events_id=events_id,
+    # calc_inverse_operator(events, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
+    # evoked, epochs = calc_evoked(events=events,
     #                              tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
-    # stcs = calc_stc_per_condition(events_id, inverse_method)
+    # stcs = calc_stc_per_condition(events, inverse_method)
     # for hemi in HEMIS:
-    #     calc_labels_avg_per_condition(aparc_name, hemi, 'pial', events_id, labels_from_annot=read_labels_from_annot,
+    #     calc_labels_avg_per_condition(atlas, hemi, events,
     #         labels_fol='', stcs=stcs, inverse_method=inverse_method, positive=False, do_plot=False) # moving_average_win_size=100
-    # stcs = calc_stc_per_condition(events_id, inverse_method, pick_ori='normal')
-    # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method, n_jobs=1)
-    # make_forward_solution(events_id, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
+    # stcs_conds = smooth_stc(events, stcs, inverse_method=inverse_method, n_jobs=1)
+    # make_forward_solution(events, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
 
 
-    # stcs_conds = smooth_stc(events_id, stcs, inverse_method=inverse_method)
-    save_activity_map(events_id, STAT_AVG, None, inverse_method=inverse_method, colors_map='jet')
+    stcs_conds = calc_stc_per_condition(events, inverse_method, pick_ori='normal')
+    stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method=inverse_method)
+    save_activity_map(events, STAT_AVG, None, inverse_method=inverse_method, colors_map='jet')
 
-    # save_vertex_activity_map(events_id, stat, stcs_conds, number_of_files=100)
+    # save_vertex_activity_map(events, stat, stcs_conds, number_of_files=100)
 
     # test_labels_coloring(subject, 'laus250')
-    # save_activity_map(events_id, STAT_DIFF, None, inverse_method=inverse_method)
+    # save_activity_map(events, STAT_DIFF, None, inverse_method=inverse_method)
+
+
+if __name__ == '__main__':
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
+    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
+    parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-t', '--task', help='task name', required=False, default='None')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--fname_format', help='events', required=False, default='{subject}-{ana_type}.{file_type}')
+    parser.add_argument('--fname_format_cond', help='events', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
+    parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
+    parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
+    parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
+    parser.add_argument('--inverse_method', help='inverse_method', required=False, default='dSPM')
+    parser.add_argument('--l_freq', help='low freq filter', required=False, default=None, type=float)
+    parser.add_argument('--h_freq', help='high freq filter', required=False, default=None, type=float)
+    parser.add_argument('--pick_meg', help='pick meg events', required=False, default=1, type=au.is_true)
+    parser.add_argument('--pick_eeg', help='pick eeg events', required=False, default=0, type=au.is_true)
+    parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
+    parser.add_argument('--stim_channels', help='stim_channels', required=False, default=None, type=au.str_arr_type)
+    parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
+    parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
+    parser.add_argument('--reject_mag', help='', required=False, default=4e-12, type=float)
+    parser.add_argument('--reject_eog', help='', required=False, default=150e-6, type=float)
+    parser.add_argument('--t_min', help='', required=False, default=-0.5, type=float)
+    parser.add_argument('--t_max', help='', required=False, default=2, type=float)
+    parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)
+    parser.add_argument('--base_line_max', help='', required=False, default=0, type=float)
+    parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--constrast', help='', required=False, default='')
+    parser.add_argument('--cleaning_method', help='', required=False, default='')
+    parser.add_argument('--fwd_usingEEG', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--fwd_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--fwd_recreate_source_space', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--inv_calc_cortical', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')
+    parser.add_argument('--colors_map', help='', required=False, default='OrRd')
+    parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    args = utils.Bag(au.parse_parser(parser))
+    if not args.mri_subject:
+        args.mri_subject = args.subject
+    print(args)
+
+    for subject, mri_subject in zip(args.subject, args.mri_subject):
+        main(subject, mri_subject, args)
+
     print('finish!')
+
