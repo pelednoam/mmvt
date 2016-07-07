@@ -94,6 +94,8 @@ def check_mgz_values(atlas):
 
 def create_electrodes_points(subject, args): # bipolar=False, create_points_files=True, create_volume_file=False,
                              # way_points=False, electrodes_pos_fname=''):
+    if args.elecs_names is None:
+        return
     groups = set([utils.elec_group(name, args.bipolar) for name in args.elecs_names])
     freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
         ('-w ' if args.way_points else '-c ')
@@ -142,12 +144,12 @@ def copy_T1(subject):
 def read_electrodes_pos(subject, args):
     electrodes_file = args.electrodes_pos_fname if args.electrodes_pos_fname != '' else op.join(
         SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format('_bipolar' if args.bipolar else ''))
-    if not op.isfile(electrodes_file):
-        raise Exception("Can't find the electrodes' positions file in {}".format(electrodes_file))
-    elecs = np.load(electrodes_file)
-    elecs_pos, elecs_names = elecs['pos'], [name.astype(str) for name in elecs['names']]
-    return elecs_pos, elecs_names
-
+    if op.isfile(electrodes_file):
+        elecs = np.load(electrodes_file)
+        elecs_pos, elecs_names = elecs['pos'], [name.astype(str) for name in elecs['names']]
+        return elecs_pos, elecs_names
+    else:
+        return None, None
 
 # def read_vox2ras0():
 #     import nibabel as nib
