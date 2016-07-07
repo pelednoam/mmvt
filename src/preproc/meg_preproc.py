@@ -1084,17 +1084,17 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             # plt.show()
             plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-    labels_data_sp = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
-    np.savez(op.join(SUBJECT_MEG_FOLDER, 'labels_data_not_normed_{}.npz'.format(hemi)), data=labels_data_sp,
-             names=[l.name for l in labels], conditions=conditions)
-    data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
-    max_abs = utils.get_max_abs(data_max, data_min)
-    labels_data = labels_data / max_abs
     labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
     labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
         labels_output_fname_template.format(hemi=hemi)
     print('Saving to {}'.format(labels_output_fname))
     np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+    # Normalize the data
+    data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
+    max_abs = utils.get_max_abs(data_max, data_min)
+    labels_data = labels_data / max_abs
+    labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
+    np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
     shutil.copyfile(labels_output_fname, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
 
 
@@ -1275,59 +1275,6 @@ def main(subject, mri_subject, args):
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         save_vertex_activity_map(events, stat, stcs_conds_smooth, inverse_method)
-
-
-def old_main():
-    subject, mri_subject = 'pp009', 'pp009'# 'mg78', 'ep001'
-    subject, mri_subject = 'mg99', 'ep009'
-    subject, mri_subject = 'mg96', 'ep007'
-    subject, mri_subject = 'ESZC25', 'KC'
-    # subject_id, mri_subject_id = 'hc008', 'hc008'
-
-    TASK = 'None' #'ECR' # 'MSIT' # 'ARC'
-    files_includes_cond = False
-    fname_format, fname_format_cond, events = get_fname_format(TASK)
-    constrast = '' #''interference'
-    cleaning_method = '' #''tsss' # 'nTSSS'
-    # initGlobals('ep001', 'mg78', fname_format)
-    # initGlobals('hc004', 'hc004', fname_format)
-    init_globals(mri_subject, subject, fname_format, fname_format_cond, files_includes_cond, cleaning_method, constrast,
-                 SUBJECTS_MEG_DIR, TASK, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, fwd_no_cond=True)
-
-    # initGlobals('fsaverage', 'fsaverage', fname_format)
-    inverse_methods = ['dSPM', 'MNE', 'sLORETA']
-    beaformers = ['dics', 'lcmv', 'rap_music']
-    inverse_method = 'dSPM' # 'MNE'
-
-    T_MAX = 2
-    T_MIN = -0.5
-    sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
-    atlas = 'aparc.DKTatlas40' # 'laus250'#'aparc250' # 'arc_april2016'
-    read_labels_from_annot = False
-    n_jobs = 6
-
-    stcs = None
-    # main(events, inverse_method, atlas, T_MAX, T_MIN, sub_corticals_codes_file, read_labels_from_annot, n_jobs)
-
-    # calc_inverse_operator(events, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=False)
-    # evoked, epochs = calc_evoked(events=events,
-    #                              tmin=T_MIN, tmax=T_MAX, read_events_from_file=True)
-    # stcs = calc_stc_per_condition(events, inverse_method)
-    # for hemi in HEMIS:
-    #     calc_labels_avg_per_condition(atlas, hemi, events,
-    #         labels_fol='', stcs=stcs, inverse_method=inverse_method, positive=False, do_plot=False) # moving_average_win_size=100
-    # stcs_conds = smooth_stc(events, stcs, inverse_method=inverse_method, n_jobs=1)
-    # make_forward_solution(events, sub_corticals_codes_file, n_jobs, calc_corticals=True, calc_subcorticals=False)
-
-
-    stcs_conds = calc_stc_per_condition(events, inverse_method, pick_ori='normal')
-    stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method=inverse_method)
-    save_activity_map(events, STAT_AVG, stcs_conds_smooth, inverse_method=inverse_method, colors_map='jet')
-
-    # save_vertex_activity_map(events, stat, stcs_conds, number_of_files=100)
-
-    # test_labels_coloring(subject, 'laus250')
-    # save_activity_map(events, STAT_DIFF, None, inverse_method=inverse_method)
 
 
 def read_cmd_args(argv=None):
