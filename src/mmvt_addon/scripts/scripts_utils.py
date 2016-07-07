@@ -50,6 +50,10 @@ def get_utils_dir():
     return op.join(get_parent_fol(levels=2), 'utils')
 
 
+def add_utils_to_import_path():
+    sys.path.append(get_utils_dir())
+
+
 def call_script(script_fname, args, log_name=''):
     LINKS_DIR = utils.get_links_dir()
     MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
