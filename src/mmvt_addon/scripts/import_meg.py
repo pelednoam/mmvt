@@ -1,19 +1,14 @@
 import sys
 import os
-import os.path as op
-import argparse
 
 try:
     from src.mmvt_addon.scripts import scripts_utils as su
 except:
+    # Add current folder the imports path
     sys.path.append(os.path.split(__file__)[0])
     import scripts_utils as su
 
-try:
-    from src.utils import args_utils as au
-except:
-    sys.path.append(su.get_utils_dir())
-    import args_utils as au
+STAT_AVG, STAT_DIFF = range(2)
 
 
 def wrap_blender_call():
@@ -21,22 +16,14 @@ def wrap_blender_call():
     su.call_script(__file__, args)
 
 
-STAT_AVG, STAT_DIFF = range(2)
-
-
 def read_args(argv=None):
-    parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('-s', '--subject', help='subject name', required=True)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
+    parser = su.add_default_args()
     parser.add_argument('--stat', help='conds stat', required=False, default=STAT_DIFF)
-    parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
-    args = su.Bag(au.parse_parser(parser, argv))
-    return args
+    return su.parse_args(parser, argv)
 
 
 def import_meg(subject_fname):
-    argv = su.get_python_argv()
-    args = read_args(argv)
+    args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
     mmvt.add_data_to_parent_brain_obj(args.stat)
     mmvt.add_data_to_brain()
