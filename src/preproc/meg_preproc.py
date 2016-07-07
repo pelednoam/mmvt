@@ -126,7 +126,7 @@ def calcNoiseCov(epoches):
     # evoked.save(EVO)
 
 
-def calc_epoches(raw, events, tmin, tmax, read_events_from_file=False):
+def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False):
     if read_events_from_file:
         print('read events from {}'.format(EVE))
         events = mne.read_events(EVE)
@@ -138,8 +138,8 @@ def calc_epoches(raw, events, tmin, tmax, read_events_from_file=False):
         # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
         reject = dict(grad=args.reject_grad, mag=args.reject_mag, eog=args.reject_eog) if args.reject else None
         # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
-        epochs = mne.Epochs(raw, events, events, tmin, tmax, proj=True, picks=picks,
-            baseline=(args.base_line_min, args.base_line_max), preload=True, reject=reject)
+        epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
+            baseline=baseline, preload=True, reject=reject)
         if '{cond}' in EPO:
             for event in events.keys():
                 epochs[event].save(get_cond_fname(EPO, event))
@@ -154,7 +154,7 @@ def calc_epoches(raw, events, tmin, tmax, read_events_from_file=False):
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
 
 
-def calc_evoked(events, tmin, tmax, raw=None, read_events_from_file=False, events_file_name=''):
+def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name=''):
     # Calc evoked data for averaged data and for each condition
     if '{cond}' in EPO:
         epo_exist = True
@@ -172,7 +172,7 @@ def calc_evoked(events, tmin, tmax, raw=None, read_events_from_file=False, event
     if not epo_exist:
         if raw is None:
             raw = load_raw(args)
-        epochs = calc_epoches(raw, events, tmin, tmax, read_events_from_file, events_file_name)
+        epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_file_name)
     all_evoked = calc_evoked_from_epochs(epochs, events)
     return all_evoked, epochs
 
@@ -440,14 +440,14 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
     write_inverse_operator(inv_name, inverse_operator)
 
 
-def calc_stc(inverse_method='dSPM'):
-    snr = 3.0
-    lambda2 = 1.0 / snr ** 2
-    inverse_operator = read_inverse_operator(INV)
-    evoked = mne.read_evokeds(EVO, condition=0, baseline=(None, 0))
-    stc = apply_inverse(evoked, inverse_operator, lambda2, inverse_method,
-                        pick_ori=None)
-    stc.save(STC.format('all', inverse_method))
+# def calc_stc(inverse_method='dSPM'):
+#     snr = 3.0
+#     lambda2 = 1.0 / snr ** 2
+#     inverse_operator = read_inverse_operator(INV)
+#     evoked = mne.read_evokeds(EVO, condition=0, baseline=(None, 0))
+#     stc = apply_inverse(evoked, inverse_operator, lambda2, inverse_method,
+#                         pick_ori=None)
+#     stc.save(STC.format('all', inverse_method))
 
 
 def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
@@ -502,7 +502,7 @@ def get_cond_fname(fname, cond, **kargs):
     return fname.format(**kargs)
 
 
-def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_method='dSPM',
+def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_method='dSPM', pick_ori=None,
         evoked=None, epochs=None, regions=None, inv_include_hemis=True, n_dipoles=0):
     lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     evoked_given = not evoked is None
@@ -572,7 +572,7 @@ def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_me
                     sub_corticals_activity[sub_cortical_code] = amp
                     print(set([tuple(dipoles[sub_cortical_ind].pos[t]) for t in range(len(dipoles[sub_cortical_ind].times))]))
         else:
-            stc = apply_inverse(evoked[event], inverse_operator, lambda2, inverse_method)
+            stc = apply_inverse(evoked[event], inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
 
         if inverse_method not in ['rap_music']:
             # todo: maybe to flip?
@@ -627,7 +627,7 @@ def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
         if not files_exist or overwrite_activity:
-            calc_sub_cortical_activity(events, None, inverse_method=inverse_method,
+            calc_sub_cortical_activity(events, None, inverse_method=inverse_method, pick_ori=pick_ori,
                 regions=[region], inv_include_hemis=False)
         plot_sub_cortical_activity(events, None, inverse_method=inverse_method,
             regions=[region], all_vertices=plot_all_vertices)
@@ -1225,9 +1225,11 @@ def main(subject, mri_subject, args):
     fname_format, fname_format_cond, events = get_fname_format(args.task)
     init_globals(mri_subject, subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, args.fwd_no_cond)
+    baseline = (args.base_line_min, args.base_line_max)
 
     if utils.should_run(args.function, 'calc_evoked'):
-        evoked, epochs = calc_evoked(events, args.t_min, args.t_max, args.read_events_from_file, args.events_file_name)
+        evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, args.read_events_from_file,
+                                     args.events_file_name)
 
     if utils.should_run(args.function, 'make_forward_solution'):
         sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
@@ -1240,16 +1242,9 @@ def main(subject, mri_subject, args):
     stcs_conds, stcs_conds_smooth = None, None
     stat = STAT_AVG if len(events) == 1 else STAT_DIFF
     for inverse_method in args.inverse_method:
-        if utils.should_run(args.function, 'calc_sub_cortical_activity'):
-            calc_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method, evoked, epochs)
-            save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method=inverse_method,
-                colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs)
-
-        if utils.should_run(args.function, 'plot_sub_cortical_activity'):
-            plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=inverse_method, all_vertices=False)
-
         if utils.should_run(args.function, 'calc_stc_per_condition'):
-            stcs_conds = calc_stc_per_condition(events, inverse_method)
+            stcs_conds = calc_stc_per_condition(
+                events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori)
 
         if utils.should_run(args.function, 'calc_labels_avg_per_condition'):
             for hemi in HEMIS:
@@ -1264,6 +1259,15 @@ def main(subject, mri_subject, args):
         if utils.should_run(args.function, 'save_activity_map'):
             save_activity_map(events, stat, stcs_conds_smooth, args.colors_map, inverse_method,
                               args.norm_by_percentile, args.norm_percs)
+
+        if utils.should_run(args.function, 'calc_sub_cortical_activity'):
+            calc_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
+            save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method=inverse_method,
+                                                 colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
+                                                 norm_percs=args.norm_percs)
+
+        if utils.should_run(args.function, 'plot_sub_cortical_activity'):
+            plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=inverse_method)
 
         if 'calc_activity_significance' in args.function:
             calc_activity_significance(events, inverse_method, stcs_conds)
@@ -1351,6 +1355,9 @@ if __name__ == '__main__':
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
     parser.add_argument('--reject_mag', help='', required=False, default=4e-12, type=float)
     parser.add_argument('--reject_eog', help='', required=False, default=150e-6, type=float)
+    parser.add_argument('--apply_SSP_projection_vectors', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--add_eeg_ref', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--pick_ori', help='', required=False, default=None)
     parser.add_argument('--t_min', help='', required=False, default=-0.5, type=float)
     parser.add_argument('--t_max', help='', required=False, default=2, type=float)
     parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)
@@ -1381,4 +1388,3 @@ if __name__ == '__main__':
         main(subject, mri_subject, args)
 
     print('finish!')
-
