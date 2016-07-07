@@ -20,11 +20,12 @@ def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=Tr
     blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
     freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
         '{0}+aseg.mgz:opacity=0.05:colormap=lut:lut={0}ColorLUT.txt '.format(args.atlas)
-    groups = set([utils.elec_group(name, args.bipolar) for name in args.elecs_names])
-    freeview_command += '-w ' if args.way_points else '-c '
-    postfix = '.label' if args.way_points else '.dat'
-    for group in groups:
-        freeview_command += group + postfix + ' '
+    if args.elecs_names:
+        groups = set([utils.elec_group(name, args.bipolar) for name in args.elecs_names])
+        freeview_command += '-w ' if args.way_points else '-c '
+        postfix = '.label' if args.way_points else '.dat'
+        for group in groups:
+            freeview_command += group + postfix + ' '
     utils.make_dir(blender_freeview_fol)
     with open(op.join(blender_freeview_fol, 'run_freeview.sh'), 'w') as sh_file:
         sh_file.write(freeview_command)
