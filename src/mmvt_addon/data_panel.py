@@ -288,7 +288,9 @@ class ImportElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=()):
+def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
+    if base_path == '':
+        base_path = mu.get_user_fol()
     source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
                     op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
                     op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
@@ -342,11 +344,11 @@ def add_data_to_brain(base_path, files_prefix='', objs_prefix='', source_files=(
         obj.select = False
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
+    selection_panel.set_conditions_enum(conditions)
     print('Finished keyframing!!')
-    return conditions
 
 
-def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
+def add_data_to_parent_brain_obj(stat=STAT_DIFF, self=None):
     base_path = mu.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
     labels_data_file = 'labels_data_{hemi}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
@@ -354,11 +356,12 @@ def add_data_to_parent_brain_obj(self, stat=STAT_DIFF):
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
 
-    add_data_to_parent_obj(self, brain_obj, brain_sources, stat)
-    add_data_to_parent_obj(self, subcorticals_obj, subcorticals_sources, stat)
+    add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
+    add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
+    mu.view_all_in_graph_editor()
 
 
-def add_data_to_parent_obj(self, parent_obj, source_files, stat):
+def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
     sources = {}
     parent_obj.animation_data_clear()
     for input_file in source_files:
@@ -369,6 +372,9 @@ def add_data_to_parent_obj(self, parent_obj, source_files, stat):
         f = np.load(input_file)
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
+            # Check if there is only one condition
+            if data.shape[1] == 1:
+                stat = STAT_AVG
             if bpy.data.objects.get(obj_name) is None:
                 if obj_name.startswith('rh') or obj_name.startswith('lh'):
                     obj_name = obj_name[3:]
@@ -423,8 +429,7 @@ class AddDataToBrain(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        conditions = add_data_to_brain(mu.get_user_fol())
-        selection_panel.set_conditions_enum(conditions)
+        add_data_to_brain()
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -436,7 +441,7 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         stat = STAT_DIFF if bpy.context.scene.brain_no_conds_stat == 'diff' else STAT_AVG
-        add_data_to_parent_brain_obj(self, stat)
+        add_data_to_parent_brain_obj(stat, self)
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -633,7 +638,7 @@ class DataMakerPanel(bpy.types.Panel):
         col = self.layout.column(align=True)
         col.prop(context.scene, 'atlas', text="Atlas")
         # if not bpy.types.Scene.brain_imported:
-        col.operator("ohad.anatomy_preproc", text="Run Preporc", icon='BLENDER')
+        # col.operator("ohad.anatomy_preproc", text="Run Preporc", icon='BLENDER')
         col.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))

@@ -116,3 +116,8 @@ def save_blend_file(blend_fname):
 
 def exit_blender():
     bpy.ops.wm.quit_blender()
+
+
+def get_python_argv():
+    # Remove the blender argv and return only the python argv
+    return sys.argv[5:]

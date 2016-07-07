@@ -1194,20 +1194,20 @@ def misc():
     pass
 
 
-def get_fname_format(task):
-    if task=='MSIT':
+def get_fname_format(args):
+    if args.task == 'MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
         fname_format_cond = '{subject}_msit_{cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
         fname_format = '{subject}_msit_{cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
         events = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
         # event_digit = 1
-    elif task=='ECR':
+    elif args.task == 'ECR':
         fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
         fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
         # events = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
         events = dict(C=1, I=2)
         # event_digit = 3
-    elif task=='ARC':
+    elif args.task == 'ARC':
         fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
         fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
         events = dict(low_risk=1, med_risk=2, high_risk=3)
@@ -1222,10 +1222,11 @@ def get_fname_format(task):
 
 
 def main(subject, mri_subject, args):
-    fname_format, fname_format_cond, events = get_fname_format(args.task)
+    fname_format, fname_format_cond, events = get_fname_format(args)
     init_globals(mri_subject, subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
+    evoked, epochs = None, None
 
     if utils.should_run(args, 'calc_evoked'):
         evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, args.read_events_from_file,
@@ -1285,7 +1286,7 @@ def old_main():
 
     TASK = 'None' #'ECR' # 'MSIT' # 'ARC'
     files_includes_cond = False
-    fname_format, fname_format_cond, events, event_digit = get_fname_format(TASK)
+    fname_format, fname_format_cond, events = get_fname_format(TASK)
     constrast = '' #''interference'
     cleaning_method = '' #''tsss' # 'nTSSS'
     # initGlobals('ep001', 'mg78', fname_format)
@@ -1321,7 +1322,7 @@ def old_main():
 
     stcs_conds = calc_stc_per_condition(events, inverse_method, pick_ori='normal')
     stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method=inverse_method)
-    save_activity_map(events, STAT_AVG, None, inverse_method=inverse_method, colors_map='jet')
+    save_activity_map(events, STAT_AVG, stcs_conds_smooth, inverse_method=inverse_method, colors_map='jet')
 
     # save_vertex_activity_map(events, stat, stcs_conds, number_of_files=100)
 
@@ -1329,7 +1330,7 @@ def old_main():
     # save_activity_map(events, STAT_DIFF, None, inverse_method=inverse_method)
 
 
-if __name__ == '__main__':
+def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
@@ -1337,6 +1338,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-t', '--task', help='task name', required=False, default='None')
+    parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='function names not to run', required=False, default=[], type=au.str_arr_type)
@@ -1345,7 +1347,6 @@ if __name__ == '__main__':
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
-    parser.add_argument('--inverse_method', help='inverse_method', required=False, default='dSPM')
     parser.add_argument('--l_freq', help='low freq filter', required=False, default=None, type=float)
     parser.add_argument('--h_freq', help='high freq filter', required=False, default=None, type=float)
     parser.add_argument('--pick_meg', help='pick meg events', required=False, default=1, type=au.is_true)
@@ -1380,12 +1381,15 @@ if __name__ == '__main__':
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
-    args = utils.Bag(au.parse_parser(parser))
+    args = utils.Bag(au.parse_parser(parser, argv))
     if not args.mri_subject:
         args.mri_subject = args.subject
     print(args)
+    return args
 
+
+if __name__ == '__main__':
+    args = read_cmd_args()
     for subject, mri_subject in zip(args.subject, args.mri_subject):
         main(subject, mri_subject, args)
-
     print('finish!')

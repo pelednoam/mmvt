@@ -83,6 +83,8 @@ bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import_brain = data_panel.import_brain
+add_data_to_parent_brain_obj = data_panel.add_data_to_parent_brain_obj
+add_data_to_brain = data_panel.add_data_to_brain
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
@@ -158,7 +160,8 @@ set_play_to = play_panel.set_play_to
 set_play_dt = play_panel.set_play_dt
 capture_graph = play_panel.capture_graph
 play_movie = play_panel.play_movie
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ view_all_in_graph_editor links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 
 def get_max_time_steps():
     # Check if maximal_time_steps is in bpy.types.Scene
@@ -200,6 +203,7 @@ def main(addon_prefs=None):
     show_connections(False)
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
+    mmvt_utils.view_all_in_graph_editor(bpy.context)
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 

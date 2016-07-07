@@ -271,16 +271,21 @@ def get_user_fol():
     return op.join(root_fol, user)
 
 
-def view_all_in_graph_editor(context):
-    graph_area = [context.screen.areas[k] for k in range(len(context.screen.areas)) if
-                  context.screen.areas[k].type == 'GRAPH_EDITOR'][0]
-    graph_window_region = [graph_area.regions[k] for k in range(len(graph_area.regions)) if
-                           graph_area.regions[k].type == 'WINDOW'][0]
+def view_all_in_graph_editor(context=None):
+    try:
+        if context is None:
+            context = bpy.context
+        graph_area = [context.screen.areas[k] for k in range(len(context.screen.areas)) if
+                      context.screen.areas[k].type == 'GRAPH_EDITOR'][0]
+        graph_window_region = [graph_area.regions[k] for k in range(len(graph_area.regions)) if
+                               graph_area.regions[k].type == 'WINDOW'][0]
 
-    c = context.copy()  # copy the context
-    c['area'] = graph_area
-    c['region'] = graph_window_region
-    bpy.ops.graph.view_all(c)
+        c = context.copy()  # copy the context
+        c['area'] = graph_area
+        c['region'] = graph_window_region
+        bpy.ops.graph.view_all(c)
+    except:
+        pass
 
 
 def show_hide_hierarchy(val, obj, also_parent=False):
