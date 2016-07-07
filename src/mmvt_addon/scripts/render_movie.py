@@ -34,6 +34,9 @@ def read_args(argv=None):
     parser.add_argument('--quality', help='render quality', required=False, default=60, type=int)
     parser.add_argument('--smooth_figure', help='smooth figure', required=False, default=False, type=au.is_true)
     parser.add_argument('--selection_type', help='selection type (diff, conds, spec_cond)', required=False, default='diff')
+    parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=au.is_true)
+    parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=au.is_true)
+    parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=au.is_true)
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     args = su.Bag(au.parse_parser(parser, argv))
     return args
@@ -48,6 +51,9 @@ def render_movie(subject_fname):
         args.output_path = op.join(mmvt_dir, args.subject, 'movies', args.output_path)
     su.make_dir(args.output_path)
     mmvt = su.init_mmvt_addon()
+    mmvt.show_hide_hemi(args.hide_lh, 'lh')
+    mmvt.show_hide_hemi(args.hide_rh, 'rh')
+    mmvt.show_hide_sub_corticals(args.hide_subs)
     mmvt.set_render_quality(args.quality)
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
@@ -59,6 +65,7 @@ def render_movie(subject_fname):
             return
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
+    su.save_blend_file(subject_fname)
     mmvt.play_movie(args.play_type, args.play_from, args.play_to, args.play_dt)
     # sys.exit(0)
     print('Exiting blender!')

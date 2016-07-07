@@ -8,7 +8,9 @@ def show_hide_hierarchy(do_hide, obj):
             child.hide_render = do_hide
 
 
-def show_hide_hemi(val, obj_func_name, obj_brain_name):
+def show_hide_hemi(val, obj_func_name, obj_brain_name=''):
+    if obj_brain_name == '':
+        obj_brain_name = 'Cortex-rh' if obj_func_name == 'rh' else 'Cortex-lh'
     if bpy.data.objects.get(obj_func_name) is not None:
         bpy.data.objects[obj_func_name].hide = val
         bpy.data.objects[obj_func_name].hide_render = val
@@ -42,7 +44,7 @@ class ShowHideLH(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_lh = not bpy.context.scene.objects_show_hide_lh
-        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, "lh", "Cortex-lh")
+        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'lh')
         return {"FINISHED"}
 
 
@@ -54,7 +56,7 @@ class ShowHideRH(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_rh = not bpy.context.scene.objects_show_hide_rh
-        show_hide_hemi(bpy.context.scene.objects_show_hide_rh, "rh", "Cortex-rh")
+        show_hide_hemi(bpy.context.scene.objects_show_hide_rh, 'rh')
         return {"FINISHED"}
 
 
@@ -109,8 +111,8 @@ def init(addon):
     bpy.context.scene.objects_show_hide_lh = False
     bpy.context.scene.objects_show_hide_sub_cortical = False
     show_hide_sub_corticals(False)
-    show_hide_hemi(False, "rh", "Cortex-lh")
-    show_hide_hemi(False, "lh", "Cortex-lh")
+    show_hide_hemi(False, 'rh')
+    show_hide_hemi(False, 'lh')
     register()
 
 
