@@ -184,6 +184,7 @@ def main(subject, args):
 if __name__ == '__main__':
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
+    os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
     import argparse
     from src.utils import args_utils as au
