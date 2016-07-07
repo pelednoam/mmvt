@@ -58,6 +58,10 @@ def set_conditions_enum(conditions):
         items=selection_items, description="Condition Selection", update=conditions_selection_update)
 
 
+def set_selection_type(selection_type):
+    bpy.context.scene.selection_type = selection_type
+
+
 class SelectAllRois(bpy.types.Operator):
     bl_idname = "ohad.roi_selection"
     bl_label = "select2 ROIs"
@@ -149,8 +153,8 @@ class FitSelection(bpy.types.Operator):
 
 
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
-    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2), ("spec_cond", "Specific condition", "", 3)],
-    description="Selection type")
+    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2),
+           ("spec_cond", "Specific condition", "", 3)], description="Selection type")
 bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
                                                               update=conditions_selection_update)
 

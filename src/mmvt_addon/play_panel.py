@@ -152,7 +152,14 @@ def plot_something(self, context, cur_frame, uuid):
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
-def capture_graph(context):
+def capture_graph(play_type=None, output_path=None, selection_type=None):
+    if play_type:
+        bpy.context.scene.play_type = play_type
+    if output_path:
+        bpy.context.scene.output_path = output_path
+    if selection_type:
+        bpy.context.scene.selection_type = selection_type
+
     play_type = bpy.context.scene.play_type
     # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
     image_fol = bpy.path.abspath(bpy.context.scene.output_path)
@@ -361,6 +368,45 @@ def init_stim():
         # PlayPanel.stim_names = [elc.astype(str) for elc in d['names']]
 
 
+def set_play_from(play_from):
+    bpy.context.scene.frame_current = play_from
+    bpy.context.scene.play_from = play_from
+    bpy.data.scenes['Scene'].frame_preview_start = play_from
+    ModalTimerOperator.limits = play_from
+
+
+def set_play_to(play_to):
+    bpy.context.scene.play_to = play_to
+    bpy.data.scenes['Scene'].frame_preview_end = play_to
+
+
+def set_play_dt(play_dt):
+    bpy.context.scene.play_dt = play_dt
+
+
+def set_play_type(play_type):
+    bpy.context.scene.play_type = play_type
+
+
+def play_movie(play_type=None, play_from=None, play_to=None, play_dt=None):
+    if play_type:
+        set_play_type(play_type)
+    if play_from:
+        set_play_from(play_from)
+    if play_to:
+        set_play_to(play_to)
+    if play_dt:
+        set_play_dt(play_dt)
+    PlayPanel.is_playing = True
+    PlayPanel.play_reverse = False
+    PlayPanel.init_play = True
+    if PlayPanel.first_time:
+        print('Starting the play timer!')
+        # PlayPanel.first_time = False
+        ModalTimerOperator.limits = bpy.context.scene.play_from
+        bpy.ops.wm.modal_timer_operator()
+
+
 class PlayPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -407,13 +453,7 @@ class Play(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        PlayPanel.is_playing = True
-        PlayPanel.play_reverse = False
-        PlayPanel.init_play = True
-        if PlayPanel.first_time:
-            # PlayPanel.first_time = False
-            ModalTimerOperator.limits = bpy.context.scene.play_from
-            bpy.ops.wm.modal_timer_operator()
+        play_movie()
         return {"FINISHED"}
 
 
@@ -472,9 +512,7 @@ class GrabFromPlay(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        context.scene.play_from = bpy.context.scene.frame_current
-        bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
-        ModalTimerOperator.limits = bpy.context.scene.frame_current
+        set_play_from(bpy.context.scene.frame_current)
         return {"FINISHED"}
 
 
@@ -484,8 +522,7 @@ class GrabToPlay(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        context.scene.play_to = bpy.context.scene.frame_current
-        bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
+        set_play_to(bpy.context.scene.frame_current)
         return {"FINISHED"}
 
 
@@ -498,7 +535,7 @@ class ExportGraph(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
-        capture_graph(context)
+        capture_graph()
         return {"FINISHED"}
 
 

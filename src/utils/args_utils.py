@@ -4,8 +4,12 @@ def int_arr_type(var): return var
 def float_arr_type(var): return var
 
 
-def parse_parser(parser):
-    in_args = vars(parser.parse_args())
+def parse_parser(parser, argv=None):
+    if argv is None:
+        in_args = vars(parser.parse_args())
+    else:
+        print(argv)
+        in_args = vars(parser.parse_args(argv))
     args = {}
     for val in parser._option_string_actions.values():
         if val.type is str:

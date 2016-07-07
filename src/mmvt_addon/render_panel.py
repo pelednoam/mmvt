@@ -7,6 +7,18 @@ bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
 
+def set_render_quality(quality):
+    bpy.context.scene.quality = quality
+    
+
+def set_render_output_path(output_path):
+    bpy.context.scene.output_path = output_path
+    
+
+def set_render_smooth_figure(smooth_figure):
+    bpy.context.scene.smooth_figure = smooth_figure
+
+
 def load_camera(self=None):
     camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
     if op.isfile(camera_fname):

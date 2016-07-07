@@ -40,6 +40,7 @@ hemi_files_exists = mu.hemi_files_exists
 natural_keys = mu.natural_keys
 elec_group_number = mu.elec_group_number
 elec_group = mu.elec_group
+run_command_in_new_thread = mu.run_command_in_new_thread
 
 # class Bag( dict ):
 #     """ a dict with d.key short for d["key"]

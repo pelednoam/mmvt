@@ -27,6 +27,29 @@ class Bag( dict ):
         return tuple(self)
 
 
+def make_dir(fol):
+    if not os.path.isdir(fol):
+        os.makedirs(fol)
+    return fol
+
+
+def get_parent_fol(curr_dir='', levels=1):
+    if curr_dir == '':
+        curr_dir = os.path.dirname(os.path.realpath(__file__))
+    parent_fol = os.path.split(curr_dir)[0]
+    for _ in range(levels - 1):
+        parent_fol = get_parent_fol(parent_fol)
+    return parent_fol
+
+
+def get_links_dir():
+    return op.join(get_parent_fol(levels=4), 'links')
+
+
+def get_utils_dir():
+    return op.join(get_parent_fol(levels=2), 'utils')
+
+
 def call_script(script_fname, args, log_name=''):
     LINKS_DIR = utils.get_links_dir()
     MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
@@ -41,15 +64,33 @@ def call_script(script_fname, args, log_name=''):
     logs_fol = utils.make_dir(op.join(utils.get_parent_fol(__file__, 4), 'logs'))
     if log_name == '':
         log_name = utils.namebase(script_fname)
-    cmd = '{blender_exe} {blend_fname} --background --python {script_fname} > {log_fname}'.format(
+    call_args = create_call_args(args)
+    cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
         blender_exe=op.join(args.blender_fol, 'blender'),
         blend_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(args.subject, args.atlas)),
-        script_fname = script_fname,
+        script_fname = script_fname, call_args=call_args,
         log_fname = op.join(logs_fol, '{}.log'.format(log_name)))
     mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
     os.chdir(mmvt_addon_fol)
-    utils.run_script(cmd, True)
+    # utils.run_command_in_new_thread(cmd, queues=True)
+    utils.run_script(cmd)
     print('Finish! For more details look in {}'.format(op.join(logs_fol, 'create_new_user.log')))
+
+
+def create_call_args(args):
+    call_args = ''
+    for arg, value in args.items():
+        call_args += '--{} "{}" '.format(arg, value)
+    return call_args
+
+
+def fix_argv():
+    argv = sys.argv
+    if "--" not in argv:
+        argv = []  # as if no args are passed
+    else:
+        argv = argv[argv.index("--") + 1:]  # get all args after "--"
+    return argv
 
 
 def init_mmvt_addon(mmvt_addon_fol=''):
@@ -59,7 +100,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     # 3) run: blender_path/blender /mmvt_path/subject-name_atlas-name.blend --background --python scripts/create_new_user.py
     if mmvt_addon_fol == '':
         mmvt_addon_fol = os.getcwd()
-    print(mmvt_addon_fol)
+    print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
     # imp.reload(mmvt_addon)
@@ -71,3 +112,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
 
 def save_blend_file(blend_fname):
     bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
+
+
+def exit_blender():
+    bpy.ops.wm.quit_blender()

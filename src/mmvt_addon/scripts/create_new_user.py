@@ -22,7 +22,7 @@ def wrap_blender_call():
     parser.add_argument('-s', '--subject', help='subject name', required=True)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
-    args = utils.Bag(au.parse_parser(parser))
+    args = su.Bag(au.parse_parser(parser))
 
     # Create a file for the new subject
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(args.subject, args.atlas))
@@ -37,8 +37,8 @@ def wrap_blender_call():
 
 
 def create_new_subject(new_subject_fname):
-    mmvt_addon = su.init_mmvt_addon()
-    mmvt_addon.import_brain()
+    mmvt = su.init_mmvt_addon()
+    mmvt.import_brain()
     su.save_blend_file(new_subject_fname)
 
 

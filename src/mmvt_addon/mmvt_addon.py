@@ -90,6 +90,7 @@ select_all_electrodes = selection_panel.select_all_electrodes
 select_only_subcorticals = selection_panel.select_only_subcorticals
 select_all_rois = selection_panel.select_all_rois
 deselect_all = selection_panel.deselect_all
+set_selection_type = selection_panel.set_selection_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 get_obj_color = coloring_panel.get_obj_color
@@ -125,6 +126,11 @@ de_select_electrode = filter_panel.de_select_electrode
 filter_roi_func = filter_panel.filter_roi_func
 filter_electrode_func = filter_panel.filter_electrode_func
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Rendering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+load_camera = render_panel.load_camera
+grab_camera = render_panel.grab_camera
+set_render_quality = render_panel.set_render_quality
+set_render_output_path = render_panel.set_render_output_path
+set_render_smooth_figure = render_panel.set_render_smooth_figure
 render_image = render_panel.render_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
@@ -144,6 +150,13 @@ change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
 update_solidity = appearance_panel.update_solidity
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+set_play_type = play_panel.set_play_type
+set_play_from = play_panel.set_play_from
+set_play_to = play_panel.set_play_to
+set_play_dt = play_panel.set_play_dt
+capture_graph = play_panel.capture_graph
+play_movie = play_panel.play_movie
 
 
 def get_max_time_steps():
