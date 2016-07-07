@@ -14,6 +14,10 @@ HEMIS = mu.HEMIS
     WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(10)
 
 
+def set_threshold(val):
+    bpy.context.scene.coloring_threshold = val
+
+
 def can_color_obj(obj):
     cur_mat = obj.active_material
     return 'RGB' in cur_mat.node_tree.nodes

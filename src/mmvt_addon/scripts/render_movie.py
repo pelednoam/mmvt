@@ -25,6 +25,7 @@ def read_args(argv=None):
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
+    parser.add_argument('-t', '--threshold', help='threshold', required=True, type=float)
     parser.add_argument('--play_type', help='what to play', required=True)
     parser.add_argument('--play_from', help='from when to play', required=False, default=0, type=int)
     parser.add_argument('--play_to', help='until when to play', required=True, type=int)
