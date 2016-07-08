@@ -162,8 +162,8 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
     np.savez(output_file_name, data=data, names=sfp.ch_names, conditions=conditions, colors=colors)
 
 
-def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_blender=True):
-    rename_and_convert_electrodes_file(subject)
+def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name=''):
+    rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(SUBJECTS_DIR, subject, 'electrodes')
     csv_file = op.join(electrodes_folder, '{}_RAS.csv'.format(subject))
     if not op.isfile(csv_file):
@@ -179,7 +179,7 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
     return output_file
 
 
-def rename_and_convert_electrodes_file(subject):
+def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
     subject_elec_fname_no_ras_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}.{postfix}')
     subject_elec_fname_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
     subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
@@ -196,7 +196,7 @@ def rename_and_convert_electrodes_file(subject):
                        subject_elec_fname_xlsx)
     if op.isfile(subject_elec_fname_xlsx) and \
                     (not op.isfile(subject_elec_fname_csv) or op.getsize(subject_elec_fname_csv) == 0):
-        utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv)
+        utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv, ras_xls_sheet_name)
 
 
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar,
@@ -618,53 +618,58 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
 
-def main(subject, args):
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
-    if args['to_t'].isnumeric() and args['from_t'].isnumeric():
-        from_t, to_t, indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
-        from_t_ind, to_t_ind = from_t + indices_shift, to_t + indices_shift
-    elif ',' in args['to_t'] and ',' in args['from_t'] and ',' in args['conditions']:
-        to_t = list(map(int, args['to_t'].split(',')))
-        from_t = list(map(int, args['to_t'].split(',')))
-        assert (len(to_t) == len(from_t) == len(args.conditions))
+def set_args(args):
+    if args.to_t.isnumeric() and args.from_t.isnumeric():
+        args.from_t, args.to_t, args.indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
+        args.from_t_ind, args.to_t_ind = args.from_t + args.indices_shift, args.to_t + args.indices_shift
+    elif ',' in args.to_t and ',' in args.from_t and ',' in args.conditions:
+        args.to_t = list(map(int, args.to_t.split(',')))
+        args.from_t = list(map(int, args.to_t.split(',')))
+        assert (len(args.to_t) == len(args.from_t) == len(args.conditions))
     else:
         print('No from_t, to_t and conditions!')
 
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-    # todo: conditions need to be a cmdline parameters!
     if args.task == 'ECR':
-        conditions = ['congruent', 'incongruent'] # ['happy', 'fearful'] # ['happy', 'fear']
+        args.conditions = ['congruent', 'incongruent'] # ['happy', 'fearful'] # ['happy', 'fear']
     elif args.task == 'MSIT':
-        conditions = ['noninterference', 'interference']
+        args.conditions = ['noninterference', 'interference']
     elif args.task == 'seizure':
-        conditions = [dict(name='baseline', from_t=from_t[0], to_t=to_t[0]),
-                      dict(name='seizure', from_t=from_t[1], to_t=to_t[1])]
+        args.conditions = [dict(name='baseline', from_t=args.from_t[0], to_t=args.to_t[0]),
+                      dict(name='seizure', from_t=args.from_t[1], to_t=args.to_t[1])]
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
     else:
-        if isinstance(from_t, Iterable) and isinstance(to_t, Iterable):
-            conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
-                          zip(args.conditions, from_t, to_t)]
+        if isinstance(args.from_t, Iterable) and isinstance(args.to_t, Iterable):
+            args.conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
+                          zip(args.conditions, args.from_t, args.to_t)]
+    return args
+
+
+def main(subject, args):
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+    args = set_args(args)
 
     if 'all' in args.function or 'convert_electrodes_file_to_npy' in args.function:
-        convert_electrodes_coordinates_file_to_npy(subject, bipolar=args.bipolar)
+        convert_electrodes_coordinates_file_to_npy(
+            subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
     if 'all' in args.function or 'sort_electrodes_groups' in args.function:
         sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
     if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
         for stat in [STAT_AVG, STAT_DIFF]:
-            create_electrode_data_file(subject, args.task, from_t_ind, to_t_ind, stat, conditions, args.bipolar,
-                                       args.electrodes_names_field)
+            create_electrode_data_file(subject, args.task, args.from_t_ind, args.to_t_ind, stat, args.conditions,
+                                       args.bipolar, args.electrodes_names_field)
     if 'all' in args.function or 'create_electrodes_labeling_coloring' in args.function:
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
     if 'create_raw_data_for_blender' in args.function and not args.task is None:
-        create_raw_data_for_blender(subject, args.raw_data_fname, conditions, do_plot=args.do_plot)
+        create_raw_data_for_blender(subject, args.raw_data_fname, args.conditions, do_plot=args.do_plot)
 
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
-if __name__ == '__main__':
+def read_cmd_args(argv=None):
     from src.utils import args_utils as au
     import argparse
     parser = argparse.ArgumentParser(description='MMVT electrodes preprocessing')
@@ -679,9 +684,15 @@ if __name__ == '__main__':
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
     parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
+    parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
-    args = utils.Bag(au.parse_parser(parser))
+    args = utils.Bag(au.parse_parser(parser, argv))
     print(args)
+    return args
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
     for subject in args.subject:
         main(subject, args)
     print('finish!')

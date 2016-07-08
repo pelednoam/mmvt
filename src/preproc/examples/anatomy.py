@@ -1,3 +1,4 @@
+import os.path as op
 import argparse
 from src.preproc import anatomy_preproc as anat
 from src.utils import utils
@@ -9,13 +10,20 @@ def get_subject_files_using_sftp(subject):
     args.sftp = True
     args.sftp_username = 'npeled'
     args.sftp_domain = 'door.nmr.mgh.harvard.edu'
-    args.remote_subjects_dir = '/autofs/cluster/neuromind/npeled/subjects'
+    args.remote_subject_dir = op.join('/autofs/cluster/neuromind/npeled/subjects', subject)
     anat.run_on_subjects(args)
 
 
 def get_subject_files_from_server(subject):
     args = anat.read_cmd_args(['-s', subject])
-    args.remote_subjects_dir = '/autofs/cluster/neuromind/npeled/subjects'
+    args.remote_subject_dir = op.join('/autofs/cluster/neuromind/npeled/subjects', subject)
+    anat.run_on_subjects(args)
+
+
+def prepare_subject_folder_from_huygens(subject):
+    args = anat.read_cmd_args(['-s', subject])
+    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
+    args.function = 'prepare_local_subjects_folder'
     anat.run_on_subjects(args)
 
 

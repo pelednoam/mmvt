@@ -754,9 +754,7 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
                     if print_traceback:
                         print(traceback.format_exc())
     all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir)
-    if not all_files_exists:
-        # raise Exception('Not all files exist in the local subject folder!!!')
-        return False
+    return all_files_exists
 
 
 def check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, trace=True):
@@ -1187,14 +1185,16 @@ def both_hemi_files_exist(file_template):
     return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
 
 
-def csv_from_excel(xlsx_fname, csv_fname):
+def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
     import xlrd
     import csv
     wb = xlrd.open_workbook(xlsx_fname)
-    if len(wb.sheets()) > 1:
+    if len(wb.sheets()) > 1 and sheet_name == '':
         raise Exception('More than one sheet in the xlsx file!')
-    # sh = wb.sheet_by_name('Sheet1')
-    sh = wb.sheets()[0]
+    if sheet_name != '':
+        sh = wb.sheet_by_name(sheet_name)
+    else:
+        sh = wb.sheets()[0]
     print('Converting sheet "{}" to csv'.format(sh.name))
     with open(csv_fname, 'w') as csv_file:
         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)

@@ -360,7 +360,9 @@ def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
 
 def save_labels_coloring(subject, atlas, n_jobs=2):
     ret = False
-    coloring_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    coloring_dir = op.join(BLENDER_ROOT_DIR, subject, 'coloring')
+    utils.make_dir(coloring_dir)
+    coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
     try:
         labels_names = lu.read_labels(subject, SUBJECTS_DIR, atlas, only_names=True, n_jobs=n_jobs)
         colors_rgb = cu.get_distinct_colors()
@@ -387,12 +389,11 @@ def main(subject, args):
     # todo: When possivble, read verts and faces from the nzp and not from ply files
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    remote_subject_dir = op.join(args.remote_subjects_dir, subject)
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
-            args.neccesary_files, subject, remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
+            args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -480,7 +481,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
-    parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
+    parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)

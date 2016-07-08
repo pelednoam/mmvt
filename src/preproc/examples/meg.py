@@ -17,8 +17,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None,
                         type=au.str_arr_type)
+    parser.add_argument('-f', '--function', help='function name', required=True)
     args = utils.Bag(au.parse_parser(parser))
     if not args.mri_subject:
         args.mri_subject = args.subject
     for subject, mri_subject in zip(args.subject, args.mri_subject):
-        read_epoches_and_calc_activity(subject, mri_subject)
+        locals()[args.function](subject, mri_subject)

@@ -112,7 +112,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     # To run this function from command line:
     # 1) Copy the empty_subject.blend file, and rename to subject-name_atlas-name.blend
     # 2) Change the directory to the mmvt/src/mmvt_addon
-    # 3) run: blender_path/blender /mmvt_path/subject-name_atlas-name.blend --background --python scripts/create_new_user.py
+    # 3) run: blender_path/blender /mmvt_path/subject-name_atlas-name.blend --background --python scripts/create_new_subject.py
     if mmvt_addon_fol == '':
         mmvt_addon_fol = os.getcwd()
     print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
