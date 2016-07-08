@@ -13,6 +13,7 @@ from src.utils import labels_utils as lu
 from src.utils import matlab_utils
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
+from src.mmvt_addon import colors_utils as cu
 
 
 LINKS_DIR = utils.get_links_dir()
@@ -357,6 +358,21 @@ def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
     return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
 
 
+def save_labels_coloring(subject, atlas, n_jobs=2):
+    ret = False
+    coloring_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    try:
+        labels_names = lu.read_labels(subject, SUBJECTS_DIR, atlas, only_names=True, n_jobs=n_jobs)
+        colors_rgb = cu.get_distinct_colors()
+        with open(coloring_fname, 'w') as output_file:
+            for label_name, color_rgb in zip(labels_names, colors_rgb):
+                output_file.write('{},{},{},{}\n'.format(label_name, *color_rgb))
+        ret = op.isfile(coloring_fname)
+    except:
+        print('Error in save_labels_coloring!')
+        print(traceback.format_exc())
+    return ret
+
 # def find_hemis_boarders(subject):
 #     from scipy.spatial.distance import cdist
 #     verts = {}
@@ -365,31 +381,7 @@ def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
 #         verts[hemi], _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
 #     dists = cdist(verts['rh'], verts['lh'])
 #
-#
-# def find_hemis_axis(subject):
-#     from sklearn.decomposition import PCA
-#     import matplotlib.pyplot as plt
-#     all_verts = []
-#     for hemi in utils.HEMIS:
-#         ply_file = op.join(SUBJECTS_DIR)
-#         verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-#         all_verts.extend(verts)
-#     pca = PCA(n_components=2)
-#     model = pca.fit(all_verts)
-#     trans_verts = pca.transform(all_verts)
-#     print ('explained variance (first {} components): {:.2f}'.format(2, sum(pca.explained_variance_ratio_)))
-#     plt.scatter(trans_verts[:, 0], trans_verts[:, 1])
-#     plt.show()
-#
-#
-# def plot_hyperplane(clf, min_x, max_x, linestyle, label):
-#     import matplotlib.pyplot as plt
-#     # get the separating hyperplane
-#     w = clf.coef_[0]
-#     a = -w[0] / w[1]
-#     xx = np.linspace(min_x - 5, max_x + 5)  # make sure the line is long enough
-#     yy = a * xx - (clf.intercept_[0]) / w[1]
-#     plt.plot(xx, yy, linestyle, label=label)
+
 
 def main(subject, args):
     # todo: When possivble, read verts and faces from the nzp and not from ply files
@@ -441,7 +433,11 @@ def main(subject, args):
 
     if utils.should_run(args, 'calc_lavels_center_of_mass'):
         # *) Calc the labels center of mass
-        flags['center_of_msas'] =  calc_lavels_center_of_mass(subject, args.atlas, args.surf_name)
+        flags['center_of_msas'] = calc_lavels_center_of_mass(subject, args.atlas, args.surf_name)
+
+    if utils.should_run(args, 'save_labels_coloring'):
+        # *) Save a coloring file for the atlas's labels
+        flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))

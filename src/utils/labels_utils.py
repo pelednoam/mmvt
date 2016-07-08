@@ -137,6 +137,42 @@ def get_hemi_from_name(label_name):
     return label_hemi
 
 
+def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
+                output_fname='', n_jobs=1):
+    if try_first_from_annotation:
+        try:
+            labels = mne.read_labels_from_annot(subject, atlas)
+        except:
+            labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+    else:
+        labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+    if output_fname != '':
+        with open(output_fname, 'w') as output_file:
+            for label in labels:
+                output_file.write('{}\n'.format(label.name))
+    if only_names:
+        labels = [l.name for l in labels]
+    return labels
+
+
+def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
+    labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+    files_chunks = utils.chunks(labels_files, len(labels_files) / n_jobs)
+    results = utils.run_parallel(_read_labels_parallel, files_chunks, n_jobs)
+    labels = []
+    for labels_chunk in results:
+        labels.extend(labels_chunk)
+    return labels
+
+
+def _read_labels_parallel(files_chunk):
+    labels = []
+    for label_fname in files_chunk:
+        label = mne.read_label(label_fname)
+        labels.append(label)
+    return labels
+
+
 if __name__ == '__main__':
     subject = 'mg96'
     atlas = 'laus250'

@@ -185,6 +185,7 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override
     no_t = labels_data['data'][0].ndim == 0
     t = bpy.context.scene.frame_current
     for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
+        label_colors = np.array(label_colors)
         if 'unknown' in label_name:
             continue
         if label_colors.ndim == 3:
@@ -309,6 +310,8 @@ def color_manually():
         obj_name, color_name = line[0], line[1:]
         if obj_name[0] == '#':
             continue
+        if isinstance(color_name, list) and len(color_name) == 1:
+            color_name = color_name[0]
         obj_type = mu.check_obj_type(obj_name)
         if isinstance(color_name, str) and color_name.startswith('mark'):
             import filter_panel
