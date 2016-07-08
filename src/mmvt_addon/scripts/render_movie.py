@@ -55,7 +55,7 @@ def render_movie(subject_fname):
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
     su.save_blend_file(subject_fname)
-    mmvt.play_movie(args.play_type, args.play_from, args.play_to, args.play_dt)
+    mmvt.render_movie(args.play_type, args.play_from, args.play_to, args.play_dt)
     su.exit_blender()
 
 

@@ -160,7 +160,7 @@ set_play_from = play_panel.set_play_from
 set_play_to = play_panel.set_play_to
 set_play_dt = play_panel.set_play_dt
 capture_graph = play_panel.capture_graph
-play_movie = play_panel.play_movie
+render_movie = play_panel.render_movie
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ view_all_in_graph_editor links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 

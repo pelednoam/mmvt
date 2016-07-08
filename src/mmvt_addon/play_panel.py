@@ -92,8 +92,9 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def play_movie(play_type, play_from, play_to, play_dt=1):
+def render_movie(play_type, play_from, play_to, play_dt=1):
     bpy.context.scene.play_type = play_type
+    bpy.context.scene.render_movie = True
     print('In play movie!')
     for limits in range(play_from, play_to + 1, play_dt):
         print('limits: {}'.format(limits))
