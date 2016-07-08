@@ -456,7 +456,7 @@ def elec_group_number(elec_name, bipolar=False):
         elec_name = elec_name.strip()
         num = re.sub('\D', ',', elec_name).split(',')[-1]
         group = elec_name[:elec_name.rfind(num)]
-        return group, int(num)
+        return group, int(num) if num != '' else ''
 
 
 def elec_group(elec_name, bipolar):

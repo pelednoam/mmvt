@@ -106,7 +106,7 @@ def grid_or_depth(data):
             group_type[group] = DEPTH
     for index in range(data.shape[0]):
         elc_group, _ = utils.elec_group_number(data[index, 0])
-        electrodes_group_type[index] = group_type[elc_group]
+        electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
     return np.array(electrodes_group_type)
 
 
