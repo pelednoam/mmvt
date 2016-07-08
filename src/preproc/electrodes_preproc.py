@@ -547,7 +547,7 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
         shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
             op.basename(electrode_labeling_fname)))
     most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
-    rois_colors = get_rois_colors(most_probable_rois)
+    rois_colors = get_rois_colors(subject, atlas, most_probable_rois)
     save_rois_colors_legend(subject, rois_colors, bipolar, legend_name)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
     if coloring_fname == '':
@@ -588,15 +588,16 @@ def get_most_probable_roi(probs, rois, p_threshold):
     return roi
 
 
-def get_rois_colors(rois):
+def get_rois_colors(subject, atlas, rois):
     not_white_rois = set(filter(lambda r:'white' not in r.lower(), rois))
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
-    # colors = np.array(list(cu.kelly_colors.values())) / 255.0
     colors = cu.get_distinct_colors()
     rois_colors = OrderedDict()
-    # todo: problem with 'very_light_blue':
+    rois_colors = np.genfromtxt(op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas)), dtype=str, delimiter=',')
     for roi, color in zip(not_white_rois, colors):
+        # todo: set the labels colors to be the same in both hemis
+        color = rois_colors[np.where(rois_colors[:, 0] == '{}-rh'.format(roi))][0, 1:].tolist()
         rois_colors[roi] = color
     for white_roi in white_rois:
         rois_colors[white_roi] = cu.name_to_rgb('white').tolist()
@@ -668,6 +669,7 @@ def main(subject, args):
         create_raw_data_for_blender(subject, args.raw_data_fname, args.conditions, do_plot=args.do_plot)
 
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
+
 
 def read_cmd_args(argv=None):
     from src.utils import args_utils as au
