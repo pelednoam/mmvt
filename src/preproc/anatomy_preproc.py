@@ -389,6 +389,17 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 #
 
 
+def copy_resources_files():
+    resource_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
+    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt']
+    for file_name in files:
+        shutil.copy(op.join(resource_dir, file_name), op.join(BLENDER_ROOT_DIR, file_name))
+    all_files_exist = True
+    for file_name in files:
+        all_files_exist = all_files_exist and op.isfile(op.join(BLENDER_ROOT_DIR, file_name))
+    return all_files_exist
+
+
 def main(subject, args):
     # todo: When possivble, read verts and faces from the nzp and not from ply files
     flags = dict()
@@ -445,6 +456,9 @@ def main(subject, args):
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
+
+    if utils.should_run(args, 'copy_resources_files'):
+        flags['copy_resources_files'] = copy_resources_files()
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))
