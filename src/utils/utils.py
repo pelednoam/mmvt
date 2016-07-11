@@ -780,14 +780,9 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
     import pysftp
     import getpass
 
-    # import paramiko
-    # client = paramiko.SSHClient()
-    # client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
     local_subject_dir = op.join(local_subjects_dir, subject)
     password = getpass.getpass('Please enter the sftp password for "{}": '.format(username))
     with pysftp.Connection(domain, username=username, password=password) as sftp:
-
         for fol, files in neccesary_files.items():
             if not os.path.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
@@ -796,6 +791,7 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
                 try:
                     if not op.isfile(op.join(local_subject_dir, fol, file_name)):
                         with sftp.cd(op.join(remote_subject_dir, fol)):
+                            print('sftp: getting {}'.format(file_name))
                             sftp.get(file_name)
                     if op.getsize(op.join(local_subject_dir, fol, file_name)) == 0:
                         os.remove(op.join(local_subject_dir, fol, file_name))

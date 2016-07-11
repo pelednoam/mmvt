@@ -6,7 +6,7 @@ from src.utils import args_utils as au
 
 
 def get_subject_files_using_sftp(subject, args):
-    args = anat.read_cmd_args(['-s', subject, 'sftp_username', args.sftp_username, 'sftp_domain', args.sftp_domain])
+    args = anat.read_cmd_args(['-s', subject, '--sftp_username', args.sftp_username, '--sftp_domain', args.sftp_domain])
     args.sftp = True
     anat.run_on_subjects(args)
 
