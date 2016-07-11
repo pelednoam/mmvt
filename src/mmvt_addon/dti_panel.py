@@ -115,12 +115,23 @@ class DTIPanel(bpy.types.Panel):
         dti_draw(self, context)
 
 
+def check_for_dti_files():
+    pathway_types = [TRACULA]
+    for pathway_type in pathway_types:
+        if pathway_type == TRACULA:
+            pathways = [get_group_name(pkl_fname) for pkl_fname in glob.glob(op.join(SUBJECT_DTI_FOL, TRACULA, '*.pkl'))]
+    return len(pathways) > 0
+
+
 def init(addon):
-    register()
-    DTIPanel.addon = addon
-    mu.create_empty_if_doesnt_exists(PARENT_OBJ, addon.BRAIN_EMPTY_LAYER, None, 'Brain')
-    # DTIPanel.d = d
-    # print('DRI panel initialization completed successfully!')
+    if not check_for_dti_files():
+        unregister()
+    else:
+        register()
+        DTIPanel.addon = addon
+        mu.create_empty_if_doesnt_exists(PARENT_OBJ, addon.BRAIN_EMPTY_LAYER, None, 'Brain')
+        # DTIPanel.d = d
+        # print('DRI panel initialization completed successfully!')
 
 
 def register():
