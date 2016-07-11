@@ -20,13 +20,14 @@ def wrap_blender_call():
 def create_new_subject_file(args):
     # Create a file for the new subject
     new_fname = su.get_subject_fname(args)
+    empty_subject_fname = op.join(su.get_mmvt_dir(), 'empty_subject.blend')
+    if not op.isfile(empty_subject_fname):
+        shutil.copy(op.join(su.get_resources_dir(), 'empty_subject.blend'), empty_subject_fname)
     if op.isfile(new_fname):
         overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
         if su.is_true(overwrite):
            os.remove(new_fname)
-        else:
-            return
-    shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
+           shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
 
 
 def read_args(argv=None):
