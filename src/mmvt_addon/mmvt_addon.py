@@ -205,6 +205,7 @@ def main(addon_prefs=None):
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
     mmvt_utils.view_all_in_graph_editor(bpy.context)
+    bpy.context.window.screen = bpy.data.screens['Neuro']
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 

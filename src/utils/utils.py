@@ -162,15 +162,22 @@ def read_srf_file(srf_file):
     return verts, faces, verts_num, faces_num
 
 
-def read_ply_file(ply_file):
-    with open(ply_file, 'r') as f:
-        lines = f.readlines()
-        verts_num = int(lines[2].split(' ')[-1])
-        faces_num = int(lines[6].split(' ')[-1])
-        verts_lines = lines[9:9 + verts_num]
-        faces_lines = lines[9 + verts_num:]
-        verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
-        faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
+def read_ply_file(ply_file, npz_fname=''):
+    if file_type(ply_file) == 'ply' and npz_fname == '':
+        with open(ply_file, 'r') as f:
+            lines = f.readlines()
+            verts_num = int(lines[2].split(' ')[-1])
+            faces_num = int(lines[6].split(' ')[-1])
+            verts_lines = lines[9:9 + verts_num]
+            faces_lines = lines[9 + verts_num:]
+            verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
+            faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
+    elif op.split(ply_file)[1] == 'npz':
+        d = np.load(ply_file)
+        verts, faces = d['verts'], d['faces']
+    elif npz_fname != '':
+        d = np.load(npz_fname)
+        verts, faces = d['verts'], d['faces']
     return verts, faces
 
 

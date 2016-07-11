@@ -115,6 +115,7 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
         surf_wavefront_name = '{}.asc'.format(surf_name)
         surf_new_name = '{}.srf'.format(surf_name)
         hemi_ply_fname = '{}.ply'.format(surf_name)
+        mmvt_hemi_ply_fname = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi))
         if overwrite or not op.isfile(hemi_ply_fname):
             print('{}: convert srf to asc'.format(hemi))
             utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
@@ -122,12 +123,13 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             print('{}: convert asc to ply'.format(hemi))
             convert_hemis_srf_to_ply(subject, hemi)
         for hemi in utils.get_hemis(hemi):
+            if not op.isfile(mmvt_hemi_ply_fname):
+                shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
             ply_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi))
             verts, faces = utils.read_ply_file(ply_fname)
             np.savez(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial'.format(hemi)), verts=verts, faces=faces)
             shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)),
                             op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi)))
-
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
 
 
@@ -183,13 +185,15 @@ def calc_faces_verts_dic(subject, overwrite=False):
 
 def check_ply_files(subject):
     ply_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply')
+    npz_subject = op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz')
     ply_blender = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply')
+    npz_blender = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz')
     ok = True
     for hemi in HEMIS:
         # print('reading {}'.format(ply_subject.format(hemi)))
-        verts1, faces1 = utils.read_ply_file(ply_subject.format(hemi))
+        verts1, faces1 = utils.read_ply_file(ply_subject.format(hemi), npz_subject.format(hemi))
         # print('reading {}'.format(ply_blender.format(hemi)))
-        verts2, faces2 = utils.read_ply_file(ply_blender.format(hemi))
+        verts2, faces2 = utils.read_ply_file(ply_blender.format(hemi), npz_blender.format(hemi))
         print('vertices: ply: {}, blender: {}'.format(verts1.shape[0], verts2.shape[0]))
         print('faces: ply: {}, blender: {}'.format(faces1.shape[0], faces2.shape[0]))
         ok = ok and verts1.shape[0] == verts2.shape[0] and faces1.shape[0]==faces2.shape[0]
@@ -228,7 +232,7 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
         utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
     if do_solve_labels_collisions:
-        solve_labels_collisions(subject, aparc_name, fsaverage)
+        solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
     # Note that using the current mne version this code won't work, because of collissions between hemis
     # You need to change the mne.write_labels_to_annot code for that.
     if overwrite_annotation or not annotations_exist:
@@ -236,7 +240,7 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
             print("Can't write labels to annotation! Trying to solve labels collision")
-            solve_labels_collisions(subject, aparc_name, fsaverage)
+            solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
         try:
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
@@ -246,7 +250,7 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
-def solve_labels_collisions(subject, aparc_name, fsaverage):
+def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
     backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
     lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
@@ -394,6 +398,8 @@ def main(subject, args):
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
             args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
+        if not flags['prepare_local_subjects_folder']:
+            return flags
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply

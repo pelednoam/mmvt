@@ -593,11 +593,19 @@ def get_rois_colors(subject, atlas, rois):
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
     colors = cu.get_distinct_colors()
-    rois_colors = OrderedDict()
-    rois_colors = np.genfromtxt(op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas)), dtype=str, delimiter=',')
+    lables_colors_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    labels_colors_exist = op.isfile(lables_colors_fname)
+    if not labels_colors_exist:
+        print('No labels coloring file!')
+        rois_colors = OrderedDict()
+    else:
+        rois_colors = np.genfromtxt(lables_colors_fname, dtype=str, delimiter=',')
     for roi, color in zip(not_white_rois, colors):
         # todo: set the labels colors to be the same in both hemis
-        color = rois_colors[np.where(rois_colors[:, 0] == '{}-rh'.format(roi))][0, 1:].tolist()
+        if labels_colors_exist:
+            color = rois_colors[np.where(rois_colors[:, 0] == '{}-rh'.format(roi))][0, 1:].tolist()
+        else:
+            color = next(colors)
         rois_colors[roi] = color
     for white_roi in white_rois:
         rois_colors[white_roi] = cu.name_to_rgb('white').tolist()

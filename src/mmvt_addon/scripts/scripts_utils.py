@@ -122,6 +122,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     addon_prefs = Bag({'python_cmd':'python', 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})
     mmvt_addon.main(addon_prefs)
+    bpy.context.window.screen = bpy.data.screens['Neuro']
     return mmvt_addon
 
 
@@ -148,3 +149,7 @@ def add_default_args():
 
 def parse_args(parser, argv):
     return Bag(au.parse_parser(parser, argv))
+
+
+def get_resources_dir():
+    return op.join(get_parent_fol(levels=3), 'resources')

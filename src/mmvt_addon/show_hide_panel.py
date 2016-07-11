@@ -1,5 +1,6 @@
 import bpy
 
+
 def show_hide_hierarchy(do_hide, obj):
     if bpy.data.objects.get(obj) is not None:
         bpy.data.objects[obj].hide = do_hide
