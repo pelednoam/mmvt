@@ -27,7 +27,7 @@ def create_new_subject_file(args):
         overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
         if su.is_true(overwrite):
            os.remove(new_fname)
-        shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
+    shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
 
 
 def read_args(argv=None):
