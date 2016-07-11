@@ -116,6 +116,7 @@ class DTIPanel(bpy.types.Panel):
 
 
 def check_for_dti_files():
+    # Check if the dti files exist
     pathway_types = [TRACULA]
     for pathway_type in pathway_types:
         if pathway_type == TRACULA:
