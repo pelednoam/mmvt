@@ -36,6 +36,16 @@ def load_camera(self=None):
         mu.message(self, 'No camera file was found in {}!'.format(camera_fname))
 
 
+def camera_mode():
+    for obj in bpy.data.objects:
+        obj.select = False
+    for obj in bpy.context.visible_objects:
+        if not (obj.hide or obj.hide_render):
+            obj.select = True
+    ret = bpy.ops.view3d.camera_to_view_selected()
+    print(ret)
+
+
 def grab_camera(self=None, do_save=True):
     RenderFigure.update_camera = False
     bpy.context.scene.X_rotation = X_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.x)
@@ -67,6 +77,7 @@ def render_draw(self, context):
     layout.prop(context.scene, "quality", text='Quality')
     layout.prop(context.scene, 'output_path')
     layout.prop(context.scene, 'smooth_figure')
+    layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
     layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
     layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
@@ -115,6 +126,16 @@ class MirrorCamera(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class CameraMode(bpy.types.Operator):
+    bl_idname = "ohad.camera_mode"
+    bl_label = "Camera Mode"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        camera_mode()
+        return {"FINISHED"}
+
+
 class GrabCamera(bpy.types.Operator):
     bl_idname = "ohad.grab_camera"
     bl_label = "Grab Camera"
@@ -146,7 +167,7 @@ class RenderFigure(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def render_image():
+def render_image(image_name=''):
     quality = bpy.context.scene.quality
     use_square_samples = bpy.context.scene.smooth_figure
 
@@ -157,7 +178,9 @@ def render_image():
     bpy.context.scene.cycles.use_square_samples = use_square_samples
 
     cur_frame = bpy.context.scene.frame_current
-    file_name = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'f{}'.format(cur_frame))
+    if image_name == '':
+        image_name = 't{}'.format(cur_frame)
+    file_name = op.join(bpy.path.abspath(bpy.context.scene.output_path), image_name)
     print('file name: {}'.format(file_name))
     bpy.context.scene.render.filepath = file_name
     # Render and save the rendered scene to file. ------------------------------
@@ -196,6 +219,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
+        # bpy.utils.register_class(CameraMode)
         bpy.utils.register_class(GrabCamera)
         bpy.utils.register_class(LoadCamera)
         bpy.utils.register_class(MirrorCamera)
@@ -208,6 +232,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
+        # bpy.utils.unregister_class(CameraMode)
         bpy.utils.unregister_class(GrabCamera)
         bpy.utils.unregister_class(LoadCamera)
         bpy.utils.unregister_class(MirrorCamera)

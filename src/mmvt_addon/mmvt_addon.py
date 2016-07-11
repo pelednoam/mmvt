@@ -161,7 +161,13 @@ set_play_to = play_panel.set_play_to
 set_play_dt = play_panel.set_play_dt
 capture_graph = play_panel.capture_graph
 render_movie = play_panel.render_movie
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ view_all_in_graph_editor links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ electrodes links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+color_the_relevant_lables = electrodes_panel.color_the_relevant_lables
+get_leads = electrodes_panel.get_leads
+get_lead_electrodes = electrodes_panel.get_lead_electrodes
+set_current_electrode = electrodes_panel.set_current_electrode
+set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 
 def get_max_time_steps():

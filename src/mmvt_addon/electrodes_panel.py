@@ -10,6 +10,18 @@ from collections import defaultdict
 PARENT_OBJ = 'Deep_electrodes'
 
 
+def get_leads():
+    return ElecsPanel.leads
+
+
+def get_lead_electrodes(lead):
+    electrodes = []
+    for electrode in ElecsPanel.groups_electrodes[lead]:
+        if not ElecsPanel.lookup.get(electrode, None) is None:
+            electrodes.append(electrode)
+    return electrodes
+
+
 def what_to_color_update(self, context):
     if ElecsPanel.init:
         _what_to_color_update()
@@ -35,6 +47,12 @@ def _leads_update():
     bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
     # bpy.context.scene.show_only_lead = True
     _show_only_current_lead_update()
+
+
+def set_current_electrode(lead, electrode):
+    print('set_current_electrode: {}'.format(electrode))
+    bpy.context.scene.leads = lead
+    bpy.context.scene.electrodes = electrode
 
 
 def electrodes_update(self, context):
@@ -142,6 +160,18 @@ def updade_lead_hemis():
     else:
         leads = []
     init_leads_list(leads)
+
+
+def color_the_relevant_lables(val):
+    bpy.context.scene.color_lables = val
+
+
+def show_only_the_current_lead(val):
+    bpy.context.scene.show_only_lead = val
+
+
+def set_electrodes_labeling_file(fname):
+    bpy.context.scene.electrodes_labeling_files = mu.namebase(fname)
 
 
 def color_labels_update(self, context):

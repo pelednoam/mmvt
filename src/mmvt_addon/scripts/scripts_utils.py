@@ -8,10 +8,12 @@ try:
 except:
     pass
 
+
 try:
     import bpy
 except:
     pass
+
 
 
 def get_parent_fol(curr_dir='', levels=1):
@@ -21,6 +23,14 @@ def get_parent_fol(curr_dir='', levels=1):
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
+
+
+try:
+    from src.mmvt_addon import mmvt_utils as mu
+except:
+    mmvt_addon_fol = get_parent_fol()
+    sys.path.append(mmvt_addon_fol)
+    import mmvt_utils as mu
 
 
 def get_links_dir():
@@ -143,13 +153,20 @@ def add_default_args():
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
+    parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 
 
 def parse_args(parser, argv):
-    return Bag(au.parse_parser(parser, argv))
+    args = Bag(au.parse_parser(parser, argv))
+    args.real_atlas = get_full_atlas_name(args.atlas)
+    return args
 
 
 def get_resources_dir():
     return op.join(get_parent_fol(levels=3), 'resources')
+
+
+def get_full_atlas_name(atlas):
+    return mu.get_real_atlas_name(atlas, get_mmvt_dir())

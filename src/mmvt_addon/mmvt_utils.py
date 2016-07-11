@@ -243,8 +243,13 @@ def get_atlas(default='laus250'):
                         "'_atlas-name.blend' (sub1_dkt.blend for example)")
         return ''
     atlas = blend_fname.split('_')[-1]
-    real_atlas_name = ''
-    csv_fname = op.join(get_mmvt_root(), 'atlas.csv')
+    return get_real_atlas_name(atlas)
+
+
+def get_real_atlas_name(atlas, csv_fol=''):
+    if csv_fol == '':
+        csv_fol = get_mmvt_root()
+    csv_fname = op.join(csv_fol, 'atlas.csv')
     if op.isfile(csv_fname):
         for line in csv_file_reader(csv_fname, ',', 1):
             if atlas in [line[0], line[1]]:

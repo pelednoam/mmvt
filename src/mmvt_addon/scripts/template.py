@@ -22,7 +22,7 @@ def read_args(argv=None):
     return su.parse_args(parser, argv)
 
 
-def import_meg(subject_fname):
+def do_something(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
     # Call mmvt functions
@@ -34,6 +34,6 @@ if __name__ == '__main__':
     import sys
     subject_fname = sys.argv[1]
     if sys.argv[2] == '--background':
-        import_meg(subject_fname)
+        do_something(subject_fname)
     else:
         wrap_blender_call()
