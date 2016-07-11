@@ -780,12 +780,12 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
     import pysftp
     import getpass
 
-    import paramiko
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    # import paramiko
+    # client = paramiko.SSHClient()
+    # client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     local_subject_dir = op.join(local_subjects_dir, subject)
-    password = getpass.getpass('Please enter the sftp password for {}: '.format(username))
+    password = getpass.getpass('Please enter the sftp password for "{}": '.format(username))
     with pysftp.Connection(domain, username=username, password=password) as sftp:
 
         for fol, files in neccesary_files.items():

@@ -5,19 +5,19 @@ from src.utils import utils
 from src.utils import args_utils as au
 
 
-def get_subject_files_using_sftp(subject):
-    args = anat.read_cmd_args(['-s', subject])
+def get_subject_files_using_sftp(subject, args):
+    args = anat.read_cmd_args(['-s', subject, 'sftp_username', args.sftp_username, 'sftp_domain', args.sftp_domain])
     args.sftp = True
     anat.run_on_subjects(args)
 
 
-def get_subject_files_from_server(subject):
+def get_subject_files_from_server(subject, args):
     args = anat.read_cmd_args(['-s', subject])
     args.remote_subject_dir = op.join('/autofs/cluster/neuromind/npeled/subjects', subject)
     anat.run_on_subjects(args)
 
 
-def prepare_subject_folder_from_huygens(subject):
+def prepare_subject_folder_from_huygens(subject, args):
     args = anat.read_cmd_args(['-s', subject])
     args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
     args.function = 'prepare_local_subjects_folder'
@@ -34,4 +34,4 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--function', help='function name', required=True)
     args = utils.Bag(au.parse_parser(parser))
     for subject in args.subject:
-        locals()[args.function](subject)
+        locals()[args.function](subject, args)
