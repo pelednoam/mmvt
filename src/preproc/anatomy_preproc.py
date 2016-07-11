@@ -58,7 +58,7 @@ def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
 
 
 def load_subcortical_lookup_table():
-    codes_file = op.join(SUBJECTS_DIR, 'sub_cortical_codes.txt')
+    codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
     lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
     lookup = {int(val):name for name, val in zip(lookup[:, 0], lookup[:, 1])}
     return lookup
@@ -412,6 +412,9 @@ def main(subject, args):
         if not flags['prepare_local_subjects_folder']:
             return flags
 
+    if utils.should_run(args, 'copy_resources_files'):
+        flags['copy_resources_files'] = copy_resources_files()
+
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
         flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
@@ -456,9 +459,6 @@ def main(subject, args):
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
-
-    if utils.should_run(args, 'copy_resources_files'):
-        flags['copy_resources_files'] = copy_resources_files()
 
     for flag_type, val in flags.items():
         print('{}: {}'.format(flag_type, val))
@@ -518,7 +518,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.neccesary_files = {'..': ['sub_cortical_codes.txt'], 'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
+    args.neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     print(args)
