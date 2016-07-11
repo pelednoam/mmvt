@@ -781,7 +781,7 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
     import getpass
 
     import paramiko
-    client = pysftp.SSHClient()
+    client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     local_subject_dir = op.join(local_subjects_dir, subject)
