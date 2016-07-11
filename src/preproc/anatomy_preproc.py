@@ -391,7 +391,8 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 
 def copy_resources_files():
     resource_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
-    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt']
+    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt',
+             'empty_subject.blend']
     for file_name in files:
         shutil.copy(op.join(resource_dir, file_name), op.join(BLENDER_ROOT_DIR, file_name))
     all_files_exist = True
