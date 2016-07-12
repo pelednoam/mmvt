@@ -412,15 +412,18 @@ def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
+    if utils.should_run(args, 'copy_resources_files'):
+        flags['copy_resources_files'] = copy_resources_files()
+
+    if utils.should_run(args, 'create_links'):
+        flags['create_links'] = utils.create_links()
+
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
             args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
         if not flags['prepare_local_subjects_folder']:
             return flags
-
-    if utils.should_run(args, 'copy_resources_files'):
-        flags['copy_resources_files'] = copy_resources_files()
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
