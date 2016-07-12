@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-b', '--bipolar', help='bipolar', required=True, type=au.is_true)
-    parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=False)
     args = utils.Bag(au.parse_parser(parser))
     for subject in args.subject:
         locals()[args.function](subject, args.bipolar)

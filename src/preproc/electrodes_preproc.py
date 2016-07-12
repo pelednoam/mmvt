@@ -603,7 +603,12 @@ def get_rois_colors(subject, atlas, rois):
     for roi, color in zip(not_white_rois, colors):
         # todo: set the labels colors to be the same in both hemis
         if labels_colors_exist:
-            color = rois_colors[np.where(rois_colors[:, 0] == '{}-rh'.format(roi))][0, 1:].tolist()
+            roi_inds = np.where(labels_colors[:, 0] == '{}-rh'.format(roi))[0]
+            if len(roi_inds) > 0:
+                color = labels_colors[roi_inds][0, 1:].tolist()
+                rois_colors[roi] = color
+            else:
+                color = next(colors)
         else:
             color = next(colors)
         rois_colors[roi] = color

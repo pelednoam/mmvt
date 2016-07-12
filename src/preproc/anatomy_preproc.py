@@ -368,11 +368,17 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
     try:
-        labels_names = lu.read_labels(subject, SUBJECTS_DIR, atlas, only_names=True, n_jobs=n_jobs)
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
         colors_rgb = cu.get_distinct_colors()
+        labels_colors = {}
+        for label in labels:
+            label_inv_name = lu.get_label_hemi_invariant_name(label.name)
+            if label_inv_name not in labels_colors:
+                labels_colors[label_inv_name] = next(colors_rgb)
         with open(coloring_fname, 'w') as output_file:
-            for label_name, color_rgb in zip(labels_names, colors_rgb):
-                output_file.write('{},{},{},{}\n'.format(label_name, *color_rgb))
+            for label in labels:
+                color_rgb = labels_colors[lu.get_label_hemi_invariant_name(label.name)]
+                output_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
         ret = op.isfile(coloring_fname)
     except:
         print('Error in save_labels_coloring!')
