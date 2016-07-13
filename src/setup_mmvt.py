@@ -63,7 +63,7 @@ if __name__ == '__main__':
         mmvt_root_dir = op.join(links_dir, 'mmvt')
         resource_file_exist = copy_resources_files(mmvt_root_dir)
         if not resource_file_exist:
-            print('Not all the resources files were copied to the MMVT () folder. Please copy them manually ' +
-                  'from the mmvt_code/resources folder')
+            print('Not all the resources files were copied to the MMVT () folder.\n'.format(mmvt_root_dir) +
+                  'Please copy them manually from the mmvt_code/resources folder')
         else:
             print('Finish!')
