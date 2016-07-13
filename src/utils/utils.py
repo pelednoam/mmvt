@@ -311,40 +311,10 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     return val
 
 
-def get_links_dir():
-    curr_dir = os.path.dirname(os.path.realpath(__file__))
-    code_dir = os.path.split(os.path.split(os.path.split(curr_dir)[0])[0])[0]
-    links_dir = os.path.join(code_dir, 'links')
-    return links_dir
-
-
-def create_links(links_fol_name='links2'):
+def get_links_dir(links_fol_name='links'):
     parent_fol = get_parent_fol(levels=3)
-    links_fol = op.join(parent_fol, links_fol_name)
-    make_dir(links_fol)
-    links_names = ['mmvt', 'subjects', 'blender', 'meg', 'fMRI', 'electrodes', 'freesurfer']
-    all_links_exist = np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
-    if all_links_exist:
-        return True
-    if os.environ['FREESURFER_HOME'] == '':
-        print('Please source GreeSurfer and rerun')
-        return
-    mmvt_fol = input('Where do you want to put the blend files? ')
-    subjects_fol = input('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
-          'It prefered to create a local folder, because MMVT is going to save files to this directory: ')
-    freesurfer_fol = os.environ['FREESURFER_HOME']
-    blender_fol = input('Where did you install Blender? ')
-    meg_fol = input('Where do you want to put the MEG files (Enter if you are not going to use MEG data): ')
-    fmri_fol = input('Where do you want to put the fMRI files (Enter if you are not going to use fMRI data): ')
-    electrodes_fol = input('Where do you want to put the electrodes files (Enter if you are not going to use electrodes data): ')
-
-    for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],
-            links_names):
-        make_dir(real_fol)
-        if not op.islink(op.join(links_fol, link_name)):
-            os.symlink(real_fol, op.join(links_fol, link_name))
-
-    return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+    links_dir = os.path.join(parent_fol, links_fol_name)
+    return links_dir
 
 
 def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
@@ -858,13 +828,21 @@ def run_parallel(func, params, njobs=1):
     return results
 
 
+def get_current_fol():
+    return os.path.dirname(os.path.realpath(__file__))
+
+
 def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
-        curr_dir = os.path.dirname(os.path.realpath(__file__))
+        curr_dir = get_current_fol()
     parent_fol = os.path.split(curr_dir)[0]
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
+
+
+def get_resources_fol():
+    return op.join(get_parent_fol(levels=2), 'resources')
 
 
 def get_figs_fol():

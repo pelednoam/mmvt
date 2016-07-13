@@ -1,0 +1,69 @@
+import os
+import os.path as op
+import shutil
+import numpy as np
+
+from src.utils import utils
+
+
+def copy_resources_files(mmvt_root_dir):
+    resource_dir = utils.get_resources_fol()
+    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt',
+             'empty_subject.blend']
+    for file_name in files:
+        shutil.copy(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name))
+    return np.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
+
+
+def create_links(links_fol_name='links', gui=True):
+    if gui:
+        from tkinter.filedialog import askdirectory
+    links_fol = utils.get_links_dir(links_fol_name)
+    utils.make_dir(links_fol)
+    links_names = ['mmvt', 'subjects', 'blender', 'meg', 'fMRI', 'electrodes', 'freesurfer']
+    all_links_exist = np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+    if all_links_exist:
+        return True
+    if os.environ['FREESURFER_HOME'] == '':
+        print('Please source FreeSurfer and rerun')
+        return
+    print('Where do you want to put the blend files? ')
+    mmvt_fol = askdirectory() if gui else input()
+    print('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
+          'It prefered to create a local folder, because MMVT is going to save files to this directory: ')
+    subjects_fol = askdirectory() if gui else input()
+    freesurfer_fol = os.environ['FREESURFER_HOME']
+    print('Where did you install Blender? ')
+    blender_fol = askdirectory() if gui else input()
+    print('Where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): ')
+    meg_fol = askdirectory() if gui else input()
+    print('Where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): ')
+    fmri_fol = askdirectory() if gui else input()
+    print('Where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): ')
+    electrodes_fol = askdirectory() if gui else input()
+
+    for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],
+            links_names):
+        if real_fol == '':
+            real_fol = utils.get_resources_fol()
+        utils.make_dir(real_fol)
+        if not op.islink(op.join(links_fol, link_name)):
+            os.symlink(real_fol, op.join(links_fol, link_name))
+
+    return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+
+
+if __name__ == '__main__':
+    links_dir_name = 'links'
+    links_created = create_links(links_dir_name)
+    if not links_created:
+        print('Not all the links were created! Make sure all the links are created before running MMVT.')
+    else:
+        links_dir = utils.get_links_dir()
+        mmvt_root_dir = op.join(links_dir, 'mmvt')
+        resource_file_exist = copy_resources_files(mmvt_root_dir)
+        if not resource_file_exist:
+            print('Not all the resources files were copied to the MMVT () folder. Please copy them manually ' +
+                  'from the mmvt_code/resources folder')
+        else:
+            print('Finish!')

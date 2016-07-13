@@ -395,27 +395,9 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 #
 
 
-def copy_resources_files():
-    resource_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
-    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt',
-             'empty_subject.blend']
-    for file_name in files:
-        shutil.copy(op.join(resource_dir, file_name), op.join(BLENDER_ROOT_DIR, file_name))
-    all_files_exist = True
-    for file_name in files:
-        all_files_exist = all_files_exist and op.isfile(op.join(BLENDER_ROOT_DIR, file_name))
-    return all_files_exist
-
-
 def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-
-    if utils.should_run(args, 'copy_resources_files'):
-        flags['copy_resources_files'] = copy_resources_files()
-
-    if utils.should_run(args, 'create_links'):
-        flags['create_links'] = utils.create_links()
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
