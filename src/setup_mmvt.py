@@ -16,6 +16,7 @@ def copy_resources_files(mmvt_root_dir):
 
 
 def create_links(links_fol_name='links', gui=True):
+    #todo: Work only on linux (maybe mac also)
     if gui:
         from tkinter.filedialog import askdirectory
     links_fol = utils.get_links_dir(links_fol_name)
@@ -53,9 +54,15 @@ def create_links(links_fol_name='links', gui=True):
     return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
 
 
-if __name__ == '__main__':
-    links_dir_name = 'links'
-    links_created = create_links(links_dir_name)
+def main():
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT Setup')
+    parser.add_argument('-l', '--links', help='links folder name', required=False, default='links')
+    parser.add_argument('-g', '--gui', help='choose folders using gui', required=False, default='1', type=au.is_true)
+    args = utils.Bag(au.parse_parser(parser))
+
+    links_created = create_links(args.links, args.gui)
     if not links_created:
         print('Not all the links were created! Make sure all the links are created before running MMVT.')
     else:
@@ -67,3 +74,7 @@ if __name__ == '__main__':
                   'Please copy them manually from the mmvt_code/resources folder')
         else:
             print('Finish!')
+
+
+if __name__ == '__main__':
+    main()
