@@ -408,7 +408,6 @@ def copy_resources_files():
 
 
 def main(subject, args):
-    # todo: When possivble, read verts and faces from the nzp and not from ply files
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
