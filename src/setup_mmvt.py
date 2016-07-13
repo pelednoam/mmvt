@@ -50,7 +50,9 @@ def create_links(links_fol_name='links', gui=True):
         utils.make_dir(real_fol)
         if not op.islink(op.join(links_fol, link_name)):
             os.symlink(real_fol, op.join(links_fol, link_name))
-
+        # Add the default task in meg folder
+        if link_name == 'meg' and real_fol != utils.get_resources_fol():
+            utils.make_dir(op.join(real_fol, 'default'))
     return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
 
 
