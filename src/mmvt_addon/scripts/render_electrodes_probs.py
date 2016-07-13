@@ -27,7 +27,6 @@ def read_args(argv=None):
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=su.is_true)
-    # Add more args here
     return su.parse_args(parser, argv)
 
 

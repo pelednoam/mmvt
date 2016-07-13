@@ -84,17 +84,20 @@ def call_script(script_fname, args, log_name=''):
     logs_fol = utils.make_dir(op.join(utils.get_parent_fol(__file__, 4), 'logs'))
     if log_name == '':
         log_name = utils.namebase(script_fname)
-    call_args = create_call_args(args)
-    blend_fname = get_subject_fname(args)
-    log_fname = op.join(logs_fol, '{}.log'.format(log_name))
-    cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
-        blender_exe=op.join(args.blender_fol, 'blender'),
-        blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
-    mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
-    os.chdir(mmvt_addon_fol)
-    utils.run_script(cmd)
+    if len(args.subjects) == 0:
+        args.subjects = [args.subject]
+    for subject in args.subjects:
+        args.subject = subject
+        call_args = create_call_args(args)
+        blend_fname = get_subject_fname(args)
+        log_fname = op.join(logs_fol, '{}.log'.format(log_name))
+        cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
+            blender_exe=op.join(args.blender_fol, 'blender'),
+            blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
+        mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
+        os.chdir(mmvt_addon_fol)
+        utils.run_script(cmd)
     print('Finish! For more details look in {}'.format(log_fname))
-
 
 
 def get_subject_fname(args):
@@ -151,7 +154,8 @@ def get_python_argv():
 
 def add_default_args():
     parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
+    parser.add_argument('--subject', help='subjects names', required=False, default='', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
@@ -161,6 +165,8 @@ def add_default_args():
 def parse_args(parser, argv):
     args = Bag(au.parse_parser(parser, argv))
     args.real_atlas = get_full_atlas_name(args.atlas)
+    if (len(args.subjects) == 0 and args.subject == '') or (len(args.subjects) > 0 and args.subject != ''):
+        raise Exception('You need to set --subject or --subjects!')
     return args
 
 
