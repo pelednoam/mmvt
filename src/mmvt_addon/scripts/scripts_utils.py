@@ -155,7 +155,7 @@ def get_python_argv():
 def add_default_args():
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
-    parser.add_argument('--subject', help='subjects names', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--subjects', help='subjects names', required=False, default='', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
