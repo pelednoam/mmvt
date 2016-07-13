@@ -184,7 +184,7 @@ class FreeviewOpen(bpy.types.Operator):
     def get_electrodes_command(self, root):
         if bpy.data.objects.get('Deep_electrodes'):
             cmd = ' -c '
-            groups = set([obj.name[:3] for obj in bpy.data.objects['Deep_electrodes'].children])
+            groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar) for obj in bpy.data.objects['Deep_electrodes'].children])
             for group in groups:
                 cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
         else:
