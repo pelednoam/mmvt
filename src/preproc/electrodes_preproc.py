@@ -57,10 +57,12 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         pos = depth_data[:, 1:4].astype(float)
         pos_depth, names_depth, dists_depth, pos_org = [], [], [], []
         for index in range(depth_data.shape[0]-1):
-            elc_group1, elc_num1 = utils.elec_group_number(depth_data[index, 0])
-            elc_group2, elc_num12 = utils.elec_group_number(depth_data[index+1, 0])
+            elc1_name = depth_data[index, 0].strip()
+            elc2_name = depth_data[index + 1, 0].strip()
+            elc_group1, elc_num1 = utils.elec_group_number(elc1_name)
+            elc_group2, elc_num12 = utils.elec_group_number(elc2_name)
             if elc_group1 == elc_group2:
-                elec_name = '{}-{}'.format(depth_data[index+1, 0],depth_data[index, 0])
+                elec_name = '{}-{}'.format(elc2_name, elc1_name)
                 names_depth.append(elec_name)
                 pos_depth.append(pos[index] + (pos[index+1]-pos[index])/2)
                 pos_org.append([pos[index], pos[index+1]])
@@ -595,11 +597,11 @@ def get_rois_colors(subject, atlas, rois):
     colors = cu.get_distinct_colors()
     lables_colors_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
     labels_colors_exist = op.isfile(lables_colors_fname)
+    rois_colors = OrderedDict()
     if not labels_colors_exist:
         print('No labels coloring file!')
-        rois_colors = OrderedDict()
     else:
-        rois_colors = np.genfromtxt(lables_colors_fname, dtype=str, delimiter=',')
+        labels_colors = np.genfromtxt(lables_colors_fname, dtype=str, delimiter=',')
     for roi, color in zip(not_white_rois, colors):
         # todo: set the labels colors to be the same in both hemis
         if labels_colors_exist:
@@ -633,15 +635,16 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
 
 
 def set_args(args):
-    if args.to_t.isnumeric() and args.from_t.isnumeric():
-        args.from_t, args.to_t, args.indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
-        args.from_t_ind, args.to_t_ind = args.from_t + args.indices_shift, args.to_t + args.indices_shift
-    elif ',' in args.to_t and ',' in args.from_t and ',' in args.conditions:
-        args.to_t = list(map(int, args.to_t.split(',')))
-        args.from_t = list(map(int, args.to_t.split(',')))
-        assert (len(args.to_t) == len(args.from_t) == len(args.conditions))
-    else:
-        print('No from_t, to_t and conditions!')
+    # todo: fix this part!
+    # if args.to_t.isnumeric() and args.from_t.isnumeric():
+    #     args.from_t, args.to_t, args.indices_shift = int(args['from_t']), int(args['to_t']), int(args['indices_shift'])
+    #     args.from_t_ind, args.to_t_ind = args.from_t + args.indices_shift, args.to_t + args.indices_shift
+    # elif ',' in args.to_t and ',' in args.from_t and ',' in args.conditions:
+    #     args.to_t = list(map(int, args.to_t.split(',')))
+    #     args.from_t = list(map(int, args.to_t.split(',')))
+    #     assert (len(args.to_t) == len(args.from_t) == len(args.conditions))
+    # else:
+    #     print('No from_t, to_t and conditions!')
 
     if args.task == 'ECR':
         args.conditions = ['congruent', 'incongruent'] # ['happy', 'fearful'] # ['happy', 'fear']
@@ -709,5 +712,6 @@ def read_cmd_args(argv=None):
 if __name__ == '__main__':
     args = read_cmd_args()
     for subject in args.subject:
+        print('********* {} ***********'.format(subject))
         main(subject, args)
     print('finish!')

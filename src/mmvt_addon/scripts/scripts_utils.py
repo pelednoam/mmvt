@@ -15,7 +15,6 @@ except:
     pass
 
 
-
 def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
         curr_dir = os.path.dirname(os.path.realpath(__file__))
@@ -60,6 +59,7 @@ except:
     import args_utils as au
 
 is_true = au.is_true
+str_arr_type = au.str_arr_type
 
 
 class Bag( dict ):
@@ -88,6 +88,8 @@ def call_script(script_fname, args, log_name=''):
         args.subjects = [args.subject]
     for subject in args.subjects:
         args.subject = subject
+        args.subjects = ''
+        print('*********** {} ***********'.format(subject))
         call_args = create_call_args(args)
         blend_fname = get_subject_fname(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
