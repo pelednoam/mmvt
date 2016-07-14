@@ -27,6 +27,7 @@ def import_meg(subject_fname):
     mmvt = su.init_mmvt_addon()
     mmvt.add_data_to_parent_brain_obj(args.stat)
     mmvt.add_data_to_brain()
+    mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)
     su.exit_blender()
 

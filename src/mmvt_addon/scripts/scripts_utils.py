@@ -176,5 +176,11 @@ def get_resources_dir():
     return op.join(get_parent_fol(levels=3), 'resources')
 
 
+def get_figures_dir(args):
+    figures_dir =  op.join(get_mmvt_dir(), args.subject, 'figures')
+    make_dir(figures_dir)
+    return figures_dir
+
+
 def get_full_atlas_name(atlas):
     return mu.get_real_atlas_name(atlas, get_mmvt_dir())

@@ -39,9 +39,11 @@ def read_args(argv=None):
     return su.parse_args(parser, argv)
 
 
-def import_meg(subject_fname):
+def create_new_subject(subject_fname):
+    args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
     mmvt.import_brain()
+    mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)
     su.exit_blender()
 
@@ -50,6 +52,6 @@ if __name__ == '__main__':
     import sys
     subject_fname = sys.argv[1]
     if sys.argv[2] == '--background':
-        import_meg(subject_fname)
+        create_new_subject(subject_fname)
     else:
         wrap_blender_call()

@@ -60,7 +60,8 @@ def read_args(argv=None):
 def import_electrodes(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
-    mmvt.import_electrodes(args.pos_file, args.radius)
+    mmvt.import_electrodes(args.pos_file, args.bipolar, args.radius)
+    mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)
     su.exit_blender()
 

@@ -243,9 +243,11 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def import_electrodes(input_file, electrode_size=None):
+def import_electrodes(input_file, bipolar='', electrode_size=None):
     if not electrode_size is None:
         bpy.context.scene.electrodes_radius = electrode_size
+    if bipolar != '':
+        bpy.context.scene.bipolar = bool(bipolar)
     mu.delete_hierarchy('Deep_electrodes')
     print('Adding deep electrodes')
     f = np.load(input_file)

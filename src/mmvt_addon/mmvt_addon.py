@@ -212,6 +212,11 @@ def main(addon_prefs=None):
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
+    # set default values
+    figures_fol = op.join(mmvt_utils.get_user_fol(), 'figures')
+    mmvt_utils.make_dir(figures_fol)
+    set_render_output_path(figures_fol)
+    set_render_quality(60)
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 
