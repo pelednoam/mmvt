@@ -32,15 +32,15 @@ def read_args(argv=None):
 
 def render_electrodes_probs(subject_fname):
     args = read_args(su.get_python_argv())
+    figures_dir = su.get_figures_dir(args)
     if args.rel_output_path:
-        mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
-        args.output_path = op.join(mmvt_dir, args.subject, 'movies', args.output_path)
+        args.output_path = op.join(figures_dir, args.output_path)
     su.make_dir(args.output_path)
 
     # Set the labeling file
     labeling_fname = '{}_{}_electrodes_cigar_r_*_l_*{}*.pkl'.format(args.subject, args.real_atlas,
         '_bipolar' if args.bipolar else '')
-    labels_fol = op.join(mmvt_dir, args.subject, 'electrodes')
+    labels_fol = op.join(su.get_mmvt_dir(), args.subject, 'electrodes')
     labeling_files = glob.glob(op.join(labels_fol, labeling_fname))
     if len(labeling_files) == 0:
         print('No labeling files in {}!'.format(labels_fol))
@@ -61,9 +61,15 @@ def render_electrodes_probs(subject_fname):
     if op.isfile(op.join(args.output_path, 'camera.pkl')):
         mmvt.load_camera()
     else:
-        cont = input('No camera file was detected in the output folder, continue?')
-        if not su.is_true(cont):
-            return
+        # Try to find the camera in the figures folder
+        if op.isfile(op.join(figures_dir, 'camera.pkl')):
+            mmvt.set_render_output_path(figures_dir)
+            mmvt.load_camera()
+            mmvt.set_render_output_path(args.output_path)
+        else:
+            cont = input('No camera file was detected in the output folder, continue?')
+            if not su.is_true(cont):
+                return
 
     mmvt.set_electrodes_labeling_file(labeling_file)
     mmvt.show_electrodes()
@@ -72,6 +78,7 @@ def render_electrodes_probs(subject_fname):
     for lead in leads:
         electrodes = mmvt.get_lead_electrodes(lead)
         for electrode in electrodes:
+            print(electrode)
             mmvt.set_current_electrode(lead, electrode)
             mmvt.render_image(electrode)
 
