@@ -21,7 +21,7 @@ CONNECTIONS_LAYER, BRAIN_EMPTY_LAYER = 3,5
 
 
 # d(Bag): labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
-def create_keyframes(d, threshold, radius=.1, stat=STAT_DIFF):
+def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF):
     layers_rods = [False] * 20
     rods_layer = CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
@@ -45,7 +45,7 @@ def create_keyframes(d, threshold, radius=.1, stat=STAT_DIFF):
     #     mask = mask1 | mask2
     # else:
     stat_data = calc_stat_data(d.con_values, stat)
-    mask = calc_mask(stat_data, threshold, windows_num)
+    mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[PARENT_OBJ]
     parent_obj.animation_data_clear()
@@ -57,7 +57,9 @@ def create_keyframes(d, threshold, radius=.1, stat=STAT_DIFF):
     print('finish keyframing!')
 
 
-def calc_mask(stat_data, threshold, windows_num):
+def calc_mask(stat_data, threshold, threshold_type, windows_num):
+    if threshold_type == 'percentile':
+        threshold = np.percentile(np.abs(stat_data), threshold)
     threshold_type = bpy.context.scene.above_below_threshold
     if stat_data.ndim == 1:
         mask = abs(stat_data) >= threshold if threshold_type == 'above' else abs(stat_data) <= threshold
@@ -160,10 +162,14 @@ def finalize_objects_creations():
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
+def unfilter_graph(context, d, condition, connections_type):
+    filter_graph(context, d, condition, 0, 'value', connections_type)
+
+
 # d: labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
-def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_DIFF):
+def filter_graph(context, d, condition, threshold, threshold_type, connections_type, stat=STAT_DIFF):
     mu.show_hide_hierarchy(False, PARENT_OBJ)
-    masked_con_names = calc_masked_con_names(d, threshold, connections_type, condition, stat)
+    masked_con_names = calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     for con_name in d.con_names:
         cur_obj = bpy.data.objects.get(con_name)
@@ -190,19 +196,21 @@ def filter_graph(context, d, condition, threshold, connections_type, stat=STAT_D
     mu.view_all_in_graph_editor(context)
 
 
-def calc_masked_con_names(d, threshold, connections_type, condition, stat):
+def calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat):
     # For now, we filter only according to both conditions, not each one seperatly
     if bpy.context.scene.selection_type == 'conds' and d.con_values.ndim == 3:
-        threshold_type = bpy.context.scene.above_below_threshold
-        mask1 = np.max(d.con_values[:, :, 0], axis=1) >= threshold if threshold_type == 'above' else \
+        if threshold_type == 'percentile':
+            threshold = np.percentile(np.abs(np.max(d.con_values, axis=1)), threshold)
+        above_below_threshold = bpy.context.scene.above_below_threshold
+        mask1 = np.max(d.con_values[:, :, 0], axis=1) >= threshold if above_below_threshold == 'above' else \
             np.max(d.con_values[:, :, 0], axis=1) <= threshold
-        mask2 = np.max(d.con_values[:, :, 1], axis=1) >= threshold if threshold_type == 'above' else \
+        mask2 = np.max(d.con_values[:, :, 1], axis=1) >= threshold if above_below_threshold == 'above' else \
             np.max(d.con_values[:, :, 1], axis=1) <= threshold
         threshold_mask = mask1 | mask2
     else:
         stat_data = calc_stat_data(d.con_values, stat)
-        windows_num = d.con_colors.shape[1]
-        threshold_mask = calc_mask(stat_data, threshold, windows_num)
+        windows_num = d.con_values.shape[1]
+        threshold_mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
         # threshold_mask = np.max(stat_data, axis=1) > threshold
     if connections_type == 'between':
         con_names_hemis = set(d.con_names[d.con_types == HEMIS_BETWEEN])
@@ -345,22 +353,26 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
-
-def create_connections():
+def load_connections_file():
     print('loading {}'.format(bpy.context.scene.connections_file))
     d = mu.Bag(np.load(bpy.context.scene.connections_file))
     d.labels = [l.astype(str) for l in d.labels]
     d.hemis = [l.astype(str) for l in d.hemis]
     d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
     d.conditions = [l.astype(str) for l in d.conditions]
+    ConnectionsPanel.d = d
+
+
+def create_connections():
+    load_connections_file()
     conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
     # diff_cond = '{}-{}'.format(d.conditions[0], d.conditions[1])
     # conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
     bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
-    ConnectionsPanel.d = d
 
     threshold = bpy.context.scene.connections_threshold
-    create_keyframes(ConnectionsPanel.d, threshold, stat=STAT_DIFF)
+    threshold_type = bpy.context.scene.connections_threshold_type
+    create_keyframes(ConnectionsPanel.d, threshold, threshold_type, stat=STAT_DIFF)
 
 
 class CreateConnections(bpy.types.Operator):
@@ -386,13 +398,19 @@ class FilterGraph(bpy.types.Operator):
         else:
             connections_type = bpy.context.scene.connections_type
             threshold = bpy.context.scene.connections_threshold
-            abs_threshold = False  # bpy.context.scene.abs_threshold
+            threshold_type = bpy.context.scene.connections_threshold_type
+            # abs_threshold = False  # bpy.context.scene.abs_threshold
             condition = bpy.context.scene.conditions
-            print(connections_type, condition, threshold, abs_threshold)
-            filter_graph(context, ConnectionsPanel.d, condition, threshold, connections_type)
+            # print(connections_type, condition, threshold, abs_threshold)
+            if bpy.context.scene.connections_filter:
+                unfilter_graph(context, ConnectionsPanel.d, condition, connections_type)
+            else:
+                filter_graph(context, ConnectionsPanel.d, condition, threshold, threshold_type, connections_type)
+            bpy.context.scene.connections_filter = not bpy.context.scene.connections_filter
         return {"FINISHED"}
 
 
+# todo: Should move to coloring_panel
 class PlotConnections(bpy.types.Operator):
     bl_idname = "ohad.plot_connections"
     bl_label = "ohad plot connections"
@@ -478,22 +496,25 @@ class ClearConnections(bpy.types.Operator):
 def connections_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "connections_origin", text="")
-    layout.operator("ohad.create_connections", text="Create connections ", icon='RNA_ADD')
+    layout.operator(CreateConnections.bl_idname, text="Create connections ", icon='RNA_ADD')
     layout.prop(context.scene, 'connections_threshold', text="Threshold")
     layout.prop(context.scene, 'above_below_threshold', text='')
     # layout.prop(context.scene, 'abs_threshold')
     layout.prop(context.scene, "connections_type", text="")
     # layout.prop(context.scene, "conditions", text="")
-    layout.operator("ohad.filter_graph", text="Filter graph ", icon='BORDERMOVE')
-    layout.operator("ohad.plot_connections", text="Plot connections ", icon='POTATO')
+    layout.label(text='Filter type:')
+    layout.prop(context.scene, 'connections_threshold_type', text='threshold type', expand=True)
+    filter_text = 'Remove filter' if bpy.context.scene.connections_filter else 'Filter connections'
+    layout.operator(FilterGraph.bl_idname, text=filter_text, icon='BORDERMOVE')
+    layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
     # if ConnectionsPanel.show_connections:
     #     layout.operator("ohad.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
     # else:
     #     layout.operator("ohad.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
 
-    filter_obj_name = 'electrodes' if bpy.context.scene.connections_origin == 'electrodes' else 'MEG labels'
-    filter_text = '{} {}'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from', filter_obj_name)
-    layout.operator("ohad.filter_electrodes", text=filter_text, icon='BORDERMOVE')
+    if bpy.context.scene.connections_origin == 'electrodes':
+        filter_text = '{} electrodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
+        layout.operator(FilterElectrodes.bl_idname, text=filter_text, icon='BORDERMOVE')
     # layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
@@ -510,6 +531,10 @@ bpy.types.Scene.above_below_threshold = bpy.props.EnumProperty(
         items=[("above", "Above threshold", "", 1), ("below", "Below threshold", "", 2)], description="Threshold type")
 bpy.types.Scene.conditions = bpy.props.EnumProperty(items=[], description="Conditions")
 bpy.types.Scene.connections_file = bpy.props.StringProperty(default='', description="connection file")
+bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
+    items=[("value", "value", "", 1), ("percentile", "percentile", "", 2)], #, ("top_k", "top k", "", 3)],
+    description="Threshold type")
+bpy.types.Scene.connections_filter = bpy.props.BoolProperty(name='connections_filter')
 
 
 class ConnectionsPanel(bpy.types.Panel):
@@ -538,6 +563,8 @@ def _connections_origin_update():
         bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
     else:
         print('Wrong connection type!!!')
+    if ConnectionsPanel.d == {}:
+        load_connections_file()
 
 
 def set_connection_type(connection_type):
@@ -549,7 +576,6 @@ def set_connections_threshold(threshold):
 
 
 def init(addon):
-    connections_file = ''
     electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
     # meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
     rois_connections_file = op.join(mu.get_user_fol(), 'rois_con.npz')
