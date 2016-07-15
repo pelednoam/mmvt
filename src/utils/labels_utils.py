@@ -71,22 +71,32 @@ def backup_annotation_files(subject, subjects_dic, aparc_name, backup_str='backu
                             op.join(subjects_dic, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)),)
 
 
-def get_atlas_labels_names(subject, atlas, delim='-', pos='end', n_jobs=1):
+def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_labels_list=False, include_unknown=True, n_jobs=1):
     annot_fname_hemi = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     labels_names_hemis = dict(lh=[], rh=[])
+    all_labels = []
     if utils.both_hemi_files_exist(annot_fname_hemi):
         for hemi in ['rh', 'lh']:
             annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
             _, _, labels_names = mne.label._read_annot(annot_fname)
             labels_names = fix_labels_names(labels_names, hemi, delim, pos)
+            all_labels.extend(labels_names)
             labels_names_hemis[hemi] = labels_names
     else:
-        labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
-        for label in labels:
+        all_labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
+        for label in all_labels:
             labels_names_hemis[label.hemi].append(label.name)
     if len(labels_names_hemis['rh']) == 0 or len(labels_names_hemis['lh']) == 0:
         raise Exception("Can't read {} labels for atlas {}".format(subject, atlas))
-    return labels_names_hemis
+    if return_flat_labels_list:
+        if not include_unknown:
+            all_labels = [l for l in all_labels if 'unknown' not in l]
+        return all_labels
+    else:
+        if not include_unknown:
+            for hemi in HEMIS:
+                labels_names_hemis[hemi] = [l for l in labels_names_hemis[hemi] if 'unknown' not in l]
+        return labels_names_hemis
 
 
 def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
