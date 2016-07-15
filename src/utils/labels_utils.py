@@ -71,7 +71,8 @@ def backup_annotation_files(subject, subjects_dic, aparc_name, backup_str='backu
                             op.join(subjects_dic, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)),)
 
 
-def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_labels_list=False, include_unknown=True, n_jobs=1):
+def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_labels_list=False, include_unknown=False,
+                           include_corpuscallosum=False, n_jobs=1):
     annot_fname_hemi = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     labels_names_hemis = dict(lh=[], rh=[])
     all_labels = []
@@ -91,11 +92,16 @@ def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_lab
     if return_flat_labels_list:
         if not include_unknown:
             all_labels = [l for l in all_labels if 'unknown' not in l]
+        if not include_corpuscallosum:
+            all_labels = [l for l in all_labels if 'corpuscallosum' not in l]
         return all_labels
     else:
         if not include_unknown:
             for hemi in HEMIS:
                 labels_names_hemis[hemi] = [l for l in labels_names_hemis[hemi] if 'unknown' not in l]
+        if not include_corpuscallosum:
+            for hemi in HEMIS:
+                labels_names_hemis[hemi] = [l for l in labels_names_hemis[hemi] if 'corpuscallosum' not in l]
         return labels_names_hemis
 
 
@@ -153,7 +159,7 @@ def get_hemi_from_name(label_name):
 
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
-                output_fname='', n_jobs=1):
+                output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False, n_jobs=1):
     if try_first_from_annotation:
         try:
             labels = mne.read_labels_from_annot(subject, atlas)
@@ -161,6 +167,14 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
     else:
         labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+    labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
+    if rh_then_lh:
+        rh_labels = [l for l in labels if l.hemi == 'rh']
+        lh_labels = [l for l in labels if l.hemi == 'lh']
+        labels = rh_labels + lh_labels
+    if sorted_according_to_annot_file:
+        annot_labels = get_atlas_labels_names(subject, atlas, return_flat_labels_list=True)
+        labels.sort(key=lambda x: annot_labels.index(x.name))
     if output_fname != '':
         with open(output_fname, 'w') as output_file:
             for label in labels:
@@ -186,6 +200,13 @@ def _read_labels_parallel(files_chunk):
         label = mne.read_label(label_fname)
         labels.append(label)
     return labels
+
+
+def calc_center_of_mass(labels):
+    center_of_mass = {}
+    for label in labels:
+        center_of_mass[label.name] = np.mean(label.pos, 0)
+    return center_of_mass
 
 
 if __name__ == '__main__':

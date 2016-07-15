@@ -330,33 +330,34 @@ def create_spatial_connectivity(subject):
     return success
 
 
-def calc_lavels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol=''):
+def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol='', labels=None):
     import csv
-    if (read_from_annotation):
-        labels = mne.read_labels_from_annot(subject, atlas, 'both', surf_name, subjects_dir=SUBJECTS_DIR)
-        if len(labels) == 0:
-            print('No labels were found in {} annotation file!'.format(atlas))
-    else:
-        labels = []
-        if labels_fol == '':
-            labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
-        for label_file in glob.glob(op.join(labels_fol, '*.label')):
-            label = mne.read_label(label_file)
-            labels.append(label)
-        if len(labels) == 0:
-            print('No labels were found in {}!'.format(labels_fol))
+    # if (read_from_annotation):
+    #     labels = mne.read_labels_from_annot(subject, atlas, 'both', surf_name, subjects_dir=SUBJECTS_DIR)
+    #     if len(labels) == 0:
+    #         print('No labels were found in {} annotation file!'.format(atlas))
+    # else:
+    #     labels = []
+    #     if labels_fol == '':
+    #         labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
+    #     for label_file in glob.glob(op.join(labels_fol, '*.label')):
+    #         label = mne.read_label(label_file)
+    #         labels.append(label)
+    #     if len(labels) == 0:
+    #         print('No labels were found in {}!'.format(labels_fol))
+    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
     if len(labels) > 0:
-        center_of_mass = {}
+        center_of_mass = lu.calc_center_of_mass(labels)
         with open(op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.csv'.format(atlas)), 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             for label in labels:
-                center_of_mass[label.name] = np.mean(label.pos, 0)
                 writer.writerow([label.name, *center_of_mass[label.name]])
         com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
         blend_fname = op.join(BLENDER_ROOT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
         utils.save(center_of_mass, com_fname)
         shutil.copyfile(com_fname, blend_fname)
     return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
+
 
 
 def save_labels_coloring(subject, atlas, n_jobs=2):
@@ -440,9 +441,9 @@ def main(subject, args):
         # *) Check the pial surfaces
         flags['ply_files'] = check_ply_files(subject)
 
-    if utils.should_run(args, 'calc_lavels_center_of_mass'):
+    if utils.should_run(args, 'calc_labels_center_of_mass'):
         # *) Calc the labels center of mass
-        flags['center_of_msas'] = calc_lavels_center_of_mass(subject, args.atlas, args.surf_name)
+        flags['center_of_mass'] = calc_labels_center_of_mass(subject, args.atlas, args.surf_name)
 
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
@@ -457,7 +458,7 @@ def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
     for subject in args.subject:
         utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'mmvt'))
-        os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+        # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         try:
             print('*******************************************')
             print('subject: {}, atlas: {}'.format(subject, args.atlas))
