@@ -162,8 +162,8 @@ def finalize_objects_creations():
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
-def unfilter_graph(context, d, condition, connections_type):
-    filter_graph(context, d, condition, 0, 'value', connections_type)
+def unfilter_graph(context, d, condition):
+    filter_graph(context, d, condition, 0, 'value', '')
 
 
 # d: labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
@@ -223,12 +223,12 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
-    windows_num = d.con_colors.shape[1]
+    windows_num = d.con_values.shape[1]
     # xs, ys = get_fcurve_values('RPT3-RAT5')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    t = int(plot_time / ConnectionsPanel.addon.get_max_time_steps() * windows_num)
+    t = int(plot_time / ConnectionsPanel.addon.get_max_time_steps() * windows_num) if windows_num > 1 else 0
     print('plotting connections for t:{}'.format(t))
-    if t >= d.con_colors.shape[1]:
+    if t >= d.con_colors.shape[1] and windows_num > 1:
         mu.message(self, 'time out of bounds! {}'.format(plot_time))
     else:
         # for conn_name, conn_colors in colors.items():
@@ -237,7 +237,8 @@ def plot_connections(self, context, d, plot_time, connections_type, condition, t
         for ind, con_name in zip(selected_indices, selected_objects):
             # print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
             cur_obj = bpy.data.objects.get(con_name)
-            con_color = np.hstack((d.con_colors[ind, t, :], [0.]))
+            color = d.con_colors[ind, t, :] if d.con_colors.ndim == 3 else d.con_colors[ind, :]
+            con_color = np.hstack((color, [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
             # vals.append(np.diff(d.con_values[ind, t])[0])
@@ -249,14 +250,14 @@ def plot_connections(self, context, d, plot_time, connections_type, condition, t
 
 def get_all_selected_connections(d):
     objs, inds = [], []
-    if bpy.context.scene.selection_type == 'conds':
+    parent_obj = bpy.data.objects[PARENT_OBJ]
+    if bpy.context.scene.selection_type == 'conds' or parent_obj.animation_data is None:
         for ind, con_name in enumerate(d.con_names):
             cur_obj = bpy.data.objects.get(con_name)
             if cur_obj and not cur_obj.hide:
                 objs.append(cur_obj.name)
                 inds.append(ind)
     else:
-        parent_obj = bpy.data.objects[PARENT_OBJ]
         for fcurve in parent_obj.animation_data.action.fcurves:
             con_name = mu.fcurve_name(fcurve)
             if fcurve.select and not fcurve.hide:
@@ -361,15 +362,14 @@ def load_connections_file():
     d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
     d.conditions = [l.astype(str) for l in d.conditions]
     ConnectionsPanel.d = d
+    conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
+    diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
+    conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
+    bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
 
 
 def create_connections():
     load_connections_file()
-    conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
-    # diff_cond = '{}-{}'.format(d.conditions[0], d.conditions[1])
-    # conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
-    bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
-
     threshold = bpy.context.scene.connections_threshold
     threshold_type = bpy.context.scene.connections_threshold_type
     create_keyframes(ConnectionsPanel.d, threshold, threshold_type, stat=STAT_DIFF)
@@ -403,7 +403,7 @@ class FilterGraph(bpy.types.Operator):
             condition = bpy.context.scene.conditions
             # print(connections_type, condition, threshold, abs_threshold)
             if bpy.context.scene.connections_filter:
-                unfilter_graph(context, ConnectionsPanel.d, condition, connections_type)
+                unfilter_graph(context, ConnectionsPanel.d, condition)
             else:
                 filter_graph(context, ConnectionsPanel.d, condition, threshold, threshold_type, connections_type)
             bpy.context.scene.connections_filter = not bpy.context.scene.connections_filter
@@ -501,11 +501,13 @@ def connections_draw(self, context):
     layout.prop(context.scene, 'above_below_threshold', text='')
     # layout.prop(context.scene, 'abs_threshold')
     layout.prop(context.scene, "connections_type", text="")
-    # layout.prop(context.scene, "conditions", text="")
+    layout.label(text='Show connections for:')
+    layout.prop(context.scene, "conditions", text="")
     layout.label(text='Filter type:')
     layout.prop(context.scene, 'connections_threshold_type', text='threshold type', expand=True)
     filter_text = 'Remove filter' if bpy.context.scene.connections_filter else 'Filter connections'
     layout.operator(FilterGraph.bl_idname, text=filter_text, icon='BORDERMOVE')
+    # todo: Check if we need this function
     layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
     # if ConnectionsPanel.show_connections:
     #     layout.operator("ohad.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')

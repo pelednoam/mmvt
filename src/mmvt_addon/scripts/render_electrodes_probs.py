@@ -79,6 +79,7 @@ def render_electrodes_probs(subject_fname):
         electrodes = mmvt.get_lead_electrodes(lead)
         for electrode in electrodes:
             print(electrode)
+            mmvt.clear_cortex()
             mmvt.set_current_electrode(lead, electrode)
             mmvt.render_image(electrode)
 
