@@ -27,28 +27,25 @@ HEMIS = ['rh', 'lh']
 
 
 def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
-    # !!! Can't run in an IDE! must run in the terminal after sourcing freesurfer !!!
-    # Remember that you need to have write permissions on SUBJECTS_DIR!!!
-    # You can create a local folder for the current subject. The files you need are:
-    # mri/aseg.mgz, mri/norm.mgz'
+    # Must source freesurfer. You need to have write permissions on SUBJECTS_DIR
     script_fname = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf')
     if not op.isfile(script_fname):
         raise Exception('The subcortical segmentation script is missing! {}'.format(script_fname))
     if not utils.is_exe(script_fname):
         utils.set_exe_permissions(script_fname)
 
-    aseg_to_srf_output_fol = op.join(SUBJECTS_DIR, subject, 'ascii')
-    function_output_fol = op.join(SUBJECTS_DIR, subject, 'subcortical_objs')
-    renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'subcortical')
+    # aseg_to_srf_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'ascii')
+    function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs')
+    renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical')
     lookup = load_subcortical_lookup_table()
     obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
     if len(obj_files) < len(lookup) or overwrite_subcortical_objs:
         utils.delete_folder_files(function_output_fol)
-        utils.delete_folder_files(aseg_to_srf_output_fol)
+        # utils.delete_folder_files(aseg_to_srf_output_fol)
         utils.delete_folder_files(renamed_output_fol)
-        print('Trying to write into {}'.format(aseg_to_srf_output_fol))
-        utils.run_script(ASEG_TO_SRF.format(subject, SUBJECTS_DIR, subject))
-        os.rename(aseg_to_srf_output_fol, function_output_fol)
+        print('Trying to write into {}'.format(function_output_fol))
+        utils.run_script(ASEG_TO_SRF.format(subject))
+        # os.rename(aseg_to_srf_output_fol, function_output_fol)
     ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
     if len(ply_files) < len(lookup) or overwrite_subcortical_objs:
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
@@ -403,7 +400,7 @@ def main(subject, args):
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
             args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
-        if not flags['prepare_local_subjects_folder']:
+        if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
             return flags
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
@@ -459,7 +456,8 @@ def main(subject, args):
 def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
     for subject in args.subject:
-        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
+        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'mmvt'))
+        os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         try:
             print('*******************************************')
             print('subject: {}, atlas: {}'.format(subject, args.atlas))
@@ -491,9 +489,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
+    parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=au.is_true)
@@ -512,6 +512,12 @@ def read_cmd_args(argv=None):
     args.neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    if args.overwrite:
+        args.overwrite_annotation = True
+        args.overwrite_morphing_labels = True
+        args.overwrite_hemis_srf = True
+        args.overwrite_labels_ply_files = True
+        args.overwrite_faces_verts = True
     print(args)
     return args
 

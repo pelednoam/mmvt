@@ -70,7 +70,7 @@ for s in ${SBJLIST} ; do
 
   # Create directories for temp files and results
   mkdir -p ${SUBJECTS_DIR}/${s}/tmp/${RNDSTR}
-  mkdir -p ${SUBJECTS_DIR}/${s}/ascii
+  mkdir -p ${SUBJECTS_DIR}/${s}/mmvt/subcortical_objs
 
   # For each label
   for lab in ${LABLIST} ; do
@@ -103,7 +103,7 @@ for s in ${SBJLIST} ; do
            ${SUBJECTS_DIR}/${s}/tmp/${RNDSTR}/aseg_${lab0} \
            ${SUBJECTS_DIR}/${s}/tmp/${RNDSTR}/aseg_${lab0}.asc
     mv ${SUBJECTS_DIR}/${s}/tmp/${RNDSTR}/aseg_${lab0}.asc \
-       ${SUBJECTS_DIR}/${s}/ascii/aseg_${lab0}.srf
+       ${SUBJECTS_DIR}/${s}/mmvt/subcortical_objs/aseg_${lab0}.srf
   done
 
   # Get rid of temp files
