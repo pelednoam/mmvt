@@ -202,10 +202,13 @@ def _read_labels_parallel(files_chunk):
     return labels
 
 
-def calc_center_of_mass(labels):
-    center_of_mass = {}
-    for label in labels:
-        center_of_mass[label.name] = np.mean(label.pos, 0)
+def calc_center_of_mass(labels, ret_mat=False):
+    center_of_mass = np.zeros((len(labels), 3)) if ret_mat else {}
+    for ind, label in enumerate(labels):
+        if ret_mat:
+            center_of_mass[ind] = np.mean(label.pos, 0)
+        else:
+            center_of_mass[label.name] = np.mean(label.pos, 0)
     return center_of_mass
 
 

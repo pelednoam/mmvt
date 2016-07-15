@@ -167,6 +167,10 @@ get_leads = electrodes_panel.get_leads
 get_lead_electrodes = electrodes_panel.get_lead_electrodes
 set_current_electrode = electrodes_panel.set_current_electrode
 set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+create_connections = connections_panel.create_connections
+set_connection_type = connections_panel.set_connection_type
+set_connections_threshold = connections_panel.set_connections_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 

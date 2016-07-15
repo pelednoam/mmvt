@@ -21,7 +21,7 @@ CONNECTIONS_LAYER, BRAIN_EMPTY_LAYER = 3,5
 
 
 # d(Bag): labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
-def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
+def create_keyframes(d, threshold, radius=.1, stat=STAT_DIFF):
     layers_rods = [False] * 20
     rods_layer = CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
@@ -53,7 +53,7 @@ def create_keyframes(self, context, d, threshold, radius=.1, stat=STAT_DIFF):
     print('{} connections are above the threshold'.format(N))
     create_conncection_for_both_conditions(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
     print('Create connections for the conditions {}'.format('difference' if stat == STAT_DIFF else 'mean'))
-    create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num, norm_fac, T, stat)
+    create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat)
     print('finish keyframing!')
 
 
@@ -98,12 +98,12 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
         finalize_fcurves(cur_obj)
 
 
-def create_keyframes_for_parent_obj(self, context, d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
+def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
     # Create keyframes for the parent obj (conditions diff)
     if windows_num == 1:
         return
     if stat not in [STAT_DIFF, STAT_AVG]:
-        mu.message(self, "Wrong type of stat!")
+        print("Wrong type of stat!")
         return
     parent_obj = bpy.data.objects[PARENT_OBJ]
     stat_data = calc_stat_data(d.con_values, stat)
@@ -346,6 +346,23 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
 
+def create_connections():
+    print('loading {}'.format(bpy.context.scene.connections_file))
+    d = mu.Bag(np.load(bpy.context.scene.connections_file))
+    d.labels = [l.astype(str) for l in d.labels]
+    d.hemis = [l.astype(str) for l in d.hemis]
+    d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
+    d.conditions = [l.astype(str) for l in d.conditions]
+    conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
+    # diff_cond = '{}-{}'.format(d.conditions[0], d.conditions[1])
+    # conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
+    bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
+    ConnectionsPanel.d = d
+
+    threshold = bpy.context.scene.connections_threshold
+    create_keyframes(ConnectionsPanel.d, threshold, stat=STAT_DIFF)
+
+
 class CreateConnections(bpy.types.Operator):
     bl_idname = "ohad.create_connections"
     bl_label = "ohad create connections"
@@ -353,12 +370,7 @@ class CreateConnections(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        connections_type = bpy.context.scene.connections_type
-        threshold = bpy.context.scene.connections_threshold
-        abs_threshold = False  # bpy.context.scene.abs_threshold
-        # condition = bpy.context.scene.conditions
-        # print(connections_type, condition, threshold, abs_threshold)
-        create_keyframes(self, context, ConnectionsPanel.d, threshold, stat=STAT_DIFF)
+        create_connections()
         return {"FINISHED"}
 
 
@@ -486,8 +498,7 @@ def connections_draw(self, context):
     # layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
-bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
-        items=[("electrodes", "Between electrodes", "", 1), ("meg", "Between MEG labels", "", 2)],
+bpy.types.Scene.connections_origin = bpy.props.EnumProperty(items=[],
         description="Conditions origin", update=connections_draw)
 bpy.types.Scene.connections_threshold = bpy.props.FloatProperty(default=5, min=0, description="")
 bpy.types.Scene.abs_threshold = bpy.props.BoolProperty(name='abs threshold',
@@ -498,6 +509,7 @@ bpy.types.Scene.connections_type = bpy.props.EnumProperty(
 bpy.types.Scene.above_below_threshold = bpy.props.EnumProperty(
         items=[("above", "Above threshold", "", 1), ("below", "Below threshold", "", 2)], description="Threshold type")
 bpy.types.Scene.conditions = bpy.props.EnumProperty(items=[], description="Conditions")
+bpy.types.Scene.connections_file = bpy.props.StringProperty(default='', description="connection file")
 
 
 class ConnectionsPanel(bpy.types.Panel):
@@ -515,33 +527,48 @@ class ConnectionsPanel(bpy.types.Panel):
         connections_draw(self, context)
 
 
+def connections_origin_update(self, context):
+    _connections_origin_update()
+
+
+def _connections_origin_update():
+    if bpy.context.scene.connections_origin == 'rois':
+        bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'rois_con.npz')
+    elif bpy.context.scene.connections_origin == 'electrodes':
+        bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
+    else:
+        print('Wrong connection type!!!')
+
+
+def set_connection_type(connection_type):
+    bpy.context.scene.connections_origin = connection_type
+
+
+def set_connections_threshold(threshold):
+    bpy.context.scene.connections_threshold = threshold
+
+
 def init(addon):
     connections_file = ''
-    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_coh.npz')
-    meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
-    if os.path.isfile(electrodes_connections_file):
-        connections_file = electrodes_connections_file
-    elif os.path.isfile(meg_bev_connections_file):
-        connections_file = meg_bev_connections_file
-        bpy.context.scene.above_below_threshold = 'above'
+    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
+    # meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
+    rois_connections_file = op.join(mu.get_user_fol(), 'rois_con.npz')
+
+    items = []
+    if op.isfile(electrodes_connections_file):
+        items.append(("electrodes", "Between electrodes", "", 1))
+    elif op.isfile(rois_connections_file):
+        items.append(("rois", "Between MEG labels", "", 2))
     else:
         print('No connections file!')
+    bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
+        items=items, description="Conditions origin", update=connections_origin_update)
 
-    if connections_file != '':
-        print('loading {}'.format(connections_file))
-        d = mu.Bag(np.load(connections_file))
-        d.labels = [l.astype(str) for l in d.labels]
-        d.hemis = [l.astype(str) for l in d.hemis]
-        d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
-        d.conditions = [l.astype(str) for l in d.conditions]
-        confitions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
-
-        # diff_cond = '{}-{}'.format(d.conditions[0], d.conditions[1])
-        # confitions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
-        bpy.types.Scene.conditions = bpy.props.EnumProperty(items=confitions_items, description="Conditions")
-        register()
+    if len(items) != '':
         ConnectionsPanel.addon = addon
-        ConnectionsPanel.d = d
+        bpy.context.scene.connections_threshold = 0
+        _connections_origin_update()
+        register()
         # print('connection panel initialization completed successfully!')
 
 

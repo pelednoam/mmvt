@@ -13,15 +13,15 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
-def save_connectivity_to_blender(subject, atlas, data, conditions, stat, w=0, threshold=0):
+def save_connectivity_to_blender(subject, atlas, data, conditions, stat, w=0, threshold=0, threshold_percentile=0):
     d = {}
     d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=['unknown', 'corpuscallosum'],
             sorted_according_to_annot_file=True)
-    d['locations'] = lu.calc_center_of_mass(d['labels'])
+    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True)
     d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]
     d['labels'] = [l.name for l in d['labels']]
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(data, d['labels'], d['hemis'], stat, w, threshold_percentile=90)
+        calc_connections_colors(data, d['labels'], d['hemis'], stat, w, threshold_percentile=threshold_percentile)
     d['conditions'] = conditions
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'rois_con'), **d)
 
@@ -58,7 +58,7 @@ def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold
     con_indices = con_indices.astype(np.int)
     con_names = np.array(con_names)
     if threshold_percentile > 0:
-        threshold = np.percentile(np.abs(stat_data), 90)
+        threshold = np.percentile(np.abs(stat_data), threshold_percentile)
     if threshold > 0:
         indices = np.where(np.abs(stat_data) >= threshold)[0]
         con_colors = con_colors[indices]
@@ -66,6 +66,7 @@ def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold
         con_names = con_names[indices]
         con_values = con_values[indices]
         con_type  = con_type[indices]
+    print(len(con_names))
     return con_colors, con_indices, con_names, con_values, con_type
 
 
@@ -89,5 +90,6 @@ if __name__ == '__main__':
     root = '/cluster/neuromind/npeled/linda'
     flexibility_mat = sio.loadmat(op.join(root, 'figure_file1.mat'))['figure_file']
     conditions = ['task', 'rest']
-    save_connectivity_to_blender(subject, atlas, flexibility_mat, conditions, STAT_DIFF, 1)
+    save_connectivity_to_blender(subject, atlas, flexibility_mat, conditions, STAT_DIFF, 1,
+                                 threshold_percentile=99)
 
