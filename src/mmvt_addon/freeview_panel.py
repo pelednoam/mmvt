@@ -165,6 +165,8 @@ class FreeviewOpen(bpy.types.Operator):
             if len(sig_fnames) > 0:
                 sig_fname = sig_fnames[0]
                 sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
+            else:
+                sig_cmd = ''
         else:
             sig_cmd = ''
         T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
