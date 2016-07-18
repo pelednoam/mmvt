@@ -161,8 +161,10 @@ class FreeviewOpen(bpy.types.Operator):
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
         if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
-            sig_fname = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files)))[0]
-            sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
+            sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files)))
+            if len(sig_fnames) > 0:
+                sig_fname = sig_fnames[0]
+                sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
         else:
             sig_cmd = ''
         T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
