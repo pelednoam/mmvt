@@ -395,7 +395,7 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 def prepare_local_subjects_folder(subject, args):
     return utils.prepare_local_subjects_folder(
         args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
-        args.sftp, args.sftp_username, args.sftp_domain, args.print_traceback)
+        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password, args.print_traceback)
 
 
 def build_remote_subject_dir(remote_subject_dir_template, subject):
@@ -474,8 +474,20 @@ def main(subject, args):
     return flags
 
 
+def get_sftp_password(subjects, args):
+    sftp_password = ''
+    if args.sftp:
+        all_neccesary_files_exist = np.all(
+            [utils.check_if_all_neccesary_files_exist(args.neccesary_files, os.path.join(SUBJECTS_DIR, subject), False)
+             for subject in subjects])
+        if not all_neccesary_files_exist:
+            sftp_password = utils.ask_for_sftp_password(args.sftp_username)
+    return sftp_password
+
+
 def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
+    args.sftp_password = get_sftp_password(args.subject, args)
     for subject in args.subject:
         utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'mmvt'))
         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))

@@ -14,13 +14,15 @@ from functools import partial
 import glob
 import mne
 import colorsys
-import math
+# import math
 import os.path as op
-import types
+# import types
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
-import scipy.io as sio
+# import scipy.io as sio
+import getpass
+
 from src.mmvt_addon import mmvt_utils as mu
 
 try:
@@ -738,7 +740,8 @@ def fsaverage_vertices():
 
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir,
-                                  sftp=False, sftp_username='', sftp_domain='', print_traceback=True):
+                                  sftp=False, sftp_username='', sftp_domain='', sftp_password='',
+                                  print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
@@ -746,7 +749,7 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
         return True
     if sftp:
         sftp_copy_subject_files(subject, neccesary_files, sftp_username, sftp_domain,
-                                local_subjects_dir, remote_subject_dir, print_traceback)
+                                local_subjects_dir, remote_subject_dir, sftp_password, print_traceback)
     else:
         for fol, files in neccesary_files.items():
             if not os.path.isdir(os.path.join(local_subject_dir, fol)):
@@ -775,12 +778,12 @@ def check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, trace
 
 
 def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_subjects_dir, remote_subject_dir,
-                            print_traceback=True):
+                            password='', print_traceback=True):
     import pysftp
-    import getpass
 
     local_subject_dir = op.join(local_subjects_dir, subject)
-    password = getpass.getpass('Please enter the sftp password for "{}": '.format(username))
+    if password == '':
+        password = ask_for_sftp_password(username)
     with pysftp.Connection(domain, username=username, password=password) as sftp:
         for fol, files in neccesary_files.items():
             if not os.path.isdir(op.join(local_subject_dir, fol)):
@@ -797,6 +800,10 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
+
+
+def ask_for_sftp_password(username):
+    return getpass.getpass('Please enter the sftp password for "{}": '.format(username))
 
 
 def to_ras(points, round_coo=False):
