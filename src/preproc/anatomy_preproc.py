@@ -392,7 +392,7 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 #     dists = cdist(verts['rh'], verts['lh'])
 
 
-def prepare_local_subjects_folder(subject):
+def prepare_local_subjects_folder(subject, args):
     return utils.prepare_local_subjects_folder(
         args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.print_traceback)
@@ -420,8 +420,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(
-            args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
+        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, args)
         if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
             return flags
 
