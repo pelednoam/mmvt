@@ -393,7 +393,7 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 
 
 def prepare_local_subjects_folder(subject):
-    utils.prepare_local_subjects_folder(
+    return utils.prepare_local_subjects_folder(
         args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.print_traceback)
 
@@ -413,12 +413,14 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
 def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    if '{subject}' in args.remote_subject_dir:
+    if args.remote_subjects_dir != '':
+        args.remote_subject_dir = op.join(args.remote_subjects_dir, subject)
+    elif '{subject}' in args.remote_subject_dir:
         args.remote_subject_dir = build_remote_subject_dir(args.remote_subject_dir, subject)
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = utils.prepare_local_subjects_folder(
+        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(
             args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR, args, args.print_traceback)
         if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
             return flags
@@ -511,7 +513,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
-    parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False, default='')
+    parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
+    parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
