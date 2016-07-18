@@ -390,12 +390,31 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 #         ply_file = op.join(SUBJECTS_DIR)
 #         verts[hemi], _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
 #     dists = cdist(verts['rh'], verts['lh'])
-#
+
+
+def prepare_local_subjects_folder(subject):
+    utils.prepare_local_subjects_folder(
+        args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        args.sftp, args.sftp_username, args.sftp_domain, args.print_traceback)
+
+
+def build_remote_subject_dir(remote_subject_dir_template, subject):
+    if isinstance(remote_subject_dir_template, dict):
+        if 'func' in remote_subject_dir_template:
+            template_val = remote_subject_dir_template['func'](subject)
+            remote_subject_dir = remote_subject_dir_template['template'].format(subject=template_val)
+        else:
+            remote_subject_dir = remote_subject_dir_template['template'].format(subject=subject)
+    else:
+        remote_subject_dir = remote_subject_dir_template.format(subject=subject)
+    return remote_subject_dir
 
 
 def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+    if '{subject}' in args.remote_subject_dir:
+        args.remote_subject_dir = build_remote_subject_dir(args.remote_subject_dir, subject)
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder

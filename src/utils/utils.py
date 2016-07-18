@@ -738,14 +738,14 @@ def fsaverage_vertices():
 
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir,
-                                  args, print_traceback=True):
+                                  sftp=False, sftp_username='', sftp_domain='', print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
     if all_files_exists:
         return True
-    if args.sftp:
-        sftp_copy_subject_files(subject, neccesary_files, args.sftp_username, args.sftp_domain,
+    if sftp:
+        sftp_copy_subject_files(subject, neccesary_files, sftp_username, sftp_domain,
                                 local_subjects_dir, remote_subject_dir, print_traceback)
     else:
         for fol, files in neccesary_files.items():
