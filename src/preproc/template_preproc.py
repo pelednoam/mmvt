@@ -13,8 +13,8 @@ def do_something(subject, args):
     pass
 
 
-def main(subject, args, n_jobs):
-    if 'all' in args.function or 'do_something' in args.function:
+def main(subject, args):
+    if utils.should_run('do_something'):
         do_something(subject, args)
 
 
@@ -29,9 +29,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     print(args)
-    n_jobs = utils.get_n_jobs(args.n_jobs)
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
 
     for subject in args.subject:
-        main(subject, args, n_jobs)
+        main(subject, args)
 
     print('finish!')
