@@ -17,11 +17,11 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 
 #todo: Add the necessary parameters
-def save_electrodes_coh(subject,  stat, threshold=0.8, bipolar=False):
+def save_electrodes_coh(subject, conditions, mat_fname, stat, t_max, threshold=0.8, bipolar=False):
     d = dict()
     d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh = calc_electrodes_coh(subject, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
+    coh = calc_electrodes_coh(subject, conditions, mat_fname, from_t_ind=0, to_t_ind=-1, t_max, sfreq=1000, fmin=55, fmax=110, bw=15,
                               dt=0.1, window_len=0.1, n_jobs=6)
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
         calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat)
@@ -37,17 +37,17 @@ def get_electrodes_info(subject, bipolar=False):
     return names, d['pos']
 
 
-def calc_electrodes_coh(subject, from_t_ind, to_t_ind, sfreq=1000, fmin=55, fmax=110, bw=15,
+def calc_electrodes_coh(subject, conditions, mat_fname, from_t_ind, to_t_ind, t_max, sfreq=1000, fmin=55, fmax=110, bw=15,
                         dt=0.1, window_len=0.1, n_jobs=6):
 
     from mne.connectivity import spectral_connectivity
     import time
 
-    input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes_data_trials.mat')
+    input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', mat_fname)
     d = sio.loadmat(input_file)
     output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh.npy')
-    windows = np.linspace(0, 2.5 - dt, 2.5 / dt)
-    for cond, data in enumerate([d['interference'], d['noninterference']]):
+    windows = np.linspace(0, t_max - dt, t_max / dt)
+    for cond, data in enumerate([d[cond] for cond in conditions]):
         if cond == 0:
             coh_mat = np.zeros((data.shape[1], data.shape[1], len(windows), 2))
             # coh_mat = np.load(output_file)
@@ -140,13 +140,13 @@ def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold
 
 def main(subject, args):
     if utils.should_run('save_rois_connectivity'):
-        save_rois_connectivity(subject, args.atlas, args.rois_con_fname, args.mat_field, args.conditions, args.stat,
+        save_rois_connectivity(subject, args.atlas, args.mat_fname, args.mat_field, args.conditions, args.stat,
                                args.w, args.labels_exclude, args.threshold, args.threshold_percentile,
                                args.color_map, args.norm_by_percentile, args.norm_percs)
 
     if utils.should_run('save_electrodes_coh'):
         # todo: Add the necessary parameters
-        save_electrodes_coh(subject, args.stat, args.threshold)
+        save_electrodes_coh(subject, args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
 
 
 def example(args):
@@ -170,8 +170,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--conditions', help='conditions names', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--rois_con_fname', help='rois connection file name', required=False, default='')
-    parser.add_argument('--mat_field', help='rois connection matlab field name', required=False, default='')
+    parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
+    parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
                         type=au.str_arr_type)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
