@@ -21,7 +21,7 @@ def save_electrodes_coh(subject, conditions, mat_fname, stat, t_max, threshold=0
     d = dict()
     d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh = calc_electrodes_coh(subject, conditions, mat_fname, from_t_ind=0, to_t_ind=-1, t_max, sfreq=1000, fmin=55, fmax=110, bw=15,
+    coh = calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
                               dt=0.1, window_len=0.1, n_jobs=6)
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
         calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat)
@@ -37,7 +37,7 @@ def get_electrodes_info(subject, bipolar=False):
     return names, d['pos']
 
 
-def calc_electrodes_coh(subject, conditions, mat_fname, from_t_ind, to_t_ind, t_max, sfreq=1000, fmin=55, fmax=110, bw=15,
+def calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind, to_t_ind, sfreq=1000, fmin=55, fmax=110, bw=15,
                         dt=0.1, window_len=0.1, n_jobs=6):
 
     from mne.connectivity import spectral_connectivity
