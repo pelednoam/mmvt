@@ -33,22 +33,25 @@ def create_links(links_fol_name='links', gui=True):
     print('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
           'It prefered to create a local folder, because MMVT is going to save files to this directory: ')
     subjects_fol = askdirectory() if gui else input()
+    create_real_folder(subjects_fol)
     freesurfer_fol = os.environ['FREESURFER_HOME']
+    create_real_folder(freesurfer_fol)
     print('Where did you install Blender? ')
     blender_fol = askdirectory() if gui else input()
+    create_real_folder(blender_fol)
     print('Where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): ')
     meg_fol = askdirectory() if gui else input()
+    create_real_folder(meg_fol)
     print('Where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): ')
     fmri_fol = askdirectory() if gui else input()
+    create_real_folder(fmri_fol)
     print('Where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): ')
     electrodes_fol = askdirectory() if gui else input()
+    create_real_folder(electrodes_fol)
 
     for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],
             links_names):
         try:
-            if real_fol == '':
-                real_fol = utils.get_resources_fol()
-            utils.make_dir(real_fol)
             if not op.islink(op.join(links_fol, link_name)):
                 os.symlink(real_fol, op.join(links_fol, link_name))
             # Add the default task in meg folder
@@ -58,6 +61,12 @@ def create_links(links_fol_name='links', gui=True):
             print('Error with folder {} and link {}'.format(real_fol, link_name))
             print(traceback.format_exc())
     return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+
+
+def create_real_folder(real_fol):
+    if real_fol == '':
+        real_fol = utils.get_resources_fol()
+    utils.make_dir(real_fol)
 
 
 def main():
