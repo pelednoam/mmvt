@@ -19,7 +19,7 @@ from src.mmvt_addon import colors_utils as cu
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
 ASEG_TO_SRF = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf -s "{}"') # -o {}'
@@ -55,7 +55,7 @@ def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
 
 
 def load_subcortical_lookup_table():
-    codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
+    codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
     lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
     lookup = {int(val):name for name, val in zip(lookup[:, 0], lookup[:, 1])}
     return lookup
@@ -71,7 +71,7 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
             utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
             verts, faces = utils.read_ply_file(op.join(new_fol, '{}.ply'.format(new_name)))
             np.savez(op.join(new_fol, '{}.npz'.format(new_name)), verts=verts, faces=faces)
-    blender_fol = op.join(BLENDER_ROOT_DIR, subject, 'subcortical')
+    blender_fol = op.join(MMVT_DIR, subject, 'subcortical')
     if op.isdir(blender_fol):
         shutil.rmtree(blender_fol)
     shutil.copytree(new_fol, blender_fol)
@@ -112,7 +112,7 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
         surf_wavefront_name = '{}.asc'.format(surf_name)
         surf_new_name = '{}.srf'.format(surf_name)
         hemi_ply_fname = '{}.ply'.format(surf_name)
-        mmvt_hemi_ply_fname = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi))
+        mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, '{}.pial.ply'.format(hemi))
         if overwrite or not op.isfile(hemi_ply_fname):
             print('{}: convert srf to asc'.format(hemi))
             utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
@@ -126,7 +126,7 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             verts, faces = utils.read_ply_file(ply_fname)
             np.savez(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial'.format(hemi)), verts=verts, faces=faces)
             shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)),
-                            op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz'.format(hemi)))
+                            op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)))
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
 
 
@@ -134,17 +134,17 @@ def convert_hemis_srf_to_ply(subject, hemi='both'):
     for hemi in utils.get_hemis(hemi):
         ply_file = utils.srf2ply(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.srf'.format(hemi)),
                                  op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-        shutil.copyfile(ply_file, op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply'.format(hemi)))
+        utils.make_dir(op.join(MMVT_DIR, subject))
+        shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, '{}.pial.ply'.format(hemi)))
 
 
 def calc_faces_verts_dic(subject, overwrite=False):
     ply_files = [op.join(SUBJECTS_DIR, subject,'surf', '{}.pial.ply'.format(hemi)) for hemi in HEMIS]
-    out_files = [op.join(BLENDER_ROOT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in HEMIS]
-    subcortical_plys = glob.glob(op.join(BLENDER_ROOT_DIR, subject, 'subcortical', '*.ply'))
+    out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in HEMIS]
+    subcortical_plys = glob.glob(op.join(MMVT_DIR, subject, 'subcortical', '*.ply'))
     errors = []
     if len(subcortical_plys) > 0:
-        faces_verts_dic_fnames = [op.join(BLENDER_ROOT_DIR, subject, 'subcortical', '{}_faces_verts.npy'.format(
+        faces_verts_dic_fnames = [op.join(MMVT_DIR, subject, 'subcortical', '{}_faces_verts.npy'.format(
                 utils.namebase(ply))) for ply in subcortical_plys]
         ply_files.extend(subcortical_plys)
         out_files.extend(faces_verts_dic_fnames)
@@ -183,8 +183,8 @@ def calc_faces_verts_dic(subject, overwrite=False):
 def check_ply_files(subject):
     ply_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply')
     npz_subject = op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz')
-    ply_blender = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.ply')
-    npz_blender = op.join(BLENDER_ROOT_DIR, subject, '{}.pial.npz')
+    ply_blender = op.join(MMVT_DIR, subject, '{}.pial.ply')
+    npz_blender = op.join(MMVT_DIR, subject, '{}.pial.npz')
     ok = True
     for hemi in HEMIS:
         # print('reading {}'.format(ply_subject.format(hemi)))
@@ -205,7 +205,7 @@ def convert_perecelated_cortex(subject, aparc_name, overwrite_ply_files=False, h
             continue
         srf_fol = op.join(SUBJECTS_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         ply_fol = op.join(SUBJECTS_DIR, subject,'{}_{}_ply'.format(aparc_name, hemi))
-        blender_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
+        blender_fol = op.join(MMVT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         utils.convert_srf_files_to_ply(srf_fol, overwrite_ply_files)
         rename_cortical(lookup, srf_fol, ply_fol)
         utils.rmtree(blender_fol)
@@ -256,7 +256,7 @@ def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):
     files_exist = True
     for hemi in HEMIS:
-        blender_labels_fol = op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
+        blender_labels_fol = op.join(MMVT_DIR, subject,'{}.pial.{}'.format(aparc_name, hemi))
         files_exist = files_exist and op.isdir(blender_labels_fol) and \
             len(glob.glob(op.join(blender_labels_fol, '*.ply'))) > minimum_labels_num
 
@@ -273,9 +273,9 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         matlab_labels_vertices = save_matlab_labels_vertices(subject, aparc_name)
 
     labels_num = sum([len(lookup[hemi]) for hemi in HEMIS])
-    labels_files_num = sum([len(glob.glob(op.join(BLENDER_ROOT_DIR, subject,'{}.pial.{}'.format(
+    labels_files_num = sum([len(glob.glob(op.join(MMVT_DIR, subject,'{}.pial.{}'.format(
         aparc_name, hemi), '*.ply'))) for hemi in HEMIS])
-    labels_dic_fname = op.join(BLENDER_ROOT_DIR, subject,'labels_dic_{}_{}.pkl'.format(aparc_name, hemi))
+    labels_dic_fname = op.join(MMVT_DIR, subject,'labels_dic_{}_{}.pkl'.format(aparc_name, hemi))
     print('labels_files_num == labels_num: {}'.format(labels_files_num == labels_num))
     print('isfile(labels_dic_fname): {}'.format(op.isfile(labels_dic_fname)))
     print('matlab_labels_vertices files: {}'.format(matlab_labels_vertices))
@@ -287,7 +287,7 @@ def save_matlab_labels_vertices(subject, aparc_name):
         matlab_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_labels.m'.format(hemi, aparc_name))
         if op.isfile(matlab_fname):
             labels_dic = matlab_utils.matlab_cell_arrays_to_dict(matlab_fname)
-            utils.save(labels_dic, op.join(BLENDER_ROOT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+            utils.save(labels_dic, op.join(MMVT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
         else:
             return False
     return True
@@ -310,7 +310,7 @@ def save_labels_vertices(subject, aparc_name):
     for label in labels:
         labels_names[label.hemi].append(label.name)
         labels_vertices[label.hemi].append(label.vertices)
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
+    output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
     utils.save((labels_names, labels_vertices), output_fname)
     return op.isfile(output_fname)
 
@@ -321,7 +321,7 @@ def create_spatial_connectivity(subject):
         for hemi in utils.HEMIS:
             d = np.load(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)))
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
-        utils.save(connectivity_per_hemi, op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl'))
+        utils.save(connectivity_per_hemi, op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl'))
         success = True
     except:
         print('Error in create_spatial_connectivity!')
@@ -353,7 +353,7 @@ def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
             for label in labels:
                 writer.writerow([label.name, *center_of_mass[label.name]])
         com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
-        blend_fname = op.join(BLENDER_ROOT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
+        blend_fname = op.join(MMVT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
         utils.save(center_of_mass, com_fname)
         shutil.copyfile(com_fname, blend_fname)
     return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
@@ -361,7 +361,7 @@ def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
 
 def save_labels_coloring(subject, atlas, n_jobs=2):
     ret = False
-    coloring_dir = op.join(BLENDER_ROOT_DIR, subject, 'coloring')
+    coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
     try:
@@ -489,7 +489,7 @@ def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
     args.sftp_password = get_sftp_password(args.subject, args)
     for subject in args.subject:
-        utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'mmvt'))
+        utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         try:
             print('*******************************************')

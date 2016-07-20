@@ -19,8 +19,8 @@ SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-LOOKUP_TABLE_SUBCORTICAL = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
+MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 STAT_AVG, STAT_DIFF = range(2)
@@ -31,8 +31,9 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
     NOISE_COV, DATA_CSD, NOISE_CSD = '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
                 '', '', '', '', '', '', '', '', ''
 
+
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False, cleaning_method='', constrast='',
-                 subjects_meg_dir='', task='', subjects_mri_dir='', BLENDER_ROOT_DIR='', fwd_no_cond=False, inv_no_cond=False):
+                 subjects_meg_dir='', task='', subjects_mri_dir='', MMVT_DIR='', fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
@@ -43,7 +44,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     os.environ['SUBJECT'] = SUBJECT
     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
-    BLENDER_SUBJECT_FOLDER = op.join(BLENDER_ROOT_DIR, MRI_SUBJECT)
+    BLENDER_SUBJECT_FOLDER = op.join(MMVT_DIR, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
         cleaning_method=cleaning_method, constrast=constrast)
     _get_fif_name_no_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
@@ -823,7 +824,7 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='OrRd', inverse_
     stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     data_minmax = utils.get_max_abs(data_max, data_min)
-    utils.save(data_minmax, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
+    utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
     scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
     for hemi in HEMIS:
         verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
@@ -1095,7 +1096,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
     labels_data = labels_data / max_abs
     labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
     np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-    shutil.copyfile(labels_output_fname, op.join(BLENDER_ROOT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
+    shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
 
 
 def plot_labels_data(plot_each_label=False):
@@ -1224,7 +1225,7 @@ def get_fname_format(args):
 def main(subject, mri_subject, args):
     fname_format, fname_format_cond, events = get_fname_format(args)
     init_globals(mri_subject, subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
-                 args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR, args.fwd_no_cond)
+                 args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs = None, None
 
@@ -1233,7 +1234,7 @@ def main(subject, mri_subject, args):
                                      args.events_file_name)
 
     if utils.should_run(args, 'make_forward_solution'):
-        sub_corticals_codes_file = op.join(BLENDER_ROOT_DIR, 'sub_cortical_codes.txt')
+        sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
         make_forward_solution(events, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
                               args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
 

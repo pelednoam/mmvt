@@ -73,7 +73,7 @@ def render_draw(self, context):
     # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
     # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
-    # layout.prop(context.scene, 'smooth_figure')
+    layout.prop(context.scene, 'smooth_figure')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
     layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
     layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
