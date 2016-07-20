@@ -477,10 +477,10 @@ def main(subject, args):
 def get_sftp_password(subjects, args):
     sftp_password = ''
     if args.sftp:
-        all_neccesary_files_exist = np.all(
+        all_neccesary_files_exist = False if args.overwrite_fs_files else np.all(
             [utils.check_if_all_neccesary_files_exist(args.neccesary_files, os.path.join(SUBJECTS_DIR, subject), False)
              for subject in subjects])
-        if not all_neccesary_files_exist:
+        if not all_neccesary_files_exist or args.overwrite_fs_files:
             sftp_password = utils.ask_for_sftp_password(args.sftp_username)
     return sftp_password
 

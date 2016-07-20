@@ -744,8 +744,9 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
                                   overwrite_files=False, print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
-    all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
-    if all_files_exists:
+    all_files_exists = False if overwrite_files else \
+        check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
+    if all_files_exists and not overwrite_files:
         return True
     if sftp:
         sftp_copy_subject_files(subject, neccesary_files, sftp_username, sftp_domain,
