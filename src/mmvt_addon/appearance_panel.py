@@ -94,7 +94,8 @@ def make_brain_solid_or_transparent():
 
 
 def update_layers():
-    depth = bpy.context.scene.appearance_depth_slider if bpy.context.scene.appearance_depth_Bool else 0
+    # depth = bpy.context.scene.appearance_depth_slider if bpy.context.scene.appearance_depth_Bool else 0
+    depth = bpy.context.scene.appearance_depth_slider
     bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = depth
 
 

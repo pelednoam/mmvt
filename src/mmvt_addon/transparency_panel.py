@@ -1,8 +1,8 @@
 import bpy
 
 bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="")
-bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=1, min=1, max=10, description="")
-bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0, max=10, description="")
+# bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
 
 
 def transparency_draw(self, context):
@@ -11,7 +11,7 @@ def transparency_draw(self, context):
         layout = self.layout
         layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
         split2 = layout.split()
-        split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
+        # split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
         split2.prop(context.scene, 'appearance_depth_slider', text="Depth")
         layout.operator("ohad.appearance_update", text="Update")
 
