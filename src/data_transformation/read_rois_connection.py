@@ -13,6 +13,7 @@ BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
+
 def save_connectivity_to_blender(subject, atlas, data, conditions, stat, w=0, threshold=0, threshold_percentile=0):
     d = {}
     d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=['unknown', 'corpuscallosum'],

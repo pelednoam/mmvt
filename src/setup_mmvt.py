@@ -25,7 +25,7 @@ def create_links(links_fol_name='links', gui=True):
     all_links_exist = np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         return True
-    if os.environ['FREESURFER_HOME'] == '':
+    if os.environ.get('FREESURFER_HOME', '') == '':
         print('Please source FreeSurfer and rerun')
         return
     print('Where do you want to put the blend files? ')
