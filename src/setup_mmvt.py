@@ -2,7 +2,7 @@ import os
 import os.path as op
 import shutil
 import numpy as np
-
+import traceback
 from src.utils import utils
 
 
@@ -45,14 +45,18 @@ def create_links(links_fol_name='links', gui=True):
 
     for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],
             links_names):
-        if real_fol == '':
-            real_fol = utils.get_resources_fol()
-        utils.make_dir(real_fol)
-        if not op.islink(op.join(links_fol, link_name)):
-            os.symlink(real_fol, op.join(links_fol, link_name))
-        # Add the default task in meg folder
-        if link_name == 'meg' and real_fol != utils.get_resources_fol():
-            utils.make_dir(op.join(real_fol, 'default'))
+        try:
+            if real_fol == '':
+                real_fol = utils.get_resources_fol()
+            utils.make_dir(real_fol)
+            if not op.islink(op.join(links_fol, link_name)):
+                os.symlink(real_fol, op.join(links_fol, link_name))
+            # Add the default task in meg folder
+            if link_name == 'meg' and real_fol != utils.get_resources_fol():
+                utils.make_dir(op.join(real_fol, 'default'))
+        except:
+            print('Error with folder {} and link {}'.format(real_fol, link_name))
+            print(traceback.format_exc())
     return np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
 
 
