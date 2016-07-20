@@ -4,7 +4,7 @@ import os.path as op
 import mmvt_utils as mu
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
-    name="Output Path", default="", description="Define the path for the output files", subtype='DIR_PATH')
+    name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
 
 def set_render_quality(quality):
@@ -66,6 +66,18 @@ def grab_camera(self=None, do_save=True):
 
 def render_draw(self, context):
     layout = self.layout
+    layout.label(text='Output Path:')
+    layout.prop(context.scene, 'output_path')
+    layout.prop(context.scene, "quality", text='Quality')
+
+    # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
+    # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
+    layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
+    # layout.prop(context.scene, 'smooth_figure')
+    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
+    layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
+    layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
+
     col = layout.column(align=True)
     col.prop(context.scene, "X_rotation", text='X rotation')
     col.prop(context.scene, "Y_rotation", text='Y rotation')
@@ -74,14 +86,6 @@ def render_draw(self, context):
     col.prop(context.scene, "X_location", text='X location')
     col.prop(context.scene, "Y_location", text='Y location')
     col.prop(context.scene, "Z_location", text='Z location')
-    layout.prop(context.scene, "quality", text='Quality')
-    layout.prop(context.scene, 'output_path')
-    layout.prop(context.scene, 'smooth_figure')
-    # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
-    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
-    layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
-    layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
-    layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
 
 
 def update_camera(self=None, context=None):
