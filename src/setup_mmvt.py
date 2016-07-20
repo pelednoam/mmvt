@@ -65,9 +65,13 @@ def create_links(links_fol_name='links', gui=True):
 
 
 def create_real_folder(real_fol):
-    if real_fol == '':
-        real_fol = utils.get_resources_fol()
-    utils.make_dir(real_fol)
+    try:
+        if real_fol == '':
+            real_fol = utils.get_resources_fol()
+        utils.make_dir(real_fol)
+    except:
+        print('Error with creating the folder "{}"'.format(real_fol))
+        print(traceback.format_exc())
 
 
 def main():
