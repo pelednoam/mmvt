@@ -30,6 +30,7 @@ def create_links(links_fol_name='links', gui=True):
         return
     print('Where do you want to put the blend files? ')
     mmvt_fol = askdirectory() if gui else input()
+    create_real_folder(mmvt_fol)
     print('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
           'It prefered to create a local folder, because MMVT is going to save files to this directory: ')
     subjects_fol = askdirectory() if gui else input()
