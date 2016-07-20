@@ -359,7 +359,6 @@ def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
     return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
 
 
-
 def save_labels_coloring(subject, atlas, n_jobs=2):
     ret = False
     coloring_dir = op.join(BLENDER_ROOT_DIR, subject, 'coloring')
@@ -395,7 +394,8 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 def prepare_local_subjects_folder(subject, args):
     return utils.prepare_local_subjects_folder(
         args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
-        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password, args.print_traceback)
+        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
+        args.overwrite_fs_files, args.print_traceback)
 
 
 def build_remote_subject_dir(remote_subject_dir_template, subject):
@@ -528,6 +528,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=au.is_true)

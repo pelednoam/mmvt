@@ -741,7 +741,7 @@ def fsaverage_vertices():
 
 def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-                                  print_traceback=True):
+                                  overwrite_files=False, print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
@@ -749,14 +749,15 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
         return True
     if sftp:
         sftp_copy_subject_files(subject, neccesary_files, sftp_username, sftp_domain,
-                                local_subjects_dir, remote_subject_dir, sftp_password, print_traceback)
+                                local_subjects_dir, remote_subject_dir, sftp_password,
+                                overwrite_files, print_traceback)
     else:
         for fol, files in neccesary_files.items():
             if not os.path.isdir(os.path.join(local_subject_dir, fol)):
                 os.makedirs(os.path.join(local_subject_dir, fol))
             for file_name in files:
                 try:
-                    if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
+                    if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)) or overwrite_files:
                         shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
                                     os.path.join(local_subject_dir, fol, file_name))
                 except:
@@ -778,7 +779,7 @@ def check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, trace
 
 
 def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_subjects_dir, remote_subject_dir,
-                            password='', print_traceback=True):
+                            password='', overwrite_files=False, print_traceback=True):
     import pysftp
 
     local_subject_dir = op.join(local_subjects_dir, subject)
@@ -791,7 +792,7 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
             os.chdir(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
-                    if not op.isfile(op.join(local_subject_dir, fol, file_name)):
+                    if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
                         with sftp.cd(op.join(remote_subject_dir, fol)):
                             print('sftp: getting {}'.format(file_name))
                             sftp.get(file_name)
