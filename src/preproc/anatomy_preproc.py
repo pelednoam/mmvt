@@ -553,6 +553,7 @@ def read_cmd_args(argv=None):
         args.overwrite_hemis_srf = True
         args.overwrite_labels_ply_files = True
         args.overwrite_faces_verts = True
+        args.overwrite_fs_files = True
     print(args)
     return args
 
