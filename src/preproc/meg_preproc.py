@@ -1086,7 +1086,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
                 src = inverse_operator['src']
         if single_trial_stc:
-            label_ts = mne.extract_label_time_course(stcs[cond], labels, src, mode=extract_mode,
+            label_ts = mne.extract_label_time_course(stcs[cond_name], labels, src, mode=extract_mode,
                         return_generator=False, allow_empty=True)
             np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts'), label_ts)
         else:
