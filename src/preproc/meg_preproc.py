@@ -1086,9 +1086,9 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
                 src = inverse_operator['src']
         if single_trial_stc:
-            label_ts = mne.extract_label_time_course(stcs[cond_name], labels, src, mode=extract_mode,
+            labels_ts = mne.extract_label_time_course(stcs[cond_name], labels, src, mode=extract_mode,
                         return_generator=False, allow_empty=True)
-            np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}'.format(cond_name)), label_ts)
+            utils.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}.pkl'.format(cond_name)), labels_ts)
         else:
             for ind, label in enumerate(labels):
                 mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
