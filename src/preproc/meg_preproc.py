@@ -457,7 +457,7 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
 
 
 def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
-                           add_eeg_ref=True, pick_ori=None, single_trial_stc=False):
+                           add_eeg_ref=True, pick_ori=None, single_trial_stc=False, save_stc=True):
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs = {}
@@ -475,12 +475,14 @@ def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), ap
                 epo_cond = get_cond_fname(EPO, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
-                                     pick_ori=pick_ori, return_generator=False)
-                utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
+                                     pick_ori=pick_ori, return_generator=True)
+                # if save_stc:
+                #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
                 evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-                stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
+                if save_stc:
+                    stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
@@ -1038,7 +1040,8 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
 
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
-        norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None, do_plot=False):
+        norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
+        single_trial_stc=False, do_plot=False):
     labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', atlas) if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
@@ -1071,10 +1074,9 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
     if do_plot:
         utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'figures'))
 
-    T = len(stcs[list(stcs.keys())[0]].times)
-    labels_data = np.zeros((len(labels), T, len(stcs)))
     conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
     conditions = []
+    labels_data = None
     for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
         if do_plot:
             plt.figure()
@@ -1083,11 +1085,19 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             if src is None:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
                 src = inverse_operator['src']
+        if single_trial_stc:
+            label_ts = mne.extract_label_time_course(stcs, labels, src, mode=extract_mode,
+                        return_generator=False)
+            np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts'))
+            return
         for ind, label in enumerate(labels):
             mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
             mean_flip = np.squeeze(mean_flip)
             # Set flip to be always positive
             # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
+            if labels_data is None:
+                T = len(stcs[list(stcs.keys())[0]].times)
+                labels_data = np.zeros((len(labels), T, len(stcs)))
             labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
             if do_plot:
                 plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
@@ -1261,14 +1271,15 @@ def main(subject, mri_subject, args):
         if utils.should_run(args, 'calc_stc_per_condition'):
             stcs_conds = calc_stc_per_condition(
                 events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori,
-                args.single_trial_stc)
+                args.single_trial_stc, args.save_stc)
 
         if utils.should_run(args, 'calc_labels_avg_per_condition'):
             for hemi in HEMIS:
                 calc_labels_avg_per_condition(args.atlas, hemi, events, extract_mode=args.extract_mode,
                     inverse_method=inverse_method, positive=args.evoked_flip_positive,
                     moving_average_win_size=args.evoked_moving_average_win_size,
-                    norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs)
+                    norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
+                    single_trial_stc=args.single_trial_stc, stcs=stcs_conds)
 
         if utils.should_run(args, 'smooth_stc'):
             stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
@@ -1339,6 +1350,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
