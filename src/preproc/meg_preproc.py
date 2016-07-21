@@ -1086,41 +1086,42 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
                 src = inverse_operator['src']
         if single_trial_stc:
-            label_ts = mne.extract_label_time_course(stcs, labels, src, mode=extract_mode,
+            label_ts = mne.extract_label_time_course(stcs[cond], labels, src, mode=extract_mode,
                         return_generator=False, allow_empty=True)
-            np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts'))
-            return
-        for ind, label in enumerate(labels):
-            mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
-            mean_flip = np.squeeze(mean_flip)
-            # Set flip to be always positive
-            # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
-            if labels_data is None:
-                T = len(stcs[list(stcs.keys())[0]].times)
-                labels_data = np.zeros((len(labels), T, len(stcs)))
-            labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
+            np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts'), label_ts)
+        else:
+            for ind, label in enumerate(labels):
+                mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
+                mean_flip = np.squeeze(mean_flip)
+                # Set flip to be always positive
+                # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
+                if labels_data is None:
+                    T = len(stcs[list(stcs.keys())[0]].times)
+                    labels_data = np.zeros((len(labels), T, len(stcs)))
+                labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
+                if do_plot:
+                    plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
+
             if do_plot:
-                plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
+                plt.xlabel('time (ms)')
+                plt.title('{}: {} {}'.format(cond_name, hemi, atlas))
+                plt.legend()
+                # plt.show()
+                plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-        if do_plot:
-            plt.xlabel('time (ms)')
-            plt.title('{}: {} {}'.format(cond_name, hemi, atlas))
-            plt.legend()
-            # plt.show()
-            plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
-
-    labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
-    labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
-        labels_output_fname_template.format(hemi=hemi)
-    print('Saving to {}'.format(labels_output_fname))
-    np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-    # Normalize the data
-    data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
-    max_abs = utils.get_max_abs(data_max, data_min)
-    labels_data = labels_data / max_abs
-    labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
-    np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-    shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
+    if not single_trial_stc:
+        labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
+        labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
+            labels_output_fname_template.format(hemi=hemi)
+        print('Saving to {}'.format(labels_output_fname))
+        np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+        # Normalize the data
+        data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
+        max_abs = utils.get_max_abs(data_max, data_min)
+        labels_data = labels_data / max_abs
+        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
+        np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+        shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
 
 
 def plot_labels_data(plot_each_label=False):
