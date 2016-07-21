@@ -202,6 +202,24 @@ def _read_labels_parallel(files_chunk):
     return labels
 
 
+def read_hemi_labels(subject, subjects_dir, atlas, hemi, surf_name='pial', labels_fol=''):
+    # todo: replace with labels utils read labels function
+    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol=='' else labels_fol
+    annot_fname_template = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
+    if utils.both_hemi_files_exist(annot_fname_template):
+        labels = mne.read_labels_from_annot(subject, atlas, hemi, surf_name)
+        if len(labels) == 0:
+            raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
+    else:
+        labels = []
+        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
+            label = mne.read_label(label_file)
+            labels.append(label)
+        if len(labels) == 0:
+            raise Exception('No labels were found in {}!'.format(labels_fol))
+    return labels
+
+
 def calc_center_of_mass(labels, ret_mat=False):
     center_of_mass = np.zeros((len(labels), 3)) if ret_mat else {}
     for ind, label in enumerate(labels):

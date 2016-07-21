@@ -12,11 +12,11 @@ def read_epoches_and_calc_activity(subject, mri_subject):
     meg.main(subject, mri_subject, args)
 
 
-def calc_single_trial_stc_msit(subject, mri_subject):
+def calc_single_trial_labels_msit(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.task = 'MSIT'
     args.atlas = 'laus250'
-    args.function = 'calc_stc_per_condition'
+    args.function = 'calc_stc_per_condition,calc_labels_avg_per_condition'
     args.single_trial_stc = True
     args.fwd_no_cond = False
     args.files_includes_cond = True

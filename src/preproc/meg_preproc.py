@@ -13,6 +13,7 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
 from src.utils import utils
+from src.utils import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
@@ -1038,11 +1039,10 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
     utils.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
 
 
-def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None,
+def calc_labels_avg_per_condition(atlas, events, surf_name='pial', labels_fol='', stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
         single_trial_stc=False, do_plot=False):
-    labels_fol = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', atlas) if labels_fol=='' else labels_fol
     if stcs is None:
         stcs = {}
         for cond in events.keys():
@@ -1050,19 +1050,6 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             if not op.isfile(stc_fname):
                 raise Exception("Can't find the stc file! {}".format(stc_fname))
             stcs[cond] = mne.read_source_estimate(stc_fname)
-
-    annot_fname_template = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', '{}.{}.annot'.format('{hemi}', atlas))
-    if utils.both_hemi_files_exist(annot_fname_template):
-        labels = mne.read_labels_from_annot(MRI_SUBJECT, atlas, hemi, surf_name)
-        if len(labels) == 0:
-            raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
-    else:
-        labels = []
-        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
-            label = mne.read_label(label_file)
-            labels.append(label)
-        if len(labels) == 0:
-            raise Exception('No labels were found in {}!'.format(labels_fol))
 
     global_inverse_operator = False
     if '{cond}' not in INV:
@@ -1077,6 +1064,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
     conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
     conditions = []
     labels_data = None
+
     for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
         if do_plot:
             plt.figure()
@@ -1090,38 +1078,43 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                         return_generator=False, allow_empty=True)
             np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}'.format(cond_name)), np.array(labels_ts))
         else:
-            for ind, label in enumerate(labels):
-                mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
-                mean_flip = np.squeeze(mean_flip)
-                # Set flip to be always positive
-                # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
-                if labels_data is None:
-                    T = len(stcs[list(stcs.keys())[0]].times)
-                    labels_data = np.zeros((len(labels), T, len(stcs)))
-                labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
-                if do_plot:
-                    plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
+            labels_data_hemi = {}
+            for hemi in HEMIS:
+                labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
+                for ind, label in enumerate(labels):
+                    mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
+                    mean_flip = np.squeeze(mean_flip)
+                    # Set flip to be always positive
+                    # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
+                    if labels_data is None:
+                        T = len(stcs[list(stcs.keys())[0]].times)
+                        labels_data = np.zeros((len(labels), T, len(stcs)))
+                    labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
+                    labels_data_hemi[hemi] = labels_data
+                    if do_plot:
+                        plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
 
-            if do_plot:
-                plt.xlabel('time (ms)')
-                plt.title('{}: {} {}'.format(cond_name, hemi, atlas))
-                plt.legend()
-                # plt.show()
-                plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
+                if do_plot:
+                    plt.xlabel('time (ms)')
+                    plt.title('{}: {} {}'.format(cond_name, hemi, atlas))
+                    plt.legend()
+                    # plt.show()
+                    plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
     if not single_trial_stc:
-        labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
-        labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
-            labels_output_fname_template.format(hemi=hemi)
-        print('Saving to {}'.format(labels_output_fname))
-        np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-        # Normalize the data
-        data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
-        max_abs = utils.get_max_abs(data_max, data_min)
-        labels_data = labels_data / max_abs
-        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
-        np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-        shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
+        for hemi in HEMIS:
+            labels_data = utils.make_evoked_smooth_and_positive(labels_data_hemi[hemi], positive, moving_average_win_size)
+            labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
+                labels_output_fname_template.format(hemi=hemi)
+            print('Saving to {}'.format(labels_output_fname))
+            np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+            # Normalize the data
+            data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
+            max_abs = utils.get_max_abs(data_max, data_min)
+            labels_data = labels_data / max_abs
+            labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
+            np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+            shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
 
 
 def plot_labels_data(plot_each_label=False):
@@ -1275,12 +1268,11 @@ def main(subject, mri_subject, args):
                 args.single_trial_stc, args.save_stc)
 
         if utils.should_run(args, 'calc_labels_avg_per_condition'):
-            for hemi in HEMIS:
-                calc_labels_avg_per_condition(args.atlas, hemi, events, extract_mode=args.extract_mode,
-                    inverse_method=inverse_method, positive=args.evoked_flip_positive,
-                    moving_average_win_size=args.evoked_moving_average_win_size,
-                    norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
-                    single_trial_stc=args.single_trial_stc, stcs=stcs_conds)
+            calc_labels_avg_per_condition(args.atlas, events, extract_mode=args.extract_mode,
+                inverse_method=inverse_method, positive=args.evoked_flip_positive,
+                moving_average_win_size=args.evoked_moving_average_win_size,
+                norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
+                single_trial_stc=args.single_trial_stc, stcs=stcs_conds)
 
         if utils.should_run(args, 'smooth_stc'):
             stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
