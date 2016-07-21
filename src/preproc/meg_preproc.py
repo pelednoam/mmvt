@@ -27,15 +27,17 @@ STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
-MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
-    NOISE_COV, DATA_CSD, NOISE_CSD = '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
-                '', '', '', '', '', '', '', '', ''
+MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
+    NOISE_COV, DATA_CSD, NOISE_CSD = [''] * 34
+# '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
+#             '', '', '', '', '', '', '', '', ''
 
 
-def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False, cleaning_method='', constrast='',
-                 subjects_meg_dir='', task='', subjects_mri_dir='', MMVT_DIR='', fwd_no_cond=False, inv_no_cond=False):
+def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False,
+                 cleaning_method='', constrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
+                 fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
-        MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
+        MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
     if files_includes_cond:
         fname_format = fname_format_cond
@@ -44,7 +46,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     os.environ['SUBJECT'] = SUBJECT
     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
-    BLENDER_SUBJECT_FOLDER = op.join(MMVT_DIR, MRI_SUBJECT)
+    BLENDER_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
         cleaning_method=cleaning_method, constrast=constrast)
     _get_fif_name_no_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
@@ -52,8 +54,10 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
         cleaning_method=cleaning_method, constrast=constrast)
-    _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc', cleaning_method=cleaning_method, constrast=constrast)
-    _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl', cleaning_method=cleaning_method, constrast=constrast)
+    _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc',
+                            cleaning_method=cleaning_method, constrast=constrast)
+    _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl',
+                            cleaning_method=cleaning_method, constrast=constrast)
     RAW = _get_fif_name('raw', constrast='', cond='')
     EVE = _get_txt_name('eve', cond='')
     EVO = _get_fif_name('ave')
@@ -76,6 +80,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(SUBJECTS_MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
+    STC_ST = _get_pkl_name('{method}_st')
     LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
     ACT = op.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
@@ -452,7 +457,9 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
 
 
 def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
-                           add_eeg_ref=True, pick_ori=None):
+                           add_eeg_ref=True, pick_ori=None, single_trial_stc=False):
+    if single_trial_stc:
+        from mne.minimum_norm import apply_inverse_epochs
     stcs = {}
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
@@ -464,9 +471,16 @@ def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), ap
         try:
             if not global_inverse_operator:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
-            evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
-            stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-            stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
+            if single_trial_stc:
+                epo_cond = get_cond_fname(EPO, cond_name)
+                epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
+                stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
+                                     pick_ori=pick_ori, return_generator=False)
+                utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
+            else:
+                evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+                stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
@@ -1195,36 +1209,36 @@ def misc():
     pass
 
 
-def get_fname_format(args):
-    if args.task == 'MSIT':
+def get_fname_format(task, fname_format='', fname_format_cond=''):
+    if task == 'MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
         fname_format_cond = '{subject}_msit_{cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
         fname_format = '{subject}_msit_{cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
         events = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
         # event_digit = 1
-    elif args.task == 'ECR':
+    elif task == 'ECR':
         fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
         fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
         # events = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
         events = dict(C=1, I=2)
         # event_digit = 3
-    elif args.task == 'ARC':
+    elif task == 'ARC':
         fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
         fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
         events = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
+        if fname_format == '' or fname_format_cond == '':
+            raise Exception('Empty fname_format and/or fname_format_cond!')
         # raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
         # print('Unkown task! Known tasks are MSIT/ECR/ARC.')
-        fname_format_cond = args.fname_format_cond
-        fname_format = args.fname_format
         events = dict((event_name, event_id + 1) for event_id, event_name in enumerate(args.events))
         # events = dict(all=1)
     return fname_format, fname_format_cond, events
 
 
 def main(subject, mri_subject, args):
-    fname_format, fname_format_cond, events = get_fname_format(args)
-    init_globals(mri_subject, subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
+    fname_format, fname_format_cond, events = get_fname_format(args.task, args.fname_format, args.fname_format_cond)
+    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs = None, None
@@ -1246,7 +1260,8 @@ def main(subject, mri_subject, args):
     for inverse_method in args.inverse_method:
         if utils.should_run(args, 'calc_stc_per_condition'):
             stcs_conds = calc_stc_per_condition(
-                events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori)
+                events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori,
+                args.single_trial_stc)
 
         if utils.should_run(args, 'calc_labels_avg_per_condition'):
             for hemi in HEMIS:
@@ -1315,7 +1330,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--constrast', help='', required=False, default='')
-    parser.add_argument('--cleaning_method', help='', required=False, default='')
+    parser.add_argument('--cleaning_method', help='', required=False, default='nTSSS')
     parser.add_argument('--fwd_usingEEG', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
@@ -1324,6 +1339,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)

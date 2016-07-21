@@ -1393,3 +1393,10 @@ def vstack(arr1, arr2):
 
 def should_run(args, func_name):
     return ('all' in args.function or func_name in args.function) and func_name not in args.exclude
+
+
+def trim_to_same_size(x1, x2):
+    if len(x1) < len(x2):
+        return x1, x2[:len(x1)]
+    else:
+        return x1[:len(x2)], x2

@@ -3,6 +3,7 @@ import glob
 import numpy as np
 import re
 import mne
+import scipy.io as sio
 import matplotlib.pyplot as plt
 from src.utils import utils
 from src.preproc import meg_preproc
@@ -10,16 +11,16 @@ from src.preproc import meg_preproc
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
+ELECTRODES_DIR = op.join(LINKS_DIR, 'electrodes')
 
-
-def meg_recon_to_electrodes(subject, mri_subject, atlas, bipolar, error_radius=3, elec_length=4, vertices_num_threshold=0):
+def meg_recon_to_electrodes(subject, mri_subject, atlas, task ,bipolar, error_radius=3, elec_length=4, vertices_num_threshold=0):
     elecs_probs, probs_fname = utils.get_electrodes_labeling(
-        mri_subject, BLENDER_ROOT_DIR, atlas, bipolar, error_radius, elec_length)
+        mri_subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
     elecs_probs_fol = op.split(probs_fname)[0]
     elecs_probs_data_fname = op.join(elecs_probs_fol, '{}_meg.pkl'.format(utils.namebase(probs_fname)))
-    elecs_probs = get_meg(subject, mri_subject, elecs_probs, bipolar)
+    elecs_probs = get_meg(subject, mri_subject, task, elecs_probs, bipolar)
     utils.save(elecs_probs, elecs_probs_data_fname)
     # for elec_probs in elecs_probs:
     #     if len(elec_probs['cortical_indices']) > vertices_num_threshold and elec_probs['approx'] == 3:
@@ -27,15 +28,15 @@ def meg_recon_to_electrodes(subject, mri_subject, atlas, bipolar, error_radius=3
     #         # meg = get_meg(subject, elec_probs['cortical_indices'], elec_probs['hemi'])
 
 
-def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=30, read_from_stc=False):
-    # meg_files = glob.glob(op.join(BLENDER_ROOT_DIR, subject, 'activity_map_{}'.format(hemi), '*.npy'))
+def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_threshold=30, read_from_stc=False, do_plot=True):
+    # meg_files = glob.glob(op.join(MMVT_DIR, subject, 'activity_map_{}'.format(hemi), '*.npy'))
     # meg_data = np.zeros((len(meg_files), len(vertices)))
     # for meg_file in meg_files:
     #     t = int(re.findall('\d+', utils.namebase(meg_file))[0])
     #     meg_data_t = np.load(meg_file)
     #     meg_data[t] = meg_data_t[vertices, 0]
     #     print("sdf")
-    electordes_data_fname = op.join(BLENDER_ROOT_DIR, mri_subject, 'electrodes', 'electrodes_{}data_diff.npz'.format(
+    electordes_data_fname = op.join(MMVT_DIR, mri_subject, 'electrodes', 'electrodes_{}data_diff.npz'.format(
         'bipolar_' if bipolar else ''))
     if not op.isfile(electordes_data_fname):
         print('No electrodes data file!')
@@ -43,23 +44,21 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
     f = np.load(electordes_data_fname)
     conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in f['conditions']])
     names = np.array([name.decode() if isinstance(name, np.bytes_) else name for name in f['names']])
-    figs_fol = op.join(BLENDER_ROOT_DIR, mri_subject, 'figs')
+    figs_fol = op.join(MMVT_DIR, mri_subject, 'figs', 'meg-electrodes')
     utils.make_dir(figs_fol)
-    # subject = 'ep001'
-    task = 'ECR' # 'MSIT'
-    fname_format, fname_format_cond, events_id, event_digit = meg_preproc.get_fname_format(task)
+    fname_format, fname_format_cond, events_id = meg_preproc.get_fname_format(task)
     if task == 'MSIT':
-        raw_cleaning_method = 'nTSSS'
+        cleaning_method = 'nTSSS'
         constrast = 'interference'
         keys_dict = {'neutral': 'noninterference', 'interference': 'interference'}
     elif task == 'ECR':
-        raw_cleaning_method = ''
+        cleaning_method = ''
         constrast = ''
         keys_dict = {'C': 'congruent', 'I': 'incongruent'}
     inverse_method = 'dSPM'
-    meg_preproc.init_globals(subject, mri_subject, fname_format, fname_format_cond, raw_cleaning_method=raw_cleaning_method,
+    meg_preproc.init_globals(subject, mri_subject, fname_format, fname_format_cond, cleaning_method=cleaning_method,
                              subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
-                             BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True,
+                             mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
                              constrast=constrast)
 
     for elec_probs in elecs_probs:
@@ -68,9 +67,9 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
         #     print(elec_probs['name'], len(elec_probs['cortical_indices']), np.min(elec_probs['cortical_indices_dists']))
 
     meg_elecs = {}
+    errors, dists = [], []
     for cond in events_id.keys():
         meg_cond = keys_dict[cond]
-        meg_elecs[cond] = []
         if read_from_stc:
             stc_fname = meg_preproc.STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh')
             stc = mne.read_source_estimate(stc_fname)
@@ -79,58 +78,117 @@ def get_meg(subject, mri_subject, elecs_probs, bipolar, vertices_num_threshold=3
             meg_evo_data = {}
             for hemi in utils.HEMIS:
                 meg_evo_data[hemi] = np.load(
-                    op.join(BLENDER_ROOT_DIR, mri_subject,op.basename(meg_preproc.LBL.format(hemi))))
+                    op.join(MMVT_DIR, mri_subject,op.basename(meg_preproc.LBL.format(hemi))))
             meg_conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in meg_evo_data['rh']['conditions']])
             meg_labels = {hemi:np.array([name.decode() if isinstance(name, np.bytes_) else name for name in meg_evo_data[hemi]['names']]) for hemi in utils.HEMIS}
             cond_ind = np.where(cond == meg_conds)[0][0]
         for elec_probs in elecs_probs:
-            # len(elec_probs['cortical_indices']) > vertices_num_threshold
-            if len(elec_probs['cortical_indices_dists']) > 0 and \
-                            len(elec_probs['cortical_rois']) > 0 and \
-                            np.min(elec_probs['cortical_indices_dists']) < 1 and \
-                            elec_probs['approx'] == 3:
-                # print(elec_probs['name'], elec_probs['hemi'], len(elec_probs['cortical_indices']))
-                elec_inds = np.where(elec_probs['name'] == names)[0]
-                if len(elec_inds) == 1:
-                    elec_ind = elec_inds[0]
-                else:
-                    print('{} found {} in names'.format(elec_probs['name'], len(elec_inds)))
-                    continue
-                if read_from_stc:
-                    data = stc.rh_data if elec_probs['hemi'] == 'rh' else stc.lh_data
-                    T = data.shape[1]
-                    elec_meg_data = data[elec_probs['cortical_indices']]
-                    dists = elec_probs['cortical_indices_dists']
-                    norm_dists = dists / np.sum(dists)
-                    norm_dists = np.reshape(norm_dists, (1, len(norm_dists)))
-                    elec_meg_data = np.dot(norm_dists, elec_meg_data)
-                    elec_meg_data = np.reshape(elec_meg_data, ((T)))
-                else:
-                    meg_labels_inds = np.array([np.where(label == meg_labels[elec_probs['hemi']])[0][0] \
-                                                for label in elec_probs['cortical_rois']])
-                    data = meg_evo_data[elec_probs['hemi']]['data'][meg_labels_inds, :, cond_ind]
-                    probs = elec_probs['cortical_probs']
-                    elec_meg_data = np.dot(np.reshape(probs, (1, len(probs))), data)[0, :]
-                elec_data = f['data'][elec_ind, :, cond_ind]
-                elec_data_diff = np.max(elec_data) - np.min(elec_data)
-                elec_meg_data *= elec_data_diff / (np.max(elec_meg_data) - np.min(elec_meg_data))
-                # elec_meg_data += elec_data[0] - elec_meg_data[0]
-                elec_meg_data += np.mean(elec_data) - np.mean(elec_meg_data)
-                elec_probs['data'][cond] = elec_meg_data
-                plt.figure()
-                plt.plot(elec_meg_data, label='pred')
-                plt.plot(elec_data, label='elec')
-                plt.legend()
-                plt.title('{}-{}'.format(elec_probs['name'], cond))
-                plt.savefig(op.join(figs_fol, '{}-{}.jpg'.format(elec_probs['name'], cond)))
-                plt.close()
+            try:
+                # len(elec_probs['cortical_indices']) > vertices_num_threshold
+                if len(elec_probs['cortical_indices_dists']) > 0 and \
+                                len(elec_probs['cortical_rois']) > 0:
+                                # np.min(elec_probs['cortical_indices_dists']) < 1 and \
+                                # elec_probs['approx'] == 3:
+                    # print(elec_probs['name'], elec_probs['hemi'], len(elec_probs['cortical_indices']))
+                    elec_inds = np.where(elec_probs['name'] == names)[0]
+                    if len(elec_inds) == 1:
+                        elec_ind = elec_inds[0]
+                    else:
+                        print('{} found {} in names'.format(elec_probs['name'], len(elec_inds)))
+                        continue
+                    if read_from_stc:
+                        data = stc.rh_data if elec_probs['hemi'] == 'rh' else stc.lh_data
+                        T = data.shape[1]
+                        elec_meg_data = data[elec_probs['cortical_indices']]
+                        dists = elec_probs['cortical_indices_dists']
+                        norm_dists = dists / np.sum(dists)
+                        norm_dists = np.reshape(norm_dists, (1, len(norm_dists)))
+                        elec_meg_data = np.dot(norm_dists, elec_meg_data)
+                        elec_meg_data = np.reshape(elec_meg_data, ((T)))
+                    else:
+                        # meg_labels_inds = []
+                        # for label in elec_probs['cortical_rois']:
+                        #     meg_label_inds = np.where(label == meg_labels[elec_probs['hemi']])[0]
+                        #     if len(meg_label_inds) > 0:
+                        #         meg_labels_inds.append(meg_label_inds[0])
+                        #     else:
+                        #         print("{}: Can't find {} in elec_probs[{}]".format(elec_probs['name'], label, elec_probs['hemi']))
+                        # meg_labels_inds = np.array(meg_labels_inds)
+                        meg_labels_inds = np.array([np.where(label == meg_labels[elec_probs['hemi']])[0][0] \
+                                                    for label in elec_probs['cortical_rois']])
+                        data = meg_evo_data[elec_probs['hemi']]['data'][meg_labels_inds, :, cond_ind]
+                        probs = elec_probs['cortical_probs']
+                        elec_meg_data = np.dot(np.reshape(probs, (1, len(probs))), data)[0, :]
+                    elec_data = f['data'][elec_ind, :, cond_ind]
+                    elec_data_diff = np.max(elec_data) - np.min(elec_data)
+                    elec_meg_data *= elec_data_diff / (np.max(elec_meg_data) - np.min(elec_meg_data))
+                    # elec_meg_data += elec_data[0] - elec_meg_data[0]
+                    elec_meg_data += np.mean(elec_data) - np.mean(elec_meg_data)
+                    elec_probs['data'][cond] = elec_meg_data
+
+                    elec_meg_data, elec_data = utils.trim_to_same_size(elec_meg_data, elec_data)
+                    data_diff = elec_meg_data-elec_data
+                    data_diff = data_diff / max(data_diff)
+                    rms = np.sqrt(np.sum(np.power(data_diff, 2)))
+                    dist = min(elec_probs['cortical_indices_dists'])
+                    errors.append(rms)
+                    dists.append(dist)
+                    meg_elecs[elec_probs['name']] = dict(rms=rms, dist=dist, cond=cond, approx=elec_probs['approx'])
+                    if do_plot:
+                        plt.figure()
+                        plt.plot(elec_meg_data, label='pred')
+                        plt.plot(elec_data, label='elec')
+                        plt.legend()
+                        plt.title('{}-{}'.format(elec_probs['name'], cond))
+                        plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}.jpg'.format(rms, elec_probs['name'], cond)))
+                        plt.close()
+            except:
+                print('Error with {}!'.format(elec_probs['name']))
+    results_fname = op.join(figs_fol, 'results.csv')
+    with open(results_fname, 'w') as output_file:
+        for elc_name, res in meg_elecs.items():
+            output_file.write('{},{},{},{},{}\n'.format(elc_name, res['cond'], res['rms'], res['dist'], res['approx']))
+
     return elecs_probs
 
 
+def calc_coh(subject, conditions, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax=110, bw=15, n_jobs=6):
+
+    from mne.connectivity import spectral_connectivity
+
+    input_file = op.join(ELECTRODES_DIR, subject, 'electrodes_data_trials.mat')
+    output_file = op.join(ELECTRODES_DIR, subject, 'electrodes_coh.npy')
+    d = sio.loadmat(input_file)
+    for cond, data in enumerate([d[conditions[0]], d[conditions[1]]]):
+        if cond == 0:
+            coh_mat = np.zeros((data.shape[1], data.shape[1], 2))
+        ds_data = downsample_data(data)
+        con_cnd, _, _, _, _ = spectral_connectivity(
+            ds_data, method='coh', mode='multitaper', sfreq=sfreq,
+            fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
+            tmin=tmin, tmax=tmax)
+        con_cnd = np.mean(con_cnd, axis=2)
+        coh_mat[:, :, cond] = con_cnd
+    np.save(output_file[:-4], coh_mat)
+    return con_cnd
+
+
+def downsample_data(data):
+    C, E, T = data.shape
+    new_data = np.zeros((C, E, int(T/2)))
+    for epoch in range(C):
+        new_data[epoch, :, :] = utils.downsample_2d(data[epoch, :, :], 2)
+    return new_data
+
+
 if __name__ == '__main__':
-    subject =  'ep009' # 'ep007' 'ep001'
-    mri_subject =  'mg99' # 'mg96' 'mg78'
+    subject = 'ep001' # 'ep009' # 'ep007'
+    mri_subject = 'mg78' # 'mg99' # 'mg96'
     atlas = 'laus250'
     bipolar = True
-    meg_recon_to_electrodes(subject, mri_subject, atlas, bipolar)
+    task = 'MSIT' # 'ECR'
+    conditions = ['interference', 'noninterference']
+
+    meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar)
+    # calc_coh(mri_subject, conditions)
     print('finish!')
