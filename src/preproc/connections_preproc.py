@@ -24,7 +24,7 @@ def save_electrodes_coh(subject, conditions, mat_fname, stat, t_max, threshold=0
     coh = calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
                               dt=0.1, window_len=0.1, n_jobs=6)
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat)
+        calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat, conditions)
     d['conditions'] = ['interference', 'neutral']
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh'), **d)
 
@@ -88,34 +88,42 @@ def save_rois_connectivity(subject, atlas, rois_con_fname, mat_field, conditions
     d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]
     d['labels'] = [l.name for l in d['labels']]
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(data, d['labels'], d['hemis'], stat, w, threshold, threshold_percentile, color_map,
+        calc_connections_colors(data, d['labels'], d['hemis'], stat, conditions, w, threshold, threshold_percentile, color_map,
                                 norm_by_percentile, norm_percs)
     d['conditions'] = conditions
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'rois_con'), **d)
 
 
-def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold_percentile=0, color_map='jet',
+def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=0, threshold_percentile=0, color_map='jet',
                             norm_by_percentile=True, norm_percs=(1, 99)):
     M = data.shape[0]
     W = data.shape[2] if w == 0 else w
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
-    con_values = np.zeros((L, W, 2))
+    con_values = np.zeros((L, W, len(conditions)))
     con_names = [None] * L
     con_type = np.zeros((L))
     axis = data.ndim - 1
-    coh_stat = utils.calc_stat_data(data, stat, axis=axis)
-    x = coh_stat.ravel()
+    if axis >= 2:
+        coh_stat = utils.calc_stat_data(data, stat, axis=axis)
+        x = coh_stat.ravel()
+    else:
+        x = data.ravel()
     data_max, data_min = utils.get_data_max_min(x, norm_by_percentile, norm_percs)
     data_minmax = max(map(abs, [data_max, data_min]))
-    for cond in range(2):
+    for cond in range(len(conditions)):
         for w in range(W):
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
                 if W > 1:
                     con_values[ind, w, cond] = data[i, j, w, cond]
-                else:
+                elif data.ndim > 2:
                     con_values[ind, w, cond] = data[i, j, cond]
-    stat_data = utils.calc_stat_data(con_values, stat)
+                else:
+                    con_values[ind, w, cond] = data[i, j]
+    if len(conditions) > 1:
+        stat_data = utils.calc_stat_data(con_values, stat)
+    else:
+        stat_data = np.squeeze(con_values)
     con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
 
     for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
@@ -127,8 +135,8 @@ def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold
     con_names = np.array(con_names)
     if threshold_percentile > 0:
         threshold = np.percentile(np.abs(stat_data), threshold_percentile)
-    if threshold > 0:
-        indices = np.where(np.abs(stat_data) >= threshold)[0]
+    if threshold >= 0:
+        indices = np.where(np.abs(stat_data) > threshold)[0]
         con_colors = con_colors[indices]
         con_indices = con_indices[indices]
         con_names = con_names[indices]
@@ -141,7 +149,7 @@ def calc_connections_colors(data, labels, hemis, stat, w, threshold=0, threshold
 def main(subject, args):
     if utils.should_run('save_rois_connectivity'):
         save_rois_connectivity(subject, args.atlas, args.mat_fname, args.mat_field, args.conditions, args.stat,
-                               args.w, args.labels_exclude, args.threshold, args.threshold_percentile,
+                               args.windows, args.labels_exclude, args.threshold, args.threshold_percentile,
                                args.color_map, args.norm_by_percentile, args.norm_percs)
 
     if utils.should_run('save_electrodes_coh'):
@@ -149,25 +157,13 @@ def main(subject, args):
         save_electrodes_coh(subject, args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
 
 
-def example(args):
-    subject = 'fsaverage5c'
-    args.atlas = 'laus125'
-    args.rois_con_fname = '/cluster/neuromind/npeled/linda/figure_file1.mat'
-    args.mat_field = 'figure_file'
-    args.w = 1
-    args.stat = STAT_DIFF
-    args.threshold_percentile = 99
-    args.conditions = ['task', 'rest']
-    save_rois_connectivity(subject, args.atlas, args.rois_con_fname, args.mat_field, args.conditions, args.stat,
-                           w=args.w, threshold_percentile=args.threshold_percentile)
 
-
-if __name__ == '__main__':
+def read_cmd_args(argv):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-c', '--conditions', help='conditions names', required=True, type=au.str_arr_type)
+    parser.add_argument('-c', '--conditions', help='conditions names', required=False, default='contrast', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
@@ -176,12 +172,22 @@ if __name__ == '__main__':
                         type=au.str_arr_type)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
+    parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
+    parser.add_argument('--windows', help='', required=False, default=0, type=int)
+    parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
+    parser.add_argument('--threshold', help='', required=False, default=0, type=float)
+    parser.add_argument('--color_map', help='', required=False, default='jet')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
-    args = utils.Bag(au.parse_parser(parser))
-    print(args)
+    args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    if len(args.conditions) == 1:
+        args.stat = STAT_AVG
+    print(args)
+    return args
 
+
+if __name__ == '__main__':
+    args = read_cmd_args()
     for subject in args.subject:
         main(subject, args)
-
     print('finish!')
