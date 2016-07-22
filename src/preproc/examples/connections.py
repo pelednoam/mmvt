@@ -26,9 +26,12 @@ def example2(subject):
     args.mat_field = 'matrix_cognition_ratio_fpn_dmn'
     args.w = 1
     args.threshold = 0
+    args.norm_by_percentile = False
+    args.symetric_colors = False
     args.colors_map = 'YlOrRd'
     con.save_rois_connectivity(subject, args.atlas, args.rois_con_fname, args.mat_field, args.conditions, args.stat,
-                           w=args.w, threshold_percentile=args.threshold_percentile)
+                               w=args.w, threshold_percentile=args.threshold_percentile,
+                               norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
 
 
 if __name__ == '__main__':

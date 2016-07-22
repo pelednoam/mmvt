@@ -80,22 +80,22 @@ def downsample_data(data):
 
 def save_rois_connectivity(subject, atlas, rois_con_fname, mat_field, conditions, stat=STAT_DIFF, w=0,
                            exclude=['unknown', 'corpuscallosum'], threshold=0, threshold_percentile=0,
-                           color_map='jet', norm_by_percentile=True, norm_percs=(1, 99)):
+                           color_map='jet', norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     d = dict()
     data = sio.loadmat(rois_con_fname)[mat_field]
     d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=exclude, sorted_according_to_annot_file=True)
-    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True)
+    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True) * 10
     d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]
     d['labels'] = [l.name for l in d['labels']]
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
         calc_connections_colors(data, d['labels'], d['hemis'], stat, conditions, w, threshold, threshold_percentile, color_map,
-                                norm_by_percentile, norm_percs)
+                                norm_by_percentile, norm_percs, symetric_colors)
     d['conditions'] = conditions
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'rois_con'), **d)
 
 
 def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=0, threshold_percentile=0, color_map='jet',
-                            norm_by_percentile=True, norm_percs=(1, 99)):
+                            norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     M = data.shape[0]
     W = data.shape[2] if w == 0 else w
     L = int((M * M + M) / 2 - M)
@@ -103,14 +103,6 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
     con_values = np.zeros((L, W, len(conditions)))
     con_names = [None] * L
     con_type = np.zeros((L))
-    axis = data.ndim - 1
-    if axis >= 2:
-        coh_stat = utils.calc_stat_data(data, stat, axis=axis)
-        x = coh_stat.ravel()
-    else:
-        x = data.ravel()
-    data_max, data_min = utils.get_data_max_min(x, norm_by_percentile, norm_percs)
-    data_minmax = max(map(abs, [data_max, data_min]))
     for cond in range(len(conditions)):
         for w in range(W):
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
@@ -124,7 +116,6 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
         stat_data = utils.calc_stat_data(con_values, stat)
     else:
         stat_data = np.squeeze(con_values)
-    con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
 
     for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
         con_indices[ind, :] = [i, j]
@@ -137,11 +128,21 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
         threshold = np.percentile(np.abs(stat_data), threshold_percentile)
     if threshold >= 0:
         indices = np.where(np.abs(stat_data) > threshold)[0]
-        con_colors = con_colors[indices]
+        # con_colors = con_colors[indices]
         con_indices = con_indices[indices]
         con_names = con_names[indices]
         con_values = con_values[indices]
         con_type  = con_type[indices]
+        stat_data = stat_data[indices]
+
+    con_values = np.squeeze(con_values)
+    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
+    if symetric_colors:
+        data_minmax = max(map(abs, [data_max, data_min]))
+        con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
+    else:
+        con_colors = utils.mat_to_colors(stat_data, -data_min, data_max, color_map)
+
     print(len(con_names))
     return con_colors, con_indices, con_names, con_values, con_type
 
@@ -177,6 +178,7 @@ def read_cmd_args(argv):
     parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)
     parser.add_argument('--color_map', help='', required=False, default='jet')
+    parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)

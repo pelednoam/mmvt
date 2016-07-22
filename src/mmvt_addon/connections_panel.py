@@ -44,7 +44,10 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF):
     #     mask2 = np.max(d.con_values[:, :, 1], axis=1) > threshold
     #     mask = mask1 | mask2
     # else:
-    stat_data = calc_stat_data(d.con_values, stat)
+    if d.con_values.ndim > 2:
+        stat_data = calc_stat_data(d.con_values, stat)
+    else:
+        stat_data = d.con_values
     mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[PARENT_OBJ]
@@ -363,8 +366,9 @@ def load_connections_file():
     d.conditions = [l.astype(str) for l in d.conditions]
     ConnectionsPanel.d = d
     conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
-    diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
-    conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
+    if len(d.conditions) > 1:
+        diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
+        conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
     bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
 
 
@@ -586,7 +590,7 @@ def init(addon):
     if op.isfile(electrodes_connections_file):
         items.append(("electrodes", "Between electrodes", "", 1))
     elif op.isfile(rois_connections_file):
-        items.append(("rois", "Between MEG labels", "", 2))
+        items.append(("rois", "Between cortical labels", "", 2))
     else:
         print('No connections file!')
     bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
