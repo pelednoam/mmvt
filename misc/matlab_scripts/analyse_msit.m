@@ -1,5 +1,5 @@
-cd('/homes/5/npeled/space3/subjects/mg78/electrodes/FieldTripFormatMSIT_AlignedToImagePresent_MG78MSIT_NoStimLFP');
-load 'FieldTripFormatMSIT_AlignedToImagePresent_MG78MSIT_NoStimLFP,mat'
+cd('/cluster/neuromind/npeled/electrodes/mg78/MSIT/FieldTripFormatMSIT_AlignedToImagePresent_MG78MSIT_NoStimLFP');
+load 'FieldTripFormatMSIT_AlignedToImagePresent_MG78MSIT_NoStimLFP.mat'
 d=load('MSITBehavioralDataandTiming.mat');
 FIRST = 1526;
 LAST = 1830;

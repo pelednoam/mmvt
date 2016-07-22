@@ -1400,3 +1400,9 @@ def trim_to_same_size(x1, x2):
         return x1, x2[:len(x1)]
     else:
         return x1[:len(x2)], x2
+
+
+def sort_according_to_another_list(list_to_sort, list_to_sort_by):
+    list_to_sort.sort(key=lambda x: list_to_sort_by.index(x.name))
+    return list_to_sort
+

@@ -1,10 +1,12 @@
 import os.path as op
 import glob
+import time
 import numpy as np
 import re
 import mne
 from mne.connectivity import spectral_connectivity
 import scipy.io as sio
+import scipy
 import matplotlib.pyplot as plt
 from src.utils import utils
 from src.preproc import meg_preproc
@@ -18,11 +20,10 @@ ELECTRODES_DIR = op.join(LINKS_DIR, 'electrodes')
 
 def meg_recon_to_electrodes(subject, mri_subject, atlas, task ,bipolar, error_radius=3, elec_length=4,
                             vertices_num_threshold=0, meg_single_trials=False):
-    elecs_probs, probs_fname = utils.get_electrodes_labeling(
-        mri_subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
-    elecs_probs_fol = op.split(probs_fname)[0]
-    elecs_probs_data_fname = op.join(elecs_probs_fol, '{}_meg.pkl'.format(utils.namebase(probs_fname)))
-    elecs_probs = get_meg(subject, mri_subject, task, elecs_probs, bipolar, meg_single_trials=meg_single_trials)
+    elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
+    get_meg(subject, mri_subject, task, elecs_probs, bipolar, meg_single_trials=meg_single_trials)
+    # elecs_probs_fol = op.split(probs_fname)[0]
+    # elecs_probs_data_fname = op.join(elecs_probs_fol, '{}_meg.pkl'.format(utils.namebase(probs_fname)))
     # utils.save(elecs_probs, elecs_probs_data_fname)
     # for elec_probs in elecs_probs:
     #     if len(elec_probs['cortical_indices']) > vertices_num_threshold and elec_probs['approx'] == 3:
@@ -30,7 +31,9 @@ def meg_recon_to_electrodes(subject, mri_subject, atlas, task ,bipolar, error_ra
     #         # meg = get_meg(subject, elec_probs['cortical_indices'], elec_probs['hemi'])
 
 
-def get_electrodes_with_cortical_vertices(elecs_probs):
+def get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius=3, elec_length=4):
+    elecs_probs, _ = utils.get_electrodes_labeling(
+        mri_subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
     return [elec_probs for elec_probs in elecs_probs if
             len(elec_probs['cortical_indices_dists']) > 0 and len(elec_probs['cortical_rois']) > 0]
 
@@ -69,7 +72,6 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
                              mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
                              constrast=constrast)
 
-    elecs_probs = get_electrodes_with_cortical_vertices(elecs_probs)
     for elec_probs in elecs_probs:
         elec_probs['data'] = {cond:None for cond in events_id.keys()}
         # if len(elec_probs['cortical_indices_dists']) > 0:
@@ -187,16 +189,95 @@ def calc_meg_electrodes_coh(subject, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax
     return con_cnd
 
 
-def calc_coh(subject, conditions, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax=110, bw=15, n_jobs=6):
-    input_file = op.join(ELECTRODES_DIR, subject, 'electrodes_data_trials.mat')
-    output_file = op.join(ELECTRODES_DIR, subject, 'electrodes_coh.npy')
+def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
+        freqs = ((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
+    input_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts.npy')
+    output_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh_windows.npy')
+    data = np.load(input_file)
+    windows = np.linspace(tmin, tmax - dt, tmax / dt)
+    for cond in range(data.shape[3]):
+        data_cond = data[:, :, :, cond]
+        if cond == 0:
+            coh_mat = np.zeros((data_cond.shape[1], data_cond.shape[1], len(windows), len(freqs), 2))
+
+        for freq_ind, (fmin, fmax) in enumerate(freqs):
+            for win, tmin in enumerate(windows):
+                con_cnd, _, _, _, _ = spectral_connectivity(
+                    data[:, :, :, cond], method='coh', mode='multitaper', sfreq=sfreq,
+                    fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
+                    tmin=tmin, tmax=tmin + window_len)
+                con_cnd = np.mean(con_cnd, axis=2)
+                coh_mat[:, :, win, freq_ind, cond] = con_cnd
+    np.save(output_file[:-4], coh_mat)
+    return con_cnd
+
+
+def calc_electrodes_coh_windows(subject, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
+                freqs = ((8, 12), (12, 25), (25,55), (55,110)),bw=15, dt=0.1, window_len=0.2, n_jobs=6):
+    input_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_data_trials.mat')
+    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy')
     d = sio.loadmat(input_file)
+    # Remove and sort the electrodes according to the meg_electordes_names
+    electrodes = get_electrodes_names(subject)
+    electrodes_to_remove = set(electrodes) - set(meg_electordes_names)
+    indices_to_remove = [electrodes.index(e) for e in electrodes_to_remove]
+    electrodes = scipy.delete(electrodes, indices_to_remove).tolist()
+    electrodes_indices = np.array([electrodes.index(e) for e in meg_electordes_names])
+    electrodes = np.array(electrodes)[electrodes_indices].tolist()
+    assert(np.all(electrodes==meg_electordes_names))
+
+    windows = np.linspace(tmin, tmax - dt, tmax / dt)
     for cond, data in enumerate([d[conditions[0]], d[conditions[1]]]):
+        data = scipy.delete(data, indices_to_remove, 1)
+        data = data[:, electrodes_indices, :]
+        data = downsample_data(data)
+        data = data[:, :, :meg_electrodes_data.shape[2]]
+        if cond == 0:
+            coh_mat = np.zeros((data.shape[1], data.shape[1], len(windows), len(freqs), 2))
+            # coh_mat = np.load(output_file)
+            # continue
+        now = time.time()
+        for freq_ind, (fmin, fmax) in enumerate(freqs):
+            for win, tmin in enumerate(windows):
+                print('cond {}, tmin {}'.format(cond, tmin))
+                utils.time_to_go(now, win + 1, len(windows))
+                con_cnd, _, _, _, _ = spectral_connectivity(
+                    data, method='coh', mode='multitaper', sfreq=sfreq,
+                    fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
+                    tmin=tmin, tmax=tmin + window_len)
+                con_cnd = np.mean(con_cnd, axis=2)
+                coh_mat[:, :, win, freq_ind, cond] = con_cnd
+    np.save(output_file[:-4], coh_mat)
+
+
+def get_electrodes_names(subject):
+    electrodes = sio.loadmat(op.join(ELECTRODES_DIR, subject, task, 'electrodes_data.mat'))['electrodes']
+    return [e[0][0] for e in electrodes]
+
+
+def calc_coh(subject, conditions, task, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax=110, bw=15, n_jobs=6):
+    input_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_data_trials.mat')
+    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh.npy')
+    d = sio.loadmat(input_file)
+    # Remove and sort the electrodes according to the meg_electordes_names
+    electrodes = get_electrodes_names(subject)
+    electrodes_to_remove = set(electrodes) - set(meg_electordes_names)
+    indices_to_remove = [electrodes.index(e) for e in electrodes_to_remove]
+    electrodes = scipy.delete(electrodes, indices_to_remove).tolist()
+    electrodes_indices = np.array([electrodes.index(e) for e in meg_electordes_names])
+    electrodes = np.array(electrodes)[electrodes_indices].tolist()
+    assert(np.all(electrodes==meg_electordes_names))
+
+    for cond, data in enumerate([d[conditions[0]], d[conditions[1]]]):
+        data = scipy.delete(data, indices_to_remove, 1)
+        data = data[:, electrodes_indices, :]
+        data = downsample_data(data)
+        data = data[:, :, :meg_electrodes_data.shape[2]]
         if cond == 0:
             coh_mat = np.zeros((data.shape[1], data.shape[1], 2))
-        ds_data = downsample_data(data)
+
         con_cnd, _, _, _, _ = spectral_connectivity(
-            ds_data, method='coh', mode='multitaper', sfreq=sfreq,
+            data, method='coh', mode='multitaper', sfreq=sfreq,
             fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
             tmin=tmin, tmax=tmax)
         con_cnd = np.mean(con_cnd, axis=2)
@@ -213,6 +294,54 @@ def downsample_data(data):
     return new_data
 
 
+def compare_coh(subject, task, conditions, do_plot=False):
+    electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh.npy'))
+    meg_electrodes_coh = np.load(op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh.npy'))
+    for cond_id, cond in enumerate(conditions):
+        # plt.matshow(electrodes_coh[:, :, cond_id])
+        # plt.title('electrodes_coh ' + cond)
+        # plt.colorbar()
+        # plt.matshow(meg_electrodes_coh[:, :, cond_id])
+        # plt.title('meg_electrodes_coh ' + cond)
+        # plt.colorbar()
+        plt.matshow(meg_electrodes_coh[:, :, cond_id]-electrodes_coh[:, :, cond_id])
+        plt.title('meg_electrodes_coh-electrodes_coh ' + cond)
+        plt.colorbar()
+    plt.show()
+
+
+def compare_coh_windows(subject, task, conditions, electrodes, do_plot=False):
+    electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy'))
+    meg_electrodes_coh = np.load(op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh_windows.npy'))
+    figs_fol = op.join(MMVT_DIR, subject, 'figs', 'coh_windows')
+    utils.make_dir(figs_fol)
+    results = []
+    for cond_id, cond in enumerate(conditions):
+        now = time.time()
+        indices = list(utils.lower_rec_indices(electrodes_coh.shape[0]))
+        for ind, (i, j) in enumerate(indices):
+            utils.time_to_go(now, ind, len(indices))
+            meg = meg_electrodes_coh[i, j, :, cond_id]
+            elc = electrodes_coh[i, j, :, cond_id]
+            data_diff = meg - elc
+            data_diff = data_diff / max(data_diff)
+            rms = np.sqrt(np.sum(np.power(data_diff, 2)))
+            results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, rms=rms))
+            if do_plot and rms < 10:
+                plt.figure()
+                plt.plot(meg, label='pred')
+                plt.plot(elc, label='elec')
+                plt.legend()
+                plt.title('{}-{} {} (rms:{:.2f})'.format(electrodes[i], electrodes[j], cond, rms))
+                plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}.jpg'.format(rms, electrodes[i], electrodes[j], cond)))
+                plt.close()
+
+    results_fname = op.join(figs_fol, 'results.csv')
+    with open(results_fname, 'w') as output_file:
+        for res in results:
+            output_file.write('{},{},{},{}\n'.format(res['elc1'], res['elc2'], res['cond'], res['rms']))
+
+
 if __name__ == '__main__':
     subject = 'ep001' # 'ep009' # 'ep007'
     mri_subject = 'mg78' # 'mg99' # 'mg96'
@@ -220,8 +349,17 @@ if __name__ == '__main__':
     bipolar = False
     task = 'MSIT' # 'ECR'
     conditions = ['interference', 'noninterference']
+    error_radius, elec_length = 3, 4
 
     # meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=True)
-    # calc_coh(mri_subject, conditions)
-    calc_meg_electrodes_coh(mri_subject)
+
+    elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
+    meg_electordes_names = [e['name'] for e in elecs_probs]
+    meg_electrodes_data = np.load(op.join(MMVT_DIR, mri_subject, 'meg_electrodes_ts.npy'))
+    # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
+    calc_electrodes_coh_windows(mri_subject, meg_electordes_names, meg_electrodes_data)
+    # calc_meg_electrodes_coh(mri_subject)
+    calc_meg_electrodes_coh_windows(mri_subject)
+    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names)
+    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
     print('finish!')
