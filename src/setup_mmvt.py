@@ -8,7 +8,7 @@ from src.utils import utils
 
 def copy_resources_files(mmvt_root_dir):
     resource_dir = utils.get_resources_fol()
-    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'render_auto_tile_size.py', 'sub_cortical_codes.txt',
+    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt',
              'empty_subject.blend']
     for file_name in files:
         shutil.copy(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name))
