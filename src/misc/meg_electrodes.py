@@ -213,7 +213,7 @@ def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
 
 
 def calc_electrodes_coh_windows(subject, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
-                freqs = ((8, 12), (12, 25), (25,55), (55,110)),bw=15, dt=0.1, window_len=0.2, n_jobs=6):
+                freqs=((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
     input_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_data_trials.mat')
     output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy')
     d = sio.loadmat(input_file)
@@ -296,7 +296,7 @@ def downsample_data(data):
 
 def compare_coh(subject, task, conditions, do_plot=False):
     electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh.npy'))
-    meg_electrodes_coh = np.load(op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh.npy'))
+    meg_electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'meg_electrodes_ts_coh.npy'))
     for cond_id, cond in enumerate(conditions):
         # plt.matshow(electrodes_coh[:, :, cond_id])
         # plt.title('electrodes_coh ' + cond)
@@ -310,36 +310,42 @@ def compare_coh(subject, task, conditions, do_plot=False):
     plt.show()
 
 
-def compare_coh_windows(subject, task, conditions, electrodes, do_plot=False):
+def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (12, 25), (25,55), (55,110)), do_plot=False):
     electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy'))
-    meg_electrodes_coh = np.load(op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh_windows.npy'))
+    meg_electrodes_coh = np.load(op.join(ELECTRODES_DIR, subject, task, 'meg_electrodes_ts_coh_windows.npy'))
     figs_fol = op.join(MMVT_DIR, subject, 'figs', 'coh_windows')
     utils.make_dir(figs_fol)
     results = []
     for cond_id, cond in enumerate(conditions):
         now = time.time()
-        indices = list(utils.lower_rec_indices(electrodes_coh.shape[0]))
-        for ind, (i, j) in enumerate(indices):
-            utils.time_to_go(now, ind, len(indices))
-            meg = meg_electrodes_coh[i, j, :, cond_id]
-            elc = electrodes_coh[i, j, :, cond_id]
-            data_diff = meg - elc
-            data_diff = data_diff / max(data_diff)
-            rms = np.sqrt(np.sum(np.power(data_diff, 2)))
-            results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, rms=rms))
-            if do_plot and rms < 10:
-                plt.figure()
-                plt.plot(meg, label='pred')
-                plt.plot(elc, label='elec')
-                plt.legend()
-                plt.title('{}-{} {} (rms:{:.2f})'.format(electrodes[i], electrodes[j], cond, rms))
-                plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}.jpg'.format(rms, electrodes[i], electrodes[j], cond)))
-                plt.close()
+        for freq_id, freq in enumerate(freqs):
+            freq = '{}-{}'.format(*freq)
+            indices = list(utils.lower_rec_indices(electrodes_coh.shape[0]))
+            for ind, (i, j) in enumerate(indices):
+                utils.time_to_go(now, ind, len(indices))
+                meg = meg_electrodes_coh[i, j, :, freq_id, cond_id][:22]
+                elc = electrodes_coh[i, j, :, freq_id, cond_id][:22]
+                if sum(meg) > len(meg) * 0.99:
+                    continue
+                data_diff = meg - elc
+                data_diff = data_diff / max(data_diff)
+                rms = np.sqrt(np.sum(np.power(data_diff, 2)))
+                corr = np.correlate(meg, elc)[0]
+                results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, freq=freq, rms=rms, corr=corr))
+                if do_plot and corr > 16.4543987890424:# rms < 1.55716087395194:
+                    plt.figure()
+                    plt.plot(meg, label='pred')
+                    plt.plot(elc, label='elec')
+                    plt.legend()
+                    plt.title('{}-{} {} {} (rms:{:.2f})'.format(electrodes[i], electrodes[j], freq, cond, rms))
+                    plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}-{}.jpg'.format(corr, electrodes[i], electrodes[j], freq, cond)))
+                    plt.close()
 
     results_fname = op.join(figs_fol, 'results.csv')
     with open(results_fname, 'w') as output_file:
         for res in results:
-            output_file.write('{},{},{},{}\n'.format(res['elc1'], res['elc2'], res['cond'], res['rms']))
+            output_file.write('{},{},{},{},{},{}\n'.format(
+                res['elc1'], res['elc2'], res['cond'], res['freq'], res['rms'], res['corr']))
 
 
 if __name__ == '__main__':
@@ -357,9 +363,8 @@ if __name__ == '__main__':
     meg_electordes_names = [e['name'] for e in elecs_probs]
     meg_electrodes_data = np.load(op.join(MMVT_DIR, mri_subject, 'meg_electrodes_ts.npy'))
     # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
-    calc_electrodes_coh_windows(mri_subject, meg_electordes_names, meg_electrodes_data)
+    # calc_electrodes_coh_windows(mri_subject, meg_electordes_names, meg_electrodes_data)
     # calc_meg_electrodes_coh(mri_subject)
-    calc_meg_electrodes_coh_windows(mri_subject)
-    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names)
-    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
+    # calc_meg_electrodes_coh_windows(mri_subject)
+    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
     print('finish!')
