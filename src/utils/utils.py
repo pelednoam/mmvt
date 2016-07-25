@@ -605,6 +605,10 @@ def downsample_2d(x, R):
     return x.reshape(x.shape[0],-1,R).mean(2)
 
 
+def downsample_3d(x, R):
+    return x.reshape(x.shape[0],x.shape[1],-1, R).mean(3)
+
+
 def read_sub_corticals_code_file(sub_corticals_codes_file, read_also_names=False):
     if os.path.isfile(sub_corticals_codes_file):
         codes = np.genfromtxt(sub_corticals_codes_file, usecols=(1), delimiter=',', dtype=int)

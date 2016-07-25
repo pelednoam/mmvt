@@ -5,13 +5,14 @@ import os.path as op
 import shutil
 import mne
 import scipy.io as sio
+import scipy
 import csv
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 
 from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
-
+from src.utils import matlab_utils as mu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -202,23 +203,27 @@ def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
 
 
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar,
-                               electrodes_names_field, moving_average_win_size=0):
+                               electrodes_names_field, moving_average_win_size=0, input_fname='',
+                               input_type='ERP', field_cond_template=''):
+    if input_fname == '':
+        input_fname = 'data.mat'
     input_file = utils.get_file_if_exist(
-        [op.join(SUBJECTS_DIR, subject, 'electrodes', 'data.mat'),
-         op.join(ELECTRODES_DIR, subject, task, 'data.mat'),
+        [op.join(SUBJECTS_DIR, subject, 'electrodes', input_fname),
+         op.join(ELECTRODES_DIR, subject, task, input_fname),
          op.join(SUBJECTS_DIR, subject, 'electrodes', 'evo.mat'),
          op.join(ELECTRODES_DIR, subject, task, 'evo.mat')])
     if not input_file is None:
-        input_type = utils.namebase(input_file)
+        input_type = utils.namebase(input_file) if input_type == '' else input_type
     else:
         print('No electrodes data file!!!')
         return
     output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
-    if input_type == 'evo':
-        field_cond_template = 'AvgERP_{}'
-    else:
-        field_cond_template = '{}_ERP'
+    if field_cond_template == '':
+        if input_type.lower() == 'evo':
+            field_cond_template = 'AvgERP_{}'
+        elif input_type.lower() == 'erp':
+            field_cond_template = '{}_ERP'
 
     #     d = utils.Bag(**sio.loadmat(input_file))
         # pass
@@ -230,7 +235,7 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
     elif task == 'MSIT':
         if bipolar:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
-                electrodes_names_field, field_cond_template = '{}_bipolar_evoked',
+                electrodes_names_field, field_cond_template=field_cond_template, # '{}_bipolar_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
         else:
             read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
@@ -258,6 +263,39 @@ def check_montage_and_electrodes_names(montage_file, electrodes_names_file):
     print(montage_names - names)
 
 
+def bipolarize_data(data, labels):
+    bipolar_electrodes = []
+    if isinstance(data, dict):
+        single_trials = True
+        bipolar_data = {}
+        for key in data.keys():
+            bipolar_data[key] = np.zeros(data[key].shape)
+    else:
+        single_trials = False
+        bipolar_data = np.zeros(data.shpae)
+    bipolar_data_index = 0
+    for index in range(len(labels) - 1):
+        elc1_name = labels[index].strip()
+        elc2_name = labels[index + 1].strip()
+        elc_group1, elc_num1 = utils.elec_group_number(elc1_name)
+        elc_group2, elc_num12 = utils.elec_group_number(elc2_name)
+        if elc_group1 == elc_group2:
+            elec_name = '{}-{}'.format(elc2_name, elc1_name)
+            bipolar_electrodes.append(elec_name)
+            if single_trials:
+                for key in data.keys():
+                    bipolar_data[key][:, bipolar_data_index, :] = (data[key][:, index, :] + data[key][:, index + 1, :]) / 2.
+            else:
+                bipolar_data[bipolar_data_index, :, :] = (data[index, :, :] + data[index + 1, :, :]) / 2.
+            bipolar_data_index += 1
+    if single_trials:
+        for key in data.keys():
+            bipolar_data[key] = scipy.delete(bipolar_data[key], range(bipolar_data_index, len(labels)), 1)
+    else:
+        bipolar_data = scipy.delete(bipolar_data, range(bipolar_data_index), 0)
+    return bipolar_data, bipolar_electrodes
+
+
 def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodes_names_field,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(3, 97), threshold=0,
         color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
@@ -267,14 +305,15 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, b
     # get the labels names
     if electrodes_names_field in d:
         labels = d[electrodes_names_field]
-        if bipolar:
+        labels = mu.matlab_cell_str_to_list(labels)
+        if bipolar and '-' in labels[0]:
             labels = fix_bipolar_labels(labels)
-        else:
-            #todo: change that!!!
-            if len(labels) == 1:
-                labels = [str(l[0]) for l in labels[0]]
-            else:
-                labels = [str(l[0][0]) for l in labels]
+        # else:
+        #     #todo: change that!!!
+        #     if len(labels) == 1:
+        #         labels = [str(l[0]) for l in labels[0]]
+        #     else:
+        #         labels = [str(l[0][0]) for l in labels]
     else:
         raise Exception('electrodes_names_field not in the matlab file!')
     # Loop for each condition
@@ -286,35 +325,51 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, b
             print('{} not in the mat file!'.format(cond_name))
             continue
         # todo: downsample suppose to be a cmdline paramter
-        if to_t == 0:
-            to_t = d[field].shape[1] / downsample
+        # dims: samples * electrodes * time (single triale) or electrodes * time (evoked)
+        if to_t == 0 or to_t == -1:
+            to_t = int(d[field].shape[-1] / downsample)
         # initialize the data matrix (electrodes_num x T x 2)
-        if cond_id == 0:
-            data = np.zeros((d[field].shape[0], to_t - from_t, 2))
         # times = np.arange(0, to_t*2, 2)
         cond_data = d[field] # [:, times]
-        cond_data_downsample = utils.downsample_2d(cond_data, downsample)
-        data[:, :, cond_id] = cond_data_downsample[:, from_t:to_t]
+        if cond_id == 0:
+            single_trials = cond_data.ndim == 3
+            data = {} if single_trials else np.zeros((cond_data.shape[0], to_t - from_t, 2))
+        if single_trials:
+            # Different number of trials per condition, can't save it in a matrix
+            # data[cond_name] = np.zeros((cond_data.shape[0], cond_data.shape[1], to_t - from_t))
+            cond_data_downsample = utils.downsample_3d(cond_data, downsample)
+            data[cond_name] = cond_data_downsample[:, :, from_t:to_t]
+        else:
+            cond_data_downsample = utils.downsample_2d(cond_data, downsample)
+            data[:, :, cond_id] = cond_data_downsample[:, from_t:to_t]
 
-    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    stat_data = calc_stat_data(data, stat)
-    calc_colors = partial(
-        utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
-        flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
-    if moving_average_win_size > 0:
-        # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
-        stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
-        colors_mv = calc_colors(stat_data_mv)
-        np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+    if bipolar:
+        data, labels = bipolarize_data(data, labels)
+
+    if single_trials:
+        output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_st.npz'.format(
+            '_bipolar' if bipolar else ''))
+        np.savez(output_fname, data=data, names=labels, conditions=conditions)
     else:
-        colors = calc_colors(stat_data)
-        np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
+        data = utils.normalize_data(data, norm_by_percentile, norm_percs)
+        stat_data = calc_stat_data(data, stat)
+        calc_colors = partial(
+            utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
+            flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
+        if moving_average_win_size > 0:
+            # data_mv[:, :, cond_id] = utils.downsample_2d(data[:, :, cond_id], moving_average_win_size)
+            stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
+            colors_mv = calc_colors(stat_data_mv)
+            np.savez(output_file_name, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv)
+        else:
+            colors = calc_colors(stat_data)
+            np.savez(output_file_name, data=data, names=labels, conditions=conditions, colors=colors)
 
 
 def fix_bipolar_labels(labels):
     ret = []
     for label in labels:
-        elc1, elc2 = label.split(' ')
+        elc1, elc2 = str(label).split(' ')
         group, num1 = utils.elec_group_number(elc1, False)
         _, num2 = utils.elec_group_number(elc2, False)
         ret.append('{}{}-{}{}'.format(group, num2, group, num1))
@@ -673,9 +728,9 @@ def main(subject, args):
     if 'all' in args.function or 'sort_electrodes_groups' in args.function:
         sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
     if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
-        for stat in [STAT_AVG, STAT_DIFF]:
-            create_electrode_data_file(subject, args.task, args.from_t_ind, args.to_t_ind, stat, args.conditions,
-                                       args.bipolar, args.electrodes_names_field)
+        create_electrode_data_file(subject, args.task, args.from_t_ind, args.to_t_ind, args.stat, args.conditions,
+                                   args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
+                                   args.input_matlab_fname, args.input_type, args.field_cond_template)
     if 'all' in args.function or 'create_electrodes_labeling_coloring' in args.function:
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
     if 'show_image' in args.function:
@@ -696,12 +751,19 @@ def read_cmd_args(argv=None):
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--from_t', help='from_t', required=False, default='0') # was -500
-    parser.add_argument('--to_t', help='to_t', required=False, default='0') # was 2000
-    parser.add_argument('--indices_shift', help='indices_shift', required=False, default='0') # was 1000
+    parser.add_argument('--from_t', help='from_t', required=False, default=0, type=float) # was -500
+    parser.add_argument('--to_t', help='to_t', required=False, default=0, type=float) # was 2000
+    parser.add_argument('--from_t_ind', help='from_t_ind', required=False, default=0, type=int) # was -500
+    parser.add_argument('--to_t_ind', help='to_t_ind', required=False, default=-1, type=int) # was 2000
+    parser.add_argument('--indices_shift', help='indices_shift', required=False, default=0, type=int) # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
+    parser.add_argument('--stat', help='stat', required=False, default=STAT_DIFF, type=int)
     parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
+    parser.add_argument('--moving_average_window_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--field_cond_template', help='', required=False, default='{}')
+    parser.add_argument('--input_type', help='', required=False, default='ERP')
+    parser.add_argument('--input_matlab_fname', help='', required=False, default='')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser, argv))

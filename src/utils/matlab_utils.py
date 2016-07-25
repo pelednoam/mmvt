@@ -27,9 +27,10 @@ def matlab_cell_array_to_list(cell_arr):
 
 
 def matlab_cell_str_to_list(cell_arr):
-    ret_list = []
-    for ind in range(len(cell_arr[0])):
-        ret_list.append(cell_arr[0][ind][0].astype(str))
+    if len(cell_arr[0]) > 1:
+        ret_list = [cell_arr[0][ind][0].astype(str) for ind in range(len(cell_arr[0]))]
+    else:
+        ret_list = [cell_arr[ind][0][0].astype(str) for ind in range(len(cell_arr))]
     return ret_list
 
 

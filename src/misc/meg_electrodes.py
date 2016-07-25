@@ -47,7 +47,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
     #     meg_data_t = np.load(meg_file)
     #     meg_data[t] = meg_data_t[vertices, 0]
     #     print("sdf")
-    electordes_data_fname = op.join(MMVT_DIR, mri_subject, 'electrodes', 'electrodes_{}data_diff.npz'.format(
+    electordes_data_fname = op.join(MMVT_DIR, mri_subject, 'electrodes', 'electrodes_{}data.npz'.format(
         'bipolar_' if bipolar else ''))
     if not op.isfile(electordes_data_fname):
         print('No electrodes data file!')
@@ -72,8 +72,8 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
                              mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
                              constrast=constrast)
 
-    for elec_probs in elecs_probs:
-        elec_probs['data'] = {cond:None for cond in events_id.keys()}
+    # for elec_probs in elecs_probs:
+    #     elec_probs['data'] = {cond:None for cond in events_id.keys()}
         # if len(elec_probs['cortical_indices_dists']) > 0:
         #     print(elec_probs['name'], len(elec_probs['cortical_indices']), np.min(elec_probs['cortical_indices_dists']))
 
@@ -141,7 +141,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
                         elec_meg_data *= elec_data_diff / (np.max(elec_meg_data) - np.min(elec_meg_data))
                         # elec_meg_data += elec_data[0] - elec_meg_data[0]
                         elec_meg_data += np.mean(elec_data) - np.mean(elec_meg_data)
-                        elec_probs['data'][cond] = elec_meg_data
+                        # elec_probs['data'][cond] = elec_meg_data
 
                         elec_meg_data, elec_data = utils.trim_to_same_size(elec_meg_data, elec_data)
                         data_diff = elec_meg_data-elec_data
@@ -162,7 +162,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
             except:
                 print('Error with {}!'.format(elec_probs['name']))
     if meg_single_trials:
-        np.save(op.join(MMVT_DIR, mri_subject, 'meg_electrodes_ts'), elec_meg_data_st)
+        np.save(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_{}ts'.format('bipolar_' if bipolar else '')), elec_meg_data_st)
     else:
         results_fname = op.join(figs_fol, 'results.csv')
         with open(results_fname, 'w') as output_file:
@@ -172,8 +172,8 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
 
 
 def calc_meg_electrodes_coh(subject, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax=110, bw=15, n_jobs=6):
-    input_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts.npy')
-    output_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh.npy')
+    input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy')
+    output_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts_coh.npy')
     data = np.load(input_file)
     for cond in range(data.shape[3]):
         data_cond = data[:, :, :, cond]
@@ -191,8 +191,8 @@ def calc_meg_electrodes_coh(subject, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax
 
 def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
         freqs = ((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
-    input_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts.npy')
-    output_file = op.join(MMVT_DIR, subject, 'meg_electrodes_ts_coh_windows.npy')
+    input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy')
+    output_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts_coh_windows.npy')
     data = np.load(input_file)
     windows = np.linspace(tmin, tmax - dt, tmax / dt)
     for cond in range(data.shape[3]):
@@ -212,7 +212,7 @@ def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
     return con_cnd
 
 
-def calc_electrodes_coh_windows(subject, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
+def calc_electrodes_coh_windows(subject, bipolar, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
                 freqs=((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
     input_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_data_trials.mat')
     output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy')
@@ -352,7 +352,7 @@ if __name__ == '__main__':
     subject = 'ep001' # 'ep009' # 'ep007'
     mri_subject = 'mg78' # 'mg99' # 'mg96'
     atlas = 'laus250'
-    bipolar = False
+    bipolar = True
     task = 'MSIT' # 'ECR'
     conditions = ['interference', 'noninterference']
     error_radius, elec_length = 3, 4
@@ -361,10 +361,10 @@ if __name__ == '__main__':
 
     elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
     meg_electordes_names = [e['name'] for e in elecs_probs]
-    meg_electrodes_data = np.load(op.join(MMVT_DIR, mri_subject, 'meg_electrodes_ts.npy'))
+    meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
     # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
-    # calc_electrodes_coh_windows(mri_subject, meg_electordes_names, meg_electrodes_data)
+    calc_electrodes_coh_windows(mri_subject, bipolar, meg_electordes_names, meg_electrodes_data)
     # calc_meg_electrodes_coh(mri_subject)
     # calc_meg_electrodes_coh_windows(mri_subject)
-    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
+    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
     print('finish!')
