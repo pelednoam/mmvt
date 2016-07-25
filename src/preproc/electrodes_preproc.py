@@ -349,6 +349,9 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, b
     if single_trials:
         output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_st.npz'.format(
             '_bipolar' if bipolar else ''))
+        data_conds = [(data[key], key) for key in data.keys()]
+        data = [d[0] for d in data_conds]
+        conditions = [d[1] for d in data_conds]
         np.savez(output_fname, data=data, names=labels, conditions=conditions)
     else:
         data = utils.normalize_data(data, norm_by_percentile, norm_percs)

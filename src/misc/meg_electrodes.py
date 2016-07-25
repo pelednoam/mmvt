@@ -212,13 +212,20 @@ def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
     return con_cnd
 
 
-def calc_electrodes_coh_windows(subject, bipolar, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
+def calc_electrodes_coh_windows(subject, input_fname, bipolar, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
                 freqs=((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
-    input_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_data_trials.mat')
-    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_windows.npy')
-    d = sio.loadmat(input_file)
+    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_{}windows.npy'.format('bipolar_' if bipolar else ''))
+    if input_fname[-3:] == 'mat':
+        d = sio.loadmat(matlab_input_file)
+        conds_data = [d[conditions[0]], d[conditions[1]]]
+        electrodes = get_electrodes_names(subject)
+    elif input_fname[-3:] == 'npz':
+        d = np.load(input_fname)
+        conds_data = d['data']
+        conditions = d['conditions']
+        electrodes = d['names'].tolist()
+        pass
     # Remove and sort the electrodes according to the meg_electordes_names
-    electrodes = get_electrodes_names(subject)
     electrodes_to_remove = set(electrodes) - set(meg_electordes_names)
     indices_to_remove = [electrodes.index(e) for e in electrodes_to_remove]
     electrodes = scipy.delete(electrodes, indices_to_remove).tolist()
@@ -227,7 +234,7 @@ def calc_electrodes_coh_windows(subject, bipolar, meg_electordes_names, meg_elec
     assert(np.all(electrodes==meg_electordes_names))
 
     windows = np.linspace(tmin, tmax - dt, tmax / dt)
-    for cond, data in enumerate([d[conditions[0]], d[conditions[1]]]):
+    for cond, data in enumerate(conds_data):
         data = scipy.delete(data, indices_to_remove, 1)
         data = data[:, electrodes_indices, :]
         data = downsample_data(data)
@@ -357,13 +364,16 @@ if __name__ == '__main__':
     conditions = ['interference', 'noninterference']
     error_radius, elec_length = 3, 4
 
+    matlab_input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'electrodes_data_trials.mat')
+    python_input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'electrodes_{}data_st.npz'.format('bipolar_' if bipolar else ''))
+
     # meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=True)
 
     elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
     meg_electordes_names = [e['name'] for e in elecs_probs]
     meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
     # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
-    calc_electrodes_coh_windows(mri_subject, bipolar, meg_electordes_names, meg_electrodes_data)
+    calc_electrodes_coh_windows(mri_subject, python_input_file, bipolar, meg_electordes_names, meg_electrodes_data)
     # calc_meg_electrodes_coh(mri_subject)
     # calc_meg_electrodes_coh_windows(mri_subject)
     # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
