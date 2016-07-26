@@ -79,6 +79,9 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
         utils.remove_file('{}.avi'.format(part_name))
 
 
+
+
+
 if __name__ == '__main__':
     movie_fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4_1'
     movie_name = 'mg99_LVF4-3_stim_srouces_long.mp4'
