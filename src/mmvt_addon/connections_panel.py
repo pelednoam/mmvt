@@ -358,18 +358,21 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
 def load_connections_file():
-    print('loading {}'.format(bpy.context.scene.connections_file))
-    d = mu.Bag(np.load(bpy.context.scene.connections_file))
-    d.labels = [l.astype(str) for l in d.labels]
-    d.hemis = [l.astype(str) for l in d.hemis]
-    d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
-    d.conditions = [l.astype(str) for l in d.conditions]
-    ConnectionsPanel.d = d
-    conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
-    if len(d.conditions) > 1:
-        diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
-        conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
-    bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
+    if op.isfile(bpy.context.scene.connections_file):
+        print('loading {}'.format(bpy.context.scene.connections_file))
+        d = mu.Bag(np.load(bpy.context.scene.connections_file))
+        d.labels = [l.astype(str) for l in d.labels]
+        d.hemis = [l.astype(str) for l in d.hemis]
+        d.con_names = np.array([l.astype(str) for l in d.con_names], dtype=np.str)
+        d.conditions = [l.astype(str) for l in d.conditions]
+        ConnectionsPanel.d = d
+        conditions_items = [(cond, cond, '', cond_ind) for cond_ind, cond in enumerate(d.conditions)]
+        if len(d.conditions) > 1:
+            diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
+            conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
+        bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
+    else:
+        print('No connections file!')
 
 
 def create_connections():

@@ -246,14 +246,17 @@ def calc_electrodes_coh_windows(subject, input_fname, bipolar, meg_electordes_na
         now = time.time()
         for freq_ind, (fmin, fmax) in enumerate(freqs):
             for win, tmin in enumerate(windows):
-                print('cond {}, tmin {}'.format(cond, tmin))
-                utils.time_to_go(now, win + 1, len(windows))
-                con_cnd, _, _, _, _ = spectral_connectivity(
-                    data, method='coh', mode='multitaper', sfreq=sfreq,
-                    fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
-                    tmin=tmin, tmax=tmin + window_len)
-                con_cnd = np.mean(con_cnd, axis=2)
-                coh_mat[:, :, win, freq_ind, cond] = con_cnd
+                try:
+                    print('cond {}, tmin {}'.format(cond, tmin))
+                    utils.time_to_go(now, win + 1, len(windows))
+                    con_cnd, _, _, _, _ = spectral_connectivity(
+                        data, method='coh', mode='multitaper', sfreq=sfreq,
+                        fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
+                        tmin=tmin, tmax=tmin + window_len)
+                    con_cnd = np.mean(con_cnd, axis=2)
+                    coh_mat[:, :, win, freq_ind, cond] = con_cnd
+                except:
+                    print('Error with freq {} and win {}'.format(freq_ind, win))
     np.save(output_file[:-4], coh_mat)
 
 
@@ -339,12 +342,12 @@ def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (
                 rms = np.sqrt(np.sum(np.power(data_diff, 2)))
                 corr = np.correlate(meg, elc)[0]
                 results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, freq=freq, rms=rms, corr=corr))
-                if do_plot and corr > 16.4543987890424:# rms < 1.55716087395194:
+                if do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
                     plt.figure()
                     plt.plot(meg, label='pred')
                     plt.plot(elc, label='elec')
                     plt.legend()
-                    plt.title('{}-{} {} {} (rms:{:.2f})'.format(electrodes[i], electrodes[j], freq, cond, rms))
+                    plt.title('{}-{} {} {}'.format(electrodes[i], electrodes[j], freq, cond)) # (rms:{:.2f})
                     plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}-{}.jpg'.format(corr, electrodes[i], electrodes[j], freq, cond)))
                     plt.close()
 
@@ -359,7 +362,7 @@ if __name__ == '__main__':
     subject = 'ep001' # 'ep009' # 'ep007'
     mri_subject = 'mg78' # 'mg99' # 'mg96'
     atlas = 'laus250'
-    bipolar = True
+    bipolar = False
     task = 'MSIT' # 'ECR'
     conditions = ['interference', 'noninterference']
     error_radius, elec_length = 3, 4
@@ -373,8 +376,8 @@ if __name__ == '__main__':
     meg_electordes_names = [e['name'] for e in elecs_probs]
     meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
     # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
-    calc_electrodes_coh_windows(mri_subject, python_input_file, bipolar, meg_electordes_names, meg_electrodes_data)
+    # calc_electrodes_coh_windows(mri_subject, python_input_file, bipolar, meg_electordes_names, meg_electrodes_data)
     # calc_meg_electrodes_coh(mri_subject)
     # calc_meg_electrodes_coh_windows(mri_subject)
-    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
+    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
     print('finish!')
