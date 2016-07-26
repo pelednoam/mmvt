@@ -15,7 +15,7 @@ def create_coloring(x, subject, atlas, conditions, exclude=['unknown', 'corpusca
                             only_names=True)
     for cond_id, cond_name in enumerate(conditions):
         values = x[:, cond_id]
-        colors = utils.arr_to_colors(values, np.min(values), np.max(values), colors_map='YlOrRd')
+        colors = utils.arr_to_colors(values, np.min(x), np.max(x), colors_map='YlOrRd')
         coloring_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(cond_name))
         write_coloring_file(coloring_fname, labels, colors)
     values_diff = np.squeeze(np.diff(x))
