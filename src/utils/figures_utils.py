@@ -2,11 +2,10 @@ import os.path as op
 import numpy as np
 
 
-def plot_color_bar(x, color_map, ax=None, fol='', do_save=False):
+def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
 
-    data_max, data_min =  np.max(x), np.min(x)
     if ax is None:
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
@@ -15,8 +14,8 @@ def plot_color_bar(x, color_map, ax=None, fol='', do_save=False):
     return cb
 
 
-def combine_brain_with_color_bar(x, figure_fname, colors_map, root, dpi=100, x_left_crop=0, x_right_crop=0,
-                                 y_top_crop=0, y_buttom_crop=0):
+def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, root, overwrite=False, dpi=100,
+                                 x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0):
     from PIL import Image
     import matplotlib.pyplot as plt
     from matplotlib import gridspec
@@ -35,10 +34,10 @@ def combine_brain_with_color_bar(x, figure_fname, colors_map, root, dpi=100, x_l
     ax_cb = plt.subplot(gs[:, -2:-1])
     ax_cb.tick_params(axis='y', colors='white')
     resize_and_move_ax(ax_cb, dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1)
-    plot_color_bar(x, colors_map, ax_cb)
+    plot_color_bar(data_max, data_min, colors_map, ax_cb)
     # plt.show()
 
-    image_fname = op.join(root, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
+    image_fname = figure_fname if overwrite else op.join(root, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
     plt.savefig(image_fname, facecolor=fig.get_facecolor(), transparent=True)
     image = Image.open(image_fname)
     w, h = image.size
@@ -49,3 +48,18 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax_pos = ax.get_position() # get the original position
     ax_pos_new = [ax_pos.x0 * ddx + dx, ax_pos.y0  * ddy + dy,  ax_pos.width * ddw + dw, ax_pos.height * ddh + dh]
     ax.set_position(ax_pos_new) # set a new position
+
+
+if __name__ is '__main__':
+    import scipy.io as sio
+    import glob
+
+    # root = '/cluster/neuromind/npeled/linda'
+    # values_mat = sio.loadmat(op.join(root, 'figure_file2.mat'))['figure_file2']
+    figures_fol = '/cluster/neuromind/npeled/mmvt/fsaverage5c/figures/final2'
+    colors_map = 'YlOrRd'
+    data_max, data_min = 0.2, 0.3
+
+    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+        combine_brain_with_color_bar(data_max, data_min, fig_name, colors_map, figures_fol, dpi=100,
+                                    x_left_crop=350, x_right_crop=200)
