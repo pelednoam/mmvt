@@ -1,6 +1,7 @@
 import bpy
 import math
 import os.path as op
+import glob
 import mmvt_utils as mu
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
@@ -19,8 +20,9 @@ def set_render_smooth_figure(smooth_figure):
     bpy.context.scene.smooth_figure = smooth_figure
 
 
-def load_camera(self=None):
-    camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
+def load_camera(camera_fname=''):
+    if camera_fname == '':
+        camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
     if op.isfile(camera_fname):
         X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location = mu.load(camera_fname)
         RenderFigure.update_camera = False
@@ -33,7 +35,7 @@ def load_camera(self=None):
         RenderFigure.update_camera = True
         update_camera()
     else:
-        mu.message(self, 'No camera file was found in {}!'.format(camera_fname))
+        print('No camera file was found in {}!'.format(camera_fname))
 
 
 def camera_mode():
@@ -73,6 +75,8 @@ def render_draw(self, context):
     # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
     # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
+    if len(glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))):
+        layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
     layout.prop(context.scene, 'smooth_figure')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
     layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
@@ -156,7 +160,7 @@ class LoadCamera(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        load_camera(self)
+        load_camera()
         return {"FINISHED"}
 
 
@@ -169,6 +173,29 @@ class RenderFigure(bpy.types.Operator):
     def invoke(self, context, event=None):
         render_image()
         return {"FINISHED"}
+
+
+class RenderAllFigures(bpy.types.Operator):
+    bl_idname = "ohad.render_all_figures"
+    bl_label = "Render all figures"
+    bl_options = {"UNDO"}
+    update_camera = True
+
+    def invoke(self, context, event=None):
+        render_all_images()
+        return {"FINISHED"}
+
+
+def render_all_images():
+    camera_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))
+    for camera_file in camera_files:
+        load_camera(camera_file)
+        camera_name = mu.namebase(camera_file)
+        for hemi in mu.HEMIS:
+            if hemi in camera_name:
+                RenderingMakerPanel.addon.show_hide_hemi(False, hemi)
+                RenderingMakerPanel.addon.show_hide_hemi(True, mu.other_hemi(hemi))
+        render_image('{}_fig'.format(camera_name))
 
 
 def render_image(image_name=''):
@@ -223,6 +250,8 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
+        bpy.utils.register_class(RenderAllFigures)
+
         # bpy.utils.register_class(CameraMode)
         bpy.utils.register_class(GrabCamera)
         bpy.utils.register_class(LoadCamera)
@@ -236,6 +265,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
+        bpy.utils.unregister_class(RenderAllFigures)
         # bpy.utils.unregister_class(CameraMode)
         bpy.utils.unregister_class(GrabCamera)
         bpy.utils.unregister_class(LoadCamera)
