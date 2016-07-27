@@ -84,7 +84,8 @@ def _electrodes_update():
             print_electrode_loc(loc)
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
-
+    else:
+        print('lookup table is None!')
 
 def select_electrode(current_electrode):
     for elec in ElecsPanel.all_electrodes:
@@ -182,11 +183,11 @@ def color_labels_update(self, context):
 
 
 def electrodes_labeling_files_update(self, context):
-    if ElecsPanel.init:
-        labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
-            bpy.context.scene.electrodes_labeling_files))
-        ElecsPanel.electrodes_locs = mu.load(labeling_fname)
-        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
+    # if ElecsPanel.init:
+    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+        bpy.context.scene.electrodes_labeling_files))
+    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
 
 
 def show_only_current_lead_update(self, context):
@@ -546,8 +547,8 @@ def init_electrodes_labeling(addon):
     labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
         items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
-    if len(labling_files) > 0:
-        bpy.context.scene.electrodes_labeling_files = files_names[0]
+    # if len(labling_files) > 0:
+    bpy.context.scene.electrodes_labeling_files = files_names[0]
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
     ElecsPanel.faces_verts = addon.get_faces_verts()
