@@ -164,8 +164,14 @@ def read_electrodes_pos(subject, args):
 #     print('sdf')
 
 
-
-def main(subject, args):
+def run_on_subjects(subject, args):
+    args.sftp_password = utils.get_sftp_password(
+        args.subject, SUBJECTS_DIR, args.neccesary_files, args.sftp_username, args.overwrite_fs_files) \
+        if args.sftp else ''
+    utils.prepare_local_subjects_folder(
+        args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
+        args.overwrite_fs_files, args.print_traceback)
     # Create the files for freeview bridge
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
     args.elecs_pos, args.elecs_names = read_electrodes_pos(subject, args)
@@ -181,11 +187,7 @@ def main(subject, args):
         create_lut_file_for_atlas(subject, args.atlas)
 
 
-if __name__ == '__main__':
-    if os.environ.get('FREESURFER_HOME', '') == '':
-        raise Exception('Source freesurfer and rerun')
-    os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
-
+def read_cmd_args(argv):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT freeview preprocessing')
@@ -197,10 +199,24 @@ if __name__ == '__main__':
     parser.add_argument('--create_volume_file', help='create_volume_file', required=False, default=1, type=au.is_true)
     parser.add_argument('--electrodes_pos_fname', help='electrodes_pos_fname', required=False, default='')
     parser.add_argument('--way_points', help='way_points', required=False, default=0, type=au.is_true)
-
-
-    args = utils.Bag(au.parse_parser(parser))
+    parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
+    parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
+    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
+    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
+    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+    args = utils.Bag(au.parse_parser(parser, argv))
+    args.neccesary_files = {'mri': ['T1.mgz', 'orig.mgz']}
     print(args)
+    return args
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')
+    os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
+
     for subject in args.subject:
-        main(subject, args)
+        run_on_subjects(subject, args)
     print('finish!')
