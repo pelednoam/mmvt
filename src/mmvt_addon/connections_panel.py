@@ -596,10 +596,10 @@ def init(addon):
         items.append(("rois", "Between cortical labels", "", 2))
     else:
         print('No connections file!')
-    bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
-        items=items, description="Conditions origin", update=connections_origin_update)
 
-    if len(items) != '':
+    if len(items) > 0:
+        bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
+            items=items, description="Conditions origin", update=connections_origin_update)
         ConnectionsPanel.addon = addon
         bpy.context.scene.connections_threshold = 0
         _connections_origin_update()
