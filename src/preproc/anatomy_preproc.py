@@ -393,7 +393,7 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
 
 def prepare_local_subjects_folder(subject, args):
     return utils.prepare_local_subjects_folder(
-        args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        args.necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback)
 
@@ -474,20 +474,11 @@ def main(subject, args):
     return flags
 
 
-def get_sftp_password(subjects, args):
-    sftp_password = ''
-    if args.sftp:
-        all_neccesary_files_exist = False if args.overwrite_fs_files else np.all(
-            [utils.check_if_all_neccesary_files_exist(args.neccesary_files, os.path.join(SUBJECTS_DIR, subject), False)
-             for subject in subjects])
-        if not all_neccesary_files_exist or args.overwrite_fs_files:
-            sftp_password = utils.ask_for_sftp_password(args.sftp_username)
-    return sftp_password
-
-
 def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
-    args.sftp_password = get_sftp_password(args.subject, args)
+    args.sftp_password = utils.get_sftp_password(
+        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
+        if args.sftp else ''
     for subject in args.subject:
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
@@ -544,7 +535,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.neccesary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.overwrite:

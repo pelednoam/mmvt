@@ -743,21 +743,21 @@ def fsaverage_vertices():
     return [np.arange(10242), np.arange(10242)]
 
 
-def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir,
+def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                   overwrite_files=False, print_traceback=True):
 
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
-        check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, False)
+        check_if_all_necessary_files_exist(necessary_files, local_subject_dir, False)
     if all_files_exists and not overwrite_files:
         return True
     if sftp:
-        sftp_copy_subject_files(subject, neccesary_files, sftp_username, sftp_domain,
+        sftp_copy_subject_files(subject, necessary_files, sftp_username, sftp_domain,
                                 local_subjects_dir, remote_subject_dir, sftp_password,
                                 overwrite_files, print_traceback)
     else:
-        for fol, files in neccesary_files.items():
+        for fol, files in necessary_files.items():
             if not os.path.isdir(os.path.join(local_subject_dir, fol)):
                 os.makedirs(os.path.join(local_subject_dir, fol))
             for file_name in files:
@@ -768,13 +768,13 @@ def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, 
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
-    all_files_exists = check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir)
+    all_files_exists = check_if_all_necessary_files_exist(necessary_files, local_subject_dir)
     return all_files_exists
 
 
-def check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, trace=True):
+def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace=True):
     all_files_exists = True
-    for fol, files in neccesary_files.items():
+    for fol, files in necessary_files.items():
         for file_name in files:
             if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
                 if trace:
@@ -783,7 +783,7 @@ def check_if_all_neccesary_files_exist(neccesary_files, local_subject_dir, trace
     return all_files_exists
 
 
-def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_subjects_dir, remote_subject_dir,
+def sftp_copy_subject_files(subject, necessary_files, username, domain, local_subjects_dir, remote_subject_dir,
                             password='', overwrite_files=False, print_traceback=True):
     import pysftp
 
@@ -791,7 +791,7 @@ def sftp_copy_subject_files(subject, neccesary_files, username, domain, local_su
     if password == '':
         password = ask_for_sftp_password(username)
     with pysftp.Connection(domain, username=username, password=password) as sftp:
-        for fol, files in neccesary_files.items():
+        for fol, files in necessary_files.items():
             if not os.path.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
             os.chdir(op.join(local_subject_dir, fol))
@@ -823,8 +823,8 @@ def to_ras(points, round_coo=False):
     return np.array(ras)
 
 
-def check_for_necessary_files(neccesary_files, root_fol):
-    for fol, files in neccesary_files.items():
+def check_for_necessary_files(necessary_files, root_fol):
+    for fol, files in necessary_files.items():
         for file in files:
             full_path = os.path.join(root_fol, fol, file)
             if not os.path.isfile(full_path):
@@ -1410,3 +1410,12 @@ def sort_according_to_another_list(list_to_sort, list_to_sort_by):
     list_to_sort.sort(key=lambda x: list_to_sort_by.index(x.name))
     return list_to_sort
 
+
+def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, overwrite_fs_files=False):
+    sftp_password = ''
+    all_necessary_files_exist = False if overwrite_fs_files else np.all(
+        [check_if_all_necessary_files_exist(necessary_files, os.path.join(subjects_dir, subject), False)
+         for subject in subjects])
+    if not all_necessary_files_exist or overwrite_fs_files:
+        sftp_password = ask_for_sftp_password(sftp_username)
+    return sftp_password

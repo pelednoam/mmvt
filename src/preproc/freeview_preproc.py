@@ -61,8 +61,8 @@ def create_lut_file_for_atlas(subject, atlas):
 
 
 def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
-    neccesary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
-    utils.check_for_necessary_files(neccesary_files, op.join(SUBJECTS_DIR, subject))
+    necessary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
+    utils.check_for_necessary_files(necessary_files, op.join(SUBJECTS_DIR, subject))
     # The atlas var need to be in the locals for the APARC2ASEG call
     atlas = args.atlas
     rs = utils.partial_run_script(locals(), print_only=False)
@@ -166,10 +166,10 @@ def read_electrodes_pos(subject, args):
 
 def run_on_subjects(subject, args):
     args.sftp_password = utils.get_sftp_password(
-        args.subject, SUBJECTS_DIR, args.neccesary_files, args.sftp_username, args.overwrite_fs_files) \
+        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
         if args.sftp else ''
     utils.prepare_local_subjects_folder(
-        args.neccesary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        args.necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback)
     # Create the files for freeview bridge
@@ -206,7 +206,7 @@ def read_cmd_args(argv):
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.neccesary_files = {'mri': ['T1.mgz', 'orig.mgz']}
+    args.necessary_files = {'mri': ['T1.mgz', 'orig.mgz']}
     print(args)
     return args
 
