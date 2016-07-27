@@ -8,30 +8,29 @@ def example1(subject):
     # subject = 'fsaverage5c'
     args = con.read_cmd_args(['-s', subject])
     args.atlas = 'laus125'
-    args.rois_con_fname = '/cluster/neuromind/npeled/linda/figure_file1.mat'
+    args.mat_fname = '/cluster/neuromind/npeled/linda/figure_file1.mat'
     args.mat_field = 'figure_file'
-    args.w = 1
+    args.windows = 1
     args.stat = con.STAT_DIFF
     args.threshold_percentile = 99
     args.conditions = ['task', 'rest']
-    con.save_rois_connectivity(subject, args.atlas, args.rois_con_fname, args.mat_field, args.conditions, args.stat,
-                           w=args.w, threshold_percentile=args.threshold_percentile)
+    con.save_rois_connectivity(subject, args)
 
 
 def example2(subject):
     # subject = 'fsaverage5c'
     args = con.read_cmd_args(['-s', subject])
     args.atlas = 'laus125'
-    args.rois_con_fname = '/cluster/neuromind/npeled/linda/figure_file3.mat'
+    args.mat_fname = '/cluster/neuromind/npeled/linda/figure_file3.mat'
     args.mat_field = 'matrix_cognition_ratio_fpn_dmn'
-    args.w = 1
+    args.windows = 1
     args.threshold = 0
     args.norm_by_percentile = False
     args.symetric_colors = False
-    args.colors_map = 'YlOrRd'
-    con.save_rois_connectivity(subject, args.atlas, args.rois_con_fname, args.mat_field, args.conditions, args.stat,
-                               w=args.w, threshold_percentile=args.threshold_percentile,
-                               norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
+    args.color_map = 'YlOrRd'
+    args.data_min = 0.15
+    args.data_max = 0.6
+    con.save_rois_connectivity(subject, args)
 
 
 if __name__ == '__main__':

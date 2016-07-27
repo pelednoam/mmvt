@@ -182,10 +182,11 @@ def color_labels_update(self, context):
 
 
 def electrodes_labeling_files_update(self, context):
-    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
-        bpy.context.scene.electrodes_labeling_files))
-    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
-    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
+    if ElecsPanel.init:
+        labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+            bpy.context.scene.electrodes_labeling_files))
+        ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
 
 
 def show_only_current_lead_update(self, context):

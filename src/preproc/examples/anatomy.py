@@ -24,6 +24,12 @@ def prepare_subject_folder_from_huygens(subject, args):
     anat.run_on_subjects(args)
 
 
+def darpa(subject, args):
+    args = anat.read_cmd_args(['-s', subject])
+    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
+    anat.run_on_subjects(args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)

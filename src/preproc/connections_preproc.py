@@ -78,32 +78,42 @@ def downsample_data(data):
     return new_data
 
 
-def save_rois_connectivity(subject, atlas, rois_con_fname, mat_field, conditions, stat=STAT_DIFF, w=0,
-                           exclude=['unknown', 'corpuscallosum'], threshold=0, threshold_percentile=0,
-                           color_map='jet', norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
+def save_rois_connectivity(subject, args):
+    # atlas, mat_fname, mat_field, conditions, stat=STAT_DIFF, windows=0,
+    #                        labels_exclude=['unknown', 'corpuscallosum'], threshold=0, threshold_percentile=0,
+    #                        color_map='jet', norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
+
+    # args.atlas, args.mat_fname, args.mat_field, args.conditions, args.stat,
+    # args.windows, args.labels_exclude, args.threshold, args.threshold_percentile,
+    # args.color_map, args.norm_by_percentile, args.norm_percs)
+
+
     d = dict()
-    data = sio.loadmat(rois_con_fname)[mat_field]
-    d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=exclude, sorted_according_to_annot_file=True)
-    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True) * 10
+    data = sio.loadmat(args.mat_fname)[args.mat_field]
+    d['labels'] = lu.read_labels(
+        subject, SUBJECTS_DIR, args.atlas, exclude=args.labels_exclude,sorted_according_to_annot_file=True)
+    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True) * 1000
     d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]
     d['labels'] = [l.name for l in d['labels']]
-    d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(data, d['labels'], d['hemis'], stat, conditions, w, threshold, threshold_percentile, color_map,
-                                norm_by_percentile, norm_percs, symetric_colors)
-    d['conditions'] = conditions
+    (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
+     d['data_max'], d['data_min']) = calc_connections_colors(data, d['labels'], d['hemis'], args)
+    # args.stat, args.conditions, args.windows, args.threshold,
+    #     args.threshold_percentile, args.color_map, args.norm_by_percentile, args.norm_percs, args.symetric_colors)
+    d['conditions'] = args.conditions
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'rois_con'), **d)
 
 
-def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=0, threshold_percentile=0, color_map='jet',
-                            norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
+def calc_connections_colors(data, labels, hemis, args):
+    # stat, conditions, w, threshold=0, threshold_percentile=0, color_map='jet',
+    #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     M = data.shape[0]
-    W = data.shape[2] if w == 0 else w
+    W = data.shape[2] if args.windows == 0 else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
-    con_values = np.zeros((L, W, len(conditions)))
+    con_values = np.zeros((L, W, len(args.conditions)))
     con_names = [None] * L
     con_type = np.zeros((L))
-    for cond in range(len(conditions)):
+    for cond in range(len(args.conditions)):
         for w in range(W):
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
                 if W > 1:
@@ -112,8 +122,8 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
                     con_values[ind, w, cond] = data[i, j, cond]
                 else:
                     con_values[ind, w, cond] = data[i, j]
-    if len(conditions) > 1:
-        stat_data = utils.calc_stat_data(con_values, stat)
+    if len(args.conditions) > 1:
+        stat_data = utils.calc_stat_data(con_values, args.stat)
     else:
         stat_data = np.squeeze(con_values)
 
@@ -124,10 +134,10 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
 
     con_indices = con_indices.astype(np.int)
     con_names = np.array(con_names)
-    if threshold_percentile > 0:
-        threshold = np.percentile(np.abs(stat_data), threshold_percentile)
-    if threshold >= 0:
-        indices = np.where(np.abs(stat_data) > threshold)[0]
+    if args.threshold_percentile > 0:
+        args.threshold = np.percentile(np.abs(stat_data), args.threshold_percentile)
+    if args.threshold >= 0:
+        indices = np.where(np.abs(stat_data) > args.threshold)[0]
         # con_colors = con_colors[indices]
         con_indices = con_indices[indices]
         con_names = con_names[indices]
@@ -136,22 +146,22 @@ def calc_connections_colors(data, labels, hemis, stat, conditions, w, threshold=
         stat_data = stat_data[indices]
 
     con_values = np.squeeze(con_values)
-    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
-    if symetric_colors:
-        data_minmax = max(map(abs, [data_max, data_min]))
-        con_colors = utils.mat_to_colors(stat_data, -data_minmax, data_minmax, color_map)
+    if args.data_max == 0 and args.data_min == 0:
+        data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
+        if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
+            data_minmax = max(map(abs, [data_max, data_min]))
+            data_max, data_min = data_minmax, -data_minmax
     else:
-        con_colors = utils.mat_to_colors(stat_data, -data_min, data_max, color_map)
+        data_max, data_min = args.data_max, args.data_min
+    con_colors = utils.mat_to_colors(stat_data, data_min, data_max, args.color_map)
 
     print(len(con_names))
-    return con_colors, con_indices, con_names, con_values, con_type
+    return con_colors, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
 def main(subject, args):
     if utils.should_run('save_rois_connectivity'):
-        save_rois_connectivity(subject, args.atlas, args.mat_fname, args.mat_field, args.conditions, args.stat,
-                               args.windows, args.labels_exclude, args.threshold, args.threshold_percentile,
-                               args.color_map, args.norm_by_percentile, args.norm_percs)
+        save_rois_connectivity(subject, args)
 
     if utils.should_run('save_electrodes_coh'):
         # todo: Add the necessary parameters
@@ -179,6 +189,8 @@ def read_cmd_args(argv):
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)
     parser.add_argument('--color_map', help='', required=False, default='jet')
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--data_max', help='', required=False, default=0, type=float)
+    parser.add_argument('--data_min', help='', required=False, default=0, type=float)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)

@@ -1,5 +1,5 @@
 import os.path as op
-import numpy as np
+import glob
 
 
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False):
@@ -50,16 +50,27 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
     ax.set_position(ax_pos_new) # set a new position
 
 
-if __name__ is '__main__':
-    import scipy.io as sio
-    import glob
-
-    # root = '/cluster/neuromind/npeled/linda'
-    # values_mat = sio.loadmat(op.join(root, 'figure_file2.mat'))['figure_file2']
+def example1():
     figures_fol = '/cluster/neuromind/npeled/mmvt/fsaverage5c/figures/final2'
     colors_map = 'YlOrRd'
     data_max, data_min = 0.2, 0.3
 
     for fig_name in glob.glob(op.join(figures_fol, '*.png')):
-        combine_brain_with_color_bar(data_max, data_min, fig_name, colors_map, figures_fol, dpi=100,
-                                    x_left_crop=350, x_right_crop=200)
+        combine_brain_with_color_bar(
+            data_max, data_min, fig_name, colors_map, figures_fol, dpi=100,
+            x_left_crop=350, x_right_crop=200)
+
+
+def example2():
+    figures_fol = '/cluster/neuromind/npeled/mmvt/fsaverage5c/figures/connections'
+    colors_map = 'YlOrRd'
+    data_max, data_min = 0.15, 0.6
+
+    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+        combine_brain_with_color_bar(
+            data_max, data_min, fig_name, colors_map, figures_fol, dpi=100,
+            x_left_crop=350, x_right_crop=200)
+
+
+if __name__ is '__main__':
+    example2()

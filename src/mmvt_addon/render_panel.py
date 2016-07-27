@@ -195,7 +195,7 @@ def render_all_images():
             if hemi in camera_name:
                 RenderingMakerPanel.addon.show_hide_hemi(False, hemi)
                 RenderingMakerPanel.addon.show_hide_hemi(True, mu.other_hemi(hemi))
-        render_image('{}_fig'.format(camera_name))
+        render_image('{}_fig'.format(camera_name[len('camera') + 1:]))
 
 
 def render_image(image_name=''):
