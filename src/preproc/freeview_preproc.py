@@ -150,7 +150,7 @@ def read_electrodes_pos(subject, args):
         elecs_pos, elecs_names = elecs['pos'], [name.astype(str) for name in elecs['names']]
         return elecs_pos, elecs_names
     else:
-        return None, None
+        raise Exception("Can't find the electrode coordinates file! ({})".format(electrodes_file))
 
 # def read_vox2ras0():
 #     import nibabel as nib
