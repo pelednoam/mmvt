@@ -58,8 +58,9 @@ def appearance_show_rois_activity_update(self, context):
     if not AppearanceMakerPanel.addon is None and show_activity:
         fmri_hide = not show_activity if bpy.context.scene.subcortical_layer == 'fmri' else show_activity
         meg_hide = not show_activity if bpy.context.scene.subcortical_layer == 'meg' else show_activity
-        AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
-        AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
+        if not bpy.context.scene.objects_show_hide_sub_cortical:
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
 
 
 def appearance_show_connections_layer_update(self, context):

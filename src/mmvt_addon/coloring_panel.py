@@ -118,12 +118,13 @@ def init_activity_map_coloring(map_type, subcorticals=True):
     ColoringMakerPanel.addon.show_activity()
     ColoringMakerPanel.addon.change_to_rendered_brain()
 
-    if subcorticals:
-        ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
-        ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
-    else:
-        hide_subcorticals = not subcorticals
-        ColoringMakerPanel.addon.show_hide_sub_corticals(hide_subcorticals)
+    if not bpy.context.scene.objects_show_hide_sub_cortical:
+        if subcorticals:
+            ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+            ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+        else:
+            hide_subcorticals = not subcorticals
+            ColoringMakerPanel.addon.show_hide_sub_corticals(hide_subcorticals)
     # change_view3d()
 
 
@@ -234,7 +235,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
 
-    if plot_subcorticals:
+    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
         if map_type == 'MEG':
             if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
                 color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
@@ -677,8 +678,8 @@ class ColoringMakerPanel(bpy.types.Panel):
         if faces_verts_exist:
             if meg_files_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-            if meg_labels_files_exist:
-                layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
+            # if meg_labels_files_exist:
+            #     layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')

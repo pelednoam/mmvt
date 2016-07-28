@@ -75,7 +75,7 @@ def render_draw(self, context):
     # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
     # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
-    if len(glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))):
+    if len(glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))) > 1:
         layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
     layout.prop(context.scene, 'smooth_figure')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
@@ -187,7 +187,7 @@ class RenderAllFigures(bpy.types.Operator):
 
 
 def render_all_images():
-    camera_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))
+    camera_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera_*.pkl'))
     for camera_file in camera_files:
         load_camera(camera_file)
         camera_name = mu.namebase(camera_file)
