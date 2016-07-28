@@ -73,7 +73,7 @@ def filter_draw(self, context):
     layout.prop(context.scene, "filter_curves_type", text="")
     layout.prop(context.scene, "filter_curves_func", text="")
     layout.prop(context.scene, 'mark_filter_items', text="Mark selected items")
-    layout.operator("ohad.filter", text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
+    layout.operator(Filtering.bl_idname, text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
     # if bpy.types.Scene.filter_is_on:
     layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
     col = layout.column(align=0)
@@ -120,13 +120,14 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
         bpy.data.objects[closet_object_name].select = True
 
     bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
-    if bpy.data.objects[closet_object_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-        bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
-    else:
-        if mark == 'mark_green':
-            bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
-        elif mark == 'mark_blue':
-            bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
+    if bpy.context.scene.mark_filter_items:
+        if bpy.data.objects[closet_object_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
+            bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
+        else:
+            if mark == 'mark_green':
+                bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
+            elif mark == 'mark_blue':
+                bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
     bpy.types.Scene.filter_is_on = True
 
 
