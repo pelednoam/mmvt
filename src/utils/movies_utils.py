@@ -121,6 +121,28 @@ def edit_movie_example2():
 
 
 def edit_movie_example3():
+    movie_fol = '/home/noam/Videos/mmvt'
+    if not op.isdir(movie_fol):
+        movie_fol = '/cluster/neuromind/npeled/videos/mmvt/mmvt-meg-fmri-electrodes2'
+    subclips_times = [(2, 17), (21, 30), (36, 59)]
+    cut_movie(movie_fol, 'out-18.ogv', 'mmvt-meg-fmri-electrodes.mp4', subclips_times)
+    crop_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_crop.mp4')
+    subs = [((0, 4), 'The brain is a 3D object'),
+            ((4, 8), 'Adding the invasive electrodes'),
+            ((8, 11), ' '),
+            ((11, 14), "Selecting a time point from all the cortical labels' evoked responses"),
+            ((15, 29), "Plotting the MEG for the selected time point"),
+            ((29, 32), "Choosing a fMRI constrast"),
+            ((32, 38), "Plotting the selected fMRI contrast"),
+            ((38, 45), " "),
+            ((45, 51), "Selecting an electrode"),
+            ((51, 54), "Plotting the electrodes' activity"),
+            ((59, 72), "Plotting the electrodes' activity")]
+    # add_text_to_movie(movie_fol, 'mmvt-meg-fmri-electrodes_crop.mp4', 'mmvt-meg-fmri-electrodes_crop_sub.mp4', subs, fontsize=60)
+    # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
+
+
+def edit_movie_example4():
     movie_fol = '/home/noam/Pictures/mmvt/mg99/lvf4-3_4_1'
     movie_name = 'mg99_LVF4-3_stim_srouces_long.mp4'
     out_movie_name = 'mg99_LVF4-3_stim_srouces.mp4'
@@ -129,4 +151,4 @@ def edit_movie_example3():
 
 if __name__ == '__main__':
     check_movipy()
-    edit_movie_example2()
+    edit_movie_example3()
