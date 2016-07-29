@@ -2,22 +2,24 @@ import os.path as op
 import glob
 from src.utils import utils
 
-import moviepy.config as conf
-from moviepy.config import change_settings
-change_settings({"IMAGEMAGICK_BINARY": r"/usr/bin/convert"})
+# from moviepy.config import change_settings
+# change_settings({"IMAGEMAGICK_BINARY": r"/usr/bin/convert"})
 
 # https://www.vultr.com/docs/install-imagemagick-on-centos-6
 # https://github.com/BVLC/caffe/issues/3884
 
-if conf.try_cmd([conf.FFMPEG_BINARY])[0]:
-    print("MoviePy : ffmpeg successfully found.")
-else:
-    print("MoviePy : can't find or access ffmpeg.")
 
-if conf.try_cmd([conf.IMAGEMAGICK_BINARY])[0]:
-    print("MoviePy : ImageMagick successfully found.")
-else:
-    print("MoviePy : can't find or access ImageMagick.")
+def check_movipy():
+    import moviepy.config as conf
+    if conf.try_cmd([conf.FFMPEG_BINARY])[0]:
+        print("MoviePy : ffmpeg successfully found.")
+    else:
+        print("MoviePy : can't find or access ffmpeg.")
+
+    if conf.try_cmd([conf.IMAGEMAGICK_BINARY])[0]:
+        print("MoviePy : ImageMagick successfully found.")
+    else:
+        print("MoviePy : can't find or access ImageMagick.")
 
 
 def cut_movie(movie_fol, movie_name, out_movie_name, subclips_times):
@@ -109,9 +111,9 @@ def edit_movie_example2():
             ((4, 18), 'To see the depth electrodes, the user can hide the hemispheres'),
             ((18, 30), 'The user can choose an electrode and see it location both in MMVT and FreeView'),
             ((30, 35), "Also, the user can choose to see only the current electrodes' lead"),
-            ((35, 40), "The program estimates the each electrode's sources and plot the probailites as colors"
-             "Yellow: low probability, red: high probability"),
-            ((40, 55), "Chagning to a different lead")]
+            ((35, 42), "The program estimates the each electrode's sources and plot the probailites as colors"),
+            ((42, 46), "From yellow (low probability), to red (high probability)"),
+            ((46, 52), '')]
     add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs, fontsize=80)
     # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
@@ -124,4 +126,5 @@ def edit_movie_example3():
     cut_movie(movie_fol, movie_name, out_movie_name, subclips_times)
 
 if __name__ == '__main__':
+    check_movipy()
     edit_movie_example2()
