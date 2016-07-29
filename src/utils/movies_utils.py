@@ -39,12 +39,12 @@ def crop_movie(movie_fol, movie_name, out_movie_name, crop_ys=(60, 1170)):
     crop_video.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs):
+def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold'):
     # Should install ImageMagick
     # For centos6: https://www.vultr.com/docs/install-imagemagick-on-centos-6
     from moviepy import editor
 
-    def annotate(clip, txt, txt_color='red', fontsize=50, font='Xolonium-Bold'):
+    def annotate(clip, txt, txt_color=txt_color, fontsize=fontsize, font=font):
         """ Writes a text at the bottom of the clip. """
         txtclip = editor.TextClip(txt, fontsize=fontsize, font=font, color=txt_color)
         # txtclip = txtclip.on_color((clip.w, txtclip.h + 6), color=(0, 0, 255), pos=(6, 'center'))
@@ -109,10 +109,10 @@ def edit_movie_example2():
             ((4, 18), 'To see the depth electrodes, the user can hide the hemispheres'),
             ((18, 30), 'The user can choose an electrode and see it location both in MMVT and FreeView'),
             ((30, 35), "Also, the user can choose to see only the current electrodes' lead"),
-            ((35, 40), "The program estimates the each electrode's sources and plot the probailites as colors"),
-             # "Yellow: low probability, red: high probability"),
+            ((35, 40), "The program estimates the each electrode's sources and plot the probailites as colors"
+             "Yellow: low probability, red: high probability"),
             ((40, 55), "Chagning to a different lead")]
-    add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs)
+    add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs, fontsize=80)
     # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
 
