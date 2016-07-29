@@ -17,14 +17,19 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 
 #todo: Add the necessary parameters
-def save_electrodes_coh(subject, conditions, mat_fname, stat, t_max, threshold=0.8, bipolar=False):
+def save_electrodes_coh(subject, conditions=(), mat_fname='', stat=STAT_DIFF, t_max=-1, threshold=0.8, bipolar=False):
     d = dict()
     d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh = calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
-                              dt=0.1, window_len=0.1, n_jobs=6)
+    coh_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh.npy')
+    if not op.isfile(coh_fname):
+        coh = calc_electrodes_coh(
+            subject, conditions, mat_fname, t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
+            dt=0.1, window_len=0.1, n_jobs=6)
+    else:
+        coh = np.load(coh_fname)
     d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(subject, coh, d['labels'], d['hemis'], stat, conditions)
+        calc_connections_colors(coh, d['labels'], d['hemis'], args)
     d['conditions'] = ['interference', 'neutral']
     np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh'), **d)
 
@@ -160,16 +165,16 @@ def calc_connections_colors(data, labels, hemis, args):
 
 
 def main(subject, args):
-    if utils.should_run('save_rois_connectivity'):
+    if utils.should_run(args, 'save_rois_connectivity'):
         save_rois_connectivity(subject, args)
 
-    if utils.should_run('save_electrodes_coh'):
+    if utils.should_run(args, 'save_electrodes_coh'):
         # todo: Add the necessary parameters
         save_electrodes_coh(subject, args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
 
 
 
-def read_cmd_args(argv):
+def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
@@ -177,6 +182,7 @@ def read_cmd_args(argv):
     parser.add_argument('-c', '--conditions', help='conditions names', required=False, default='contrast', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
     parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
@@ -185,6 +191,7 @@ def read_cmd_args(argv):
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
     parser.add_argument('--windows', help='', required=False, default=0, type=int)
+    parser.add_argument('--t_max', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)
     parser.add_argument('--color_map', help='', required=False, default='jet')
