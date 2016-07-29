@@ -69,7 +69,6 @@ def _electrodes_update():
     prev_electrode = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
-    select_electrode(current_electrode)
     update_cursor()
     color_electrodes(current_electrode, prev_electrode)
     if prev_electrode != '':
@@ -86,6 +85,9 @@ def _electrodes_update():
                 plot_labels_probs(loc)
     else:
         print('lookup table is None!')
+    select_electrode(current_electrode)
+    mu.change_fcurves_colors(bpy.data.objects[current_electrode])
+
 
 def select_electrode(current_electrode):
     for elec in ElecsPanel.all_electrodes:
