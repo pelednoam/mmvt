@@ -12,7 +12,7 @@ import os
 import os.path as op
 import re
 import uuid
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 import time
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
@@ -891,6 +891,8 @@ def read_ply_file(ply_file):
 
 
 def change_fcurves_colors(objs):
+    if not isinstance(objs, Iterable):
+        objs = [objs]
     colors_num = count_fcurves(objs)
     colors = cu.get_distinct_colors(colors_num)
     for obj in objs:
@@ -899,6 +901,7 @@ def change_fcurves_colors(objs):
         for fcurve in obj.animation_data.action.fcurves:
             fcurve.color_mode = 'CUSTOM'
             fcurve.color = tuple(next(colors))
+            fcurve.select = True
 
 
 def count_fcurves(objects):

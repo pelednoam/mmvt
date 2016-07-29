@@ -103,17 +103,20 @@ def edit_movie_example():
 def edit_movie_example2():
     movie_fol = '/home/noam/Videos/mmvt'
     if not op.isdir(movie_fol):
-        movie_fol = '/autofs/cluster/neuromind/npeled/videos'
-    subclips_times = [(2, 57)]
-    # cut_movie(movie_fol, 'out-13.ogv', 'freeview-mmvt-electrodes.mp4', subclips_times)
+        movie_fol = '/cluster/neuromind/npeled/videos/mmvt'
+    subclips_times = [(2, 34)]
+    # cut_movie(movie_fol, 'out-6.ogv', 'freeview-mmvt-electrodes.mp4', subclips_times)
     # crop_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_crop.mp4')
-    subs = [((0, 4), 'The brain is a 3d object imported from FreeSurfer'),
-            ((4, 18), 'To see the depth electrodes, the user can hide the hemispheres'),
-            ((18, 30), 'The user can choose an electrode and see it location both in MMVT and FreeView'),
-            ((30, 35), "Also, the user can choose to see only the current electrodes' lead"),
-            ((35, 45), "The program estimates the each electrode's sources and plot the probabilities as colors"),
-            ((45, 55), "From yellow (low probability) to red (high probability)")]
-    add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs, fontsize=80)
+    subs = [((0, 3), 'Choosing the LAT lead'),
+            ((3, 7), 'Choosing the first electrode in the lead (LAT1)'),
+            ((7, 11), "The current electrode's averaged evoked response"),
+            ((11, 14), "The program estimates the electrode's sources"),
+            ((14, 18), "The sources' probabilities are colored from yellow to red"),
+            ((18, 20), "The electrode (green dot) in FreeView"),
+            ((20, 24), "Going over the different electrodes in the lead"),
+            ((24, 26), "By combing MMVT and Freeview"),
+            ((26, 32), "The user can benefit from both 3D and 2D views")]
+    add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs, fontsize=60)
     # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
 
