@@ -109,8 +109,8 @@ def edit_movie_example2():
             ((4, 18), 'To see the depth electrodes, the user can hide the hemispheres'),
             ((18, 30), 'The user can choose an electrode and see it location both in MMVT and FreeView'),
             ((30, 35), "Also, the user can choose to see only the current electrodes' lead"),
-            ((35, 40), "The program estimates the each electrode's sources and plot the probailites as colors\n" +
-             "Yellow: low probability, red: high probability"),
+            ((35, 40), "The program estimates the each electrode's sources and plot the probailites as colors"),
+             # "Yellow: low probability, red: high probability"),
             ((40, 55), "Chagning to a different lead")]
     add_text_to_movie(movie_fol, 'freeview-mmvt-electrodes.mp4', 'freeview-mmvt-electrodes_sub.mp4', subs)
     # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
