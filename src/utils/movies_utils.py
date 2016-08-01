@@ -125,20 +125,18 @@ def edit_movie_example3():
     if not op.isdir(movie_fol):
         movie_fol = '/cluster/neuromind/npeled/videos/mmvt/mmvt-meg-fmri-electrodes2'
     subclips_times = [(2, 17), (21, 30), (36, 59)]
-    cut_movie(movie_fol, 'out-18.ogv', 'mmvt-meg-fmri-electrodes.mp4', subclips_times)
-    crop_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_crop.mp4')
-    subs = [((0, 4), 'The brain is a 3D object'),
-            ((4, 8), 'Adding the invasive electrodes'),
+    # cut_movie(movie_fol, 'out-18.ogv', 'mmvt-meg-fmri-electrodes.mp4', subclips_times)
+    # crop_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_crop.mp4')
+    subs = [((0, 5), 'The brain is a 3D object'),
+            ((5, 8), 'Adding the invasive electrodes'),
             ((8, 11), ' '),
             ((11, 14), "Selecting a time point from all the cortical labels' evoked responses"),
-            ((15, 29), "Plotting the MEG for the selected time point"),
-            ((29, 32), "Choosing a fMRI constrast"),
-            ((32, 38), "Plotting the selected fMRI contrast"),
-            ((38, 45), " "),
-            ((45, 51), "Selecting an electrode"),
-            ((51, 54), "Plotting the electrodes' activity"),
-            ((59, 72), "Plotting the electrodes' activity")]
-    # add_text_to_movie(movie_fol, 'mmvt-meg-fmri-electrodes_crop.mp4', 'mmvt-meg-fmri-electrodes_crop_sub.mp4', subs, fontsize=60)
+            ((15, 20), "Plotting the MEG for the selected time point"),
+            ((20, 29  ), "Choosing and plotting the fMRI constrast"),
+            ((29, 32), " "),
+            ((32, 41), "Selecting a time point from an electrode's evoked response"),
+            ((41, 47), "Plotting the electrodes' activity")]
+    add_text_to_movie(movie_fol, 'mmvt-meg-fmri-electrodes_crop.mp4', 'mmvt-meg-fmri-electrodes_crop_sub.mp4', subs, fontsize=60)
     # create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
 
