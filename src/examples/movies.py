@@ -37,7 +37,7 @@ def edit_movie_example2():
 def edit_movie_example3():
     movie_fol = '/home/noam/Desktop'
     if not op.isdir(movie_fol):
-        movie_fol = '/cluster/neuromind/npeled/videos/mmvt/mmvt-meg-fmri-electrodes2'
+        movie_fol = '/cluster/neuromind/npeled/videos/mmvt/mmvt-meg-fmri-electrodes3'
     subclips_times = [(2, 39)]
     # mu.cut_movie(movie_fol, 'f4580000-2784.avi', 'mmvt-meg-fmri-electrodes.mp4', subclips_times)
     # mu.crop_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_crop.mp4')
