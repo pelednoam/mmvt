@@ -34,7 +34,7 @@ sensor and source-space analysis of MEG and EEG data).
 
 ## Videos
 
-![Example](resources/gifs/MEG-ttest.gif "spatial and temporal ttest result of MEG activation")
+![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation")
 ![Example](resources/gifs/meg-electrodes-coherence.gif "MEG & Electrodes & Coherence")
 
 ## Tutorials
