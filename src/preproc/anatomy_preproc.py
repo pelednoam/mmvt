@@ -34,7 +34,12 @@ def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
     if not utils.is_exe(script_fname):
         utils.set_exe_permissions(script_fname)
 
-    # aseg_to_srf_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'ascii')
+    # aseg2srf: For every subcortical region (8 10 11 12 13 16 17 18 26 47 49 50 51 52 53 54 58):
+    # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
+    # 2) mri_tessellate: Creates surface by tessellating
+    # 3) mris_smooth: Smooth the new surface
+    # 4) mris_convert: Convert the new surface into srf format
+
     function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs')
     renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical')
     lookup = load_subcortical_lookup_table()
