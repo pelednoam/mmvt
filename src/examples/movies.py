@@ -50,6 +50,7 @@ def edit_movie_example3():
             ((31, 36), " "),
             ((36, 39), "Selecting a time point from an electrode's evoked response"),
             ((39, 44), "Plotting the electrodes' activity")]
+
     mu.add_text_to_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_sub.mp4', subs, fontsize=60)
     # mu.create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
