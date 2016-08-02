@@ -38,7 +38,7 @@ sensor and source-space analysis of MEG and EEG data).
 ![Example](resources/gifs/meg-electrodes-coherence.gif "MEG & Electrodes & Coherence")
 
 ## Tutorials
-![Example](resources/gifs/mmvt-meg-fmri-electrodes.gif "MEG-fMRI-electrodes example")
+![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example")
 
 
 ## Installation
