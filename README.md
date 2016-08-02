@@ -37,6 +37,10 @@ sensor and source-space analysis of MEG and EEG data).
 ![Example](resources/gifs/MEG-ttest.gif "spatial and temporal ttest result of MEG activation")
 ![Example](resources/gifs/meg-electrodes-coherence.gif "MEG & Electrodes & Coherence")
 
+## Tutorials
+![Example](resources/gifs/mmvt-meg-fmri-electrodes.gif "MEG-fMRI-electrodes example")
+
+
 ## Installation
 
 - [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
