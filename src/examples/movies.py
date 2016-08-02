@@ -38,18 +38,18 @@ def edit_movie_example3():
     movie_fol = '/home/noam/Desktop'
     if not op.isdir(movie_fol):
         movie_fol = '/cluster/neuromind/npeled/videos/mmvt/mmvt-meg-fmri-electrodes3'
-    subclips_times = [(1, 37)]
+    subclips_times = [(2, 46)]
     # mu.cut_movie(movie_fol, 'f4580000-2784.avi', 'mmvt-meg-fmri-electrodes.mp4', subclips_times)
     # mu.crop_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_crop.mp4')
-    subs = [((0, 5), 'The brain is a 3D object'),
-            ((5, 15), 'Adding the invasive electrodes'),
-            ((15, 17), ' '),
+    subs = [((0, 6), 'The brain is a 3D object'),
+            ((6, 13), 'Adding the invasive electrodes'),
+            ((13, 17), ' '),
             ((17, 20), "Selecting a time point from all the cortical labels' evoked responses"),
-            ((20, 24), "Plotting the MEG for the selected time point"),
-            ((24, 28), "Choosing and plotting the fMRI constrast"),
-            ((28, 29), " "),
-            ((29, 33), "Selecting a time point from an electrode's evoked response"),
-            ((33, 36), "Plotting the electrodes' activity")]
+            ((20, 26), "Plotting the MEG for the selected time point"),
+            ((26, 31), "Choosing and plotting the fMRI constrast"),
+            ((31, 36), " "),
+            ((36, 39), "Selecting a time point from an electrode's evoked response"),
+            ((39, 44), "Plotting the electrodes' activity")]
     mu.add_text_to_movie(movie_fol, 'mmvt-meg-fmri-electrodes.mp4', 'mmvt-meg-fmri-electrodes_sub.mp4', subs, fontsize=60)
     # mu.create_animated_gif(movie_fol, 'mg78_elecs_coh_meg_diff.mp4', 'mg78_elecs_coh_meg_diff.gif')
 
