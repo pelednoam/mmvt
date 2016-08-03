@@ -167,6 +167,7 @@ get_leads = electrodes_panel.get_leads
 get_lead_electrodes = electrodes_panel.get_lead_electrodes
 set_current_electrode = electrodes_panel.set_current_electrode
 set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
+set_show_only_lead = electrodes_panel.set_show_only_lead
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 create_connections = connections_panel.create_connections
 set_connection_type = connections_panel.set_connection_type

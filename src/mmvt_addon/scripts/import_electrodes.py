@@ -24,7 +24,6 @@ def wrap_blender_call():
 
 def read_args(argv=None):
     parser = su.add_default_args()
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=True, type=su.is_true)
     parser.add_argument('-r', '--radius', help='radius', required=False, default=0.15, type=float)
     parser.add_argument('-p', '--pos_file', help='position file', required=False, default='', type=su.str_arr_type)
     args = su.parse_args(parser, argv)

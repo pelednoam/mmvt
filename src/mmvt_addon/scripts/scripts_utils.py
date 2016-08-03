@@ -104,7 +104,7 @@ def call_script(script_fname, args, log_name=''):
 
 def get_subject_fname(args):
     mmvt_dir = get_mmvt_dir()
-    return op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, args.atlas))
+    return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
 
 
 def create_call_args(args):
@@ -160,6 +160,7 @@ def add_default_args():
     parser.add_argument('--subjects', help='subjects names', required=False, default='', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=True, type=au.is_true)
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 

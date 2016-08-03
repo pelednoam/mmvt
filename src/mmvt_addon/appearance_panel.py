@@ -48,6 +48,8 @@ def show_activity():
 
 def show_electrodes(value=True):
     bpy.context.scene.appearance_show_electrodes_layer = value
+    for elec_obj in bpy.data.objects.get('Deep_electrodes').children:
+        elec_obj.hide = value
 
 
 def appearance_show_rois_activity_update(self, context):

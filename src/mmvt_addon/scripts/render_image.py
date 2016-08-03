@@ -25,6 +25,9 @@ def read_args(argv=None):
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=su.is_true)
+    parser.add_argument('--show_elecs', help='show electrodes', required=False, default=False, type=su.is_true)
+    parser.add_argument('--show_only_lead', help='show only current lead', required=False, default=False, type=su.is_true)
+    parser.add_argument('--curr_elec', help='current electrode', required=False, default='')
     return su.parse_args(parser, argv)
 
 
@@ -38,6 +41,8 @@ def render_image(subject_fname):
     mmvt.show_hide_hemi(args.hide_lh, 'lh')
     mmvt.show_hide_hemi(args.hide_rh, 'rh')
     mmvt.show_hide_sub_corticals(args.hide_subs)
+    mmvt.show_electrodes(args.show_elecs)
+    mmvt.set_show_only_lead(args.show_only_lead, args.curr_elec)
     mmvt.set_render_quality(args.quality)
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
@@ -48,7 +53,7 @@ def render_image(subject_fname):
         if not su.is_true(cont):
             return
     su.save_blend_file(subject_fname)
-    mmvt.render_image(args.image_name, args.output_path, args.quality, args.smooth_figure)
+    mmvt.render_image(args.image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
     su.exit_blender()
 
 

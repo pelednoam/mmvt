@@ -250,8 +250,11 @@ def get_real_atlas_name(atlas, csv_fol=''):
     if csv_fol == '':
         csv_fol = get_mmvt_root()
     csv_fname = op.join(csv_fol, 'atlas.csv')
+    real_atlas_name = ''
     if op.isfile(csv_fname):
         for line in csv_file_reader(csv_fname, ',', 1):
+            if len(line) < 2:
+                continue
             if atlas in [line[0], line[1]]:
                 real_atlas_name = line[1]
                 break

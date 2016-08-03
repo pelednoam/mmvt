@@ -77,6 +77,7 @@ def render_draw(self, context):
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
     if len(glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))) > 1:
         layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
+    layout.prop(context.scene, 'render_background')
     layout.prop(context.scene, 'smooth_figure')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
     layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
@@ -121,7 +122,10 @@ bpy.types.Scene.Z_location = bpy.props.FloatProperty(description="Camera z locat
 bpy.types.Scene.quality = bpy.props.FloatProperty(
     default=20, min=1, max=100,description="quality of figure in parentage")
 bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(
-    name='smooth image', description="This significantly affect rendering speed")
+    name='Smooth image', description="This significantly affect rendering speed")
+bpy.types.Scene.render_background = bpy.props.BoolProperty(
+    name='Background rendering', description="Render in the background")
+
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -198,27 +202,42 @@ def render_all_images():
         render_image('{}_fig'.format(camera_name[len('camera') + 1:]))
 
 
-def render_image(image_name=''):
-    quality = bpy.context.scene.quality
-    use_square_samples = bpy.context.scene.smooth_figure
+def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None):
+    bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
+    bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \
+        else use_square_samples
+    if not render_background is None:
+        bpy.context.scene.render_background = render_background
 
-    bpy.context.scene.render.resolution_percentage = quality
     # print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
     print('use_square_samples: {}'.format(use_square_samples))
     # print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-    bpy.context.scene.cycles.use_square_samples = use_square_samples
 
     cur_frame = bpy.context.scene.frame_current
     if image_name == '':
         image_name = 't{}'.format(cur_frame)
-    file_name = op.join(bpy.path.abspath(bpy.context.scene.output_path), image_name)
-    print('file name: {}'.format(file_name))
-    bpy.context.scene.render.filepath = file_name
+    image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
+    print('file name: {}'.format(op.join(image_fol, image_name)))
+    bpy.context.scene.render.filepath = op.join(image_fol, image_name)
     # Render and save the rendered scene to file. ------------------------------
     print('Image quality:')
     print(bpy.context.scene.render.resolution_percentage)
     print("Rendering...")
-    bpy.ops.render.render(write_still=True)
+    if not bpy.context.scene.render_background:
+        bpy.ops.render.render(write_still=True)
+    else:
+        mu.change_fol_to_mmvt_root()
+        script = 'src.mmvt_addon.scripts.render_image'
+        cmd = '{} -m {} -s {} -a {} -q {} -b {} --hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --show_only_lead {} --curr_elec {}'.format(
+            bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
+            bpy.context.scene.render.resolution_percentage, bpy.context.scene.bipolar,
+            bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
+            bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.appearance_show_electrodes_layer,
+            bpy.context.scene.show_only_lead, bpy.context.scene.electrodes)
+        print('Running {}'.format(cmd))
+        mu.run_command_in_new_thread(cmd)
+
+
     print("Finished")
 
 

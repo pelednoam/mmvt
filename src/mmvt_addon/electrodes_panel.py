@@ -208,6 +208,12 @@ def _show_only_current_lead_update():
         # updade_lead_hemis()
 
 
+def set_show_only_lead(val, current_electrode=''):
+    bpy.context.scene.show_only_lead = val
+    if current_electrode != '':
+        bpy.types.Scene.electrodes = current_electrode
+
+
 # def show_elecs_hemi_update():
 #     if ElecsPanel.init:
 #         hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
@@ -545,12 +551,12 @@ def init_electrodes_labeling(addon):
     if len(labling_files) == 0:
         print("!!! Can't find any electrodes labeling file in {} !!!".format(
             op.join(mu.get_user_fol(), 'electrodes', labeling_fname)))
-    files_names = [mu.namebase(fname) for fname in labling_files]
-    labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-    bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
-        items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
-    # if len(labling_files) > 0:
-    bpy.context.scene.electrodes_labeling_files = files_names[0]
+    else:
+        files_names = [mu.namebase(fname) for fname in labling_files]
+        labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
+            items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
+        bpy.context.scene.electrodes_labeling_files = files_names[0]
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
     ElecsPanel.faces_verts = addon.get_faces_verts()
