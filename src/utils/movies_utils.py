@@ -59,10 +59,10 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, 
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def create_animated_gif(movie_fol, movie_name, out_movie_name):
+def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=10):
     from moviepy import editor
     video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    video.write_gif(op.join(movie_fol, out_movie_name), fps=12)
+    video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)
 
 
 def combine_movies(fol, movie_name, movie_type='mp4'):
@@ -87,7 +87,5 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
         utils.remove_file('{}.avi'.format(part_name))
 
 
-
 if __name__ == '__main__':
     check_movipy()
-    edit_movie_example3()
