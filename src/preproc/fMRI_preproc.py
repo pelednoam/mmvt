@@ -409,6 +409,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
                        target_subject=None, threshold=2, overwrite_surf_data=False, overwrite_colors_file=True):
     if target_subject is None:
         target_subject = subject
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'fmri'))
     for hemi in ['rh', 'lh']:
         print('project {} to {}'.format(volume_file, hemi))
         if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
@@ -453,7 +454,7 @@ def load_and_show_npy(subject, npy_file, hemi):
 
 
 def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_mgz=True):
-    if not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz:
+    if op.isfile(volume_fname_template.format(format='mgh')) and (not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz):
         mri_convert(volume_fname_template, 'mgh', 'mgz')
     volume_fname = volume_fname_template.format(format='mgz')
     blender_volume_fname = op.basename(volume_fname) if contrast=='' else '{}.mgz'.format(contrast)
@@ -461,12 +462,15 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
     return volume_fname
 
 
-def project_volue_to_surface(subject, data_fol, threshold, volume_name, target_subject='',
-                             overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True):
+def project_volue_to_surface(subject, data_fol, threshold, volume_name, contrast, target_subject='',
+                             overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True,
+                             existing_format='nii.gz'):
     if target_subject == '':
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
-    volume_fname = copy_volume_to_blender(volume_fname_template, overwrite_volume_mgz)
+    # mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
+    copy_volume_to_blender(volume_fname_template, contrast, overwrite_volume_mgz)
+    volume_fname = volume_fname_template.format(format=existing_format)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
@@ -574,6 +578,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus250')
     parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
     parser.add_argument('-T', '--task', help='task', required=True)
+    parser.add_argument('--volume_name', help='volume file name', required=False)
     parser.add_argument('--meg_subject', help='MEG subject name', required=False, default='')
     # args = vars(parser.parse_args())
     args = utils.Bag(au.parse_parser(parser))
@@ -610,13 +615,13 @@ if __name__ == '__main__':
     # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
 
-
+    volume_name = args.volume_name if args.volume_name != '' else args.volume_name
     if 'find_clusters' in func:
         find_clusters(subject, contrast, threshold, atlas)
     if 'main' in func:
         main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
     if 'project_volue_to_surface' in func:
-        project_volue_to_surface(subject, fol, threshold, contrast)
+        project_volue_to_surface(subject, fol, threshold, volume_name, contrast, existing_format='mgz')
     if 'calc_meg_activity' in func:
         meg_subject = args.meg_subject
         if meg_subject == '':
