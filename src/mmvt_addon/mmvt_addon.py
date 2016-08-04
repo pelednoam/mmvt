@@ -202,13 +202,12 @@ def start_listener():
 
 
 def main(addon_prefs=None):
-    show_activity()
     show_electrodes(False)
     show_connections(False)
-    bpy.context.scene.atlas = mmvt_utils.get_atlas()
-    bpy.context.scene.python_cmd = addon_prefs.python_cmd
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
+    bpy.context.scene.atlas = mmvt_utils.get_atlas()
+    bpy.context.scene.python_cmd = addon_prefs.python_cmd
     # set default values
     figures_fol = op.join(mmvt_utils.get_user_fol(), 'figures')
     mmvt_utils.make_dir(figures_fol)
@@ -243,7 +242,9 @@ def main(addon_prefs=None):
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
-    # setup_layers()
+
+    show_activity()
+
 
 if __name__ == "__main__":
     main()

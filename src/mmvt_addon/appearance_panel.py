@@ -8,10 +8,8 @@ import electrodes_panel
 
 
 def setup_layers():
-    empty_layer = EMPTY_LAYER
-
     for layer_ind in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[layer_ind] = layer_ind == empty_layer
+        bpy.context.scene.layers[layer_ind] = layer_ind == EMPTY_LAYER
 
     bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
     bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'rois'
