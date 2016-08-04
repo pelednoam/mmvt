@@ -15,13 +15,26 @@ except:
     pass
 
 
+def get_current_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+
 def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
-        curr_dir = os.path.dirname(os.path.realpath(__file__))
+        curr_dir = get_current_dir()
     parent_fol = os.path.split(curr_dir)[0]
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
+
+
+def chdir_to_mmvt_addon():
+    current_dir = os.path.split(get_current_dir())[1]
+    if current_dir == 'scripts':
+        code_root_dir = get_mmvt_addon_dir()
+        os.chdir(code_root_dir)
+    else:
+        print("Not in scripts dir! Can't change the current dir to mmvt addon")
 
 
 try:
@@ -30,6 +43,14 @@ except:
     mmvt_addon_fol = get_parent_fol()
     sys.path.append(mmvt_addon_fol)
     import mmvt_utils as mu
+
+
+def get_code_root_dir():
+    return get_parent_fol(levels=3)
+
+
+def get_mmvt_addon_dir():
+    return get_parent_fol(levels=1)
 
 
 def get_links_dir():
@@ -59,6 +80,7 @@ except:
     import args_utils as au
 
 is_true = au.is_true
+is_true_or_none = au.is_true_or_none
 str_arr_type = au.str_arr_type
 
 
@@ -129,7 +151,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     # 2) Change the directory to the mmvt/src/mmvt_addon
     # 3) run: blender_path/blender /mmvt_path/subject-name_atlas-name.blend --background --python scripts/create_new_subject.py
     if mmvt_addon_fol == '':
-        mmvt_addon_fol = os.getcwd()
+        mmvt_addon_fol = get_mmvt_addon_dir()
     print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon

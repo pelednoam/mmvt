@@ -41,6 +41,7 @@ def object_coloring(obj, rgb):
         return False
     return True
 
+
 def get_obj_color(obj):
     cur_mat = obj.active_material
     try:

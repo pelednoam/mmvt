@@ -22,6 +22,10 @@ def get_lead_electrodes(lead):
     return electrodes
 
 
+def get_electrode_lead(electrode):
+    return ElecsPanel.groups.get(electrode, '')
+
+
 def what_to_color_update(self, context):
     if ElecsPanel.init:
         _what_to_color_update()
@@ -49,7 +53,9 @@ def _leads_update():
     _show_only_current_lead_update()
 
 
-def set_current_electrode(lead, electrode):
+def set_current_electrode(electrode, lead=''):
+    if lead == '':
+        lead = get_electrode_lead(electrode)
     print('set_current_electrode: {}'.format(electrode))
     bpy.context.scene.leads = lead
     bpy.context.scene.electrodes = electrode
@@ -107,6 +113,15 @@ def color_electrodes(current_electrode, prev_electrode):
     ElecsPanel.addon.object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
     if prev_electrode != current_electrode:
         ElecsPanel.addon.object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
+
+
+def is_current_electrode_marked():
+    current_electrode_marked = False
+    current_electrode_obj = bpy.data.objects.get(bpy.context.scene.electrodes, None)
+    if not current_electrode_obj is None:
+        current_electrode_marked = ElecsPanel.addon.get_obj_color(current_electrode_obj)[:3] == tuple(
+            bpy.context.scene.electrode_color)
+    return current_electrode_marked
 
 
 def print_electrode_loc(loc):
@@ -208,10 +223,8 @@ def _show_only_current_lead_update():
         # updade_lead_hemis()
 
 
-def set_show_only_lead(val, current_electrode=''):
+def set_show_only_lead(val):
     bpy.context.scene.show_only_lead = val
-    if current_electrode != '':
-        bpy.types.Scene.electrodes = current_electrode
 
 
 # def show_elecs_hemi_update():

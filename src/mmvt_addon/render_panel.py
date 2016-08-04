@@ -227,16 +227,18 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         bpy.ops.render.render(write_still=True)
     else:
         mu.change_fol_to_mmvt_root()
+        electrode_marked = RenderingMakerPanel.addon.is_current_electrode_marked()
         script = 'src.mmvt_addon.scripts.render_image'
-        cmd = '{} -m {} -s {} -a {} -q {} -b {} --hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --show_only_lead {} --curr_elec {}'.format(
+        cmd = '{} -m {} -s {} -a {} -q {} -b {} --hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {}'.format(
             bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
             bpy.context.scene.render.resolution_percentage, bpy.context.scene.bipolar,
             bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
             bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.appearance_show_electrodes_layer,
-            bpy.context.scene.show_only_lead, bpy.context.scene.electrodes)
+            bpy.context.scene.electrodes if electrode_marked else '',
+            bpy.context.scene.show_only_lead if electrode_marked else '')
         print('Running {}'.format(cmd))
-        mu.run_command_in_new_thread(cmd)
-
+        mu.save_blender_file()
+        mu.run_command_in_new_thread(cmd, queues=False)
 
     print("Finished")
 

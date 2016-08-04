@@ -11,21 +11,12 @@ bl_info = {
     "tracker_url": "",
     "category": "Add Mesh"}
 
-
 import bpy
-import mathutils
-import numpy as np
 import os
 import os.path as op
 import sys
-import time
-import glob
-import math
 import importlib
-import numbers
-import itertools
 import traceback
-from collections import defaultdict
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
@@ -168,6 +159,7 @@ get_lead_electrodes = electrodes_panel.get_lead_electrodes
 set_current_electrode = electrodes_panel.set_current_electrode
 set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
 set_show_only_lead = electrodes_panel.set_show_only_lead
+is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 create_connections = connections_panel.create_connections
 set_connection_type = connections_panel.set_connection_type

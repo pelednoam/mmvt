@@ -69,6 +69,13 @@ def is_true(val):
         return bool(val)
 
 
+def is_true_or_none(val):
+    try:
+        return is_true(val)
+    except:
+        return None
+
+
 def str_arr_to_markers(args, field_name):
     if len(args[field_name]) > 0:
         if len(args[field_name]) % 2 != 0:

@@ -80,7 +80,7 @@ def render_electrodes_probs(subject_fname):
         for electrode in electrodes:
             print(electrode)
             mmvt.clear_cortex()
-            mmvt.set_current_electrode(lead, electrode)
+            mmvt.set_current_electrode(electrode, lead)
             mmvt.render_image(electrode)
 
     su.save_blend_file(subject_fname)

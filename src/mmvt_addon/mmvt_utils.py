@@ -947,3 +947,10 @@ def remove_items_from_set(x, items):
     for item in items:
         if item in x:
             x.remove(item)
+
+
+def save_blender_file(blend_fname=''):
+    if blend_fname == '':
+        blend_fname = bpy.data.filepath
+    print('Saving current file to {}'.format(blend_fname))
+    bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
