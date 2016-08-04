@@ -195,7 +195,7 @@ def calc_meg_electrodes_coh(subject, tmin=0, tmax=2.5, sfreq=1000, fmin=55, fmax
 def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
         freqs = ((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
     input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy')
-    output_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts_coh_windows.npy')
+    output_file = op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts_coh_windows_{}.npy'.format(window_len))
     data = np.load(input_file)
     windows = np.linspace(tmin, tmax - dt, tmax / dt)
     for cond in range(data.shape[3]):
@@ -215,9 +215,9 @@ def calc_meg_electrodes_coh_windows(subject, tmin=0, tmax=2.5, sfreq=1000,
     return con_cnd
 
 
-def calc_electrodes_coh_windows(subject, input_fname, bipolar, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
+def calc_electrodes_coh_windows(subject, input_fname, conditions, bipolar, meg_electordes_names, meg_electrodes_data, tmin=0, tmax=2.5, sfreq=1000,
                 freqs=((8, 12), (12, 25), (25,55), (55,110)), bw=15, dt=0.1, window_len=0.2, n_jobs=6):
-    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_{}windows.npy'.format('bipolar_' if bipolar else ''))
+    output_file = op.join(ELECTRODES_DIR, subject, task, 'electrodes_coh_{}windows_{}.npy'.format('bipolar_' if bipolar else '', window_len))
     if input_fname[-3:] == 'mat':
         d = sio.loadmat(matlab_input_file)
         conds_data = [d[conditions[0]], d[conditions[1]]]
@@ -382,8 +382,8 @@ if __name__ == '__main__':
     meg_electordes_names = [e['name'] for e in elecs_probs]
     meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
     # calc_coh(mri_subject, conditions, task, meg_electordes_names, meg_electrodes_data)
-    # calc_electrodes_coh_windows(mri_subject, python_input_file, bipolar, meg_electordes_names, meg_electrodes_data)
+    calc_electrodes_coh_windows(mri_subject, matlab_input_file, conditions, bipolar, meg_electordes_names, meg_electrodes_data, window_len=0.5)
     # calc_meg_electrodes_coh(mri_subject)
-    # calc_meg_electrodes_coh_windows(mri_subject)
-    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
+    calc_meg_electrodes_coh_windows(mri_subject, window_len=0.5)
+    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
     print('finish!')
