@@ -50,8 +50,10 @@ def render_image(subject_fname):
     if not args.show_elecs is None:
         mmvt.show_electrodes(args.show_elecs)
     if not args.show_only_lead is None:
+        print('Showing only the current lead: {}'.format(args.show_only_lead))
         mmvt.set_show_only_lead(args.show_only_lead)
-    if args.curr_elec != '':
+    if args.curr_elec not in ['', 'None']:
+        print('Setting current electrode to {}'.format(args.curr_elec))
         mmvt.set_current_electrode(args.curr_elec)
     if op.isfile(op.join(args.output_path, 'camera.pkl')):
         mmvt.load_camera()

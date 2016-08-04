@@ -120,6 +120,7 @@ def call_script(script_fname, args, log_name=''):
             blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
         mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
         os.chdir(mmvt_addon_fol)
+        print(cmd)
         utils.run_script(cmd)
     print('Finish! For more details look in {}'.format(log_fname))
 

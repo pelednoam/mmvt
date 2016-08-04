@@ -234,8 +234,8 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
             bpy.context.scene.render.resolution_percentage, bpy.context.scene.bipolar,
             bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
             bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.appearance_show_electrodes_layer,
-            bpy.context.scene.electrodes if electrode_marked else '',
-            bpy.context.scene.show_only_lead if electrode_marked else '')
+            bpy.context.scene.electrodes if electrode_marked else None,
+            bpy.context.scene.show_only_lead if electrode_marked else None)
         print('Running {}'.format(cmd))
         mu.save_blender_file()
         mu.run_command_in_new_thread(cmd, queues=False)
