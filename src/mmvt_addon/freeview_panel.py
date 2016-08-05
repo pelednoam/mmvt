@@ -185,6 +185,7 @@ class FreeviewOpen(bpy.types.Operator):
         return {'RUNNING_MODAL'}
         # return {"FINISHED"}
 
+
     def get_electrodes_command(self, root):
         if bpy.data.objects.get('Deep_electrodes'):
             cmd = ' -c '
