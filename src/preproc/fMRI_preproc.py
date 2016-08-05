@@ -672,7 +672,7 @@ def main(subject, args):
         copy_volumes(subject, fmri_contrast_file_template)
 
 
-def read_cmd_args(argv):
+def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
 
