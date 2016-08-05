@@ -558,17 +558,14 @@ if __name__ == '__main__':
     # Be sure that you have matlab installed on your machine,
     # and you can run it from the terminal by just calling 'matlab'
     # Some of the functions are using freesurfer, so if you want to
-    # run main, you need to run it from the terminal (not from an IDE),
-    # after sourcing freesurfer.
-    # If you want to import the subcortical structures, you need to
-    # download the folder 'brainder_scripts' from the git,
-    # and put it under the main mmvt folder.
+    # run main, you need to source freesurfer.
     # ******************************************************************
     if os.environ.get('FREESURFER_HOME', '') == '':
-        raise Exception('Source freesurfer and rerun')
-
-    args = read_cmd_args()
-    run_on_subjects(args)
+        print('Source freesurfer and rerun')
+    else:
+        args = read_cmd_args()
+        run_on_subjects(args)
+        print('finish!')
 
     # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
     # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
@@ -577,4 +574,3 @@ if __name__ == '__main__':
     # remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
     # subjects = ['mg78', 'mg82'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
 
-    print('finish!')
