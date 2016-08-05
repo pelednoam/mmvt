@@ -272,13 +272,14 @@ def bipolarize_data(data, labels):
             bipolar_data[key] = np.zeros(data[key].shape)
     else:
         single_trials = False
-        bipolar_data = np.zeros(data.shpae)
+        bipolar_electrodes_num = calc_bipolar_electrodes_number(labels)
+        bipolar_data = np.zeros((bipolar_electrodes_num, data.shape[1], data.shape[2]))
     bipolar_data_index = 0
     for index in range(len(labels) - 1):
         elc1_name = labels[index].strip()
         elc2_name = labels[index + 1].strip()
-        elc_group1, elc_num1 = utils.elec_group_number(elc1_name)
-        elc_group2, elc_num12 = utils.elec_group_number(elc2_name)
+        elc_group1, _ = utils.elec_group_number(elc1_name)
+        elc_group2, _ = utils.elec_group_number(elc2_name)
         if elc_group1 == elc_group2:
             elec_name = '{}-{}'.format(elc2_name, elc1_name)
             bipolar_electrodes.append(elec_name)
@@ -291,9 +292,19 @@ def bipolarize_data(data, labels):
     if single_trials:
         for key in data.keys():
             bipolar_data[key] = scipy.delete(bipolar_data[key], range(bipolar_data_index, len(labels)), 1)
-    else:
-        bipolar_data = scipy.delete(bipolar_data, range(bipolar_data_index), 0)
     return bipolar_data, bipolar_electrodes
+
+
+def calc_bipolar_electrodes_number(labels):
+    bipolar_data_index = 0
+    for index in range(len(labels) - 1):
+        elc1_name = labels[index].strip()
+        elc2_name = labels[index + 1].strip()
+        elc_group1, _ = utils.elec_group_number(elc1_name)
+        elc_group2, _ = utils.elec_group_number(elc2_name)
+        if elc_group1 == elc_group2:
+            bipolar_data_index += 1
+    return bipolar_data_index
 
 
 def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodes_names_field,
@@ -607,13 +618,17 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
         shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
             op.basename(electrode_labeling_fname)))
     most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
-    rois_colors = get_rois_colors(subject, atlas, most_probable_rois)
-    save_rois_colors_legend(subject, rois_colors, bipolar, legend_name)
+    rois_colors_rgbs, rois_colors_names = get_rois_colors(subject, atlas, most_probable_rois)
+    save_rois_colors_legend(subject, rois_colors_rgbs, bipolar, legend_name)
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
     if coloring_fname == '':
         coloring_fname = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
-    with open(op.join(BLENDER_ROOT_DIR, subject, 'coloring', coloring_fname), 'w') as colors_csv_file:
-        colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
+    coloring_fol = op.join(BLENDER_ROOT_DIR, subject, 'coloring')
+    coloring_fname =  op.join(coloring_fol, coloring_fname)
+    colors_names_fname = op.join(coloring_fol, 'electrodes{}_colors_names.txt'.format('_bipolar' if bipolar else ''))
+    elec_names_rois_colors = defaultdict(list)
+    with open(coloring_fname, 'w') as colors_rgbs_file, open(colors_names_fname, 'w') as colors_names_file:
+        # colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
         for elec_name, elec_probs in zip(elecs_names, elecs_probs):
             assert(elec_name == elec_probs['name'])
             if not good_channels is None and elec_name not in good_channels:
@@ -621,8 +636,14 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
             roi = get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
                 [*elec_probs['cortical_rois'], *elec_probs['subcortical_rois']], p_threshold)
             if roi != '':
-                color = rois_colors[utils.get_hemi_indifferent_roi(roi)]
-                colors_csv_writer.writerow([elec_name, *color])
+                inv_roi = utils.get_hemi_indifferent_roi(roi)
+                colors_rgbs_file.write('{},{},{},{}\n'.format(elec_name, *rois_colors_rgbs[inv_roi]))
+                colors_names_file.write('{},{},{}\n'.format(elec_name, inv_roi, rois_colors_names[inv_roi]))
+                elec_names_rois_colors[inv_roi].append(elec_name)
+                # colors_csv_writer.writerow([elec_name, *color_rgb])
+    with open(op.join(coloring_fol, 'electrodes_report.txt'), 'w') as elecs_report_file:
+        for inv_roi, electrodes_names in elec_names_rois_colors.items():
+            elecs_report_file.write('{},{},{}\n'.format(inv_roi, rois_colors_names[inv_roi], ','.join(electrodes_names)))
 
 
 def get_most_probable_rois(elecs_probs, p_threshold, good_channels=None):
@@ -652,29 +673,31 @@ def get_rois_colors(subject, atlas, rois):
     not_white_rois = set(filter(lambda r:'white' not in r.lower(), rois))
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
-    colors = cu.get_distinct_colors()
-    lables_colors_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
-    labels_colors_exist = op.isfile(lables_colors_fname)
-    rois_colors = OrderedDict()
+    colors = cu.get_distinct_colors_and_names()
+    lables_colors_rgbs_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    lables_colors_names_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_colors_names.csv'.format(atlas))
+    labels_colors_exist = op.isfile(lables_colors_rgbs_fname) and op.isfile(lables_colors_names_fname)
+    rois_colors_rgbs, rois_colors_names = OrderedDict(), OrderedDict()
     if not labels_colors_exist:
         print('No labels coloring file!')
     else:
-        labels_colors = np.genfromtxt(lables_colors_fname, dtype=str, delimiter=',')
-    for roi, color in zip(not_white_rois, colors):
+        labels_colors_rgbs = np.genfromtxt(lables_colors_rgbs_fname, dtype=str, delimiter=',')
+        labels_colors_names = np.genfromtxt(lables_colors_names_fname, dtype=str, delimiter=',')
+    for roi in not_white_rois:
         # todo: set the labels colors to be the same in both hemis
         if labels_colors_exist:
-            roi_inds = np.where(labels_colors[:, 0] == '{}-rh'.format(roi))[0]
+            roi_inds = np.where(labels_colors_rgbs[:, 0] == '{}-rh'.format(roi))[0]
             if len(roi_inds) > 0:
-                color = labels_colors[roi_inds][0, 1:].tolist()
-                rois_colors[roi] = color
+                color_rgb = labels_colors_rgbs[roi_inds][0, 1:].tolist()
+                color_name = labels_colors_names[roi_inds][0, 1]
             else:
-                color = next(colors)
+                color_rgb, color_name = next(colors)
         else:
-            color = next(colors)
-        rois_colors[roi] = color
+            color_rgb, color_name = next(colors)
+        rois_colors_rgbs[roi], rois_colors_names[roi] = color_rgb, color_name
     for white_roi in white_rois:
-        rois_colors[white_roi] = cu.name_to_rgb('white').tolist()
-    return rois_colors
+        rois_colors_rgbs[white_roi], rois_colors_names[white_roi] = cu.name_to_rgb('white').tolist(), 'white'
+    return rois_colors_rgbs, rois_colors_names
 
 
 def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
@@ -757,7 +780,7 @@ def main(subject, args):
                                    args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
                                    args.input_matlab_fname, args.input_type, args.field_cond_template)
 
-    if utils.should_run(args, 'create_electrodes_labeling_coloring') and not args.task is None:
+    if utils.should_run(args, 'create_electrodes_labeling_coloring'):
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
 
     if utils.should_run(args, 'transform_electrodes_to_mni'):
