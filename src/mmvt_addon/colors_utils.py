@@ -50,6 +50,16 @@ def get_distinct_colors_names(colors_num=0):
         return cycle(list(kelly_colors.keys()))
 
 
+def get_distinct_colors_and_names(colors_num=0):
+    if colors_num <= len(boynton_colors) and colors_num != 0:
+        rgbs = (np.array([name_to_rgb(c) for c in boynton_colors])).tolist()
+        names = boynton_colors
+    else:
+        rgbs = (np.array(list(kelly_colors.values())) / 255.0).tolist()
+        names = list(kelly_colors.keys())
+    return cycle(zip(rgbs, names))
+
+
 NAMES_TO_HEX = {
     u'aliceblue': u'#f0f8ff',
     u'antiquewhite': u'#faebd7',

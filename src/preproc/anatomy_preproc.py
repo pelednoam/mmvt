@@ -369,18 +369,22 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
+    coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.csv'.format(atlas))
     try:
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
-        colors_rgb = cu.get_distinct_colors()
-        labels_colors = {}
+        colors_rgb_and_names = cu.get_distinct_colors_and_names()
+        labels_colors_rgb, labels_colors_names = {}, {}
         for label in labels:
             label_inv_name = lu.get_label_hemi_invariant_name(label.name)
-            if label_inv_name not in labels_colors:
-                labels_colors[label_inv_name] = next(colors_rgb)
-        with open(coloring_fname, 'w') as output_file:
+            if label_inv_name not in labels_colors_rgb:
+                labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
+        with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
             for label in labels:
-                color_rgb = labels_colors[lu.get_label_hemi_invariant_name(label.name)]
-                output_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
+                label_inv_name = lu.get_label_hemi_invariant_name(label.name)
+                color_rgb = labels_colors_rgb[label_inv_name]
+                color_name = labels_colors_names[label_inv_name]
+                colors_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
+                col_names_file.write('{},{}\n'.format(label.name, color_name))
         ret = op.isfile(coloring_fname)
     except:
         print('Error in save_labels_coloring!')
@@ -552,6 +556,7 @@ def read_cmd_args(argv=None):
         args.overwrite_fs_files = True
     print(args)
     return args
+
 
 if __name__ == '__main__':
     # ******************************************************************
