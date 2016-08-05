@@ -20,7 +20,7 @@ OUTPUT_DIR = '/cluster/neuromind/npeled/Documents/darpa_electrodes_csvs'
 def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, groups_ordering=None, error_radius=3, elec_length=4, p_threshold=0.05):
     elecs_names, elecs_coords = elec_pre.read_electrodes_file(subject, bipolar)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
-    save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels)
+    elec_pre.save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels)
     elecs_coords_mni_dic = {elec_name:elec_coord for (elec_name,elec_coord) in zip(elecs_names, elecs_coords_mni)}
     elecs_probs, _ = utils.get_electrodes_labeling(subject, BLENDER_ROOT_DIR, atlas, bipolar, error_radius, elec_length)
     assert(len(elecs_names) == len(elecs_coords_mni) == len(elecs_probs))
@@ -50,19 +50,6 @@ def prepare_darpa_csv(subject, bipolar, atlas, good_channels=None, groups_orderi
                 csv_writer.writerow([elec_ind, res['name'], *elecs_coords_mni_dic[res['name']], res['roi'], *res['color']])
                 colors_csv_writer.writerow([res['name'], *res['color']])
                 elec_ind += 1
-
-
-def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None):
-    good_elecs_names, good_elecs_coords_mni = [], []
-    for elec_name, elec_coord_min in zip(elecs_names, elecs_coords_mni):
-        if good_channels is None or elec_name in good_channels:
-            good_elecs_names.append(elec_name)
-            good_elecs_coords_mni.append(elec_coord_min)
-    good_elecs_coords_mni = np.array(good_elecs_coords_mni)
-    electrodes_mni_fname = elec_pre.save_electrodes_file(subject, bipolar, good_elecs_names, good_elecs_coords_mni, '_mni')
-    output_file_name = op.split(electrodes_mni_fname)[1]
-    blender_file = op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
-    shutil.copyfile(electrodes_mni_fname, blender_file)
 
 
 def get_good_channels():
@@ -97,7 +84,6 @@ def get_groups_ordering():
 def get_elec_group(elec_name, bipolar):
     g = utils.elec_group_number(elec_name, bipolar)
     return g[0]
-
 
 
 if __name__ == '__main__':

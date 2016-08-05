@@ -692,6 +692,26 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
 
+def transform_electrodes_to_mni(subject, args):
+    from src.utils import freesurfer_utils as fu
+    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
+    elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
+    save_electrodes_coords(elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels)
+
+
+def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None, bad_channels=None):
+    good_elecs_names, good_elecs_coords_mni = [], []
+    for elec_name, elec_coord_min in zip(elecs_names, elecs_coords_mni):
+        if (not good_channels or elec_name in good_channels) and (not bad_channels or elec_name not in bad_channels):
+            good_elecs_names.append(elec_name)
+            good_elecs_coords_mni.append(elec_coord_min)
+    good_elecs_coords_mni = np.array(good_elecs_coords_mni)
+    electrodes_mni_fname = save_electrodes_file(subject, args.bipolar, good_elecs_names, good_elecs_coords_mni, '_mni')
+    output_file_name = op.split(electrodes_mni_fname)[1]
+    blender_file = op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
+    shutil.copyfile(electrodes_mni_fname, blender_file)
+
+
 def set_args(args):
     # todo: fix this part!
     # if args.to_t.isnumeric() and args.from_t.isnumeric():
@@ -725,20 +745,28 @@ def main(subject, args):
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     args = set_args(args)
 
-    if 'all' in args.function or 'convert_electrodes_file_to_npy' in args.function:
+    if utils.should_run(args, 'convert_electrodes_file_to_npy'):
         convert_electrodes_coordinates_file_to_npy(
             subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
-    if 'all' in args.function or 'sort_electrodes_groups' in args.function:
+
+    if utils.should_run(args, 'sort_electrodes_groups'):
         sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
-    if ('all' in args.function or 'create_electrode_data_file' in args.function) and not args.task is None:
+
+    if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         create_electrode_data_file(subject, args.task, args.from_t_ind, args.to_t_ind, args.stat, args.conditions,
                                    args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
                                    args.input_matlab_fname, args.input_type, args.field_cond_template)
-    if 'all' in args.function or 'create_electrodes_labeling_coloring' in args.function:
+
+    if utils.should_run(args, 'create_electrodes_labeling_coloring') and not args.task is None:
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
+
+    if utils.should_run(args, 'transform_electrodes_to_mni'):
+        transform_electrodes_to_mni(subject, args)
+
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
+
     if 'create_raw_data_for_blender' in args.function and not args.task is None:
         create_raw_data_for_blender(subject, args.raw_data_fname, args.conditions, do_plot=args.do_plot)
 
@@ -754,6 +782,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--good_channels', help='good channels', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--bad_channels', help='bad channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default=0, type=float) # was -500
     parser.add_argument('--to_t', help='to_t', required=False, default=0, type=float) # was 2000
     parser.add_argument('--from_t_ind', help='from_t_ind', required=False, default=0, type=int) # was -500
