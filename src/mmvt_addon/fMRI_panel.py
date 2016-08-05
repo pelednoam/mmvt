@@ -336,7 +336,9 @@ class fMRIPanel(bpy.types.Panel):
 
 def init(addon):
     user_fol = mu.get_user_fol()
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
+    # old code was saving those files as npy instead of pkl
+    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
     # fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
     fMRI_clusters_files_exist = len(clusters_labels_files) > 0 # and len(fmri_blobs) > 0
     if not fMRI_clusters_files_exist:

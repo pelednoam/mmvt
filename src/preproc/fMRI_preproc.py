@@ -172,7 +172,7 @@ def find_clusters(subject, contrast_name, t_val, atlas, volume_name, input_fol='
             clusters_labels['values'].extend(clusters_labels_hemi)
     # todo: should be pkl, not npy
     clusters_labels_output_fname = op.join(
-        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(contrast_name))
+        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(volume_name))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
