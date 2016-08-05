@@ -154,10 +154,10 @@ def init_clusters(subject, contrast_name, input_fol):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, contrast_name, t_val, atlas, input_fol='', load_from_annotation=False, n_jobs=1):
+def find_clusters(subject, contrast_name, t_val, atlas, volume_name, input_fol='', load_from_annotation=True, n_jobs=1):
     if input_fol == '':
         input_fol = op.join(BLENDER_ROOT_DIR, subject, 'fmri')
-    contrast, connectivity, verts = init_clusters(subject, contrast_name, input_fol)
+    contrast, connectivity, verts = init_clusters(subject, volume_name, input_fol)
     clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
@@ -172,7 +172,7 @@ def find_clusters(subject, contrast_name, t_val, atlas, input_fol='', load_from_
             clusters_labels['values'].extend(clusters_labels_hemi)
     # todo: should be pkl, not npy
     clusters_labels_output_fname = op.join(
-        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.npy'.format(contrast_name))
+        BLENDER_ROOT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(contrast_name))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
@@ -237,7 +237,7 @@ def save_clusters_for_blender(clusters, contrast, output_file):
     np.save(output_file, data)
 
 
-def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, verts, load_from_annotation=False,
+def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, verts, load_from_annotation=True,
                                      n_jobs=1):
     cluster_labels = []
     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
@@ -575,7 +575,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all')
     parser.add_argument('-c', '--contrast', help='contrast name', required=True)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus250')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
     parser.add_argument('-T', '--task', help='task', required=True)
     parser.add_argument('--volume_name', help='volume file name', required=False)
@@ -616,21 +616,22 @@ if __name__ == '__main__':
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
 
     volume_name = args.volume_name if args.volume_name != '' else args.volume_name
-    if 'find_clusters' in func:
-        find_clusters(subject, contrast, threshold, atlas)
     if 'main' in func:
         main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
-    if 'project_volue_to_surface' in func:
-        project_volue_to_surface(subject, fol, threshold, volume_name, contrast, existing_format='mgz')
-    if 'calc_meg_activity' in func:
-        meg_subject = args.meg_subject
-        if meg_subject == '':
-            print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
-        else:
-            calc_meg_activity_for_functional_rois(
-                subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
-    if 'copy_volumes' in func:
-        copy_volumes(subject, contrast_file_template)
+    else:
+        if 'project_volue_to_surface' in func:
+            project_volue_to_surface(subject, fol, threshold, volume_name, contrast, existing_format='mgz')
+        if 'find_clusters' in func:
+            find_clusters(subject, contrast, threshold, atlas, volume_name)
+        if 'calc_meg_activity' in func:
+            meg_subject = args.meg_subject
+            if meg_subject == '':
+                print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
+            else:
+                calc_meg_activity_for_functional_rois(
+                    subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
+        if 'copy_volumes' in func:
+            copy_volumes(subject, contrast_file_template)
 
     # create_functional_rois(subject, contrast, data_fol)
 
