@@ -462,9 +462,9 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
     return volume_fname
 
 
-def project_volue_to_surface(subject, data_fol, threshold, volume_name, contrast, target_subject='',
-                             overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True,
-                             existing_format='nii.gz'):
+def project_volume_to_surface(subject, data_fol, threshold, volume_name, contrast, target_subject='',
+                              overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True,
+                              existing_format='nii.gz'):
     if target_subject == '':
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
@@ -522,7 +522,7 @@ def copy_volumes(contrast_file_template):
             shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
+def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
 
@@ -566,35 +566,11 @@ def main(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_nam
         create_functional_rois(subject, contrast)
 
 
-if __name__ == '__main__':
-    import argparse
-    import sys
-    from src.utils import args_utils as au
-
-    parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-s', '--subject', help='subject name', required=True)
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all')
-    parser.add_argument('-c', '--contrast', help='contrast name', required=True)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
-    parser.add_argument('-T', '--task', help='task', required=True)
-    parser.add_argument('--volume_name', help='volume file name', required=False)
-    parser.add_argument('--meg_subject', help='MEG subject name', required=False, default='')
-    # args = vars(parser.parse_args())
-    args = utils.Bag(au.parse_parser(parser))
-    print(args)
-    subject = args['subject']  #'colin27' #'fscopy' # 'mg78'
-    os.environ['SUBJECT'] = subject
-    threshold = float(args['threshold'])
-    task = args['task'] # 'ARC' # 'MSIT' # 'ARC'
-    contrast = args['contrast']  # 'arc_healthy'
-    atlas = args['atlas'] # 'laus250'
-    func = args['function']
-    fol = op.join(FMRI_DIR, task, subject)
-
+def misc(args):
     contrast_name = 'interference'
     contrasts = {'non-interference-v-base': '-a 1', 'interference-v-base': '-a 2',
                  'non-interference-v-interference': '-a 1 -c 2', 'task.avg-v-base': '-a 1 -a 2'}
+    fol = op.join(FMRI_DIR, args.task, args.subject[0])
     contrast_file_template = op.join(fol, 'bold',
         '{contrast_name}.sm05.{hemi}'.format(contrast_name=contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
     # contrast_file_template = op.join(fol, 'sig.{hemi}.{format}')
@@ -614,24 +590,6 @@ if __name__ == '__main__':
     # contrast = 'pp003_vs_healthy'
     # contrast = 'pp009_ARC_High_Risk_Linear_Reward_contrast'
     # contrast = 'pp009_ARC_PPI_highrisk_L_VLPFC'
-
-    volume_name = args.volume_name if args.volume_name != '' else args.volume_name
-    if 'main' in func:
-        main(subject, atlas, None, contrast_file_template, t_val=14, surface_name='pial', existing_format='mgh')
-    else:
-        if 'project_volue_to_surface' in func:
-            project_volue_to_surface(subject, fol, threshold, volume_name, contrast, existing_format='mgz')
-        if 'find_clusters' in func:
-            find_clusters(subject, contrast, threshold, atlas, volume_name)
-        if 'calc_meg_activity' in func:
-            meg_subject = args.meg_subject
-            if meg_subject == '':
-                print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
-            else:
-                calc_meg_activity_for_functional_rois(
-                    subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method)
-        if 'copy_volumes' in func:
-            copy_volumes(subject, contrast_file_template)
 
     # create_functional_rois(subject, contrast, data_fol)
 
@@ -682,6 +640,66 @@ if __name__ == '__main__':
     #     show_fMRI_using_pysurfer(subject, input_file=contrast_masked_file, hemi='rh')
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
+
+def main(subject, args):
+    os.environ['SUBJECT'] = subject
+    volume_name = args.volume_name if args.volume_name != '' else args.volume_name
+    fol = op.join(FMRI_DIR, args.task, args.subject[0])
+    fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
+        contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
+
+    # todo: should find automatically the existing_format
+    if 'fmri_pipeline' in args.func:
+        fmri_pipeline(subject, args.atlas, None, fmri_contrast_file_template, t_val=args.threshold,
+                      existing_format=args.existing_format, volume_type=args.volume_type,
+                      load_labels_from_annotation=True, surface_name=args.surface_name, n_jobs=args.n_jobs)
+
+    if utils.should_run(args, 'project_volume_to_surface'):
+        project_volume_to_surface(subject, fol, args.threshold, volume_name, args.ontrast,
+                                  existing_format=args.existing_format)
+
+    if utils.should_run(args, 'find_clusters'):
+        find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
+
+    if 'calc_meg_activity' in args.func:
+        meg_subject = args.meg_subject
+        if meg_subject == '':
+            print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
+        else:
+            calc_meg_activity_for_functional_rois(
+                subject, meg_subject, args.atlas, args.task, args.contrast_name, args.contrast, args.inverse_method)
+    if 'copy_volumes' in args.func:
+        copy_volumes(subject, fmri_contrast_file_template)
+
+
+def read_cmd_args(argv):
+    import argparse
+    from src.utils import args_utils as au
+
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='all')
+    parser.add_argument('-c', '--contrast', help='contrast name', required=True)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-t', '--threshold', help='clustering threshold', required=False, default='2')
+    parser.add_argument('-T', '--task', help='task', required=True)
+    parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
+    parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')
+    parser.add_argument('--volume_name', help='volume file name', required=False, default='')
+    parser.add_argument('--surface_name', help='surface_name', required=False, default='pial')
+    parser.add_argument('--meg_subject', help='meg_subject', required=False, default='')
+    parser.add_argument('--inverse_method', help='inverse method', required=False, default='dSPM')
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    args = utils.Bag(au.parse_parser(parser, argv))
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    print(args)
+    return args
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
+    for subject in args.subject:
+        main(subject, args)
     print('finish!')
 
 
