@@ -58,7 +58,7 @@ def get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_rad
 
 
 def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_threshold=30, read_from_stc=False,
-            meg_single_trials=False, do_plot=True):
+            meg_single_trials=False, do_plot=False):
     # meg_files = glob.glob(op.join(MMVT_DIR, subject, 'activity_map_{}'.format(hemi), '*.npy'))
     # meg_data = np.zeros((len(meg_files), len(vertices)))
     # for meg_file in meg_files:
@@ -73,6 +73,8 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
 
     if not op.isfile(electordes_data_fname) or not op.isfile(electordes_evokde_data_fname):
         print('No electrodes data file!')
+        print(electordes_data_fname)
+        print(electordes_evokde_data_fname)
         return None
     f = np.load(electordes_data_fname)
     evoked_data = np.load(electordes_evokde_data_fname)
@@ -194,6 +196,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
                 output_file.write('{},{},{},{},{}\n'.format(res['name'], res['cond'], res['rms'], res['dist'], res['approx']))
                 rmss.append(res['rms'])
         plt.hist(rmss, 20)
+        plt.xlabel('mV')
         plt.savefig(op.join(figs_fol, 'rmss{}.jpg'.format('_bipolar' if bipolar else '')))
         return elecs_probs
 
@@ -367,38 +370,46 @@ def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (
                 utils.time_to_go(now, ind, len(indices))
                 meg = meg_electrodes_coh[i, j, :, freq_id, cond_id][:22]
                 elc = electrodes_coh[i, j, :, freq_id, cond_id][:22]
+
+                elc_diff = np.max(elc) - np.min(elc)
+                meg *= elc_diff / (np.max(meg) - np.min(meg))
+                meg += np.mean(elc) - np.mean(meg)
+
                 if sum(meg) > len(meg) * 0.99:
                     continue
                 data_diff = meg - elc
-                data_diff = data_diff / max(data_diff)
-                rms = np.sqrt(np.sum(np.power(data_diff, 2)))
-                corr = np.correlate(meg, elc)[0]
+                # data_diff = data_diff / max(data_diff)
+                rms = np.sqrt(np.mean(np.power(data_diff, 2)))
+                corr = np.corrcoef(meg, elc)[0, 1]
                 results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, freq=freq, rms=rms, corr=corr))
-                if False: #do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
+                if corr > 0.697047800495134: #do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
                     plt.figure()
                     plt.plot(meg, label='pred')
                     plt.plot(elc, label='elec')
                     plt.legend()
                     # plt.title('{}-{} {} {}'.format(electrodes[i], electrodes[j], freq, cond)) # (rms:{:.2f})
-                    plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}-{}.jpg'.format(corr, electrodes[i], electrodes[j], freq, cond)))
+                    plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}-{}.jpg'.format(rms, electrodes[i], electrodes[j], freq, cond)))
                     plt.close()
 
     results_fname = op.join(figs_fol, 'results{}.csv'.format('_bipolar' if bipolar else ''))
-    rmss = []
+    rmss, corrs = [], []
     with open(results_fname, 'w') as output_file:
         for res in results:
             output_file.write('{},{},{},{},{},{}\n'.format(
                 res['elc1'], res['elc2'], res['cond'], res['freq'], res['rms'], res['corr']))
             rmss.append(res['rms'])
-    plt.hist(rmss, 20)
-    plt.savefig(op.join(figs_fol, 'rmss{}.jpg'.format('_bipolar' if bipolar else '')))
+            corrs.append(res['corr'])
+    rmss = np.array(rmss)
+    corrs = np.array(corrs)
+    # plt.hist(rmss, 100)
+    # plt.savefig(op.join(figs_fol, 'rmss_coh{}.jpg'.format('_bipolar' if bipolar else '')))
 
 
 if __name__ == '__main__':
     subject = 'ep001' # 'ep009' # 'ep007'
     mri_subject = 'mg78' # 'mg99' # 'mg96'
     atlas = 'laus250'
-    bipolar = True
+    bipolar = False
     task = 'MSIT' # 'ECR'
     conditions = ['interference', 'noninterference']
     error_radius, elec_length = 3, 4
@@ -406,11 +417,11 @@ if __name__ == '__main__':
     matlab_input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'electrodes_data_trials.mat')
     python_input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'electrodes_{}data_st.npz'.format('bipolar_' if bipolar else ''))
 
-    meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
+    # meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
 
     # create_python_electrodes_evoked_response_file(mri_subject, task, bipolar, conditions, matlab_input_file,
     #                                               meg_electrodes_data.shape[2])
-    meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=False)
+    # meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=False)
 
     elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
     meg_electordes_names = [e['name'] for e in elecs_probs]
@@ -418,5 +429,5 @@ if __name__ == '__main__':
     # calc_electrodes_coh_windows(mri_subject, matlab_input_file, conditions, bipolar, meg_electordes_names, meg_electrodes_data, window_len=0.5)
     # calc_meg_electrodes_coh(mri_subject)
     # calc_meg_electrodes_coh_windows(mri_subject, window_len=0.5)
-    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=True)
+    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=False)
     print('finish!')
