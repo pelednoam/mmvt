@@ -177,7 +177,8 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(SelectAllSubcorticals.bl_idname, text="Select all subcorticals", icon = 'BORDER_RECT' )
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Select all Electrodes", icon='BORDER_RECT')
-        if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+        if bpy.data.objects.get(connections_panel.PARENT_OBJ) and \
+                bpy.data.objects[connections_panel.PARENT_OBJ].animation_data:
             layout.operator(SelectAllConnections.bl_idname, text="Select all Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
