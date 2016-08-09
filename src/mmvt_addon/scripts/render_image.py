@@ -57,7 +57,7 @@ def render_image(subject_fname):
         print('Setting current electrode to {}'.format(args.curr_elec))
         mmvt.set_current_electrode(args.curr_elec)
     if not args.show_connections is None:
-        mmvt.show_connections(args.show_connections)
+        mmvt.show_hide_connections(args.show_connections)
     if op.isfile(op.join(args.output_path, 'camera.pkl')):
         mmvt.load_camera()
     else:

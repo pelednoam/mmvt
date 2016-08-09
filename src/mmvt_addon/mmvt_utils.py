@@ -33,6 +33,8 @@ HEMIS = ['rh', 'lh']
 OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_SUBCORTEX, OBJ_TYPE_ELECTRODE = range(4)
 # IS_WINDOWS = (os.name == 'nt')
 
+show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
+
 try:
     import cPickle as pickle
 except:
