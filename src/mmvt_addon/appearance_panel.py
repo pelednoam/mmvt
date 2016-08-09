@@ -1,8 +1,10 @@
 import bpy
 import connections_panel
 import electrodes_panel
+import mmvt_utils as mu
 # from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
 #         BRAIN_EMPTY_LAYER, EMPTY_LAYER)
+
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
@@ -32,8 +34,8 @@ def change_view3d():
             break
 
 
-def appearance_show_electrodes_layer_update(self, context):
-    bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
+def show_hide_electrodes(value):
+    bpy.context.scene.layers[ELECTRODES_LAYER] = value
 
 
 def show_rois():
@@ -64,14 +66,15 @@ def appearance_show_rois_activity_update(self, context):
             AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
 
 
-def appearance_show_connections_layer_update(self, context):
-    if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
-            bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
+def show_hide_connections(value):
+    bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+    # if bpy.data.objects.get(connections_panel.PARENT_OBJ):
+    #     bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
+    #         bpy.context.scene.layers[CONNECTIONS_LAYER] == value
 
 
-def show_connections(value=True):
-    bpy.context.scene.appearance_show_connections_layer = value
+# def show_connections(value=True):
+#     bpy.context.scene.appearance_show_connections_layer = value
 
 
 def connections_visible():
@@ -110,9 +113,18 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
-        layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
+        show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
+        # layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-        layout.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
+        show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
+        # layout.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
+
+
+def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
+    vis = not show_hide_var
+    show_text = '{} {}'.format('Show' if vis else 'Hide', var_name)
+    icon = mu.show_hide_icon['show' if vis else 'hide']
+    layout.operator(bl_idname, text=show_text, icon=icon)
 
 
 def update_solidity(self, context):
@@ -123,15 +135,43 @@ def update_solidity(self, context):
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
     items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
     update=appearance_show_rois_activity_update)
-bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(
-    default=False, description="Show connectivity", update=appearance_show_connections_layer_update)
-bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(
-    default=False, description="Show electrodes", update=appearance_show_electrodes_layer_update)
+# bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(
+#     default=False, description="Show connectivity", update=appearance_show_connections_layer_update)
+# bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(
+#     default=False, description="Show electrodes", update=appearance_show_electrodes_layer_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
     update = filter_view_type_update)
+bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(
+    default=False, description="Show electrodes")
+
+bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
+    default=False, description="Show connections")
+
+class ShowHideElectrodes(bpy.types.Operator):
+    bl_idname = "ohad.show_hide_elctrodes"
+    bl_label = "ohad show_hide_electrodes"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.show_hide_electrodes = not bpy.context.scene.show_hide_electrodes
+        show_hide_electrodes(bpy.context.scene.show_hide_electrodes)
+        return {"FINISHED"}
+
+
+class ShowHideConnections(bpy.types.Operator):
+    bl_idname = "ohad.show_hide_connections"
+    bl_label = "ohad show_hide_connections"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.show_hide_connections = not bpy.context.scene.show_hide_connections
+        show_hide_connections(bpy.context.scene.show_hide_connections)
+        return {"FINISHED"}
 
 
 class AppearanceMakerPanel(bpy.types.Panel):
@@ -163,7 +203,8 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(AppearanceMakerPanel)
-        # print('Appearance Panel was registered!')
+        bpy.utils.register_class(ShowHideElectrodes)
+        bpy.utils.register_class(ShowHideConnections)
     except:
         print("Can't register Appearance Panel!")
 
@@ -171,7 +212,8 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(AppearanceMakerPanel)
+        bpy.utils.unregister_class(ShowHideElectrodes)
+        bpy.utils.unregister_class(ShowHideConnections)
     except:
         pass
-        # print("Can't unregister Appearance Panel!")
 

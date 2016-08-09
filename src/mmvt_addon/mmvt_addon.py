@@ -139,7 +139,7 @@ change_view3d = appearance_panel.change_view3d
 show_rois = appearance_panel.show_rois
 show_activity = appearance_panel.show_activity
 show_electrodes = appearance_panel.show_electrodes
-show_connections = appearance_panel.show_connections
+show_hide_connections = appearance_panel.show_hide_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
@@ -205,7 +205,7 @@ def start_listener():
 
 def main(addon_prefs=None):
     show_electrodes(False)
-    show_connections(False)
+    show_hide_connections(False)
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
     bpy.context.scene.atlas = mmvt_utils.get_atlas()

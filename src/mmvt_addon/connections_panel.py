@@ -246,7 +246,7 @@ def plot_connections(self, context, d, plot_time, connections_type, condition, t
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
             # vals.append(np.diff(d.con_values[ind, t])[0])
         bpy.data.objects[PARENT_OBJ].select = True
-        ConnectionsPanel.addon.show_connections()
+        ConnectionsPanel.addon.show_hide_connections()
         # print(max(vals), min(vals))
         # print(con_color, d.con_values[ind, t, cond_id])
 
