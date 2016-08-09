@@ -201,6 +201,8 @@ def color_labels_update(self, context):
 
 def electrodes_labeling_files_update(self, context):
     # if ElecsPanel.init:
+    # todo: How to get the other file names?
+    # list(bpy.types.Scene.electrodes_labeling_files[1].items())[3][1]
     labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
         bpy.context.scene.electrodes_labeling_files))
     ElecsPanel.electrodes_locs = mu.load(labeling_fname)
