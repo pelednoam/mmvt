@@ -145,6 +145,8 @@ change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
 update_layers = appearance_panel.update_layers
 update_solidity = appearance_panel.update_solidity
+connections_visible = appearance_panel.connections_visible
+show_connections = appearance_panel.show_connections
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from

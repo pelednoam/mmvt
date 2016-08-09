@@ -28,6 +28,7 @@ def read_args(argv=None):
     parser.add_argument('--show_elecs', help='show electrodes', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--show_only_lead', help='show only current lead', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--curr_elec', help='current electrode', required=False, default='')
+    parser.add_argument('--show_connections', help='show connections', required=False, default=None, type=su.is_true_or_none)
     return su.parse_args(parser, argv)
 
 
@@ -55,6 +56,8 @@ def render_image(subject_fname):
     if args.curr_elec not in ['', 'None']:
         print('Setting current electrode to {}'.format(args.curr_elec))
         mmvt.set_current_electrode(args.curr_elec)
+    if not args.show_connections is None:
+        mmvt.show_connections(args.show_connections)
     if op.isfile(op.join(args.output_path, 'camera.pkl')):
         mmvt.load_camera()
     else:

@@ -74,6 +74,10 @@ def show_connections(value=True):
     bpy.context.scene.appearance_show_connections_layer = value
 
 
+def connections_visible():
+    return bpy.data.objects.get(connections_panel.PARENT_OBJ) and bpy.context.scene.layers[CONNECTIONS_LAYER]
+
+
 def filter_view_type_update(self, context):
     change_view3d()
 
@@ -149,8 +153,10 @@ def init(addon):
     register()
     AppearanceMakerPanel.init = True
     bpy.context.scene.subcortical_layer = 'fmri'
-    bpy.context.scene.filter_view_type = 'rendered'
-    bpy.context.scene.appearance_show_rois_activity = 'activity'
+    # bpy.context.scene.filter_view_type = 'solid' # 'rendered'
+    change_to_solid_brain()
+    # bpy.context.scene.appearance_show_rois_activity = 'rois' # 'activity'
+    show_rois()
 
 
 def register():
