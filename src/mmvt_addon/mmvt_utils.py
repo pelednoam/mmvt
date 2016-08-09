@@ -90,6 +90,8 @@ def save(obj, fname):
 def load(fname):
     with open(fname, 'rb') as fp:
         obj = pickle.load(fp)
+    if obj is None:
+        print('the data in {} is None!'.format(fname))
     return obj
 
 

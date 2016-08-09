@@ -77,7 +77,7 @@ def is_true_or_none(val):
 
 
 def str_arr_to_markers(args, field_name):
-    if len(args[field_name]) > 0:
+    if args[field_name] and len(args[field_name]) > 0:
         if len(args[field_name]) % 2 != 0:
             raise Exception("{} is list of tuples, like: '-1,marker1,0,marker2'".format(field_name))
         ret = []

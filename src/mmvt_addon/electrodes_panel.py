@@ -565,7 +565,7 @@ def init_electrodes_labeling(addon):
         print("!!! Can't find any electrodes labeling file in {} !!!".format(
             op.join(mu.get_user_fol(), 'electrodes', labeling_fname)))
     else:
-        files_names = [mu.namebase(fname) for fname in labling_files]
+        files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
         labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
             items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
@@ -577,6 +577,9 @@ def init_electrodes_labeling(addon):
 
 def create_lookup_table(electrodes_locs, electrodes):
     lookup = {}
+    if electrodes_locs is None:
+        print('electrodes_locs is None!!!')
+        return None
     for elc in electrodes:
         for electrode_loc in electrodes_locs:
             if electrode_loc['name'] == elc:

@@ -162,7 +162,10 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
         if data_type not in data_to_show_in_graph:
             continue
         ax = axes[ind]
-        ylabel = data_type if len(ylabels) <= ind else ylabels[ind]
+        if ylabels:
+            ylabel = data_type if len(ylabels) <= ind else ylabels[ind]
+        else:
+            ylabel = data_type
         ax.set_ylabel(ylabel, color=colors[ind] if graph2_ax else 'k')
         if graph2_ax:
             for tl in ax.get_yticklabels():

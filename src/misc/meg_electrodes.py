@@ -189,12 +189,13 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
     if meg_single_trials:
         np.save(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_{}ts'.format('bipolar_' if bipolar else '')), elec_meg_data_st)
     else:
-        rmss = []
+        rmss, dists = [], []
         results_fname = op.join(figs_fol, 'results{}.csv'.format('_bipolar' if bipolar else ''))
         with open(results_fname, 'w') as output_file:
             for res in meg_elecs:
                 output_file.write('{},{},{},{},{}\n'.format(res['name'], res['cond'], res['rms'], res['dist'], res['approx']))
                 rmss.append(res['rms'])
+                dists.append(res['dist'])
         plt.hist(rmss, 20)
         plt.xlabel('mV')
         plt.savefig(op.join(figs_fol, 'rmss{}.jpg'.format('_bipolar' if bipolar else '')))
@@ -382,7 +383,7 @@ def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (
                 rms = np.sqrt(np.mean(np.power(data_diff, 2)))
                 corr = np.corrcoef(meg, elc)[0, 1]
                 results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, freq=freq, rms=rms, corr=corr))
-                if corr > 0.697047800495134: #do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
+                if False: #do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
                     plt.figure()
                     plt.plot(meg, label='pred')
                     plt.plot(elc, label='elec')
@@ -401,6 +402,7 @@ def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (
             corrs.append(res['corr'])
     rmss = np.array(rmss)
     corrs = np.array(corrs)
+    pass
     # plt.hist(rmss, 100)
     # plt.savefig(op.join(figs_fol, 'rmss_coh{}.jpg'.format('_bipolar' if bipolar else '')))
 

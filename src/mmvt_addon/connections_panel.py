@@ -338,15 +338,17 @@ def filter_electrodes_via_connections(context, do_filter):
 
 
 def capture_graph_data(per_condition):
-    parent_obj = bpy.data.objects[PARENT_OBJ]
-    time_range = range(0, ConnectionsPanel.addon.get_max_time_steps(), bpy.context.scene.play_dt)
-    if per_condition:
-        #todo: implement
-        pass
+    parent_obj = bpy.data.objects.get(PARENT_OBJ, None)
+    if parent_obj:
+        time_range = range(0, ConnectionsPanel.addon.get_max_time_steps(), bpy.context.scene.play_dt)
+        if per_condition:
+            #todo: implement
+            pass
+        else:
+            data, colors = mu.evaluate_fcurves(parent_obj, time_range)
+        return data, colors
     else:
-        data, colors = mu.evaluate_fcurves(parent_obj, time_range)
-    return data, colors
-
+        return {}, {}
 
 # def capture_graph(context, image_fol):
 #     data, colors = {}, {}
