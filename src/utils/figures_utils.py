@@ -1,6 +1,10 @@
+from PIL import Image
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
 import os.path as op
 import glob
 
+PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False):
     import matplotlib as mpl
@@ -14,11 +18,32 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False
     return cb
 
 
+def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
+                       facecolor='black'):
+    image1 = Image.open(figure1_fname)
+    image2 = Image.open(figure2_fname)
+    if comb_dim==PICS_COMB_HORZ:
+        new_img_width = image1.size[0] + image2.size[0]
+        new_img_height = max(image1.size[1], image2.size[1])
+    else:
+        new_img_width = max(image1.size[0], image2.size[0])
+        new_img_height = image1.size[1] + image2.size[1]
+    w, h = new_img_width / dpi, new_img_height / dpi
+    fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    fig.canvas.draw()
+    if comb_dim == PICS_COMB_HORZ:
+        ax1 = plt.subplot(121)
+        ax2 = plt.subplot(122)
+    else:
+        ax1 = plt.subplot(211)
+        ax2 = plt.subplot(212)
+    ax1.imshow(image1)
+    ax2.imshow(image2)
+    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
+
+
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, root, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0):
-    from PIL import Image
-    import matplotlib.pyplot as plt
-    from matplotlib import gridspec
 
     image = Image.open(figure_fname)
     img_width, img_height = image.size
@@ -73,4 +98,10 @@ def example2():
 
 
 if __name__ is '__main__':
-    example2()
+    # example2()
+    combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\
+                       '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
+                       '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example.jpg',comb_dim=PICS_COMB_HORZ,
+                       dpi=100, facecolor='black')
+
+    print('finish!')
