@@ -303,7 +303,7 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     val = os.path.join(links_dir, link_name)
     # check if this is a windows folder shortcup
     if os.path.isfile('{}.lnk'.format(val)):
-        val = read_windows_dir_shortcut('{}.lnk'.format(val))
+        return read_windows_dir_shortcut('{}.lnk'.format(val))
     if not os.path.isdir(val) and default_val != '':
         val = default_val
     if not os.path.isdir(val):
