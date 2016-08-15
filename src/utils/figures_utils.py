@@ -101,7 +101,7 @@ if __name__ is '__main__':
     # example2()
     combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\
                        '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
-                       '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example.jpg',comb_dim=PICS_COMB_HORZ,
+                       '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
                        dpi=100, facecolor='black')
 
     print('finish!')
