@@ -58,7 +58,7 @@ def get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_rad
 
 
 def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_threshold=30, read_from_stc=False,
-            meg_single_trials=False, do_plot=False):
+            meg_single_trials=False, do_plot=True):
     # meg_files = glob.glob(op.join(MMVT_DIR, subject, 'activity_map_{}'.format(hemi), '*.npy'))
     # meg_data = np.zeros((len(meg_files), len(vertices)))
     # for meg_file in meg_files:
@@ -176,10 +176,12 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
                         errors.append(rms)
                         dists.append(dist)
                         meg_elecs.append(dict(name=elec_probs['name'],rms=rms, dist=dist, cond=cond, approx=elec_probs['approx']))
-                        if do_plot:
+                        if do_plot: # and elec_probs['name'] == 'RPT8':
                             plt.figure()
                             plt.plot(elec_meg_data, label='pred')
                             plt.plot(elec_data, label='elec')
+                            plt.xlabel('Time(ms)')
+                            plt.ylabel('Voltage (mV)')
                             plt.legend()
                             plt.title('{}-{}'.format(elec_probs['name'], cond))
                             plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}.jpg'.format(rms, elec_probs['name'], cond)))
@@ -420,10 +422,10 @@ if __name__ == '__main__':
     python_input_file = op.join(ELECTRODES_DIR, mri_subject, task, 'electrodes_{}data_st.npz'.format('bipolar_' if bipolar else ''))
 
     # meg_electrodes_data = np.load(op.join(ELECTRODES_DIR, mri_subject, task, 'meg_electrodes_ts.npy'))
-
-    # create_python_electrodes_evoked_response_file(mri_subject, task, bipolar, conditions, matlab_input_file,
-    #                                               meg_electrodes_data.shape[2])
-    # meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=False)
+    # T = meg_electrodes_data.shape[2]
+    T = 2051
+    # create_python_electrodes_evoked_response_file(mri_subject, task, bipolar, conditions, matlab_input_file, T)
+    meg_recon_to_electrodes(subject, mri_subject, atlas, task, bipolar, meg_single_trials=False)
 
     elecs_probs = get_electrodes_with_cortical_vertices(mri_subject, atlas, bipolar, error_radius, elec_length)
     meg_electordes_names = [e['name'] for e in elecs_probs]
@@ -431,5 +433,5 @@ if __name__ == '__main__':
     # calc_electrodes_coh_windows(mri_subject, matlab_input_file, conditions, bipolar, meg_electordes_names, meg_electrodes_data, window_len=0.5)
     # calc_meg_electrodes_coh(mri_subject)
     # calc_meg_electrodes_coh_windows(mri_subject, window_len=0.5)
-    compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=False)
+    # compare_coh_windows(mri_subject, task, conditions, meg_electordes_names, do_plot=False)
     print('finish!')
