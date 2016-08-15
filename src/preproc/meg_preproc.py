@@ -133,17 +133,23 @@ def calcNoiseCov(epoches):
     # evoked.save(EVO)
 
 
-def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False):
+def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False, events_fname='',
+                 stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
+                 reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
+
     if read_events_from_file:
-        print('read events from {}'.format(EVE))
-        events = mne.read_events(EVE)
+        events_fname = events_fname if events_fname != '' else EVE
+        print('read events from {}'.format(events_fname))
+        events = mne.read_events(events_fname)
     else:
-        events = mne.find_events(raw, stim_channel=args.stim_channels)
+        events = mne.find_events(raw, stim_channel=stim_channels)
     if events is not None:
         print(events)
-        picks = mne.pick_types(raw.info, meg=args.pick_meg, eeg=args.pick_eeg, eog=args.pick_eog,  exclude='bads')
+        picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog,  exclude='bads')
         # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
-        reject = dict(grad=args.reject_grad, mag=args.reject_mag, eog=args.reject_eog) if args.reject else None
+        reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
+        if not reject is None and pick_eog:
+            reject['eog'] = reject_eog
         # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
         epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
             baseline=baseline, preload=True, reject=reject)
@@ -161,7 +167,9 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
 
 
-def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name=''):
+def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name='',
+                calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
+                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
     # Calc evoked data for averaged data and for each condition
     if '{cond}' in EPO:
         epo_exist = True
@@ -173,13 +181,15 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
                 epo_exist = False
                 break
     else:
-        epo_exist = op.isfile(EPO)
+        epo_exist = op.isfile(EPO) and not calc_epochs_from_raw
         if epo_exist:
             epochs = mne.read_epochs(EPO)
-    if not epo_exist:
+    if not epo_exist or calc_epochs_from_raw:
         if raw is None:
             raw = load_raw(args)
-        epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_file_name)
+        epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_file_name,
+                              stim_channels, pick_meg, pick_eeg, pick_eog, reject,
+                              reject_grad, reject_mag, reject_eog)
     all_evoked = calc_evoked_from_epochs(epochs, events)
     return all_evoked, epochs
 
@@ -1254,11 +1264,17 @@ def main(subject, mri_subject, args):
     init_globals(subject, mri_subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
-    evoked, epochs = None, None
+    evoked, epochs, raw = None, None, None
+    if args.events_file_name != '':
+        args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
+        if not op.isfile(args.events_file_name):
+            raise IOError('Events file does not exist! ({})'.format(args.events_file_name))
 
     if utils.should_run(args, 'calc_evoked'):
-        evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, args.read_events_from_file,
-                                     args.events_file_name)
+        evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
+                                     args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
+                                     args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
+                                     args.reject_grad, args.reject_mag, args.reject_eog)
 
     if utils.should_run(args, 'make_forward_solution'):
         sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
@@ -1327,6 +1343,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
+    parser.add_argument('--calc_epochs_from_raw', help='calc_epochs_from_raw', required=False, default=0, type=au.is_true)
     parser.add_argument('--l_freq', help='low freq filter', required=False, default=None, type=float)
     parser.add_argument('--h_freq', help='high freq filter', required=False, default=None, type=float)
     parser.add_argument('--pick_meg', help='pick meg events', required=False, default=1, type=au.is_true)
