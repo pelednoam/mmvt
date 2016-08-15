@@ -37,6 +37,16 @@ def calc_msit_evoked(subject, mri_subject):
     meg.main(subject, mri_subject, args)
 
 
+def crop_stc_no_baseline(subject, mri_subject):
+    args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
+    args.fname_format = '{subject}_02_f2-35_all_correct_combined'
+    args.inv_fname_format = '{subject}_02_f2-35-ico-5-meg-eeg'
+    args.stc_t_min = -0.1
+    args.stc_t_max = 0.15
+    args.base_line_max = None
+    meg.main(subject, mri_subject, args)
+
+
 def check_files_names(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.fname_format = '{subject}_02_f2-35_all_correct_combined'

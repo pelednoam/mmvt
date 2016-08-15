@@ -16,7 +16,7 @@ HEMIS = ['rh', 'lh']
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, n_jobs=1):
     now = time.time()
     print('Read labels')
-    labels = utils.read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+    labels = utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
@@ -84,7 +84,7 @@ def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_lab
             all_labels.extend(labels_names)
             labels_names_hemis[hemi] = labels_names
     else:
-        all_labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
+        all_labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, labels_fol='' , n_jobs=n_jobs)
         for label in all_labels:
             labels_names_hemis[label.hemi].append(label.name)
     if len(labels_names_hemis['rh']) == 0 or len(labels_names_hemis['lh']) == 0:
@@ -159,14 +159,16 @@ def get_hemi_from_name(label_name):
 
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
-                output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False, n_jobs=1):
+                output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False,
+                hemi='both', surf_name='pial', labels_fol='', n_jobs=1):
     if try_first_from_annotation:
         try:
-            labels = mne.read_labels_from_annot(subject, atlas)
+            labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
+                                                hemi=hemi)
         except:
-            labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+            labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
     else:
-        labels = read_labels_parallel(subject, subjects_dir, atlas, n_jobs)
+        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
     labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
     if rh_then_lh:
         rh_labels = [l for l in labels if l.hemi == 'rh']
@@ -184,8 +186,9 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
     return labels
 
 
-def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
-    labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+def read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=1):
+    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
+    labels_files = glob.glob(op.join(labels_fol, '*.label'))
     files_chunks = utils.chunks(labels_files, len(labels_files) / n_jobs)
     results = utils.run_parallel(_read_labels_parallel, files_chunks, n_jobs)
     labels = []

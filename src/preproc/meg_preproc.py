@@ -20,7 +20,7 @@ SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
-MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
@@ -536,7 +536,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             else:
                 evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
                 if not stc_t_min is None and not stc_t_max is None:
-                    evoked.crop([stc_t_min, stc_t_max])
+                    evoked = evoked.crop(stc_t_min, stc_t_max)
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc:
                     stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
@@ -1117,7 +1117,7 @@ def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_mode='me
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None,
         extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
-        do_plot=False):
+        do_plot=False, n_jobs=1):
     if stcs is None:
         stcs = {}
         for cond in events.keys():
@@ -1148,7 +1148,12 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             if src is None:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
                 src = inverse_operator['src']
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
+        # labels = lu.read_hemi_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
+                                labels_fol=labels_fol, n_jobs=n_jobs)
+        if len(labels) == 0:
+            raise Exception('No labels!!!')
+
         for ind, label in enumerate(labels):
             mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
             mean_flip = np.squeeze(mean_flip)
@@ -1168,7 +1173,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             # plt.show()
             plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-    labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
+    if positive or moving_average_win_size > 0:
+        labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
     labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
         labels_output_fname_template.format(hemi=hemi)
     print('Saving to {}'.format(labels_output_fname))
@@ -1310,7 +1316,10 @@ def main(subject, mri_subject, args):
     init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
-    baseline = (args.base_line_min, args.base_line_max)
+    if args.base_line_min is None and args.base_line_max is None:
+        baseline = None
+    else:
+        baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs, raw = None, None, None
     if args.events_file_name != '':
         args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
@@ -1352,7 +1361,7 @@ def main(subject, mri_subject, args):
                     inverse_method=inverse_method, positive=args.evoked_flip_positive,
                     moving_average_win_size=args.evoked_moving_average_win_size,
                     norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
-                    stcs=stcs_conds)
+                    stcs=stcs_conds, n_jobs=args.n_jobs)
 
         if utils.should_run(args, 'smooth_stc'):
             stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
@@ -1416,7 +1425,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
     parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)
-    parser.add_argument('--base_line_max', help='', required=False, default=0, type=float)
+    parser.add_argument('--base_line_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--constrast', help='', required=False, default='')
@@ -1439,6 +1448,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if not args.mri_subject:
         args.mri_subject = args.subject
     print(args)
