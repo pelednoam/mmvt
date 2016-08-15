@@ -91,6 +91,25 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     BEM = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-5120-5120-5120-bem-sol.fif'.format(SUBJECT))
     COR = op.join(SUBJECT_MRI_FOLDER, 'mri', 'T1-neuromag', 'sets', 'COR.fif')
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
+    print_files_names()
+
+
+def print_files_names():
+    print_file(RAW, 'raw')
+    print_file(EVE, 'events')
+    print_file(FWD, 'forward')
+    print_file(INV, 'inverse')
+    print_file(EPO, 'epochs')
+    print_file(EVO, 'evoked')
+    # MRI files
+    print_file(MRI, 'subject MRI transform')
+    print_file(SRC, 'subject MRI source')
+    print_file(BEM, 'subject MRI BEM model')
+    print_file(COR, 'subject MRI co-registration')
+
+
+def print_file(fname, file_desc):
+    print('!!! {}: {} {}'.format(file_desc, fname, "doesn't exist !!!" if not op.isfile(fname) else ""))
 
 
 def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='', constrast='', root_dir=''):
@@ -422,7 +441,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     return src
 
 
-def calc_inverse_operator(events, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
+def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
                           calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
                           spec_subcortical_fwd=None, region=None):
     conds = ['all'] if '{cond}' not in EPO else events.keys()
@@ -438,23 +457,26 @@ def calc_inverse_operator(events, calc_for_cortical_fwd=True, calc_for_sub_corti
             if calc_for_cortical_fwd and not op.isfile(get_cond_fname(INV, cond)):
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(FWD, cond)
-                _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov)
+                _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov, inv_loose, inv_depth)
             if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
-                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov)
+                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov,
+                                       inv_loose, inv_depth)
             if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
                 if spec_subcortical_fwd is None:
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
-                _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs, noise_cov)
+                _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs,
+                                       noise_cov, inv_loose, inv_depth)
         except:
             print(traceback.format_exc())
             print('Error in calculating inv for {}'.format(cond))
 
-def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
+
+def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov, inv_loose=0.2, inv_depth=0.8):
     fwd = mne.read_forward_solution(fwd_name)
     inverse_operator = make_inverse_operator(epochs.info, fwd, noise_cov,
-        loose=None, depth=None)
+        loose=inv_loose, depth=inv_depth)
     write_inverse_operator(inv_name, inverse_operator)
 
 
@@ -479,7 +501,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     global_inverse_operator = False
     if not op.isfile(INV):
         print('No inv file! Creating one')
-        calc_inverse_operator(events, inv_calc_cortical=True, inv_calc_subcorticals=False)
+        calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, inv_calc_cortical=True, inv_calc_subcorticals=False)
     if '{cond}' not in INV:
         inverse_operator = read_inverse_operator(INV)
         global_inverse_operator = True
@@ -506,23 +528,6 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print('Error with {}!'.format(cond_name))
     return stcs
 
-
-def create_inverse_operator(inv_cond=None, baseline=(None, 0), fwd_surf_ori=True):
-    snr = 3.0
-    lambda2 = 1.0 / snr ** 2
-
-    # Load data
-    evoked = mne.read_evokeds(EVO, condition=inv_cond, baseline=baseline)
-    forward_meeg = mne.read_forward_solution(FWD, surf_ori=fwd_surf_ori)
-    noise_cov = mne.read_cov(COV)
-
-    # Restrict forward solution as necessary for MEG
-    forward_meg = mne.pick_types_forward(forward_meeg, meg=True, eeg=False)
-
-    # make an M/EEG, MEG-only, and EEG-only inverse operators
-    info = evoked.info
-    inverse_operator_meg = make_inverse_operator(info, forward_meg, noise_cov,
-                                                 loose=0.2, depth=0.8)
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
     if '{cond}' not in EVO:
@@ -670,11 +675,11 @@ def calc_csd(csd_fname, cond, epochs, from_t, to_t, mode='multitaper', fmin=6, f
 
 
 def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all_vertices=False,
-        overwrite_fwd=False, overwrite_inv=False, overwrite_activity=False):
+        overwrite_fwd=False, overwrite_inv=False, overwrite_activity=False, inv_loose=0.2, inv_depth=0.8):
     if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
         make_forward_solution_to_specific_subcortrical(events, region)
     if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
-        calc_inverse_operator(events, False, False, True, region=region)
+        calc_inverse_operator(events, inv_loose, inv_depth, False, False, True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
@@ -1294,6 +1299,9 @@ def main(subject, mri_subject, args):
         if not op.isfile(args.events_file_name):
             raise IOError('Events file does not exist! ({})'.format(args.events_file_name))
 
+    if 'print_files_names' in args.function:
+        print_files_names()
+
     if utils.should_run(args, 'calc_evoked'):
         evoked, epochs = calc_evoked(events, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
                                      args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
@@ -1306,7 +1314,8 @@ def main(subject, mri_subject, args):
                               args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
 
     if utils.should_run(args, 'calc_inverse_operator'):
-        calc_inverse_operator(events, args.inv_calc_cortical, args.inv_calc_subcorticals)
+        calc_inverse_operator(events, args.inv_loose, args.inv_depth, args.inv_calc_cortical,
+                              args.inv_calc_subcorticals)
 
     stcs_conds, stcs_conds_smooth = None, None
     stat = STAT_AVG if len(events) == 1 else STAT_DIFF
@@ -1395,6 +1404,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_recreate_source_space', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--inv_loose', help='', required=False, default=0.2, type=float)
+    parser.add_argument('--inv_depth', help='', required=False, default=0.8, type=float)
     parser.add_argument('--inv_calc_cortical', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
