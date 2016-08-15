@@ -303,7 +303,10 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     val = os.path.join(links_dir, link_name)
     # check if this is a windows folder shortcup
     if os.path.isfile('{}.lnk'.format(val)):
-        return read_windows_dir_shortcut('{}.lnk'.format(val))
+        from src.utils import windows_utils as wu
+        sc = wu.MSShortcut('{}.lnk'.format(val))
+        return op.join(sc.localBasePath, sc.commonPathSuffix)
+        # return read_windows_dir_shortcut('{}.lnk'.format(val))
     if not os.path.isdir(val) and default_val != '':
         val = default_val
     if not os.path.isdir(val):
@@ -1456,8 +1459,11 @@ def read_windows_dir_shortcut(dir_path):
 
             # read the string at the given position of the determined length
             size= (length + last_pos) - position - 0x02
-            temp = struct.unpack('c' * size, content[position:position+size])
-            target = ''.join([chr(ord(a)) for a in temp])
+            # temp = struct.unpack('c' * size, content[position:position+size])
+            temp = struct.unpack('c' * (size + 1), content[position:position + size + 1])
+            target = ''.join([chr(ord(a)) for a in temp if chr(ord(a)) not in ['\x00', '\x02', '\x14', '#']])
+            # while '\\' in target:
+            #     target = target.replace('\\', '\')
     except:
         # could not read the file
         target = None
