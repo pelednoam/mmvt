@@ -24,6 +24,19 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     meg.main(subject, mri_subject, args)
 
 
+def calc_msit_evoked(subject, mri_subject):
+    args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
+    args.task = 'MSIT'
+    args.atlas = 'laus250'
+    args.function = 'calc_evoked'
+    args.calc_epochs_from_raw = True
+    args.read_events_from_file = True
+    args.events_file_name = 'ep001_msit_nTSSS_interference_1-15-eve.txt'
+    args.reject = False
+    args.pick_eeg = True
+    meg.main(subject, mri_subject, args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
