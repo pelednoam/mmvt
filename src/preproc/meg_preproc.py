@@ -49,6 +49,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     else:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
+        if not op.isdir(SUBJECT_MEG_FOLDER):
+            SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir)
     if not op.isdir(SUBJECT_MEG_FOLDER):
         raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
