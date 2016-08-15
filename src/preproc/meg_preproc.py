@@ -130,14 +130,14 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
         'cleaning_method':cleaning_method, 'constrast':constrast}
     if '{cond}' in fname_format:
         args['cond'] = cond
-    if '{ana_type}' not in fname_format and '{file_type}' not in fname_format:
-        fname_format = '{}-{}.{}'.format(fname_format, '{ana_type}', '{file_type}')
     if ana_type == 'raw' and raw_fname_format != '':
         fname_format = raw_fname_format
     elif ana_type == 'fwd' and fwd_fname_format != '':
         fname_format = fwd_fname_format
     elif ana_type == 'inv' and inv_fname_format != '':
         fname_format = inv_fname_format
+    if '{ana_type}' not in fname_format and '{file_type}' not in fname_format:
+        fname_format = '{}-{}.{}'.format(fname_format, '{ana_type}', '{file_type}')
     fname = fname_format.format(**args)
     while '__' in fname:
         fname = fname.replace('__', '_')
