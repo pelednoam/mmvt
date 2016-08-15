@@ -1,6 +1,8 @@
 from pathlib import Path, PureWindowsPath
 import struct, sys, warnings
 
+# From http://stackoverflow.com/a/28952464/1060738
+
 if sys.hexversion < 0x03040000:
     warnings.warn("'{}' module requires python3.4 version or above".format(__file__), ImportWarning)
 
