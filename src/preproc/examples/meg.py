@@ -37,6 +37,14 @@ def calc_msit_evoked(subject, mri_subject):
     meg.main(subject, mri_subject, args)
 
 
+def check_files_names(subject, mri_subject):
+    args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
+    args.fname_format = '{subject}_02_f2-35_all_correct_combined'
+    args.inv_fname_format = '{subject}_02_f2-35-ico-5-meg-eeg'
+    args.function = 'print_names'
+    meg.main(subject, mri_subject, args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
