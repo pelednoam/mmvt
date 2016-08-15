@@ -749,6 +749,21 @@ def fsaverage_vertices():
     return [np.arange(10242), np.arange(10242)]
 
 
+def build_remote_subject_dir(remote_subject_dir_template, subject):
+    if remote_subject_dir_template != '':
+        remote_subject_dir = op.join(remote_subject_dir_template, subject)
+    elif '{subject}' in remote_subject_dir_template:
+        if isinstance(remote_subject_dir_template, dict):
+            if 'func' in remote_subject_dir_template:
+                template_val = remote_subject_dir_template['func'](subject)
+                remote_subject_dir = remote_subject_dir_template['template'].format(subject=template_val)
+            else:
+                remote_subject_dir = remote_subject_dir_template['template'].format(subject=subject)
+        else:
+            remote_subject_dir = remote_subject_dir_template.format(subject=subject)
+    return remote_subject_dir
+
+
 def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                   overwrite_files=False, print_traceback=True):

@@ -407,25 +407,10 @@ def prepare_local_subjects_folder(subject, args):
         args.overwrite_fs_files, args.print_traceback)
 
 
-def build_remote_subject_dir(remote_subject_dir_template, subject):
-    if isinstance(remote_subject_dir_template, dict):
-        if 'func' in remote_subject_dir_template:
-            template_val = remote_subject_dir_template['func'](subject)
-            remote_subject_dir = remote_subject_dir_template['template'].format(subject=template_val)
-        else:
-            remote_subject_dir = remote_subject_dir_template['template'].format(subject=subject)
-    else:
-        remote_subject_dir = remote_subject_dir_template.format(subject=subject)
-    return remote_subject_dir
-
-
 def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    if args.remote_subjects_dir != '':
-        args.remote_subject_dir = op.join(args.remote_subjects_dir, subject)
-    elif '{subject}' in args.remote_subject_dir:
-        args.remote_subject_dir = build_remote_subject_dir(args.remote_subject_dir, subject)
+    args.remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
@@ -478,8 +463,8 @@ def main(subject, args):
         # *) Save a coloring file for the atlas's labels
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
 
-    for flag_type, val in flags.items():
-        print('{}: {}'.format(flag_type, val))
+    # for flag_type, val in flags.items():
+    #     print('{}: {}'.format(flag_type, val))
     return flags
 
 
