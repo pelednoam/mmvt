@@ -18,7 +18,7 @@ def parse_parser(parser, argv=None):
     for val in parser._option_string_actions.values():
         if val.type is str:
             args[val.dest] = args[val.dest].replace('_', ' ')
-        if val.type is bool:
+        if val.type is bool or val.type is is_true:
             args[val.dest] = is_true(in_args[val.dest])
         elif val.type is str_arr_type:
             args[val.dest] = get_args_list(in_args, val.dest, str, val.default)
