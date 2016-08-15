@@ -116,7 +116,7 @@ def print_files_names():
 
 
 def print_file(fname, file_desc):
-    print('!!! {}: {} {}'.format(file_desc, fname, "doesn't exist !!!" if not op.isfile(fname) else ""))
+    print('{}: {} {}'.format(file_desc, fname, " !!!! doesn't exist !!!!" if not op.isfile(fname) else ""))
 
 
 def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='', constrast='', root_dir=''):
