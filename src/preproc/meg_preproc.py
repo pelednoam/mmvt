@@ -34,12 +34,13 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
 #             '', '', '', '', '', '', '', '', ''
 
 
-def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', files_includes_cond=False,
+def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
+                 fwd_fname_format='', inv_fname_format='', files_includes_cond=False,
                  cleaning_method='', constrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
-        BLENDER_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
+        MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
     if files_includes_cond:
         fname_format = fname_format_cond
     SUBJECT = subject
@@ -54,11 +55,11 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     if not op.isdir(SUBJECT_MEG_FOLDER):
         raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
-    BLENDER_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
+    MMVT_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
-        cleaning_method=cleaning_method, constrast=constrast)
-    _get_fif_name_no_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
-        cleaning_method=cleaning_method, constrast=constrast, cond='')
+        cleaning_method=cleaning_method, constrast=constrast, raw_fname_format=raw_fname_format,
+                 fwd_fname_format=fwd_fname_format, inv_fname_format=inv_fname_format)
+    _get_fif_name_no_cond = partial(_get_fif_name_cond, cond='')
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
         cleaning_method=cleaning_method, constrast=constrast)
@@ -90,7 +91,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_MORPH = op.join(SUBJECTS_MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
     LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
-    ACT = op.join(BLENDER_SUBJECT_FOLDER, 'activity_map_{}') # hemi
+    ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(SUBJECT))
     SRC = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-oct-6p-src.fif'.format(SUBJECT))
@@ -119,7 +120,8 @@ def print_file(fname, file_desc):
     print('{}: {} {}'.format(file_desc, fname, " !!!! doesn't exist !!!!" if not op.isfile(fname) else ""))
 
 
-def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='', constrast='', root_dir=''):
+def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='',
+                  constrast='', root_dir='', raw_fname_format='', fwd_fname_format='', inv_fname_format=''):
     if fname_format=='':
         fname_format = '{subject}-{ana_type}.{file_type}'
     if subject=='':
@@ -130,6 +132,12 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
         args['cond'] = cond
     if '{ana_type}' not in fname_format and '{file_type}' not in fname_format:
         fname_format = '{}-{}.{}'.format(fname_format, '{ana_type}', '{file_type}')
+    if ana_type == 'raw' and raw_fname_format != '':
+        fname_format = raw_fname_format
+    elif ana_type == 'fwd' and fwd_fname_format != '':
+        fname_format = fwd_fname_format
+    elif ana_type == 'inv' and inv_fname_format != '':
+        fname_format = inv_fname_format
     fname = fname_format.format(**args)
     while '__' in fname:
         fname = fname.replace('__', '_')
@@ -776,7 +784,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
             x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
             default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
-    np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
+    np.savez(op.join(MMVT_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
         names=names_for_blender, conditions=list(events.keys()), data_minmax=data_minmax)
 
     if do_plot:
@@ -874,7 +882,7 @@ def check_stc_with_ply(stc, cond_name):
     for hemi in HEMIS:
         stc_vertices = stc.rh_vertno if hemi=='rh' else stc.lh_vertno
         print('{} {} stc vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
-        ply_vertices, _ = utils.read_ply_file(op.join(BLENDER_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
+        ply_vertices, _ = utils.read_ply_file(op.join(MMVT_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
         print('{} {} ply vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
         if len(stc_vertices) != ply_vertices.shape[0]:
             raise Exception('check_stc_with_ply: Wrong number of vertices!')
@@ -1245,9 +1253,9 @@ def test_labels_coloring(subject, atlas):
             data_no_t[ind] = data[ind, 0]
         colors = utils.mat_to_colors(data)
         colors_no_t = utils.arr_to_colors(data_no_t)[:, :3]
-        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
+        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
             data=data, colors=colors, names=labels_names[hemi])
-        np.savez(op.join(BLENDER_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
+        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
             data=data_no_t, colors=colors_no_t, names=labels_names[hemi])
         # plt.plot(range(T), data.T)
         # plt.show()
@@ -1299,7 +1307,8 @@ def get_fname_format(task, fname_format='', fname_format_cond=''):
 
 def main(subject, mri_subject, args):
     fname_format, fname_format_cond, events = get_fname_format(args.task, args.fname_format, args.fname_format_cond)
-    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.files_includes_cond, args.cleaning_method,
+    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
+                 args.fwd_fname_format, args.inv_fname_format, args.files_includes_cond, args.cleaning_method,
                  args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
     baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs, raw = None, None, None
@@ -1380,8 +1389,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='function names not to run', required=False, default=[], type=au.str_arr_type)
-    parser.add_argument('--fname_format', help='events', required=False, default='{subject}-{ana_type}.{file_type}')
-    parser.add_argument('--fname_format_cond', help='events', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
+    parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
+    parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
+    parser.add_argument('--raw_fname_format', help='', required=False, default='')
+    parser.add_argument('--fwd_fname_format', help='', required=False, default='')
+    parser.add_argument('--inv_fname_format', help='', required=False, default='')
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
