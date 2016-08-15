@@ -112,12 +112,12 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
     return op.join(root_dir, fname)
 
 
-def load_raw(args):
+def load_raw(bad_channels=[], l_freq=None, h_freq=None):
     # read the data
     raw = mne.io.read_raw_fif(RAW, preload=True)
-    if len(args.bad_channels) > 0:
+    if len(bad_channels) > 0:
         raw.info['bads'] = args.bad_channels
-        if args.l_freq or args.h_freq:
+        if l_freq or h_freq:
             raw.filter(args.l_freq, args.h_freq)
     return raw
 
@@ -169,7 +169,8 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
 
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name='',
                 calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
-                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
+                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6,
+                bad_channels=[], l_freq=None, h_freq=None):
     # Calc evoked data for averaged data and for each condition
     if '{cond}' in EPO:
         epo_exist = True
@@ -186,7 +187,7 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
             epochs = mne.read_epochs(EPO)
     if not epo_exist or calc_epochs_from_raw:
         if raw is None:
-            raw = load_raw(args)
+            raw = load_raw(bad_channels, l_freq, h_freq)
         epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_file_name,
                               stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                               reject_grad, reject_mag, reject_eog)
@@ -467,14 +468,18 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov):
 #     stc.save(STC.format('all', inverse_method))
 
 
-def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), apply_SSP_projection_vectors=True,
-                           add_eeg_ref=True, pick_ori=None, single_trial_stc=False, save_stc=True):
+def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
+                           apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
+                           single_trial_stc=False, save_stc=True):
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs = {}
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
+    if not op.isfile(INV):
+        print('No inv file! Creating one')
+        calc_inverse_operator(events, inv_calc_cortical=True, inv_calc_subcorticals=False)
     if '{cond}' not in INV:
         inverse_operator = read_inverse_operator(INV)
         global_inverse_operator = True
@@ -486,11 +491,13 @@ def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), ap
                 epo_cond = get_cond_fname(EPO, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
-                                     pick_ori=pick_ori, return_generator=True)
+                    pick_ori=pick_ori, return_generator=True)
                 # if save_stc:
                 #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
                 evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                if not stc_t_min is None and not stc_t_max is None:
+                    evoked.crop([stc_t_min, stc_t_max])
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc:
                     stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
@@ -499,6 +506,23 @@ def calc_stc_per_condition(events, inverse_method='dSPM', baseline=(None, 0), ap
             print('Error with {}!'.format(cond_name))
     return stcs
 
+
+def create_inverse_operator(inv_cond=None, baseline=(None, 0), fwd_surf_ori=True):
+    snr = 3.0
+    lambda2 = 1.0 / snr ** 2
+
+    # Load data
+    evoked = mne.read_evokeds(EVO, condition=inv_cond, baseline=baseline)
+    forward_meeg = mne.read_forward_solution(FWD, surf_ori=fwd_surf_ori)
+    noise_cov = mne.read_cov(COV)
+
+    # Restrict forward solution as necessary for MEG
+    forward_meg = mne.pick_types_forward(forward_meeg, meg=True, eeg=False)
+
+    # make an M/EEG, MEG-only, and EEG-only inverse operators
+    info = evoked.info
+    inverse_operator_meg = make_inverse_operator(info, forward_meg, noise_cov,
+                                                 loose=0.2, depth=0.8)
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
     if '{cond}' not in EVO:
@@ -1289,8 +1313,8 @@ def main(subject, mri_subject, args):
     for inverse_method in args.inverse_method:
         if utils.should_run(args, 'calc_stc_per_condition'):
             stcs_conds = calc_stc_per_condition(
-                events, inverse_method, baseline, args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori,
-                args.single_trial_stc, args.save_stc)
+                events, args.stc_t_min, args.stc_t_max, inverse_method, baseline, args.apply_SSP_projection_vectors,
+                args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
 
         if 'calc_single_trial_labels_per_condition' in args.function:
             calc_single_trial_labels_per_condition(args.atlas, events, stcs_conds, extract_mode=args.extract_mode)
@@ -1359,6 +1383,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_ori', help='', required=False, default=None)
     parser.add_argument('--t_min', help='', required=False, default=-0.5, type=float)
     parser.add_argument('--t_max', help='', required=False, default=2, type=float)
+    parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
+    parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
     parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)
     parser.add_argument('--base_line_max', help='', required=False, default=0, type=float)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
