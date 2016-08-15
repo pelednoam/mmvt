@@ -45,7 +45,12 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
-    SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
+    if task == '':
+        SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
+    else:
+        SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
+    if not op.isdir(SUBJECT_MEG_FOLDER):
+        raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     BLENDER_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
@@ -1368,7 +1373,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-t', '--task', help='task name', required=False, default='default')
+    parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
