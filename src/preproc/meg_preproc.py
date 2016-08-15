@@ -16,7 +16,7 @@ from src.utils import utils
 from src.utils import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
-SUBJECTS_MEG_DIR = op.join(LINKS_DIR, 'meg')
+SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
