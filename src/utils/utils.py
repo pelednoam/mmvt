@@ -59,7 +59,7 @@ run_command_in_new_thread = mu.run_command_in_new_thread
 
 
 def get_exisiting_dir(dirs):
-    ex_dirs = [d for d in dirs if os.path.isdir(d)]
+    ex_dirs = [d for d in dirs if op.isdir(d)]
     if len(ex_dirs)==0:
         raise Exception('No exisiting dir!')
     else:
@@ -67,7 +67,7 @@ def get_exisiting_dir(dirs):
 
 
 def get_exisiting_file(dirs):
-    ex_files = [d for d in dirs if os.path.isfile(d)]
+    ex_files = [d for d in dirs if op.isfile(d)]
     if len(ex_files)==0:
         raise Exception('No exisiting file!')
     else:
@@ -75,7 +75,7 @@ def get_exisiting_file(dirs):
 
 
 def delete_folder_files(fol):
-    if os.path.isdir(fol):
+    if op.isdir(fol):
         shutil.rmtree(fol)
     os.makedirs(fol)
 
@@ -216,7 +216,7 @@ def obj2ply(obj_file, ply_file):
 
 
 def convert_srf_files_to_ply(srf_folder, overwrite=True):
-    srf_files = glob.glob(os.path.join(srf_folder, '*.srf'))
+    srf_files = glob.glob(op.join(srf_folder, '*.srf'))
     for srf_file in srf_files:
         ply_file = '{}.ply'.format(srf_file[:-4])
         if overwrite or not op.isfile(ply_file):
@@ -224,7 +224,7 @@ def convert_srf_files_to_ply(srf_folder, overwrite=True):
 
 
 def get_ply_vertices_num(ply_file_template):
-    if os.path.isfile(ply_file_template.format('rh')) and os.path.isfile(ply_file_template.format('lh')):
+    if op.isfile(ply_file_template.format('rh')) and op.isfile(ply_file_template.format('lh')):
         rh_vertices, _ = read_ply_file(ply_file_template.format('rh'))
         lh_vertices, _ = read_ply_file(ply_file_template.format('lh'))
         return {'rh':rh_vertices.shape[0], 'lh':lh_vertices.shape[0]}
@@ -284,7 +284,7 @@ def calc_stat_data(data, stat, axis=2):
 
 def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):
     freesurfer_home = get_environ_dir('FREESURFER_HOME', freesurfer_home)
-    lut_fname = os.path.join(freesurfer_home, 'FreeSurferColorLUT.txt')
+    lut_fname = op.join(freesurfer_home, 'FreeSurferColorLUT.txt')
     if get_colors:
         lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1, 2, 3, 4, 5), names=['id', 'name', 'r', 'g', 'b', 'a'])
     else:
@@ -294,24 +294,24 @@ def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):
 
 def get_environ_dir(var_name, default_val=''):
     ret_val = os.environ.get(var_name) if default_val == '' else default_val
-    if not os.path.isdir(ret_val):
+    if not op.isdir(ret_val):
         raise Exception('get_environ_dir: No existing dir!')
     return ret_val
 
 
 def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
-    val = os.path.join(links_dir, link_name)
+    val = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
-    if os.path.isfile('{}.lnk'.format(val)):
+    if op.isfile('{}.lnk'.format(val)):
         from src.utils import windows_utils as wu
         sc = wu.MSShortcut('{}.lnk'.format(val))
         return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
-    if not os.path.isdir(val) and default_val != '':
+    if not op.isdir(val) and default_val != '':
         val = default_val
-    if not os.path.isdir(val):
+    if not op.isdir(val):
         val = os.environ.get(var_name, '')
-    if not os.path.isdir(val):
+    if not op.isdir(val):
         if throw_exception:
             raise Exception('No {} dir!'.format(link_name))
         else:
@@ -321,15 +321,15 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
 
 def get_links_dir(links_fol_name='links'):
     parent_fol = get_parent_fol(levels=3)
-    links_dir = os.path.join(parent_fol, links_fol_name)
+    links_dir = op.join(parent_fol, links_fol_name)
     return links_dir
 
 
 def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
-    # curr_dir = os.path.dirname(os.path.realpath(__file__))
-    # src_dir = os.path.split(curr_dir)[0]
-    # proj_dir = os.path.split(src_dir)[0]
-    # code_dir = os.path.split(proj_dir)[0]
+    # curr_dir = op.dirname(op.realpath(__file__))
+    # src_dir = op.split(curr_dir)[0]
+    # proj_dir = op.split(src_dir)[0]
+    # code_dir = op.split(proj_dir)[0]
     # electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
     if other_fname == '':
         # We remove the 'all_rois' and 'stretch' for the name!
@@ -471,28 +471,28 @@ def transform_RAS_to_voxels(pts, aseg_hdr=None, subject_mri_dir=''):
 
 def get_aseg_header(subject_mri_dir):
     import  nibabel as nib
-    aseg_fname = os.path.join(subject_mri_dir, 'mri', 'aseg.mgz')
+    aseg_fname = op.join(subject_mri_dir, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
     return aseg_hdr
 
 
 def namebase(file_name):
-    return os.path.splitext(os.path.basename(file_name))[0]
+    return op.splitext(op.basename(file_name))[0]
 
 
 def file_type(file_name):
-    return os.path.splitext(os.path.basename(file_name))[1][1:]
+    return op.splitext(op.basename(file_name))[1][1:]
 
 
 def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     if subjects_dir=='':
         subjects_dir = os.environ['SUBJECTS_DIR']
-    subject_dir = os.path.join(subjects_dir, subject)
-    labels_fol = os.path.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
-    sub_labels_fol = os.path.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
-    if not os.path.isdir(sub_labels_fol):
+    subject_dir = op.join(subjects_dir, subject)
+    labels_fol = op.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
+    sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
+    if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
     annot_files_exist = both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
         '{hemi}', aparc_name)))
@@ -501,7 +501,7 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
         if len(labels) == 0:
             raise Exception('morph_labels_from_fsaverage: No labels files found in annot file!'.format(labels_fol))
     else:
-        labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
+        labels_files = glob.glob(op.join(labels_fol, '*.label'))
         if len(labels_files) > 0:
             labels = read_labels_parallel(subject, subjects_dir, aparc_name, n_jobs)
         else:
@@ -509,9 +509,9 @@ def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250',
     surf_loaded = False
     # for label_file in labels_files:
     for fs_label in labels:
-        label_file = os.path.join(labels_fol, '{}.label'.format(fs_label.name))
-        local_label_name = os.path.join(sub_labels_fol, '{}.label'.format(os.path.splitext(os.path.split(label_file)[1])[0]))
-        if not os.path.isfile(local_label_name) or overwrite:
+        label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
+        local_label_name = op.join(sub_labels_fol, '{}.label'.format(op.splitext(op.split(label_file)[1])[0]))
+        if not op.isfile(local_label_name) or overwrite:
             # fs_label = mne.read_label(label_file)
             fs_label.values.fill(1.0)
             sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
@@ -542,13 +542,13 @@ def read_labels_from_annot(subject, aparc_name, subjects_dir):
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True):
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
-    subject_dir = os.path.join(subjects_dir, subject)
-    labels_fol = os.path.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
+    subject_dir = op.join(subjects_dir, subject)
+    labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
     labels = []
     if overwrite:
         for hemi in HEMIS:
-            remove_file(os.path.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
-    labels_files = glob.glob(os.path.join(labels_fol, '*.label'))
+            remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+    labels_files = glob.glob(op.join(labels_fol, '*.label'))
     if len(labels_files) == 0:
         raise Exception('labels_to_annot: No labels files!')
     for label_file in labels_files:
@@ -563,7 +563,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
 
 def remove_file(fname, raise_error_if_does_not_exist=False):
     try:
-        if os.path.isfile(fname):
+        if op.isfile(fname):
             os.remove(fname)
     except:
         if raise_error_if_does_not_exist:
@@ -576,17 +576,17 @@ def get_hemis(hemi):
 
 
 def rmtree(fol):
-    if os.path.isdir(fol):
+    if op.isdir(fol):
         shutil.rmtree(fol)
 
 # def make_dir(fol):
-#     if not os.path.isdir(fol):
+#     if not op.isdir(fol):
 #         os.makedirs(fol)
 #     return fol
 
 
 def get_subfolders(fol):
-    return [os.path.join(fol,subfol) for subfol in os.listdir(fol) if os.path.isdir(os.path.join(fol,subfol))]
+    return [op.join(fol,subfol) for subfol in os.listdir(fol) if op.isdir(op.join(fol,subfol))]
 
 
 def get_spaced_colors(n):
@@ -616,7 +616,7 @@ def downsample_3d(x, R):
 
 
 def read_sub_corticals_code_file(sub_corticals_codes_file, read_also_names=False):
-    if os.path.isfile(sub_corticals_codes_file):
+    if op.isfile(sub_corticals_codes_file):
         codes = np.genfromtxt(sub_corticals_codes_file, usecols=(1), delimiter=',', dtype=int)
         codes = map(int, codes)
         if read_also_names:
@@ -751,16 +751,20 @@ def fsaverage_vertices():
 
 def build_remote_subject_dir(remote_subject_dir_template, subject):
     if remote_subject_dir_template != '':
-        remote_subject_dir = op.join(remote_subject_dir_template, subject)
-    elif '{subject}' in remote_subject_dir_template:
-        if isinstance(remote_subject_dir_template, dict):
-            if 'func' in remote_subject_dir_template:
-                template_val = remote_subject_dir_template['func'](subject)
-                remote_subject_dir = remote_subject_dir_template['template'].format(subject=template_val)
+        # remote_subject_dir_template = op.join(remote_subject_dir_template, subject)
+        if '{subject}' in remote_subject_dir_template:
+            if isinstance(remote_subject_dir_template, dict):
+                if 'func' in remote_subject_dir_template:
+                    template_val = remote_subject_dir_template['func'](subject)
+                    remote_subject_dir = remote_subject_dir_template['template'].format(subject=template_val)
+                else:
+                    remote_subject_dir = remote_subject_dir_template['template'].format(subject=subject)
             else:
-                remote_subject_dir = remote_subject_dir_template['template'].format(subject=subject)
+                remote_subject_dir = remote_subject_dir_template.format(subject=subject)
         else:
-            remote_subject_dir = remote_subject_dir_template.format(subject=subject)
+            remote_subject_dir = remote_subject_dir_template
+    else:
+        remote_subject_dir = ''
     return remote_subject_dir
 
 
@@ -768,7 +772,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                   overwrite_files=False, print_traceback=True):
 
-    local_subject_dir = os.path.join(local_subjects_dir, subject)
+    local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
         check_if_all_necessary_files_exist(necessary_files, local_subject_dir, False)
     if all_files_exists and not overwrite_files:
@@ -779,13 +783,13 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                                 overwrite_files, print_traceback)
     else:
         for fol, files in necessary_files.items():
-            if not os.path.isdir(os.path.join(local_subject_dir, fol)):
-                os.makedirs(os.path.join(local_subject_dir, fol))
+            if not op.isdir(op.join(local_subject_dir, fol)):
+                os.makedirs(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
-                    if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)) or overwrite_files:
-                        shutil.copyfile(os.path.join(remote_subject_dir, fol, file_name),
-                                    os.path.join(local_subject_dir, fol, file_name))
+                    if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
+                        shutil.copyfile(op.join(remote_subject_dir, fol, file_name),
+                                    op.join(local_subject_dir, fol, file_name))
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
@@ -797,7 +801,7 @@ def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace
     all_files_exists = True
     for fol, files in necessary_files.items():
         for file_name in files:
-            if not os.path.isfile(os.path.join(local_subject_dir, fol, file_name)):
+            if not op.isfile(op.join(local_subject_dir, fol, file_name)):
                 if trace:
                     print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
                 all_files_exists = False
@@ -813,7 +817,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
         password = ask_for_sftp_password(username)
     with pysftp.Connection(domain, username=username, password=password) as sftp:
         for fol, files in necessary_files.items():
-            if not os.path.isdir(op.join(local_subject_dir, fol)):
+            if not op.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
             os.chdir(op.join(local_subject_dir, fol))
             for file_name in files:
@@ -847,8 +851,8 @@ def to_ras(points, round_coo=False):
 def check_for_necessary_files(necessary_files, root_fol):
     for fol, files in necessary_files.items():
         for file in files:
-            full_path = os.path.join(root_fol, fol, file)
-            if not os.path.isfile(full_path):
+            full_path = op.join(root_fol, fol, file)
+            if not op.isfile(full_path):
                 raise Exception('{} does not exist!'.format(full_path))
 
 
@@ -863,13 +867,13 @@ def run_parallel(func, params, njobs=1):
 
 
 def get_current_fol():
-    return os.path.dirname(os.path.realpath(__file__))
+    return op.dirname(op.realpath(__file__))
 
 
 def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
         curr_dir = get_current_fol()
-    parent_fol = os.path.split(curr_dir)[0]
+    parent_fol = op.split(curr_dir)[0]
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
@@ -880,11 +884,11 @@ def get_resources_fol():
 
 
 def get_figs_fol():
-    return os.path.join(get_parent_fol(), 'figs')
+    return op.join(get_parent_fol(), 'figs')
 
 
 def get_files_fol():
-    return os.path.join(get_parent_fol(), 'pkls')
+    return op.join(get_parent_fol(), 'pkls')
 
 
 def save(obj, fname):
@@ -1223,7 +1227,7 @@ def moving_avg(x, window):
 
 
 def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    return op.isfile(fpath) and os.access(fpath, os.X_OK)
 
 
 def set_exe_permissions(fpath):
@@ -1266,7 +1270,7 @@ def read_labels(labels_fol, hemi='both'):
     hemis = [hemi] if hemi != 'both' else HEMIS
     labels = []
     for hemi in hemis:
-        for label_file in glob.glob(os.path.join(labels_fol, '*{}.label'.format(hemi))):
+        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
             print('read label from {}'.format(label_file))
             label = mne.read_label(label_file)
             labels.append(label)
@@ -1435,7 +1439,7 @@ def sort_according_to_another_list(list_to_sort, list_to_sort_by):
 def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, overwrite_fs_files=False):
     sftp_password = ''
     all_necessary_files_exist = False if overwrite_fs_files else np.all(
-        [check_if_all_necessary_files_exist(necessary_files, os.path.join(subjects_dir, subject), False)
+        [check_if_all_necessary_files_exist(necessary_files, op.join(subjects_dir, subject), False)
          for subject in subjects])
     if not all_necessary_files_exist or overwrite_fs_files:
         sftp_password = ask_for_sftp_password(sftp_username)
