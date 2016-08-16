@@ -43,7 +43,8 @@ natural_keys = mu.natural_keys
 elec_group_number = mu.elec_group_number
 elec_group = mu.elec_group
 run_command_in_new_thread = mu.run_command_in_new_thread
-
+is_linux = mu.is_linux
+is_windows = mu.is_windows
 # class Bag( dict ):
 #     """ a dict with d.key short for d["key"]
 #         d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
@@ -389,8 +390,11 @@ def how_many_curlies(str):
 def run_script(cmd, verbose=False):
     if verbose:
         print('running: {}'.format(cmd))
-    output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd),
-                                     shell=True)
+    if is_windows():
+        output = subprocess.call(cmd)
+    else:
+        output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+
     print(output)
     return output
 

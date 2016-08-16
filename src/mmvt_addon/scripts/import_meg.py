@@ -34,8 +34,8 @@ def import_meg(subject_fname):
 
 if __name__ == '__main__':
     import sys
-    subject_fname = sys.argv[1]
     if sys.argv[2] == '--background':
+        subject_fname = sys.argv[1]
         import_meg(subject_fname)
     else:
         wrap_blender_call()

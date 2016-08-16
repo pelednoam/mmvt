@@ -57,12 +57,42 @@ def get_links_dir():
     return op.join(get_parent_fol(levels=4), 'links')
 
 
+def get_windows_link(shortcut):
+    try:
+        from src.utils import windows_utils as wu
+    except:
+        sys.path.append(os.path.split(__file__)[0])
+        import windows_utils as wu
+    sc = wu.MSShortcut('{}.lnk'.format(shortcut))
+    return op.join(sc.localBasePath, sc.commonPathSuffix)
+
+
+def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
+    val = op.join(links_dir, link_name)
+    # check if this is a windows folder shortcup
+    if op.isfile('{}.lnk'.format(val)):
+        # return read_windows_dir_shortcut('{}.lnk'.format(val))
+        return get_windows_link(val)
+    if not op.isdir(val) and default_val != '':
+        val = default_val
+    if not op.isdir(val):
+        val = os.environ.get(var_name, '')
+    if not op.isdir(val):
+        if throw_exception:
+            raise Exception('No {} dir!'.format(link_name))
+        else:
+            print('No {} dir!'.format(link_name))
+    return val
+
+
 def get_mmvt_dir():
-    return op.join(get_links_dir(), 'mmvt')
+    return get_link_dir(get_links_dir(), 'mmvt')
+    # return op.join(get_links_dir(), 'mmvt')
 
 
 def get_blender_dir():
-    return op.join(get_links_dir(), 'blender')
+    return get_link_dir(get_links_dir(), 'blender')
+    # return op.join(get_links_dir(), 'blender')
 
 
 def get_utils_dir():
@@ -183,7 +213,7 @@ def add_default_args():
     parser.add_argument('--subjects', help='subjects names', required=False, default='', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=True, type=au.is_true)
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 
