@@ -510,7 +510,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
-    parser.add_argument('--remote_subjects_dir', help='remote_subjects_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0, type=au.is_true)
