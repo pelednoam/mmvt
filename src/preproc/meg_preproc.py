@@ -51,8 +51,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     else:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
-    if not op.isdir(SUBJECT_MEG_FOLDER):
-        SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir)
+    # if not op.isdir(SUBJECT_MEG_FOLDER):
+    #     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir)
     if not op.isdir(SUBJECT_MEG_FOLDER):
         raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
@@ -934,7 +934,8 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='OrRd', inverse_
         utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
         scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
         for hemi in HEMIS:
-            verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+            # verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+            verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0]!=data.shape[0]:
                 raise Exception('save_activity_map: wrong number of vertices!')
@@ -1034,15 +1035,17 @@ def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM
     try:
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-        if stcs_conds is None:
-            stcs_conds = {}
-            for cond in events.keys():
-                stcs_conds[cond] = np.load(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
+        # if stcs_conds is None:
+        #     stcs_conds = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
+            # stcs_conds = {}
+            # for cond in events.keys():
+            #     stcs_conds[cond] = np.load(STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh'))
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
         # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
 
         for hemi in HEMIS:
-            verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+            # verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+            verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0]!=data.shape[0]:
                 raise Exception('save_vertex_activity_map: wrong number of vertices!')
@@ -1386,7 +1389,7 @@ def get_meg_file(subject, necessary_fnames, args, events):
 def run_on_subjects(args):
     subjects_flags, subjects_errors = {}, {}
     args.sftp_password = utils.get_sftp_password(
-        args.mri_subject, SUBJECTS_MRI_DIR, args.necessary_files, args.sftp_username, False) \
+        args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
         if args.sftp else ''
     if args.sftp_sso and args.sftp_password == '':
         args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
@@ -1593,7 +1596,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
-    args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial'],
+    args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
         args.mri_subject = args.subject

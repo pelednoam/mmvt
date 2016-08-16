@@ -183,6 +183,11 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
+def read_pial_npz(subject, mmvt_dir, hemi):
+    d = np.load(op.join(mmvt_dir, subject, '{}.pial.npz'.format(hemi)))
+    return d['verts'], d['faces']
+
+
 def write_ply_file(verts, faces, ply_file_name):
     verts_num = verts.shape[0]
     faces_num = faces.shape[0]
@@ -811,11 +816,13 @@ def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace
 def sftp_copy_subject_files(subject, necessary_files, username, domain, local_subjects_dir, remote_subject_dir,
                             password='', overwrite_files=False, print_traceback=True):
     import pysftp
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
     local_subject_dir = op.join(local_subjects_dir, subject)
     if password == '':
         password = ask_for_sftp_password(username)
-    with pysftp.Connection(domain, username=username, password=password) as sftp:
+    with pysftp.Connection(domain, username=username, password=password, cnopts=cnopts) as sftp:
         for fol, files in necessary_files.items():
             if not op.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
@@ -823,7 +830,8 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
             for file_name in files:
                 try:
                     if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
-                        with sftp.cd(op.join(remote_subject_dir, fol)):
+                        # with sftp.cd(op.join(remote_subject_dir, fol)):
+                        with sftp.cd(remote_subject_dir + '/' + fol):
                             print('sftp: getting {}'.format(file_name))
                             sftp.get(file_name)
                     if op.getsize(op.join(local_subject_dir, fol, file_name)) == 0:
