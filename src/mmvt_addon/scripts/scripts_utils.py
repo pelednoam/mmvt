@@ -59,7 +59,7 @@ def get_links_dir():
 
 def get_windows_link(shortcut):
     try:
-        from src.utils import windows_utils as wu
+        from src.mmvt_addon.scripts import windows_utils as wu
     except:
         sys.path.append(os.path.split(__file__)[0])
         import windows_utils as wu
