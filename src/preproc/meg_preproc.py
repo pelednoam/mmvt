@@ -36,7 +36,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
-                 fwd_fname_format='', inv_fname_format='', files_includes_cond=False,
+                 fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
                  cleaning_method='', constrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
@@ -69,7 +69,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl',
                             cleaning_method=cleaning_method, constrast=constrast)
     RAW = _get_fif_name('raw', constrast='', cond='')
-    EVE = _get_txt_name('eve', cond='')
+    EVE = _get_txt_name('eve', cond='') if events_fname == '' else events_fname
     EVO = _get_fif_name('ave')
     COV = _get_fif_name('cov')
     DATA_COV = _get_fif_name('data-cov')
@@ -175,13 +175,13 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
 
     if read_events_from_file:
-        events_fname = events_fname if events_fname != '' else EVE
-        print('read events from {}'.format(events_fname))
-        events = mne.read_events(events_fname)
+        # events_fname = events_fname if events_fname != '' else EVE
+        print('read events from {}'.format(EVE))
+        events = mne.read_events(EVE)
     else:
         events = mne.find_events(raw, stim_channel=stim_channels)
     if events is not None:
-        print(events)
+        # print(events)
         picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog,  exclude='bads')
         # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
         reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
@@ -202,6 +202,16 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
 
 # def createEventsFiles(behavior_file, pattern):
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
+
+def calc_evoked_necessary_files(args):
+    necessary_files = []
+    if args.calc_epochs_from_raw:
+        necessary_files.append(RAW)
+        if args.read_events_from_file:
+            necessary_files.append(EVE)
+    else:
+        necessary_files.append(EPO)
+    return necessary_files
 
 
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name='',
@@ -1407,10 +1417,6 @@ def run_on_subjects(args):
 
 
 def main(subject, mri_subject, inverse_method, args):
-    fname_format, fname_format_cond, events = get_fname_format(args.task, args.fname_format, args.fname_format_cond)
-    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
-                 args.fwd_fname_format, args.inv_fname_format, args.files_includes_cond, args.cleaning_method,
-                 args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR, args.fwd_no_cond)
     if args.base_line_min is None and args.base_line_max is None:
         baseline = None
     else:
@@ -1418,21 +1424,30 @@ def main(subject, mri_subject, inverse_method, args):
     evoked, epochs, raw = None, None, None
     if args.events_file_name != '':
         args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
-        if not op.isfile(args.events_file_name):
-            raise IOError('Events file does not exist! ({})'.format(args.events_file_name))
+        if '{subject}' in args.events_file_name:
+            args.events_file_name = args.events_file_name.format(subject=subject)
+        # if not op.isfile(args.events_file_name):
+        #     raise IOError('Events file does not exist! ({})'.format(args.events_file_name))
     args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
     if utils.should_run(args, 'make_forward_solution') and not args.fwd_recreate_source_space:
         args.mri_necessary_files['bem'] = '{}-oct-6p-src.fif'.format(mri_subject)
     prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
+
+    fname_format, fname_format_cond, events = get_fname_format(args.task, args.fname_format, args.fname_format_cond)
+    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
+                 args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
+                 args.cleaning_method, args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR,
+                 args.fwd_no_cond)
     flags = {}
 
     if 'print_files_names' in args.function:
         print_files_names()
 
     if utils.should_run(args, 'calc_evoked'):
-        get_meg_file(subject, [EPO], args, events)
+        necessary_files = calc_evoked_necessary_files(args)
+        get_meg_file(subject, necessary_files, args, events)
         flags['calc_evoked'], evoked, epochs = calc_evoked(
             events, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
             args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,

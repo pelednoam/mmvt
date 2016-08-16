@@ -9,7 +9,7 @@ def read_epoches_and_calc_activity(subject, mri_subject):
     args.function = ['calc_stc_per_condition', 'calc_labels_avg_per_condition', 'smooth_stc', 'save_activity_map']
     args.pick_ori = 'normal'
     args.colors_map = 'jet'
-    meg.main(subject, mri_subject, args)
+    meg.run_on_subjects(args)
 
 
 def calc_single_trial_labels_msit(subject, mri_subject):
@@ -21,7 +21,7 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     args.fwd_no_cond = False
     args.files_includes_cond = True
     args.constrast = 'interference'
-    meg.main(subject, mri_subject, args)
+    meg.run_on_subjects(args)
 
 
 def calc_msit_evoked(subject, mri_subject):
@@ -31,10 +31,11 @@ def calc_msit_evoked(subject, mri_subject):
     args.function = 'calc_evoked'
     args.calc_epochs_from_raw = True
     args.read_events_from_file = True
-    args.events_file_name = 'ep001_msit_nTSSS_interference_1-15-eve.txt'
+    args.remote_subject_meg_dir = '/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit/events'
+    args.events_file_name = '{subject}_msit_nTSSS_interference-eve.txt'
     args.reject = False
     args.pick_eeg = True
-    meg.main(subject, mri_subject, args)
+    meg.run_on_subjects(args)
 
 
 def crop_stc_no_baseline(subject, mri_subject):
@@ -44,7 +45,7 @@ def crop_stc_no_baseline(subject, mri_subject):
     args.stc_t_min = -0.1
     args.stc_t_max = 0.15
     args.base_line_max = None
-    meg.main(subject, mri_subject, args)
+    meg.run_on_subjects(args)
 
 
 def check_files_names(subject, mri_subject):
@@ -52,7 +53,7 @@ def check_files_names(subject, mri_subject):
     args.fname_format = '{subject}_02_f2-35_all_correct_combined'
     args.inv_fname_format = '{subject}_02_f2-35-ico-5-meg-eeg'
     args.function = 'print_names'
-    meg.main(subject, mri_subject, args)
+    meg.run_on_subjects(args)
 
 
 if __name__ == '__main__':
