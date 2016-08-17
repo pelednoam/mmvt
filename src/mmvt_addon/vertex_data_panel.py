@@ -118,6 +118,12 @@ class CreateVertexData(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class CreateVertexData(bpy.types.Operator):
+    bl_idname = "ohad.vertex_data_create"
+    bl_label = "vertex data create"
+    bl_options = {"UNDO"}
+
+
 class DataInVertMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -128,8 +134,9 @@ class DataInVertMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.operator("ohad.vertex_data_create", text="Get data in vertex", icon='ROTATE')
-        layout.operator("ohad.vertex_data_clear", text="Clear", icon='PANEL_CLOSE')
+        layout.operator(CreateVertexData.bl_idname, text="Get data in vertex", icon='ROTATE')
+        layout.operator(ClearVertexData.bl_idname, text="Clear", icon='PANEL_CLOSE')
+        # layout.operator(, text="Get data in vertex", icon='ROTATE')
 
 
 def init(addon):

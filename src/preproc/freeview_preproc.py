@@ -131,7 +131,7 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
             for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
                 data[z,y,z] = 1
         img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-        nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
+        nib.c(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
 
 
 def copy_T1(subject):
