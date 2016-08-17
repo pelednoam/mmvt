@@ -53,8 +53,10 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
     # if not op.isdir(SUBJECT_MEG_FOLDER):
     #     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir)
-    if not op.isdir(SUBJECT_MEG_FOLDER):
-        raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
+    # if not op.isdir(SUBJECT_MEG_FOLDER):
+    #     raise Exception("Can't find the subject's MEG folder! {}".format(SUBJECT_MEG_FOLDER))
+    utils.make_dir(SUBJECT_MEG_FOLDER)
+    print('Subject meg dir: {}'.format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     MMVT_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
@@ -1340,31 +1342,33 @@ def misc():
     pass
 
 
-def get_fname_format(task, fname_format='', fname_format_cond=''):
+def get_fname_format(task, fname_format='', fname_format_cond='', args_conditions=('all')):
     if task == 'MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
         fname_format_cond = '{subject}_msit_{cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
         fname_format = '{subject}_msit_{cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
-        events = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
+        conditions = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
         # event_digit = 1
     elif task == 'ECR':
         fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
         fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
-        # events = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
-        events = dict(C=1, I=2)
+        # conditions = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
+        conditions = dict(C=1, I=2)
         # event_digit = 3
     elif task == 'ARC':
         fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
         fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
-        events = dict(low_risk=1, med_risk=2, high_risk=3)
+        conditions = dict(low_risk=1, med_risk=2, high_risk=3)
     else:
         if fname_format == '' or fname_format_cond == '':
             raise Exception('Empty fname_format and/or fname_format_cond!')
         # raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
         # print('Unkown task! Known tasks are MSIT/ECR/ARC.')
-        events = dict((event_name, event_id + 1) for event_id, event_name in enumerate(args.events))
-        # events = dict(all=1)
-    return fname_format, fname_format_cond, events
+        conditions = dict((cond_name, cond_id + 1) for cond_id, cond_name in enumerate(args_conditions))
+        # conditions = dict(all=1)
+    if args_conditions[0] != 'all':
+        conditions = dict((cond_name, cond_id + 1) for cond_id, cond_name in enumerate(args_conditions))
+    return fname_format, fname_format_cond, conditions
 
 
 def prepare_local_subjects_folder(subject, remote_subject_dir, local_subjects_dir, necessary_files, sftp_args):
@@ -1425,12 +1429,11 @@ def main(subject, mri_subject, inverse_method, args):
     else:
         baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs, raw = None, None, None
+    stcs_conds, stcs_conds_smooth = None, None
     if args.events_file_name != '':
         args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
         if '{subject}' in args.events_file_name:
             args.events_file_name = args.events_file_name.format(subject=subject)
-        # if not op.isfile(args.events_file_name):
-        #     raise IOError('Events file does not exist! ({})'.format(args.events_file_name))
     args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
     if utils.should_run(args, 'make_forward_solution') and not args.fwd_recreate_source_space:
@@ -1438,54 +1441,48 @@ def main(subject, mri_subject, inverse_method, args):
     prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
 
-    fname_format, fname_format_cond, events = get_fname_format(args.task, args.fname_format, args.fname_format_cond)
+    fname_format, fname_format_cond, conditions = get_fname_format(
+        args.task, args.fname_format,args.fname_format_cond, args.conditions)
     init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
                  args.cleaning_method, args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR,
                  args.fwd_no_cond)
+    stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
     flags = {}
-
-    if 'print_files_names' in args.function:
-        print_files_names()
 
     if utils.should_run(args, 'calc_evoked'):
         necessary_files = calc_evoked_necessary_files(args)
-        get_meg_file(subject, necessary_files, args, events)
+        get_meg_file(subject, necessary_files, args, conditions)
         flags['calc_evoked'], evoked, epochs = calc_evoked(
-            events, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
+            conditions, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
             args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
             args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
             args.reject_grad, args.reject_mag, args.reject_eog)
 
     if utils.should_run(args, 'make_forward_solution'):
-        get_meg_file(subject, [EPO], args, events)
+        get_meg_file(subject, [EPO], args, conditions)
         sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
         flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-            events, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
+            conditions, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
             args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
 
     if utils.should_run(args, 'calc_inverse_operator'):
-        get_meg_file(subject, [EPO, FWD], args, events)
+        get_meg_file(subject, [EPO, FWD], args, conditions)
         flags['make_forward_solution'] = calc_inverse_operator(
-            events, args.inv_loose, args.inv_depth, args.inv_calc_cortical, args.inv_calc_subcorticals)
+            conditions, args.inv_loose, args.inv_depth, args.inv_calc_cortical, args.inv_calc_subcorticals)
 
-    stcs_conds, stcs_conds_smooth = None, None
-    stat = STAT_AVG if len(events) == 1 else STAT_DIFF
     if utils.should_run(args, 'calc_stc_per_condition'):
-        get_meg_file(subject, [INV, EVO], args, events)
+        get_meg_file(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds = calc_stc_per_condition(
-            events, args.stc_t_min, args.stc_t_max, inverse_method, baseline, args.apply_SSP_projection_vectors,
+            conditions, args.stc_t_min, args.stc_t_max, inverse_method, baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
-
-    if 'calc_single_trial_labels_per_condition' in args.function:
-        calc_single_trial_labels_per_condition(args.atlas, events, stcs_conds, extract_mode=args.extract_mode)
 
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames + [INV], args, events)
+        get_meg_file(subject, stc_fnames + [INV], args, conditions)
         for hemi in HEMIS:
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
-                args.atlas, hemi, events, extract_mode=args.extract_mode,
+                args.atlas, hemi, conditions, extract_mode=args.extract_mode,
                 inverse_method=inverse_method, positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
@@ -1493,35 +1490,44 @@ def main(subject, mri_subject, inverse_method, args):
 
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, events)
-        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(events, stcs_conds, inverse_method, args.n_jobs)
+        get_meg_file(subject, stc_fnames, args, conditions)
+        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(conditions, stcs_conds, inverse_method, args.n_jobs)
 
     if utils.should_run(args, 'save_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, events)
+        get_meg_file(subject, stc_fnames, args, conditions)
         flags['save_activity_map'] = save_activity_map(
-            events, stat, stcs_conds_smooth, args.colors_map, inverse_method,
+            conditions, stat, stcs_conds_smooth, args.colors_map, inverse_method,
             args.norm_by_percentile, args.norm_percs)
-
-    if utils.should_run(args, 'calc_sub_cortical_activity'):
-        # todo: call get_meg_file
-        calc_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
-        save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method=inverse_method,
-                                             colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
-                                             norm_percs=args.norm_percs)
-
-    if utils.should_run(args, 'plot_sub_cortical_activity'):
-        plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=inverse_method)
-
-    if 'calc_activity_significance' in args.function:
-        calc_activity_significance(events, inverse_method, stcs_conds)
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, events)
-        flags['save_vertex_activity_map'] = save_vertex_activity_map(events, stat, stcs_conds_smooth, inverse_method)
+        get_meg_file(subject, stc_fnames, args, conditions)
+        flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
+
+    # functions that aren't in the main pipeline
+
+    if 'print_files_names' in args.function:
+        # also called in init_globals
+        print_files_names()
+
+    if 'calc_single_trial_labels_per_condition' in args.function:
+        calc_single_trial_labels_per_condition(args.atlas, conditions, stcs_conds, extract_mode=args.extract_mode)
+
+    if 'calc_sub_cortical_activity' in args.function:
+        # todo: call get_meg_file
+        calc_sub_cortical_activity(conditions, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
+        save_subcortical_activity_to_blender(sub_corticals_codes_file, conditions, stat, inverse_method=inverse_method,
+                                             colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
+                                             norm_percs=args.norm_percs)
+
+    if 'plot_sub_cortical_activity' in args.function:
+        plot_sub_cortical_activity(conditions, sub_corticals_codes_file, inverse_method=inverse_method)
+
+    if 'calc_activity_significance' in args.function:
+        calc_activity_significance(conditions, inverse_method, stcs_conds)
 
     return flags
 
@@ -1536,7 +1542,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('-e', '--events', help='events', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('-c', '--conditions', help='conditions', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='function names not to run', required=False, default=[], type=au.str_arr_type)
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
@@ -1600,7 +1606,7 @@ def read_cmd_args(argv=None):
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
         args.mri_subject = args.subject
-    print(args)
+    # print(args)
     return args
 
 
