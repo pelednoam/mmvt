@@ -924,7 +924,7 @@ def check_stc_with_ply(stc, cond_name):
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events, stat, stcs_conds=None, colors_map='OrRd', inverse_method='dSPM',
+def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', inverse_method='dSPM',
         norm_by_percentile=True, norm_percs=(1,99), threshold=0,
         cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
     try:
@@ -950,12 +950,17 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='OrRd', inverse_
             T = data.shape[1]
             for t in range(T):
                 utils.time_to_go(now, t, T, runs_num_to_print=10)
-                if stat == STAT_AVG:
+                if data_min > 0:
                     colors = utils.arr_to_colors(data[:, t], 0, data_max, scalar_map=scalar_map)[:,:3]
-                elif stat == STAT_DIFF:
-                    colors = utils.arr_to_colors_two_colors_maps(data[:, t], threshold=threshold,
-                        x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
-                        default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
+                else:
+                    colors = utils.arr_to_colors_two_colors_maps(
+                        data[:, t], threshold=threshold, x_max=data_minmax, x_min=-data_minmax,
+                        cm_big=cm_big, cm_small=cm_small, default_val=1, flip_cm_big=flip_cm_big,
+                        flip_cm_small=flip_cm_small)
+                # elif stat == STAT_DIFF:
+                #     colors = utils.arr_to_colors_two_colors_maps(data[:, t], threshold=threshold,
+                #         x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+                #         default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
                 colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
                 np.save(op.join(fol, 't{}'.format(t)), colors)
         flag = True
