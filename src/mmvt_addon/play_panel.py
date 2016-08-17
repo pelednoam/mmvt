@@ -546,7 +546,6 @@ class ExportGraph(bpy.types.Operator):
 def init(addon):
     register()
     PlayPanel.addon = addon
-    bpy.context.scene.play_to = addon.get_max_time_steps()
     init_plotting()
     # print('PlayPanel initialization completed successfully!')
 

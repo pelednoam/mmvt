@@ -206,6 +206,7 @@ def start_listener():
 def main(addon_prefs=None):
     show_electrodes(False)
     show_hide_connections(False)
+    set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
