@@ -1385,7 +1385,7 @@ def prepare_local_subjects_folder(subject, remote_subject_dir, local_subjects_di
         False, sftp_args.print_traceback)
 
 
-def get_meg_file(subject, necessary_fnames, args, events):
+def get_meg_files(subject, necessary_fnames, args, events):
     fnames = []
     for necessary_fname in necessary_fnames:
         fname = os.path.basename(necessary_fname)
@@ -1443,8 +1443,6 @@ def main(subject, mri_subject, inverse_method, args):
             args.events_file_name = args.events_file_name.format(subject=subject)
     args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
-    if utils.should_run(args, 'make_forward_solution') and not args.fwd_recreate_source_space:
-        args.mri_necessary_files['bem'] = '{}-oct-6p-src.fif'.format(mri_subject)
     prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
 
@@ -1459,34 +1457,40 @@ def main(subject, mri_subject, inverse_method, args):
 
     if utils.should_run(args, 'calc_evoked'):
         necessary_files = calc_evoked_necessary_files(args)
-        get_meg_file(subject, necessary_files, args, conditions)
+        get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_evoked'], evoked, epochs = calc_evoked(
             conditions, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
             args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
             args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
             args.reject_grad, args.reject_mag, args.reject_eog)
 
-    if utils.should_run(args, 'make_forward_solution'):
-        get_meg_file(subject, [EPO], args, conditions)
-        sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
-        flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-            conditions, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
-            args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
+    get_meg_files(subject, [INV], args, conditions)
+    if args.overwrite_inv or not op.isfile(INV):
+        if utils.should_run(args, 'make_forward_solution'):
+            if not args.fwd_recreate_source_space:
+                prepare_local_subjects_folder(
+                    mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
+                    dict(bem = '{}-oct-6p-src.fif'.format(mri_subject)), args)
+            get_meg_files(subject, [EPO], args, conditions)
+            sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
+            flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
+                conditions, sub_corticals_codes_file, args.fwd_usingEEG, args.fwd_calc_corticals,
+                args.fwd_calc_subcorticals, args.fwd_recreate_source_space, args.n_jobs)
 
-    if utils.should_run(args, 'calc_inverse_operator'):
-        get_meg_file(subject, [EPO, FWD], args, conditions)
-        flags['make_forward_solution'] = calc_inverse_operator(
-            conditions, args.inv_loose, args.inv_depth, args.inv_calc_cortical, args.inv_calc_subcorticals)
+        if utils.should_run(args, 'calc_inverse_operator'):
+            get_meg_files(subject, [EPO, FWD], args, conditions)
+            flags['make_forward_solution'] = calc_inverse_operator(
+                conditions, args.inv_loose, args.inv_depth, args.inv_calc_cortical, args.inv_calc_subcorticals)
 
     if utils.should_run(args, 'calc_stc_per_condition'):
-        get_meg_file(subject, [INV, EVO], args, conditions)
+        get_meg_files(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
 
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames + [INV], args, conditions)
+        get_meg_files(subject, stc_fnames + [INV], args, conditions)
         for hemi in HEMIS:
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_mode=args.extract_mode,
@@ -1497,13 +1501,13 @@ def main(subject, mri_subject, inverse_method, args):
 
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, conditions)
+        get_meg_files(subject, stc_fnames, args, conditions)
         flags['smooth_stc'], stcs_conds_smooth = smooth_stc(conditions, stcs_conds, inverse_method, args.n_jobs)
 
     if utils.should_run(args, 'save_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, conditions)
+        get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_activity_map'] = save_activity_map(
             conditions, stat, stcs_conds_smooth, args.colors_map, inverse_method,
             args.norm_by_percentile, args.norm_percs)
@@ -1511,7 +1515,7 @@ def main(subject, mri_subject, inverse_method, args):
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
-        get_meg_file(subject, stc_fnames, args, conditions)
+        get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
 
     # functions that aren't in the main pipeline
@@ -1524,7 +1528,7 @@ def main(subject, mri_subject, inverse_method, args):
         calc_single_trial_labels_per_condition(args.atlas, conditions, stcs_conds, extract_mode=args.extract_mode)
 
     if 'calc_sub_cortical_activity' in args.function:
-        # todo: call get_meg_file
+        # todo: call get_meg_files
         calc_sub_cortical_activity(conditions, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
         save_subcortical_activity_to_blender(sub_corticals_codes_file, conditions, stat, inverse_method=inverse_method,
                                              colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
@@ -1556,6 +1560,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
+    parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
