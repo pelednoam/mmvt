@@ -934,6 +934,16 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
         data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
         data_minmax = utils.get_max_abs(data_max, data_min)
         utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
+
+        import matplotlib.colors as mcolors
+        from src.utils import figures_utils as figu
+        colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
+        colors2 = plt.cm.YlOrRd(np.linspace(0, 1, 128))
+        colors = np.vstack((colors1, colors2))
+        mymap = mcolors.LinearSegmentedColormap.from_list('BuPu_YlOrRd', colors)
+        figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
+        figu.plot_color_bar(data_minmax, -data_minmax, mymap, fol=figures_fol)
+
         scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
         for hemi in HEMIS:
             # verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))

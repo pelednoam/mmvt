@@ -3,10 +3,12 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import os.path as op
 import glob
+import numpy as np
 
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
-def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False):
+
+def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
 
@@ -14,8 +16,23 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=False
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
-    plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map)))
+    if not isinstance(color_map, str):
+        color_map = color_map.name
+    if do_save:
+        plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map)))
+    else:
+        plt.show()
     return cb
+
+
+def plot_color_bar_from_rwo_color_maps(data_max, data_min, color_map1, color_map2, ax=None, fol=''):
+    import matplotlib.colors as mcolors
+
+    colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
+    colors2 = plt.cm.YlOrRd(np.linspace(0, 1, 128))
+    colors = np.vstack((colors1, colors2))
+    mymap = mcolors.LinearSegmentedColormap.from_list('BuPu_YlOrRd', colors)
+    plot_color_bar(data_max, data_min, mymap, do_save=False)
 
 
 def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
@@ -97,11 +114,18 @@ def example2():
             x_left_crop=350, x_right_crop=200)
 
 
+def example3():
+    cm_big = 'YlOrRd'
+    cm_small = 'PuBu'
+    data_max, data_min = -5, 5
+    plot_color_bar_from_rwo_color_maps(data_max, data_min, cm_small, cm_big, ax=None, fol='/homes/5/npeled/space1/Pictures')
+
+
 if __name__ is '__main__':
     # example2()
-    combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\
-                       '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
-                       '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
-                       dpi=100, facecolor='black')
-
+    # combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\
+    #                    '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
+    #                    '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
+    #                    dpi=100, facecolor='black')
+    example3()
     print('finish!')
