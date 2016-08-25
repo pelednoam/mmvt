@@ -25,14 +25,14 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True)
     return cb
 
 
-def plot_color_bar_from_rwo_color_maps(data_max, data_min, color_map1, color_map2, ax=None, fol=''):
+def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol=''):
     import matplotlib.colors as mcolors
 
     colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
     colors2 = plt.cm.YlOrRd(np.linspace(0, 1, 128))
     colors = np.vstack((colors1, colors2))
     mymap = mcolors.LinearSegmentedColormap.from_list('BuPu_YlOrRd', colors)
-    plot_color_bar(data_max, data_min, mymap, do_save=False)
+    plot_color_bar(data_max, data_min, mymap, fol=fol)
 
 
 def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
@@ -127,5 +127,6 @@ if __name__ is '__main__':
     #                    '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
     #                    '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
     #                    dpi=100, facecolor='black')
-    example3()
+    # example3()
+    plot_color_bar_from_rwo_color_maps(10, -10, fol='C:\\Users\\2014\\mmvt\\ESZC25\\figures')
     print('finish!')
