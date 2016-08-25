@@ -28,7 +28,7 @@ class CreateVertexData(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     @staticmethod
-    def find_vertex_index_and_mesh_closest_to_cursor(self):
+    def find_vertex_index_and_mesh_closest_to_cursor():
         # 3d cursor relative to the object data
         print('cursor at:' + str(bpy.context.scene.cursor_location))
         # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
@@ -67,7 +67,7 @@ class CreateVertexData(bpy.types.Operator):
         return closest_mesh_name, vertex_ind, vertex_co
 
     @staticmethod
-    def create_empty_in_vertex_location(self, vertex_location):
+    def create_empty_in_vertex_location(vertex_location):
         mu.create_empty_in_vertex(vertex_location, 'Activity_in_vertex', DataInVertMakerPanel.addon.ACTIVITY_LAYER)
 
 
@@ -99,29 +99,20 @@ class CreateVertexData(bpy.types.Operator):
         mu.insert_keyframe_to_custom_prop(obj, 'data', 0, 0)
         mu.insert_keyframe_to_custom_prop(obj, 'data', 0, number_of_time_points + 1)
         for ii in range(number_of_time_points):
-            print(ii)
+            # print(ii)
             frame_str = str(ii)
-            self.insert_keyframe_to_custom_prop(self, obj, 'data', float(data[ii]), ii + 1)
+            mu.insert_keyframe_to_custom_prop(obj, 'data', float(data[ii]), ii + 1)
             # insert_keyframe_to_custom_prop(obj,'data',0,ii+1)
         fcurves = bpy.data.objects[empty_name].animation_data.action.fcurves[0]
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def invoke(self, context, event=None):
-        # Noam: is was self.find_vertex_index_and_mesh_closest_to_cursor(self) before, are you sure we need to send the self?
-        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor(self)
+        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor()
         print(vertex_co)
-        self.create_empty_in_vertex_location(self, vertex_co)
-        # data_path = '/homes/5/npeled/space3/MEG/ECR/mg79'
-        data_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-        # keyframe_empty('Activity_in_vertex',closest_mesh_name,vertex_ind,data_path)
+        self.create_empty_in_vertex_location(vertex_co)
+        data_path = mu.get_user_fol()
         self.keyframe_empty_test('Activity_in_vertex', closest_mesh_name, vertex_ind, data_path)
         return {"FINISHED"}
-
-
-class CreateVertexData(bpy.types.Operator):
-    bl_idname = "ohad.vertex_data_create"
-    bl_label = "vertex data create"
-    bl_options = {"UNDO"}
 
 
 class DataInVertMakerPanel(bpy.types.Panel):
