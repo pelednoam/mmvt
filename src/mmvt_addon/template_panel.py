@@ -19,6 +19,7 @@ def template_files_update(self, context):
 
 def template_draw(self, context):
     layout = self.layout
+    layout.operator(TemplateButton.bl_idname, text="Do something", icon='ROTATE')
 
 
 class TemplateButton(bpy.types.Operator):
