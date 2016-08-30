@@ -47,11 +47,12 @@ def show_activity():
 
 
 def show_electrodes(value=True):
-    if not bpy.data.objects.get('Deep_electrodes', None) is None:
-        # bpy.context.scene.appearance_show_electrodes_layer = value
-        show_hide_electrodes(value)
-        for elec_obj in bpy.data.objects.get('Deep_electrodes').children:
-            elec_obj.hide = value
+    show_hide_connections(value)
+    # if not bpy.data.objects.get('Deep_electrodes', None) is None:
+#    #     bpy.context.scene.appearance_show_electrodes_layer = value
+        # show_hide_electrodes(value)
+        # for elec_obj in bpy.data.objects.get('Deep_electrodes').children:
+        #     elec_obj.hide = value
 
 
 def appearance_show_rois_activity_update(self, context):

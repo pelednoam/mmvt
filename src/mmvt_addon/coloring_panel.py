@@ -459,10 +459,12 @@ def color_electrodes():
     data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
     color_object_homogeneously(data, threshold=threshold)
-    # deselect_all()
-    # mu.select_hierarchy('Deep_electrodes', False)
     ColoringMakerPanel.addon.show_electrodes()
     ColoringMakerPanel.addon.change_to_rendered_brain()
+
+
+    # deselect_all()
+    # mu.select_hierarchy('Deep_electrodes', False)
 
 
 def color_electrodes_stim():
