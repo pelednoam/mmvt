@@ -385,10 +385,10 @@ def compare_coh_windows(subject, task, conditions, electrodes, freqs=((8, 12), (
                 rms = np.sqrt(np.mean(np.power(data_diff, 2)))
                 corr = np.corrcoef(meg, elc)[0, 1]
                 results.append(dict(elc1=electrodes[i], elc2=electrodes[j], cond=cond, freq=freq, rms=rms, corr=corr))
-                if False: #do_plot and electrodes[i]=='RPT7' and electrodes[j] == 'RPT5': #corr > 10 and rms < 3:
+                if electrodes[i]=='RAF6' and electrodes[j] == 'LOF4': #corr > 10 and rms < 3:
                     plt.figure()
-                    plt.plot(meg, label='pred')
-                    plt.plot(elc, label='elec')
+                    plt.plot(meg, label='prediction')
+                    plt.plot(elc, label='electrode')
                     plt.legend()
                     # plt.title('{}-{} {} {}'.format(electrodes[i], electrodes[j], freq, cond)) # (rms:{:.2f})
                     plt.savefig(op.join(figs_fol, '{:.2f}-{}-{}-{}-{}.jpg'.format(rms, electrodes[i], electrodes[j], freq, cond)))
