@@ -60,8 +60,8 @@ import filter_panel
 importlib.reload(filter_panel)
 import stim_panel
 importlib.reload(stim_panel)
-import streaming_panel
-importlib.reload(streaming_panel)
+# import streaming_panel
+# importlib.reload(streaming_panel)
 
 print("MMVT addon started!")
 # todo: should change that in the code!!!
@@ -243,7 +243,7 @@ def main(addon_prefs=None):
         connections_panel.init(current_module)
         # listener_panel.init(current_module)
         vertex_data_panel.init(current_module)
-        streaming_panel.init(current_module)
+        # streaming_panel.init(current_module)
 
     except:
         print('The classes are already registered!')
