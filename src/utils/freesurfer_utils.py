@@ -200,23 +200,6 @@ def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
     return mne.transforms.apply_trans(xfm['trans'], coords)
 
 
-# todo: doesn't work...
-# def subject_to_mni305_tranform(subject, coords, subjects_dir, print_only=False):
-#     rs = utils.partial_run_script(locals(), print_only=print_only)
-#     subject_fol = op.join(subjects_dir, subject, 'mmvt')
-#     utils.make_dir(subject_fol)
-#     subject_trans_file = op.join(subject_fol, 'mn305_to_{}.dat'.format(subject))
-#     if not op.isfile(subject_trans_file):
-#         rs(mni305_to_subject_reg)
-#         shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject)), subject_trans_file)
-#     trans_mat = np.genfromtxt(subject_trans_file, delimiter=' ', skip_header=4, skip_footer=1)
-#     inv_trans = np.linalg.inv(trans_mat)
-#     print('inv_trans:')
-#     print(inv_trans)
-#     coords_mni = nib.affines.apply_affine(inv_trans, coords)
-#     return coords_mni
-
-
 def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):
     '''
     Creates the annot file by using the freesurfer mris_ca_label function

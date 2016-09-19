@@ -54,8 +54,11 @@ def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
     ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
     if len(ply_files) < len(lookup) or overwrite_subcortical_objs:
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
-    flag_ok = len(glob.glob(op.join(renamed_output_fol, '*.ply'))) == len(lookup) and \
-        len(glob.glob(op.join(renamed_output_fol, '*.npz'))) == len(lookup)
+    blender_dir = op.join(MMVT_DIR, subject, 'subcortical')
+    if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
+        copy_subcorticals_to_blender(renamed_output_fol, subject)
+    flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) == len(lookup) and \
+        len(glob.glob(op.join(blender_dir, '*.npz'))) == len(lookup)
     return flag_ok
 
 
@@ -76,10 +79,14 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
             utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
             verts, faces = utils.read_ply_file(op.join(new_fol, '{}.ply'.format(new_name)))
             np.savez(op.join(new_fol, '{}.npz'.format(new_name)), verts=verts, faces=faces)
+        copy_subcorticals_to_blender(new_fol, subject)
+
+
+def copy_subcorticals_to_blender(subcorticals_fol, subject):
     blender_fol = op.join(MMVT_DIR, subject, 'subcortical')
     if op.isdir(blender_fol):
         shutil.rmtree(blender_fol)
-    shutil.copytree(new_fol, blender_fol)
+    shutil.copytree(subcorticals_fol, blender_fol)
 
 
 def rename_cortical(lookup, fol, new_fol):
@@ -528,8 +535,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm']}
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
+        'mri:transforms' : ['talairach.xfm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.overwrite:
         args.overwrite_annotation = True

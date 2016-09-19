@@ -792,6 +792,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                                 overwrite_files, print_traceback)
     else:
         for fol, files in necessary_files.items():
+            fol = fol.replace(':', op.sep)
             if not op.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
             for file_name in files:
@@ -809,6 +810,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
 def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace=True):
     all_files_exists = True
     for fol, files in necessary_files.items():
+        fol = fol.replace(':', op.sep)
         for file_name in files:
             if not op.isfile(op.join(local_subject_dir, fol, file_name)):
                 if trace:
@@ -828,6 +830,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
         password = ask_for_sftp_password(username)
     with pysftp.Connection(domain, username=username, password=password, cnopts=cnopts) as sftp:
         for fol, files in necessary_files.items():
+            fol = fol.replace(':', op.sep)
             if not op.isdir(op.join(local_subject_dir, fol)):
                 os.makedirs(op.join(local_subject_dir, fol))
             os.chdir(op.join(local_subject_dir, fol))

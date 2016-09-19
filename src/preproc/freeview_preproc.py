@@ -131,7 +131,7 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
             for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
                 data[z,y,z] = 1
         img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-        nib.c(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
+        nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
 
 
 def copy_T1(subject):
@@ -150,7 +150,9 @@ def read_electrodes_pos(subject, args):
         elecs_pos, elecs_names = elecs['pos'], [name.astype(str) for name in elecs['names']]
         return elecs_pos, elecs_names
     else:
-        raise Exception("Can't find the electrode coordinates file! ({})".format(electrodes_file))
+        # raise Exception("Can't find the electrode coordinates file! ({})".format(electrodes_file))
+        print("Can't find the electrode coordinates file! ({})".format(electrodes_file))
+        return [], []
 
 # def read_vox2ras0():
 #     import nibabel as nib

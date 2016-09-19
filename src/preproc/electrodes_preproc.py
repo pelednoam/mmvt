@@ -731,6 +731,7 @@ def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None, ba
     good_elecs_coords_mni = np.array(good_elecs_coords_mni)
     electrodes_mni_fname = save_electrodes_file(subject, args.bipolar, good_elecs_names, good_elecs_coords_mni, '_mni')
     output_file_name = op.split(electrodes_mni_fname)[1]
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes'))
     blender_file = op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
     shutil.copyfile(electrodes_mni_fname, blender_file)
 
