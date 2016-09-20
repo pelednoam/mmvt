@@ -59,7 +59,7 @@ class ModalTimerOperator(bpy.types.Operator):
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
                 bpy.context.scene.frame_current = self.limits
-                print(self.limits, time.time() - self._time)
+                # print(self.limits, time.time() - self._time)
                 self._time = time.time()
                 try:
                     plot_something(self, context, self.limits, ModalTimerOperator._uuid)
@@ -111,7 +111,7 @@ def plot_something(self, context, cur_frame, uuid=''):
         return
 
     threshold = bpy.context.scene.coloring_threshold
-    plot_subcorticals=True
+    plot_subcorticals = True
     play_type = bpy.context.scene.play_type
     # image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
