@@ -5,6 +5,7 @@ import numpy as np
 import os.path as op
 import glob
 import numbers
+import importlib
 
 try:
     import connections_panel
@@ -205,6 +206,33 @@ def prev_filter_item():
     bpy.context.scene.filter_items = prev_cluster
 
 
+def get_func(module_name):
+    lib_name = 'traces_filters.{}'.format(module_name)
+    lib = importlib.import_module(lib_name)
+    importlib.reload(lib)
+    return getattr(lib, 'filter_traces')
+
+
+def module_has_func(module_name):
+    try:
+        f = get_func(module_name)
+        return True
+    except:
+        return False
+
+
+def get_filter_functions():
+    functions_names = []
+    files = glob.glob(op.join(op.sep.join(__file__.split(op.sep)[:-1]), 'traces_filters', '*.py'))
+    for fname in files:
+        file_name = op.splitext(op.basename(fname))[0]
+        if module_has_func(file_name):
+            functions_names.append(file_name)
+    bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
+        items=[(module_name, module_name, '', k + 1) for k, module_name in enumerate(functions_names)],
+        description="Filtering function")
+
+
 class FindCurveClosestToCursor(bpy.types.Operator):
     bl_idname = "ohad.curve_close_to_cursor"
     bl_label = "curve close to cursor"
@@ -296,6 +324,7 @@ class Filtering(bpy.types.Operator):
     filter_objects = []
     filter_values = []
 
+
     def get_object_to_filter(self, source_files):
         data, names = [], []
         for input_file in source_files:
@@ -309,34 +338,32 @@ class Filtering(bpy.types.Operator):
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
-        t_range = range(self.filter_from, self.filter_to + 1)
-
+        # t_range = range(self.filter_from, self.filter_to + 1)
+        if self.topK > 0:
+            self.topK = min(self.topK, len(names))
         print(self.type_of_func)
+        filter_func = get_func(self.type_of_func)
         d = np.vstack((d for d in data))
         print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
-        if self.type_of_func == 'RMS':
-            dd = np.diff(d[:, t_range, :], axis=2)
-            if dd.shape[2] > 1:
-                dd = np.sum(dd, axis=2)
-            dd = np.squeeze(dd)
-            dd = np.sqrt(np.sum(np.power(dd, 2), 1))
-        elif self.type_of_func == 'SumAbs':
-            dd = np.sum(abs(d[:, t_range, :]), (1, 2))
-        elif self.type_of_func == 'threshold':
-            dd = np.max(np.abs(np.squeeze(np.diff(d[:, t_range, :], axis=2))), axis=1)
+        objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
+        # if self.type_of_func == 'RMS':
+        #     dd = np.diff(d[:, t_range, :], axis=2)
+        #     if dd.shape[2] > 1:
+        #         dd = np.sum(dd, axis=2)
+        #     dd = np.squeeze(dd)
+        #     dd = np.sqrt(np.sum(np.power(dd, 2), 1))
+        # elif self.type_of_func == 'SumAbs':
+        #     dd = np.sum(abs(d[:, t_range, :]), (1, 2))
+        # elif self.type_of_func == 'threshold':
+        #     dd = np.max(np.abs(np.squeeze(np.diff(d[:, t_range, :], axis=2))), axis=1)
 
-        if self.topK > 0:
-            self.topK = min(self.topK, len(names))
-        else:
-            self.topK = sum(dd > 0)
-
-        if self.type_of_func == 'threshold':
-            indices = np.where(dd > bpy.context.scene.coloring_threshold)[0]
-            objects_to_filtter_in = sorted(indices, key=lambda i:dd[i])[::-1][:self.topK]
-            # objects_to_filtter_in = np.argsort(dd[indices])[::-1][:self.topK]
-        else:
-            objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
+        # if self.type_of_func == 'threshold':
+        #     indices = np.where(dd > bpy.context.scene.coloring_threshold)[0]
+        #     objects_to_filtter_in = sorted(indices, key=lambda i:dd[i])[::-1][:self.topK]
+        #     objects_to_filtter_in = np.argsort(dd[indices])[::-1][:self.topK]
+        # else:
+        #     objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
@@ -462,10 +489,9 @@ bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.fram
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
     items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
     description="Type of curve to be filtered")
-bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
-    items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
-           ("threshold", "Above threshold", "", 3)],
-    description="Filtering function")
+bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description="Filtering function")
+    # items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
+    #        ("threshold", "Above threshold", "", 3)],
 bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=False, description="Mark selected items")
 bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
 bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
@@ -488,6 +514,7 @@ class FilteringMakerPanel(bpy.types.Panel):
 
 def init(addon):
     FilteringMakerPanel.addon = addon
+    get_filter_functions()
     register()
 
 
