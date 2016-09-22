@@ -88,7 +88,7 @@ def create_links(links_fol_name='links', gui=True):
     #     except:
     #         print('Error with folder {} and link {}'.format(real_fol, link_name))
     #         print(traceback.format_exc())
-    return np.all([utils.islink(op.join(links_fol, link_name)) for link_name in links_names])
+    return np.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
 
 
 def create_real_folder(real_fol):
