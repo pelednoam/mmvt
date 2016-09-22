@@ -1464,25 +1464,46 @@ def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, ov
 
 
 def create_folder_link(real_fol, link_fol):
-    if is_linux or is_mac:
-        if not op.islink(link_fol):
+    if not is_link(link_fol):
+        if is_linux or is_mac:
             os.symlink(real_fol, link_fol)
-    elif is_windows:
-        try:
-            import winshell
-            from win32com.client import Dispatch
-            path = '{}.lnk'.format(link_fol)
-            target = real_fol
-            shell = Dispatch('WScript.Shell')
-            shortcut = shell.CreateShortCut(path)
-            shortcut.Targetpath = target
-            shortcut.save()
-        except:
-            print("Can't create a link to the folder {}!".format(real_fol))
-    else:
-        raise print('Sorry, your OS is not supported!')
+        elif is_windows:
+            try:
+                import winshell
+                from win32com.client import Dispatch
+                path = '{}.lnk'.format(link_fol)
+                target = real_fol
+                shell = Dispatch('WScript.Shell')
+                shortcut = shell.CreateShortCut(path)
+                shortcut.Targetpath = target
+                shortcut.save()
+            except:
+                print("Can't create a link to the folder {}!".format(real_fol))
+        else:
+            raise print('Sorry, your OS is not supported!')
 
-# From http://stackoverflow.com/a/28952464/1060738
+
+def is_link(link_path):
+    if is_windows:
+        try:
+            from src.mmvt_addon.scripts import windows_utils as wu
+            sc = wu.MSShortcut('{}.lnk'.format(link_path))
+            real_folder_path = op.join(sc.localBasePath, sc.commonPathSuffix)
+            return op.isdir(real_folder_path)
+        except:
+            return False
+    else:
+        return op.islink(link_path)
+
+
+def message_box(text, title=''):
+    if is_windows:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, text, title, 1)
+    else:
+        print(text)
+
+    # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
 #     try:
