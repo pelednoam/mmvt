@@ -1510,7 +1510,7 @@ def message_box(text, title=''):
 
 def choose_folder_gui():
     from tkinter.filedialog import askdirectory
-    askdirectory()
+    return askdirectory()
 
 
 # From http://stackoverflow.com/a/28952464/1060738
