@@ -64,7 +64,7 @@ class MMVTLoaderAddon(bpy.types.Operator):
         # If you change the code and rerun the addon, you need to reload MMVT_Addon
         imp.reload(mmvt_addon)
         print(mmvt_addon)
-        mmvt_addon. (addon_prefs)
+        mmvt_addon.main(addon_prefs)
         return {'FINISHED'}
 
 
