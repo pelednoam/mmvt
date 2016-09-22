@@ -1510,8 +1510,10 @@ def message_box(text, title=''):
 
 def choose_folder_gui():
     from tkinter.filedialog import askdirectory
-    return askdirectory()
-
+    fol = askdirectory()
+    if is_windows():
+        fol = fol.replace('/', '\\')
+    return fol
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
