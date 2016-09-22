@@ -45,6 +45,8 @@ elec_group = mu.elec_group
 run_command_in_new_thread = mu.run_command_in_new_thread
 is_linux = mu.is_linux
 is_windows = mu.is_windows
+is_mac = mu.is_mac
+
 # class Bag( dict ):
 #     """ a dict with d.key short for d["key"]
 #         d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
@@ -1461,45 +1463,64 @@ def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, ov
     return sftp_password
 
 
+def create_folder_link(real_fol, link_fol):
+    if is_linux or is_mac:
+        if not op.islink(link_fol):
+            os.symlink(real_fol, link_fol)
+    elif is_windows:
+        try:
+            import winshell
+            from win32com.client import Dispatch
+            path = '{}.lnk'.format(link_fol)
+            target = real_fol
+            shell = Dispatch('WScript.Shell')
+            shortcut = shell.CreateShortCut(path)
+            shortcut.Targetpath = target
+            shortcut.save()
+        except:
+            print("Can't create a link to the folder {}!".format(real_fol))
+    else:
+        raise print('Sorry, your OS is not supported!')
+
 # From http://stackoverflow.com/a/28952464/1060738
-def read_windows_dir_shortcut(dir_path):
-    import struct
-    try:
-        with open(dir_path, 'rb') as stream:
-            content = stream.read()
-
-            # skip first 20 bytes (HeaderSize and LinkCLSID)
-            # read the LinkFlags structure (4 bytes)
-            lflags = struct.unpack('I', content[0x14:0x18])[0]
-            position = 0x18
-
-            # if the HasLinkTargetIDList bit is set then skip the stored IDList
-            # structure and header
-            if (lflags & 0x01) == 1:
-                position = struct.unpack('H', content[0x4C:0x4E])[0] + 0x4E
-
-            last_pos = position
-            position += 0x04
-
-            # get how long the file information is (LinkInfoSize)
-            length = struct.unpack('I', content[last_pos:position])[0]
-
-            # skip 12 bytes (LinkInfoHeaderSize, LinkInfoFlags, and VolumeIDOffset)
-            position += 0x0C
-
-            # go to the LocalBasePath position
-            lbpos = struct.unpack('I', content[position:position+0x04])[0]
-            position = last_pos + lbpos
-
-            # read the string at the given position of the determined length
-            size= (length + last_pos) - position - 0x02
-            # temp = struct.unpack('c' * size, content[position:position+size])
-            temp = struct.unpack('c' * (size + 1), content[position:position + size + 1])
-            target = ''.join([chr(ord(a)) for a in temp if chr(ord(a)) not in ['\x00', '\x02', '\x14', '#']])
-            # while '\\' in target:
-            #     target = target.replace('\\', '\')
-    except:
-        # could not read the file
-        target = None
-
-    return target
+# def read_windows_dir_shortcut(dir_path):
+#     import struct
+#     try:
+#         with open(dir_path, 'rb') as stream:
+#             content = stream.read()
+#
+#             # skip first 20 bytes (HeaderSize and LinkCLSID)
+#             # read the LinkFlags structure (4 bytes)
+#             lflags = struct.unpack('I', content[0x14:0x18])[0]
+#             position = 0x18
+#
+#             # if the HasLinkTargetIDList bit is set then skip the stored IDList
+#             # structure and header
+#             if (lflags & 0x01) == 1:
+#                 position = struct.unpack('H', content[0x4C:0x4E])[0] + 0x4E
+#
+#             last_pos = position
+#             position += 0x04
+#
+#             # get how long the file information is (LinkInfoSize)
+#             length = struct.unpack('I', content[last_pos:position])[0]
+#
+#             # skip 12 bytes (LinkInfoHeaderSize, LinkInfoFlags, and VolumeIDOffset)
+#             position += 0x0C
+#
+#             # go to the LocalBasePath position
+#             lbpos = struct.unpack('I', content[position:position+0x04])[0]
+#             position = last_pos + lbpos
+#
+#             # read the string at the given position of the determined length
+#             size= (length + last_pos) - position - 0x02
+#             # temp = struct.unpack('c' * size, content[position:position+size])
+#             temp = struct.unpack('c' * (size + 1), content[position:position + size + 1])
+#             target = ''.join([chr(ord(a)) for a in temp if chr(ord(a)) not in ['\x00', '\x02', '\x14', '#']])
+#             # while '\\' in target:
+#             #     target = target.replace('\\', '\')
+#     except:
+#         # could not read the file
+#         target = None
+#
+#     return target

@@ -53,8 +53,9 @@ def create_links(links_fol_name='links', gui=True):
     for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],
             links_names):
         try:
-            if not op.islink(op.join(links_fol, link_name)):
-                os.symlink(real_fol, op.join(links_fol, link_name))
+            utils.create_folder_link(real_fol, op.join(links_fol, link_name))
+            # if not op.islink(op.join(links_fol, link_name)):
+            #     os.symlink(real_fol, op.join(links_fol, link_name))
             # Add the default task in meg folder
             if link_name == 'meg' and real_fol != utils.get_resources_fol():
                 utils.make_dir(op.join(real_fol, 'default'))
