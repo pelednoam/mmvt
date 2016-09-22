@@ -1499,7 +1499,7 @@ def is_link(link_path):
 def message_box(text, title=''):
     if is_windows:
         import ctypes
-        ctypes.windll.user32.MessageBoxW(0, text, title, 1)
+        return ctypes.windll.user32.MessageBoxW(0, text, title, 1)
     else:
         # print(text)
         from tkinter import Tk, Label
@@ -1507,6 +1507,7 @@ def message_box(text, title=''):
         w = Label(root, text=text)
         w.pack()
         root.mainloop()
+        return 1
 
 
 def choose_folder_gui():
