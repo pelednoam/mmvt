@@ -38,28 +38,28 @@ def create_links(links_fol_name='links', gui=True):
                 create_real_folder(freesurfer_fol)
     if not utils.is_link(op.join(links_fol, 'mmvt')):
         utils.message_box('Where do you want to put the blend files? ', TITLE)
-        mmvt_fol = askdirectory() if gui else input()
+        mmvt_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(mmvt_fol)
     if not utils.is_link(op.join(links_fol, 'subjects')):
         utils.message_box('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
               'It prefered to create a local folder, because MMVT is going to save files to this directory: ', TITLE)
-        subjects_fol = askdirectory() if gui else input()
+        subjects_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(subjects_fol)
     if not utils.is_link(op.join(links_fol, 'blender')):
         utils.message_box('Where did you install Blender? ')
-        blender_fol = askdirectory() if gui else input()
+        blender_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(blender_fol)
     if not utils.is_link(op.join(links_fol, 'meg')):
         utils.message_box('Where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): ', TITLE)
-        meg_fol = askdirectory() if gui else input()
+        meg_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(meg_fol)
     if not utils.is_link(op.join(links_fol, 'fMRI')):
         utils.message_box('Where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): ', TITLE)
-        fmri_fol = askdirectory() if gui else input()
+        fmri_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(fmri_fol)
     if not utils.is_link(op.join(links_fol, 'electrodes')):
         utils.message_box('Where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): ', TITLE)
-        electrodes_fol = askdirectory() if gui else input()
+        electrodes_fol = utils.choose_folder_gui() if gui else input()
         create_real_folder(electrodes_fol)
 
     for real_fol, link_name in zip([mmvt_fol, subjects_fol, blender_fol, meg_fol, fmri_fol, electrodes_fol, freesurfer_fol],

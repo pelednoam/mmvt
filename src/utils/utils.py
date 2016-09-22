@@ -1501,9 +1501,20 @@ def message_box(text, title=''):
         import ctypes
         ctypes.windll.user32.MessageBoxW(0, text, title, 1)
     else:
-        print(text)
+        # print(text)
+        from tkinter import Tk, Label
+        root = Tk()
+        w = Label(root, text=text)
+        w.pack()
+        root.mainloop()
 
-    # From http://stackoverflow.com/a/28952464/1060738
+
+def choose_folder_gui():
+    from tkinter.filedialog import askdirectory
+    askdirectory()
+
+
+# From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
 #     try:
