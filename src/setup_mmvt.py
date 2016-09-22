@@ -25,9 +25,15 @@ def create_links(links_fol_name='links', gui=True):
     all_links_exist = np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         return True
-    if os.environ.get('FREESURFER_HOME', '') == '':
-        print('Please source FreeSurfer and rerun')
-        return
+    if not utils.is_windows:
+        if os.environ.get('FREESURFER_HOME', '') == '':
+            print('If you have FreeSurfer installed, please source it and rerun')
+            cont = input("Do you want to continue (y/n)?") # If you choose to continue, you'll need to create a link to FreeSurfer manually")
+            if cont.lower() != 'y':
+                return
+        else:
+            freesurfer_fol = os.environ['FREESURFER_HOME']
+            create_real_folder(freesurfer_fol)
     print('Where do you want to put the blend files? ')
     mmvt_fol = askdirectory() if gui else input()
     create_real_folder(mmvt_fol)
@@ -35,8 +41,6 @@ def create_links(links_fol_name='links', gui=True):
           'It prefered to create a local folder, because MMVT is going to save files to this directory: ')
     subjects_fol = askdirectory() if gui else input()
     create_real_folder(subjects_fol)
-    freesurfer_fol = os.environ['FREESURFER_HOME']
-    create_real_folder(freesurfer_fol)
     print('Where did you install Blender? ')
     blender_fol = askdirectory() if gui else input()
     create_real_folder(blender_fol)

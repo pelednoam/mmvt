@@ -3,7 +3,8 @@ try:
     import mathutils
     import colors_utils as cu
 except:
-    print("Can't import bpy, mathutils and color_utils")
+    pass
+    # print("Can't import bpy, mathutils and color_utils")
 import traceback
 import math
 import numpy as np
