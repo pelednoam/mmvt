@@ -17,9 +17,6 @@ def copy_resources_files(mmvt_root_dir):
 
 
 def create_links(links_fol_name='links', gui=True):
-    #todo: Work only on linux (maybe mac also)
-    if gui:
-        from tkinter.filedialog import askdirectory
     links_fol = utils.get_links_dir(links_fol_name)
     utils.make_dir(links_fol)
     links_names = ['mmvt', 'subjects', 'blender', 'meg', 'fMRI', 'electrodes', 'freesurfer']
@@ -112,15 +109,15 @@ def main():
     links_created = create_links(args.links, args.gui)
     if not links_created:
         print('Not all the links were created! Make sure all the links are created before running MMVT.')
+
+    links_dir = utils.get_links_dir(args.links)
+    mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
+    resource_file_exist = copy_resources_files(mmvt_root_dir)
+    if not resource_file_exist:
+        print('Not all the resources files were copied to the MMVT folder.\n'.format(mmvt_root_dir) +
+              'Please copy them manually from the mmvt_code/resources folder')
     else:
-        links_dir = utils.get_links_dir()
-        mmvt_root_dir = op.join(links_dir, 'mmvt')
-        resource_file_exist = copy_resources_files(mmvt_root_dir)
-        if not resource_file_exist:
-            print('Not all the resources files were copied to the MMVT () folder.\n'.format(mmvt_root_dir) +
-                  'Please copy them manually from the mmvt_code/resources folder')
-        else:
-            print('Finish!')
+        print('Finish!')
 
 
 if __name__ == '__main__':
