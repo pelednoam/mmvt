@@ -37,26 +37,26 @@ def create_links(links_fol_name='links', gui=True):
                 freesurfer_fol = os.environ['FREESURFER_HOME']
                 create_real_folder(freesurfer_fol)
     if not utils.is_link(op.join(links_fol, 'mmvt')):
-        ret = utils.message_box('Where do you want to put the blend files? ', TITLE)
+        ret = utils.message_box('Please select where do you want to put the blend files? ', TITLE)
         if ret == 1:
             mmvt_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(mmvt_fol)
             utils.create_folder_link(mmvt_fol, op.join(links_fol, 'mmvt'))
     if not utils.is_link(op.join(links_fol, 'subjects')):
-        ret = utils.message_box('Where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
+        ret = utils.message_box('Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' +
               'It prefered to create a local folder, because MMVT is going to save files to this directory: ', TITLE)
         if ret == 1:
             subjects_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(subjects_fol)
             utils.create_folder_link(subjects_fol, op.join(links_fol, 'subjects'))
     if not utils.is_link(op.join(links_fol, 'blender')):
-        ret = utils.message_box('Where did you install Blender? ')
+        ret = utils.message_box('Please select where did you install Blender? ')
         if ret == 1:
             blender_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(blender_fol)
             utils.create_folder_link(blender_fol, op.join(links_fol, 'blender'))
     if not utils.is_link(op.join(links_fol, 'meg')):
-        ret = utils.message_box('Where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): ', TITLE)
+        ret = utils.message_box('Please select where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): ', TITLE)
         if ret == 1:
             meg_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(meg_fol)
@@ -64,13 +64,13 @@ def create_links(links_fol_name='links', gui=True):
             if meg_fol != utils.get_resources_fol():
                 utils.make_dir(op.join(meg_fol, 'default'))
     if not utils.is_link(op.join(links_fol, 'fMRI')):
-        ret = utils.message_box('Where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): ', TITLE)
+        ret = utils.message_box('Please select where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): ', TITLE)
         if ret == 1:
             fmri_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(fmri_fol)
             utils.create_folder_link(fmri_fol, op.join(links_fol, 'fMRI'))
     if not utils.is_link(op.join(links_fol, 'electrodes')):
-        ret = utils.message_box('Where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): ', TITLE)
+        ret = utils.message_box('Please select where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): ', TITLE)
         if ret == 1:
             electrodes_fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(electrodes_fol)
