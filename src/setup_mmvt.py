@@ -27,7 +27,7 @@ def create_links(links_fol_name='links', gui=True):
     if all_links_exist:
         return True
     if not utils.is_link(op.join(links_fol, 'freesurfer')):
-        if not utils.is_windows:
+        if not utils.is_windows():
             if os.environ.get('FREESURFER_HOME', '') == '':
                 print('If you have FreeSurfer installed, please source it and rerun')
                 cont = input("Do you want to continue (y/n)?") # If you choose to continue, you'll need to create a link to FreeSurfer manually")

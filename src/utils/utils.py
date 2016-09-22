@@ -1465,9 +1465,7 @@ def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, ov
 
 def create_folder_link(real_fol, link_fol):
     if not is_link(link_fol):
-        if is_linux or is_mac:
-            os.symlink(real_fol, link_fol)
-        elif is_windows:
+        if is_windows():
             try:
                 import winshell
                 from win32com.client import Dispatch
@@ -1480,11 +1478,11 @@ def create_folder_link(real_fol, link_fol):
             except:
                 print("Can't create a link to the folder {}!".format(real_fol))
         else:
-            raise print('Sorry, your OS is not supported!')
+            os.symlink(real_fol, link_fol)
 
 
 def is_link(link_path):
-    if is_windows:
+    if is_windows():
         try:
             from src.mmvt_addon.scripts import windows_utils as wu
             sc = wu.MSShortcut('{}.lnk'.format(link_path))
@@ -1497,7 +1495,7 @@ def is_link(link_path):
 
 
 def message_box(text, title=''):
-    if is_windows:
+    if is_windows():
         import ctypes
         return ctypes.windll.user32.MessageBoxW(0, text, title, 1)
     else:
