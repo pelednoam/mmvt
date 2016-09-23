@@ -278,6 +278,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     valid_verts = np.where(np.abs(values) > threshold)[0]
     if vert_values.ndim == 1 and not data_min is None:
+        # todo: maybe we want to do it only on the valid verts
         colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
         # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
         colors_indices[colors_indices < 0] = 0
