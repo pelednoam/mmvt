@@ -142,14 +142,14 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         args.subject = subject
         args.subjects = ''
         print('*********** {} ***********'.format(subject))
-        if call_args is None:
-            call_args = create_call_args(args)
         if blend_fname is None:
             blend_fname = get_subject_fname(args)
         else:
             blend_fname = op.join(get_mmvt_dir(), blend_fname)
+        if call_args is None:
+            call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
-        cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
+        cmd = '{blender_exe} {blend_fname} --background --python "{script_fname}" {call_args}'.format( # > {log_fname}
             blender_exe=op.join(args.blender_fol, 'blender'),
             blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
         mmvt_addon_fol = utils.get_parent_fol(__file__, 2)

@@ -10,38 +10,48 @@ except:
     sys.path.append(os.path.split(__file__)[0])
     import scripts_utils as su
 
+try:
+    from src.utils import args_utils as au
+except:
+    su.add_utils_to_import_path()
+    import args_utils as au
+
 
 def wrap_blender_call():
     args = read_args()
-    su.call_script(__file__, args, blend_fname='empty_subject.blend', call_args='')
+    args.subject = 'empty_subject'
+    su.call_script(__file__, args, blend_fname='empty_subject.blend')#, call_args='-python_cmd {}'.format(sys.executable))
 
 
 def read_args(argv=None):
-    from src.utils import args_utils as au
     parser = su.add_default_args()
-    args = su.Bag(au.parse_parser(parser, argv))
-    args.subject = 'empty_subject'
-    return args
+    parser.add_argument('--python_cmd', help='python cmd', required=False, default=sys.executable)
+    return su.Bag(au.parse_parser(parser, argv))
 
+    # args = su.Bag(au.parse_parser(parser, argv))
+    # args.subject = 'empty_subject'
+    # args.python_cmd = sys.executable
+    # return args
 
 
 def install_mmvt_addon():
     import bpy
     import os.path as op
-
+    args = read_args(su.get_python_argv())
+    print(args)
+    print('python cmd: {}'.format(args.python_cmd))
     module = 'mmvt_loader'
     mmvt_folder = su.get_mmvt_addon_dir()
     path = op.join(mmvt_folder, '{}.py'.format(module))
-
     bpy.ops.wm.addon_install(filepath=path)
     bpy.ops.wm.addon_expand(module=module)
     bpy.ops.wm.addon_enable(module=module)
     addon_prefs = bpy.context.user_preferences.addons[module].preferences
     addon_prefs.mmvt_folder = mmvt_folder
+    addon_prefs.python_cmd = args.python_cmd
     addon_prefs.freeview_cmd_verbose = True
     addon_prefs.freeview_cmd_stdin = True
     bpy.ops.wm.save_userpref()
-
 
 if __name__ == '__main__':
     import sys
