@@ -126,7 +126,7 @@ def make_dir(fol):
     return fol
 
 
-def call_script(script_fname, args, log_name=''):
+def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None):
     if args.blender_fol == '':
         args.blender_fol = get_blender_dir()
     if not op.isdir(args.blender_fol):
@@ -142,8 +142,12 @@ def call_script(script_fname, args, log_name=''):
         args.subject = subject
         args.subjects = ''
         print('*********** {} ***********'.format(subject))
-        call_args = create_call_args(args)
-        blend_fname = get_subject_fname(args)
+        if call_args is None:
+            call_args = create_call_args(args)
+        if blend_fname is None:
+            blend_fname = get_subject_fname(args)
+        else:
+            blend_fname = op.join(get_mmvt_dir(), blend_fname)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
         cmd = '{blender_exe} {blend_fname} --background --python {script_fname} {call_args}'.format( # > {log_fname}
             blender_exe=op.join(args.blender_fol, 'blender'),
