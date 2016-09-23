@@ -936,7 +936,7 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
         data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
         data_minmax = utils.get_max_abs(data_max, data_min)
-        utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl'))
+        utils.save((-data_minmax, data_minmax), op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl'))
         # todo: create colors map according to the parameters
         colors_map = cp.create_BuPu_YlOrRd_cm()
         figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
@@ -1050,16 +1050,8 @@ def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM
     try:
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-        # if stcs_conds is None:
-        #     stcs_conds = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
-            # stcs_conds = {}
-            # for cond in events.keys():
-            #     stcs_conds[cond] = np.load(STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh'))
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
-        # data_max, data_min = utils.get_activity_max_min(stc_rh, stc_lh, norm_by_percentile, norm_percs)
-
         for hemi in HEMIS:
-            # verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
             verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0]!=data.shape[0]:
@@ -1070,7 +1062,6 @@ def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM
             data_hash = defaultdict(list)
             fol = '{}_verts'.format(ACT.format(hemi))
             utils.delete_folder_files(fol)
-            # data = data / data_max
             look_up = np.zeros((data.shape[0], 2), dtype=np.int)
             for vert_ind in range(data.shape[0]):
                 file_num = vert_ind % number_of_files

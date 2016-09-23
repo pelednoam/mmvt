@@ -85,6 +85,10 @@ def namebase(file_name):
     return op.splitext(op.basename(file_name))[0]
 
 
+def file_fol():
+    return os.path.dirname(bpy.data.filepath)
+
+
 def save(obj, fname):
     with open(fname, 'wb') as fp:
         pickle.dump(obj, fp, protocol=4)

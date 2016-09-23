@@ -1,11 +1,18 @@
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import os.path as op
+
+from src.utils import utils
+from src.utils import figures_utils as figu
+
+LINKS_DIR = utils.get_links_dir()
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
-def create_BuPu_YlOrRd_cm():
-    colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
-    colors2 = plt.cm.YlOrRd(np.linspace(0, 1, 128))
+def create_BuPu_YlOrRd_cm(n=128):
+    colors1 = plt.cm.PuBu(np.linspace(1, 0, n))
+    colors2 = plt.cm.YlOrRd(np.linspace(0, 1, n))
     colors = np.vstack((colors1, colors2))
     colors_map = mcolors.LinearSegmentedColormap.from_list('BuPu_YlOrRd', colors)
     return colors_map
@@ -13,11 +20,29 @@ def create_BuPu_YlOrRd_cm():
 
 def color_map_to_np_mat(colors_map):
     N = colors_map.N
-    colors_mat = np.zeros((N, 3))
+    cm_mat = np.zeros((N, 3))
     for ind, col_name in enumerate(['red', 'green', 'blue']):
-        colors_mat[:, ind] = np.array(colors_map._segmentdata[col_name])[:, 1]
-    return colors_mat
+        cm_mat[:, ind] = np.array(colors_map._segmentdata[col_name])[:, 1]
+    return cm_mat
+
+
+def save_colors_map(cm_mat, cm_name):
+    color_maps_fol = op.join(MMVT_DIR, 'color_maps')
+    utils.make_dir(color_maps_fol)
+    np.save(op.join(color_maps_fol, '{}.npy'.format(cm_name)), cm_mat)
+
+
+def check_cm_mat(cm_mat):
+    plt.figure()
+    for i, color in enumerate(cm_mat):
+        plt.plot([0, 1], [i, i], color=color)
+    plt.ylim([0, 256])
+    plt.show()
 
 
 if __name__ == '__main__':
-    create_BuPu_YlOrRd_cm()
+    cm = create_BuPu_YlOrRd_cm()
+    cm_mat = color_map_to_np_mat(cm)
+    check_cm_mat(cm_mat)
+    save_colors_map(cm_mat, 'BuPu_YlOrRd')
+    figu.plot_color_bar(1, -1, cm, do_save=False)

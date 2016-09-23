@@ -210,6 +210,7 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override
     print('Finish meg_labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
+@mu.timeit
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
@@ -218,10 +219,13 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
 
     # loop_indices = {}
     for hemi in hemispheres:
+        colors_ratio, data_min = None, None
         if map_type == 'MEG':
-            fname  = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+            fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
             if op.isfile(fname):
                 f = np.load(fname)
+                colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
+                data_min = ColoringMakerPanel.meg_activity_data_min
             else:
                 print("Can't load {}".format(fname))
                 return False
@@ -234,7 +238,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
         # loop_indices[hemi] =
-        activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat)
+        activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
         if map_type == 'MEG':
@@ -267,11 +271,18 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True):
                 activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
 
 
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat):
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None, colors_ratio=None):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
-    valid_verts = np.where(np.abs(vert_values[:,0])>threshold)[0]
+    values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
+    valid_verts = np.where(np.abs(values) > threshold)[0]
+    if vert_values.ndim == 1 and not data_min is None:
+        colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
+        # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
+        colors_indices[colors_indices < 0] = 0
+        colors_indices[colors_indices > 255] = 255
+        verts_colors = ColoringMakerPanel.cm[colors_indices]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
@@ -285,7 +296,12 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         x = lookup[vert]
         for loop_ind in x[x>-1]:
             d = vcol_layer.data[loop_ind]
-            d.color = vert_values[vert, 1:]
+            if not colors_ratio is None:
+                # colors = ColoringMakerPanel.cm[int(vert_values[vert] * colors_ratio)]
+                colors = verts_colors[vert]
+            else:
+                colors = vert_values[vert, 1:]
+            d.color = colors # vert_values[vert, 1:]
 
 
 def color_groups_manually():
@@ -753,6 +769,14 @@ def init(addon):
         return None
     labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
+
+    meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+    if meg_files_exist:
+        data_min, data_max = mu.load(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
+        ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
+        ColoringMakerPanel.meg_activity_data_min = data_min
+        print('data meg: {}-{}'.format(data_min, data_max))
+
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
     if len(fmri_files) > 0:
         files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
@@ -795,6 +819,7 @@ def init(addon):
             items=groups_items, description="Groups")
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
+    ColoringMakerPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
     register()
 
 
