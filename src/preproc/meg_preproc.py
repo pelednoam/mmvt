@@ -19,8 +19,8 @@ from src.utils import labels_utils as lu
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-print('FREE_SURFER_HOME: {}'.format(FREE_SURFER_HOME))
+FREESURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
+print('FREE_SURFER_HOME: {}'.format(FREESURFER_HOME))
 MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 
@@ -407,7 +407,7 @@ def add_subcortical_surfaces(src, seg_labels):
     from mne.source_space import _make_discrete_source_space
 
     # Read the freesurfer lookup table
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
 
     # Get the indices to the desired labels
     for label in seg_labels:
@@ -456,7 +456,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     aseg_fname = op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
-    sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, spacing, use_grid, FREE_SURFER_HOME)
+    sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, spacing, use_grid, FREESURFER_HOME)
     for pts, seg_name, seg_id in sub_cortical_generator:
         pts = utils.transform_voxels_to_RAS(aseg_hdr, pts)
         # Convert to meters
@@ -606,7 +606,7 @@ def get_cond_fname(fname, cond, **kargs):
 
 def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_method='dSPM', pick_ori=None,
         evoked=None, epochs=None, regions=None, inv_include_hemis=True, n_dipoles=0):
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
     evoked_given = not evoked is None
     epochs_given = not epochs is None
     if regions is not None:
@@ -745,7 +745,7 @@ def x_opertor_exists(operator, region, events):
 
 
 def plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method='dSPM', regions=None, all_vertices=False):
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
     if sub_corticals_codes_file is None:
         sub_corticals = regions
     else:
@@ -781,7 +781,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
     sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
     first_time = True
     names_for_blender = []
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
     for ind, sub_cortical_ind in enumerate(sub_corticals):
         sub_cortical_name, _ = utils.get_numeric_index_to_label(sub_cortical_ind, lut)
         sub_cortical_name = sub_cortical_name.astype(str)
@@ -936,7 +936,7 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
         data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
         data_minmax = utils.get_max_abs(data_max, data_min)
-        utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_colors_minmax.pkl'))
+        utils.save(data_minmax, op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl'))
         # todo: create colors map according to the parameters
         colors_map = cp.create_BuPu_YlOrRd_cm()
         figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
@@ -965,14 +965,12 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
                         data[:, t], threshold=threshold, x_max=data_minmax, x_min=-data_minmax,
                         cm_big=cm_big, cm_small=cm_small, default_val=1, flip_cm_big=flip_cm_big,
                         flip_cm_small=flip_cm_small)
-                # elif stat == STAT_DIFF:
-                #     colors = utils.arr_to_colors_two_colors_maps(data[:, t], threshold=threshold,
-                #         x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
-                #         default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
                 # Stacking the values with the colors
-                colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
-                np.save(op.join(fol, 't{}'.format(t)), colors)
+                # colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
+                # np.save(op.join(fol, 't{}'.format(t)), colors)
+                np.save(op.join(fol, 't{}'.format(t)), data[:, t])
+
         flag = True
     except:
         print(traceback.format_exc())
