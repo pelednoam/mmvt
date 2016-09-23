@@ -1,6 +1,6 @@
 import getopt, os, re, sys
 import numpy as np
-from pandas import read_csv
+# from pandas import read_csv
 from mne import find_events, write_events
 from mne.io import Raw
 

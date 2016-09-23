@@ -169,7 +169,7 @@ def copy_evokes(task, root_fol, target_subject, raw_cleaning_method):
 
 
 def plot_labels(subject, labels_names, title_dict):
-    import seaborn as sns
+    # import seaborn as sns
     from src.mmvt_addon import colors_utils as cu
     sns.set(style="darkgrid")
     sns.set(color_codes=True)

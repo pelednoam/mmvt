@@ -98,27 +98,32 @@ def create_real_folder(real_fol):
         print(traceback.format_exc())
 
 
-def main():
+def main(links_fol_name='links', gui=True):
+    # 1) Create links
+    links_created = create_links(links_fol_name, gui)
+    if not links_created:
+        print('Not all the links were created! Make sure all the links are created before running MMVT.')
+
+    # 2) Copy resources files
+    links_dir = utils.get_links_dir(links_fol_name)
+    mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
+    resource_file_exist = copy_resources_files(mmvt_root_dir)
+    if not resource_file_exist:
+        print('Not all the resources files were copied to the MMVT folder.\n'.format(mmvt_root_dir) +
+              'Please copy them manually from the mmvt_code/resources folder')
+
+    # 3) Install the addon in Blender (depends on resources and links)
+    from src.mmvt_addon.scripts import install_addon
+    install_addon.wrap_blender_call()
+
+    print('Finish!')
+
+
+if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT Setup')
     parser.add_argument('-l', '--links', help='links folder name', required=False, default='links')
     parser.add_argument('-g', '--gui', help='choose folders using gui', required=False, default='1', type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
-
-    links_created = create_links(args.links, args.gui)
-    if not links_created:
-        print('Not all the links were created! Make sure all the links are created before running MMVT.')
-
-    links_dir = utils.get_links_dir(args.links)
-    mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
-    resource_file_exist = copy_resources_files(mmvt_root_dir)
-    if not resource_file_exist:
-        print('Not all the resources files were copied to the MMVT folder.\n'.format(mmvt_root_dir) +
-              'Please copy them manually from the mmvt_code/resources folder')
-    else:
-        print('Finish!')
-
-
-if __name__ == '__main__':
-    main()
+    main(args.links, args.gui)

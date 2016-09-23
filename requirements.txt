@@ -1,0 +1,16 @@
+matplotlib==1.5.1
+mne==0.12.0
+moviepy==0.2.2.11
+nibabel==2.0.2
+numpy==1.11.0
+scipy==0.18.0
+tables==3.2.2
+tqdm==4.4.1
+Pillow==3.3.1
+dill==0.2.5
+mathutils==2.77
+pydevd==0.0.6
+pysftp==0.2.9
+scikit_learn==0.18rc2
+winshell==0.6
+xlrd==1.0.0

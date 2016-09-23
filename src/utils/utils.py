@@ -1320,22 +1320,22 @@ def merge_two_dics(dic1, dic2):
     return ret
 
 
-def color_name_to_rgb(color_name):
-    try:
-        import webcolors
-        return webcolors.name_to_rgb(color_name)
-    except:
-        print('No webcolors!')
-        return None
-
-
-def color_name_to_rgb(rgb):
-    try:
-        import webcolors
-        return webcolors.rgb_to_name(rgb)
-    except:
-        print('No webcolors!')
-        return None
+# def color_name_to_rgb(color_name):
+#     try:
+#         import webcolors
+#         return webcolors.name_to_rgb(color_name)
+#     except:
+#         print('No webcolors!')
+#         return None
+#
+#
+# def color_name_to_rgb(rgb):
+#     try:
+#         import webcolors
+#         return webcolors.rgb_to_name(rgb)
+#     except:
+#         print('No webcolors!')
+#         return None
 
 
 def make_evoked_smooth_and_positive(evoked, positive=True, moving_average_win_size=100):

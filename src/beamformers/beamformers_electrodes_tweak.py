@@ -17,7 +17,7 @@ from itertools import product, groupby
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
-import pandas
+# import pandas
 from mne.beamformer import lcmv
 from mne.time_frequency import compute_epochs_csd
 from scipy.ndimage import gaussian_filter1d

@@ -1,12 +1,12 @@
 import os
-from surfer import Brain
+# from surfer import Brain
 import glob
 import mne
 import colorsys
 from PIL import Image
-from mayavi import mlab
-mlab.options.backend = 'auto'
-import utils
+# from mayavi import mlab
+# mlab.options.backend = 'auto'
+# import utils
 
 subject = 'hc004' # 'mg79' #"fsaverage"
 hemi = "rh"
