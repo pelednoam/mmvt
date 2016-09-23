@@ -98,6 +98,18 @@ def create_real_folder(real_fol):
         print(traceback.format_exc())
 
 
+def install_reqs():
+    import pip
+    retcode = 0
+    reqs_fname = op.join(utils.get_parent_fol(levels=2), 'requirements.txt')
+    with open(reqs_fname, 'r') as f:
+        for line in f:
+            print('Trying to install {}'.format(line.strip()))
+            pipcode = pip.main(['install', line.strip()])
+            retcode = retcode or pipcode
+    return retcode
+
+
 def main(links_fol_name='links', gui=True):
     # 1) Create links
     links_created = create_links(links_fol_name, gui)
@@ -116,6 +128,8 @@ def main(links_fol_name='links', gui=True):
     from src.mmvt_addon.scripts import install_addon
     install_addon.wrap_blender_call()
 
+    # 4) Install dependencies from requirements.txt (created using pipreqs)
+    install_reqs()
     print('Finish!')
 
 
@@ -126,4 +140,5 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--links', help='links folder name', required=False, default='links')
     parser.add_argument('-g', '--gui', help='choose folders using gui', required=False, default='1', type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
-    main(args.links, args.gui)
+    # main(args.links, args.gui)
+    install_reqs()

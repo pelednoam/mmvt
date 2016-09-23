@@ -2,7 +2,7 @@ import nibabel as nib
 from nibabel.viewers import OrthoSlicer3D
 import matplotlib.pyplot as plt
 import pickle
-import dill
+# import dill
 import os
 
 
@@ -33,16 +33,16 @@ def load_viewer():
 
 def load(fname):
     with open(fname, 'rb') as fp:
-        # obj = pickle.load(fp)
-        obj = dill.load(fp)
+        obj = pickle.load(fp)
+        # obj = dill.load(fp)
     return obj
 
 
 def save(obj, fname):
     # print('dump protocol 4!')
     with open(fname, 'wb') as fp:
-        # pickle.dump(obj, fp, protocol=4)
-        dill.dump(obj, fp, protocol=4)
+        pickle.dump(obj, fp, protocol=4)
+        # dill.dump(obj, fp, protocol=4)
 
 if __name__ == '__main__':
     import sys
