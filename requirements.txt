@@ -1,9 +1,9 @@
+numpy==1.11.0
+scipy==0.18.0
 matplotlib==1.5.1
 mne==0.12.0
 moviepy==0.2.2.11
 nibabel==2.0.2
-numpy==1.11.0
-scipy==0.18.0
 tables==3.2.2
 tqdm==4.4.1
 Pillow==3.3.1
