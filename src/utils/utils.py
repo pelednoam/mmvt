@@ -788,6 +788,9 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
         check_if_all_necessary_files_exist(necessary_files, local_subject_dir, False)
     if all_files_exists and not overwrite_files:
         return True
+    elif remote_subject_dir == '':
+        print('Not all the necessary files exist, and the remote_subject_dir was not set!')
+        return False
     if sftp:
         sftp_copy_subject_files(subject, necessary_files, sftp_username, sftp_domain,
                                 local_subjects_dir, remote_subject_dir, sftp_password,
