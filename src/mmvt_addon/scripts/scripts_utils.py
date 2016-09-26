@@ -191,7 +191,7 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
     # imp.reload(mmvt_addon)
-    addon_prefs = Bag({'python_cmd':'python', 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
+    addon_prefs = Bag({'python_cmd':sys.executable, 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})
     mmvt_addon.main(addon_prefs)
     bpy.context.window.screen = bpy.data.screens['Neuro']
@@ -242,3 +242,7 @@ def get_figures_dir(args):
 
 def get_full_atlas_name(atlas):
     return mu.get_real_atlas_name(atlas, get_mmvt_dir())
+
+
+if __name__ == '__main__':
+    init_mmvt_addon()
