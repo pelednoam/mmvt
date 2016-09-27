@@ -147,6 +147,18 @@ def get_namebase(fname):
         raise Exception('Unknown image type!')
 
 
+def transform_to_another_subject(subject, region, subjects_dir):
+    import mne.source_space
+    import mne.transforms
+    colin27_xfm = mne.source_space._read_talxfm('colin27', subjects_dir, 'nibabel')
+    xfm = mne.source_space._read_talxfm(subject, subjects_dir, 'nibabel')
+    for hemi in ['lh', 'rh']:
+        verts, faces = utils.read_ply_file(op.join(MMVT_DIR, 'colin27', 'subcortical', '{}_{}.ply'.format(region, hemi)))
+        verts = apply_trans(colin27_xfm['trans'], verts)
+        verts = apply_trans(np.linalg.inv(xfm['trans']), verts)
+        utils.write_ply_file(verts, faces, op.join(MMVT_DIR, subject, 'subcortical', '{}_{}.ply'.format(region, hemi)))
+
+
 def main(region, atlas_fol, colin_T1_fname, overwrite=False):
     for hemi in ['lh', 'rh']:
         region_fname = op.join(atlas_fol, hemi, '{}.nii.gz'.format(region))
@@ -157,11 +169,14 @@ def main(region, atlas_fol, colin_T1_fname, overwrite=False):
         convert_to_ply(op.join(atlas_fol, 'tmp', '{}_{}.srf'.format(region, hemi)),
                        op.join(atlas_fol, 'tmp', '{}_{}.ply'.format(region, hemi)),
                        region_vox2ras_tkr, shifted_vox2tk_ras)
+        shutil.copy(op.join(atlas_fol, 'tmp', '{}_{}.ply'.format(region, hemi)),
+                    op.join(MMVT_DIR, 'colin27', 'subcortical', '{}_{}.ply'.format(region, hemi)))
 
 
 if __name__ == '__main__':
     region =  'STN' #'Striatum'
     atlas_fol = op.join(MMVT_DIR, 'maps', 'ATAG_Nonlinear_Keuken_2014')
     colin_T1_fname = op.join(SUBJECTS_DIR, 'colin27', 'mri', 'T1.mgz')
-    main(region, atlas_fol, colin_T1_fname)
+    # main(region, atlas_fol, colin_T1_fname)
+    transform_to_another_subject('mg99', region, SUBJECTS_DIR)
     print('Finish!')
