@@ -59,25 +59,25 @@ def get_shifted_vox2tk_ras(zero_in_T1_tk_ras, voxels_sizes):
          [0.0, 0.0, 0.0, 1.0]])
 
 
-def vox2ras_tkr():
-    # To calculate this matrix, open colin27 T1 and the mask file.
-    # Set the cursor position of the new region to 0, 0, 0
-    # The values in TkReg RAS (T1) will be the offset (right column)
-    # 0.3, 0.3, 0.3 are the voxel sizes
-
-    # right striatum
-    return np.array(
-        [[-0.300, 0.000, 0.000, 44.750],
-         [0.000, 0.300, 0.000, -21.2500],
-         [0.000, 0.000, 0.300, -41.250],
-         [0.000, 0.000, 0.000, 1.000]])
-
-    # left striatum
-    return np.array(
-        [[-0.300, 0.000, 0.000, 4.850],
-         [0.000, 0.300, 0.000, -22.2500],
-         [0.000, 0.000, 0.300, -41.250],
-         [0.000, 0.000, 0.000, 1.000]])
+# def vox2ras_tkr():
+#     # To calculate this matrix, open colin27 T1 and the mask file.
+#     # Set the cursor position of the new region to 0, 0, 0
+#     # The values in TkReg RAS (T1) will be the offset (right column)
+#     # 0.3, 0.3, 0.3 are the voxel sizes
+#
+#     # right striatum
+#     return np.array(
+#         [[-0.300, 0.000, 0.000, 44.750],
+#          [0.000, 0.300, 0.000, -21.2500],
+#          [0.000, 0.000, 0.300, -41.250],
+#          [0.000, 0.000, 0.000, 1.000]])
+#
+#     # left striatum
+#     return np.array(
+#         [[-0.300, 0.000, 0.000, 4.850],
+#          [0.000, 0.300, 0.000, -22.2500],
+#          [0.000, 0.000, 0.300, -41.250],
+#          [0.000, 0.000, 0.000, 1.000]])
 
 
 def get_vox2ras(fname):
