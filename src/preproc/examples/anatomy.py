@@ -17,6 +17,13 @@ def get_subject_files_from_server(subject, args):
     anat.run_on_subjects(args)
 
 
+def prepare_subject_folder_from_franklin(subject, args):
+    args = anat.read_cmd_args(['-s', subject])
+    args.remote_subject_dir = op.join('/autofs/space/franklin_003/users/npeled/subjects_old/{}'.format(subject))
+    args.function = 'prepare_local_subjects_folder'
+    anat.run_on_subjects(args)
+
+
 def prepare_subject_folder_from_huygens(subject, args):
     args = anat.read_cmd_args(['-s', subject])
     args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
