@@ -34,8 +34,10 @@ def change_view3d():
             break
 
 
-def show_hide_electrodes(value):
-    bpy.context.scene.layers[ELECTRODES_LAYER] = value
+def show_hide_electrodes(do_show):
+    bpy.context.scene.layers[ELECTRODES_LAYER] = do_show
+    if do_show:
+        bpy.context.scene.show_only_lead = False
 
 
 def show_rois():
@@ -47,7 +49,7 @@ def show_activity():
 
 
 def show_electrodes(value=True):
-    show_hide_connections(value)
+    show_hide_electrodes(value)
     # if not bpy.data.objects.get('Deep_electrodes', None) is None:
 #    #     bpy.context.scene.appearance_show_electrodes_layer = value
         # show_hide_electrodes(value)
