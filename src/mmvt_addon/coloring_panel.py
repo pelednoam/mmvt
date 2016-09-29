@@ -277,7 +277,9 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
     values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     valid_verts = np.where(np.abs(values) > threshold)[0]
+    colors_picked_from_cm = False
     if vert_values.ndim == 1 and not data_min is None:
+        colors_picked_from_cm = True
         # todo: maybe we want to do it only on the valid verts
         colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
         # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
@@ -297,7 +299,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         x = lookup[vert]
         for loop_ind in x[x>-1]:
             d = vcol_layer.data[loop_ind]
-            if not colors_ratio is None:
+            if colors_picked_from_cm:
                 # colors = ColoringMakerPanel.cm[int(vert_values[vert] * colors_ratio)]
                 colors = verts_colors[vert]
             else:

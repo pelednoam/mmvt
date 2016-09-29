@@ -37,7 +37,7 @@ MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE,
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
-                 cleaning_method='', constrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
+                 cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
@@ -60,17 +60,17 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
     MMVT_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
-        cleaning_method=cleaning_method, constrast=constrast, raw_fname_format=raw_fname_format,
+        cleaning_method=cleaning_method, contrast=contrast, raw_fname_format=raw_fname_format,
                  fwd_fname_format=fwd_fname_format, inv_fname_format=inv_fname_format)
     _get_fif_name_no_cond = partial(_get_fif_name_cond, cond='')
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
-        cleaning_method=cleaning_method, constrast=constrast)
+        cleaning_method=cleaning_method, contrast=contrast)
     _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc',
-                            cleaning_method=cleaning_method, constrast=constrast)
+                            cleaning_method=cleaning_method, contrast=contrast)
     _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl',
-                            cleaning_method=cleaning_method, constrast=constrast)
-    RAW = _get_fif_name('raw', constrast='', cond='')
+                            cleaning_method=cleaning_method, contrast=contrast)
+    RAW = _get_fif_name('raw', contrast='', cond='')
     EVE = _get_txt_name('eve', cond='') if events_fname == '' else events_fname
     EVO = _get_fif_name('ave')
     COV = _get_fif_name('cov')
@@ -124,13 +124,13 @@ def print_file(fname, file_desc):
 
 
 def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='',
-                  constrast='', root_dir='', raw_fname_format='', fwd_fname_format='', inv_fname_format=''):
+                  contrast='', root_dir='', raw_fname_format='', fwd_fname_format='', inv_fname_format=''):
     if fname_format=='':
         fname_format = '{subject}-{ana_type}.{file_type}'
     if subject=='':
         subject = SUBJECT
     args = {'subject':subject, 'ana_type':ana_type, 'file_type':file_type,
-        'cleaning_method':cleaning_method, 'constrast':constrast}
+        'cleaning_method':cleaning_method, 'contrast':contrast}
     if '{cond}' in fname_format:
         args['cond'] = cond
     if ana_type == 'raw' and raw_fname_format != '':
@@ -1349,8 +1349,8 @@ def misc():
 def get_fname_format(task, fname_format='', fname_format_cond='', args_conditions=('all')):
     if task == 'MSIT':
         # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
-        fname_format_cond = '{subject}_msit_{cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
-        fname_format = '{subject}_msit_{cleaning_method}_{constrast}_1-15-{ana_type}.{file_type}'
+        fname_format_cond = '{subject}_msit_{cleaning_method}_{contrast}_{cond}_1-15-{ana_type}.{file_type}'
+        fname_format = '{subject}_msit_{cleaning_method}_{contrast}_1-15-{ana_type}.{file_type}'
         conditions = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
         # event_digit = 1
     elif task == 'ECR':
@@ -1447,7 +1447,7 @@ def main(subject, mri_subject, inverse_method, args):
         args.task, args.fname_format,args.fname_format_cond, args.conditions)
     init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
-                 args.cleaning_method, args.constrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR,
+                 args.cleaning_method, args.contrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR,
                  args.fwd_no_cond)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
     flags = {}
@@ -1583,7 +1583,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--base_line_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--constrast', help='', required=False, default='')
+    parser.add_argument('--contrast', help='', required=False, default='')
     parser.add_argument('--cleaning_method', help='', required=False, default='nTSSS')
     parser.add_argument('--fwd_usingEEG', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
