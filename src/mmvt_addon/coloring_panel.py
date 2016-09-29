@@ -363,19 +363,21 @@ def color_manually():
 def color_objects(objects_names, colors, data):
     for hemi in HEMIS:
         obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
-        if len(objects_names[obj_type]) == 0:
+        if obj_type not in objects_names or len(objects_names[obj_type]) == 0:
             continue
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
         # print('color hemi {}: {}'.format(hemi, labels_names))
         meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
     clear_subcortical_regions()
-    for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
-        print('color {}: {}'.format(region, color))
-        color_subcortical_region(region, color)
-    for electrode, color in zip(objects_names[mu.OBJ_TYPE_ELECTRODE], colors[mu.OBJ_TYPE_ELECTRODE]):
-        obj = bpy.data.objects.get(electrode)
-        if obj and not obj.hide:
-            object_coloring(obj, color)
+    if mu.OBJ_TYPE_SUBCORTEX in objects_names:
+        for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
+            print('color {}: {}'.format(region, color))
+            color_subcortical_region(region, color)
+    if mu.OBJ_TYPE_ELECTRODE in objects_names:
+        for electrode, color in zip(objects_names[mu.OBJ_TYPE_ELECTRODE], colors[mu.OBJ_TYPE_ELECTRODE]):
+            obj = bpy.data.objects.get(electrode)
+            if obj and not obj.hide:
+                object_coloring(obj, color)
     bpy.context.scene.subcortical_layer = 'fmri'
     ColoringMakerPanel.addon.show_activity()
 
@@ -473,6 +475,8 @@ def color_electrodes_sources():
 
 
 def color_electrodes():
+    bpy.context.scene.show_hide_electrodes = True
+    ColoringMakerPanel.addon.show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
     data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(

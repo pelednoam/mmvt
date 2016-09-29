@@ -15,14 +15,17 @@ def deselect_all():
 
 
 def select_all_rois():
+    bpy.context.scene.filter_curves_type = 'MEG'
     select_brain_objects('Brain', bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children)
 
 
 def select_only_subcorticals():
+    bpy.context.scene.filter_curves_type = 'MEG'
     select_brain_objects('Subcortical_structures', bpy.data.objects['Subcortical_structures'].children)
 
 
 def select_all_electrodes():
+    bpy.context.scene.filter_curves_type = 'Electrodes'
     select_brain_objects('Deep_electrodes', bpy.data.objects['Deep_electrodes'].children)
 
 

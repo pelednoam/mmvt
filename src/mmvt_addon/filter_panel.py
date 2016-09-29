@@ -6,6 +6,7 @@ import os.path as op
 import glob
 import numbers
 import importlib
+from collections import defaultdict
 
 try:
     import connections_panel
@@ -324,7 +325,6 @@ class Filtering(bpy.types.Operator):
     filter_objects = []
     filter_values = []
 
-
     def get_object_to_filter(self, source_files):
         data, names = [], []
         for input_file in source_files:
@@ -347,23 +347,6 @@ class Filtering(bpy.types.Operator):
         print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
-        # if self.type_of_func == 'RMS':
-        #     dd = np.diff(d[:, t_range, :], axis=2)
-        #     if dd.shape[2] > 1:
-        #         dd = np.sum(dd, axis=2)
-        #     dd = np.squeeze(dd)
-        #     dd = np.sqrt(np.sum(np.power(dd, 2), 1))
-        # elif self.type_of_func == 'SumAbs':
-        #     dd = np.sum(abs(d[:, t_range, :]), (1, 2))
-        # elif self.type_of_func == 'threshold':
-        #     dd = np.max(np.abs(np.squeeze(np.diff(d[:, t_range, :], axis=2))), axis=1)
-
-        # if self.type_of_func == 'threshold':
-        #     indices = np.where(dd > bpy.context.scene.coloring_threshold)[0]
-        #     objects_to_filtter_in = sorted(indices, key=lambda i:dd[i])[::-1][:self.topK]
-        #     objects_to_filtter_in = np.argsort(dd[indices])[::-1][:self.topK]
-        # else:
-        #     objects_to_filtter_in = np.argsort(dd)[::-1][:self.topK]
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
@@ -426,9 +409,14 @@ class Filtering(bpy.types.Operator):
                     curves_num += len(obj.animation_data.action.fcurves)
 
         colors = cu.get_distinct_colors(curves_num)
+        objects_names, objects_colors, objects_data = defaultdict(list), defaultdict(list), defaultdict(list)
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
                 orig_name = names[objects_indices[ind]]
+                obj_type = mu.check_obj_type(orig_name)
+                objects_names[obj_type].append(orig_name)
+                objects_colors[obj_type].append(cu.name_to_rgb('green'))
+                objects_data[obj_type].append(1.0)
                 if 'unknown' not in orig_name:
                     filter_roi_func(orig_name)
                     for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
@@ -436,6 +424,8 @@ class Filtering(bpy.types.Operator):
                         fcurve.color = tuple(next(colors))
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
+
+        FilteringMakerPanel.addon.color_objects(objects_names, objects_colors, objects_data)
 
     def invoke(self, context, event=None):
         FilteringMakerPanel.addon.change_view3d()

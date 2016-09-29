@@ -89,6 +89,7 @@ deselect_all = selection_panel.deselect_all
 set_selection_type = selection_panel.set_selection_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
+color_objects = coloring_panel.color_objects
 get_obj_color = coloring_panel.get_obj_color
 clear_subcortical_fmri_activity = coloring_panel.clear_subcortical_fmri_activity
 clear_cortex = coloring_panel.clear_cortex
@@ -141,6 +142,7 @@ change_view3d = appearance_panel.change_view3d
 show_rois = appearance_panel.show_rois
 show_activity = appearance_panel.show_activity
 show_electrodes = appearance_panel.show_electrodes
+show_hide_electrodes = appearance_panel.show_electrodes
 show_hide_connections = appearance_panel.show_hide_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
