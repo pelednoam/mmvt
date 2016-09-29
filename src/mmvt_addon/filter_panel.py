@@ -77,7 +77,7 @@ def filter_draw(self, context):
     layout.prop(context.scene, 'mark_filter_items', text="Mark selected items")
     layout.operator(Filtering.bl_idname, text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
     # if bpy.types.Scene.filter_is_on:
-    layout.operator("ohad.filter_clear", text="Clear Filtering", icon='PANEL_CLOSE')
+    layout.operator(ClearFiltering.bl_idname, text="Clear Filtering", icon='PANEL_CLOSE')
     col = layout.column(align=0)
     col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
     if bpy.types.Scene.closest_curve_str != '':
@@ -280,6 +280,7 @@ class ClearFiltering(bpy.types.Operator):
         type_of_filter = bpy.context.scene.filter_curves_type
         if type_of_filter == 'MEG':
             FilteringMakerPanel.addon.select_all_rois()
+            FilteringMakerPanel.addon.clear_cortex()
         elif type_of_filter == 'Electrodes':
             FilteringMakerPanel.addon.select_all_electrodes()
         bpy.data.scenes['Scene'].frame_preview_end = FilteringMakerPanel.addon.get_max_time_steps()
