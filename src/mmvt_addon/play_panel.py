@@ -408,7 +408,7 @@ class PlayPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Play"
     addon = None
     data = None
@@ -445,7 +445,7 @@ def play_panel_draw(context, layout):
 
 
 class Play(bpy.types.Operator):
-    bl_idname = "ohad.play"
+    bl_idname = "mmvt.play"
     bl_label = "play"
     bl_options = {"UNDO"}
 
@@ -462,7 +462,7 @@ class Play(bpy.types.Operator):
 
 
 class Reverse(bpy.types.Operator):
-    bl_idname = "ohad.reverse"
+    bl_idname = "mmvt.reverse"
     bl_label = "reverse"
     bl_options = {"UNDO"}
 
@@ -476,7 +476,7 @@ class Reverse(bpy.types.Operator):
 
 
 class Pause(bpy.types.Operator):
-    bl_idname = "ohad.pause"
+    bl_idname = "mmvt.pause"
     bl_label = "pause"
     bl_options = {"UNDO"}
 
@@ -487,7 +487,7 @@ class Pause(bpy.types.Operator):
 
 
 class PrevKeyFrame(bpy.types.Operator):
-    bl_idname = 'ohad.prev_key_frame'
+    bl_idname = 'mmvt.prev_key_frame'
     bl_label = 'prevKeyFrame'
     bl_options = {'UNDO'}
 
@@ -499,7 +499,7 @@ class PrevKeyFrame(bpy.types.Operator):
 
 
 class NextKeyFrame(bpy.types.Operator):
-    bl_idname = "ohad.next_key_frame"
+    bl_idname = "mmvt.next_key_frame"
     bl_label = "nextKeyFrame"
     bl_options = {"UNDO"}
 
@@ -511,7 +511,7 @@ class NextKeyFrame(bpy.types.Operator):
 
 
 class GrabFromPlay(bpy.types.Operator):
-    bl_idname = "ohad.grab_from_play"
+    bl_idname = "mmvt.grab_from_play"
     bl_label = "grab from"
     bl_options = {"UNDO"}
 
@@ -521,7 +521,7 @@ class GrabFromPlay(bpy.types.Operator):
 
 
 class GrabToPlay(bpy.types.Operator):
-    bl_idname = "ohad.grab_to_play"
+    bl_idname = "mmvt.grab_to_play"
     bl_label = "grab to"
     bl_options = {"UNDO"}
 
@@ -531,8 +531,8 @@ class GrabToPlay(bpy.types.Operator):
 
 
 class ExportGraph(bpy.types.Operator):
-    bl_idname = "ohad.export_graph"
-    bl_label = "ohad export_graph"
+    bl_idname = "mmvt.export_graph"
+    bl_label = "mmvt export_graph"
     bl_options = {"UNDO"}
     uuid = mu.rand_letters(5)
 

@@ -2,7 +2,15 @@ import bpy
 import os.path as op
 import glob
 import time
+import numpy as np
 import mmvt_utils as mu
+
+
+
+def animate(i):
+    x = np.linspace(0, 2, 1000)
+    y = np.sin(2 * np.pi * (x - 0.01 * i))
+    return y
 
 
 def do_somthing():
@@ -15,7 +23,7 @@ def template_draw(self, context):
 
 
 class TemplateButton(bpy.types.Operator):
-    bl_idname = "ohad.template_button"
+    bl_idname = "mmvt.template_button"
     bl_label = "Template botton"
     bl_options = {"UNDO"}
     _time = time.time()
@@ -36,7 +44,7 @@ class TempaltePanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Template"
     addon = None
     init = False

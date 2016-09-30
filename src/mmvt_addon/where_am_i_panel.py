@@ -7,8 +7,8 @@ bpy.types.Scene.where_am_i_str = ''
 
 def where_i_am_draw(self, context):
     layout = self.layout
-    layout.operator("ohad.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
-    layout.operator("ohad.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
+    layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
+    layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
     layout.label(text=bpy.types.Scene.where_am_i_str)
 
 
@@ -64,8 +64,8 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 
 class WhereAmI(bpy.types.Operator):
-    bl_idname = "ohad.where_i_am"
-    bl_label = "ohad where i am"
+    bl_idname = "mmvt.where_i_am"
+    bl_label = "mmvt where i am"
     bl_options = {"UNDO"}
 
     where_am_I_selected_obj = None
@@ -94,7 +94,7 @@ class WhereAmI(bpy.types.Operator):
 
 
 class ClearWhereAmI(bpy.types.Operator):
-    bl_idname = "ohad.where_am_i_clear"
+    bl_idname = "mmvt.where_am_i_clear"
     bl_label = "where am i clear"
     bl_options = {"UNDO"}
 
@@ -133,7 +133,7 @@ class WhereAmIMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Where Am I"
     addon = None
 

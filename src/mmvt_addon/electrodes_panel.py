@@ -329,7 +329,7 @@ def elecs_draw(self, context):
 
 
 class ClearElectrodes(bpy.types.Operator):
-    bl_idname = 'ohad.electrodes_clear'
+    bl_idname = 'MMVT.electrodes_clear'
     bl_label = 'clearElectrodes'
     bl_options = {'UNDO'}
 
@@ -339,7 +339,7 @@ class ClearElectrodes(bpy.types.Operator):
 
 
 class NextElectrode(bpy.types.Operator):
-    bl_idname = 'ohad.next_electrode'
+    bl_idname = 'MMVT.next_electrode'
     bl_label = 'nextElectrodes'
     bl_options = {'UNDO'}
 
@@ -361,7 +361,7 @@ def next_electrode():
 
 
 class PrevElectrode(bpy.types.Operator):
-    bl_idname = 'ohad.prev_electrode'
+    bl_idname = 'MMVT.prev_electrode'
     bl_label = 'prevElectrodes'
     bl_options = {'UNDO'}
 
@@ -382,7 +382,7 @@ def prev_electrode():
 
 
 class NextLead(bpy.types.Operator):
-    bl_idname = 'ohad.next_lead'
+    bl_idname = 'MMVT.next_lead'
     bl_label = 'nextLead'
     bl_options = {'UNDO'}
 
@@ -398,7 +398,7 @@ def next_lead():
 
 
 class PrevLead(bpy.types.Operator):
-    bl_idname = 'ohad.prev_lead'
+    bl_idname = 'MMVT.prev_lead'
     bl_label = 'prevLead'
     bl_options = {'UNDO'}
 
@@ -414,7 +414,7 @@ def prev_lead():
 
 
 class KeyboardListener(bpy.types.Operator):
-    bl_idname = 'ohad.keyboard_listener'
+    bl_idname = 'MMVT.keyboard_listener'
     bl_label = 'keyboard_listener'
     bl_options = {'UNDO'}
     press_time = time.time()
@@ -470,7 +470,7 @@ class ElecsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Electrodes"
     addon, parent = None, None
     init = False

@@ -18,6 +18,8 @@ except:
 
 
 def wrap_blender_call():
+    # Empty argv, otherwise cannot be called from setup (which already has args)
+    sys.argv = [sys.argv[1]]
     args = read_args()
     args.subject = 'empty_subject'
     su.call_script(__file__, args, blend_fname='empty_subject.blend')#, call_args='-python_cmd {}'.format(sys.executable))

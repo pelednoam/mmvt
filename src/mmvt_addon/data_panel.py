@@ -134,7 +134,7 @@ def import_subcorticals(base_path):
 
 
 class AnatomyPreproc(bpy.types.Operator):
-    bl_idname = "ohad.anatomy_preproc"
+    bl_idname = "mmvt.anatomy_preproc"
     bl_label = "anatomy_preproc"
     bl_options = {"UNDO"}
 
@@ -175,7 +175,7 @@ def import_brain(context=None):
 
 
 class ImportBrain(bpy.types.Operator):
-    bl_idname = "ohad.brain_importing"
+    bl_idname = "mmvt.brain_importing"
     bl_label = "import2 brain"
     bl_options = {"UNDO"}
     current_root_path = ''
@@ -232,7 +232,7 @@ def import_rois(base_path):
 
 
 class ImportRois(bpy.types.Operator):
-    bl_idname = "ohad.roi_importing"
+    bl_idname = "mmvt.roi_importing"
     bl_label = "import2 ROIs"
     bl_options = {"UNDO"}
     current_root_path = ''
@@ -279,7 +279,7 @@ def import_electrodes(input_file, bipolar='', electrode_size=None):
 
 
 class ImportElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_importing"
+    bl_idname = "mmvt.electrodes_importing"
     bl_label = "import2 electrodes"
     bl_options = {"UNDO"}
 
@@ -426,7 +426,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
 
 
 class AddDataToBrain(bpy.types.Operator):
-    bl_idname = "ohad.brain_add_data"
+    bl_idname = "mmvt.brain_add_data"
     bl_label = "add_data2 brain"
     bl_options = {"UNDO"}
     current_root_path = ''
@@ -439,7 +439,7 @@ class AddDataToBrain(bpy.types.Operator):
 
 
 class AddDataNoCondsToBrain(bpy.types.Operator):
-    bl_idname = "ohad.brain_add_data_no_conds"
+    bl_idname = "mmvt.brain_add_data_no_conds"
     bl_label = "add_data no conds brain"
     bl_options = {"UNDO"}
 
@@ -451,7 +451,7 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
 
 
 class SelectExternalMEGEvoked(bpy.types.Operator):
-    bl_idname = "ohad.select_external_meg_evoked"
+    bl_idname = "mmvt.select_external_meg_evoked"
     bl_label = "select_external_meg_evoked"
     bl_options = {"UNDO"}
 
@@ -483,7 +483,7 @@ def get_meg_evoked_source_files(base_path, files_prefix):
 
 
 class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
-    bl_idname = "ohad.other_subject_meg_evoked"
+    bl_idname = "mmvt.other_subject_meg_evoked"
     bl_label = "other_subject_meg_evoked"
     bl_options = {"UNDO"}
 
@@ -599,7 +599,7 @@ def _meg_evoked_files_update():
 
 
 class AddDataToElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_add_data"
+    bl_idname = "mmvt.electrodes_add_data"
     bl_label = "add_data2 electrodes"
     bl_options = {"UNDO"}
     current_root_path = ''
@@ -629,7 +629,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Data Panel"
     addon = None
     meg_evoked_files = []
@@ -642,15 +642,15 @@ class DataMakerPanel(bpy.types.Panel):
         col = self.layout.column(align=True)
         col.prop(context.scene, 'atlas', text="Atlas")
         # if not bpy.types.Scene.brain_imported:
-        # col.operator("ohad.anatomy_preproc", text="Run Preporc", icon='BLENDER')
-        col.operator("ohad.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
+        # col.operator("mmvt.anatomy_preproc", text="Run Preporc", icon='BLENDER')
+        col.operator("mmvt.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         if len(electrodes_positions_files) > 0:
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
             col.prop(context.scene, 'electrodes_positions_files', text="")
-            col.operator("ohad.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+            col.operator("mmvt.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
         col = self.layout.column(align=True)
@@ -659,7 +659,7 @@ class DataMakerPanel(bpy.types.Panel):
         col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
         col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
-        col.operator("ohad.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
+        col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:
             layout.label(text='External MEG evoked files:')
             layout.prop(context.scene, 'meg_evoked_files', text="")

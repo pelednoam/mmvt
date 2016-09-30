@@ -152,14 +152,14 @@ def create_annot_dic(subject, parc, hemi, surf_name, obj_positions):
         #     if (not eq):
         #         print(label_pos, obj_pos)
         # label_name = label.name.strip() # decode('utf-8')
-        # np.savez(os.path.join('/homes/5/npeled/space3/ohad/mg79/labels', label_name), vertices=label.vertices, color=label.color[:3])
+        # np.savez(os.path.join('/homes/5/npeled/space3/MMVT/mg79/labels', label_name), vertices=label.vertices, color=label.color[:3])
         # annots[label_name] = label.vertices
 
 def round_arr(arr, perc=2):
     perc_ = float(math.pow(10,perc))
     return [int(x*perc_)/perc_ for x in arr]
 
-# '/homes/5/npeled/space3/ohad/rh.pial.obj'
+# '/homes/5/npeled/space3/MMVT/rh.pial.obj'
 def read_obj(obj_file):
     obj_rh = obj_file
     with open(obj_rh, 'r') as f:
@@ -183,21 +183,21 @@ def load_dpv(dpv_file, label_num=31):
 
 
 # get_hemi_data(MRI_FILE_RH, 'rh', pos)
-# load_dpv('/homes/5/npeled/space3/ohad/rh.laus250.annot.dpv')
-# obj = read_obj('/homes/5/npeled/space3/ohad/rh.pial_rois/rh.pial_roi.0030.obj')
+# load_dpv('/homes/5/npeled/space3/MMVT/rh.laus250.annot.dpv')
+# obj = read_obj('/homes/5/npeled/space3/MMVT/rh.pial_rois/rh.pial_roi.0030.obj')
 # create_annot_dic('mg79', 'laus250', 'rh', 'pial', obj)
 
 
 def create_fmri_dpv():
     xr = nib.load(MRI_FILE_RH)
     # xl = nib.load(MRI_FILE_LH)
-    pos = open_dpv('/homes/5/npeled/space3/ohad/test/rh.pial.dpv')
+    pos = open_dpv('/homes/5/npeled/space3/MMVT/test/rh.pial.dpv')
     colors = np.squeeze(xr.dataobj)
     zeros_indices = np.abs(colors)<2
     colors[zeros_indices] = np.zeros((1))
     pos[:, 3] = colors
     pos = np.hstack((np.arange(pos.shape[0]).reshape((pos.shape[0], 1)), pos))
-    np.savetxt('/homes/5/npeled/space3/ohad/test/rh.pial.fmri.dpv', pos, fmt='%.5f', delimiter=' ')
+    np.savetxt('/homes/5/npeled/space3/MMVT/test/rh.pial.fmri.dpv', pos, fmt='%.5f', delimiter=' ')
     print('sdf')
 
 def change_ply_colors(dpv_file, colors_values):
@@ -236,14 +236,14 @@ if __name__ == '__main__':
     # load_brain_labels('fsaverage','rh','pial','laus500')
 
     # save_fmri_colors(subject, fMRI_FILE, 'pial',
-    #         '/homes/5/npeled/space3/ohad/mg79/fmri_{}.npy',  threshold=2)
+    #         '/homes/5/npeled/space3/MMVT/mg79/fmri_{}.npy',  threshold=2)
     # Show the fRMI in pysurfer
     # load_fmri(subject, input_file=fMRI_FILE, hemi='both')
 
     # morph_labels('fsaverage', 'mg79', 'laus500', 'pial', smooth=2)
     # save_labels_from_annotation('fsaverage', 'laus500', 'pial')
     # labels_to_annot('mg79', '/homes/5/npeled/space3/subjects/mg79/label/laus500', 'laus500', True)
-    # morph_stc('hc017', 'mg79', '/homes/5/npeled/space3/ohad/mg79/MEG/hc017-C1-spm-rh.stc')
+    # morph_stc('hc017', 'mg79', '/homes/5/npeled/space3/MMVT/mg79/MEG/hc017-C1-spm-rh.stc')
     print('finish!')
 
 

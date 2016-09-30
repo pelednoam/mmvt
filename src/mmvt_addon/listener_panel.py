@@ -5,7 +5,7 @@ import mmvt_utils as mu
 
 
 class TestListener(bpy.types.Operator):
-    bl_idname = "ohad.test_listening"
+    bl_idname = "mmvt.test_listening"
     bl_label = "Open TestListening"
     bl_options = {"UNDO"}
 
@@ -21,7 +21,7 @@ class TestListener(bpy.types.Operator):
 
 
 class StartListening(bpy.types.Operator):
-    bl_idname = "ohad.start_listening"
+    bl_idname = "mmvt.start_listening"
     bl_label = "Open StartListening"
     bl_options = {"UNDO"}
 
@@ -56,7 +56,7 @@ class ListenerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Listener Panel"
     addon = None
 

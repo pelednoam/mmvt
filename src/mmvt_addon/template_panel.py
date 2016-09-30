@@ -23,7 +23,7 @@ def template_draw(self, context):
 
 
 class TemplateButton(bpy.types.Operator):
-    bl_idname = "ohad.template_button"
+    bl_idname = "mmvt.template_button"
     bl_label = "Template botton"
     bl_options = {"UNDO"}
 
@@ -39,7 +39,7 @@ class TempaltePanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Template"
     addon = None
     init = False

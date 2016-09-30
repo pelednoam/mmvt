@@ -50,7 +50,7 @@ def stim_draw(self, context):
 
 
 class ImportStimElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.import_stim_electrodes"
+    bl_idname = "mmvt.import_stim_electrodes"
     bl_label = "Import the stim electrodes"
     bl_options = {"UNDO"}
 
@@ -60,7 +60,7 @@ class ImportStimElectrodes(bpy.types.Operator):
 
 
 class LoadStimConditions(bpy.types.Operator):
-    bl_idname = "ohad.load_stim_conditions"
+    bl_idname = "mmvt.load_stim_conditions"
     bl_label = "Load the stim conditions"
     bl_options = {"UNDO"}
 
@@ -70,7 +70,7 @@ class LoadStimConditions(bpy.types.Operator):
 
 
 class LoadStim(bpy.types.Operator):
-    bl_idname = "ohad.load_stim"
+    bl_idname = "mmvt.load_stim"
     bl_label = "Load the stim data"
     bl_options = {"UNDO"}
 
@@ -86,7 +86,7 @@ class StimPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Stimulation"
     addon = None
     init = False

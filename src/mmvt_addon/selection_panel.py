@@ -66,7 +66,7 @@ def set_selection_type(selection_type):
 
 
 class SelectAllRois(bpy.types.Operator):
-    bl_idname = "ohad.roi_selection"
+    bl_idname = "mmvt.roi_selection"
     bl_label = "select2 ROIs"
     bl_options = {"UNDO"}
 
@@ -83,7 +83,7 @@ class SelectAllRois(bpy.types.Operator):
 
 
 class SelectAllSubcorticals(bpy.types.Operator):
-    bl_idname = "ohad.subcorticals_selection"
+    bl_idname = "mmvt.subcorticals_selection"
     bl_label = "select only subcorticals"
     bl_options = {"UNDO"}
 
@@ -98,7 +98,7 @@ class SelectAllSubcorticals(bpy.types.Operator):
 
 
 class SelectAllElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_selection"
+    bl_idname = "mmvt.electrodes_selection"
     bl_label = "select2 Electrodes"
     bl_options = {"UNDO"}
 
@@ -117,7 +117,7 @@ class SelectAllElectrodes(bpy.types.Operator):
 
 
 class SelectAllConnections(bpy.types.Operator):
-    bl_idname = "ohad.connections_selection"
+    bl_idname = "mmvt.connections_selection"
     bl_label = "select connections"
     bl_options = {"UNDO"}
 
@@ -129,7 +129,7 @@ class SelectAllConnections(bpy.types.Operator):
 
 
 class ClearSelection(bpy.types.Operator):
-    bl_idname = "ohad.clear_selection"
+    bl_idname = "mmvt.clear_selection"
     bl_label = "deselect all"
     bl_options = {"UNDO"}
 
@@ -145,7 +145,7 @@ class ClearSelection(bpy.types.Operator):
 
 
 class FitSelection(bpy.types.Operator):
-    bl_idname = "ohad.fit_selection"
+    bl_idname = "mmvt.fit_selection"
     bl_label = "Fit selection"
     bl_options = {"UNDO"}
 
@@ -166,7 +166,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Selection Panel"
     addon = None
 

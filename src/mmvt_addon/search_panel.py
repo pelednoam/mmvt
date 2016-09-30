@@ -4,7 +4,7 @@ import mmvt_utils as mu
 
 
 class SearchFilter(bpy.types.Operator):
-    bl_idname = "ohad.selection_filter"
+    bl_idname = "mmvt.selection_filter"
     bl_label = "selection filter"
     bl_options = {"UNDO"}
     marked_objects_select = {}
@@ -25,7 +25,7 @@ class SearchFilter(bpy.types.Operator):
 
 
 class SearchClear(bpy.types.Operator):
-    bl_idname = "ohad.selection_clear"
+    bl_idname = "mmvt.selection_clear"
     bl_label = "selection clear"
     bl_options = {"UNDO"}
 
@@ -53,7 +53,7 @@ class SearchClear(bpy.types.Operator):
 
 
 class SearchMark(bpy.types.Operator):
-    bl_idname = "ohad.selection_mark"
+    bl_idname = "mmvt.selection_mark"
     bl_label = "selection mark"
     bl_options = {"UNDO"}
     marked_objects_hide = {}
@@ -77,7 +77,7 @@ class SearchMark(bpy.types.Operator):
 
 
 class SearchExport(bpy.types.Operator):
-    bl_idname = "ohad.search_export"
+    bl_idname = "mmvt.search_export"
     bl_label = "selection export"
     bl_options = {"UNDO"}
 
@@ -95,7 +95,7 @@ class SearchPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Search Panel"
     addon = None
     marked_objects = []

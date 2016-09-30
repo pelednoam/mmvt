@@ -155,8 +155,8 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
 
 class ShowHideElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_elctrodes"
-    bl_label = "ohad show_hide_electrodes"
+    bl_idname = "mmvt.show_hide_elctrodes"
+    bl_label = "mmvt show_hide_electrodes"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -167,8 +167,8 @@ class ShowHideElectrodes(bpy.types.Operator):
 
 
 class ShowHideConnections(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_connections"
-    bl_label = "ohad show_hide_connections"
+    bl_idname = "mmvt.show_hide_connections"
+    bl_label = "mmvt show_hide_connections"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -182,7 +182,7 @@ class AppearanceMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Appearance"
     addon = None
     init = False

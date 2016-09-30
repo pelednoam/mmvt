@@ -385,8 +385,8 @@ def create_connections():
 
 
 class CreateConnections(bpy.types.Operator):
-    bl_idname = "ohad.create_connections"
-    bl_label = "ohad create connections"
+    bl_idname = "mmvt.create_connections"
+    bl_label = "mmvt create connections"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -396,8 +396,8 @@ class CreateConnections(bpy.types.Operator):
 
 
 class FilterGraph(bpy.types.Operator):
-    bl_idname = "ohad.filter_graph"
-    bl_label = "ohad filter graph"
+    bl_idname = "mmvt.filter_graph"
+    bl_label = "mmvt filter graph"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -421,8 +421,8 @@ class FilterGraph(bpy.types.Operator):
 
 # todo: Should move to coloring_panel
 class PlotConnections(bpy.types.Operator):
-    bl_idname = "ohad.plot_connections"
-    bl_label = "ohad plot connections"
+    bl_idname = "mmvt.plot_connections"
+    bl_label = "mmvt plot connections"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -443,8 +443,8 @@ class PlotConnections(bpy.types.Operator):
 
 
 # class ShowHideConnections(bpy.types.Operator):
-#     bl_idname = "ohad.show_hide_connections"
-#     bl_label = "ohad show_hide_connections"
+#     bl_idname = "mmvt.show_hide_connections"
+#     bl_label = "mmvt show_hide_connections"
 #     bl_options = {"UNDO"}
 #
 #     @staticmethod
@@ -464,8 +464,8 @@ class PlotConnections(bpy.types.Operator):
 
 
 class FilterElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.filter_electrodes"
-    bl_label = "ohad filter electrodes"
+    bl_idname = "mmvt.filter_electrodes"
+    bl_label = "mmvt filter electrodes"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -479,8 +479,8 @@ class FilterElectrodes(bpy.types.Operator):
 
 
 class ClearConnections(bpy.types.Operator):
-    bl_idname = "ohad.clear_connections"
-    bl_label = "ohad clear connections"
+    bl_idname = "mmvt.clear_connections"
+    bl_label = "mmvt clear connections"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -490,8 +490,8 @@ class ClearConnections(bpy.types.Operator):
 
 
 # class ExportGraph(bpy.types.Operator):
-#     bl_idname = "ohad.export_graph"
-#     bl_label = "ohad export_graph"
+#     bl_idname = "mmvt.export_graph"
+#     bl_label = "mmvt export_graph"
 #     bl_options = {"UNDO"}
 #     uuid = mu.rand_letters(5)
 #
@@ -519,15 +519,15 @@ def connections_draw(self, context):
     # todo: Check if we need this function
     layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
     # if ConnectionsPanel.show_connections:
-    #     layout.operator("ohad.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
+    #     layout.operator("mmvt.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
     # else:
-    #     layout.operator("ohad.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
+    #     layout.operator("mmvt.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
 
     if bpy.context.scene.connections_origin == 'electrodes':
         filter_text = '{} electrodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterElectrodes.bl_idname, text=filter_text, icon='BORDERMOVE')
-    # layout.operator("ohad.export_graph", text="Export graph", icon='SNAP_NORMAL')
-    # layout.operator("ohad.clear_connections", text="Clear", icon='PANEL_CLOSE')
+    # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
+    # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
 bpy.types.Scene.connections_origin = bpy.props.EnumProperty(items=[],
@@ -552,7 +552,7 @@ class ConnectionsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Connections"
     addon = None
     d = mu.Bag({})

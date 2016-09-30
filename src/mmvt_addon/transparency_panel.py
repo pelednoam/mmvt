@@ -13,11 +13,11 @@ def transparency_draw(self, context):
         split2 = layout.split()
         # split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
         split2.prop(context.scene, 'appearance_depth_slider', text="Depth")
-        layout.operator("ohad.appearance_update", text="Update")
+        layout.operator("mmvt.appearance_update", text="Update")
 
 
 class UpdateAppearance(bpy.types.Operator):
-    bl_idname = "ohad.appearance_update"
+    bl_idname = "mmvt.appearance_update"
     bl_label = "filter clear"
     bl_options = {"UNDO"}
 
@@ -35,7 +35,7 @@ class TransparencyPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Transparency"
     addon = None
 

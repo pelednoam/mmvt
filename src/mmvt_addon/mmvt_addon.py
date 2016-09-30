@@ -63,7 +63,7 @@ importlib.reload(stim_panel)
 # import streaming_panel
 # importlib.reload(streaming_panel)
 
-print("MMVT addon started!")
+print("mmvt addon started!")
 # todo: should change that in the code!!!
 # Should be here bpy.types.Scene.maximal_time_steps
 T = 2500

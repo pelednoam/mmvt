@@ -7,7 +7,7 @@ import glob
 
 
 class ClearVertexData(bpy.types.Operator):
-    bl_idname = "ohad.vertex_data_clear"
+    bl_idname = "mmvt.vertex_data_clear"
     bl_label = "vertex data clear"
     bl_options = {"UNDO"}
 
@@ -23,7 +23,7 @@ class ClearVertexData(bpy.types.Operator):
 
 
 class CreateVertexData(bpy.types.Operator):
-    bl_idname = "ohad.vertex_data_create"
+    bl_idname = "mmvt.vertex_data_create"
     bl_label = "vertex data create"
     bl_options = {"UNDO"}
 
@@ -119,7 +119,7 @@ class DataInVertMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Data in vertex"
     addon = None
 

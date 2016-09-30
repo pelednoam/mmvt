@@ -38,8 +38,8 @@ def show_hide_sub_corticals(do_hide):
 
 
 class ShowHideLH(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_lh"
-    bl_label = "ohad show_hide_lh"
+    bl_idname = "mmvt.show_hide_lh"
+    bl_label = "mmvt show_hide_lh"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -50,8 +50,8 @@ class ShowHideLH(bpy.types.Operator):
 
 
 class ShowHideRH(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_rh"
-    bl_label = "ohad show_hide_rh"
+    bl_idname = "mmvt.show_hide_rh"
+    bl_label = "mmvt show_hide_rh"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -62,8 +62,8 @@ class ShowHideRH(bpy.types.Operator):
 
 
 class ShowHideSubCorticals(bpy.types.Operator):
-    bl_idname = "ohad.show_hide_sub"
-    bl_label = "ohad show_hide_sub"
+    bl_idname = "mmvt.show_hide_sub"
+    bl_label = "mmvt show_hide_sub"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -77,7 +77,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Show Hide Brain"
     addon = None
 

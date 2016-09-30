@@ -72,8 +72,8 @@ def plot_pathway(self, context, layers_dti, pathway_name, pathway_type):
 
 
 class PlotPathway(bpy.types.Operator):
-    bl_idname = "ohad.plot_pathway"
-    bl_label = "ohad plt pathway"
+    bl_idname = "mmvt.plot_pathway"
+    bl_label = "mmvt plt pathway"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -106,7 +106,7 @@ class DTIPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "DTI"
     addon = None
     # d = mu.Bag({})

@@ -37,7 +37,7 @@ def goto_cursor_position():
 
 
 class FreeviewKeyboardListener(bpy.types.Operator):
-    bl_idname = 'ohad.freeview_keyboard_listener'
+    bl_idname = 'MMVT.freeview_keyboard_listener'
     bl_label = 'freeview_keyboard_listener'
     bl_options = {'UNDO'}
     press_time = time.time()
@@ -62,7 +62,7 @@ class FreeviewKeyboardListener(bpy.types.Operator):
 
 
 class FreeviewGotoCursor(bpy.types.Operator):
-    bl_idname = "ohad.freeview_goto_cursor"
+    bl_idname = "mmvt.freeview_goto_cursor"
     bl_label = "Goto Cursor"
     bl_options = {"UNDO"}
 
@@ -72,7 +72,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
 
 
 class FreeviewSaveCursor(bpy.types.Operator):
-    bl_idname = "ohad.freeview_save_cursor"
+    bl_idname = "mmvt.freeview_save_cursor"
     bl_label = "Save Cursor"
     bl_options = {"UNDO"}
 
@@ -82,7 +82,7 @@ class FreeviewSaveCursor(bpy.types.Operator):
 
 
 class SliceViewerOpen(bpy.types.Operator):
-    bl_idname = "ohad.slice_viewer"
+    bl_idname = "mmvt.slice_viewer"
     bl_label = "Slice Viewer"
     bl_options = {"UNDO"}
 
@@ -121,7 +121,7 @@ def decode_freesurfer_output(fv_str):
 
 
 class FreeviewOpen(bpy.types.Operator):
-    bl_idname = "ohad.freeview_open"
+    bl_idname = "mmvt.freeview_open"
     bl_label = "Open Freeview"
     bl_options = {"UNDO"}
     _updating = False
@@ -207,7 +207,7 @@ class FreeviewPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Freeview Panel"
     addon = None
     freeview_in_queue = None

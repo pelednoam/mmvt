@@ -129,7 +129,7 @@ bpy.types.Scene.render_background = bpy.props.BoolProperty(
 
 
 class MirrorCamera(bpy.types.Operator):
-    bl_idname = "ohad.mirror_camera"
+    bl_idname = "mmvt.mirror_camera"
     bl_label = "Mirror Camera"
     bl_options = {"UNDO"}
 
@@ -139,7 +139,7 @@ class MirrorCamera(bpy.types.Operator):
 
 
 class CameraMode(bpy.types.Operator):
-    bl_idname = "ohad.camera_mode"
+    bl_idname = "mmvt.camera_mode"
     bl_label = "Camera Mode"
     bl_options = {"UNDO"}
 
@@ -149,7 +149,7 @@ class CameraMode(bpy.types.Operator):
 
 
 class GrabCamera(bpy.types.Operator):
-    bl_idname = "ohad.grab_camera"
+    bl_idname = "mmvt.grab_camera"
     bl_label = "Grab Camera"
     bl_options = {"UNDO"}
 
@@ -159,7 +159,7 @@ class GrabCamera(bpy.types.Operator):
 
 
 class LoadCamera(bpy.types.Operator):
-    bl_idname = "ohad.load_camera"
+    bl_idname = "mmvt.load_camera"
     bl_label = "Load Camera"
     bl_options = {"UNDO"}
 
@@ -169,7 +169,7 @@ class LoadCamera(bpy.types.Operator):
 
 
 class RenderFigure(bpy.types.Operator):
-    bl_idname = "ohad.rendering"
+    bl_idname = "mmvt.rendering"
     bl_label = "Render figure"
     bl_options = {"UNDO"}
     update_camera = True
@@ -180,7 +180,7 @@ class RenderFigure(bpy.types.Operator):
 
 
 class RenderAllFigures(bpy.types.Operator):
-    bl_idname = "ohad.render_all_figures"
+    bl_idname = "mmvt.render_all_figures"
     bl_label = "Render all figures"
     bl_options = {"UNDO"}
     update_camera = True
@@ -251,7 +251,7 @@ class RenderingMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Render"
     addon = None
 

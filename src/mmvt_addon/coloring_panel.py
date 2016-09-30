@@ -280,8 +280,9 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     colors_picked_from_cm = False
     if vert_values.ndim == 1 and not data_min is None:
         colors_picked_from_cm = True
-        # todo: maybe we want to do it only on the valid verts
+        now = time.time()
         colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
+        print('{} took {:.10f}s'.format('colors_indices', time.time() - now))
         # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
         colors_indices[colors_indices < 0] = 0
         colors_indices[colors_indices > 255] = 255
@@ -526,8 +527,8 @@ def clear_and_recolor():
 
 
 class ColorElectrodes(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_color"
-    bl_label = "ohad electrodes color"
+    bl_idname = "mmvt.electrodes_color"
+    bl_label = "mmvt electrodes color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -537,8 +538,8 @@ class ColorElectrodes(bpy.types.Operator):
 
 
 class ColorElectrodesLabels(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_color_labels"
-    bl_label = "ohad electrodes color labels"
+    bl_idname = "mmvt.electrodes_color_labels"
+    bl_label = "mmvt electrodes color labels"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -548,8 +549,8 @@ class ColorElectrodesLabels(bpy.types.Operator):
 
 
 class ColorElectrodesStim(bpy.types.Operator):
-    bl_idname = "ohad.electrodes_color_stim"
-    bl_label = "ohad electrodes color stim"
+    bl_idname = "mmvt.electrodes_color_stim"
+    bl_label = "mmvt electrodes color stim"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -559,8 +560,8 @@ class ColorElectrodesStim(bpy.types.Operator):
 
 
 class ColorManually(bpy.types.Operator):
-    bl_idname = "ohad.man_color"
-    bl_label = "ohad man color"
+    bl_idname = "mmvt.man_color"
+    bl_label = "mmvt man color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -570,8 +571,8 @@ class ColorManually(bpy.types.Operator):
 
 
 class ColorVol(bpy.types.Operator):
-    bl_idname = "ohad.vol_color"
-    bl_label = "ohad vol color"
+    bl_idname = "mmvt.vol_color"
+    bl_label = "mmvt vol color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -581,8 +582,8 @@ class ColorVol(bpy.types.Operator):
 
 
 class ColorGroupsManually(bpy.types.Operator):
-    bl_idname = "ohad.man_groups_color"
-    bl_label = "ohad man groups color"
+    bl_idname = "mmvt.man_groups_color"
+    bl_label = "mmvt man groups color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -592,8 +593,8 @@ class ColorGroupsManually(bpy.types.Operator):
 
 
 class ColorMeg(bpy.types.Operator):
-    bl_idname = "ohad.meg_color"
-    bl_label = "ohad meg color"
+    bl_idname = "mmvt.meg_color"
+    bl_label = "mmvt meg color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -603,8 +604,8 @@ class ColorMeg(bpy.types.Operator):
 
 
 class ColorMegLabels(bpy.types.Operator):
-    bl_idname = "ohad.meg_labels_color"
-    bl_label = "ohad meg labels color"
+    bl_idname = "mmvt.meg_labels_color"
+    bl_label = "mmvt meg labels color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -615,8 +616,8 @@ class ColorMegLabels(bpy.types.Operator):
 
 
 class ColorFmri(bpy.types.Operator):
-    bl_idname = "ohad.fmri_color"
-    bl_label = "ohad fmri color"
+    bl_idname = "mmvt.fmri_color"
+    bl_label = "mmvt fmri color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -626,8 +627,8 @@ class ColorFmri(bpy.types.Operator):
 
 
 class ColorClustersFmri(bpy.types.Operator):
-    bl_idname = "ohad.fmri_clusters_color"
-    bl_label = "ohad fmri clusters color"
+    bl_idname = "mmvt.fmri_clusters_color"
+    bl_label = "mmvt fmri clusters color"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -637,8 +638,8 @@ class ColorClustersFmri(bpy.types.Operator):
 
 
 class ClearColors(bpy.types.Operator):
-    bl_idname = "ohad.colors_clear"
-    bl_label = "ohad colors clear"
+    bl_idname = "mmvt.colors_clear"
+    bl_label = "mmvt colors clear"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -668,7 +669,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Activity Maps"
     addon = None
     fMRI = {}

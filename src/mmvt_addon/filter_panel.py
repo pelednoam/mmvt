@@ -79,7 +79,7 @@ def filter_draw(self, context):
     # if bpy.types.Scene.filter_is_on:
     layout.operator(ClearFiltering.bl_idname, text="Clear Filtering", icon='PANEL_CLOSE')
     col = layout.column(align=0)
-    col.operator("ohad.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
+    col.operator("mmvt.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
     if bpy.types.Scene.closest_curve_str != '':
         col.label(text=bpy.types.Scene.closest_curve_str)
     layout.prop(context.scene, 'filter_items_one_by_one', text="Show one by one")
@@ -235,7 +235,7 @@ def get_filter_functions():
 
 
 class FindCurveClosestToCursor(bpy.types.Operator):
-    bl_idname = "ohad.curve_close_to_cursor"
+    bl_idname = "mmvt.curve_close_to_cursor"
     bl_label = "curve close to cursor"
     bl_options = {"UNDO"}
 
@@ -245,7 +245,7 @@ class FindCurveClosestToCursor(bpy.types.Operator):
 
 
 class GrabFromFiltering(bpy.types.Operator):
-    bl_idname = "ohad.grab_from"
+    bl_idname = "mmvt.grab_from"
     bl_label = "grab from"
     bl_options = {"UNDO"}
 
@@ -258,7 +258,7 @@ class GrabFromFiltering(bpy.types.Operator):
 
 
 class GrabToFiltering(bpy.types.Operator):
-    bl_idname = "ohad.grab_to"
+    bl_idname = "mmvt.grab_to"
     bl_label = "grab to"
     bl_options = {"UNDO"}
 
@@ -271,7 +271,7 @@ class GrabToFiltering(bpy.types.Operator):
 
 
 class ClearFiltering(bpy.types.Operator):
-    bl_idname = "ohad.filter_clear"
+    bl_idname = "mmvt.filter_clear"
     bl_label = "filter clear"
     bl_options = {"UNDO"}
 
@@ -291,7 +291,7 @@ class ClearFiltering(bpy.types.Operator):
 
 
 class PrevFilterItem(bpy.types.Operator):
-    bl_idname = 'ohad.prev_filter_item'
+    bl_idname = 'MMVT.prev_filter_item'
     bl_label = 'prev_filter_item'
     bl_options = {'UNDO'}
 
@@ -301,7 +301,7 @@ class PrevFilterItem(bpy.types.Operator):
 
 
 class NextFilterItem(bpy.types.Operator):
-    bl_idname = 'ohad.next_filter_item'
+    bl_idname = 'MMVT.next_filter_item'
     bl_label = 'next_filter_item'
     bl_options = {'UNDO'}
 
@@ -311,7 +311,7 @@ class NextFilterItem(bpy.types.Operator):
 
 
 class Filtering(bpy.types.Operator):
-    bl_idname = "ohad.filter"
+    bl_idname = "mmvt.filter"
     bl_label = "Filter deep elctrodes"
     bl_options = {"UNDO"}
     topK = -1
@@ -444,7 +444,7 @@ class Filtering(bpy.types.Operator):
         current_file_to_upload = files_names[self.type_of_filter]
 
         # print(self.current_root_path)
-        # source_files = ["/homes/5/npeled/space3/ohad/mg79/electrodes_data.npz"]
+        # source_files = ["/homes/5/npeled/space3/MMVT/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
             data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_*.npz'))
             if len(data_files) == 0:
@@ -493,7 +493,7 @@ class FilteringMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "Filter number of curves"
     addon = None
     electrodes_colors = {}

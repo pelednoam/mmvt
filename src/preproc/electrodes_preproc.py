@@ -794,7 +794,7 @@ def main(subject, args):
     if 'create_raw_data_for_blender' in args.function and not args.task is None:
         create_raw_data_for_blender(subject, args.raw_data_fname, args.conditions, do_plot=args.do_plot)
 
-    # check_montage_and_electrodes_names('/homes/5/npeled/space3/ohad/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
+    # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
 def read_cmd_args(argv=None):

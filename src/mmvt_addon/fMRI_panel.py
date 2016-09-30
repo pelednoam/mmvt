@@ -61,7 +61,7 @@ def find_closest_cluster():
 
 
 class NextCluster(bpy.types.Operator):
-    bl_idname = 'ohad.next_cluster'
+    bl_idname = 'MMVT.next_cluster'
     bl_label = 'nextCluster'
     bl_options = {'UNDO'}
 
@@ -77,7 +77,7 @@ def next_cluster():
 
 
 class PrevCluster(bpy.types.Operator):
-    bl_idname = 'ohad.prev_cluster'
+    bl_idname = 'MMVT.prev_cluster'
     bl_label = 'prevcluster'
     bl_options = {'UNDO'}
 
@@ -222,7 +222,7 @@ def fMRI_draw(self, context):
 
 
 class LoadMEGData(bpy.types.Operator):
-    bl_idname = "ohad.load_meg_data"
+    bl_idname = "mmvt.load_meg_data"
     bl_label = "Load MEG"
     bl_options = {"UNDO"}
 
@@ -232,7 +232,7 @@ class LoadMEGData(bpy.types.Operator):
 
 
 class RefinefMRIClusters(bpy.types.Operator):
-    bl_idname = "ohad.refine_fmri_clusters"
+    bl_idname = "mmvt.refine_fmri_clusters"
     bl_label = "Calc clusters"
     bl_options = {"UNDO"}
     in_q, out_q = None, None
@@ -265,7 +265,7 @@ class RefinefMRIClusters(bpy.types.Operator):
 
 
 class NearestCluster(bpy.types.Operator):
-    bl_idname = "ohad.nearest_cluster"
+    bl_idname = "mmvt.nearest_cluster"
     bl_label = "Nearest Cluster"
     bl_options = {"UNDO"}
 
@@ -275,7 +275,7 @@ class NearestCluster(bpy.types.Operator):
 
 
 class PlotAllBlobs(bpy.types.Operator):
-    bl_idname = "ohad.plot_all_blobs"
+    bl_idname = "mmvt.plot_all_blobs"
     bl_label = "Plot all blobs"
     bl_options = {"UNDO"}
 
@@ -285,7 +285,7 @@ class PlotAllBlobs(bpy.types.Operator):
 
 
 class FilterfMRIBlobs(bpy.types.Operator):
-    bl_idname = "ohad.filter_fmri_blobs"
+    bl_idname = "mmvt.filter_fmri_blobs"
     bl_label = "Filter fMRI blobs"
     bl_options = {"UNDO"}
 
@@ -318,7 +318,7 @@ class fMRIPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "Ohad"
+    bl_category = "mmvt"
     bl_label = "fMRI"
     addon = None
     python_bin = 'python'
