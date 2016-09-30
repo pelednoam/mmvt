@@ -25,14 +25,10 @@ def change_graph(index):
                 kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
 
 
-def template_draw(self, context):
-    layout = self.layout
-    layout.operator(TemplateButton.bl_idname, text="Do something", icon='ROTATE')
 
-
-class TemplateButton(bpy.types.Operator):
+class StreamButton(bpy.types.Operator):
     bl_idname = "mmvt.template_button"
-    bl_label = "Template botton"
+    bl_label = "Stream botton"
     bl_options = {"UNDO"}
 
     _timer = None
@@ -42,9 +38,11 @@ class TemplateButton(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         self._time = time.time()
-        context.window_manager.modal_handler_add(self)
-        self._timer = context.window_manager.event_timer_add(0.01, context.window)
-        StreamingPanel.is_streaming = True
+        if StreamingPanel.first_time:
+            StreamingPanel.first_time = False
+            context.window_manager.modal_handler_add(self)
+            self._timer = context.window_manager.event_timer_add(0.01, context.window)
+        StreamingPanel.is_streaming = not StreamingPanel.is_streaming
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
@@ -74,16 +72,23 @@ class TemplateButton(bpy.types.Operator):
         return {'CANCELLED'}
 
 
+def template_draw(self, context):
+    layout = self.layout
+    layout.operator(StreamButton.bl_idname,
+                    text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
+                    icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
+
 
 class StreamingPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "Template"
+    bl_label = "Stream"
     addon = None
     init = False
     is_streaming = False
+    first_time = True
 
     def draw(self, context):
         if StreamingPanel.init:
@@ -92,7 +97,6 @@ class StreamingPanel(bpy.types.Panel):
 
 def init(addon):
     StreamingPanel.addon = addon
-    user_fol = mu.get_user_fol()
     register()
     StreamingPanel.init = True
 
@@ -101,14 +105,14 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(StreamingPanel)
-        bpy.utils.register_class(TemplateButton)
+        bpy.utils.register_class(StreamButton)
     except:
-        print("Can't register Template Panel!")
+        print("Can't register Stream Panel!")
 
 
 def unregister():
     try:
         bpy.utils.unregister_class(StreamingPanel)
-        bpy.utils.unregister_class(TemplateButton)
+        bpy.utils.unregister_class(StreamButton)
     except:
         pass
