@@ -296,6 +296,7 @@ def view_all_in_graph_editor(context=None):
                       context.screen.areas[k].type == 'GRAPH_EDITOR'][0]
         graph_window_region = [graph_area.regions[k] for k in range(len(graph_area.regions)) if
                                graph_area.regions[k].type == 'WINDOW'][0]
+        ui = [graph_area.regions[k] for k in range(len(graph_area.regions)) if graph_area.regions[k].type == 'UI'][0]
 
         c = context.copy()  # copy the context
         c['area'] = graph_area

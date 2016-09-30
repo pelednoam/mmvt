@@ -5,12 +5,14 @@ import time
 import numpy as np
 import traceback
 import mmvt_utils as mu
+from itertools import cycle
+
+def fixed_data():
+    x = cycle(np.linspace(0, 10, 25000))
+    for _x in x:
+        yield np.sin(2 * np.pi * _x)
 
 
-def animate(i):
-    x = np.linspace(0, 2, 1000)
-    y = np.sin(2 * np.pi * (x - 0.01 * i))
-    return y
 
 
 def change_graph(index):
@@ -22,7 +24,8 @@ def change_graph(index):
     for fcurve in parent_obj.animation_data.action.fcurves:
         if mu.fcurve_name(fcurve) == fcurve_name:
             for kp in fcurve.keyframe_points:
-                kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
+                kp.co[1] = next(StreamingPanel.fixed_data)#[kp.co[0] + index * 100]
+                # kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
 
 
 
@@ -89,6 +92,7 @@ class StreamingPanel(bpy.types.Panel):
     init = False
     is_streaming = False
     first_time = True
+    fixed_data = []
 
     def draw(self, context):
         if StreamingPanel.init:
@@ -98,6 +102,7 @@ class StreamingPanel(bpy.types.Panel):
 def init(addon):
     StreamingPanel.addon = addon
     register()
+    StreamingPanel.fixed_data = fixed_data()
     StreamingPanel.init = True
 
 

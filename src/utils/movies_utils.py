@@ -120,4 +120,5 @@ def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, ima
 
 
 if __name__ == '__main__':
-    combine_images_to_movie('/homes/5/npeled/space1/videos/mmvt/streaming2', 'straming_data', ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')
+    combine_images_to_movie('/homes/5/npeled/space1/videos/mmvt/streaming2', 'straming_data',
+                            ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')
