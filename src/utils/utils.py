@@ -46,6 +46,8 @@ run_command_in_new_thread = mu.run_command_in_new_thread
 is_linux = mu.is_linux
 is_windows = mu.is_windows
 is_mac = mu.is_mac
+read_floats_rx = mu.read_floats_rx
+read_numbers_rx = mu.read_numbers_rx
 
 # class Bag( dict ):
 #     """ a dict with d.key short for d["key"]

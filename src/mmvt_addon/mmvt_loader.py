@@ -1,6 +1,6 @@
 bl_info = {
     'name': 'MMVT loader',
-    'author': 'MMVT Felsenstein & Noam Peled',
+    'author': 'Ohad Felsenstein & Noam Peled',
     'version': (1, 2),
     'blender': (2, 7, 2),
     'location': 'Press [Space], search for "mmvt_addon"',

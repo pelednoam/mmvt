@@ -3,8 +3,8 @@ import os.path as op
 import glob
 import time
 import numpy as np
+import traceback
 import mmvt_utils as mu
-
 
 
 def animate(i):
@@ -13,8 +13,16 @@ def animate(i):
     return y
 
 
-def do_somthing():
-    bpy.data.objects['Activity_in_vertex'].select = True
+def change_graph(index):
+    obj_name = 'Activity_in_vertex'
+    fcurve_name = 'data'
+    bpy.data.objects[obj_name].select = True
+    parent_obj = bpy.data.objects[obj_name]
+    T = 2500
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if mu.fcurve_name(fcurve) == fcurve_name:
+            for kp in fcurve.keyframe_points:
+                kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
 
 
 def template_draw(self, context):
@@ -26,21 +34,48 @@ class TemplateButton(bpy.types.Operator):
     bl_idname = "mmvt.template_button"
     bl_label = "Template botton"
     bl_options = {"UNDO"}
+
+    _timer = None
     _time = time.time()
-
-    def modal(self, context, event):
-        if event.type == 'TIMER':
-            if time.time() - self._time > bpy.context.scene.play_time_step:
-                pass
-
-
+    _index = 0
+    _time_step = 0.1
 
     def invoke(self, context, event=None):
-        do_somthing()
+        self._time = time.time()
+        context.window_manager.modal_handler_add(self)
+        self._timer = context.window_manager.event_timer_add(0.01, context.window)
+        StreamingPanel.is_streaming = True
+        return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        # First frame initialization:
+        if not StreamingPanel.is_streaming:
+            return {'PASS_THROUGH'}
+
+        if event.type in {'RIGHTMOUSE', 'ESC'}:
+            StreamingPanel.is_streaming = False
+            bpy.context.scene.update()
+            self.cancel(context)
+            return {'PASS_THROUGH'}
+
+        if event.type == 'TIMER':
+            # print(time.time() - self._time)
+            if time.time() - self._time > self._time_step:
+                self._time = time.time()
+                self._index += 1
+                change_graph(self._index)
+
+
         return {'PASS_THROUGH'}
 
+    def cancel(self, context):
+        context.window_manager.event_timer_remove(self._timer)
+        self._timer = None
+        return {'CANCELLED'}
 
-class TempaltePanel(bpy.types.Panel):
+
+
+class StreamingPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
@@ -48,23 +83,24 @@ class TempaltePanel(bpy.types.Panel):
     bl_label = "Template"
     addon = None
     init = False
+    is_streaming = False
 
     def draw(self, context):
-        if TempaltePanel.init:
+        if StreamingPanel.init:
             template_draw(self, context)
 
 
 def init(addon):
-    TempaltePanel.addon = addon
+    StreamingPanel.addon = addon
     user_fol = mu.get_user_fol()
     register()
-    TempaltePanel.init = True
+    StreamingPanel.init = True
 
 
 def register():
     try:
         unregister()
-        bpy.utils.register_class(TempaltePanel)
+        bpy.utils.register_class(StreamingPanel)
         bpy.utils.register_class(TemplateButton)
     except:
         print("Can't register Template Panel!")
@@ -72,7 +108,7 @@ def register():
 
 def unregister():
     try:
-        bpy.utils.unregister_class(TempaltePanel)
+        bpy.utils.unregister_class(StreamingPanel)
         bpy.utils.unregister_class(TemplateButton)
     except:
         pass

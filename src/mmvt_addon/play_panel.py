@@ -29,7 +29,7 @@ bpy.types.Scene.play_type = bpy.props.EnumProperty(
 
 class ModalTimerOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
-    bl_idname = "wm.modal_timer_operator"
+    bl_idname = "mmvt.modal_timer_operator"
     bl_label = "Modal Timer Operator"
 
     # limits = bpy.props.IntProperty(default=bpy.context.scene.play_from)
