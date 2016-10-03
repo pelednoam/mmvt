@@ -179,12 +179,14 @@ def read_ply_file(ply_file, npz_fname=''):
             faces_lines = lines[9 + verts_num:]
             verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
             faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
-    elif op.split(ply_file)[1] == 'npz':
+    elif ply_file.split('.')[-1] == 'npz':
         d = np.load(ply_file)
         verts, faces = d['verts'], d['faces']
-    elif npz_fname != '':
+    elif npz_fname != '' and op.isfile(npz_fname):
         d = np.load(npz_fname)
         verts, faces = d['verts'], d['faces']
+    else:
+        raise Exception("Can't find ply/npz file!")
     return verts, faces
 
 

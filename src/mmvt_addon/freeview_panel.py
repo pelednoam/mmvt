@@ -37,7 +37,7 @@ def goto_cursor_position():
 
 
 class FreeviewKeyboardListener(bpy.types.Operator):
-    bl_idname = 'MMVT.freeview_keyboard_listener'
+    bl_idname = 'mmvt.freeview_keyboard_listener'
     bl_label = 'freeview_keyboard_listener'
     bl_options = {'UNDO'}
     press_time = time.time()

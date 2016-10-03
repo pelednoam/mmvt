@@ -61,7 +61,7 @@ def find_closest_cluster():
 
 
 class NextCluster(bpy.types.Operator):
-    bl_idname = 'MMVT.next_cluster'
+    bl_idname = 'mmvt.next_cluster'
     bl_label = 'nextCluster'
     bl_options = {'UNDO'}
 
@@ -77,7 +77,7 @@ def next_cluster():
 
 
 class PrevCluster(bpy.types.Operator):
-    bl_idname = 'MMVT.prev_cluster'
+    bl_idname = 'mmvt.prev_cluster'
     bl_label = 'prevcluster'
     bl_options = {'UNDO'}
 

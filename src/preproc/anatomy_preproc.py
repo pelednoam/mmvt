@@ -119,27 +119,38 @@ def create_labels_lookup(subject, hemi, aparc_name):
 
 
 def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
+    verts, faces = {}, {}
     for hemi in utils.get_hemis(hemi):
         surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))
         surf_wavefront_name = '{}.asc'.format(surf_name)
         surf_new_name = '{}.srf'.format(surf_name)
         hemi_ply_fname = '{}.ply'.format(surf_name)
         mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, '{}.pial.ply'.format(hemi))
-        if overwrite or not op.isfile(hemi_ply_fname):
+        mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi))
+        if overwrite or not op.isfile(hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
             print('{}: convert srf to asc'.format(hemi))
             utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
             os.rename(surf_wavefront_name, surf_new_name)
             print('{}: convert asc to ply'.format(hemi))
             convert_hemis_srf_to_ply(subject, hemi)
-        for hemi in utils.get_hemis(hemi):
-            if not op.isfile(mmvt_hemi_ply_fname):
-                shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
-            ply_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi))
+        if not op.isfile(mmvt_hemi_ply_fname):
+            shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
+        ply_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply'.format(hemi))
+        if overwrite or (not op.isfile(mmvt_hemi_npz_fname)):
             verts, faces = utils.read_ply_file(ply_fname)
-            np.savez(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial'.format(hemi)), verts=verts, faces=faces)
-            shutil.copyfile(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)),
-                            op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)))
-    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply'))
+            np.savez(mmvt_hemi_npz_fname, verts=verts[hemi], faces=faces[hemi])
+        verts[hemi], faces[hemi] = utils.read_ply_file(mmvt_hemi_npz_fname)
+    if not op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz')):
+        faces['rh'] += np.max(faces['lh']) + 1
+        verts_cortex = np.vstack((verts['lh'], verts['rh']))
+        faces_cortex = np.vstack((faces['lh'], faces['rh']))
+        utils.write_ply_file(verts_cortex, faces_cortex, op.join(MMVT_DIR, subject, 'cortex.pial.ply'))
+        np.savez(op.join(MMVT_DIR, subject, 'cortex.pial.npz'), verts=verts_cortex, faces=faces_cortex)
+    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
+           utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
+           utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
+           op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.ply')) and \
+           op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz'))
 
 
 def convert_hemis_srf_to_ply(subject, hemi='both'):
@@ -151,8 +162,9 @@ def convert_hemis_srf_to_ply(subject, hemi='both'):
 
 
 def calc_faces_verts_dic(subject, overwrite=False):
-    ply_files = [op.join(SUBJECTS_DIR, subject,'surf', '{}.pial.ply'.format(hemi)) for hemi in HEMIS]
-    out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in HEMIS]
+    hemis_plus = HEMIS + ['cortex']
+    ply_files = [op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)) for hemi in hemis_plus]
+    out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in hemis_plus]
     subcortical_plys = glob.glob(op.join(MMVT_DIR, subject, 'subcortical', '*.ply'))
     errors = []
     if len(subcortical_plys) > 0:
@@ -179,7 +191,7 @@ def calc_faces_verts_dic(subject, overwrite=False):
         n = 0
         for ind, (k, v) in enumerate(zip(faces_sort, faces_arg_sort)):
             lookup[k, n] = v
-            n = 0 if ind<len(diff) and diff[ind] > 0 else n+1
+            n = 0 if ind < len(diff) and diff[ind] > 0 else n+1
         # print('writing {}'.format(out_file))
         np.save(out_file, lookup.astype(np.int))
         print('{} max lookup val: {}'.format(utils.namebase(ply_file), int(np.max(lookup))))

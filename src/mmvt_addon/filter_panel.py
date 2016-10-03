@@ -291,7 +291,7 @@ class ClearFiltering(bpy.types.Operator):
 
 
 class PrevFilterItem(bpy.types.Operator):
-    bl_idname = 'MMVT.prev_filter_item'
+    bl_idname = 'mmvt.prev_filter_item'
     bl_label = 'prev_filter_item'
     bl_options = {'UNDO'}
 
@@ -301,7 +301,7 @@ class PrevFilterItem(bpy.types.Operator):
 
 
 class NextFilterItem(bpy.types.Operator):
-    bl_idname = 'MMVT.next_filter_item'
+    bl_idname = 'mmvt.next_filter_item'
     bl_label = 'next_filter_item'
     bl_options = {'UNDO'}
 

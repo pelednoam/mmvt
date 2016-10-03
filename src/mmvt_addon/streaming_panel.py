@@ -7,11 +7,11 @@ import traceback
 import mmvt_utils as mu
 from itertools import cycle
 
+
 def fixed_data():
     x = cycle(np.linspace(0, 10, 25000))
     for _x in x:
         yield np.sin(2 * np.pi * _x)
-
 
 
 
@@ -24,8 +24,8 @@ def change_graph(index):
     for fcurve in parent_obj.animation_data.action.fcurves:
         if mu.fcurve_name(fcurve) == fcurve_name:
             for kp in fcurve.keyframe_points:
-                kp.co[1] = next(StreamingPanel.fixed_data)#[kp.co[0] + index * 100]
-                # kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
+                # kp.co[1] = next(StreamingPanel.fixed_data)#[kp.co[0] + index * 100]
+                kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
 
 
 
