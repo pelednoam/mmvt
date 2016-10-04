@@ -72,6 +72,7 @@ T = 2500
 (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
 
+
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -251,7 +252,7 @@ def main(addon_prefs=None):
         print('The classes are already registered!')
         print(traceback.format_exc())
 
-    show_activity()
+    # show_activity()
 
 
 if __name__ == "__main__":

@@ -140,17 +140,16 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             verts, faces = utils.read_ply_file(ply_fname)
             np.savez(mmvt_hemi_npz_fname, verts=verts[hemi], faces=faces[hemi])
         verts[hemi], faces[hemi] = utils.read_ply_file(mmvt_hemi_npz_fname)
-    if not op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz')):
-        faces['rh'] += np.max(faces['lh']) + 1
-        verts_cortex = np.vstack((verts['lh'], verts['rh']))
-        faces_cortex = np.vstack((faces['lh'], faces['rh']))
-        utils.write_ply_file(verts_cortex, faces_cortex, op.join(MMVT_DIR, subject, 'cortex.pial.ply'))
-        np.savez(op.join(MMVT_DIR, subject, 'cortex.pial.npz'), verts=verts_cortex, faces=faces_cortex)
-    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
-           utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
-           utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
-           op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.ply')) and \
-           op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz'))
+    # if not op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz')):
+    #     faces['rh'] += np.max(faces['lh']) + 1
+    #     verts_cortex = np.vstack((verts['lh'], verts['rh']))
+    #     faces_cortex = np.vstack((faces['lh'], faces['rh']))
+    #     utils.write_ply_file(verts_cortex, faces_cortex, op.join(MMVT_DIR, subject, 'cortex.pial.ply'))
+    #     np.savez(op.join(MMVT_DIR, subject, 'cortex.pial.npz'), verts=verts_cortex, faces=faces_cortex)
+    return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
+           utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz'))
+           # op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.ply')) and \
+           # op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz'))
 
 
 def convert_hemis_srf_to_ply(subject, hemi='both'):

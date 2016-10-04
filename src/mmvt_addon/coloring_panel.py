@@ -32,6 +32,7 @@ def object_coloring(obj, rgb):
     # obj.select = True
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
+    cur_mat.use_nodes = True
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
         # new_color = get_obj_color(obj)
@@ -117,7 +118,7 @@ def init_activity_map_coloring(map_type, subcorticals=True):
     # ColoringMakerPanel.addon.set_appearance_show_activity_layer(bpy.context.scene, True)
     # ColoringMakerPanel.addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
     ColoringMakerPanel.addon.show_activity()
-    ColoringMakerPanel.addon.change_to_rendered_brain()
+    # ColoringMakerPanel.addon.change_to_rendered_brain()
 
     if not bpy.context.scene.objects_show_hide_sub_cortical:
         if subcorticals:
@@ -134,7 +135,7 @@ def load_faces_verts():
     current_root_path = mu.get_user_fol()
     faces_verts['lh'] = np.load(op.join(current_root_path, 'faces_verts_lh.npy'))
     faces_verts['rh'] = np.load(op.join(current_root_path, 'faces_verts_rh.npy'))
-    faces_verts['cortex'] = np.load(op.join(current_root_path, 'faces_verts_cortex.npy'))
+    # faces_verts['cortex'] = np.load(op.join(current_root_path, 'faces_verts_cortex.npy'))
     return faces_verts
 
 
@@ -215,42 +216,44 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
 
-    # loop_indices = {}
-    f = np.hstack([np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')) for hemi in ['lh', 'rh']])
-    activity_map_obj_coloring(bpy.data.objects['cortex'], f, faces_verts['cortex'], threshold, override_current_mat,
-                              ColoringMakerPanel.meg_activity_data_min, ColoringMakerPanel.meg_activity_colors_ratio)
 
-    # for hemi in hemis:
-    #     colors_ratio, data_min = None, None
-    #     if map_type == 'MEG':
-    #         fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
-    #         if op.isfile(fname):
-    #             f = np.load(fname)
-    #             colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
-    #             data_min = ColoringMakerPanel.meg_activity_data_min
-    #         else:
-    #             print("Can't load {}".format(fname))
-    #             return False
-    #     elif map_type == 'FMRI':
-    #         # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
-    #         # f = np.load(fname)
-    #         if clusters:
-    #             f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
-    #         else:
-    #             f = ColoringMakerPanel.fMRI[hemi]
-    #     cur_obj = bpy.data.objects[hemi]
-    #     # loop_indices[hemi] =
-    #     activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
+    # hemis_in_order = ['lh', 'rh'] # Same order like in the creating of the merged ply object
+    # f = np.hstack([np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')) for hemi in hemis_in_order])
+    # activity_map_obj_coloring(bpy.data.objects['cortex'], f, faces_verts['cortex'], threshold, override_current_mat,
+    #                           ColoringMakerPanel.meg_activity_data_min, ColoringMakerPanel.meg_activity_colors_ratio)
 
-    # if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
-    #     if map_type == 'MEG':
-    #         if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
-    #             color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
-    #     if map_type == 'FMRI':
-    #         fmri_subcortex_activity_color(threshold, override_current_mat)
+    loop_indices = {}
+    for hemi in not_hiden_hemis:
+        colors_ratio, data_min = None, None
+        if map_type == 'MEG':
+            fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+            if op.isfile(fname):
+                f = np.load(fname)
+                colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
+                data_min = ColoringMakerPanel.meg_activity_data_min
+            else:
+                print("Can't load {}".format(fname))
+                return False
+        elif map_type == 'FMRI':
+            # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
+            # f = np.load(fname)
+            if clusters:
+                f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
+            else:
+                f = ColoringMakerPanel.fMRI[hemi]
+        cur_obj = bpy.data.objects[hemi]
+        # loop_indices[hemi] =
+        activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
+
+    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
+        if map_type == 'MEG':
+            if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
+                color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
+        if map_type == 'FMRI':
+            fmri_subcortex_activity_color(threshold, override_current_mat)
 
     return True
     # return loop_indices

@@ -1,21 +1,63 @@
 import bpy
+import mmvt_utils as mu
 
-
-def show_hide_hierarchy(do_hide, obj):
-    if bpy.data.objects.get(obj) is not None:
-        bpy.data.objects[obj].hide = do_hide
-        for child in bpy.data.objects[obj].children:
-            child.hide = do_hide
-            child.hide_render = do_hide
+def show_hide_hierarchy(do_hide, obj_name):
+    if bpy.data.objects.get(obj_name) is not None:
+        obj = bpy.data.objects[obj_name]
+        hide_obj(obj, do_hide)
+        # bpy.data.objects[obj].hide = do_hide
+        for child in obj.children:
+            hide_obj(child, do_hide)
 
 
 def show_hide_hemi(val, obj_func_name, obj_brain_name=''):
     if obj_brain_name == '':
         obj_brain_name = 'Cortex-rh' if obj_func_name == 'rh' else 'Cortex-lh'
-    if bpy.data.objects.get(obj_func_name) is not None:
-        bpy.data.objects[obj_func_name].hide = val
-        bpy.data.objects[obj_func_name].hide_render = val
     show_hide_hierarchy(val, obj_brain_name)
+    if bpy.data.objects.get(obj_func_name) is not None:
+        hide_obj(bpy.data.objects[obj_func_name], val)
+    # cortex = bpy.data.objects['cortex']
+    # cortex.modifiers['{}_mask'.format(obj_func_name)].show_viewport = bpy.context.scene.objects_show_hide_rh if \
+    #     obj_func_name == 'rh' else bpy.context.scene.objects_show_hide_lh
+
+    # if ShowHideObjectsPanel.init:
+    #     if not bpy.data.objects['cortex'].hide:
+    #         show_hemis()
+    #     if obj_brain_name == '':
+    #         obj_brain_name = 'Cortex-rh' if obj_func_name == 'rh' else 'Cortex-lh'
+    #     if bpy.data.objects.get(obj_func_name) is not None:
+    #         hide_obj(bpy.data.objects[obj_func_name], val)
+    #         show_hide_hierarchy(val, obj_brain_name)
+    #
+    #     if not bpy.data.objects['rh'].hide and not bpy.data.objects['lh'].hide:
+    #         for hemi in mu.HEMIS:
+    #             hide_obj(bpy.data.objects[hemi])
+    #             bpy.data.objects[hemi].select = False
+    #         bpy.context.scene.objects_show_hide_rh = False
+    #         bpy.context.scene.objects_show_hide_lh = False
+    #         hide_obj(bpy.data.objects['cortex'], False)
+    #         bpy.data.objects['cortex'].select = True
+    #     else:
+    #         hide_obj(bpy.data.objects['cortex'])
+    #         bpy.data.objects['cortex'].select = False
+    #         for hemi in mu.HEMIS:
+    #             if not bpy.data.objects[hemi].hide:
+    #                 bpy.data.objects[hemi].select = True
+
+                    # if obj_func_name == 'rh':
+    #     bpy.context.scene.objects_show_hide_rh = val
+    # elif obj_func_name == 'lh':
+    #     bpy.context.scene.objects_show_hide_lh = val
+
+
+def show_hemis():
+    for obj_name in ['rh', 'lh', 'Cortex-rh', 'Cortex-lh']:
+        show_hide_hierarchy(False, obj_name)
+
+
+def hide_obj(obj, val=True):
+    obj.hide = val
+    obj.hide_render = val
 
 
 def show_hide_sub_cortical_update(self, context):
@@ -80,6 +122,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Show Hide Brain"
     addon = None
+    init = False
 
     def draw(self, context):
         layout = self.layout
@@ -106,15 +149,22 @@ bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(
     default=True, description="Show sub cortical")#, update=show_hide_sub_cortical_update)
 
 
+
 def init(addon):
     ShowHideObjectsPanel.addon = addon
     bpy.context.scene.objects_show_hide_rh = False
     bpy.context.scene.objects_show_hide_lh = False
     bpy.context.scene.objects_show_hide_sub_cortical = False
     show_hide_sub_corticals(False)
-    show_hide_hemi(False, 'rh')
-    show_hide_hemi(False, 'lh')
+    show_hemis()
+
+
+    # show_hide_hemi(False, 'rh')
+    # show_hide_hemi(False, 'lh')
+    # hide_obj(bpy.data.objects[obj_func_name], val)
+
     register()
+    ShowHideObjectsPanel.init = True
 
 
 def register():

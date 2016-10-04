@@ -304,7 +304,7 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
     conditions = []
     for input_file in source_files:
         if not op.isfile(input_file):
-            mu.message(None, '{} does not exist!'.format(input_file))
+            print('{} does not exist!'.format(input_file))
             continue
         f = np.load(input_file)
         print('{} loaded'.format(input_file))
@@ -314,11 +314,12 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
-            obj_name = '{}{}'.format(objs_prefix, obj_name)
-            print(obj_name)
+            # obj_name = '{}{}'.format(objs_prefix, obj_name)
+            # print(obj_name)
             cur_obj = bpy.data.objects[obj_name]
             # print('cur_obj name = '+cur_obj.name)
 
+            print('keyframing {}'.format(obj_name))
             for cond_ind, cond_str in enumerate(f['conditions']):
                 # cond_str = str(cond_str)
                 # if cond_str[1] == "'":
@@ -328,7 +329,6 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
 
-                print('keyframing ' + obj_name + ' object')
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
                     # print('keyframing '+obj_name+' object')
@@ -643,7 +643,7 @@ class DataMakerPanel(bpy.types.Panel):
         col.prop(context.scene, 'atlas', text="Atlas")
         # if not bpy.types.Scene.brain_imported:
         # col.operator("mmvt.anatomy_preproc", text="Run Preporc", icon='BLENDER')
-        col.operator("mmvt.brain_importing", text="Import Brain", icon='MATERIAL_DATA')
+        col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         if len(electrodes_positions_files) > 0:

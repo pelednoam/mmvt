@@ -24,9 +24,11 @@ def change_view3d():
     if viewport_shade == 'rendered':
         bpy.context.scene.layers[LIGHTS_LAYER] = True
         viewport_shade_str = 'RENDERED'
+        bpy.context.scene.render.engine = 'CYCLES'
     else:
         bpy.context.scene.layers[LIGHTS_LAYER] = False
         viewport_shade_str = 'SOLID'
+        bpy.context.scene.render.engine = 'BLENDER_RENDER'
 
     for ii in range(len(bpy.context.screen.areas)):
         if bpy.context.screen.areas[ii].type == 'VIEW_3D':
@@ -62,12 +64,19 @@ def appearance_show_rois_activity_update(self, context):
     show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
     bpy.context.scene.layers[ROIS_LAYER] = show_rois
     bpy.context.scene.layers[ACTIVITY_LAYER] = show_activity
+    # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
+    # print('should be {}, {}'.format(show_rois, show_activity))
+    # todo: Figure out why the hell
+    if bpy.context.scene.layers[ROIS_LAYER] != show_rois:
+        bpy.context.scene.layers[ROIS_LAYER] = show_rois
+    if bpy.context.scene.layers[ROIS_LAYER] != show_rois or bpy.context.scene.layers[ACTIVITY_LAYER] != show_activity:
+        print('Error in displaying the layers!')
     if not AppearanceMakerPanel.addon is None and show_activity:
         fmri_hide = not show_activity if bpy.context.scene.subcortical_layer == 'fmri' else show_activity
         meg_hide = not show_activity if bpy.context.scene.subcortical_layer == 'meg' else show_activity
         if not bpy.context.scene.objects_show_hide_sub_cortical:
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj="Subcortical_fmri_activity_map")
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj="Subcortical_meg_activity_map")
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj_name="Subcortical_fmri_activity_map")
+            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
 
 
 def show_hide_connections(value):
@@ -91,10 +100,12 @@ def filter_view_type_update(self, context):
 
 def change_to_rendered_brain():
     bpy.context.scene.filter_view_type = 'rendered'
+    bpy.context.scene.render.engine = 'CYCLES'
 
 
 def change_to_solid_brain():
     bpy.context.scene.filter_view_type = 'solid'
+    bpy.context.scene.render.engine = 'BLENDER_RENDER'
 
 
 def make_brain_solid_or_transparent():

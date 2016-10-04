@@ -34,7 +34,9 @@ def import_meg(subject_fname):
 
 if __name__ == '__main__':
     import sys
-    if sys.argv[2] == '--background':
+    if len(sys.argv) == 1:
+        print('Must specify flags!')
+    elif sys.argv[2] == '--background':
         subject_fname = sys.argv[1]
         import_meg(subject_fname)
     else:
