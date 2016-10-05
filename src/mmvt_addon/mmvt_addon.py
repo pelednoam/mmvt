@@ -219,6 +219,7 @@ def main(addon_prefs=None):
     mmvt_utils.make_dir(figures_fol)
     set_render_output_path(figures_fol)
     set_render_quality(60)
+    mmvt_utils.set_show_textured_solid()
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 

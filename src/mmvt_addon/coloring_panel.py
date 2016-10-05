@@ -291,7 +291,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     colors_picked_from_cm = False
     if vert_values.ndim == 1 and not data_min is None:
         colors_picked_from_cm = True
-        now = time.time()
+        # now = time.time()
         colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
         # print('{} took {:.10f}s'.format('colors_indices', time.time() - now))
         # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
@@ -304,8 +304,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
-    # if override_current_mat:
-    #     bpy.ops.mesh.vertex_color_remove()
+    if override_current_mat:
+        bpy.ops.mesh.vertex_color_remove()
     vcol_layer = mesh.vertex_colors.new()
     # else:
     # vcol_layer = mesh.vertex_colors.active

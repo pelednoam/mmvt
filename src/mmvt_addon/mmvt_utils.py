@@ -935,6 +935,17 @@ def get_the_graph_editor():
     return None
 
 
+def set_show_textured_solid(val=True):
+    for screen in bpy.data.screens:
+        for area in screen.areas: # bpy.data.screens['Neuro'].areas:
+            if area.type == 'VIEW_3D':
+                for space in area.spaces:
+                    if space.type == 'VIEW_3D':
+                        space.show_textured_solid = val
+                        return True
+    return False
+
+
 def filter_graph_editor(filter_str):
     ge = get_the_graph_editor()
     ge.dopesheet.filter_fcurve_name = filter_str
