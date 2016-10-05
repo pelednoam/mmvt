@@ -211,14 +211,14 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
 def import_rois(base_path):
     anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
-                      'Cortex-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
-                      'Cortex-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
+                      'Cortex-inflated-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
+                      'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
                       'Subcortical_structures': op.join(base_path, 'subcortical')}
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers
-    emptys_names = ["Brain", "Subcortical_structures", "Cortex-lh", "Cortex-rh"]
+    emptys_names = list(anatomy_inputs.keys())  + ['Brain'] # ["Brain", "Subcortical_structures", "Cortex-lh", "Cortex-rh", 'Cortex-inflated-rh', 'Cortex-inflated-rh']
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
     bpy.context.scene.layers = [ind == DataMakerPanel.addon.ROIS_LAYER for ind in range(len(bpy.context.scene.layers))]
@@ -232,7 +232,8 @@ def import_rois(base_path):
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
         for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):
             new_obj_name = mu.namebase(ply_fname)
-            surf_name = anatomy_input_base_path.split(op.sep)[-1].split('.')[1]
+            fol_name = anatomy_input_base_path.split(op.sep)[-1]
+            surf_name = 'pial' if fol_name == 'subcortical' else fol_name.split('.')[1]
             if surf_name == 'inflated':
                 new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
                 change_layer(_addon().INFLATED_ROIS_LAYER)
