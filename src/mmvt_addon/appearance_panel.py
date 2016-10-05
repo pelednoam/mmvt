@@ -5,28 +5,32 @@ import mmvt_utils as mu
 # from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
 #         BRAIN_EMPTY_LAYER, EMPTY_LAYER)
 
-(CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
-    BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
+# (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
+#     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
+
+
+def _addon():
+    return AppearanceMakerPanel.addon
 
 
 def setup_layers():
     for layer_ind in range(len(bpy.context.scene.layers)):
-        bpy.context.scene.layers[layer_ind] = layer_ind == EMPTY_LAYER
+        bpy.context.scene.layers[layer_ind] = layer_ind == _addon().EMPTY_LAYER
 
-    bpy.context.scene.layers[ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
-    bpy.context.scene.layers[ROIS_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'rois'
-    bpy.context.scene.layers[ACTIVITY_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'activity'
-    bpy.context.scene.layers[CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
+    bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
+    bpy.context.scene.layers[_addon().ROIS_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'rois'
+    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'activity'
+    bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
 def change_view3d():
     viewport_shade = bpy.context.scene.filter_view_type
     if viewport_shade == 'rendered':
-        bpy.context.scene.layers[LIGHTS_LAYER] = True
+        bpy.context.scene.layers[_addon().LIGHTS_LAYER] = True
         viewport_shade_str = 'RENDERED'
         bpy.context.scene.render.engine = 'CYCLES'
     else:
-        bpy.context.scene.layers[LIGHTS_LAYER] = False
+        bpy.context.scene.layers[_addon().LIGHTS_LAYER] = False
         viewport_shade_str = 'SOLID'
         bpy.context.scene.render.engine = 'BLENDER_RENDER'
 
@@ -37,7 +41,7 @@ def change_view3d():
 
 
 def show_hide_electrodes(do_show):
-    bpy.context.scene.layers[ELECTRODES_LAYER] = do_show
+    bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = do_show
     if do_show:
         bpy.context.scene.show_only_lead = False
 
@@ -62,14 +66,15 @@ def show_electrodes(value=True):
 def appearance_show_rois_activity_update(self, context):
     show_activity = bpy.context.scene.appearance_show_rois_activity == 'activity'
     show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
-    bpy.context.scene.layers[ROIS_LAYER] = show_rois
-    bpy.context.scene.layers[ACTIVITY_LAYER] = show_activity
+    bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
+    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = show_activity
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
     # print('should be {}, {}'.format(show_rois, show_activity))
     # todo: Figure out why the hell
-    if bpy.context.scene.layers[ROIS_LAYER] != show_rois:
-        bpy.context.scene.layers[ROIS_LAYER] = show_rois
-    if bpy.context.scene.layers[ROIS_LAYER] != show_rois or bpy.context.scene.layers[ACTIVITY_LAYER] != show_activity:
+    if bpy.context.scene.layers[_addon().ROIS_LAYER] != show_rois:
+        bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
+    if bpy.context.scene.layers[_addon().ROIS_LAYER] != show_rois or \
+                    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != show_activity:
         print('Error in displaying the layers!')
     if not AppearanceMakerPanel.addon is None and show_activity:
         fmri_hide = not show_activity if bpy.context.scene.subcortical_layer == 'fmri' else show_activity
@@ -80,7 +85,7 @@ def appearance_show_rois_activity_update(self, context):
 
 
 def show_hide_connections(value):
-    bpy.context.scene.layers[CONNECTIONS_LAYER] = value
+    bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = value
     # if bpy.data.objects.get(connections_panel.PARENT_OBJ):
     #     bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
     #         bpy.context.scene.layers[CONNECTIONS_LAYER] == value
@@ -91,7 +96,7 @@ def show_hide_connections(value):
 
 
 def connections_visible():
-    return bpy.data.objects.get(connections_panel.PARENT_OBJ) and bpy.context.scene.layers[CONNECTIONS_LAYER]
+    return bpy.data.objects.get(connections_panel.PARENT_OBJ) and bpy.context.scene.layers[_addon().CONNECTIONS_LAYER]
 
 
 def filter_view_type_update(self, context):

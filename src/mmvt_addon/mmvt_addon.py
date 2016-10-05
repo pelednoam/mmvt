@@ -69,8 +69,8 @@ print("mmvt addon started!")
 T = 2500
 
 # LAYERS
-(CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
-    BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
+(TARGET_LAYER, LIGHTS_LAYER, EMPTY_LAYER, BRAIN_EMPTY_LAYER, ROIS_LAYER, ACTIVITY_LAYER, INFLATED_ROIS_LAYER,
+ INFLATED_ACTIVITY_LAYER, ELECTRODES_LAYER, CONNECTIONS_LAYER) = range(10)
 
 
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
@@ -209,8 +209,6 @@ def start_listener():
 
 
 def main(addon_prefs=None):
-    show_electrodes(False)
-    show_hide_connections(False)
     set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
@@ -252,6 +250,8 @@ def main(addon_prefs=None):
         print('The classes are already registered!')
         print(traceback.format_exc())
 
+    show_electrodes(False)
+    show_hide_connections(False)
     # show_activity()
 
 

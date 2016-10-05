@@ -33,16 +33,21 @@ bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], de
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 
 
-def import_hemis_for_functional_maps(current_root_path):
-    brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
-    bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
+def change_layer(layer):
+    bpy.context.scene.layers = [ind == layer for ind in range(len(bpy.context.scene.layers))]
+
+
+def _addon():
+    return DataMakerPanel.addon
+
+
+def import_hemis_for_functional_maps(base_path):
+    change_layer(_addon().BRAIN_EMPTY_LAYER)
     layers_array = bpy.context.scene.layers
     emptys_names = ['Functional maps', 'Subcortical_meg_activity_map', 'Subcortical_fmri_activity_map']
     for name in emptys_names:
-        create_empty_if_doesnt_exists(name, brain_layer, layers_array, 'Functional maps')
+        create_empty_if_doesnt_exists(name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Functional maps')
 
-    brain_layer = DataMakerPanel.addon.ACTIVITY_LAYER
-    bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     # for ii in range(len(bpy.context.scene.layers)):
     #     bpy.context.scene.layers[ii] = (ii == brain_layer)
 
@@ -50,13 +55,20 @@ def import_hemis_for_functional_maps(current_root_path):
     # # for cur_val in bpy.context.scene.layers:
     # #     print(cur_val)
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    base_path = current_root_path
-    for ply_fname in glob.glob(op.join(base_path, '*.ply')):
+    for ply_fname in glob.glob(op.join(base_path, 'surf', '*.ply')):
         bpy.ops.object.select_all(action='DESELECT')
-        print(ply_fname)
         obj_name = mu.namebase(ply_fname).split(sep='.')[0]
+        surf_name = mu.namebase(ply_fname).split(sep='.')[1]
+        if surf_name == 'inflated':
+            obj_name = '{}_{}'.format(surf_name, obj_name)
+            change_layer(_addon().INFLATED_ACTIVITY_LAYER)
+        elif surf_name == 'pial':
+            change_layer(_addon().ACTIVITY_LAYER)
+        else:
+            raise Exception('The surface type {} is not supported!'.format(surf_name))
         if bpy.data.objects.get(obj_name) is None:
-            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
+            print('importing {}'.format(ply_fname))
+            bpy.ops.import_mesh.ply(filepath=op.join(base_path, 'surf', ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
             bpy.ops.object.shade_smooth()
@@ -67,7 +79,8 @@ def import_hemis_for_functional_maps(current_root_path):
             cur_obj.parent = bpy.data.objects["Functional maps"]
             cur_obj.hide_select = True
             cur_obj.data.vertex_colors.new()
-            print('did hide_select')
+        else:
+            print('{} already exists'.format(ply_fname))
 
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -198,6 +211,8 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
 def import_rois(base_path):
     anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
+                      'Cortex-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
+                      'Cortex-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
                       'Subcortical_structures': op.join(base_path, 'subcortical')}
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
 
@@ -208,17 +223,26 @@ def import_rois(base_path):
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
     bpy.context.scene.layers = [ind == DataMakerPanel.addon.ROIS_LAYER for ind in range(len(bpy.context.scene.layers))]
 
-    for anatomy_name, base_path in anatomy_inputs.items():
+    for anatomy_name, anatomy_input_base_path in anatomy_inputs.items():
+        if not op.isdir(anatomy_input_base_path):
+            print('The anatomy folder {} does not exist'.format(anatomy_input_base_path))
+            continue
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if anatomy_name == 'Subcortical_structures':
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-        for ply_fname in glob.glob(op.join(base_path, '*.ply')):
+        for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):
             new_obj_name = mu.namebase(ply_fname)
+            surf_name = anatomy_input_base_path.split(op.sep)[-1].split('.')[1]
+            if surf_name == 'inflated':
+                new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
+                change_layer(_addon().INFLATED_ROIS_LAYER)
+            elif surf_name == 'pial':
+                change_layer(_addon().ROIS_LAYER)
             if not bpy.data.objects.get(new_obj_name) is None:
                 continue
             bpy.ops.object.select_all(action='DESELECT')
             print(ply_fname)
-            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
+            bpy.ops.import_mesh.ply(filepath=op.join(anatomy_input_base_path, ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
             bpy.ops.object.shade_smooth()

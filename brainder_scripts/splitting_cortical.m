@@ -6,8 +6,9 @@ function splitting_cortical()
     APARC = params.aparc
     SCRIPTS = params.scripts_dir
     FREESURFER_HOME = params.freesurfer_home
+    SURF_TYPE = params.surface_type
     addpath(SCRIPTS)
-    splitting_cortical_surface([SUBJECTS_DIR, '/', SUBJECT, '/', APARC, '.pial']);
+    splitting_cortical_surface([SUBJECTS_DIR, '/', SUBJECT, '/', APARC, '.' SURF_TYPE]);
     
     function splitting_cortical_surface(output_folder)
         hemis = {'lh', 'rh'};
@@ -21,8 +22,8 @@ function splitting_cortical()
           inner_splitting_cortical_surface(...
               [SUBJECTS_DIR '/' SUBJECT '/label/' hemi '.' APARC '.annot'], ...
               [SUBJECTS_DIR '/' SUBJECT '/label/' hemi '.' APARC '.annot.dpv'], ...
-              [SUBJECTS_DIR '/' SUBJECT '/surf/' hemi '.pial.srf'], ... 
-              [hemi '.pial.' APARC]);
+              [SUBJECTS_DIR '/' SUBJECT '/surf/' hemi '.' SURF_TYPE '.srf'], ... 
+              [hemi '.' SURF_TYPE '.' APARC]);
         end
     end
 
