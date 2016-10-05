@@ -230,6 +230,7 @@ def import_rois(base_path):
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if anatomy_name == 'Subcortical_structures':
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+        print('importing from {}'.format(anatomy_input_base_path))
         for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):
             new_obj_name = mu.namebase(ply_fname)
             fol_name = anatomy_input_base_path.split(op.sep)[-1]
@@ -242,7 +243,7 @@ def import_rois(base_path):
             if not bpy.data.objects.get(new_obj_name) is None:
                 continue
             bpy.ops.object.select_all(action='DESELECT')
-            print(ply_fname)
+            # print(ply_fname)
             bpy.ops.import_mesh.ply(filepath=op.join(anatomy_input_base_path, ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True

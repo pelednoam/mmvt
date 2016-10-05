@@ -231,6 +231,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         if map_type == 'MEG':
             fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
             if op.isfile(fname):
+                # fname = '/autofs/space/thibault_001/users/npeled/mmvt/mg78/surf/{}.curv.npy'.format(hemi)
                 f = np.load(fname)
                 colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
                 data_min = ColoringMakerPanel.meg_activity_data_min
@@ -245,6 +246,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
+        # cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
         # loop_indices[hemi] =
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
@@ -285,7 +287,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     scn = bpy.context.scene
 
     values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
-    valid_verts = np.where(np.abs(values) > threshold)[0]
+    valid_verts = np.where(np.abs(values) >= threshold)[0]
     colors_picked_from_cm = False
     if vert_values.ndim == 1 and not data_min is None:
         colors_picked_from_cm = True
@@ -296,14 +298,17 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         colors_indices[colors_indices < 0] = 0
         colors_indices[colors_indices > 255] = 255
         verts_colors = ColoringMakerPanel.cm[colors_indices]
+        # print('color white and gray')
+        # verts_colors[np.where(values == 1)] = [255, 255, 255]
+        # verts_colors[np.where(values == 0)] = [.1, .1, .1]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
-    if override_current_mat:
-        bpy.ops.mesh.vertex_color_remove()
+    # if override_current_mat:
+    #     bpy.ops.mesh.vertex_color_remove()
     vcol_layer = mesh.vertex_colors.new()
     # else:
-    #     vcol_layer = mesh.vertex_colors.active
+    # vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     for vert in valid_verts:
         x = lookup[vert]
