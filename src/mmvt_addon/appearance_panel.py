@@ -67,13 +67,16 @@ def show_electrodes(value=True):
 def appearance_show_rois_activity_update(self, context):
     show_activity = bpy.context.scene.appearance_show_rois_activity == 'activity'
     show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
-    bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
-    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = show_activity
+    # todo: Figure out why the hell
+    for _ in range(2):
+        if bpy.context.scene.surface_type == 'pial':
+            bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
+            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = show_activity
+        elif bpy.context.scene.surface_type == 'inflated':
+            bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = show_rois
+            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = show_activity
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
     # print('should be {}, {}'.format(show_rois, show_activity))
-    # todo: Figure out why the hell
-    if bpy.context.scene.layers[_addon().ROIS_LAYER] != show_rois:
-        bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
     if bpy.context.scene.layers[_addon().ROIS_LAYER] != show_rois or \
                     bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != show_activity:
         print('Error in displaying the layers!')

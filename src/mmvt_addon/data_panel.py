@@ -261,6 +261,8 @@ def import_rois(base_path):
             cur_obj.active_material = current_mat
             cur_obj.hide = False
             cur_obj.name = new_obj_name
+            if 'inflated' in anatomy_name:
+                cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
     bpy.ops.object.select_all(action='DESELECT')
 

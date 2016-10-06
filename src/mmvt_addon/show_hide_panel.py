@@ -10,44 +10,12 @@ def show_hide_hierarchy(do_hide, obj_name):
             hide_obj(child, do_hide)
 
 
-def show_hide_hemi(val, obj_func_name, obj_brain_name=''):
-    if obj_brain_name == '':
-        obj_brain_name = 'Cortex-rh' if obj_func_name == 'rh' else 'Cortex-lh'
-    show_hide_hierarchy(val, obj_brain_name)
-    if bpy.data.objects.get(obj_func_name) is not None:
-        hide_obj(bpy.data.objects[obj_func_name], val)
-    # cortex = bpy.data.objects['cortex']
-    # cortex.modifiers['{}_mask'.format(obj_func_name)].show_viewport = bpy.context.scene.objects_show_hide_rh if \
-    #     obj_func_name == 'rh' else bpy.context.scene.objects_show_hide_lh
-
-    # if ShowHideObjectsPanel.init:
-    #     if not bpy.data.objects['cortex'].hide:
-    #         show_hemis()
-    #     if obj_brain_name == '':
-    #         obj_brain_name = 'Cortex-rh' if obj_func_name == 'rh' else 'Cortex-lh'
-    #     if bpy.data.objects.get(obj_func_name) is not None:
-    #         hide_obj(bpy.data.objects[obj_func_name], val)
-    #         show_hide_hierarchy(val, obj_brain_name)
-    #
-    #     if not bpy.data.objects['rh'].hide and not bpy.data.objects['lh'].hide:
-    #         for hemi in mu.HEMIS:
-    #             hide_obj(bpy.data.objects[hemi])
-    #             bpy.data.objects[hemi].select = False
-    #         bpy.context.scene.objects_show_hide_rh = False
-    #         bpy.context.scene.objects_show_hide_lh = False
-    #         hide_obj(bpy.data.objects['cortex'], False)
-    #         bpy.data.objects['cortex'].select = True
-    #     else:
-    #         hide_obj(bpy.data.objects['cortex'])
-    #         bpy.data.objects['cortex'].select = False
-    #         for hemi in mu.HEMIS:
-    #             if not bpy.data.objects[hemi].hide:
-    #                 bpy.data.objects[hemi].select = True
-
-                    # if obj_func_name == 'rh':
-    #     bpy.context.scene.objects_show_hide_rh = val
-    # elif obj_func_name == 'lh':
-    #     bpy.context.scene.objects_show_hide_lh = val
+def show_hide_hemi(val, hemi):
+    show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
+    show_hide_hierarchy(val, 'Cortex-inflated-{}'.format(hemi))
+    for obj_name in [hemi, 'inflated_{}'.format(hemi)]:
+        if bpy.data.objects.get(obj_name) is not None:
+            hide_obj(bpy.data.objects[obj_name], val)
 
 
 def show_hemis():
@@ -88,6 +56,7 @@ class ShowHideLH(bpy.types.Operator):
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_lh = not bpy.context.scene.objects_show_hide_lh
         show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'lh')
+        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'inflated_lh')
         return {"FINISHED"}
 
 
@@ -100,6 +69,7 @@ class ShowHideRH(bpy.types.Operator):
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_rh = not bpy.context.scene.objects_show_hide_rh
         show_hide_hemi(bpy.context.scene.objects_show_hide_rh, 'rh')
+        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'inflated_rh')
         return {"FINISHED"}
 
 
