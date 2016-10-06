@@ -281,6 +281,27 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True):
                 activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
 
 
+def create_inflated_curv_coloring():
+    for hemi in mu.HEMIS:
+        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        curv = np.load(op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi)))
+        lookup = np.load(op.join(mu.get_user_fol(), 'faces_verts_{}.npy'.format(hemi)))
+        mesh = cur_obj.data
+        scn = bpy.context.scene
+        verts_colors = np.zeros((curv.shape[0], 3))
+        verts_colors[np.where(curv == 1)] = [255, 255, 255]
+        verts_colors[np.where(curv == 0)] = [0, 0, 0]
+        scn.objects.active = cur_obj
+        cur_obj.select = True
+        bpy.ops.mesh.vertex_color_remove()
+        vcol_layer = mesh.vertex_colors.new('curve')
+        for vert in range(curv.shape[0]):
+            x = lookup[vert]
+            for loop_ind in x[x>-1]:
+                d = vcol_layer.data[loop_ind]
+                d.color = verts_colors[vert]
+
+
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None, colors_ratio=None):
     mesh = cur_obj.data

@@ -183,13 +183,13 @@ def calc_verts_neighbors_lookup(subject):
         for vert_ind in range(verts.shape[0]):
             utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
             neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
-        utils.save(neighbors, out_file.format(hemi))
+        utils.save(neighbors, out_file.format(hemi=hemi))
     return utils.both_hemi_files_exist(out_file)
 
 
 def save_hemis_curv(subject):
     out_curv_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.npy')
-    out_border_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.borders.npy')
+    # out_border_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.borders.npy')
     # if utils.both_hemi_files_exist(out_file):
     #     return True
     for hemi in utils.HEMIS:
@@ -200,20 +200,20 @@ def save_hemis_curv(subject):
             bin_curv = np.array(curv > 0, np.int)
             np.save(out_curv_file.format(hemi=hemi), bin_curv)
 
-        if not op.isfile(out_border_file.format(hemi=hemi)):
-            bin_curv = np.load(out_curv_file.format(hemi=hemi))
-            border_verts = []
-            faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
-            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-            _faces = faces.ravel()
-            white_indices = np.where(bin_curv == 0)[0]
-            for wind in white_indices:
-                wind_nei = np.array([_faces[i] for i in faces_lookup[wind] if i>=0])
-                wind_nei_vals = bin_curv[wind_nei]
-                if np.any(wind_nei_vals == 1):
-                    border_verts.append(wind)
-            np.save(out_border_file.format(hemi=hemi), out_border_file.format(hemi=hemi))
-    return utils.both_hemi_files_exist(out_curv_file) and utils.both_hemi_files_exist(out_border_file)
+        # if not op.isfile(out_border_file.format(hemi=hemi)):
+        #     bin_curv = np.load(out_curv_file.format(hemi=hemi))
+        #     border_verts = []
+        #     faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
+        #     verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        #     _faces = faces.ravel()
+        #     white_indices = np.where(bin_curv == 0)[0]
+        #     for wind in white_indices:
+        #         wind_nei = np.array([_faces[i] for i in faces_lookup[wind] if i>=0])
+        #         wind_nei_vals = bin_curv[wind_nei]
+        #         if np.any(wind_nei_vals == 1):
+        #             border_verts.append(wind)
+        #     np.save(out_border_file.format(hemi=hemi), out_border_file.format(hemi=hemi))
+    return utils.both_hemi_files_exist(out_curv_file) # and utils.both_hemi_files_exist(out_border_file)
 
 
 def calc_faces_verts_dic(subject, overwrite=False):

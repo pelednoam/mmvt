@@ -55,7 +55,11 @@ def import_hemis_for_functional_maps(base_path):
     # # for cur_val in bpy.context.scene.layers:
     # #     print(cur_val)
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    for ply_fname in glob.glob(op.join(base_path, 'surf', '*.ply')):
+    now = time.time()
+    ply_files = glob.glob(op.join(base_path, 'surf', '*.ply'))
+    N = len(ply_files)
+    for ind, ply_fname in enumerate(ply_files):
+        mu.time_to_go(now, ind, N, 10)
         bpy.ops.object.select_all(action='DESELECT')
         obj_name = mu.namebase(ply_fname).split(sep='.')[0]
         surf_name = mu.namebase(ply_fname).split(sep='.')[1]
@@ -67,7 +71,6 @@ def import_hemis_for_functional_maps(base_path):
         else:
             raise Exception('The surface type {} is not supported!'.format(surf_name))
         if bpy.data.objects.get(obj_name) is None:
-            print('importing {}'.format(ply_fname))
             bpy.ops.import_mesh.ply(filepath=op.join(base_path, 'surf', ply_fname))
             cur_obj = bpy.context.selected_objects[0]
             cur_obj.select = True
@@ -86,6 +89,7 @@ def import_hemis_for_functional_maps(base_path):
         else:
             print('{} already exists'.format(ply_fname))
 
+    _addon().create_inflated_curv_coloring()
     bpy.ops.object.select_all(action='DESELECT')
 
 
