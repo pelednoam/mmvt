@@ -170,21 +170,59 @@ def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
         shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
 
 
+# @utils.timeit
+# def calc_verts_neighbors_lookup(subject):
+#     out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}_lookup.pkl')
+#     if utils.both_hemi_files_exist(out_file):
+#         return True
+#     for hemi in utils.HEMIS:
+#         lookup = {}
+#         verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+#         _faces = faces.ravel()
+#         faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
+#         for vert_ind in range(verts.shape[0]):
+#             vert_faces = faces_lookup[vert_ind]
+#             # vert_neighbors = [_faces[vert_face] for vert_face in vert_faces if vert_face != -1]
+#                 #set(utils.list_flatten([faces[vert_face] for vert_face in vert_faces if vert_face != -1]))
+#             print(vert_ind, vert_faces)
+#             lookup[vert_ind] = vert_faces
+#         utils.save(lookup, out_file.format(hemi))
+#     return utils.both_hemi_files_exist(out_file)
 
-def load_hemis_curv(subject):
+
+def save_hemis_curv(subject):
+    out_curv_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.npy')
+    out_border_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.borders.npy')
+    # if utils.both_hemi_files_exist(out_file):
+    #     return True
     for hemi in utils.HEMIS:
-        """Load in curvature values from the ?h.curv file."""
-        curv_path = op.join(SUBJECTS_DIR, subject, 'surf', '{}.curv'.format(hemi))
-        curv = nib.freesurfer.read_morph_data(curv_path)
-        bin_curv = np.array(curv > 0, np.int)
-        np.save(op.join(MMVT_DIR, subject, 'surf', '{}.curv.npy'.format(hemi)), bin_curv)
-    return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.npy'))
+        # Load in curvature values from the ?h.curv file.
+        if not op.isfile(out_curv_file.format(hemi=hemi)):
+            curv_path = op.join(SUBJECTS_DIR, subject, 'surf', '{}.curv'.format(hemi))
+            curv = nib.freesurfer.read_morph_data(curv_path)
+            bin_curv = np.array(curv > 0, np.int)
+            np.save(out_curv_file.format(hemi=hemi), bin_curv)
+
+        if not op.isfile(out_border_file.format(hemi=hemi)):
+            bin_curv = np.load(out_curv_file.format(hemi=hemi))
+            border_verts = []
+            faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
+            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+            _faces = faces.ravel()
+            white_indices = np.where(bin_curv == 0)[0]
+            for wind in white_indices:
+                wind_nei = np.array([_faces[i] for i in faces_lookup[wind] if i>=0])
+                wind_nei_vals = bin_curv[wind_nei]
+                if np.any(wind_nei_vals == 1):
+                    border_verts.append(wind)
+            np.save(out_border_file.format(hemi=hemi), out_border_file.format(hemi=hemi))
+    return utils.both_hemi_files_exist(out_curv_file) and utils.both_hemi_files_exist(out_border_file)
 
 
 def calc_faces_verts_dic(subject, overwrite=False):
-    hemis_plus = HEMIS + ['cortex']
-    ply_files = [op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)) for hemi in hemis_plus]
-    out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in hemis_plus]
+    # hemis_plus = HEMIS + ['cortex']
+    ply_files = [op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)) for hemi in utils.HEMIS]
+    out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in utils.HEMIS]
     subcortical_plys = glob.glob(op.join(MMVT_DIR, subject, 'subcortical', '*.ply'))
     errors = []
     if len(subcortical_plys) > 0:
@@ -479,8 +517,6 @@ def main(subject, args):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
         flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
 
-    if utils.should_run(args, 'load_hemis_curv'):
-        flags['load_hemis_curv'] = load_hemis_curv(subject)
 
     if utils.should_run(args, 'create_annotation_from_fsaverage'):
         # *) Create annotation file from fsaverage
@@ -506,6 +542,14 @@ def main(subject, args):
     if utils.should_run(args, 'save_labels_vertices'):
         # *) Save the labels vertices for meg label plotting
         flags['labels_vertices'] = save_labels_vertices(subject, args.atlas)
+
+    # if utils.should_run(args, 'calc_verts_neighbors_lookup'):
+    #     *) Calc the vertices neighbors lookup
+        # flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
+
+    if utils.should_run(args, 'save_hemis_curv'):
+        # *) Save the hemis curvs for the inflated brain
+        flags['save_hemis_curv'] = save_hemis_curv(subject)
 
     if utils.should_run(args, 'create_spatial_connectivity'):
         # *) Create the subject's connectivity

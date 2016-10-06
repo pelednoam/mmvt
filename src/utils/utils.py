@@ -48,6 +48,7 @@ is_windows = mu.is_windows
 is_mac = mu.is_mac
 read_floats_rx = mu.read_floats_rx
 read_numbers_rx = mu.read_numbers_rx
+timeit = mu.timeit
 
 # class Bag( dict ):
 #     """ a dict with d.key short for d["key"]
@@ -1526,6 +1527,10 @@ def choose_folder_gui():
     if is_windows():
         fol = fol.replace('/', '\\')
     return fol
+
+
+def list_flatten(l):
+    return [item for sublist in l for item in sublist]
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
