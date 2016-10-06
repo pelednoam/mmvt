@@ -153,6 +153,8 @@ update_layers = appearance_panel.update_layers
 update_solidity = appearance_panel.update_solidity
 connections_visible = appearance_panel.connections_visible
 show_hide_connections = appearance_panel.show_hide_connections
+show_pial = appearance_panel.show_pial
+show_inflated = appearance_panel.show_inflated
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
@@ -254,6 +256,7 @@ def main(addon_prefs=None):
 
     show_electrodes(False)
     show_hide_connections(False)
+    show_pial()
     # show_activity()
 
 

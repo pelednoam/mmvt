@@ -246,8 +246,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
-        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-
+        # cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        # for cur_obj in [bpy.data.objects['inflated_{}'.format(hemi)], bpy.data.objects[hemi]]:
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:

@@ -32,6 +32,8 @@ def create_new_subject_file(args):
             if su.is_true(overwrite):
                os.remove(new_fname)
                shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
+        else:
+            shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
 
 
 def read_args(argv=None):

@@ -29,6 +29,8 @@ HEMIS = ['rh', 'lh']
 
 def subcortical_segmentation(subject, overwrite_subcortical_objs=False):
     # Must source freesurfer. You need to have write permissions on SUBJECTS_DIR
+    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')):
+        return False
     script_fname = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf')
     if not op.isfile(script_fname):
         raise Exception('The subcortical segmentation script is missing! {}'.format(script_fname))
@@ -122,29 +124,30 @@ def create_labels_lookup(subject, hemi, aparc_name):
 def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
     # verts, faces = {}, {}
     for hemi in utils.get_hemis(hemi):
-        for surf_type in ['inflated']: # 'pial'
+        utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
+        for surf_type in ['inflated', 'pial']:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
             surf_wavefront_name = '{}.asc'.format(surf_name)
             surf_new_name = '{}.srf'.format(surf_name)
             hemi_ply_fname = '{}.ply'.format(surf_name)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
-            if True: #overwrite or not op.isfile(mmvt_hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
+            if overwrite or not op.isfile(mmvt_hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
                 print('{}: convert srf to asc'.format(hemi))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
                 print('{}: convert asc to ply'.format(hemi))
                 convert_hemis_srf_to_ply(subject, hemi, surf_type)
-                if surf_type == 'inflated':
-                    verts, faces = utils.read_ply_file(hemi_ply_fname)
-                    verts_offset = 5.5 if hemi == 'rh' else -5.5
-                    verts[:, 0] = verts[:, 0] + verts_offset
-                    utils.write_ply_file(verts, faces, '{}_offset.ply'.format(surf_name))
+                # if surf_type == 'inflated':
+                #     verts, faces = utils.read_ply_file(hemi_ply_fname)
+                #     verts_offset = 5.5 if hemi == 'rh' else -5.5
+                #     verts[:, 0] = verts[:, 0] + verts_offset
+                #     utils.write_ply_file(verts, faces, '{}_offset.ply'.format(surf_name))
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
             ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
-            if overwrite or (not op.isfile(mmvt_hemi_npz_fname)):
+            if not op.isfile(mmvt_hemi_npz_fname):
                 verts, faces = utils.read_ply_file(ply_fname)
                 np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
                 # verts[hemi], faces[hemi] = utils.read_ply_file(mmvt_hemi_npz_fname)
@@ -167,7 +170,7 @@ def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
         ply_file = utils.srf2ply(op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.srf'.format(hemi, surf_type)),
                                  op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
         utils.make_dir(op.join(MMVT_DIR, subject))
-        shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
+        # shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
 
 
 @utils.timeit
@@ -218,7 +221,7 @@ def save_hemis_curv(subject):
 
 def calc_faces_verts_dic(subject, overwrite=False):
     # hemis_plus = HEMIS + ['cortex']
-    ply_files = [op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi)) for hemi in utils.HEMIS]
+    ply_files = [op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)) for hemi in utils.HEMIS]
     out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in utils.HEMIS]
     subcortical_plys = glob.glob(op.join(MMVT_DIR, subject, 'subcortical', '*.ply'))
     errors = []
@@ -261,9 +264,9 @@ def calc_faces_verts_dic(subject, overwrite=False):
 
 def check_ply_files(subject):
     ply_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply')
-    npz_subject = op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz')
-    ply_blender = op.join(MMVT_DIR, subject, '{}.pial.ply')
-    npz_blender = op.join(MMVT_DIR, subject, '{}.pial.npz')
+    npz_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.npz')
+    ply_blender = op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply')
+    npz_blender = op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz')
     ok = True
     for hemi in HEMIS:
         # print('reading {}'.format(ply_subject.format(hemi)))
@@ -298,11 +301,20 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
     return lookup
 
 
-def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage',
+def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
+    if not annotations_exist:
+        utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
+        remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
+            hemi, aparc_name))) for hemi in HEMIS])
+        if remote_annotations_exist:
+            for hemi in HEMIS:
+                shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)),
+                            op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+            return True
     existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
     if '{}.annot'.format(aparc_name) in existing_freesurfer_annotations:
         morph_labels_from_fsaverage = False
@@ -322,6 +334,7 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
             print("Can't write labels to annotation! Trying to solve labels collision")
+            print(traceback.format_exc())
             solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
         try:
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
@@ -416,7 +429,7 @@ def create_spatial_connectivity(subject):
     try:
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
-            d = np.load(op.join(SUBJECTS_DIR, subject, 'mmvt', '{}.pial.npz'.format(hemi)))
+            d = np.load(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)))
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
         utils.save(connectivity_per_hemi, op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl'))
         success = True
@@ -518,7 +531,7 @@ def main(subject, args):
     if utils.should_run(args, 'create_annotation_from_fsaverage'):
         # *) Create annotation file from fsaverage
         flags['annot'] = create_annotation_from_fsaverage(
-            subject, args.atlas, args.fsaverage, args.overwrite_annotation, args.overwrite_morphing_labels,
+            subject, args.atlas, args.fsaverage, args.remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
             args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
@@ -555,9 +568,9 @@ def main(subject, args):
         # *) Create the subject's connectivity
         flags['connectivity'] = create_spatial_connectivity(subject)
 
-    if utils.should_run(args, 'check_ply_files'):
-        # *) Check the pial surfaces
-        flags['ply_files'] = check_ply_files(subject)
+    # if utils.should_run(args, 'check_ply_files'):
+    #     # *) Check the pial surfaces
+    #     flags['ply_files'] = check_ply_files(subject)
 
     if utils.should_run(args, 'calc_labels_center_of_mass'):
         # *) Calc the labels center of mass
@@ -633,7 +646,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
         'mri:transforms' : ['talairach.xfm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.overwrite:

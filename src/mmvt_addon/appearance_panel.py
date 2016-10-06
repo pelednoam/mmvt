@@ -63,6 +63,7 @@ def show_electrodes(value=True):
         #     elec_obj.hide = value
 
 
+
 def appearance_show_rois_activity_update(self, context):
     show_activity = bpy.context.scene.appearance_show_rois_activity == 'activity'
     show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
@@ -103,6 +104,25 @@ def filter_view_type_update(self, context):
     change_view3d()
 
 
+def surface_type_update(self, context):
+    inflated = bpy.context.scene.surface_type == 'inflated'
+    for _ in range(2):
+        if bpy.context.scene.appearance_show_rois_activity == 'rois':
+            bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = inflated
+            bpy.context.scene.layers[_addon().ROIS_LAYER] = not inflated
+        elif bpy.context.scene.appearance_show_rois_activity == 'activity':
+            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
+            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
+
+
+def show_pial():
+    bpy.context.scene.surface_type = 'pial'
+
+
+def show_inflated():
+    bpy.context.scene.surface_type = 'inflated'
+
+
 def change_to_rendered_brain():
     bpy.context.scene.filter_view_type = 'rendered'
     bpy.context.scene.render.engine = 'CYCLES'
@@ -132,6 +152,7 @@ def appearance_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
+    layout.prop(context.scene, "surface_type", expand=True)
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
         # layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
@@ -164,11 +185,17 @@ bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcor
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
     update = filter_view_type_update)
+
+bpy.types.Scene.surface_type = bpy.props.EnumProperty(
+    items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
+    update = surface_type_update)
+
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(
     default=False, description="Show electrodes")
 
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
+
 
 class ShowHideElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_elctrodes"
