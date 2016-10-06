@@ -192,7 +192,7 @@ def read_ply_file(ply_file, npz_fname=''):
 
 
 def read_pial_npz(subject, mmvt_dir, hemi):
-    d = np.load(op.join(mmvt_dir, subject, '{}.pial.npz'.format(hemi)))
+    d = np.load(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi)))
     return d['verts'], d['faces']
 
 

@@ -170,24 +170,21 @@ def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
         shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
 
 
-# @utils.timeit
-# def calc_verts_neighbors_lookup(subject):
-#     out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}_lookup.pkl')
-#     if utils.both_hemi_files_exist(out_file):
-#         return True
-#     for hemi in utils.HEMIS:
-#         lookup = {}
-#         verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-#         _faces = faces.ravel()
-#         faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
-#         for vert_ind in range(verts.shape[0]):
-#             vert_faces = faces_lookup[vert_ind]
-#             # vert_neighbors = [_faces[vert_face] for vert_face in vert_faces if vert_face != -1]
-#                 #set(utils.list_flatten([faces[vert_face] for vert_face in vert_faces if vert_face != -1]))
-#             print(vert_ind, vert_faces)
-#             lookup[vert_ind] = vert_faces
-#         utils.save(lookup, out_file.format(hemi))
-#     return utils.both_hemi_files_exist(out_file)
+@utils.timeit
+def calc_verts_neighbors_lookup(subject):
+    import time
+    out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if utils.both_hemi_files_exist(out_file):
+        return True
+    for hemi in utils.HEMIS:
+        neighbors = {}
+        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        now = time.time()
+        for vert_ind in range(verts.shape[0]):
+            utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
+            neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
+        utils.save(neighbors, out_file.format(hemi))
+    return utils.both_hemi_files_exist(out_file)
 
 
 def save_hemis_curv(subject):
@@ -550,6 +547,9 @@ def main(subject, args):
     if utils.should_run(args, 'save_hemis_curv'):
         # *) Save the hemis curvs for the inflated brain
         flags['save_hemis_curv'] = save_hemis_curv(subject)
+
+    if utils.should_run(args, 'calc_verts_neighbors_lookup'):
+        flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
 
     if utils.should_run(args, 'create_spatial_connectivity'):
         # *) Create the subject's connectivity
