@@ -548,8 +548,8 @@ def main(subject, args):
         # *) Save the hemis curvs for the inflated brain
         flags['save_hemis_curv'] = save_hemis_curv(subject)
 
-    if utils.should_run(args, 'calc_verts_neighbors_lookup'):
-        flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
+    # if utils.should_run(args, 'calc_verts_neighbors_lookup'):
+    #     flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
 
     if utils.should_run(args, 'create_spatial_connectivity'):
         # *) Create the subject's connectivity
