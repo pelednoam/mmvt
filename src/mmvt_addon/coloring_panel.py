@@ -282,10 +282,8 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True):
 
 
 def create_inflated_curv_coloring():
-    for hemi in mu.HEMIS:
-        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        curv = np.load(op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi)))
-        lookup = np.load(op.join(mu.get_user_fol(), 'faces_verts_{}.npy'.format(hemi)))
+
+    def color_obj_curvs(cur_obj, curv, lookup):
         mesh = cur_obj.data
         scn = bpy.context.scene
         verts_colors = np.zeros((curv.shape[0], 3))
@@ -300,6 +298,22 @@ def create_inflated_curv_coloring():
             for loop_ind in x[x>-1]:
                 d = vcol_layer.data[loop_ind]
                 d.color = verts_colors[vert]
+
+    # todo: check not to overwrite
+    for hemi in mu.HEMIS:
+        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        curv = np.load(op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi)))
+        lookup = np.load(op.join(mu.get_user_fol(), 'faces_verts_{}.npy'.format(hemi)))
+        color_obj_curvs(cur_obj, curv, lookup)
+    for hemi in mu.HEMIS:
+        curvs_fol = op.join(mu.get_user_fol(), 'surf', '{}_{}_curves'.format(bpy.context.scene.atlas, hemi))
+        lookup_fol = op.join(mu.get_user_fol(), '{}.pial.{}'.format(bpy.context.scene.atlas, hemi))
+        for cur_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
+            label = cur_obj.name
+            inflated_cur_obj = bpy.data.objects['inflated_{}'.format(label)]
+            curv = np.load(op.join(curvs_fol, '{}_curv.npy'.format(label)))
+            lookup = np.load(op.join(lookup_fol, '{}_faces_verts.npy'.format(label)))
+            color_obj_curvs(inflated_cur_obj, curv, lookup)
 
 
 # @mu.timeit

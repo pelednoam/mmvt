@@ -192,6 +192,7 @@ def import_brain(context=None):
         # print(obj.name)
         if obj.name[-1] == '1':
             obj.name = obj.name[0:-4]
+    bpy.ops.object.select_all(action='DESELECT')
     print('Brain importing is Finished ')
 
 
@@ -261,9 +262,10 @@ def import_rois(base_path):
             cur_obj.active_material = current_mat
             cur_obj.hide = False
             cur_obj.name = new_obj_name
-            if 'inflated' in anatomy_name:
-                cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
+            # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
+    bpy.data.objects['Cortex-inflated-rh'].location[0] += 5.5
+    bpy.data.objects['Cortex-inflated-lh'].location[0] -= 5.5
     bpy.ops.object.select_all(action='DESELECT')
 
 

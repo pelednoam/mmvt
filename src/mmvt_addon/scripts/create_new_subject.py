@@ -44,6 +44,7 @@ def read_args(argv=None):
 def create_new_subject(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
+    # mmvt.create_inflated_curv_coloring()
     mmvt.import_brain()
     mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)

@@ -190,7 +190,7 @@ def calc_verts_neighbors_lookup(subject):
     return utils.both_hemi_files_exist(out_file)
 
 
-def save_hemis_curv(subject):
+def save_hemis_curv(subject, atlas):
     out_curv_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.npy')
     # out_border_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.borders.npy')
     # if utils.both_hemi_files_exist(out_file):
@@ -202,24 +202,18 @@ def save_hemis_curv(subject):
             curv = nib.freesurfer.read_morph_data(curv_path)
             bin_curv = np.array(curv > 0, np.int)
             np.save(out_curv_file.format(hemi=hemi), bin_curv)
-
-        # if not op.isfile(out_border_file.format(hemi=hemi)):
-        #     bin_curv = np.load(out_curv_file.format(hemi=hemi))
-        #     border_verts = []
-        #     faces_lookup = np.load(op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)))
-        #     verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-        #     _faces = faces.ravel()
-        #     white_indices = np.where(bin_curv == 0)[0]
-        #     for wind in white_indices:
-        #         wind_nei = np.array([_faces[i] for i in faces_lookup[wind] if i>=0])
-        #         wind_nei_vals = bin_curv[wind_nei]
-        #         if np.any(wind_nei_vals == 1):
-        #             border_verts.append(wind)
-        #     np.save(out_border_file.format(hemi=hemi), out_border_file.format(hemi=hemi))
+        else:
+            bin_curv = np.load(out_curv_file.format(hemi=hemi))
+        labels_fol = op.join(MMVT_DIR, subject, 'surf', '{}_{}_curves'.format(atlas, hemi))
+        utils.make_dir(labels_fol)
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        for label in labels:
+            labels_curv = bin_curv[label.vertices]
+            np.save(op.join(labels_fol, '{}_curv.npy'.format(label.name)), labels_curv)
     return utils.both_hemi_files_exist(out_curv_file) # and utils.both_hemi_files_exist(out_border_file)
 
 
-def calc_faces_verts_dic(subject, overwrite=False):
+def calc_faces_verts_dic(subject, atlas, overwrite=False):
     # hemis_plus = HEMIS + ['cortex']
     ply_files = [op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)) for hemi in utils.HEMIS]
     out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in utils.HEMIS]
@@ -230,6 +224,13 @@ def calc_faces_verts_dic(subject, overwrite=False):
                 utils.namebase(ply))) for ply in subcortical_plys]
         ply_files.extend(subcortical_plys)
         out_files.extend(faces_verts_dic_fnames)
+    for hemi in utils.HEMIS:
+        labels_plys = glob.glob(op.join(MMVT_DIR, subject, '{}.pial.{}'.format(atlas, hemi), '*.ply'))
+        if len(labels_plys) > 0:
+            faces_verts_dic_fnames = [op.join(MMVT_DIR, subject, '{}.pial.{}'.format(atlas, hemi), '{}_faces_verts.npy'.format(
+                utils.namebase(ply))) for ply in labels_plys]
+            ply_files.extend(labels_plys)
+            out_files.extend(faces_verts_dic_fnames)
 
     for ply_file, out_file in zip(ply_files, out_files):
         if not overwrite and op.isfile(out_file):
@@ -547,7 +548,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'calc_faces_verts_dic'):
         # *) Create a dictionary for verts and faces for both hemis
-        flags['faces_verts'] = calc_faces_verts_dic(subject, args.overwrite_faces_verts)
+        flags['faces_verts'] = calc_faces_verts_dic(subject, args.atlas, args.overwrite_faces_verts)
 
     if utils.should_run(args, 'save_labels_vertices'):
         # *) Save the labels vertices for meg label plotting
@@ -559,7 +560,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'save_hemis_curv'):
         # *) Save the hemis curvs for the inflated brain
-        flags['save_hemis_curv'] = save_hemis_curv(subject)
+        flags['save_hemis_curv'] = save_hemis_curv(subject, args.atlas)
 
     # if utils.should_run(args, 'calc_verts_neighbors_lookup'):
     #     flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
