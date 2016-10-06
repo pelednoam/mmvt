@@ -56,7 +56,6 @@ class ShowHideLH(bpy.types.Operator):
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_lh = not bpy.context.scene.objects_show_hide_lh
         show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'lh')
-        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'inflated_lh')
         return {"FINISHED"}
 
 
@@ -69,7 +68,6 @@ class ShowHideRH(bpy.types.Operator):
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_rh = not bpy.context.scene.objects_show_hide_rh
         show_hide_hemi(bpy.context.scene.objects_show_hide_rh, 'rh')
-        show_hide_hemi(bpy.context.scene.objects_show_hide_lh, 'inflated_rh')
         return {"FINISHED"}
 
 
