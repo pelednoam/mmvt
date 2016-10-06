@@ -246,8 +246,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
         cur_obj = bpy.data.objects[hemi]
-        # cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        # loop_indices[hemi] =
+        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
@@ -289,8 +289,8 @@ def create_inflated_curv_coloring():
         mesh = cur_obj.data
         scn = bpy.context.scene
         verts_colors = np.zeros((curv.shape[0], 3))
-        verts_colors[np.where(curv == 1)] = [255, 255, 255]
-        verts_colors[np.where(curv == 0)] = [0, 0, 0]
+        verts_colors[np.where(curv == 1)] = [1, 1, 1]
+        verts_colors[np.where(curv == 0)] = [0.3, 0.3, 0.3]
         scn.objects.active = cur_obj
         cur_obj.select = True
         bpy.ops.mesh.vertex_color_remove()
@@ -325,9 +325,14 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
-    if override_current_mat:
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        mesh.vertex_colors.active_index = 1
+    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
         bpy.ops.mesh.vertex_color_remove()
-    vcol_layer = mesh.vertex_colors.new()
+    vcol_layer = mesh.vertex_colors.new('Col')
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors['Col'].active_render = True
     # else:
     # vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
