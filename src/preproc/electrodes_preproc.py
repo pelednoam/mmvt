@@ -495,7 +495,9 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
                                 norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
                                 flip_cm_small=True, moving_average_win_size=0, stat = STAT_DIFF, do_plot=False):
     import mne.io
-    edf_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', edf_name)
+    edf_fname = op.join(ELECTRODES_DIR, subject, edf_name)
+    if not op.isfile(edf_fname):
+        raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
     edf_raw.notch_filter(np.arange(60, 241, 60))
     dt = (edf_raw.times[1] - edf_raw.times[0])
@@ -791,8 +793,8 @@ def main(subject, args):
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
-    if 'create_raw_data_for_blender' in args.function and not args.task is None:
-        create_raw_data_for_blender(subject, args.raw_data_fname, args.conditions, do_plot=args.do_plot)
+    if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
+        create_raw_data_for_blender(subject, args.raw_fname, args.conditions, do_plot=args.do_plot)
 
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 

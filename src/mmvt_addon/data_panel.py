@@ -290,7 +290,7 @@ def import_electrodes(input_file, bipolar='', electrode_size=None):
     print('Adding deep electrodes')
     f = np.load(input_file)
 
-    deep_electrodes_layer = 1
+    deep_electrodes_layer = _addon().ELECTRODES_LAYER
     electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
     create_empty_if_doesnt_exists('Deep_electrodes', DataMakerPanel.addon.BRAIN_EMPTY_LAYER, layers_array, 'Deep_electrodes')

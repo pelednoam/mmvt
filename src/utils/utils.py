@@ -344,11 +344,6 @@ def get_links_dir(links_fol_name='links'):
 
 
 def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
-    # curr_dir = op.dirname(op.realpath(__file__))
-    # src_dir = op.split(curr_dir)[0]
-    # proj_dir = op.split(src_dir)[0]
-    # code_dir = op.split(proj_dir)[0]
-    # electrode_labeling_fname = op.join(code_dir, 'electrodes_rois', 'electrodes',
     if other_fname == '':
         # We remove the 'all_rois' and 'stretch' for the name!
         electrode_labeling_fname = op.join(blender_root, subject, 'electrodes',

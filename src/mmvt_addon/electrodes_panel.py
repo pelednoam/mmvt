@@ -203,10 +203,11 @@ def electrodes_labeling_files_update(self, context):
     # if ElecsPanel.init:
     # todo: How to get the other file names?
     # list(bpy.types.Scene.electrodes_labeling_files[1].items())[3][1]
-    labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
-        bpy.context.scene.electrodes_labeling_files))
-    ElecsPanel.electrodes_locs = mu.load(labeling_fname)
-    ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
+    if ElecsPanel.init:
+        labeling_fname = op.join(mu.get_user_fol(), 'electrodes', '{}.pkl'.format(
+            bpy.context.scene.electrodes_labeling_files))
+        ElecsPanel.electrodes_locs = mu.load(labeling_fname)
+        ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.all_electrodes)
 
 
 def show_only_current_lead_update(self, context):
