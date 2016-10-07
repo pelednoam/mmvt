@@ -434,22 +434,22 @@ def create_spatial_connectivity(subject):
     return success
 
 
-
-@utils.timeit
-def calc_verts_neighbors_lookup(subject):
-    import time
-    out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
-    if utils.both_hemi_files_exist(out_file):
-        return True
-    for hemi in utils.HEMIS:
-        neighbors = {}
-        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-        now = time.time()
-        for vert_ind in range(verts.shape[0]):
-            utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
-            neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
-        utils.save(neighbors, out_file.format(hemi=hemi))
-    return utils.both_hemi_files_exist(out_file)
+#
+# @utils.timeit
+# def calc_verts_neighbors_lookup(subject):
+#     import time
+#     out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+#     if utils.both_hemi_files_exist(out_file):
+#         return True
+#     for hemi in utils.HEMIS:
+#         neighbors = {}
+#         verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+#         now = time.time()
+#         for vert_ind in range(verts.shape[0]):
+#             utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
+#             neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
+#         utils.save(neighbors, out_file.format(hemi=hemi))
+#     return utils.both_hemi_files_exist(out_file)
 
 
 def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol='', labels=None):
