@@ -1,5 +1,7 @@
 import sys
 import os
+import logging
+import traceback
 
 try:
     from src.mmvt_addon.scripts import scripts_utils as su
@@ -25,15 +27,32 @@ def read_args(argv=None):
 def import_meg(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
-    mmvt.add_data_to_parent_brain_obj(args.stat)
-    mmvt.add_data_to_brain()
-    mmvt.set_render_output_path = su.get_figures_dir(args)
-    su.save_blend_file(subject_fname)
+    try:
+        mmvt.add_data_to_parent_brain_obj(args.stat)
+    except:
+        logging.error('Error in add_data_to_parent_brain_obj!')
+        logging.error(traceback.format_exc())
+    try:
+        mmvt.add_data_to_brain()
+    except:
+        logging.error('Error in add_data_to_brain!')
+        logging.error(traceback.format_exc())
+    try:
+        mmvt.set_render_output_path = su.get_figures_dir(args)
+    except:
+        logging.error('Error in set_render_output_path!')
+        logging.error(traceback.format_exc())
+    try:
+        su.save_blend_file(subject_fname)
+    except:
+        logging.error('Error in save_blend_file!')
+        logging.error(traceback.format_exc())
     su.exit_blender()
 
 
 if __name__ == '__main__':
     import sys
+    logging.basicConfig(filename='import_meg.log', level=logging.ERROR)
     if len(sys.argv) == 1:
         print('Must specify flags!')
     elif sys.argv[2] == '--background':

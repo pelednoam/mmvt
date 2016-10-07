@@ -1144,7 +1144,7 @@ def calc_labels_avg(parc, hemi, surf_name, stc=None):
 
 
 def morph_labels_from_fsaverage(atlas='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6):
-    utils.morph_labels_from_fsaverage(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, fs_labels_fol, sub_labels_fol, n_jobs)
+    lu.morph_labels_from_fsaverage(MRI_SUBJECT, SUBJECTS_MRI_DIR, MMVT_DIR, atlas, fs_labels_fol, sub_labels_fol, n_jobs)
 
 
 def labels_to_annot(parc_name, labels_fol='', overwrite=True):

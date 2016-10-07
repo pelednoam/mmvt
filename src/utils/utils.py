@@ -196,6 +196,11 @@ def read_pial_npz(subject, mmvt_dir, hemi):
     return d['verts'], d['faces']
 
 
+def read_pial(subject, subjects_dir, hemi):
+    verts, faces = read_ply_file(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+    return verts, faces
+
+
 def write_ply_file(verts, faces, ply_file_name):
     verts_num = verts.shape[0]
     faces_num = faces.shape[0]
@@ -501,47 +506,7 @@ def file_type(file_name):
     return op.splitext(op.basename(file_name))[1][1:]
 
 
-def morph_labels_from_fsaverage(subject, subjects_dir='', aparc_name='aparc250', fs_labels_fol='',
-            sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
-    if subjects_dir=='':
-        subjects_dir = os.environ['SUBJECTS_DIR']
-    subject_dir = op.join(subjects_dir, subject)
-    labels_fol = op.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
-    sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
-    if not op.isdir(sub_labels_fol):
-        os.makedirs(sub_labels_fol)
-    annot_files_exist = both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
-        '{hemi}', aparc_name)))
-    if annot_files_exist:
-        labels = read_labels_from_annot(subject, aparc_name, subjects_dir)
-        if len(labels) == 0:
-            raise Exception('morph_labels_from_fsaverage: No labels files found in annot file!'.format(labels_fol))
-    else:
-        labels_files = glob.glob(op.join(labels_fol, '*.label'))
-        if len(labels_files) > 0:
-            labels = read_labels_parallel(subject, subjects_dir, aparc_name, n_jobs)
-        else:
-            raise Exception('morph_labels_from_fsaverage: No labels files found in {}!'.format(labels_fol))
-    surf_loaded = False
-    # for label_file in labels_files:
-    for fs_label in labels:
-        label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
-        local_label_name = op.join(sub_labels_fol, '{}.label'.format(op.splitext(op.split(label_file)[1])[0]))
-        if not op.isfile(local_label_name) or overwrite:
-            # fs_label = mne.read_label(label_file)
-            fs_label.values.fill(1.0)
-            sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
-            if np.all(sub_label.pos == 0):
-                if not surf_loaded:
-                    verts = {}
-                    for hemi in HEMIS:
-                        d = np.load(op.join(subjects_dir, subject, 'mmvt', '{}.pial.npz'.format(hemi)))
-                        verts[hemi] = d['verts']
-                    surf_loaded = True
-                sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
-            sub_label.save(local_label_name)
-
-
+#todo: Move to labes utils
 def read_labels_from_annot(subject, aparc_name, subjects_dir):
     labels = []
     annot_fname_temp = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))

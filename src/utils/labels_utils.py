@@ -13,10 +13,48 @@ SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 HEMIS = ['rh', 'lh']
 
 
+def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
+            sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
+    subject_dir = op.join(subjects_dir, subject)
+    labels_fol = op.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
+    sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
+    if not op.isdir(sub_labels_fol):
+        os.makedirs(sub_labels_fol)
+    subject_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
+        '{hemi}', aparc_name)))
+    if subject_annot_files_exist:
+        labels = read_labels(subject, subjects_dir, aparc_name, n_jobs=n_jobs)
+    else:
+        labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
+    if len(labels) == 0:
+        raise Exception('morph_labels_from_fsaverage: No labels files found!')
+    if subject == fsaverage:
+        return
+    surf_loaded = False
+    for fs_label in labels:
+        label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
+        local_label_name = op.join(sub_labels_fol, '{}.label'.format(op.splitext(op.split(label_file)[1])[0]))
+        if not op.isfile(local_label_name) or overwrite:
+            # fs_label = mne.read_label(label_file)
+            fs_label.values.fill(1.0)
+            sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
+            if np.all(sub_label.pos == 0):
+                if not surf_loaded:
+                    verts = {}
+                    for hemi in HEMIS:
+                        hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
+                        verts[hemi] = hemi_verts
+                    surf_loaded = True
+                sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
+            sub_label.save(local_label_name)
+
+
+
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, n_jobs=1):
     now = time.time()
     print('Read labels')
-    labels = utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
+    # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
+    labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
@@ -71,20 +109,20 @@ def backup_annotation_files(subject, subjects_dic, aparc_name, backup_str='backu
                             op.join(subjects_dic, subject, 'label', '{}.{}.{}.annot'.format(hemi, aparc_name, backup_str)),)
 
 
-def get_atlas_labels_names(subject, atlas, delim='-', pos='end', return_flat_labels_list=False, include_unknown=False,
+def get_atlas_labels_names(subject, atlas, subjects_dir, delim='-', pos='end', return_flat_labels_list=False, include_unknown=False,
                            include_corpuscallosum=False, n_jobs=1):
-    annot_fname_hemi = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
+    annot_fname_hemi = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     labels_names_hemis = dict(lh=[], rh=[])
     all_labels = []
     if utils.both_hemi_files_exist(annot_fname_hemi):
         for hemi in ['rh', 'lh']:
-            annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+            annot_fname = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
             _, _, labels_names = mne.label._read_annot(annot_fname)
             labels_names = fix_labels_names(labels_names, hemi, delim, pos)
             all_labels.extend(labels_names)
             labels_names_hemis[hemi] = labels_names
     else:
-        all_labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, labels_fol='' , n_jobs=n_jobs)
+        all_labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol='' , n_jobs=n_jobs)
         for label in all_labels:
             labels_names_hemis[label.hemi].append(label.name)
     if len(labels_names_hemis['rh']) == 0 or len(labels_names_hemis['lh']) == 0:
@@ -175,7 +213,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
         lh_labels = [l for l in labels if l.hemi == 'lh']
         labels = rh_labels + lh_labels
     if sorted_according_to_annot_file:
-        annot_labels = get_atlas_labels_names(subject, atlas, return_flat_labels_list=True)
+        annot_labels = get_atlas_labels_names(subject, atlas, subjects_dir, return_flat_labels_list=True)
         labels.sort(key=lambda x: annot_labels.index(x.name))
     if output_fname != '':
         with open(output_fname, 'w') as output_file:

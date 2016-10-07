@@ -26,20 +26,23 @@ def prepare_subject_folder_from_franklin(subject, args):
 
 def prepare_subject_folder_from_huygens(subject, args):
     args = anat.read_cmd_args(['-s', subject])
-    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
+    subject = subject[:2].upper() + subject[2:]
+    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject))
     args.function = 'prepare_local_subjects_folder'
     anat.run_on_subjects(args)
 
 
 def darpa(subject, args):
-    args = anat.read_cmd_args(['-s', subject])
-    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject.upper()))
+    args = anat.read_cmd_args(['-s', subject, '-a', args.atlas])
+    subject = subject[:2].upper() + subject[2:]
+    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject))
     anat.run_on_subjects(args)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
     parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,

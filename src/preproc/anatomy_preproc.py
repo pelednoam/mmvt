@@ -173,23 +173,6 @@ def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
         # shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
 
 
-@utils.timeit
-def calc_verts_neighbors_lookup(subject):
-    import time
-    out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
-    if utils.both_hemi_files_exist(out_file):
-        return True
-    for hemi in utils.HEMIS:
-        neighbors = {}
-        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-        now = time.time()
-        for vert_ind in range(verts.shape[0]):
-            utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
-            neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
-        utils.save(neighbors, out_file.format(hemi=hemi))
-    return utils.both_hemi_files_exist(out_file)
-
-
 def save_hemis_curv(subject, atlas):
     out_curv_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.npy')
     # out_border_file = op.join(MMVT_DIR, subject, 'surf', '{hemi}.curv.borders.npy')
@@ -324,7 +307,7 @@ def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
             annotations_exist = fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
     if morph_labels_from_fsaverage:
-        utils.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, aparc_name, n_jobs=n_jobs,
+        lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
@@ -426,19 +409,47 @@ def save_labels_vertices(subject, aparc_name):
     return op.isfile(output_fname)
 
 
+@utils.timeit
 def create_spatial_connectivity(subject):
     try:
+        verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+        connectivity_fname = op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl')
+        if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(verts_neighbors_fname):
+            return True
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
-            d = np.load(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)))
+            neighbors = defaultdict(list)
+            d = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)))
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
-        utils.save(connectivity_per_hemi, op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl'))
+            rows, cols = connectivity_per_hemi[hemi].nonzero()
+            for ind in range(len(rows)):
+                neighbors[rows[ind]].append(cols[ind])
+            utils.save(neighbors, verts_neighbors_fname.format(hemi=hemi))
+        utils.save(connectivity_per_hemi, connectivity_fname)
         success = True
     except:
         print('Error in create_spatial_connectivity!')
         print(traceback.format_exc())
         success = False
     return success
+
+
+
+@utils.timeit
+def calc_verts_neighbors_lookup(subject):
+    import time
+    out_file = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if utils.both_hemi_files_exist(out_file):
+        return True
+    for hemi in utils.HEMIS:
+        neighbors = {}
+        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        now = time.time()
+        for vert_ind in range(verts.shape[0]):
+            utils.time_to_go(now, vert_ind, verts.shape[0], 1000)
+            neighbors[vert_ind] = set(faces[np.where(faces == vert_ind)[0]].ravel())
+        utils.save(neighbors, out_file.format(hemi=hemi))
+    return utils.both_hemi_files_exist(out_file)
 
 
 def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol='', labels=None):
