@@ -31,8 +31,8 @@ IS_WINDOWS = _platform == "win32"
 print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
-OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_SUBCORTEX, OBJ_TYPE_ELECTRODE = range(4)
-# IS_WINDOWS = (os.name == 'nt')
+(OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
+    OBJ_TYPE_ELECTRODE) = range(6)
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -504,6 +504,10 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_CORTEX_LH
     elif obj.parent == bpy.data.objects['Cortex-rh']:
         obj_type = OBJ_TYPE_CORTEX_RH
+    elif obj.parent == bpy.data.objects['Cortex-inflated-lh']:
+        obj_type = OBJ_TYPE_CORTEX_INFLATED_LH
+    elif obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+        obj_type = OBJ_TYPE_CORTEX_INFLATED_RH
     elif obj.parent == bpy.data.objects['Subcortical_structures']:
         obj_type = OBJ_TYPE_SUBCORTEX
     elif obj.parent == bpy.data.objects['Deep_electrodes']:

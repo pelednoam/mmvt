@@ -120,5 +120,5 @@ def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, ima
 
 
 if __name__ == '__main__':
-    combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg80b/Figures/electrodes', 'electrodes',
+    combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',
                             ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')

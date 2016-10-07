@@ -33,10 +33,12 @@ for k in sorted(list(kelly_colors_dic.keys())):
     kelly_colors[k] = kelly_colors_dic[k]
 
 # Boynton's list of 11 colors that are almost never confused.
-boynton_colors = ["blue", "red", "green", "yellow", "magenta", "pink", "orange", "brown", "gray"]
+boynton_colors = ["yellow", "green", "magenta", "blue", "red", "pink", "orange", "brown", "gray"]
 
 
 def get_distinct_colors(colors_num=0):
+    if colors_num == 2:
+        return cycle((np.array([kelly_colors_dic[col] for col in ['grayish_yellow', 'strong_violet']]) / 255.0).tolist())
     if colors_num <= len(boynton_colors) and colors_num != 0:
         return cycle((np.array([name_to_rgb(c) for c in boynton_colors])).tolist())
     else:

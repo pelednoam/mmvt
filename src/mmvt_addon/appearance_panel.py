@@ -2,6 +2,8 @@ import bpy
 import connections_panel
 import electrodes_panel
 import mmvt_utils as mu
+import time
+
 
 def _addon():
     return AppearanceMakerPanel.addon
@@ -166,6 +168,7 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
+    # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
         # layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
@@ -184,6 +187,49 @@ def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
 def update_solidity(self, context):
     make_brain_solid_or_transparent()
     update_layers()
+
+
+class SelectionListener(bpy.types.Operator):
+    bl_idname = 'mmvt.selection_listener'
+    bl_label = 'selection_listener'
+    bl_options = {'UNDO'}
+    press_time = time.time()
+    running = False
+    right_clicked = False
+
+    def modal(self, context, event):
+        def show_fcurves(obj):
+            mu.change_fcurves_colors(obj)
+            mu.view_all_in_graph_editor()
+
+        if self.right_clicked:
+            if len(bpy.context.selected_objects):
+                selected_obj_name = bpy.context.selected_objects[0].name
+                selected_obj_type = mu.check_obj_type(selected_obj_name)
+                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:
+                    pial_obj = bpy.data.objects.get(selected_obj_name)
+                    show_fcurves(pial_obj)
+                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
+                    pial_obj_name = selected_obj_name[len('inflated_'):]
+                    pial_obj = bpy.data.objects.get(pial_obj_name)
+                    if not pial_obj is None:
+                        pial_obj.select = True
+                        mu.change_fcurves_colors(pial_obj)
+                        mu.view_all_in_graph_editor()
+            self.right_clicked = False
+        if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
+            self.press_time = time.time()
+            self.right_clicked = True
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event=None):
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        if not self.running:
+            context.window_manager.modal_handler_add(self)
+            self.running = True
+        return {'RUNNING_MODAL'}
 
 
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
@@ -257,6 +303,8 @@ def init(addon):
     change_to_solid_brain()
     # bpy.context.scene.appearance_show_rois_activity = 'rois' # 'activity'
     show_rois()
+    bpy.ops.mmvt.selection_listener()
+
 
 
 def register():
@@ -265,6 +313,7 @@ def register():
         bpy.utils.register_class(AppearanceMakerPanel)
         bpy.utils.register_class(ShowHideElectrodes)
         bpy.utils.register_class(ShowHideConnections)
+        bpy.utils.register_class(SelectionListener)
     except:
         print("Can't register Appearance Panel!")
 
@@ -274,6 +323,7 @@ def unregister():
         bpy.utils.unregister_class(AppearanceMakerPanel)
         bpy.utils.unregister_class(ShowHideElectrodes)
         bpy.utils.unregister_class(ShowHideConnections)
+        bpy.utils.unregister_class(SelectionListener)
     except:
         pass
 
