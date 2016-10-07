@@ -14,6 +14,10 @@ HEMIS = mu.HEMIS
     WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(10)
 
 
+def _addon():
+    return ColoringMakerPanel.addon
+
+
 def set_threshold(val):
     bpy.context.scene.coloring_threshold = val
 
@@ -115,18 +119,18 @@ def color_object_homogeneously(data, postfix_str='', threshold=0):
 
 
 def init_activity_map_coloring(map_type, subcorticals=True):
-    # ColoringMakerPanel.addon.set_appearance_show_activity_layer(bpy.context.scene, True)
-    # ColoringMakerPanel.addon.set_filter_view_type(bpy.context.scene, 'RENDERS')
-    ColoringMakerPanel.addon.show_activity()
-    # ColoringMakerPanel.addon.change_to_rendered_brain()
+    # _addon().set_appearance_show_activity_layer(bpy.context.scene, True)
+    # _addon().set_filter_view_type(bpy.context.scene, 'RENDERS')
+    _addon().show_activity()
+    # _addon().change_to_rendered_brain()
 
     if not bpy.context.scene.objects_show_hide_sub_cortical:
         if subcorticals:
-            ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
-            ColoringMakerPanel.addon.show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
+            _addon().show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
+            _addon().show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
         else:
             hide_subcorticals = not subcorticals
-            ColoringMakerPanel.addon.show_hide_sub_corticals(hide_subcorticals)
+            _addon().show_hide_sub_corticals(hide_subcorticals)
     # change_view3d()
 
 
@@ -245,7 +249,10 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
-        cur_obj = bpy.data.objects[hemi]
+        if _addon().is_pial():
+            cur_obj = bpy.data.objects[hemi]
+        elif _addon().is_inflated():
+            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
         # cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
         # for cur_obj in [bpy.data.objects['inflated_{}'.format(hemi)], bpy.data.objects[hemi]]:
         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
@@ -434,7 +441,7 @@ def color_objects(objects_names, colors, data):
             if obj and not obj.hide:
                 object_coloring(obj, color)
     bpy.context.scene.subcortical_layer = 'fmri'
-    ColoringMakerPanel.addon.show_activity()
+    _addon().show_activity()
 
 
 def color_volumetric():
@@ -531,14 +538,14 @@ def color_electrodes_sources():
 
 def color_electrodes():
     bpy.context.scene.show_hide_electrodes = True
-    ColoringMakerPanel.addon.show_hide_electrodes(True)
+    _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
     data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
     color_object_homogeneously(data, threshold=threshold)
-    ColoringMakerPanel.addon.show_electrodes()
-    ColoringMakerPanel.addon.change_to_rendered_brain()
+    _addon().show_electrodes()
+    _addon().change_to_rendered_brain()
 
 
     # deselect_all()
@@ -552,8 +559,8 @@ def color_electrodes_stim():
     stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
     data = np.load(stim_data_fname)
     color_object_homogeneously(data, threshold=threshold)
-    ColoringMakerPanel.addon.show_electrodes()
-    ColoringMakerPanel.addon.change_to_rendered_brain()
+    _addon().show_electrodes()
+    _addon().change_to_rendered_brain()
 
 
 def clear_and_recolor():

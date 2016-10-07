@@ -2,12 +2,6 @@ import bpy
 import connections_panel
 import electrodes_panel
 import mmvt_utils as mu
-# from MMVT_Addon import (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
-#         BRAIN_EMPTY_LAYER, EMPTY_LAYER)
-
-# (CONNECTIONS_LAYER, ELECTRODES_LAYER, ROIS_LAYER, ACTIVITY_LAYER, LIGHTS_LAYER,
-#     BRAIN_EMPTY_LAYER, EMPTY_LAYER) = 3, 1, 10, 11, 12, 5, 14
-
 
 def _addon():
     return AppearanceMakerPanel.addon
@@ -18,8 +12,8 @@ def setup_layers():
         bpy.context.scene.layers[layer_ind] = layer_ind == _addon().EMPTY_LAYER
 
     bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
-    bpy.context.scene.layers[_addon().ROIS_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'rois'
-    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = bpy.context.scene.appearance_show_rois_activity == 'activity'
+    bpy.context.scene.layers[_addon().ROIS_LAYER] = is_rois()
+    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
@@ -54,35 +48,51 @@ def show_activity():
     bpy.context.scene.appearance_show_rois_activity = 'activity'
 
 
+def show_pial():
+    bpy.context.scene.surface_type = 'pial'
+
+
+def show_inflated():
+    bpy.context.scene.surface_type == 'inflated'
+
+
 def show_electrodes(value=True):
     show_hide_electrodes(value)
-    # if not bpy.data.objects.get('Deep_electrodes', None) is None:
-#    #     bpy.context.scene.appearance_show_electrodes_layer = value
-        # show_hide_electrodes(value)
-        # for elec_obj in bpy.data.objects.get('Deep_electrodes').children:
-        #     elec_obj.hide = value
 
+
+def is_pial():
+    return bpy.context.scene.surface_type == 'pial'
+
+
+def is_inflated():
+    return bpy.context.scene.surface_type == 'inflated'
+
+
+def is_activity():
+    return bpy.context.scene.appearance_show_rois_activity == 'activity'
+
+
+def is_rois():
+    return bpy.context.scene.appearance_show_rois_activity == 'rois'
 
 
 def appearance_show_rois_activity_update(self, context):
-    show_activity = bpy.context.scene.appearance_show_rois_activity == 'activity'
-    show_rois = bpy.context.scene.appearance_show_rois_activity == 'rois'
     # todo: Figure out why the hell
     for _ in range(2):
         if bpy.context.scene.surface_type == 'pial':
-            bpy.context.scene.layers[_addon().ROIS_LAYER] = show_rois
-            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = show_activity
+            bpy.context.scene.layers[_addon().ROIS_LAYER] = is_rois()
+            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
         elif bpy.context.scene.surface_type == 'inflated':
-            bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = show_rois
-            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = show_activity
+            bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = is_rois()
+            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
-    # print('should be {}, {}'.format(show_rois, show_activity))
-    if bpy.context.scene.layers[_addon().ROIS_LAYER] != show_rois or \
-                    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != show_activity:
+    # print('should be {}, {}'.format(is_rois(), is_activity()))
+    if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
+                    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
         print('Error in displaying the layers!')
-    if not AppearanceMakerPanel.addon is None and show_activity:
-        fmri_hide = not show_activity if bpy.context.scene.subcortical_layer == 'fmri' else show_activity
-        meg_hide = not show_activity if bpy.context.scene.subcortical_layer == 'meg' else show_activity
+    if not AppearanceMakerPanel.addon is None and is_activity():
+        fmri_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'fmri' else is_activity()
+        meg_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'meg' else is_activity()
         if not bpy.context.scene.objects_show_hide_sub_cortical:
             AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj_name="Subcortical_fmri_activity_map")
             AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
@@ -110,10 +120,10 @@ def filter_view_type_update(self, context):
 def surface_type_update(self, context):
     inflated = bpy.context.scene.surface_type == 'inflated'
     for _ in range(2):
-        if bpy.context.scene.appearance_show_rois_activity == 'rois':
+        if is_rois():
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = inflated
             bpy.context.scene.layers[_addon().ROIS_LAYER] = not inflated
-        elif bpy.context.scene.appearance_show_rois_activity == 'activity':
+        elif is_activity():
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
 

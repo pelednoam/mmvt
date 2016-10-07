@@ -155,6 +155,10 @@ connections_visible = appearance_panel.connections_visible
 show_hide_connections = appearance_panel.show_hide_connections
 show_pial = appearance_panel.show_pial
 show_inflated = appearance_panel.show_inflated
+is_pial = appearance_panel.is_pial
+is_inflated = appearance_panel.is_inflated
+is_activity = appearance_panel.is_activity
+is_rois = appearance_panel.is_rois
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
