@@ -217,6 +217,7 @@ class SelectionListener(bpy.types.Operator):
                         mu.change_fcurves_colors(pial_obj)
                         mu.view_all_in_graph_editor()
             self.right_clicked = False
+
         if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
             self.press_time = time.time()
             self.right_clicked = True
