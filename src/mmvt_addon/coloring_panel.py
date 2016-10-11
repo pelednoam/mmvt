@@ -565,9 +565,9 @@ def color_electrodes():
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
     color_object_homogeneously(data, threshold=threshold)
     _addon().show_electrodes()
-    for obj in bpy.data.objects['Deep_electrodes'].children:
-        bpy.ops.object.editmode_toggle()
-        bpy.ops.object.editmode_toggle()
+    # for obj in bpy.data.objects['Deep_electrodes'].children:
+    #     bpy.ops.object.editmode_toggle()
+    #     bpy.ops.object.editmode_toggle()
 
     # mu.update()
     # mu.set_show_textured_solid(True)
