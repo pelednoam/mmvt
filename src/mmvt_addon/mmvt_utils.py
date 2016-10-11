@@ -979,3 +979,25 @@ def save_blender_file(blend_fname=''):
         blend_fname = bpy.data.filepath
     print('Saving current file to {}'.format(blend_fname))
     bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
+
+
+def update():
+    # return
+    # bpy.context.scene.frame_current += 1
+    # bpy.data.objects['Brain'].select = True
+    # bpy.ops.mmvt.where_i_am()
+    # print(bpy.ops.ed.undo())
+    # print(bpy.ops.ed.redo())
+    # bpy.ops.ed.undo_history()
+    bpy.ops.object.editmode_toggle()
+    bpy.ops.object.editmode_toggle()
+
+
+def change_layer(layer):
+    bpy.context.scene.layers = [ind == layer for ind in range(len(bpy.context.scene.layers))]
+
+
+def select_layer(layer, val=True):
+    layers = bpy.context.scene.layers
+    layers[layer] = val
+    bpy.context.scene.layers = layers

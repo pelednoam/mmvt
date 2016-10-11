@@ -2,6 +2,9 @@ import os.path as op
 import glob
 from src.utils import utils
 
+FFMPEG_DIR = op.join(utils.get_links_dir(), 'ffmpeg')
+FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else ''
+
 # from moviepy.config import change_settings
 # change_settings({"IMAGEMAGICK_BINARY": r"/usr/bin/convert"})
 
@@ -88,7 +91,7 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                            images_type='', ffmpeg_cmd='ffmpeg'):
+                            images_type='', ffmpeg_cmd='ffmpeg', **kwargs):
     if images_type == '':
         images_types = set([utils.file_type(image) for image in glob.glob(op.join(fol, '{}*.*'.format(images_prefix)))])
         for opt_type in ['png', 'jpg', 'bmp', 'gif']:
@@ -120,5 +123,16 @@ def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, ima
 
 
 if __name__ == '__main__':
-    combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',
-                            ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')
+    import argparse
+    from src.utils import args_utils as au
+
+    parser = argparse.ArgumentParser(description='MMVT')
+    parser.add_argument('--fol', required=False)
+    parser.add_argument('--movie_name', required=False, default='output')
+    parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
+    parser.add_argument('-f', '--function', help='function name', required=True)
+    args = utils.Bag(au.parse_parser(parser))
+    locals()[args.function](**args)
+
+    # combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',
+    #                         ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')

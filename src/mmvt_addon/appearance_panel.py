@@ -148,6 +148,14 @@ def change_to_solid_brain():
     bpy.context.scene.render.engine = 'BLENDER_RENDER'
 
 
+def is_solid():
+    return bpy.context.scene.filter_view_type == 'solid'
+
+
+def is_rendered():
+    return bpy.context.scene.filter_view_type == 'rendered'
+
+
 def make_brain_solid_or_transparent():
     bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
         'Fac'].default_value = bpy.context.scene.appearance_solid_slider

@@ -159,6 +159,8 @@ is_pial = appearance_panel.is_pial
 is_inflated = appearance_panel.is_inflated
 is_activity = appearance_panel.is_activity
 is_rois = appearance_panel.is_rois
+is_solid = appearance_panel.is_solid
+is_rendered = appearance_panel.is_rendered
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
@@ -215,7 +217,7 @@ def start_listener():
     return listener_in_queue, listener_out_queue
 
 
-def main(addon_prefs=None):
+def init(addon_prefs):
     set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
@@ -230,6 +232,9 @@ def main(addon_prefs=None):
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 
+
+def main(addon_prefs=None):
+    init(addon_prefs)
     try:
         # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
@@ -261,9 +266,11 @@ def main(addon_prefs=None):
     show_electrodes(False)
     show_hide_connections(False)
     show_pial()
+    mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
     # show_activity()
 
 
 if __name__ == "__main__":
     main()
+
 

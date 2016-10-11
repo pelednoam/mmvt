@@ -36,14 +36,19 @@ def object_coloring(obj, rgb):
     # obj.select = True
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
-    cur_mat.use_nodes = True
+    cur_mat.diffuse_color = new_color[:3]
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
-        # new_color = get_obj_color(obj)
-        # print('{} new color: {}'.format(obj.name, new_color))
     else:
         print("Can't color {}".format(obj.name))
         return False
+    # new_color = get_obj_color(obj)
+    # print('{} new color: {}'.format(obj.name, new_color))
+    if _addon().is_solid():
+        cur_mat.use_nodes = False
+    else:
+        cur_mat.use_nodes = True
+    # print(cur_mat.diffuse_color)
     return True
 
 
@@ -66,18 +71,31 @@ def clear_subcortical_fmri_activity():
 
 
 def clear_cortex(hemis=HEMIS):
-    for hemisphere in hemis:
-        cur_obj = bpy.data.objects[hemisphere]
-        clear_object_vertex_colors(cur_obj)
+    for hemi in hemis:
+        if _addon().is_pial():
+            cur_obj = bpy.data.objects[hemi]
+        elif _addon().is_inflated():
+            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+            clear_object_vertex_colors(cur_obj)
 
 
+#todo: call this code from the coloring
 def clear_object_vertex_colors(cur_obj):
     mesh = cur_obj.data
     scn = bpy.context.scene
     scn.objects.active = cur_obj
     cur_obj.select = True
-    bpy.ops.mesh.vertex_color_remove()
-    vcol_layer = mesh.vertex_colors.new()
+    # bpy.ops.mesh.vertex_color_remove()
+    # vcol_layer = mesh.vertex_colors.new()
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        mesh.vertex_colors.active_index = 1
+    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
+        bpy.ops.mesh.vertex_color_remove()
+    vcol_layer = mesh.vertex_colors.new('Col')
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors['Col'].active_render = True
+
 
 
 # todo: do something with the threshold parameter
@@ -483,7 +501,8 @@ def clear_colors_from_parent_childrens(parent_object):
     if parent_obj is not None:
         for obj in parent_obj.children:
             if 'RGB' in obj.active_material.node_tree.nodes:
-                obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value=(1, 1, 1, 1)
+                obj.active_material.node_tree.nodes['RGB'].outputs['Color'].default_value = (1, 1, 1, 1)
+            obj.active_material.diffuse_color = (1, 1, 1)
 
 
 def default_coloring(loop_indices):
@@ -537,6 +556,7 @@ def color_electrodes_sources():
 
 
 def color_electrodes():
+    # mu.set_show_textured_solid(False)
     bpy.context.scene.show_hide_electrodes = True
     _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
@@ -545,7 +565,13 @@ def color_electrodes():
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
     color_object_homogeneously(data, threshold=threshold)
     _addon().show_electrodes()
-    _addon().change_to_rendered_brain()
+    for obj in bpy.data.objects['Deep_electrodes'].children:
+        bpy.ops.object.editmode_toggle()
+        bpy.ops.object.editmode_toggle()
+
+    # mu.update()
+    # mu.set_show_textured_solid(True)
+    # _addon().change_to_rendered_brain()
 
 
     # deselect_all()
@@ -739,7 +765,6 @@ class ColoringMakerPanel(bpy.types.Panel):
     electrodes_sources_labels_data = None
     electrodes_sources_subcortical_data = None
     what_is_colored = set()
-
 
     def draw(self, context):
         layout = self.layout

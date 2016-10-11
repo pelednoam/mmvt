@@ -33,16 +33,12 @@ bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], de
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 
 
-def change_layer(layer):
-    bpy.context.scene.layers = [ind == layer for ind in range(len(bpy.context.scene.layers))]
-
-
 def _addon():
     return DataMakerPanel.addon
 
 
 def import_hemis_for_functional_maps(base_path):
-    change_layer(_addon().BRAIN_EMPTY_LAYER)
+    mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     layers_array = bpy.context.scene.layers
     emptys_names = ['Functional maps', 'Subcortical_meg_activity_map', 'Subcortical_fmri_activity_map']
     for name in emptys_names:
@@ -65,9 +61,9 @@ def import_hemis_for_functional_maps(base_path):
         surf_name = mu.namebase(ply_fname).split(sep='.')[1]
         if surf_name == 'inflated':
             obj_name = '{}_{}'.format(surf_name, obj_name)
-            change_layer(_addon().INFLATED_ACTIVITY_LAYER)
+            mu.change_layer(_addon().INFLATED_ACTIVITY_LAYER)
         elif surf_name == 'pial':
-            change_layer(_addon().ACTIVITY_LAYER)
+            mu.change_layer(_addon().ACTIVITY_LAYER)
         else:
             raise Exception('The surface type {} is not supported!'.format(surf_name))
         if bpy.data.objects.get(obj_name) is None:
@@ -246,9 +242,9 @@ def import_rois(base_path):
             surf_name = 'pial' if fol_name == 'subcortical' else fol_name.split('.')[1]
             if surf_name == 'inflated':
                 new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
-                change_layer(_addon().INFLATED_ROIS_LAYER)
+                mu.change_layer(_addon().INFLATED_ROIS_LAYER)
             elif surf_name == 'pial':
-                change_layer(_addon().ROIS_LAYER)
+                mu.change_layer(_addon().ROIS_LAYER)
             if not bpy.data.objects.get(new_obj_name) is None:
                 continue
             bpy.ops.object.select_all(action='DESELECT')
