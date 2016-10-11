@@ -358,12 +358,18 @@ def get_electrodes_sources_data():
 def init_plotting():
     data_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
         'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+    meta_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_meta.npy'.format(
+        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+    d = None
     if op.isfile(data_fname):
         d = np.load(data_fname)
-        PlayPanel.electrodes_colors = d['colors']
-        PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
+    elif op.isfile(meta_fname):
+        d = np.load(data_fname)
     else:
         print('No electrodes data file!')
+    if not d is None:
+        PlayPanel.electrodes_colors = d['colors']
+        PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
     # Warning: Not sure why we call this line, it changes the brain to the rendered brain
     # PlayPanel.addon.init_activity_map_coloring('MEG')
     PlayPanel.faces_verts = PlayPanel.addon.get_faces_verts()

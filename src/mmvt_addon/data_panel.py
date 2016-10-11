@@ -543,61 +543,68 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_electrodes(source_files):
+def add_data_to_electrodes(input_file, meta_file=None):
     print('Adding data to Electrodes')
     conditions = []
-    for input_file in source_files:
-        # todo: we don't need to load this twice (also in add_data_to_electrodes_obj
+    # todo: we don't need to load this twice (also in add_data_to_electrodes_obj
+    if meta_file is None:
         f = np.load(input_file)
-        print('{} loaded'.format(input_file))
-        now = time.time()
-        N = len(f['names'])
-        for obj_counter, (obj_name, data) in enumerate(zip(f['names'], f['data'])):
-            mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
-            obj_name = obj_name.astype(str)
-            # print(obj_name)
-            if bpy.data.objects.get(obj_name, None) is None:
-                print("{} doesn't exist!".format(obj_name))
-                continue
-            cur_obj = bpy.data.objects[obj_name]
-            for cond_ind, cond_str in enumerate(f['conditions']):
-                cond_str = cond_str.astype(str)
-                # Set the values to zeros in the first and last frame for current object(current label)
-                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
+        data = f['data']
+    else:
+        data = np.load(input_file)
+        f = np.load(meta_file)
+    print('{} loaded'.format(input_file))
+    now = time.time()
+    N = len(f['names'])
+    for obj_counter, (obj_name, data) in enumerate(zip(f['names'], data)):
+        mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
+        obj_name = obj_name.astype(str)
+        # print(obj_name)
+        if bpy.data.objects.get(obj_name, None) is None:
+            print("{} doesn't exist!".format(obj_name))
+            continue
+        cur_obj = bpy.data.objects[obj_name]
+        for cond_ind, cond_str in enumerate(f['conditions']):
+            cond_str = cond_str.astype(str)
+            # Set the values to zeros in the first and last frame for current object(current label)
+            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(data[0]) + 2)
 
-                print('keyframing ' + obj_name + ' object in condition ' + cond_str)
-                # For every time point insert keyframe to current object
-                for ind, timepoint in enumerate(data[:, cond_ind]):
-                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
-                # remove the orange keyframe sign in the fcurves window
-                fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
-                mod = fcurves.modifiers.new(type='LIMITS')
-        conditions.extend(f['conditions'])
+            print('keyframing ' + obj_name + ' object in condition ' + cond_str)
+            # For every time point insert keyframe to current object
+            for ind, timepoint in enumerate(data[:, cond_ind]):
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
+            # remove the orange keyframe sign in the fcurves window
+            fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
+            mod = fcurves.modifiers.new(type='LIMITS')
+    conditions = f['conditions']
     print('Finished keyframing!!')
     return conditions
 
 
-def add_data_to_electrodes_parent_obj(self, parent_obj, source_files, stat):
+def add_data_to_electrodes_parent_obj(parent_obj, input_file, meta_file=None, stat=STAT_DIFF):
     # todo: merge with add_data_to_brain_parent_obj, same code
     parent_obj.animation_data_clear()
     sources = {}
-    for input_file in source_files:
-        if not op.isfile(input_file):
-            self.report({'ERROR'}, "Can't load file {}!".format(input_file))
-            continue
-        print('loading {}'.format(input_file))
+    if not op.isfile(input_file):
+        raise Exception("Can't load file {}!".format(input_file))
+    print('loading {}'.format(input_file))
+    if meta_file is None:
         f = np.load(input_file)
-        # for obj_name, data in zip(f['names'], f['data']):
-        all_data_stat = f['stat'] if 'stat' in f else [None] * len(f['names'])
-        for obj_name, data, data_stat in zip(f['names'], f['data'], all_data_stat):
-            obj_name = obj_name.astype(str)
-            if data_stat is None:
-                if stat == STAT_AVG:
-                    data_stat = np.squeeze(np.mean(data, axis=1))
-                elif stat == STAT_DIFF:
-                    data_stat = np.squeeze(np.diff(data, axis=1))
-            sources[obj_name] = data_stat
+        data = f['data']
+    else:
+        f = np.load(meta_file)
+        data = np.load(input_file)
+    # for obj_name, data in zip(f['names'], f['data']):
+    all_data_stat = f['stat'] if 'stat' in f else [None] * len(f['names'])
+    for obj_name, data, data_stat in zip(f['names'], data, all_data_stat):
+        obj_name = obj_name.astype(str)
+        if data_stat is None:
+            if stat == STAT_AVG:
+                data_stat = np.squeeze(np.mean(data, axis=1))
+            elif stat == STAT_DIFF:
+                data_stat = np.squeeze(np.diff(data, axis=1))
+        sources[obj_name] = data_stat
 
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
@@ -642,17 +649,28 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mu.get_user_fol()
-        source_file = op.join(base_path, 'electrodes', 'electrodes_data_{}.npz'.format(
+        source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}.npz'.format(
+            '_bipolar' if bpy.context.scene.bipolar else '',
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
         if not op.isfile(source_file):
-            source_file = op.join(base_path, 'electrodes', 'electrodes_data.npz')
+            source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_data.npy'.format(
+                '_bipolar' if bpy.context.scene.bipolar else '',
+                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+            colors_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_colors.npy'.format(
+                '_bipolar' if bpy.context.scene.bipolar else '',
+                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+            meta_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_meta.npz'.format(
+                '_bipolar' if bpy.context.scene.bipolar else '',
+                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+            # source_file = op.join(base_path, 'electrodes', 'electrodes_data.npz')
+
         if not op.isfile(source_file):
             print('No electrodes data file!')
         else:
             print('Loading electordes data from {}'.format(source_file))
-            conditions = add_data_to_electrodes([source_file])
+            conditions = add_data_to_electrodes(source_file, meta_file)
             selection_panel.set_conditions_enum(conditions)
-            add_data_to_electrodes_parent_obj(self, parent_obj, [source_file], STAT_DIFF)
+            add_data_to_electrodes_parent_obj(parent_obj, source_file, meta_file)
             bpy.types.Scene.electrodes_data_exist = True
             if bpy.data.objects.get(' '):
                 bpy.context.scene.objects.active = bpy.data.objects[' ']

@@ -21,6 +21,11 @@ def save_msit_single_trials_data(subject, bipolar):
     elecs_preproc.main(subject, args)
 
 
+def load_edf_data():
+    '-s mg80b -t seizure -a laus250 -b 0 -f create_raw_data_for_blender --raw_fname seizure_1.edf --start_time 17:25:02 --seizure_time 17:25:48 --window_length 10 --baseline_delta 20'
+    pass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)

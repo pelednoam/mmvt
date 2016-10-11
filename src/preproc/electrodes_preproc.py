@@ -511,15 +511,32 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
     labels = [c[1] for c in channels_tup]
     for cond_id, cond in enumerate(conds):
         cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
+        C, T = cond_data.shape
         if cond_id == 0:
-            data = np.zeros((cond_data.shape[0], cond_data.shape[1], len(conds)))
+            data = np.zeros((C, T, len(conds)))
+        if cond['name'] == 'baseline':
+            baseline = np.mean(cond_data, 1)
         data[:, :, cond_id] = cond_data
 
+    # x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
+    # plt.figure()
+    # plt.plot(data[10, :, 0])
+    # plt.plot(data[10, :, 1], 'r')
+    data[:, :, 0] -= np.tile(baseline, (T, 1)).T
+    data[:, :, 1] -= np.tile(baseline, (T, 1)).T
+    # plt.figure()
+    # plt.plot(data[10, :, 0])
+    # plt.plot(data[10, :, 1], 'r')
+
+    # for l in range(C):
+    #     for c in range(data.shape[2]):
+    #         x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
     conditions = [c['name'] for c in conds]
     data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
-        '_bipolar' if bipolar else '', STAT_NAME[stat]))
+    fol = op.join(BLENDER_ROOT_DIR, subject, 'electrodes')
+    output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if bipolar else '', STAT_NAME[stat]))
+
     calc_colors = partial(
         utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
         flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
@@ -530,12 +547,28 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
                  times=times)
     else:
         colors = calc_colors(stat_data)
-        np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
-
+        # try:
+        #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
+        # except:
+        np.savez(op.join(fol, 'electrodes{}_data_{}_meta.npz'.format('_bipolar' if bipolar else '', STAT_NAME[stat])),
+                 names=labels, conditions=conditions, times=times)
+        np.save(op.join(fol, 'electrodes{}_data_{}_data.npy'.format('_bipolar' if bipolar else '', STAT_NAME[stat])), data)
+        np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if bipolar else '', STAT_NAME[stat])), colors)
     # if do_plot:
     #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')
     #     utils.make_dir(figs_fol)
     #     plot_stat_data(data, conds, labels, figs_fol)
+
+
+def calc_seizure_times(start_time, seizure_time, window_length, seizure_onset_time, baseline_delta, time_format='%H:%M:%S'):
+    from datetime import datetime
+    start_time = datetime.strptime(start_time, time_format)
+    seizure_time = datetime.strptime(seizure_time, time_format) - start_time
+    seizure_start_t = seizure_time.seconds - seizure_onset_time
+    seizure_end_t = seizure_start_t + window_length
+    baseline_start_t = seizure_start_t - baseline_delta
+    baseline_end_t = baseline_start_t + window_length
+    return seizure_start_t, seizure_end_t, baseline_start_t, baseline_end_t
 
 
 def plot_stat_data(data, conds, channels, figs_fol):
@@ -755,6 +788,12 @@ def set_args(args):
     elif args.task == 'MSIT':
         args.conditions = ['noninterference', 'interference']
     elif args.task == 'seizure':
+        if args.start_time != '':
+            seizure_start_t, seizure_end_t, baseline_start_t, baseline_end_t = \
+                calc_seizure_times(args.start_time, args.seizure_time, args.window_length, args.seizure_onset_time,
+                                   args.baseline_delta, args.time_format)
+            args.from_t = [baseline_start_t, seizure_start_t]
+            args.to_t = [baseline_end_t, seizure_end_t]
         args.conditions = [dict(name='baseline', from_t=args.from_t[0], to_t=args.to_t[0]),
                       dict(name='seizure', from_t=args.from_t[1], to_t=args.to_t[1])]
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
@@ -811,22 +850,34 @@ def read_cmd_args(argv=None):
     parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--good_channels', help='good channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--bad_channels', help='bad channels', required=False, default='', type=au.str_arr_type)
-    parser.add_argument('--from_t', help='from_t', required=False, default=0, type=float) # was -500
-    parser.add_argument('--to_t', help='to_t', required=False, default=0, type=float) # was 2000
+    parser.add_argument('--from_t', help='from_t', required=False, default='0', type=au.float_arr_type)# float) # was -500
+    parser.add_argument('--to_t', help='to_t', required=False, default='0', type=au.float_arr_type) # was 2000
     parser.add_argument('--from_t_ind', help='from_t_ind', required=False, default=0, type=int) # was -500
     parser.add_argument('--to_t_ind', help='to_t_ind', required=False, default=-1, type=int) # was 2000
     parser.add_argument('--indices_shift', help='indices_shift', required=False, default=0, type=int) # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
-    parser.add_argument('--raw_fname', help='raw fname', required=False, default='')
+    parser.add_argument('--raw_fname', help='raw fname', required=False, default='no_raw_fname_given')
     parser.add_argument('--stat', help='stat', required=False, default=STAT_DIFF, type=int)
     parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
     parser.add_argument('--moving_average_window_size', help='', required=False, default=0, type=int)
     parser.add_argument('--field_cond_template', help='', required=False, default='{}')
     parser.add_argument('--input_type', help='', required=False, default='ERP')
     parser.add_argument('--input_matlab_fname', help='', required=False, default='')
+
+    parser.add_argument('--start_time', help='', required=False, default='')
+    parser.add_argument('--seizure_time', help='', required=False, default='')
+    parser.add_argument('--window_length', help='', required=False, default=0, type=float)
+    parser.add_argument('--seizure_onset_time', help='', required=False, default=0, type=float)
+    parser.add_argument('--baseline_delta', help='', required=False, default=0, type=float)
+    parser.add_argument('--time_format', help='', required=False, default='%H:%M:%S')
+
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser, argv))
+    for field in ['from_t', 'to_t']:
+        if len(args[field]) == 1:
+            args[field] = args[field][0]
+
     print(args)
     return args
 

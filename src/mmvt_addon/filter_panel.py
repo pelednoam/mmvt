@@ -114,6 +114,9 @@ def de_select_electrode(obj, call_create_and_set_material=True):
     # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
     if obj.name in FilteringMakerPanel.electrodes_colors:
         FilteringMakerPanel.addon.object_coloring(obj, FilteringMakerPanel.electrodes_colors[obj.name])
+        obj.active_material.diffuse_color = FilteringMakerPanel.electrodes_colors[obj.name][:3]
+
+
     # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
 
 
@@ -326,16 +329,17 @@ class Filtering(bpy.types.Operator):
     filter_objects = []
     filter_values = []
 
-    def get_object_to_filter(self, source_files):
-        data, names = [], []
-        for input_file in source_files:
-            try:
-                f = np.load(input_file)
-                data.append(f['data'])
-                names.extend([name.astype(str) for name in f['names']])
-            except:
-                mu.message(self, "Can't load {}!".format(input_file))
-                return None, None
+    def get_object_to_filter(self, source_files, data=None, names=None):
+        if data is None:
+            data, names = [], []
+            for input_file in source_files:
+                try:
+                    f = np.load(input_file)
+                    data.append(f['data'])
+                    names.extend([name.astype(str) for name in f['names']])
+                except:
+                    mu.message(self, "Can't load {}!".format(input_file))
+                    return None, None, None
 
         print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
@@ -344,17 +348,18 @@ class Filtering(bpy.types.Operator):
             self.topK = min(self.topK, len(names))
         print(self.type_of_func)
         filter_func = get_func(self.type_of_func)
-        d = np.vstack((d for d in data))
+        # d = np.vstack((d for d in data))
+        d = data
         print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
-    def filter_electrodes(self, current_file_to_upload):
+    def filter_electrodes(self, data, meta):
         print('filter_electrodes')
-        source_files = [op.join(self.current_activity_path, current_file_to_upload)]
-        objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
+        # source_files = [op.join(self.current_activity_path, current_file_to_upload)]
+        objects_indices, names, self.filter_values = self.get_object_to_filter([], data, meta['names'])
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         if objects_indices is None:
             return
@@ -446,7 +451,16 @@ class Filtering(bpy.types.Operator):
         # print(self.current_root_path)
         # source_files = ["/homes/5/npeled/space3/MMVT/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
-            data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_*.npz'))
+            fol = op.join(mu.get_user_fol(), 'electrodes')
+            meta_files = glob.glob(op.join(fol, 'electrodes_data_*meta.npz'))
+            if len(meta_files) > 0:
+                data_files = glob.glob(op.join(fol, 'electrodes_data_*data.npy'))
+                data = np.load(data_files[0])
+                meta = np.load(meta_files[0])
+            else:
+                data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_*.npz'))
+                meta = np.load(data_files[0])
+                data = meta['data']
             if len(data_files) == 0:
                 print('No data files!')
             elif len(data_files) == 1:
@@ -457,7 +471,7 @@ class Filtering(bpy.types.Operator):
                 # todo: should decide which one to pick
                 # current_file_to_upload = current_file_to_upload.format(
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
-            self.filter_electrodes(current_file_to_upload)
+            self.filter_electrodes(data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
 

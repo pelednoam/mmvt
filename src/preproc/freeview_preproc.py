@@ -195,7 +195,7 @@ def read_cmd_args(argv):
     parser = argparse.ArgumentParser(description='MMVT freeview preprocessing')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=bool)
+    parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--create_volume_file', help='create_volume_file', required=False, default=1, type=au.is_true)
@@ -214,7 +214,7 @@ def read_cmd_args(argv):
 
 
 if __name__ == '__main__':
-    args = read_cmd_args()
+    args = read_cmd_args(None)
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
