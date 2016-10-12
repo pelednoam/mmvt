@@ -495,6 +495,8 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
                                 norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
                                 flip_cm_small=True, moving_average_win_size=0, stat = STAT_DIFF, do_plot=False):
     import mne.io
+    import numpy.matlib as npm
+
     edf_fname = op.join(ELECTRODES_DIR, subject, edf_name)
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
@@ -519,18 +521,11 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
         data[:, :, cond_id] = cond_data
 
     # x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
-    # plt.figure()
-    # plt.plot(data[10, :, 0])
-    # plt.plot(data[10, :, 1], 'r')
+    if args.ref_elec != '':
+        ref_ind = labels.index(args.ref_elec)
+        data -= np.tile(data[ref_ind], (C, 1, 1))
     data[:, :, 0] -= np.tile(baseline, (T, 1)).T
     data[:, :, 1] -= np.tile(baseline, (T, 1)).T
-    # plt.figure()
-    # plt.plot(data[10, :, 0])
-    # plt.plot(data[10, :, 1], 'r')
-
-    # for l in range(C):
-    #     for c in range(data.shape[2]):
-    #         x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
     conditions = [c['name'] for c in conds]
     data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
@@ -640,6 +635,34 @@ def electrodes_3d_scatter_plot(pos, pos2=None):
     plt.show()
 
 
+def get_electrodes_groups(subject, bipolar):
+    electrodes, _ = read_electrodes_file(subject, bipolar)
+    groups = set()
+    for elc in electrodes:
+        groups.add(utils.elec_group(elc, bipolar))
+    return electrodes, groups
+
+
+def create_electrodes_groups_coloring(subject, bipolar, coloring_fname='electrodes_groups_coloring.csv'):
+    electrodes, groups = get_electrodes_groups(subject, bipolar)
+    colors_rgb_and_names = cu.get_distinct_colors_and_names(len(groups) - 1, boynton=True)
+    group_colors = dict()
+    coloring_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', coloring_fname)
+    coloring_names_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'electrodes_groups_coloring_names.csv')
+    with open(coloring_names_fname, 'w') as colors_names_file:
+        for group, (color_rgb, color_name) in zip(groups, colors_rgb_and_names):
+            if 'ref' in group.lower():
+                continue
+            group_colors[group] = color_rgb
+            colors_names_file.write('{},{}\n'.format(group, color_name))
+    with open(coloring_fname, 'w') as colors_file:
+        for elc in electrodes:
+            if 'ref' in elc.lower():
+                continue
+            elc_group = utils.elec_group(elc, bipolar)
+            colors_file.write('{},{},{},{}\n'.format(elc, *group_colors[elc_group]))
+
+
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
         p_threshold=0.05, legend_name='', coloring_fname=''):
     elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
@@ -719,7 +742,6 @@ def get_rois_colors(subject, atlas, rois):
         labels_colors_rgbs = np.genfromtxt(lables_colors_rgbs_fname, dtype=str, delimiter=',')
         labels_colors_names = np.genfromtxt(lables_colors_names_fname, dtype=str, delimiter=',')
     for roi in not_white_rois:
-        # todo: set the labels colors to be the same in both hemis
         if labels_colors_exist:
             roi_inds = np.where(labels_colors_rgbs[:, 0] == '{}-rh'.format(roi))[0]
             if len(roi_inds) > 0:
@@ -796,6 +818,7 @@ def set_args(args):
             args.to_t = [baseline_end_t, seizure_end_t]
         args.conditions = [dict(name='baseline', from_t=args.from_t[0], to_t=args.to_t[0]),
                       dict(name='seizure', from_t=args.from_t[1], to_t=args.to_t[1])]
+        print(args.conditions)
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
     else:
         if isinstance(args.from_t, Iterable) and isinstance(args.to_t, Iterable):
@@ -824,6 +847,9 @@ def main(subject, args):
 
     if utils.should_run(args, 'create_electrodes_labeling_coloring'):
         create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
+
+    if utils.should_run(args, 'create_electrodes_groups_coloring'):
+        create_electrodes_groups_coloring(subject, args.bipolar, args.electrodes_groups_coloring_fname)
 
     if utils.should_run(args, 'transform_electrodes_to_mni'):
         transform_electrodes_to_mni(subject, args)
@@ -857,6 +883,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--indices_shift', help='indices_shift', required=False, default=0, type=int) # was 1000
     parser.add_argument('--conditions', help='conditions', required=False, default='')
     parser.add_argument('--raw_fname', help='raw fname', required=False, default='no_raw_fname_given')
+    parser.add_argument('--ref_elec', help='referece electrode', required=False, default='')
     parser.add_argument('--stat', help='stat', required=False, default=STAT_DIFF, type=int)
     parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
     parser.add_argument('--moving_average_window_size', help='', required=False, default=0, type=int)
@@ -871,6 +898,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--baseline_delta', help='', required=False, default=0, type=float)
     parser.add_argument('--time_format', help='', required=False, default='%H:%M:%S')
 
+    parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser, argv))

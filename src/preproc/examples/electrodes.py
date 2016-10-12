@@ -22,7 +22,7 @@ def save_msit_single_trials_data(subject, bipolar):
 
 
 def load_edf_data():
-    '-s mg80b -t seizure -a laus250 -b 0 -f create_raw_data_for_blender --raw_fname seizure_1.edf --start_time 17:25:02 --seizure_time 17:25:48 --window_length 10 --baseline_delta 20'
+    '-s mg80b -t seizure -a laus250 -b 0 -f create_raw_data_for_blender --raw_fname seizure_1.edf --start_time 17:25:02 --seizure_time 17:25:48 --window_length 10 --baseline_delta 10 --seizure_onset_time 5 --ref_elec REF2'
     pass
 
 

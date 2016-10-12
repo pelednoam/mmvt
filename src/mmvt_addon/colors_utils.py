@@ -13,7 +13,7 @@ kelly_colors_dic = dict(vivid_yellow=(255, 179, 0),
                     #very_light_blue=(166, 189, 215),
                     vivid_red=(193, 0, 32),
                     grayish_yellow=(206, 162, 98),
-                    medium_gray=(129, 112, 102),
+                    # medium_gray=(129, 112, 102),
 
                     # these aren't good for people with defective color vision:
                     vivid_green=(0, 125, 52),
@@ -33,7 +33,7 @@ for k in sorted(list(kelly_colors_dic.keys())):
     kelly_colors[k] = kelly_colors_dic[k]
 
 # Boynton's list of 11 colors that are almost never confused.
-boynton_colors = ["yellow", "green", "magenta", "blue", "red", "pink", "orange", "brown", "gray"]
+boynton_colors = ["yellow", "green", "magenta", "blue", "red", "deepskyblue", "orange", "brown", 'darkblue', 'aquamarine', 'chocolate', 'indigo']#, "gray"]
 
 
 def get_distinct_colors(colors_num=0):
@@ -52,8 +52,8 @@ def get_distinct_colors_names(colors_num=0):
         return cycle(list(kelly_colors.keys()))
 
 
-def get_distinct_colors_and_names(colors_num=0):
-    if colors_num <= len(boynton_colors) and colors_num != 0:
+def get_distinct_colors_and_names(colors_num=0, boynton=False):
+    if (colors_num <= len(boynton_colors) and colors_num != 0) or boynton:
         rgbs = (np.array([name_to_rgb(c) for c in boynton_colors])).tolist()
         names = boynton_colors
     else:

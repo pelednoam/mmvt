@@ -57,9 +57,11 @@ def select_brain_objects(parent_obj_name, children):
 def set_conditions_enum(conditions):
     conditions = mu.unique_save_order(conditions)
     selection_items = [(c, '{}'.format(c), '', ind) for ind, c in enumerate(conditions)]
-    bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(
-        items=selection_items, description="Condition Selection", update=conditions_selection_update)
-
+    try:
+        bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(
+            items=selection_items, description="Condition Selection", update=conditions_selection_update)
+    except:
+        print("Cant register conditions_selection!")
 
 def set_selection_type(selection_type):
     bpy.context.scene.selection_type = selection_type

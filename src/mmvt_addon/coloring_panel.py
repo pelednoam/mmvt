@@ -97,19 +97,19 @@ def clear_object_vertex_colors(cur_obj):
         mesh.vertex_colors['Col'].active_render = True
 
 
-
 # todo: do something with the threshold parameter
-def color_object_homogeneously(data, postfix_str='', threshold=0):
+def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, colors=None):
     if data is None:
         print('color_object_homogeneously: No data to color!')
         return
-
+    if names is None:
+        data, names, colors, conditions  = data['data'], data['names'], data['colors'], data['conditions']
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
-    for obj_name, object_colors, values in zip(data['names'], data['colors'], data['data']):
+    for obj_name, object_colors, values in zip(names, colors, data):
         obj_name = obj_name.astype(str)
         if bpy.context.scene.selection_type == 'spec_cond':
-            cond_inds = np.where(data['conditions'] == bpy.context.scene.conditions_selection)[0]
+            cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
             if len(cond_inds) == 0:
                 print("!!! Can't find the current condition in the data['conditions'] !!!")
                 return
@@ -561,9 +561,20 @@ def color_electrodes():
     _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
-    data = np.load(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
-        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
-    color_object_homogeneously(data, threshold=threshold)
+    stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
+    fol = op.join(mu.get_user_fol(), 'electrodes')
+    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
+    if op.isfile(data_file):
+        data = np.load(data_file)
+        color_object_homogeneously(data, threshold=threshold)
+    else:
+        data_file = op.join(fol, 'electrodes_data_{}_data.npy'.format(stat))
+        data = np.load(data_file)
+        colors = np.load(op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat)))
+        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
+        names = meta_data['names']
+        color_object_homogeneously(data, '', threshold, names=names, colors=colors)
+
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
     #     bpy.ops.object.editmode_toggle()
@@ -777,6 +788,8 @@ class ColoringMakerPanel(bpy.types.Panel):
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
+            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))) or \
+            op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_data.npy'.format(
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
         electrodes_stim_files_exist = len(glob.glob(op.join(
             mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0

@@ -356,19 +356,21 @@ def get_electrodes_sources_data():
 
 
 def init_plotting():
-    data_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
-        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-    meta_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_meta.npy'.format(
-        'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+    stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
+    fol = op.join(mu.get_user_fol(), 'electrodes')
+    data_fname = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
+    meta_fname = op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat))
+    colors_fname = op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat))
     d = None
     if op.isfile(data_fname):
         d = np.load(data_fname)
+        PlayPanel.electrodes_colors = d['colors']
     elif op.isfile(meta_fname):
-        d = np.load(data_fname)
+        d = np.load(meta_fname)
+        PlayPanel.electrodes_colors = np.load(colors_fname)
     else:
         print('No electrodes data file!')
     if not d is None:
-        PlayPanel.electrodes_colors = d['colors']
         PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
     # Warning: Not sure why we call this line, it changes the brain to the rendered brain
     # PlayPanel.addon.init_activity_map_coloring('MEG')
