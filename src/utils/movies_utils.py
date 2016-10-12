@@ -117,7 +117,10 @@ def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, ima
         # You might want to use a static ffmpeg if your ffmepg version doesn't support the start_number flag, like:
         # ffmpeg_cmd = '~/space1/Downloads/ffmpeg-git-static/ffmpeg'
         combine_images_cmd += '-start_number {start_number} '
-    combine_images_cmd += '-i {images_prefix}{images_format}.{images_type} -c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
+    combine_images_cmd += '-i {images_prefix}{images_format}.{images_type} '
+    # http://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
+    combine_images_cmd += '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" '
+    combine_images_cmd += '-c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
 
