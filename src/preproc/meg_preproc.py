@@ -28,18 +28,16 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
-SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
+SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
 MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
-    NOISE_COV, DATA_CSD, NOISE_CSD = [''] * 34
-# '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', \
-#             '', '', '', '', '', '', '', '', ''
+    NOISE_COV, DATA_CSD, NOISE_CSD = [''] * 35
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
                  cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False):
-    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
+    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
         MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
     if files_includes_cond:
@@ -70,7 +68,10 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
                             cleaning_method=cleaning_method, contrast=contrast)
     _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl',
                             cleaning_method=cleaning_method, contrast=contrast)
+    _get_pkl_name_no_cond = partial(_get_pkl_name, cond='')
+
     RAW = _get_fif_name('raw', contrast='', cond='')
+    INFO = _get_pkl_name_no_cond('raw-info')
     EVE = _get_txt_name('eve', cond='') if events_fname == '' else events_fname
     EVO = _get_fif_name('ave')
     COV = _get_fif_name('cov')
@@ -154,6 +155,8 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
 def load_raw(bad_channels=[], l_freq=None, h_freq=None):
     # read the data
     raw = mne.io.read_raw_fif(RAW, preload=True)
+    if not op.isfile(INFO):
+        utils.save(raw.info, INFO)
     if len(bad_channels) > 0:
         raw.info['bads'] = args.bad_channels
         if l_freq or h_freq:
@@ -1329,6 +1332,31 @@ def test_labels_coloring(subject, atlas):
         # plt.show()
 
 
+def read_eeg_sensors_layout(mri_subject):
+    if not op.isfile(INFO):
+        raw = mne.io.read_raw_fif(RAW)
+        info = raw.info
+        utils.save(info, INFO)
+    else:
+        info = utils.load(INFO)
+    eeg_picks = mne.io.pick.pick_types(info, meg=False, eeg=True)
+    eeg_pos = np.array([info['chs'][k]['loc'][:3] for k in eeg_picks])
+    eeg_names = np.array([info['ch_names'][k] for k in eeg_picks])
+    fol = op.join(MMVT_DIR, mri_subject, 'eeg')
+    utils.make_dir(fol)
+    output_fname = op.join(fol, 'eeg_positions.npz')
+    if len(eeg_pos) > 0:
+        trans_files = glob.glob(op.join(SUBJECT_MEG_FOLDER, '*COR*.fif'))
+        if len(trans_files) == 1:
+            trans = mne.transforms.read_trans(trans_files[0])
+            head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
+            eeg_pos = mne.transforms.apply_trans(head_mri_t, eeg_pos)
+            eeg_pos *= 1000
+            np.savez(output_fname, pos=eeg_pos, names=eeg_names)
+            return True
+    return False
+
+
 def misc():
     # check_labels()
     # Morph and move to mg79
@@ -1514,6 +1542,9 @@ def main(subject, mri_subject, inverse_method, args):
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
+
+    if utils.should_run(args, 'read_eeg_sensors_layout'):
+        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject)
 
     # functions that aren't in the main pipeline
 

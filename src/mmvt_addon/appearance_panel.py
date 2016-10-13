@@ -13,7 +13,8 @@ def setup_layers():
     for layer_ind in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[layer_ind] = layer_ind == _addon().EMPTY_LAYER
 
-    bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = bpy.context.scene.appearance_show_electrodes_layer
+    bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = bpy.context.scene.show_hide_electrodes
+    bpy.context.scene.layers[_addon().EEG_LAYER] = bpy.context.scene.show_hide_eeg
     bpy.context.scene.layers[_addon().ROIS_LAYER] = is_rois()
     bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
@@ -34,6 +35,10 @@ def change_view3d():
         if bpy.context.screen.areas[ii].type == 'VIEW_3D':
             bpy.context.screen.areas[ii].spaces[0].viewport_shade = viewport_shade_str
             break
+
+
+def show_hide_eeg(do_show):
+    bpy.context.scene.layers[_addon().EEG_LAYER] = do_show
 
 
 def show_hide_electrodes(do_show):
@@ -179,10 +184,10 @@ def appearance_draw(self, context):
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
-        # layout.prop(context.scene, 'appearance_show_electrodes_layer', text="Show electrodes", icon='RESTRICT_VIEW_OFF')
+    if bpy.data.objects.get('EEG_electrodes'):
+        show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG')
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
-        # layout.prop(context.scene, 'appearance_show_connections_layer', text="Show connections", icon='RESTRICT_VIEW_OFF')
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
@@ -261,8 +266,23 @@ bpy.types.Scene.surface_type = bpy.props.EnumProperty(
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(
     default=False, description="Show electrodes")
 
+bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(
+    default=False, description="Show EEG")
+
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
+
+
+class ShowHideEEG(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_eeg"
+    bl_label = "mmvt show_hide_eeg"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.show_hide_eeg = not bpy.context.scene.show_hide_eeg
+        show_hide_eeg(bpy.context.scene.show_hide_eeg)
+        return {"FINISHED"}
 
 
 class ShowHideElectrodes(bpy.types.Operator):
@@ -321,6 +341,7 @@ def register():
         unregister()
         bpy.utils.register_class(AppearanceMakerPanel)
         bpy.utils.register_class(ShowHideElectrodes)
+        bpy.utils.register_class(ShowHideEEG)
         bpy.utils.register_class(ShowHideConnections)
         bpy.utils.register_class(SelectionListener)
     except:
@@ -331,6 +352,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(AppearanceMakerPanel)
         bpy.utils.unregister_class(ShowHideElectrodes)
+        bpy.utils.unregister_class(ShowHideEEG)
         bpy.utils.unregister_class(ShowHideConnections)
         bpy.utils.unregister_class(SelectionListener)
     except:

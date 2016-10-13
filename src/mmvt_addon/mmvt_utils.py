@@ -32,7 +32,7 @@ print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
-    OBJ_TYPE_ELECTRODE) = range(6)
+    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG) = range(7)
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -500,18 +500,20 @@ def check_obj_type(obj_name):
     obj = bpy.data.objects.get(obj_name, None)
     if obj is None:
         obj_type = None
-    elif obj.parent == bpy.data.objects['Cortex-lh']:
+    elif obj.parent.name == 'Cortex-lh':
         obj_type = OBJ_TYPE_CORTEX_LH
-    elif obj.parent == bpy.data.objects['Cortex-rh']:
+    elif obj.parent.name == 'Cortex-rh':
         obj_type = OBJ_TYPE_CORTEX_RH
-    elif obj.parent == bpy.data.objects['Cortex-inflated-lh']:
+    elif obj.parent.name == 'Cortex-inflated-lh':
         obj_type = OBJ_TYPE_CORTEX_INFLATED_LH
-    elif obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+    elif obj.parent.name == 'Cortex-inflated-rh':
         obj_type = OBJ_TYPE_CORTEX_INFLATED_RH
-    elif obj.parent == bpy.data.objects['Subcortical_structures']:
+    elif obj.parent.name == 'Subcortical_structures':
         obj_type = OBJ_TYPE_SUBCORTEX
-    elif obj.parent == bpy.data.objects['Deep_electrodes']:
+    elif obj.parent.name == 'Deep_electrodes':
         obj_type = OBJ_TYPE_ELECTRODE
+    elif obj.parent.name == 'EEG_electrodes':
+        obj_type = OBJ_TYPE_EEG
     else:
         obj_type = None
     return obj_type

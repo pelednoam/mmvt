@@ -11,6 +11,7 @@ STAT_AVG, STAT_DIFF = range(2)
 
 bpy.types.Scene.brain_imported = False
 bpy.types.Scene.electrodes_imported = False
+bpy.types.Scene.eeg_imported = False
 bpy.types.Scene.brain_data_exist = False
 bpy.types.Scene.electrodes_data_exist = False
 
@@ -277,27 +278,20 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def import_electrodes(input_file, bipolar='', electrode_size=None):
+def import_electrodes(input_file, electrodes_layer, bipolar='', electrode_size=None, parnet_name='Deep_electrodes'):
     if not electrode_size is None:
         bpy.context.scene.electrodes_radius = electrode_size
     if bipolar != '':
         bpy.context.scene.bipolar = bool(bipolar)
-    mu.delete_hierarchy('Deep_electrodes')
-    print('Adding deep electrodes')
+    mu.delete_hierarchy(parnet_name)
     f = np.load(input_file)
 
-    deep_electrodes_layer = _addon().ELECTRODES_LAYER
     electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
-    create_empty_if_doesnt_exists('Deep_electrodes', DataMakerPanel.addon.BRAIN_EMPTY_LAYER, layers_array, 'Deep_electrodes')
-
-    # if bpy.data.objects.get("Deep_electrodes") is None:
-    #     layers_array[BRAIN_EMPTY_LAYER] = True
-    #     bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
-    #     bpy.data.objects['Empty'].name = 'Deep_electrodes'
+    create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
 
     layers_array = [False] * 20
-    layers_array[deep_electrodes_layer] = True
+    layers_array[electrodes_layer] = True
 
     for (x, y, z), name in zip(f['pos'], f['names']):
         elc_name = name.astype(str)
@@ -307,8 +301,7 @@ def import_electrodes(input_file, bipolar='', electrode_size=None):
         mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
         cur_obj = bpy.data.objects[elc_name]
         cur_obj.select = True
-        cur_obj.parent = bpy.data.objects['Deep_electrodes']
-        # cur_obj.active_material = bpy.data.materials['Deep_electrode_mat']
+        cur_obj.parent = bpy.data.objects[parnet_name]
         mu.create_and_set_material(cur_obj)
 
 
@@ -320,8 +313,21 @@ class ImportElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         input_file = op.join(mu.get_user_fol(), 'electrodes',
                              '{}.npz'.format(bpy.context.scene.electrodes_positions_files))
-        import_electrodes(input_file)
+        import_electrodes(input_file, _addon().ELECTRODES_LAYER)
         bpy.types.Scene.electrodes_imported = True
+        print('Electrodes importing is Finished ')
+        return {"FINISHED"}
+
+
+class ImportEEG(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_importing"
+    bl_label = "import eeg"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+        import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_electrodes')
+        bpy.types.Scene.eeg_imported = True
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
 
@@ -698,6 +704,7 @@ class DataMakerPanel(bpy.types.Panel):
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
+        eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
         if len(electrodes_positions_files) > 0:
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
@@ -721,7 +728,8 @@ class DataMakerPanel(bpy.types.Panel):
                 select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
                 select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
                 layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
-
+        if op.isfile(eeg_sensors_positions_file):
+            col.operator("mmvt.eeg_importing", text="Import EEG", icon='COLOR_GREEN')
 
 def load_meg_evoked():
     evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
@@ -756,6 +764,7 @@ def register():
         bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
         bpy.utils.register_class(ImportElectrodes)
+        bpy.utils.register_class(ImportEEG)
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(AnatomyPreproc)
@@ -774,6 +783,7 @@ def unregister():
         bpy.utils.unregister_class(AddDataToBrain)
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
+        bpy.utils.unregister_class(ImportEEG)
         bpy.utils.unregister_class(ImportBrain)
         bpy.utils.unregister_class(AnatomyPreproc)
         bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
