@@ -14,7 +14,7 @@ def copy_resources_files(mmvt_root_dir):
     utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
     for color_map_file in glob.glob(op.join(resource_dir, 'color_maps', '*.npy')):
         new_file_name = op.join(mmvt_root_dir, 'color_maps', color_map_file.split(op.sep)[-1])
-        # print('Copy {} to {}'.format(color_map_file, new_file_name))
+        print('Copy {} to {}'.format(color_map_file, new_file_name))
         shutil.copy(color_map_file, new_file_name)
     files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt',
              'empty_subject.blend']
