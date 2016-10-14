@@ -4,15 +4,22 @@ import shutil
 import numpy as np
 import traceback
 from src.utils import utils
+import glob
 
 TITLE = 'MMVT Installation'
 
 
 def copy_resources_files(mmvt_root_dir):
     resource_dir = utils.get_resources_fol()
+    utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
+    for color_map_file in glob.glob(op.join(resource_dir, 'color_maps', '*.npy')):
+        new_file_name = op.join(mmvt_root_dir, 'color_maps', color_map_file.split(op.sep)[-1])
+        # print('Copy {} to {}'.format(color_map_file, new_file_name))
+        shutil.copy(color_map_file, new_file_name)
     files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt',
              'empty_subject.blend']
     for file_name in files:
+        # print('Copy {} to {}'.format(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name)))
         shutil.copy(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name))
     return np.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
 
@@ -114,13 +121,13 @@ def install_reqs():
 def main(args):
     # 1) Create links
     if utils.should_run(args, 'create_links'):
-        links_created = create_links(args.links_fol_name, args.gui)
+        links_created = create_links(args.links, args.gui)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
 
     # 2) Copy resources files
     if utils.should_run(args, 'copy_resources_files'):
-        links_dir = utils.get_links_dir(args.links_fol_name)
+        links_dir = utils.get_links_dir(args.links)
         mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
         resource_file_exist = copy_resources_files(mmvt_root_dir)
         if not resource_file_exist:
@@ -137,7 +144,7 @@ def main(args):
         install_reqs()
         print('Finish!')
 
-
+    #todo: Copy also the color maps into the mmvt folder
 if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
