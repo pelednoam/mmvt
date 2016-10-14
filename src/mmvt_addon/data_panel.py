@@ -658,6 +658,7 @@ class AddDataToElectrodes(bpy.types.Operator):
         source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bpy.context.scene.bipolar else '',
             'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+        meta_file = None
         if not op.isfile(source_file):
             source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_data.npy'.format(
                 '_bipolar' if bpy.context.scene.bipolar else '',
