@@ -26,7 +26,7 @@ def plot_blob(cluster_labels, faces_verts):
     hemi = cluster_labels['hemi']
     fMRIPanel.colors_in_hemis[hemi] = True
     activity = fMRIPanel.addon.get_fMRI_activity(hemi)
-    blob_activity = np.zeros((len(activity), 4))
+    blob_activity = np.ones((len(activity), 4))
     blob_activity[blob_vertices] = activity[blob_vertices]
     cur_obj = bpy.data.objects[hemi]
     fMRIPanel.addon.activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[hemi], 0, True)
