@@ -32,6 +32,13 @@ SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, FWD, FW
 MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
     NOISE_COV, DATA_CSD, NOISE_CSD = [''] * 35
 
+def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
+                      mmvt_dir, args):
+    return init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
+                 args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
+                 args.cleaning_method, args.contrast, subjects_meg_dir, args.task, subjects_mri_dir, mmvt_dir,
+                 args.fwd_no_cond)
+
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
@@ -196,7 +203,7 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
         epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
             baseline=baseline, preload=True, reject=reject)
         if '{cond}' in EPO:
-            for event in events.keys():
+            for event in epochs.event_id: #events.keys():
                 epochs[event].save(get_cond_fname(EPO, event))
         else:
             epochs.save(EPO)
@@ -219,25 +226,34 @@ def calc_evoked_necessary_files(args):
     return necessary_files
 
 
+def calc_evoked_args(events, args, raw=None):
+    return calc_evoked(events, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
+            args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
+            args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
+            args.reject_grad, args.reject_mag, args.reject_eog)
+
+
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name='',
                 calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
                 reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6,
                 bad_channels=[], l_freq=None, h_freq=None):
     # Calc evoked data for averaged data and for each condition
     try:
-        if '{cond}' in EPO:
-            epo_exist = True
-            epochs = {}
-            for event in events.keys():
-                if op.isfile(get_cond_fname(EPO, event)):
-                    epochs[event] = mne.read_epochs(get_cond_fname(EPO, event))
-                else:
-                    epo_exist = False
-                    break
-        else:
-            epo_exist = op.isfile(EPO) and not calc_epochs_from_raw
-            if epo_exist:
-                epochs = mne.read_epochs(EPO)
+        epo_exist = False
+        if not calc_epochs_from_raw:
+            if '{cond}' in EPO:
+                epo_exist = True
+                epochs = {}
+                for event in events.keys():
+                    if op.isfile(get_cond_fname(EPO, event)):
+                        epochs[event] = mne.read_epochs(get_cond_fname(EPO, event))
+                    else:
+                        epo_exist = False
+                        break
+            else:
+                epo_exist = op.isfile(EPO) and not calc_epochs_from_raw
+                if epo_exist:
+                    epochs = mne.read_epochs(EPO)
         if not epo_exist or calc_epochs_from_raw:
             if raw is None:
                 raw = load_raw(bad_channels, l_freq, h_freq)
@@ -1332,31 +1348,6 @@ def test_labels_coloring(subject, atlas):
         # plt.show()
 
 
-def read_eeg_sensors_layout(mri_subject):
-    if not op.isfile(INFO):
-        raw = mne.io.read_raw_fif(RAW)
-        info = raw.info
-        utils.save(info, INFO)
-    else:
-        info = utils.load(INFO)
-    eeg_picks = mne.io.pick.pick_types(info, meg=False, eeg=True)
-    eeg_pos = np.array([info['chs'][k]['loc'][:3] for k in eeg_picks])
-    eeg_names = np.array([info['ch_names'][k] for k in eeg_picks])
-    fol = op.join(MMVT_DIR, mri_subject, 'eeg')
-    utils.make_dir(fol)
-    output_fname = op.join(fol, 'eeg_positions.npz')
-    if len(eeg_pos) > 0:
-        trans_files = glob.glob(op.join(SUBJECT_MEG_FOLDER, '*COR*.fif'))
-        if len(trans_files) == 1:
-            trans = mne.transforms.read_trans(trans_files[0])
-            head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
-            eeg_pos = mne.transforms.apply_trans(head_mri_t, eeg_pos)
-            eeg_pos *= 1000
-            np.savez(output_fname, pos=eeg_pos, names=eeg_names)
-            return True
-    return False
-
-
 def misc():
     # check_labels()
     # Morph and move to mg79
@@ -1372,6 +1363,11 @@ def misc():
     # check_both_hemi_in_stc(events)
     # lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
     pass
+
+
+def get_fname_format_args(args):
+    return get_fname_format(
+        args.task, args.fname_format,args.fname_format_cond, args.conditions)
 
 
 def get_fname_format(task, fname_format='', fname_format_cond='', args_conditions=('all')):
@@ -1422,7 +1418,7 @@ def get_meg_files(subject, necessary_fnames, args, events):
     prepare_local_subjects_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
-def run_on_subjects(args):
+def run_on_subjects(args, main_func=None):
     subjects_flags, subjects_errors = {}, {}
     args.sftp_password = utils.get_sftp_password(
         args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
@@ -1436,7 +1432,9 @@ def run_on_subjects(args):
             print('*******************************************')
             print('subject: {}, atlas: {}'.format(subject, args.atlas))
             print('*******************************************')
-            flags = main(subject, mri_subject, inverse_method, args)
+            if main_func is None:
+                main_func = locals()['main']
+            flags = main_func(subject, mri_subject, inverse_method, args)
             subjects_flags[subject] = flags
         except:
             subjects_errors[subject] = traceback.format_exc()
@@ -1456,10 +1454,6 @@ def run_on_subjects(args):
 
 
 def main(subject, mri_subject, inverse_method, args):
-    if args.base_line_min is None and args.base_line_max is None:
-        baseline = None
-    else:
-        baseline = (args.base_line_min, args.base_line_max)
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
     if args.events_file_name != '':
@@ -1471,23 +1465,16 @@ def main(subject, mri_subject, inverse_method, args):
     prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
 
-    fname_format, fname_format_cond, conditions = get_fname_format(
-        args.task, args.fname_format,args.fname_format_cond, args.conditions)
-    init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
-                 args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
-                 args.cleaning_method, args.contrast, SUBJECTS_MEG_DIR, args.task, SUBJECTS_MRI_DIR, MMVT_DIR,
-                 args.fwd_no_cond)
+    fname_format, fname_format_cond, conditions = get_fname_format_args(args)
+    init_globals_args(
+        subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
     flags = {}
 
     if utils.should_run(args, 'calc_evoked'):
         necessary_files = calc_evoked_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_evoked'], evoked, epochs = calc_evoked(
-            conditions, args.t_min, args.t_max, baseline, raw, args.read_events_from_file,
-            args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
-            args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
-            args.reject_grad, args.reject_mag, args.reject_eog)
+        flags['calc_evoked'], evoked, epochs = calc_evoked_args(conditions, args)
 
     get_meg_files(subject, [INV], args, conditions)
     if args.overwrite_inv or not op.isfile(INV):
@@ -1510,7 +1497,7 @@ def main(subject, mri_subject, inverse_method, args):
     if utils.should_run(args, 'calc_stc_per_condition'):
         get_meg_files(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds = calc_stc_per_condition(
-            conditions, args.stc_t_min, args.stc_t_max, inverse_method, baseline, args.apply_SSP_projection_vectors,
+            conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
 
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
@@ -1542,9 +1529,6 @@ def main(subject, mri_subject, inverse_method, args):
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
-
-    if utils.should_run(args, 'read_eeg_sensors_layout'):
-        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject)
 
     # functions that aren't in the main pipeline
 
@@ -1646,6 +1630,11 @@ def read_cmd_args(argv=None):
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
         args.mri_subject = args.subject
+    if args.base_line_min is None and args.base_line_max is None:
+        args.baseline = None
+    else:
+        args.baseline = (args.base_line_min, args.base_line_max)
+
     # print(args)
     return args
 

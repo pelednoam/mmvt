@@ -103,7 +103,7 @@ def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, co
         print('color_object_homogeneously: No data to color!')
         return
     if names is None:
-        data, names, colors, conditions  = data['data'], data['names'], data['colors'], data['conditions']
+        data, names, colors, conditions = data['data'], data['names'], data['colors'], data['conditions']
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     for obj_name, object_colors, values in zip(names, colors, data):

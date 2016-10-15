@@ -1,0 +1,1 @@
+# -s ep001 -m mg78 -a laus250 -t MSIT --contrast interference --files_includes_cond 1 --read_events_from_file 1 --calc_epochs_from_raw 1 -f calc_evoked

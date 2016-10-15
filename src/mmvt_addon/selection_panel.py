@@ -24,6 +24,11 @@ def select_only_subcorticals():
     select_brain_objects('Subcortical_structures', bpy.data.objects['Subcortical_structures'].children)
 
 
+def select_all_eeg():
+    bpy.context.scene.filter_curves_type = 'EEG'
+    select_brain_objects('EEG_electrodes', bpy.data.objects['EEG_electrodes'].children)
+
+
 def select_all_electrodes():
     bpy.context.scene.filter_curves_type = 'Electrodes'
     select_brain_objects('Deep_electrodes', bpy.data.objects['Deep_electrodes'].children)
@@ -96,6 +101,25 @@ class SelectAllSubcorticals(bpy.types.Operator):
             mu.change_fcurves_colors([bpy.data.objects['Subcortical_structures']])
         else:
             mu.change_fcurves_colors(bpy.data.objects['Subcortical_structures'].children)
+        return {"FINISHED"}
+
+
+class SelectAllEEG(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_selection"
+    bl_label = "select eeg"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        select_all_eeg()
+        mu.unfilter_graph_editor()
+        # if bpy.context.scene.selection_type == 'diff':
+        #     mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
+        # elif bpy.context.scene.selection_type == 'spec_cond':
+        #     mu.filter_graph_editor(bpy.context.scene.conditions_selection)
+        # else:
+        mu.change_fcurves_colors(bpy.data.objects['EEG_electrodes'].children)
+        mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -182,6 +206,8 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(SelectAllSubcorticals.bl_idname, text="Select all subcorticals", icon = 'BORDER_RECT' )
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Select all Electrodes", icon='BORDER_RECT')
+        if bpy.data.objects.get('EEG_electrodes'):
+            layout.operator(SelectAllEEG.bl_idname, text="Select all EEG", icon='BORDER_RECT')
         if bpy.data.objects.get(connections_panel.PARENT_OBJ) and \
                 bpy.data.objects[connections_panel.PARENT_OBJ].animation_data:
             layout.operator(SelectAllConnections.bl_idname, text="Select all Connections", icon='BORDER_RECT')
@@ -202,6 +228,7 @@ def register():
         bpy.utils.register_class(ClearSelection)
         bpy.utils.register_class(SelectAllConnections)
         bpy.utils.register_class(SelectAllElectrodes)
+        bpy.utils.register_class(SelectAllEEG)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
         # print('Selection Panel was registered!')
@@ -216,6 +243,7 @@ def unregister():
         bpy.utils.unregister_class(ClearSelection)
         bpy.utils.unregister_class(SelectAllConnections)
         bpy.utils.unregister_class(SelectAllElectrodes)
+        bpy.utils.unregister_class(SelectAllEEG)
         bpy.utils.unregister_class(SelectAllSubcorticals)
         bpy.utils.unregister_class(SelectAllRois)
     except:

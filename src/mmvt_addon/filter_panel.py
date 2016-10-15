@@ -492,7 +492,8 @@ bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, descriptio
 bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
                                                   description="When to filter to")
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
-    items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2)],
+    items=[("MEG", "MEG time course", "", 1), ("Electrodes", " Electrodes time course", "", 2),
+        ("EEG", "EEG time course", "", 3)],
     description="Type of curve to be filtered")
 bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description="Filtering function")
     # items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),

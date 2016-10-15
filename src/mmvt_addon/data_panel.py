@@ -645,6 +645,16 @@ def _meg_evoked_files_update():
         bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=items, description="meg_evoked_types")
 
 
+class AddDataToEEG(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_add_data"
+    bl_label = "add data eeg"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        add_data_to_electrodes(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'),
+                               op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
+
+
 class AddDataToElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_add_data"
     bl_label = "add_data2 electrodes"
@@ -706,6 +716,7 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+        eeg_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
         if len(electrodes_positions_files) > 0:
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
@@ -731,6 +742,9 @@ class DataMakerPanel(bpy.types.Panel):
                 layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
         if op.isfile(eeg_sensors_positions_file):
             col.operator("mmvt.eeg_importing", text="Import EEG", icon='COLOR_GREEN')
+        # if op.isfile(eeg_data):
+        col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
+
 
 def load_meg_evoked():
     evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
@@ -764,6 +778,7 @@ def register():
         bpy.utils.register_class(AddDataToElectrodes)
         bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
+        bpy.utils.register_class(AddDataToEEG)
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportEEG)
         bpy.utils.register_class(ImportRois)
@@ -782,6 +797,7 @@ def unregister():
         bpy.utils.unregister_class(AddDataToElectrodes)
         bpy.utils.unregister_class(AddDataNoCondsToBrain)
         bpy.utils.unregister_class(AddDataToBrain)
+        bpy.utils.unregister_class(AddDataToEEG)
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportEEG)

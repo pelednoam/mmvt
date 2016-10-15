@@ -500,6 +500,8 @@ def check_obj_type(obj_name):
     obj = bpy.data.objects.get(obj_name, None)
     if obj is None:
         obj_type = None
+    elif obj.parent is None:
+        obj_type = None
     elif obj.parent.name == 'Cortex-lh':
         obj_type = OBJ_TYPE_CORTEX_LH
     elif obj.parent.name == 'Cortex-rh':
@@ -845,7 +847,10 @@ def obj_has_activity(obj):
 
 
 def other_hemi(hemi):
-    return 'lh' if hemi == 'rh' else 'rh'
+    if 'inflated' in hemi:
+        return 'inflated_lh' if hemi == 'inflated_rh' else 'inflated_rh'
+    else:
+        return 'lh' if hemi == 'rh' else 'rh'
 
 
 # http://blender.stackexchange.com/a/30739/16364

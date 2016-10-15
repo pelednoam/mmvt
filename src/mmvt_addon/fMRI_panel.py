@@ -5,6 +5,11 @@ import mmvt_utils as mu
 import glob
 from queue import Empty
 
+
+def _addon():
+    return fMRIPanel.addon
+
+
 def clusters_update(self, context):
     _clusters_update()
 
@@ -21,18 +26,23 @@ def _clusters_update():
 
 
 def plot_blob(cluster_labels, faces_verts):
-    fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
+    _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     blob_vertices = cluster_labels['vertices']
     hemi = cluster_labels['hemi']
+    real_hemi = hemi
+    if _addon().is_inflated():
+        hemi = 'inflated_{}'.format(hemi)
     fMRIPanel.colors_in_hemis[hemi] = True
-    activity = fMRIPanel.addon.get_fMRI_activity(hemi)
+    activity = _addon().get_fMRI_activity(real_hemi)
     blob_activity = np.ones((len(activity), 4))
     blob_activity[blob_vertices] = activity[blob_vertices]
     cur_obj = bpy.data.objects[hemi]
-    fMRIPanel.addon.activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[hemi], 0, True)
+    _addon().activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[real_hemi],
+                                       bpy.context.scene.fmri_cluster_val_threshold, True)
+    other_real_hemi = mu.other_hemi(real_hemi)
     other_hemi = mu.other_hemi(hemi)
     if fMRIPanel.colors_in_hemis[other_hemi]:
-        fMRIPanel.addon.clear_cortex([other_hemi])
+        _addon().clear_cortex([other_real_hemi])
         fMRIPanel.colors_in_hemis[other_hemi] = False
 
 
@@ -133,11 +143,13 @@ def unfilter_clusters():
 
 
 def plot_all_blobs():
-    faces_verts = fMRIPanel.addon.get_faces_verts()
-    fMRIPanel.addon.init_activity_map_coloring('FMRI', subcorticals=False)
+    faces_verts = _addon().get_faces_verts()
+    _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     fmri_contrast, blobs_activity = {}, {}
     for hemi in mu.HEMIS:
-        fmri_contrast[hemi] = fMRIPanel.addon.get_fMRI_activity(hemi)
+        # if _addon().is_inflated():
+        #     hemi = 'inflated_{}'.format(hemi)
+        fmri_contrast[hemi] = _addon().get_fMRI_activity(hemi)
         blobs_activity[hemi] = np.zeros((len(fmri_contrast[hemi]), 4))
 
     hemis = set()
@@ -146,15 +158,17 @@ def plot_all_blobs():
             blob_vertices = cluster_labels['vertices']
             hemi = cluster_labels['hemi']
             hemis.add(hemi)
-            fMRIPanel.colors_in_hemis[hemi] = True
+            inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
+            fMRIPanel.colors_in_hemis[inf_hemi] = True
             blobs_activity[hemi][blob_vertices] = fmri_contrast[hemi][blob_vertices]
 
     for hemi in hemis:
-        fMRIPanel.addon.activity_map_obj_coloring(
-            bpy.data.objects[hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
+        inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
+        _addon().activity_map_obj_coloring(
+            bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
 
     for hemi in set(mu.HEMIS) - hemis:
-        fMRIPanel.addon.clear_cortex([hemi])
+        _addon().clear_cortex([hemi])
 
 
 def cluster_name(x):
@@ -219,6 +233,19 @@ def fMRI_draw(self, context):
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
     layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
+    layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+
+
+class fmriClearColors(bpy.types.Operator):
+    bl_idname = "mmvt.fmri_colors_clear"
+    bl_label = "mmvt fmri colors clear"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        _addon().clear_cortex()
+        _addon().clear_subcortical_fmri_activity()
+        return {"FINISHED"}
 
 
 class LoadMEGData(bpy.types.Operator):
@@ -389,6 +416,7 @@ def register():
         bpy.utils.register_class(PlotAllBlobs)
         bpy.utils.register_class(RefinefMRIClusters)
         bpy.utils.register_class(LoadMEGData)
+        bpy.utils.register_class(fmriClearColors)
         # print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
@@ -404,6 +432,7 @@ def unregister():
         bpy.utils.unregister_class(PlotAllBlobs)
         bpy.utils.unregister_class(RefinefMRIClusters)
         bpy.utils.unregister_class(LoadMEGData)
+        bpy.utils.unregister_class(fmriClearColors)
     except:
         pass
         # print("Can't unregister fMRI Panel!")
