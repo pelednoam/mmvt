@@ -651,8 +651,15 @@ class AddDataToEEG(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        add_data_to_electrodes(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'),
-                               op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
+        parent_obj = bpy.data.objects['EEG_electrodes']
+        source_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+        meta_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
+        add_data_to_electrodes(source_file, meta_file)
+        add_data_to_electrodes_parent_obj(parent_obj, source_file, meta_file)
+        bpy.types.Scene.eeg_data_exist = True
+        if bpy.data.objects.get(' '):
+            bpy.context.scene.objects.active = bpy.data.objects[' ']
+        return {"FINISHED"}
 
 
 class AddDataToElectrodes(bpy.types.Operator):
@@ -716,7 +723,8 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
+        eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
+        eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         if len(electrodes_positions_files) > 0:
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
@@ -743,7 +751,8 @@ class DataMakerPanel(bpy.types.Panel):
         if op.isfile(eeg_sensors_positions_file):
             col.operator("mmvt.eeg_importing", text="Import EEG", icon='COLOR_GREEN')
         # if op.isfile(eeg_data):
-        col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
+        if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
+            col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
 
 
 def load_meg_evoked():
