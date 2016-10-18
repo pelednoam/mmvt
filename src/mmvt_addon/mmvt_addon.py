@@ -84,6 +84,7 @@ import_electrodes = data_panel.import_electrodes
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
 select_all_electrodes = selection_panel.select_all_electrodes
+select_all_eeg = selection_panel.select_all_eeg
 select_only_subcorticals = selection_panel.select_only_subcorticals
 select_all_rois = selection_panel.select_all_rois
 deselect_all = selection_panel.deselect_all

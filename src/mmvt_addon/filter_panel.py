@@ -15,6 +15,10 @@ except:
     connections_panel_exist = False
 
 
+def _addon():
+    return FilteringMakerPanel.addon
+
+
 def find_obj_with_val():
     cur_objects = []
     for obj in bpy.data.objects:
@@ -101,9 +105,10 @@ def clear_filtering():
         for obj in subhierarchy.children:
             obj.active_material = new_mat
 
-    if bpy.data.objects.get('Deep_electrodes'):
-        for obj in bpy.data.objects['Deep_electrodes'].children:
-            de_select_electrode(obj)
+    for parent_name in ['Deep_electrodes', 'EEG_electrodes']:
+        if bpy.data.objects.get(parent_name):
+            for obj in bpy.data.objects[parent_name].children:
+                de_select_electrode(obj)
 
 
 def de_select_electrode(obj, call_create_and_set_material=True):
@@ -113,11 +118,11 @@ def de_select_electrode(obj, call_create_and_set_material=True):
         mu.create_and_set_material(obj)
     # Sholdn't change to color here. If user plot the electrodes, we don't want to change it back to white.
     if obj.name in FilteringMakerPanel.electrodes_colors:
-        FilteringMakerPanel.addon.object_coloring(obj, FilteringMakerPanel.electrodes_colors[obj.name])
+        _addon().object_coloring(obj, FilteringMakerPanel.electrodes_colors[obj.name])
         obj.active_material.diffuse_color = FilteringMakerPanel.electrodes_colors[obj.name][:3]
-
-
-    # obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+    else:
+        obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+        obj.active_material.diffuse_color = (1, 1, 1)
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
@@ -139,8 +144,8 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
 def filter_electrode_func(elec_name):
     elec_obj = bpy.data.objects[elec_name]
     if bpy.context.scene.mark_filter_items:
-        FilteringMakerPanel.electrodes_colors[elec_name] = FilteringMakerPanel.addon.get_obj_color(elec_obj)
-        FilteringMakerPanel.addon.object_coloring(elec_obj, cu.name_to_rgb('green'))
+        FilteringMakerPanel.electrodes_colors[elec_name] = _addon().get_obj_color(elec_obj)
+        _addon().object_coloring(elec_obj, cu.name_to_rgb('green'))
     else:
         elec_obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
 
@@ -159,13 +164,14 @@ def deselect_all_objects():
             obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
         elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
             obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-        elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes']:
+        elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
+                bpy.data.objects.get('EEG_electrodes', None) and obj.parent == bpy.data.objects['EEG_electrodes']:
             de_select_electrode(obj)
 
 
 def filter_items_update(self, context):
     deselect_all_objects()
-    if bpy.context.scene.filter_curves_type == 'Electrodes':
+    if bpy.context.scene.filter_curves_type in ['Electrodes', 'EEG']:
         filter_electrode_func(bpy.context.scene.filter_items)
     elif bpy.context.scene.filter_curves_type == 'MEG':
         filter_roi_func(bpy.context.scene.filter_items)
@@ -282,11 +288,13 @@ class ClearFiltering(bpy.types.Operator):
         clear_filtering()
         type_of_filter = bpy.context.scene.filter_curves_type
         if type_of_filter == 'MEG':
-            FilteringMakerPanel.addon.select_all_rois()
-            FilteringMakerPanel.addon.clear_cortex()
+            _addon().select_all_rois()
+            _addon().clear_cortex()
         elif type_of_filter == 'Electrodes':
-            FilteringMakerPanel.addon.select_all_electrodes()
-        bpy.data.scenes['Scene'].frame_preview_end = FilteringMakerPanel.addon.get_max_time_steps()
+            _addon().select_all_electrodes()
+        elif type_of_filter == 'EEG':
+            _addon().select_all_eeg()
+        bpy.data.scenes['Scene'].frame_preview_end = _addon().get_max_time_steps()
         bpy.data.scenes['Scene'].frame_preview_start = 1
         bpy.types.Scene.closest_curve_str = ''
         bpy.types.Scene.filter_is_on = False
@@ -356,30 +364,28 @@ class Filtering(bpy.types.Operator):
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
-    def filter_electrodes(self, data, meta):
+    def filter_electrodes(self, electrodes_parent_name, data, meta):
         print('filter_electrodes')
         # source_files = [op.join(self.current_activity_path, current_file_to_upload)]
         objects_indices, names, self.filter_values = self.get_object_to_filter([], data, meta['names'])
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         if objects_indices is None:
             return
-
         for obj in bpy.data.objects:
             obj.select = False
-
-        deep_electrodes_obj = bpy.data.objects['Deep_electrodes']
-        for obj in deep_electrodes_obj.children:
+        electrodes_parent_obj = bpy.data.objects[electrodes_parent_name]
+        for obj in electrodes_parent_obj.children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
         if bpy.context.scene.selection_type == 'diff':
             filter_obj_names = [names[ind] for ind in objects_indices]
-            for fcurve in deep_electrodes_obj.animation_data.action.fcurves:
+            for fcurve in electrodes_parent_obj.animation_data.action.fcurves:
                 con_name = mu.fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
-            deep_electrodes_obj.select = True
+            electrodes_parent_obj.select = True
         else:
-            deep_electrodes_obj.select = False
+            electrodes_parent_obj.select = False
 
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
@@ -390,7 +396,7 @@ class Filtering(bpy.types.Operator):
 
     def filter_rois(self, current_file_to_upload):
         print('filter_ROIs')
-        FilteringMakerPanel.addon.show_rois()
+        _addon().show_rois()
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in mu.HEMIS]
         objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
@@ -431,12 +437,12 @@ class Filtering(bpy.types.Operator):
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 
-        FilteringMakerPanel.addon.color_objects(objects_names, objects_colors, objects_data)
+        _addon().color_objects(objects_names, objects_colors, objects_data)
 
     def invoke(self, context, event=None):
-        FilteringMakerPanel.addon.change_view3d()
+        _addon().change_view3d()
         #todo: why should we call setup layers here??
-        # FilteringMakerPanel.addon.setup_layers()
+        # _addon().setup_layers()
         self.topK = bpy.context.scene.filter_topK
         self.filter_from = bpy.context.scene.filter_from
         self.filter_to = bpy.context.scene.filter_to
@@ -445,7 +451,8 @@ class Filtering(bpy.types.Operator):
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
         files_names = {'MEG': 'labels_data_{hemi}.npz',
-                       'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz')}
+                       'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz'),
+                       'EEG': op.join('eeg', 'eeg_data.npz')}
         current_file_to_upload = files_names[self.type_of_filter]
 
         # print(self.current_root_path)
@@ -471,7 +478,11 @@ class Filtering(bpy.types.Operator):
                 # todo: should decide which one to pick
                 # current_file_to_upload = current_file_to_upload.format(
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
-            self.filter_electrodes(data, meta)
+            self.filter_electrodes('Deep_electrodes', data, meta)
+        elif self.type_of_filter == 'EEG':
+            data = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'))
+            meta = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
+            self.filter_electrodes('EEG_electrodes', data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
 

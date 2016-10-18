@@ -57,6 +57,7 @@ def select_brain_objects(parent_obj_name, children):
     else:
         mu.show_hide_obj_and_fcurves(children, True)
         parent_obj.select = False
+    mu.view_all_in_graph_editor()
 
 
 def set_conditions_enum(conditions):

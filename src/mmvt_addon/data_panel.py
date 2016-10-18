@@ -14,6 +14,7 @@ bpy.types.Scene.electrodes_imported = False
 bpy.types.Scene.eeg_imported = False
 bpy.types.Scene.brain_data_exist = False
 bpy.types.Scene.electrodes_data_exist = False
+bpy.types.Scene.eeg_data_exist = False
 
 
 def bipolar_update(self, context):
