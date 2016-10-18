@@ -211,24 +211,25 @@ class SelectionListener(bpy.types.Operator):
     right_clicked = False
 
     def modal(self, context, event):
-        def show_fcurves(obj):
-            mu.change_fcurves_colors(obj)
-            mu.view_all_in_graph_editor()
+        # def show_fcurves(obj):
+        #     mu.change_fcurves_colors(obj)
+            # mu.view_all_in_graph_editor()
 
         if self.right_clicked:
             if len(bpy.context.selected_objects):
                 selected_obj_name = bpy.context.selected_objects[0].name
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
-                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:
-                    pial_obj = bpy.data.objects.get(selected_obj_name)
-                    show_fcurves(pial_obj)
+                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
+                                         mu.OBJ_TYPE_EEG]:
+                    obj = bpy.data.objects.get(selected_obj_name)
+                    if obj:
+                        mu.change_fcurves_colors(obj)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)
                     if not pial_obj is None:
                         pial_obj.select = True
                         mu.change_fcurves_colors(pial_obj)
-                        mu.view_all_in_graph_editor()
             self.right_clicked = False
 
         if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
