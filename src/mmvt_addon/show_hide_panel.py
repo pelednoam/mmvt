@@ -1,6 +1,11 @@
 import bpy
 import mmvt_utils as mu
 
+
+def show_only_redner_update(self, context):
+    mu.show_only_render(bpy.context.scene.show_only_render)
+
+
 def show_hide_hierarchy(do_hide, obj_name):
     if bpy.data.objects.get(obj_name) is not None:
         obj = bpy.data.objects[obj_name]
@@ -107,7 +112,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
         sub_icon = show_hide_icon['show' if sub_vis else 'hide']
         layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
-
+        layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(
     default=True, description="Show left hemisphere")#,update=show_hide_lh)
@@ -115,6 +120,8 @@ bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(
     default=True, description="Show right hemisphere")#, update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(
     default=True, description="Show sub cortical")#, update=show_hide_sub_cortical_update)
+bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
+    default=True, description="Show only rendered objects", update=show_only_redner_update)
 
 
 
@@ -125,7 +132,7 @@ def init(addon):
     bpy.context.scene.objects_show_hide_sub_cortical = False
     show_hide_sub_corticals(False)
     show_hemis()
-
+    bpy.context.scene.show_only_render = False
 
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')

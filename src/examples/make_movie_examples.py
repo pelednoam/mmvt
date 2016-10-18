@@ -1,6 +1,8 @@
-import numpy as np
 import os.path as op
-from src.make_movie import create_movie, duplicate_frames
+
+import numpy as np
+
+from src.utils.make_movie import create_movie
 
 
 def mg78_electrodes_coherence_meg(dpi, bitrate, pics_type, show_first_pic, n_jobs):

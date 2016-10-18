@@ -380,7 +380,7 @@ class Filtering(bpy.types.Operator):
         if bpy.context.scene.selection_type == 'diff':
             filter_obj_names = [names[ind] for ind in objects_indices]
             for fcurve in electrodes_parent_obj.animation_data.action.fcurves:
-                con_name = mu.fcurve_name(fcurve)
+                con_name = mu.get_fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
             electrodes_parent_obj.select = True
@@ -407,7 +407,7 @@ class Filtering(bpy.types.Operator):
             filter_obj_names = [names[ind] for ind in objects_indices]
             brain_obj = bpy.data.objects['Brain']
             for fcurve in brain_obj.animation_data.action.fcurves:
-                con_name = mu.fcurve_name(fcurve)
+                con_name = mu.get_fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
             brain_obj.select = True

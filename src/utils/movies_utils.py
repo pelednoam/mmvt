@@ -3,7 +3,7 @@ import glob
 from src.utils import utils
 
 FFMPEG_DIR = op.join(utils.get_links_dir(), 'ffmpeg')
-FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else ''
+FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else 'ffmpeg'
 
 # from moviepy.config import change_settings
 # change_settings({"IMAGEMAGICK_BINARY": r"/usr/bin/convert"})
@@ -90,7 +90,7 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
         utils.remove_file('{}.avi'.format(part_name))
 
 
-def combine_images_to_movie(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
+def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
                             images_type='', ffmpeg_cmd='ffmpeg', **kwargs):
     if images_type == '':
         images_types = set([utils.file_type(image) for image in glob.glob(op.join(fol, '{}*.*'.format(images_prefix)))])

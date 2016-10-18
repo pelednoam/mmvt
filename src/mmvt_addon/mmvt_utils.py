@@ -23,6 +23,7 @@ from queue import Queue
 import cProfile
 from itertools import chain
 from sys import platform as _platform
+from datetime import datetime
 
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
@@ -345,12 +346,12 @@ def evaluate_fcurves(parent_obj, time_range, specific_condition=None):
 
 def get_fcurve_current_frame_val(parent_obj_name, obj_name, cur_frame):
     for fcurve in bpy.data.objects[parent_obj_name].animation_data.action.fcurves:
-        name = fcurve_name(fcurve)
+        name = get_fcurve_name(fcurve)
         if name == obj_name:
             return fcurve.evaluate(cur_frame)
 
 
-def fcurve_name(fcurve):
+def get_fcurve_name(fcurve):
     return fcurve.data_path.split('"')[1]
 
 
@@ -364,7 +365,7 @@ def get_fcurve_values(parent_name, fcurve_name):
     xs, ys = [], []
     parent_obj = bpy.data.objects[parent_name]
     for fcurve in parent_obj.animation_data.action.fcurves:
-        if fcurve_name(fcurve) == fcurve_name:
+        if get_fcurve_name(fcurve) == fcurve_name:
             for kp in fcurve.keyframe_points:
                 xs.append(kp.co[0])
                 ys.append(kp.co[1])
@@ -947,14 +948,22 @@ def get_the_graph_editor():
 
 
 def set_show_textured_solid(val=True):
+    for space in get_3d_spaces():
+        space.show_textured_solid = val
+
+
+def show_only_render(val=True):
+    for space in get_3d_spaces():
+        space.show_only_render = val
+
+
+def get_3d_spaces():
     for screen in bpy.data.screens:
         for area in screen.areas: # bpy.data.screens['Neuro'].areas:
             if area.type == 'VIEW_3D':
                 for space in area.spaces:
                     if space.type == 'VIEW_3D':
-                        space.show_textured_solid = val
-                        return True
-    return False
+                        yield space
 
 
 def filter_graph_editor(filter_str):
@@ -1008,3 +1017,8 @@ def select_layer(layer, val=True):
     layers = bpy.context.scene.layers
     layers[layer] = val
     bpy.context.scene.layers = layers
+
+
+def print_current_time():
+    # print(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'))
+    print(str(datetime.now()))

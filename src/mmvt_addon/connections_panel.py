@@ -187,7 +187,7 @@ def filter_graph(context, d, condition, threshold, threshold_type, connections_t
     fcurves_num = len(parent_obj.animation_data.action.fcurves)
     for fcurve_index, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         # mu.time_to_go(now, fcurve_index, fcurves_num, runs_num_to_print=10)
-        con_name = mu.fcurve_name(fcurve)
+        con_name = mu.get_fcurve_name(fcurve)
         # cur_obj = bpy.data.objects[con_name]
         # cur_obj.hide = con_name not in masked_con_names
         # cur_obj.hide_render = con_name not in masked_con_names
@@ -262,7 +262,7 @@ def get_all_selected_connections(d):
                 inds.append(ind)
     else:
         for fcurve in parent_obj.animation_data.action.fcurves:
-            con_name = mu.fcurve_name(fcurve)
+            con_name = mu.get_fcurve_name(fcurve)
             if fcurve.select and not fcurve.hide:
                 objs.append(con_name)
                 ind = np.where(d.con_names == con_name)[0][0]
@@ -279,7 +279,7 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
                 continue
             for fcurve in cur_obj.animation_data.action.fcurves:
                 if cur_obj.name == closet_object_name:
-                    fcurve_name = mu.fcurve_name(fcurve)
+                    fcurve_name = mu.get_fcurve_name(fcurve)
                     fcurve.select = fcurve_name == closest_curve_name
                     fcurve.hide = fcurve_name != closest_curve_name
                 else:
@@ -288,7 +288,7 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
     else:  # diff
         # todo: implement this part
         for fcurve in parent_obj.animation_data.action.fcurves:
-            conn_name = mu.fcurve_name(conn_name)
+            conn_name = mu.get_fcurve_name(conn_name)
 
 
 def filter_electrodes_via_connections(context, do_filter):
@@ -329,7 +329,7 @@ def filter_electrodes_via_connections(context, do_filter):
                     fcurve.hide = False
                     fcurve.select = True
         for fcurve in elecs_parent_obj.animation_data.action.fcurves:
-            elc_name = mu.fcurve_name(fcurve)
+            elc_name = mu.get_fcurve_name(fcurve)
             if elc_name in selected_electrodes:
                 fcurve.hide = False
                 fcurve.select = True
