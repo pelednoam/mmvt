@@ -32,13 +32,13 @@ def fixed_data():
     #     yield next
 
 
-def change_graph(index):
+def change_graph(next_val):
     obj_name = 'LMF6'
     fcurve_name = 'LMF6_interference'
     bpy.data.objects[obj_name].select = True
     parent_obj = bpy.data.objects[obj_name]
-    T = 2500
-    next_val = next(StreamingPanel.fixed_data)
+    # T = 2500
+    # next_val = next(StreamingPanel.fixed_data)
     for fcurve in parent_obj.animation_data.action.fcurves:
         if mu.get_fcurve_name(fcurve) == fcurve_name:
             # for kp in fcurve.keyframe_points:
@@ -84,7 +84,7 @@ class StreamButton(bpy.types.Operator):
         if StreamingPanel.first_time:
             StreamingPanel.first_time = False
             context.window_manager.modal_handler_add(self)
-            self._timer = context.window_manager.event_timer_add(0.1, context.window)
+            self._timer = context.window_manager.event_timer_add(0.01, context.window)
             # script = op.join(mu.get_mmvt_code_root(), 'src', 'misc', 'udp_listener.py')
             script = 'src.misc.udp_listener'
             cmd = '{} -m {}'.format(bpy.context.scene.python_cmd, script)
@@ -110,6 +110,8 @@ class StreamButton(bpy.types.Operator):
                     data = StreamingPanel.out_queue.get(block=False)
                     try:
                         data = data.decode(sys.getfilesystemencoding(), 'ignore')
+                        data = float(data)
+                        change_graph(data)
                         print('data from listener: {}'.format(data))
                     except:
                         print("Can't read the stdout from freeview")
@@ -126,7 +128,7 @@ class StreamButton(bpy.types.Operator):
             # self._time = now
             # self._index += 1
 
-            # next_val = change_graph(self._index)
+
             # change_color(self._obj, next_val, StreamingPanel.activity_data_min, StreamingPanel.activity_colors_ratio)
 
             # ready = select.select([StreamingPanel.sock], [], [], 0.1)

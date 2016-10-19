@@ -28,12 +28,12 @@ def bind_socket():
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=1): #0.01):
+def send_data(sock, server_address, data, interval=0.01): #0.01):
     while True:
         data_to_send = next(data)
         data_to_send = str(data_to_send).encode('utf-8')
         sock.sendto(data_to_send, server_address)
-        print('{}: sending data {}'.format(utils.get_time(), data_to_send))
+        # print('{}: sending data {}'.format(utils.get_time(), data_to_send))
         time.sleep(interval)
 
 
