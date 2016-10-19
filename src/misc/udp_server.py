@@ -23,13 +23,15 @@ def load_electrodes_data(bipolar=False):
 def bind_socket():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_address = ('localhost', 10000)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(server_address)
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=0.01):
+def send_data(sock, server_address, data, interval=1): #0.01):
     while True:
         data_to_send = next(data)
+        data_to_send = str(data_to_send).encode('utf-8')
         sock.sendto(data_to_send, server_address)
         print('{}: sending data {}'.format(utils.get_time(), data_to_send))
         time.sleep(interval)

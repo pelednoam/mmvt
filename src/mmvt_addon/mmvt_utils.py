@@ -566,7 +566,7 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
                 line = proc.stdout.readline()
                 if line != b'':
                     q_out.put(line)
-                    print('stdout: {}'.format(line))
+                    # print('stdout: {}'.format(line))
             except:
                 print('Error in reading stdout!!!')
                 print(traceback.format_exc())
