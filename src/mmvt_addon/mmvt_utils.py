@@ -1019,6 +1019,6 @@ def select_layer(layer, val=True):
     bpy.context.scene.layers = layers
 
 
-def print_current_time():
+def get_time():
     # print(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'))
-    print(str(datetime.now()))
+    return str(datetime.now())

@@ -6,6 +6,8 @@ import numpy as np
 import traceback
 import mmvt_utils as mu
 from itertools import cycle
+import socket
+import select
 
 
 def _addon():
@@ -84,6 +86,10 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         StreamingPanel.is_streaming = not StreamingPanel.is_streaming
+        print(__name__)
+        script = 'src.mmvt_addon.streaming_panel'
+        cmd = '{} -m {} -s {}'.format(bpy.context.scene.python_cmd, script)
+        FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue mu.run_command_in_new_thread(cmd, queues=True)
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
@@ -107,9 +113,15 @@ class StreamButton(bpy.types.Operator):
             # mu.print_current_time()
             # self._time = now
             # self._index += 1
-            next_val = change_graph(self._index)
-            change_color(self._obj, next_val, StreamingPanel.activity_data_min, StreamingPanel.activity_colors_ratio)
 
+            # next_val = change_graph(self._index)
+            # change_color(self._obj, next_val, StreamingPanel.activity_data_min, StreamingPanel.activity_colors_ratio)
+
+            ready = select.select([StreamingPanel.sock], [], [], 0.1)
+            if ready[0]:
+                next_val = StreamingPanel.sock.recv(4096)
+                change_color(self._obj, next_val, StreamingPanel.activity_data_min,
+                             StreamingPanel.activity_colors_ratio)
 
         return {'PASS_THROUGH'}
 
@@ -167,3 +179,18 @@ def unregister():
         bpy.utils.unregister_class(StreamButton)
     except:
         pass
+
+
+def start_listener():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setblocking(0)
+    server_address = ('localhost', 10000)
+
+    while True:
+        ready = select.select([StreamingPanel.sock], [], [], 0.1)
+        if ready[0]:
+            next_val = StreamingPanel.sock.recv(4096)
+
+
+if __name__ == '__main__':
+    start_listener()

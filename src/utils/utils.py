@@ -49,19 +49,7 @@ is_mac = mu.is_mac
 read_floats_rx = mu.read_floats_rx
 read_numbers_rx = mu.read_numbers_rx
 timeit = mu.timeit
-
-# class Bag( dict ):
-#     """ a dict with d.key short for d["key"]
-#         d = Bag( k=v ... / **dict / dict.items() / [(k,v) ...] )  just like dict
-#     """
-#         # aka Dotdict
-#
-#     def __init__(self, *args, **kwargs):
-#         dict.__init__( self, *args, **kwargs )
-#         self.__dict__ = self
-#
-#     def __getnewargs__(self):  # for cPickle.dump( d, file, protocol=-1)
-#         return tuple(self)
+get_time = mu.get_time
 
 
 def get_exisiting_dir(dirs):
