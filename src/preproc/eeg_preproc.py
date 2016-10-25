@@ -97,10 +97,20 @@ def main(subject, mri_subject, inverse_method, args):
     return flags
 
 
-if __name__ == '__main__':
-    args = meg.read_cmd_args()
+def run_on_subjects(args):
+    from src.preproc.eeg_preproc import main as eeg_main
+    meg.run_on_subjects(args, eeg_main) # locals()['main'])
+
+
+def read_cmd_args(argv=None):
+    args = meg.read_cmd_args(argv)
     args.pick_meg = False
     args.pick_eeg = True
     args.reject = False
-    meg.run_on_subjects(args, locals()['main'])
+    return args
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
+    run_on_subjects(args)
     print('finish!')

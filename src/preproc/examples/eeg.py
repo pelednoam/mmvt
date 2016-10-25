@@ -1,19 +1,20 @@
 import argparse
-from src.preproc import meg_preproc as meg
+from src.preproc import eeg_preproc as eeg
 from src.utils import utils
 from src.utils import args_utils as au
 
 
 def calc_msit_evoked(subject, mri_subject):
     # -s ep001 -m mg78 -a laus250 -t MSIT --contrast interference --files_includes_cond 1 --read_events_from_file 1 --calc_epochs_from_raw 1 -f calc_evoked
-    args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
+    args = eeg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.task = 'MSIT'
     args.atlas = 'laus250'
-    args.function = 'calc_evoked'
+    args.function = 'calc_evoked,save_evoked_to_blender'
     args.constrast = 'interference'
     args.files_includes_cond  = True
     args.read_events_from_file = True
     args.calc_epochs_from_raw = True
+    eeg.run_on_subjects(args)
 
 
 if __name__ == '__main__':
