@@ -62,6 +62,8 @@ import stim_panel
 importlib.reload(stim_panel)
 import streaming_panel
 importlib.reload(streaming_panel)
+import colorbar_panel
+importlib.reload(colorbar_panel)
 
 print("mmvt addon started!")
 # todo: should change that in the code!!!
@@ -249,6 +251,8 @@ def main(addon_prefs=None):
         freeview_panel.init(current_module, addon_prefs)
         render_panel.init(current_module)
         fMRI_panel.init(current_module)
+        streaming_panel.init(current_module)
+        colorbar_panel.init(current_module)
         search_panel.init(current_module)
         transparency_panel.init(current_module)
         where_am_i_panel.init(current_module)
@@ -258,7 +262,6 @@ def main(addon_prefs=None):
         connections_panel.init(current_module)
         # listener_panel.init(current_module)
         vertex_data_panel.init(current_module)
-        streaming_panel.init(current_module)
 
     except:
         print('The classes are already registered!')

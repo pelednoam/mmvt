@@ -18,6 +18,12 @@ def create_BuPu_YlOrRd_cm(n=128):
     return colors_map
 
 
+def create_jet_cm(n=256):
+    colors = plt.cm.jet(np.linspace(0, 1, n))
+    colors_map = mcolors.LinearSegmentedColormap.from_list('jet', colors)
+    return colors_map
+
+
 def color_map_to_np_mat(colors_map):
     N = colors_map.N
     cm_mat = np.zeros((N, 3))
@@ -40,9 +46,14 @@ def check_cm_mat(cm_mat):
     plt.show()
 
 
-if __name__ == '__main__':
-    cm = create_BuPu_YlOrRd_cm()
+def create_cm(cm_func, cm_name):
+    cm = cm_func()
     cm_mat = color_map_to_np_mat(cm)
-    check_cm_mat(cm_mat)
-    save_colors_map(cm_mat, 'BuPu_YlOrRd')
-    figu.plot_color_bar(1, -1, cm, do_save=False)
+    # check_cm_mat(cm_mat)
+    save_colors_map(cm_mat, cm_name)
+    figu.plot_color_bar(1, -1, cm, do_save=True, fol=op.join(MMVT_DIR, 'color_maps'))
+
+
+if __name__ == '__main__':
+    create_cm(create_BuPu_YlOrRd_cm, 'BuPu_YlOrRd')
+    create_cm(create_jet_cm, 'jet')

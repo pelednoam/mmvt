@@ -16,10 +16,9 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True)
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
-    if not isinstance(color_map, str):
-        color_map = color_map.name
+    color_map_name = color_map if isinstance(color_map, str) else color_map.name
     if do_save:
-        plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map)))
+        plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map_name)))
     else:
         plt.show()
     return cb
