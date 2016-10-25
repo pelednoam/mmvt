@@ -173,10 +173,12 @@ class StreamingPanel(bpy.types.Panel):
 
 
 def init(addon):
+    cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy')
+    if not op.isfile(cm_fname):
+        return
     StreamingPanel.addon = addon
     register()
-
-    StreamingPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
+    StreamingPanel.cm = np.load(cm_fname)
     StreamingPanel.fixed_data = fixed_data()
     StreamingPanel.init = True
 

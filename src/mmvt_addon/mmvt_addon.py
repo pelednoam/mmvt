@@ -183,6 +183,8 @@ is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 create_connections = connections_panel.create_connections
 set_connection_type = connections_panel.set_connection_type
 set_connections_threshold = connections_panel.set_connections_threshold
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show_cb_in_render = colorbar_panel.show_cb_in_render
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 
@@ -232,6 +234,7 @@ def init(addon_prefs):
     set_render_output_path(figures_fol)
     set_render_quality(60)
     mmvt_utils.set_show_textured_solid()
+    mmvt_utils.hide_relationship_lines()
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 

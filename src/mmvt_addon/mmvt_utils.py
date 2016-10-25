@@ -307,14 +307,15 @@ def view_all_in_graph_editor(context=None):
         pass
 
 
-def show_hide_hierarchy(val, obj, also_parent=False):
-    if bpy.data.objects.get(obj) is not None:
+def show_hide_hierarchy(val, obj_name, also_parent=False, select=True):
+    if bpy.data.objects.get(obj_name) is not None:
         if also_parent:
-            bpy.data.objects[obj].hide_render = not val
-        for child in bpy.data.objects[obj].children:
+            bpy.data.objects[obj_name].hide_render = not val
+        for child in bpy.data.objects[obj_name].children:
             child.hide = not val
             child.hide_render = not val
-            child.select = val
+            if select:
+                child.select = val
 
 
 def rand_letters(num):
@@ -947,19 +948,31 @@ def get_the_graph_editor():
     return None
 
 
-def set_show_textured_solid(val=True):
-    for space in get_3d_spaces():
+def set_show_textured_solid(val=True, only_neuro=False):
+    for space in get_3d_spaces(only_neuro):
         space.show_textured_solid = val
 
 
-def show_only_render(val=True):
+def show_only_render(val=True, only_neuro=False):
     for space in get_3d_spaces():
+        # Don't change it for the colorbar's space
+        if space.lock_object and space.lock_object.name == 'full_colorbar':
+            continue
         space.show_only_render = val
 
 
-def get_3d_spaces():
+def hide_relationship_lines(val=False):
+    for space in get_3d_spaces():
+        # Don't change it for the colorbar's space
+        if space.lock_object and space.lock_object.name == 'full_colorbar':
+            continue
+        space.show_relationship_lines = val
+
+
+def get_3d_spaces(only_neuro=False):
     for screen in bpy.data.screens:
-        for area in screen.areas: # bpy.data.screens['Neuro'].areas:
+        areas = bpy.data.screens['Neuro'].areas if only_neuro else screen.areas
+        for area in areas:
             if area.type == 'VIEW_3D':
                 for space in area.spaces:
                     if space.type == 'VIEW_3D':
