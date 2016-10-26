@@ -26,18 +26,8 @@ def set_colorbar_title(val):
 
 def set_colorbar_max_min(max_val, min_val, prec=None):
     if max_val > min_val:
-        init_val = ColorbarPanel.init
-        ColorbarPanel.init = True
-        set_colorbar_max(max_val, prec, False)
-        set_colorbar_min(min_val, prec, False)
-        ColorbarPanel.init = init_val
-    else:
-        prev_max = float(bpy.data.objects['colorbar_max'].data.body)
-        prev_min = float(bpy.data.objects['colorbar_min'].data.body)
-        ColorbarPanel.init = False
-        bpy.context.scene.colorbar_max = prev_max
-        bpy.context.scene.colorbar_min = prev_min
-        ColorbarPanel.init = True
+        bpy.context.scene.colorbar_max = max_val
+        bpy.context.scene.colorbar_min = min_val
 
 
 def set_colorbar_max(val, prec=None, check_minmax=True):
@@ -161,6 +151,7 @@ def init(addon):
     bpy.context.scene.colorbar_min = -1
     bpy.context.scene.colorbar_max = 1
     bpy.context.scene.colorbar_title = 'MEG'
+    bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
 
 
 def register():

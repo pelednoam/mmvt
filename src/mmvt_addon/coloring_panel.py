@@ -241,7 +241,6 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
 
-
     # hemis_in_order = ['lh', 'rh'] # Same order like in the creating of the merged ply object
     # f = np.hstack([np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')) for hemi in hemis_in_order])
     # activity_map_obj_coloring(bpy.data.objects['cortex'], f, faces_verts['cortex'], threshold, override_current_mat,
@@ -257,6 +256,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = np.load(fname)
                 colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
                 data_min = ColoringMakerPanel.meg_activity_data_min
+                data_max = ColoringMakerPanel.meg_activity_data_max
+                _addon().set_colorbar_max_min(data_max, data_min)
             else:
                 print("Can't load {}".format(fname))
                 return False
@@ -884,6 +885,7 @@ def init(addon):
         _addon().set_colorbar_max_min(data_max, data_min)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_activity_data_min = data_min
+        ColoringMakerPanel.meg_activity_data_max = data_max
         print('data meg: {}-{}'.format(data_min, data_max))
 
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
