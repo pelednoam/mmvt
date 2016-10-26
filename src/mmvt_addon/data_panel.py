@@ -230,6 +230,8 @@ def import_rois(base_path):
         create_empty_if_doesnt_exists(name, brain_layer, layers_array)
     bpy.context.scene.layers = [ind == DataMakerPanel.addon.ROIS_LAYER for ind in range(len(bpy.context.scene.layers))]
 
+    # todo: check each hemi
+    inflated_imported = False
     for anatomy_name, anatomy_input_base_path in anatomy_inputs.items():
         if not op.isdir(anatomy_input_base_path):
             print('The anatomy folder {} does not exist'.format(anatomy_input_base_path))
@@ -249,6 +251,8 @@ def import_rois(base_path):
                 mu.change_layer(_addon().ROIS_LAYER)
             if not bpy.data.objects.get(new_obj_name) is None:
                 continue
+            if 'inflated' in new_obj_name:
+                inflated_imported = True
             bpy.ops.object.select_all(action='DESELECT')
             # print(ply_fname)
             bpy.ops.import_mesh.ply(filepath=op.join(anatomy_input_base_path, ply_fname))
@@ -262,8 +266,9 @@ def import_rois(base_path):
             cur_obj.name = new_obj_name
             # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
-    bpy.data.objects['Cortex-inflated-rh'].location[0] += 5.5
-    bpy.data.objects['Cortex-inflated-lh'].location[0] -= 5.5
+    if inflated_imported:
+        bpy.data.objects['Cortex-inflated-rh'].location[0] += 5.5
+        bpy.data.objects['Cortex-inflated-lh'].location[0] -= 5.5
     bpy.ops.object.select_all(action='DESELECT')
 
 

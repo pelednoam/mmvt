@@ -178,5 +178,5 @@ if __name__ == '__main__':
     atlas_fol = op.join(MMVT_DIR, 'maps', 'ATAG_Nonlinear_Keuken_2014')
     colin_T1_fname = op.join(SUBJECTS_DIR, 'colin27', 'mri', 'T1.mgz')
     # main(region, atlas_fol, colin_T1_fname)
-    transform_to_another_subject('mg99', region, SUBJECTS_DIR)
+    transform_to_another_subject('mg78', region, SUBJECTS_DIR)
     print('Finish!')
