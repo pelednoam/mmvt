@@ -880,6 +880,8 @@ def init(addon):
     meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
     if meg_files_exist:
         data_min, data_max = mu.load(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
+        # todo: check why it doesn't work
+        _addon().set_colorbar_max_min(data_max, data_min)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_activity_data_min = data_min
         print('data meg: {}-{}'.format(data_min, data_max))

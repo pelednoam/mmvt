@@ -185,6 +185,10 @@ set_connection_type = connections_panel.set_connection_type
 set_connections_threshold = connections_panel.set_connections_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
+set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
+set_colorbar_max = colorbar_panel.set_colorbar_max
+set_colorbar_min = colorbar_panel.set_colorbar_min
+set_colorbar_title = colorbar_panel.set_colorbar_title
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 

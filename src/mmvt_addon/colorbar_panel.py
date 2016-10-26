@@ -20,6 +20,60 @@ def load_colormap():
         # print('Changing {} to {}'.format(cb_obj_name, colormap[ind]))
 
 
+def set_colorbar_title(val):
+    bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
+
+
+def set_colorbar_max_min(max_val, min_val, prec=None):
+    if max_val > min_val:
+        init_val = ColorbarPanel.init
+        ColorbarPanel.init = True
+        set_colorbar_max(max_val, prec, False)
+        set_colorbar_min(min_val, prec, False)
+        ColorbarPanel.init = init_val
+    else:
+        prev_max = float(bpy.data.objects['colorbar_max'].data.body)
+        prev_min = float(bpy.data.objects['colorbar_min'].data.body)
+        ColorbarPanel.init = False
+        bpy.context.scene.colorbar_max = prev_max
+        bpy.context.scene.colorbar_min = prev_min
+        ColorbarPanel.init = True
+
+
+def set_colorbar_max(val, prec=None, check_minmax=True):
+    if not check_minmax or bpy.context.scene.colorbar_max > bpy.context.scene.colorbar_min:
+        _set_colorbar_min_max('max', val, prec)
+    else:
+        prev_max = float(bpy.data.objects['colorbar_max'].data.body)
+        ColorbarPanel.init = False
+        bpy.context.scene.colorbar_max = prev_max
+        ColorbarPanel.init = True
+
+
+def set_colorbar_min(val, prec=None, check_minmax=True):
+    if not check_minmax or bpy.context.scene.colorbar_max > bpy.context.scene.colorbar_min:
+        _set_colorbar_min_max('min', val, prec)
+    else:
+        prev_min = float(bpy.data.objects['colorbar_min'].data.body)
+        ColorbarPanel.init = False
+        bpy.context.scene.colorbar_min = prev_min
+        ColorbarPanel.init = True
+
+
+def _set_colorbar_min_max(field, val, prec):
+    if prec is None or prec not in PERC_FORMATS:
+        prec = bpy.context.scene.colorbar_prec
+        if prec not in PERC_FORMATS:
+            print('Wrong value for prec, should be in {}'.format(PERC_FORMATS.keys()))
+    prec_str = PERC_FORMATS[prec]
+    cb_obj = bpy.data.objects.get('colorbar_{}'.format(field))
+    cb_camera_obj = bpy.data.objects.get('colorbar_{}_camera'.format(field))
+    if not cb_obj is None and not cb_camera_obj is None:
+        cb_obj.data.body = cb_camera_obj.data.body = prec_str.format(val)
+    else:
+        print('_set_colorbar_min_max: field error ({})! must be max / min!'.format(field))
+
+
 def colormap_update(self, context):
     if ColorbarPanel.init:
         load_colormap()
@@ -27,21 +81,9 @@ def colormap_update(self, context):
 
 def colorbar_update(self, context):
     if ColorbarPanel.init:
-        prec = PERC_FORMATS[bpy.context.scene.colorbar_prec]
-        prev_max = float(bpy.data.objects['colorbar_max'].data.body)
-        prev_min = float(bpy.data.objects['colorbar_min'].data.body)
-        if bpy.context.scene.colorbar_max > bpy.context.scene.colorbar_min:
-            bpy.data.objects['colorbar_max'].data.body = bpy.data.objects['colorbar_max_camera'].data.body = \
-                prec.format(bpy.context.scene.colorbar_max)
-            bpy.data.objects['colorbar_min'].data.body = bpy.data.objects['colorbar_min_camera'].data.body = \
-                prec.format(bpy.context.scene.colorbar_min)
-        else:
-            ColorbarPanel.init = False
-            bpy.context.scene.colorbar_max = prev_max
-            bpy.context.scene.colorbar_min = prev_min
-            ColorbarPanel.init = True
-        bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = \
-            bpy.context.scene.colorbar_title
+        set_colorbar_title(bpy.context.scene.colorbar_title)
+        set_colorbar_max(bpy.context.scene.colorbar_max)
+        set_colorbar_min(bpy.context.scene.colorbar_min)
 
 
 def show_cb_in_render_update(self, context):
