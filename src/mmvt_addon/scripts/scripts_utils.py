@@ -2,8 +2,11 @@ import sys
 import os
 import os.path as op
 import argparse
-from src.mmvt_addon.scripts import call_script_utils as utils
 
+try:
+    from src.mmvt_addon.scripts import call_script_utils as utils
+except:
+    pass
 
 try:
     import bpy
@@ -122,16 +125,22 @@ def make_dir(fol):
     return fol
 
 
-def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None):
+def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, only_verbose=False):
     if args.blender_fol == '':
         args.blender_fol = get_blender_dir()
     if not op.isdir(args.blender_fol):
         print('No Blender folder!')
         return
 
-    logs_fol = utils.make_dir(op.join(utils.get_parent_fol(__file__, 4), 'logs'))
+    logs_fol = op.join(utils.get_parent_fol(__file__, 4), 'logs')
+    if only_verbose:
+        print('Creating logs fol: {}'.format(logs_fol))
+    else:
+        utils.make_dir(logs_fol)
     if log_name == '':
         log_name = utils.namebase(script_fname)
+        if only_verbose:
+            print('log name: {}'.format(log_name))
     if len(args.subjects) == 0:
         args.subjects = [args.subject]
     for subject in args.subjects:
@@ -149,9 +158,10 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             blender_exe=op.join(args.blender_fol, 'blender'),
             blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
         mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
-        os.chdir(mmvt_addon_fol)
         print(cmd)
-        utils.run_script(cmd)
+        if not only_verbose:
+            os.chdir(mmvt_addon_fol)
+            utils.run_script(cmd)
     print('Finish! For more details look in {}'.format(log_fname))
 
 

@@ -1,3 +1,4 @@
+# Blender and addon libs
 try:
     import bpy
     import mathutils
@@ -5,9 +6,15 @@ try:
 except:
     pass
     # print("Can't import bpy, mathutils and color_utils")
+
+# Not vanilla python libs
+try:
+    import numpy as np
+except:
+    pass
+
 import traceback
 import math
-import numpy as np
 import sys
 import os
 import os.path as op
@@ -254,33 +261,6 @@ def get_atlas(default='laus250'):
         return ''
     atlas = blend_fname.split('_')[-1]
     return get_real_atlas_name(atlas)
-
-
-def get_real_atlas_name(atlas, csv_fol=''):
-    if csv_fol == '':
-        csv_fol = get_mmvt_root()
-    csv_fname = op.join(csv_fol, 'atlas.csv')
-    real_atlas_name = ''
-    if op.isfile(csv_fname):
-        for line in csv_file_reader(csv_fname, ',', 1):
-            if len(line) < 2:
-                continue
-            if atlas in [line[0], line[1]]:
-                real_atlas_name = line[1]
-                break
-        if real_atlas_name == '':
-            print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
-            return atlas
-        return real_atlas_name
-    else:
-        print('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
-                        'the columns are name in blend file, annot name, description'.format(csv_fname))
-        return ''
-    # sep_ind = blend_fname.find('_')
-    # if sep_ind != -1:
-    #     return blend_fname[sep_ind + 1:]
-    # else:
-    #     return default
 
 
 def get_user_fol():

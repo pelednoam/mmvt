@@ -16,12 +16,12 @@ except:
     import args_utils as au
 
 
-def wrap_blender_call():
+def wrap_blender_call(only_verbose=False):
     # Empty argv, otherwise cannot be called from setup (which already has args)
-    sys.argv = [sys.argv[1]]
+    sys.argv = [sys.argv[0]]
     args = read_args()
     args.subject = 'empty_subject'
-    su.call_script(__file__, args, blend_fname='empty_subject.blend')#, call_args='-python_cmd {}'.format(sys.executable))
+    su.call_script(__file__, args, blend_fname='empty_subject.blend', only_verbose=only_verbose)#, call_args='-python_cmd {}'.format(sys.executable))
 
 
 def read_args(argv=None):
