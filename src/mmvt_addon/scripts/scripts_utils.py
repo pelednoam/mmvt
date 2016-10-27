@@ -2,11 +2,7 @@ import sys
 import os
 import os.path as op
 import argparse
-
-try:
-    from src.utils import utils
-except:
-    pass
+from src.mmvt_addon.scripts import call_script_utils as utils
 
 
 try:
