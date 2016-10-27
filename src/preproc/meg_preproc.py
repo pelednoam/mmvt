@@ -1622,6 +1622,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')

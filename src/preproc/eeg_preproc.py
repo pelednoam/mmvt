@@ -52,7 +52,7 @@ def read_eeg_sensors_layout(mri_subject):
     return False
 
 
-def save_evoked_to_blender(mri_subject, events, evoked=None, norm_by_percentile=True, norm_percs=(1,99)):
+def save_evoked_to_blender(mri_subject, events, args, evoked=None):
     fol = op.join(MMVT_DIR, mri_subject, 'eeg')
     utils.make_dir(fol)
     if '{cond}' in meg.EVO:
@@ -62,16 +62,23 @@ def save_evoked_to_blender(mri_subject, events, evoked=None, norm_by_percentile=
             else:
                 evo = evoked[event_id]
             if event_ind == 0:
-                ch_names = evo[0].ch_names
+                ch_names = np.array(evo[0].ch_names)
                 data = np.zeros((evo[0].data.shape[0], evo[0].data.shape[1], 2))
             data[:, :, event_ind] = evo[0].data
     else:
         if evoked is None:
             evoked = mne.read_evokeds(meg.EVO)
-        data = evoked.data
-    data_max, data_min = utils.get_data_max_min(data, norm_by_percentile, norm_percs)
-    max_abs = utils.get_max_abs(data_max, data_min)
-    data = data / max_abs
+        data = evoked[0].data
+        data = data[..., np.newaxis]
+        ch_names = np.array(evoked[0].ch_names)
+    if 'Event' in ch_names:
+        event_ind = np.where(ch_names == 'Event')[0]
+        ch_names = np.delete(ch_names, event_ind)
+        data = np.delete(data, event_ind, 0)
+    if args.normalize_evoked:
+        data_max, data_min = utils.get_data_max_min(data, args.norm_by_percentile, args.norm_percs)
+        max_abs = utils.get_max_abs(data_max, data_min)
+        data = data / max_abs
     np.save(op.join(fol, 'eeg_data.npy'), data)
     np.savez(op.join(fol, 'eeg_data_meta.npz'), names=ch_names, conditions=list(events.keys()))
     return True
@@ -96,7 +103,7 @@ def main(subject, mri_subject, inverse_method, args):
         flags['calc_evoked'], evoked, epochs = meg.calc_evoked_args(conditions, args)
 
     if utils.should_run(args, 'save_evoked_to_blender'):
-        flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, evoked)
+        flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
 
     return flags
 
