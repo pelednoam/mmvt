@@ -42,15 +42,22 @@ sensor and source-space analysis of MEG and EEG data).
 
 
 ## Installation
+- Download [Blender](https://www.blender.org/download/)
+- Download our latest code from github (git clone https://github.com/pelednoam/mmvt.git)
+- In case you want to reconstruct your own subjects, or view your data also in slices mode, you should install the dev version of [Freesurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) (look for Development Version) . If you have access to the Martinos center cluster, you should just source the dev version: source /usr/local/freesurfer/nmr-dev-env
+- Run python -m src.setup from the project's code folder. You should only use python 3.4 and above.
+- Create a script for running Bledner from the terminal (and also source Freesurfer if you've installed it). You can find examples in misc/launch_mmvt for Linux and Mac, and misc/mmvt.bat for windows
 
-- [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
-- [Windows installtion](https://docs.google.com/document/d/1uUCgElXcY884qb-vZ4EZGqLPbRWZH7ni6qVPQbkwXn8/edit?usp=sharing)
+The setup script will create a links folder in your code folder, where it’ll put links to the following folders:
+- subjects: A folder with several files from the FreeSurfer recon-all files. The preprocessing steps write to this folder, so it’s recommended not to use your recon-all folder, rather than creating another subjects folder,  and set the --remote_subject_dir flag to your original recon-all folder. The necessary files will be copied automatically. 
+- mmvt: The folder where you all the MMVT files are going to be stored. The blender files (*.blend) will be placed in the mmvt root folder. For each subject, a folder will be created (mmvt\subject_name), and the output of the preprocessing scripts will be stored in that folder.
+- blender: The folder where you downloaded Blender. The blender executable file supposes to be in this folder. This link is used when running the blender scripts (src.mmvt_addon.scripts) from the command line.
+- meg/eeg/fmri/electrodes: Where you are going to store the different data files. For the modalities you aren't going to use, just press cancel.
 
-After the installation, you'll enter the yet-not-documented territory. please contact me: npeled@mgh.harvard.edu
+After the installation, you'll enter the yet-not-documented territory. please contact us: npeled@mgh.harvard.edu or ohad.felsenstein@biu.ac.il
 
-
-The tool itself, can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
-Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need a os with freesurfer.
+The tool itself can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
+Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need an os that supports freesurfer.
 Beside of that, you can use the tool also on windows.
 
 ## Contributors
