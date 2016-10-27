@@ -45,7 +45,7 @@ sensor and source-space analysis of MEG and EEG data).
 - Download [Blender](https://www.blender.org/download/)
 - Download our latest code from github (git clone https://github.com/pelednoam/mmvt.git)
 - In case you want to reconstruct your own subjects, or view your data also in slices mode, you should install the dev version of [Freesurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) (look for Development Version) . If you have access to the Martinos center cluster, you should just source the dev version: source /usr/local/freesurfer/nmr-dev-env
-- Run python -m src.setup from the project's code folder. You should only use python 3.4 and above.
+- Run python -m src.setup from the project's code folder. You should use python 3.4 and above.
 - Create a script for running Bledner from the terminal (and also source Freesurfer if you've installed it). You can find examples in misc/launch_mmvt for Linux and Mac, and misc/mmvt.bat for windows
 
 The setup script will create a links folder in your code folder, where it’ll put links to the following folders:
@@ -59,6 +59,9 @@ After the installation, you'll enter the yet-not-documented territory. please co
 The tool itself can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
 Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need an os that supports freesurfer.
 Beside of that, you can use the tool also on windows.
+
+## Template brain
+To get started, download and extract [colin27](https://drive.google.com/file/d/0BxstG-_3FEEyM1JpVzlsVHVJVDg/view?usp=sharing) (SPM template brain) into your MMVT folder. Then, run Blender with the script you've created and open colin27.blend file. After that, hover with the mouse on the 3D brain panel, press "space", write "run MMVT addon" and press enter.
 
 ## Contributors
 - Ohad Felsenstein (ohad.felsenstein@biu.ac.il)
