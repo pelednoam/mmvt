@@ -50,9 +50,9 @@ sensor and source-space analysis of MEG and EEG data).
 
 The setup script will create a links folder in your code folder, where it’ll put links to the following folders:
 - subjects: A folder with several files from the FreeSurfer recon-all files. The preprocessing steps write to this folder, so it’s recommended not to use your recon-all folder, rather than creating another subjects folder,  and set the --remote_subject_dir flag to your original recon-all folder. The necessary files will be copied automatically. 
-mmvt: The folder where you all the MMVT files are going to be stored. The blender files (*.blend) will be placed in the mmvt root folder. For each subject, a folder will be created (mmvt\subject_name), and the output of the preprocessing scripts will be stored in that folder.
-blender: The folder where you downloaded Blender. The blender executable file supposes to be in this folder. This link is used when running the blender scripts (src.mmvt_addon.scripts) from the command line.
-meg/eeg/fmri/electrodes: Where you are going to store the different data files. For the modalities you aren't going to use, just press cancel.
+- mmvt: The folder where you all the MMVT files are going to be stored. The blender files (*.blend) will be placed in the mmvt root folder. For each subject, a folder will be created (mmvt\subject_name), and the output of the preprocessing scripts will be stored in that folder.
+- blender: The folder where you downloaded Blender. The blender executable file supposes to be in this folder. This link is used when running the blender scripts (src.mmvt_addon.scripts) from the command line.
+- meg/eeg/fmri/electrodes: Where you are going to store the different data files. For the modalities you aren't going to use, just press cancel.
 
 After the installation, you'll enter the yet-not-documented territory. please contact us: npeled@mgh.harvard.edu or ohad.felsenstein@biu.ac.il
 
