@@ -263,6 +263,28 @@ def get_atlas(default='laus250'):
     return get_real_atlas_name(atlas)
 
 
+def get_real_atlas_name(atlas, csv_fol=''):
+    if csv_fol == '':
+        csv_fol = get_mmvt_root()
+    csv_fname = op.join(csv_fol, 'atlas.csv')
+    real_atlas_name = ''
+    if op.isfile(csv_fname):
+        for line in csv_file_reader(csv_fname, ',', 1):
+            if len(line) < 2:
+                continue
+            if atlas in [line[0], line[1]]:
+                real_atlas_name = line[1]
+                break
+        if real_atlas_name == '':
+            print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+            return atlas
+        return real_atlas_name
+    else:
+        print('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
+                        'the columns are name in blend file, annot name, description'.format(csv_fname))
+        return ''
+
+
 def get_user_fol():
     root_fol = bpy.path.abspath('//')
     user = get_user()
