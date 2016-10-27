@@ -48,7 +48,7 @@ sensor and source-space analysis of MEG and EEG data).
 - Run python -m src.setup from the project's code folder. You should only use python 3.4 and above.
 - Create a script for running Bledner from the terminal (and also source Freesurfer if you've installed it). You can find examples in misc/launch_mmvt for Linux and Mac, and misc/mmvt.bat for windows
 
-After the installation, you'll enter the yet-not-documented territory. please contact me: npeled@mgh.harvard.edu
+After the installation, you'll enter the yet-not-documented territory. please contact us: npeled@mgh.harvard.edu or ohad.felsenstein@biu.ac.il
 
 
 The tool itself, can run on windows, mac and linux. If you want to connect it to freeview, you'll need to run it only on freesurfer compatible os, meaning linux and mac.
