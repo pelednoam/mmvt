@@ -30,7 +30,7 @@ HEMIS = ['rh', 'lh']
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
 MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, \
-    NOISE_COV, DATA_CSD, NOISE_CSD = [''] * 35
+    NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 36
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
                       mmvt_dir, args):
@@ -46,7 +46,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
                  fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, FWD, FWD_SUB, FWD_X, FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, \
         MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, \
-        MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD
+        MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
     if files_includes_cond:
         fname_format = fname_format_cond
     SUBJECT = subject
@@ -78,6 +78,9 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     _get_pkl_name_no_cond = partial(_get_pkl_name, cond='')
 
     RAW = _get_fif_name('raw', contrast='', cond='')
+    alt_raw_fname = '{}.fif'.format(RAW[:-len('-raw.fif')])
+    if not op.isfile(RAW) and op.isfile(alt_raw_fname):
+        RAW = alt_raw_fname
     INFO = _get_pkl_name_no_cond('raw-info')
     EVE = _get_txt_name('eve', cond='') if events_fname == '' else events_fname
     EVO = _get_fif_name('ave')
@@ -110,6 +113,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     BEM = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-5120-5120-5120-bem-sol.fif'.format(MRI_SUBJECT))
     COR = op.join(SUBJECT_MRI_FOLDER, 'mri', 'T1-neuromag', 'sets', 'COR.fif')
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
+    MEG_TO_HEAD_TRANS = op.join(SUBJECT_MEG_FOLDER, 'trans', 'meg_to_head_trans.npy')
     print_files_names()
 
 

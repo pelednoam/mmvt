@@ -18,6 +18,11 @@ mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.d
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
 mris_ca_label = 'mris_ca_label {subject} {hemi} sphere.reg {freesurfer_home}/average/{hemi}.{atlas_type}.gcs {subjects_dir}/{subject}/label/{hemi}.{atlas}.annot -orig white'
 
+mri_pretess = 'mri_pretess {hemi}/{region}_mask.nii.gz 1 {colin_norm_fname} tmp/{region}_{hemi}_filled.mgz'
+mri_tessellate = 'mri_tessellate {hemi}/{region}_mask.nii.gz 1 tmp/{region}_{hemi}_notsmooth'
+mris_smooth = 'mris_smooth -nw tmp/{region}_{hemi}_notsmooth tmp/{region}_{hemi}_smooth'
+mris_convert = 'mris_convert tmp/{region}_{hemi}_smooth tmp/{region}_{hemi}.asc'
+
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
@@ -242,3 +247,14 @@ def check_env_var(var_name, var_val):
         var_val = os.environ.get(var_name, '')
         if var_val  == '':
             raise Exception('No {}!'.format(var_name))
+
+
+def mask_to_srf(atlas_fol, region, hemi, colin_norm_fname):
+    os.chdir(atlas_fol)
+    rs = utils.partial_run_script(locals())
+    rs(mri_pretess)
+    rs(mri_tessellate)
+    rs(mris_smooth)
+    rs(mris_convert)
+    shutil.move(op.join(atlas_fol, 'tmp', '{}_{}.asc'.format(region, hemi)),
+                op.join(atlas_fol, 'tmp', '{}_{}.srf'.format(region, hemi)))

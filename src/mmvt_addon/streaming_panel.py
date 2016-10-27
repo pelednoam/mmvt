@@ -112,7 +112,7 @@ class StreamButton(bpy.types.Operator):
                         data = data.decode(sys.getfilesystemencoding(), 'ignore')
                         data = float(data)
                         change_graph(data)
-                        print('data from listener: {}'.format(data))
+                        # print('data from listener: {}'.format(data))
                     except:
                         print("Can't read the stdout from freeview")
                 except Empty:

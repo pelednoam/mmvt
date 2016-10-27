@@ -33,6 +33,10 @@ def read_eeg_sensors_layout(mri_subject):
     eeg_picks = mne.io.pick.pick_types(info, meg=False, eeg=True)
     eeg_pos = np.array([info['chs'][k]['loc'][:3] for k in eeg_picks])
     eeg_names = np.array([info['ch_names'][k] for k in eeg_picks])
+    if 'Event' in eeg_names:
+        event_ind = np.where(eeg_names == 'Event')[0]
+        eeg_names = np.delete(eeg_names, event_ind)
+        eeg_pos = np.delete(eeg_pos, event_ind)
     fol = op.join(MMVT_DIR, mri_subject, 'eeg')
     utils.make_dir(fol)
     output_fname = op.join(fol, 'eeg_positions.npz')
