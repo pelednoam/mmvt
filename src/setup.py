@@ -1,10 +1,12 @@
+# The setup suppose to run *before* installing python libs, so only python vanilla can be used here
+
 import os
 import os.path as op
 import shutil
-import numpy as np
 import traceback
-from src.utils import utils
+from src.utils import setup_utils as utils
 import glob
+
 
 TITLE = 'MMVT Installation'
 
@@ -12,23 +14,29 @@ TITLE = 'MMVT Installation'
 def copy_resources_files(mmvt_root_dir):
     resource_dir = utils.get_resources_fol()
     utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
-    for color_map_file in glob.glob(op.join(resource_dir, 'color_maps', '*.npy')):
-        new_file_name = op.join(mmvt_root_dir, 'color_maps', color_map_file.split(op.sep)[-1])
-        # print('Copy {} to {}'.format(color_map_file, new_file_name))
-        shutil.copy(color_map_file, new_file_name)
-    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt',
-             'empty_subject.blend']
-    for file_name in files:
-        # print('Copy {} to {}'.format(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name)))
-        shutil.copy(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name))
-    return np.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
+    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'empty_subject.blend']
+    cm_files = glob.glob(op.join(resource_dir, 'color_maps', '*.npy'))
+    all_files_exist = utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
+    all_cm_files_exist = utils.all([op.isfile(fname) for fname in cm_files])
+    if all_files_exist and all_cm_files_exist:
+        return True
+    if not all_cm_files_exist:
+        for color_map_file in glob.glob(op.join(resource_dir, 'color_maps', '*.npy')):
+            new_file_name = op.join(mmvt_root_dir, 'color_maps', color_map_file.split(op.sep)[-1])
+            # print('Copy {} to {}'.format(color_map_file, new_file_name))
+            shutil.copy(color_map_file, new_file_name)
+    if not all_files_exist:
+        for file_name in files:
+            # print('Copy {} to {}'.format(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name)))
+            shutil.copy(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name))
+    return utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
 
 
 def create_links(links_fol_name='links', gui=True):
     links_fol = utils.get_links_dir(links_fol_name)
     utils.make_dir(links_fol)
     links_names = ['mmvt', 'subjects', 'blender', 'meg', 'fMRI', 'electrodes', 'freesurfer']
-    all_links_exist = np.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+    all_links_exist = utils.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         return True
     if not utils.is_link(op.join(links_fol, 'freesurfer')):
@@ -93,7 +101,7 @@ def create_links(links_fol_name='links', gui=True):
     #     except:
     #         print('Error with folder {} and link {}'.format(real_fol, link_name))
     #         print(traceback.format_exc())
-    return np.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
+    return utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
 
 
 def create_real_folder(real_fol):
@@ -144,7 +152,7 @@ def main(args):
         install_reqs()
         print('Finish!')
 
-    #todo: Copy also the color maps into the mmvt folder
+
 if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au

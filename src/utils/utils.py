@@ -1480,6 +1480,11 @@ def choose_folder_gui():
 def list_flatten(l):
     return [item for sublist in l for item in sublist]
 
+
+def all(arr):
+    return list(set(arr))[0] == True
+
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
