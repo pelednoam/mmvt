@@ -45,7 +45,7 @@ sensor and source-space analysis of MEG and EEG data).
 - Download [Blender](https://www.blender.org/download/)
 - Download our latest code from github (git clone https://github.com/pelednoam/mmvt.git)
 - In case you want to reconstruct your own subjects, or view your data also in slices mode, you should install the dev version of [Freesurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) (look for Development Version) . If you have access to the Martinos center cluster, you should just source the dev version: source /usr/local/freesurfer/nmr-dev-env
-- Run python -m src.setup from the project's code folder. You should only use python 3.4 and above.
+- Run python -m src.setup from the project's code folder. You should use python 3.4 and above.
 - Create a script for running Bledner from the terminal (and also source Freesurfer if you've installed it). You can find examples in misc/launch_mmvt for Linux and Mac, and misc/mmvt.bat for windows
 
 The setup script will create a links folder in your code folder, where it’ll put links to the following folders:
