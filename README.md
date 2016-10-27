@@ -60,6 +60,9 @@ The tool itself can run on windows, mac and linux. If you want to connect it to 
 Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need an os that supports freesurfer.
 Beside of that, you can use the tool also on windows.
 
+## Template brain
+To get start, download and extract [colin27](https://drive.google.com/file/d/0BxstG-_3FEEyM1JpVzlsVHVJVDg/view?usp=sharing) (SPM template brain) into your MMVT folder. 
+
 ## Contributors
 - Ohad Felsenstein (ohad.felsenstein@biu.ac.il)
 - Noam Peled (npeled@mgh.harvard.edu)
