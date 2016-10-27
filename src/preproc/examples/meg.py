@@ -17,6 +17,8 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     args.task = 'MSIT'
     args.atlas = 'laus250'
     args.function = 'calc_stc_per_condition,calc_single_trial_labels_per_condition'
+    args.t_tmin = -0.5
+    args.t_tmax = 2
     args.single_trial_stc = True
     args.fwd_no_cond = False
     args.files_includes_cond = True
@@ -29,6 +31,8 @@ def calc_msit_evoked(subject, mri_subject):
     args.task = 'MSIT'
     args.atlas = 'laus250'
     args.function = 'calc_evoked'
+    args.t_tmin = -0.5
+    args.t_tmax = 2
     args.calc_epochs_from_raw = True
     args.read_events_from_file = True
     args.remote_subject_meg_dir = '/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit/events'

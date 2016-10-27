@@ -195,25 +195,33 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
         print('read events from {}'.format(EVE))
         events = mne.read_events(EVE)
     else:
-        events = mne.find_events(raw, stim_channel=stim_channels)
-    if events is not None:
-        # print(events)
-        picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog,  exclude='bads')
-        # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
-        reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
-        if not reject is None and pick_eog:
-            reject['eog'] = reject_eog
-        # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
-        epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
-            baseline=baseline, preload=True, reject=reject)
-        if '{cond}' in EPO:
-            for event in epochs.event_id: #events.keys():
-                epochs[event].save(get_cond_fname(EPO, event))
-        else:
-            epochs.save(EPO)
-        return epochs
+        try:
+            events = mne.find_events(raw, stim_channel=stim_channels)
+        except:
+            print('No stim channels found!')
+            events = None
+    if events is None:
+        ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
+        if ans != 'y':
+            return None
+        events = np.array([[0, 0, 1]], dtype=np.uint32)
+        tmin = raw._times[0]
+        tmax = raw._times[-1]
+        baseline = None
+    picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog,  exclude='bads')
+    # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
+    reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
+    if not reject is None and pick_eog:
+        reject['eog'] = reject_eog
+    # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
+    epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
+        baseline=baseline, preload=True, reject=reject)
+    if '{cond}' in EPO:
+        for event in epochs.event_id: #events.keys():
+            epochs[event].save(get_cond_fname(EPO, event))
     else:
-        return None
+        epochs.save(EPO)
+    return epochs
 
 
 # def createEventsFiles(behavior_file, pattern):
@@ -1594,8 +1602,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--apply_SSP_projection_vectors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--add_eeg_ref', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--pick_ori', help='', required=False, default=None)
-    parser.add_argument('--t_min', help='', required=False, default=-0.5, type=float)
-    parser.add_argument('--t_max', help='', required=False, default=2, type=float)
+    parser.add_argument('--t_min', help='', required=False, default=0, type=float)
+    parser.add_argument('--t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
     parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)

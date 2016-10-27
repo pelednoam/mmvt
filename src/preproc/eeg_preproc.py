@@ -103,7 +103,7 @@ def main(subject, mri_subject, inverse_method, args):
 
 def run_on_subjects(args):
     from src.preproc.eeg_preproc import main as eeg_main
-    meg.run_on_subjects(args, eeg_main) # locals()['main'])
+    meg.run_on_subjects(args, eeg_main)
 
 
 def read_cmd_args(argv=None):
