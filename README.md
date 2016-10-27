@@ -42,9 +42,9 @@ sensor and source-space analysis of MEG and EEG data).
 
 
 ## Installation
-
-- [Linux installtion](https://docs.google.com/document/d/1a3fo0sGuff7CadYNbh06Xrx4whcebrPo7K2xxXGpqA4/edit?usp=sharing)
-- [Windows installtion](https://docs.google.com/document/d/1uUCgElXcY884qb-vZ4EZGqLPbRWZH7ni6qVPQbkwXn8/edit?usp=sharing)
+- Download [Blender](https://www.blender.org/download/)
+- Download our latest code from github (git clone https://github.com/pelednoam/mmvt.git)
+- Run python -m src.setup from the project's code folder
 
 After the installation, you'll enter the yet-not-documented territory. please contact me: npeled@mgh.harvard.edu
 
