@@ -61,7 +61,7 @@ Also in the preprocessing tool there are few call to freesurfer, so mainly to cr
 Beside of that, you can use the tool also on windows.
 
 ## Template brain
-To get start, download and extract [colin27](https://drive.google.com/file/d/0BxstG-_3FEEyM1JpVzlsVHVJVDg/view?usp=sharing) (SPM template brain) into your MMVT folder. 
+To get started, download and extract [colin27](https://drive.google.com/file/d/0BxstG-_3FEEyM1JpVzlsVHVJVDg/view?usp=sharing) (SPM template brain) into your MMVT folder. Then, run Blender with the script you've created and open colin27.blend file. After that, hover with the mouse on the 3D brain panel, press "space", write "run MMVT addon" and press enter.
 
 ## Contributors
 - Ohad Felsenstein (ohad.felsenstein@biu.ac.il)
