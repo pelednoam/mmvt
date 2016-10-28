@@ -63,6 +63,7 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
                 evo = evoked[event_id]
             if event_ind == 0:
                 ch_names = np.array(evo[0].ch_names)
+                dt = np.diff(evo[0].times[:2])[0]
                 data = np.zeros((evo[0].data.shape[0], evo[0].data.shape[1], 2))
             data[:, :, event_ind] = evo[0].data
     else:
@@ -71,6 +72,7 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
         data = evoked[0].data
         data = data[..., np.newaxis]
         ch_names = np.array(evoked[0].ch_names)
+        dt = np.diff(evoked[0].times[:2])[0]
     if 'Event' in ch_names:
         event_ind = np.where(ch_names == 'Event')[0]
         ch_names = np.delete(ch_names, event_ind)
@@ -80,7 +82,7 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
         max_abs = utils.get_max_abs(data_max, data_min)
         data = data / max_abs
     np.save(op.join(fol, 'eeg_data.npy'), data)
-    np.savez(op.join(fol, 'eeg_data_meta.npz'), names=ch_names, conditions=list(events.keys()))
+    np.savez(op.join(fol, 'eeg_data_meta.npz'), names=ch_names, conditions=list(events.keys()), dt=dt)
     return True
 
 
