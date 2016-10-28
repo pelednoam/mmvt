@@ -188,7 +188,7 @@ def calcNoiseCov(epoches):
 
 def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False, events_fname='',
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
-                 reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
+                 reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True):
 
     if read_events_from_file:
         # events_fname = events_fname if events_fname != '' else EVE
@@ -207,13 +207,15 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
         events = np.array([[0, 0, 1]], dtype=np.uint32)
         tmin = raw._times[0]
         tmax = raw._times[-1]
-        baseline = None
+        # baseline = None
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog,  exclude='bads')
     # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
     reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
     if not reject is None and pick_eog:
         reject['eog'] = reject_eog
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
+    if remove_power_line_noise:
+        raw.notch_filter(np.arange(60, 241, 60), picks=picks)
     epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
         baseline=baseline, preload=True, reject=reject)
     if '{cond}' in EPO:
@@ -242,12 +244,12 @@ def calc_evoked_args(events, args, raw=None):
     return calc_evoked(events, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
             args.events_file_name, args.calc_epochs_from_raw, args.stim_channels,
             args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
-            args.reject_grad, args.reject_mag, args.reject_eog)
+            args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise)
 
 
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_file_name='',
                 calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
-                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6,
+                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                 bad_channels=[], l_freq=None, h_freq=None):
     # Calc evoked data for averaged data and for each condition
     try:
@@ -271,7 +273,7 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_file_name,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
-                                  reject_grad, reject_mag, reject_eog)
+                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise)
         all_evoked = calc_evoked_from_epochs(epochs, events)
         flag = True
     except:
@@ -1594,6 +1596,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_meg', help='pick meg events', required=False, default=1, type=au.is_true)
     parser.add_argument('--pick_eeg', help='pick eeg events', required=False, default=0, type=au.is_true)
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
+    parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--stim_channels', help='stim_channels', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
@@ -1606,8 +1609,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
-    parser.add_argument('--base_line_min', help='', required=False, default=None, type=float)
-    parser.add_argument('--base_line_max', help='', required=False, default=0, type=au.float_or_none)
+    parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
+    parser.add_argument('--baseline_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--contrast', help='', required=False, default='')
@@ -1643,10 +1646,10 @@ def read_cmd_args(argv=None):
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
         args.mri_subject = args.subject
-    if args.base_line_min is None and args.base_line_max is None:
+    if args.baseline_min is None and args.baseline_max is None:
         args.baseline = None
     else:
-        args.baseline = (args.base_line_min, args.base_line_max)
+        args.baseline = (args.baseline_min, args.baseline_max)
 
     # print(args)
     return args

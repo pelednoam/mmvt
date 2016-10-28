@@ -82,6 +82,7 @@ import_brain = data_panel.import_brain
 add_data_to_parent_brain_obj = data_panel.add_data_to_parent_brain_obj
 add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
+eeg_data_and_meta = data_panel.eeg_data_and_meta
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections

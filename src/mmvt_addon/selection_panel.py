@@ -4,6 +4,11 @@ import numpy as np
 import colors_utils as cu
 import connections_panel
 import electrodes_panel
+import os.path as op
+
+
+def _addon():
+    return SelectionMakerPanel.addon
 
 
 def deselect_all():
@@ -40,7 +45,7 @@ def select_all_connections():
 
 def conditions_selection_update(self, context):
     mu.filter_graph_editor(bpy.context.scene.conditions_selection)
-    SelectionMakerPanel.addon.clear_and_recolor()
+    _addon().clear_and_recolor()
 
 
 def select_brain_objects(parent_obj_name, children):
@@ -182,11 +187,91 @@ class FitSelection(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PrevWindow(bpy.types.Operator):
+    bl_idname = "mmvt.prev_window"
+    bl_label = "prev window"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.current_window_selection -= 1
+        change_window()
+        return {"FINISHED"}
+
+
+class NextWindow(bpy.types.Operator):
+    bl_idname = "mmvt.next_window"
+    bl_label = "next window"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.current_window_selection += 1
+        change_window()
+        return {"FINISHED"}
+
+
+class JumpToWindow(bpy.types.Operator):
+    bl_idname = "mmvt.jump_to_window"
+    bl_label = "jump to window"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        change_window()
+        return {"FINISHED"}
+
+
+def change_window():
+    import time
+    # todo: check what kind of data is displayed in the graph panel
+    data_type = 'eeg'
+    change = True
+    if data_type == 'eeg':
+        now = time.time()
+        data, meta = _addon().eeg_data_and_meta()
+        obj_name = 'EEG_electrodes'
+        ch_names = meta['names']
+        points_in_sec = int(1 / meta['dt'])
+        window_len = get_window_length(obj_name)
+        new_point_in_time = bpy.context.scene.current_window_selection * points_in_sec
+        new_data = data[:, new_point_in_time:new_point_in_time + window_len - 1] * 1000
+        print('{} took {:.6f}s'.format('loading', time.time() - now))
+
+    else:
+        change = False
+    if change:
+        mu.change_fcurves(obj_name, new_data, ch_names)
+        bpy.data.scenes['Scene'].frame_preview_start = 0
+        bpy.data.scenes['Scene'].frame_preview_end = window_len
+
+
+def get_window_length(obj_name):
+    try:
+        parent_obj = bpy.data.objects[obj_name]
+        fcurve = parent_obj.animation_data.action.fcurves[0]
+        N = len(fcurve.keyframe_points)
+    except:
+        N = 2000
+    return N
+
+
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
     items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2),
            ("spec_cond", "Specific condition", "", 3)], description="Selection type")
 bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
                                                               update=conditions_selection_update)
+bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
+
+
+def get_dt():
+    #todo: check what is in the graph panel
+    data_type = 'eeg'
+    if data_type == 'eeg':
+        _, meta = _addon().eeg_data_and_meta()
+        return meta['dt']
+    else:
+        return None
 
 
 class SelectionMakerPanel(bpy.types.Panel):
@@ -215,9 +300,23 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
 
+        if not SelectionMakerPanel.dt is None:
+            points_in_sec = int(1 / SelectionMakerPanel.dt)
+            window_from = bpy.context.scene.current_window_selection * points_in_sec / 1000
+            window_to =  window_from + points_in_sec * 2 / 1000
+
+            layout.label(text='From {:.2f}s to {:.2f}s'.format(window_from, window_to))
+            row = layout.row(align=True)
+            # row.operator(Play.bl_idname, text="", icon='PLAY' if not PlayPanel.is_playing else 'PAUSE')
+            row.operator(PrevWindow.bl_idname, text="", icon='PREV_KEYFRAME')
+            row.operator(NextWindow.bl_idname, text="", icon='NEXT_KEYFRAME')
+            row.prop(context.scene, 'current_window_selection', text='window')
+            row.operator(JumpToWindow.bl_idname, text='Jump', icon='DRIVER')
+
 
 def init(addon):
     SelectionMakerPanel.addon = addon
+    SelectionMakerPanel.dt = get_dt()
     register()
 
 
@@ -232,6 +331,9 @@ def register():
         bpy.utils.register_class(SelectAllEEG)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
+        bpy.utils.register_class(NextWindow)
+        bpy.utils.register_class(PrevWindow)
+        bpy.utils.register_class(JumpToWindow)
         # print('Selection Panel was registered!')
     except:
         print("Can't register Selection Panel!")
@@ -247,5 +349,8 @@ def unregister():
         bpy.utils.unregister_class(SelectAllEEG)
         bpy.utils.unregister_class(SelectAllSubcorticals)
         bpy.utils.unregister_class(SelectAllRois)
+        bpy.utils.unregister_class(NextWindow)
+        bpy.utils.unregister_class(PrevWindow)
+        bpy.utils.unregister_class(JumpToWindow)
     except:
         pass

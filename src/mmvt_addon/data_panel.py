@@ -39,6 +39,15 @@ def _addon():
     return DataMakerPanel.addon
 
 
+def eeg_data_and_meta():
+    if DataMakerPanel.eeg_data is None:
+        data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+        meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
+        DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
+        DataMakerPanel.eeg_meta = np.load(meta_fname)
+    return DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
+
+
 def import_hemis_for_functional_maps(base_path):
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     layers_array = bpy.context.scene.layers
@@ -555,20 +564,12 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_electrodes(input_file, meta_file=None):
+def add_data_to_electrodes(all_data, meta_data, window_len=None):
     print('Adding data to Electrodes')
-    conditions = []
-    # todo: we don't need to load this twice (also in add_data_to_electrodes_obj
-    if meta_file is None:
-        f = np.load(input_file)
-        data = f['data']
-    else:
-        data = np.load(input_file)
-        f = np.load(meta_file)
-    print('{} loaded'.format(input_file))
     now = time.time()
-    N = len(f['names'])
-    for obj_counter, (obj_name, data) in enumerate(zip(f['names'], data)):
+    N = len(meta_data['names'])
+    T = all_data.shape[1] if window_len is None or not 'dt' in meta_data else int(window_len / meta_data['dt'])
+    for obj_counter, (obj_name, data) in enumerate(zip(meta_data['names'], all_data)):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         obj_name = obj_name.astype(str)
         # print(obj_name)
@@ -576,43 +577,35 @@ def add_data_to_electrodes(input_file, meta_file=None):
             print("{} doesn't exist!".format(obj_name))
             continue
         cur_obj = bpy.data.objects[obj_name]
-        for cond_ind, cond_str in enumerate(f['conditions']):
+        for cond_ind, cond_str in enumerate(meta_data['conditions']):
             cond_str = cond_str.astype(str)
             # Set the values to zeros in the first and last frame for current object(current label)
             mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(data[0]) + 2)
+            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, T + 2)
 
             print('keyframing ' + obj_name + ' object in condition ' + cond_str)
             # For every time point insert keyframe to current object
-            for ind, timepoint in enumerate(data[:, cond_ind]):
+            for ind, timepoint in enumerate(data[:T, cond_ind]):
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
             # remove the orange keyframe sign in the fcurves window
             fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
             mod = fcurves.modifiers.new(type='LIMITS')
-    conditions = f['conditions']
+    conditions = meta_data['conditions']
     print('Finished keyframing!!')
     return conditions
 
 
-def add_data_to_electrodes_parent_obj(parent_obj, input_file, meta_file=None, stat=STAT_DIFF):
+def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None):
     # todo: merge with add_data_to_brain_parent_obj, same code
     parent_obj.animation_data_clear()
     sources = {}
-    if not op.isfile(input_file):
-        raise Exception("Can't load file {}!".format(input_file))
-    print('loading {}'.format(input_file))
-    if meta_file is None:
-        f = np.load(input_file)
-        data = f['data']
-    else:
-        f = np.load(meta_file)
-        data = np.load(input_file)
     # for obj_name, data in zip(f['names'], f['data']):
-    all_data_stat = f['stat'] if 'stat' in f else [None] * len(f['names'])
-    for obj_name, data, data_stat in zip(f['names'], data, all_data_stat):
+    all_data_stat = meta['stat'] if 'stat' in meta else [None] * len(meta['names'])
+    T = all_data.shape[1] if window_len is None or 'dt' not in meta else int(window_len / meta['dt'])
+    for obj_name, data, data_stat in zip(meta['names'], all_data, all_data_stat):
         obj_name = obj_name.astype(str)
         if data_stat is None:
-            if stat == STAT_AVG:
+            if stat == STAT_AVG or data.shape[1] == 1:
                 data_stat = np.squeeze(np.mean(data, axis=1))
             elif stat == STAT_DIFF:
                 data_stat = np.squeeze(np.diff(data, axis=1))
@@ -620,7 +613,7 @@ def add_data_to_electrodes_parent_obj(parent_obj, input_file, meta_file=None, st
 
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
-    T = DataMakerPanel.addon.get_max_time_steps() # len(sources[sources_names[0]]) + 2
+    # T = DataMakerPanel.addon.get_max_time_steps() # len(sources[sources_names[0]]) + 2
     now = time.time()
     for obj_counter, source_name in enumerate(sources_names):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
@@ -628,7 +621,7 @@ def add_data_to_electrodes_parent_obj(parent_obj, input_file, meta_file=None, st
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
 
-        for ind in range(data.shape[0]):
+        for ind in range(T):
             mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
 
         fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
@@ -657,12 +650,21 @@ class AddDataToEEG(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        parent_obj = bpy.data.objects['EEG_electrodes']
-        source_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
-        meta_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
-        add_data_to_electrodes(source_file, meta_file)
-        add_data_to_electrodes_parent_obj(parent_obj, source_file, meta_file)
-        bpy.types.Scene.eeg_data_exist = True
+        parnet_name = 'EEG_electrodes'
+        parent_obj = bpy.data.objects.get(parnet_name)
+        if parent_obj is None:
+            layers_array = [False] * 20
+            create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
+        data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+        meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
+        if not op.isfile(data_fname) or not op.isfile(meta_fname):
+            print('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname))
+        else:
+            data = DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
+            meta = DataMakerPanel.eeg_meta = np.load(meta_fname)
+            add_data_to_electrodes(data, meta, window_len=2)
+            add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
+            bpy.types.Scene.eeg_data_exist = True
         if bpy.data.objects.get(' '):
             bpy.context.scene.objects.active = bpy.data.objects[' ']
         return {"FINISHED"}
@@ -678,32 +680,36 @@ class AddDataToElectrodes(bpy.types.Operator):
         # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mu.get_user_fol()
+        data, meta = None, None
         source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_diff.npz'.format(
             '_bipolar' if bpy.context.scene.bipolar else ''))
             # 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-        meta_file = None
-        if not op.isfile(source_file):
+        if op.isfile(source_file):
+            meta = np.load(source_file)
+            data = meta['data']
+        else:
             source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_data.npy'.format(
                 '_bipolar' if bpy.context.scene.bipolar else '',
                 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-            colors_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_colors.npy'.format(
-                '_bipolar' if bpy.context.scene.bipolar else '',
-                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+            # colors_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_colors.npy'.format(
+            #     '_bipolar' if bpy.context.scene.bipolar else '',
+            #     'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
             meta_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_meta.npz'.format(
                 '_bipolar' if bpy.context.scene.bipolar else '',
                 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-            # source_file = op.join(base_path, 'electrodes', 'electrodes_data.npz')
-
-        if not op.isfile(source_file):
-            print('No electrodes data file!')
-        else:
+            if op.isfile(source_file) and op.isfile(meta_file):
+                data = np.load(source_file)
+                meta = np.load(meta_file)
+            else:
+                print('No electrodes data file!')
+        if not data is None and not meta is None:
             print('Loading electordes data from {}'.format(source_file))
             conditions = add_data_to_electrodes(source_file, meta_file)
             selection_panel.set_conditions_enum(conditions)
             add_data_to_electrodes_parent_obj(parent_obj, source_file, meta_file)
             bpy.types.Scene.electrodes_data_exist = True
-            if bpy.data.objects.get(' '):
-                bpy.context.scene.objects.active = bpy.data.objects[' ']
+        if bpy.data.objects.get(' '):
+            bpy.context.scene.objects.active = bpy.data.objects[' ']
         return {"FINISHED"}
 
 
@@ -717,6 +723,8 @@ class DataMakerPanel(bpy.types.Panel):
     meg_evoked_files = []
     evoked_files = []
     externals = []
+    eeg_data, eeg_meta = None, None
+
 
     def draw(self, context):
         layout = self.layout

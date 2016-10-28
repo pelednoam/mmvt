@@ -683,7 +683,7 @@ def timeit(func):
     def wrapper(*args, **kwargs):
         now = time.time()
         retval = func(*args, **kwargs)
-        print('{} took {:.2f}s'.format(func.__name__, time.time() - now))
+        print('{} took {:.5f}s'.format(func.__name__, time.time() - now))
         return retval
 
     return wrapper
@@ -1037,3 +1037,42 @@ def select_layer(layer, val=True):
 def get_time():
     # print(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'))
     return str(datetime.now())
+
+
+def change_fcurve(obj_name, fcurve_name, data):
+    bpy.data.objects[obj_name].select = True
+    parent_obj = bpy.data.objects[obj_name]
+    for fcurve in parent_obj.animation_data.action.fcurves:
+        if get_fcurve_name(fcurve) == fcurve_name:
+            N = min(len(fcurve.keyframe_points), len(data))
+            for ind in range(N):
+                fcurve.keyframe_points[ind].co[1] = data[ind]
+
+@timeit
+def change_fcurves(obj_name, data, ch_names):
+    bpy.data.objects[obj_name].select = True
+    parent_obj = bpy.data.objects[obj_name]
+    ch_inds = get_fcurves_ordering(obj_name, ch_names)
+    for fcurve, ch_ind in zip(parent_obj.animation_data.action.fcurves, ch_inds):
+        fcurve_name = get_fcurve_name(fcurve)
+        if fcurve_name != ch_names[ch_ind]:
+            raise Exception('Wrong ordering!')
+        N = min(len(fcurve.keyframe_points), data.shape[1])
+        fcurve.keyframe_points[0].co[1] = 0
+        for time_ind in range(N):
+            fcurve.keyframe_points[time_ind + 1].co[1] = data[ch_ind, time_ind]
+        fcurve.keyframe_points[N].co[1] = 0
+
+
+@timeit
+def get_fcurves_ordering(obj_name, ch_names):
+    parent_obj = bpy.data.objects[obj_name]
+    fcurves_names = [get_fcurve_name(fcurve) for fcurve in parent_obj.animation_data.action.fcurves]
+    ch_inds = []
+    for fcurve_ind, fcurve_name in enumerate(fcurves_names):
+        if fcurve_name != ch_names[fcurve_ind]:
+            ch_ind = np.where(ch_names == fcurve_name)[0][0]
+        else:
+            ch_ind = fcurve_ind
+        ch_inds.append(ch_ind)
+    return ch_inds
