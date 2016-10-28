@@ -235,7 +235,9 @@ def change_window():
         points_in_sec = int(1 / meta['dt'])
         window_len = get_window_length(obj_name)
         new_point_in_time = bpy.context.scene.current_window_selection * points_in_sec
-        new_data = data[:, new_point_in_time:new_point_in_time + window_len - 1] * 1000
+        #todo: add a factor field
+        factor = 1000
+        new_data = data[:, new_point_in_time:new_point_in_time + window_len - 1] * factor
         print('{} took {:.6f}s'.format('loading', time.time() - now))
 
     else:
