@@ -29,8 +29,8 @@ STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X, FWD_SMOOTH, INV,\
-INV_SMOOTH, INV_SUB, INV_X, MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
-COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 38
+INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
+COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 40
 
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
@@ -46,7 +46,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
                  cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
-        FWD_SMOOTH, INV, INV_SMOOTH, INV_SUB, INV_X, MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, \
+        FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, \
         STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, \
         DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
     if files_includes_cond:
@@ -99,9 +99,11 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     FWD_X = _get_fif_name_no_cond('{region}-fwd') if fwd_no_cond else _get_fif_name_cond('{region}-fwd')
     FWD_SMOOTH = _get_fif_name_no_cond('smooth-fwd') if inv_no_cond else _get_fif_name_cond('smooth-fwd')
     INV = _get_fif_name_no_cond('inv') if inv_no_cond else _get_fif_name_cond('inv')
+    INV_EEG = _get_fif_name_no_cond('eeg-inv') if inv_no_cond else _get_fif_name_cond('eeg-inv')
     INV_SUB = _get_fif_name_no_cond('sub-cortical-inv') if inv_no_cond else _get_fif_name_cond('sub-cortical-inv')
     INV_X = _get_fif_name_no_cond('{region}-inv') if inv_no_cond else _get_fif_name_cond('{region}-inv')
     INV_SMOOTH = _get_fif_name_no_cond('smooth-inv') if inv_no_cond else _get_fif_name_cond('smooth-inv')
+    INV_EEG_SMOOTH = _get_fif_name_no_cond('eeg-smooth-inv') if inv_no_cond else _get_fif_name_cond('eeg-smooth-inv')
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
@@ -600,9 +602,10 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, calc_for_cortica
                           calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
                           spec_subcortical_fwd=None, region=None):
     conds = ['all'] if '{cond}' not in EPO else events.keys()
-    fwd_fname = FWD if fwd_usingMEG else FWD_EEG
+    fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
+    inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
     for cond in conds:
-        if (not calc_for_cortical_fwd or op.isfile(get_cond_fname(INV, cond))) and \
+        if (not calc_for_cortical_fwd or op.isfile(get_cond_fname(inv_fname, cond))) and \
                 (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
                 (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region))):
             continue
@@ -610,10 +613,10 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, calc_for_cortica
             epo = get_cond_fname(EPO, cond)
             epochs = mne.read_epochs(epo)
             noise_cov = calc_noise_cov(epochs)
-            if calc_for_cortical_fwd and not op.isfile(get_cond_fname(INV, cond)):
+            if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
-                _calc_inverse_operator(cortical_fwd, get_cond_fname(INV, cond), epochs, noise_cov, inv_loose, inv_depth)
+                _calc_inverse_operator(cortical_fwd, get_cond_fname(inv_fname, cond), epochs, noise_cov, inv_loose, inv_depth)
             if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
@@ -1548,8 +1551,9 @@ def run_on_subjects(args, main_func=None):
 
 
 def calc_fwd_inv(subject, mri_subject, conditions, args, flags):
-    get_meg_files(subject, [INV], args, conditions)
-    if args.overwrite_inv or not op.isfile(INV):
+    inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
+    get_meg_files(subject, [inv_fname], args, conditions)
+    if args.overwrite_inv or not op.isfile(inv_fname):
         if utils.should_run(args, 'make_forward_solution'):
             if not args.fwd_recreate_source_space:
                 nec_files_dic = dict(bem='{}-oct-6p-src.fif'.format(mri_subject))
