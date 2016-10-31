@@ -99,10 +99,18 @@ def main(subject, mri_subject, inverse_method, args):
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject)
 
+
     if utils.should_run(args, 'calc_evoked'):
         necessary_files = meg.calc_evoked_necessary_files(args)
         meg.get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_evoked'], evoked, epochs = meg.calc_evoked_args(conditions, args)
+
+    if not op.isfile(meg.COR):
+        eeg_cor = op.join(meg.SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(subject))
+        if not op.isfile(eeg_cor):
+            raise Exception("Can't find head-MRI transformation matrix. Should be in {} or in {}".format(meg.COR, eeg_cor))
+        meg.COR = eeg_cor
+    flags = meg.calc_fwd_inv(subject, mri_subject, conditions, args, flags)
 
     if utils.should_run(args, 'save_evoked_to_blender'):
         flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
@@ -120,6 +128,8 @@ def read_cmd_args(argv=None):
     args.pick_meg = False
     args.pick_eeg = True
     args.reject = False
+    args.fwd_usingMEG = False
+    args.fwd_usingEEG = True
     return args
 
 
