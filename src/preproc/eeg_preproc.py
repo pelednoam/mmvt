@@ -87,34 +87,29 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
 
 
 def main(subject, mri_subject, inverse_method, args):
-
-    fname_format, fname_format_cond, conditions = meg.get_fname_format_args(args)
+    evoked, epochs = None, None
+    fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, args)
     meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
                      MMVT_DIR, args)
     meg.SUBJECTS_MEG_DIR = SUBJECTS_EEG_DIR
+    meg.FWD = meg.FWD_EEG
+    meg.INV = meg.INV_EEG
     stat = meg.STAT_AVG if len(conditions) == 1 else meg.STAT_DIFF
-    evoked, epochs = None, None
     flags = {}
 
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject)
 
-
-    if utils.should_run(args, 'calc_evoked'):
-        necessary_files = meg.calc_evoked_necessary_files(args)
-        meg.get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_evoked'], evoked, epochs = meg.calc_evoked_args(conditions, args)
-
+    flags = meg.calc_evoked_wrapper(subject, conditions, args, flags)
+    if utils.should_run(args, 'save_evoked_to_blender'):
+        flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
     if not op.isfile(meg.COR):
         eeg_cor = op.join(meg.SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(subject))
         if not op.isfile(eeg_cor):
             raise Exception("Can't find head-MRI transformation matrix. Should be in {} or in {}".format(meg.COR, eeg_cor))
         meg.COR = eeg_cor
-    flags = meg.calc_fwd_inv(subject, mri_subject, conditions, args, flags)
-
-    if utils.should_run(args, 'save_evoked_to_blender'):
-        flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
-
+    flags = meg.calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
+    flags = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     return flags
 
 

@@ -655,6 +655,7 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov, inv_loose=0.2,
 def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, save_stc=True):
+    # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs = {}
@@ -1550,7 +1551,7 @@ def run_on_subjects(args, main_func=None):
         print('{}: {}'.format(subject, error))
 
 
-def calc_fwd_inv(subject, mri_subject, conditions, args, flags):
+def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname):
@@ -1578,37 +1579,24 @@ def calc_fwd_inv(subject, mri_subject, conditions, args, flags):
     return flags
 
 
-def main(subject, mri_subject, inverse_method, args):
-    evoked, epochs, raw = None, None, None
-    stcs_conds, stcs_conds_smooth = None, None
-    if args.events_file_name != '':
-        args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
-        if '{subject}' in args.events_file_name:
-            args.events_file_name = args.events_file_name.format(subject=subject)
-    args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
-    args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
-    prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
-                                  args.mri_necessary_files, args)
-
-    fname_format, fname_format_cond, conditions = get_fname_format_args(args)
-    init_globals_args(
-        subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
-    stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
-    flags = {}
-
+def calc_evoked_wrapper(subject, conditions, args, flags):
     if utils.should_run(args, 'calc_evoked'):
         necessary_files = calc_evoked_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_evoked'], evoked, epochs = calc_evoked_args(conditions, args)
+    return flags
 
-    flags = calc_fwd_inv(subject, mri_subject, conditions, args, flags)
 
+def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
     if utils.should_run(args, 'calc_stc_per_condition'):
         get_meg_files(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
+    return flags
 
+
+def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
@@ -1619,6 +1607,34 @@ def main(subject, mri_subject, inverse_method, args):
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
                 stcs=stcs_conds, n_jobs=args.n_jobs)
+    return flags
+
+
+def init_main(subject, mri_subject, args):
+    if args.events_file_name != '':
+        args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
+        if '{subject}' in args.events_file_name:
+            args.events_file_name = args.events_file_name.format(subject=subject)
+    args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
+    args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
+    prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
+                                  args.mri_necessary_files, args)
+    fname_format, fname_format_cond, conditions = get_fname_format_args(args)
+    return fname_format, fname_format_cond, conditions
+
+
+def main(subject, mri_subject, inverse_method, args):
+    evoked, epochs, raw = None, None, None
+    stcs_conds, stcs_conds_smooth = None, None
+    fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, args)
+    init_globals_args(
+        subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+    stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
+    flags = {}
+    flags = calc_evoked_wrapper(subject, conditions, args, flags)
+    flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
+    flags = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
+    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags)
 
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
