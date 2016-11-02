@@ -1,2 +1,3 @@
 import sys
-print(sys.executable)
+print('Location: %s' % sys.executable)
+print('Version: %s' % sys.version)
