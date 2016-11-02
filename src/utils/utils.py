@@ -1039,7 +1039,7 @@ def how_many_cores():
 
 
 def rand_letters(num):
-    return str(uuid.uuid4())[:num]
+    return str(uuid.uuid4()).replace('-','')[:num]
 
 
 def how_many_subplots(pics_num):

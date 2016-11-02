@@ -6,6 +6,7 @@ from subprocess import Popen, PIPE, check_output
 import gzip
 import numpy as np
 import shutil
+import traceback
 import nibabel as nib
 from nibabel.spatialimages import ImageFileError
 
@@ -18,10 +19,10 @@ mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.d
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
 mris_ca_label = 'mris_ca_label {subject} {hemi} sphere.reg {freesurfer_home}/average/{hemi}.{atlas_type}.gcs {subjects_dir}/{subject}/label/{hemi}.{atlas}.annot -orig white'
 
-mri_pretess = 'mri_pretess {hemi}/{region}_mask.nii.gz 1 {colin_norm_fname} tmp/{region}_{hemi}_filled.mgz'
-mri_tessellate = 'mri_tessellate {hemi}/{region}_mask.nii.gz 1 tmp/{region}_{hemi}_notsmooth'
-mris_smooth = 'mris_smooth -nw tmp/{region}_{hemi}_notsmooth tmp/{region}_{hemi}_smooth'
-mris_convert = 'mris_convert tmp/{region}_{hemi}_smooth tmp/{region}_{hemi}.asc'
+mri_pretess = 'mri_pretess {mask_fname} {region_id} {norm_fname} {tmp_fol}/{region_name}_filled.mgz'
+mri_tessellate = 'mri_tessellate {mask_fname} {region_id} {tmp_fol}/{region_name}_notsmooth'
+mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_name}_notsmooth {tmp_fol}/{region_name}_smooth'
+mris_convert = 'mris_convert {tmp_fol}/{region_name}_smooth {tmp_fol}/{region_name}.asc'
 
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
@@ -249,12 +250,29 @@ def check_env_var(var_name, var_val):
             raise Exception('No {}!'.format(var_name))
 
 
-def mask_to_srf(atlas_fol, region, hemi, colin_norm_fname):
-    os.chdir(atlas_fol)
+def aseg_to_srf(subject, subjects_dir, output_fol, region_name, region_id, mask_fname, norm_fname,
+                overwrite_subcortical_objs=False):
+    ret = True
+    tmp_fol = op.join(subjects_dir, subject, 'tmp', utils.rand_letters(6))
+    utils.make_dir(tmp_fol)
     rs = utils.partial_run_script(locals())
-    rs(mri_pretess)
-    rs(mri_tessellate)
-    rs(mris_smooth)
-    rs(mris_convert)
-    shutil.move(op.join(atlas_fol, 'tmp', '{}_{}.asc'.format(region, hemi)),
-                op.join(atlas_fol, 'tmp', '{}_{}.srf'.format(region, hemi)))
+    output_fname = op.join(output_fol, '{}.srf'.format(region_name))
+    tmp_output_fname = op.join(tmp_fol, '{}.asc'.format(region_name))
+    if overwrite_subcortical_objs:
+        utils.remove_file(output_fname)
+    try:
+        rs(mri_pretess)
+        rs(mri_tessellate)
+        rs(mris_smooth)
+        rs(mris_convert)
+        if op.isfile(tmp_output_fname):
+            shutil.move(tmp_output_fname, output_fname)
+        else:
+            ret = False
+    except:
+        print('Error in aseg_to_srf! subject: {}'.format(subject))
+        print(traceback.format_exc())
+        ret = False
+    utils.delete_folder_files(tmp_fol)
+    return ret
+
