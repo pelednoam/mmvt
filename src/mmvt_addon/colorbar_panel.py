@@ -94,6 +94,7 @@ def colorbar_text_y_update(self, context):
     bpy.data.objects['colorbar_min'].location[0] = -bpy.context.scene.colorbar_text_y
     bpy.data.objects['colorbar_title'].location[0] = -bpy.context.scene.colorbar_text_y
 
+
 def colorbar_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "colorbar_files", text="")
