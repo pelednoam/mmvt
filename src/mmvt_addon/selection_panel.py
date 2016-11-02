@@ -271,7 +271,7 @@ def get_dt():
     data_type = 'eeg'
     if data_type == 'eeg':
         _, meta = _addon().eeg_data_and_meta()
-        return meta['dt']
+        return meta['dt'] if meta and 'dt' in meta else None
     else:
         return None
 

@@ -43,8 +43,11 @@ def eeg_data_and_meta():
     if DataMakerPanel.eeg_data is None:
         data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
-        DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
-        DataMakerPanel.eeg_meta = np.load(meta_fname)
+        if op.isfile(data_fname) and op.isfile(meta_fname):
+            DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
+            DataMakerPanel.eeg_meta = np.load(meta_fname)
+        else:
+            DataMakerPanel.eeg_data = DataMakerPanel.eeg_meta = None
     return DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
 
 
