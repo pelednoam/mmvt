@@ -85,6 +85,15 @@ def show_cb_in_render(val=True):
     mu.show_hide_hierarchy(val, 'cCB_camera', True, False)
 
 
+def colorbar_y_update(self, context):
+    bpy.data.objects['cCB'].location[0] = -bpy.context.scene.colorbar_y
+
+
+def colorbar_text_y_update(self, context):
+    bpy.data.objects['colorbar_max'].location[0] = -bpy.context.scene.colorbar_text_y
+    bpy.data.objects['colorbar_min'].location[0] = -bpy.context.scene.colorbar_text_y
+    bpy.data.objects['colorbar_title'].location[0] = -bpy.context.scene.colorbar_text_y
+
 def colorbar_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "colorbar_files", text="")
@@ -94,6 +103,10 @@ def colorbar_draw(self, context):
     row.prop(context.scene, "colorbar_max", text="max:")
     layout.prop(context.scene, 'colorbar_prec', text='precision')
     layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
+    layout.prop(context.scene, 'update_cb_location', text='Update location')
+    if bpy.context.scene.update_cb_location:
+        layout.prop(context.scene, "colorbar_y", text="y axis")
+        layout.prop(context.scene, "colorbar_text_y", text="text y axis")
     # layout.operator(ColorbarButton.bl_idname, text="Do something", icon='ROTATE')
 
 
@@ -114,6 +127,9 @@ bpy.types.Scene.colorbar_title = bpy.props.StringProperty(description="", update
 bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=5, description="", update=colorbar_update)
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)
+bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
+bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
 
 
 
@@ -154,6 +170,8 @@ def init(addon):
     bpy.context.scene.colorbar_max = 1
     bpy.context.scene.colorbar_title = 'MEG'
     bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
+    bpy.context.scene.colorbar_y = 0.18
+    bpy.context.scene.colorbar_text_y = -1.53
 
 
 def register():
