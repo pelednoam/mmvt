@@ -1,5 +1,5 @@
 import argparse
-from src.preproc import eeg_preproc as eeg
+from src.preproc import eeg as eeg
 from src.utils import utils
 from src.utils import args_utils as au
 

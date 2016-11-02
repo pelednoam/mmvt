@@ -1,5 +1,5 @@
 import argparse
-from src.preproc import fMRI_preproc as fmri
+from src.preproc import fMRI as fmri
 from src.utils import utils
 from src.utils import args_utils as au
 

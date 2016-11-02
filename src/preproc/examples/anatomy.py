@@ -1,6 +1,6 @@
 import os.path as op
 import argparse
-from src.preproc import anatomy_preproc as anat
+from src.preproc import anatomy as anat
 from src.utils import utils
 from src.utils import args_utils as au
 

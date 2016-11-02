@@ -5,7 +5,7 @@ import mne.io
 import glob
 
 from src.utils import utils
-from src.preproc import meg_preproc as meg
+from src.preproc import meg as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
@@ -114,7 +114,7 @@ def main(subject, mri_subject, inverse_method, args):
 
 
 def run_on_subjects(args):
-    from src.preproc.eeg_preproc import main as eeg_main
+    from src.preproc.eeg import main as eeg_main
     meg.run_on_subjects(args, eeg_main)
 
 

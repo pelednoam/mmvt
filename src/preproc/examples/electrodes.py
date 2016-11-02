@@ -1,6 +1,6 @@
 import os.path as op
 import argparse
-from src.preproc import electrodes_preproc as elecs_preproc
+from src.preproc import electrodes as elecs_preproc
 from src.utils import utils
 from src.utils import args_utils as au
 

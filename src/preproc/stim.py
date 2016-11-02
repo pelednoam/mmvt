@@ -69,7 +69,7 @@ def get_stim_labels(subject, args, stim_labels):
 
 
 def create_stim_electrodes_positions(subject, args, stim_labels=None):
-    from src.preproc import electrodes_preproc as ep
+    from src.preproc import electrodes as ep
 
     stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
     output_file_name = 'electrodes{}_stim_{}_positions.npz'.format('_bipolar' if bipolar else '', args.stim_channel)

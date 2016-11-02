@@ -1,6 +1,6 @@
 import argparse
 import os.path as op
-from src.preproc import freeview_preproc as fp
+from src.preproc import freeview as fp
 from src.utils import utils
 from src.utils import args_utils as au
 

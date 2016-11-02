@@ -9,8 +9,8 @@ import scipy.io as sio
 import scipy
 import matplotlib.pyplot as plt
 from src.utils import utils
-from src.preproc import meg_preproc
-from src.preproc import electrodes_preproc as elec_pre
+from src.preproc import meg
+from src.preproc import electrodes as elec_pre
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -82,7 +82,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
     names = np.array([name.decode() if isinstance(name, np.bytes_) else name for name in f['names']])
     figs_fol = op.join(MMVT_DIR, mri_subject, 'figs', 'meg-electrodes2', 'bipolar' if bipolar else 'unipolar')
     utils.make_dir(figs_fol)
-    fname_format, fname_format_cond, events_id = meg_preproc.get_fname_format(task)
+    fname_format, fname_format_cond, events_id = meg.get_fname_format(task)
     if task == 'MSIT':
         cleaning_method = 'nTSSS'
         constrast = 'interference'
@@ -92,10 +92,10 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
         constrast = ''
         keys_dict = {'C': 'congruent', 'I': 'incongruent'}
     inverse_method = 'dSPM'
-    meg_preproc.init_globals(subject, mri_subject, fname_format, fname_format_cond, cleaning_method=cleaning_method,
-                             subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
-                             mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
-                             constrast=constrast)
+    meg.init_globals(subject, mri_subject, fname_format, fname_format_cond, cleaning_method=cleaning_method,
+                     subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
+                     mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
+                     constrast=constrast)
 
     # for elec_probs in elecs_probs:
     #     elec_probs['data'] = {cond:None for cond in events_id.keys()}
@@ -107,7 +107,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
     for cond_id, cond in enumerate(events_id.keys()):
         meg_cond = keys_dict[cond]
         if read_from_stc:
-            stc_fname = meg_preproc.STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh')
+            stc_fname = meg.STC_HEMI_SMOOTH.format(cond=cond, method=inverse_method, hemi='rh')
             stc = mne.read_source_estimate(stc_fname)
             cond_ind = np.where(meg_cond == conds)[0][0]
         else:
@@ -116,7 +116,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
             meg_evo_data = {}
             for hemi in utils.HEMIS:
                 meg_evo_data[hemi] = np.load(
-                    op.join(MMVT_DIR, mri_subject,op.basename(meg_preproc.LBL.format(hemi))))
+                    op.join(MMVT_DIR, mri_subject, op.basename(meg.LBL.format(hemi))))
             meg_conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in meg_evo_data['rh']['conditions']])
             meg_labels = {hemi:np.array([name.decode() if isinstance(name, np.bytes_) else name for name in meg_evo_data[hemi]['names']]) for hemi in utils.HEMIS}
             cond_ind = np.where(cond == meg_conds)[0][0]

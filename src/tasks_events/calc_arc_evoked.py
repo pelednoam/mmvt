@@ -1,8 +1,8 @@
 import numpy as np
 import mne
 import os.path as op
-from src.preproc import meg_preproc
-from src.preproc import anatomy_preproc
+from src.preproc import meg
+from src.preproc import anatomy
 from src.utils import utils
 import glob
 import shutil
@@ -35,8 +35,8 @@ def calc_evoked(indices, epochs_fname, overwrite_epochs=False, overwrite_evoked=
     epochs = mne.read_epochs(epochs_fname, preload=False)
     print(epochs.events.shape)
     for event_name, event_indices in indices.items():
-        evoked_event_fname = meg_preproc.get_cond_fname(meg_preproc.EVO, event_name)
-        epochs_event_fname = meg_preproc.get_cond_fname(meg_preproc.EPO, event_name)
+        evoked_event_fname = meg.get_cond_fname(meg.EVO, event_name)
+        epochs_event_fname = meg.get_cond_fname(meg.EPO, event_name)
         if not op.isfile(epochs_event_fname) or overwrite_epochs:
             print('Saving {} epochs to {}, events num: {}'.format(event_name, epochs_event_fname, len(event_indices)))
             event_epochs = epochs[event_indices]
@@ -98,7 +98,7 @@ def average_all_evoked_responses(root_fol, moving_average_win_size=100, do_plot=
 
 def plot_evoked(indices):
     for event_name in indices.keys():
-        evoked_fname = meg_preproc.get_cond_fname(meg_preproc.EVO, event_name)
+        evoked_fname = meg.get_cond_fname(meg.EVO, event_name)
         print('Reading {}'.format(event_name))
         evoked = mne.read_evokeds(evoked_fname)[0]
         evoked.plot()
@@ -127,9 +127,9 @@ def create_evoked_responses(root_fol, task, atlas, events_id, fname_format, fwd_
 def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fname_format, fwd_fol, neccesary_files,
             remote_subjects_dir, fsaverage, raw_cleaning_method, inverse_method, indices=None,
             overwrite_epochs=False, overwrite_evoked=False, positive=True, moving_average_win_size=100):
-    meg_preproc.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
-                             subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
-                             BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True)
+    meg.init_globals(subject, fname_format=fname_format, raw_cleaning_method=raw_cleaning_method,
+                     subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
+                     BLENDER_ROOT_DIR=BLENDER_ROOT_DIR, files_includes_cond=True, fwd_no_cond=True)
     epochs_fname = '{}_arc_rer_{}-epo.fif'.format(subject, raw_cleaning_method)
     events_fname = '{}_arc_rer_{}-epo.csv'.format(subject, raw_cleaning_method)
     if indices is None:
@@ -150,7 +150,7 @@ def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fnam
         # stcs = meg_preproc.calc_stc_per_condition(events_id, inverse_method)
         stcs = None
         for hemi in utils.HEMIS:
-            meg_preproc.calc_labels_avg_per_condition(
+            meg.calc_labels_avg_per_condition(
                 atlas, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=stcs,
                 inverse_method=inverse_method, positive=positive, moving_average_win_size=moving_average_win_size,
                 do_plot=True)
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     fsaverage = 'fscopy'
     inverse_method = 'dSPM'
     # fname_format = '{subject}_arc_rer_{raw_cleaning_method}_{cond}-{ana_type}.{file_type}'
-    fname_format, events_id, event_digit = meg_preproc.get_fname_format(task)
+    fname_format, events_id, event_digit = meg.get_fname_format(task)
     root_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/ave/'
     fwd_fol = '/autofs/space/sophia_002/users/DARPA-MEG/arc/fwd/'
     remote_subjects_dir = '/autofs/space/lilli_001/users/DARPA-Recons'

@@ -29,8 +29,8 @@ from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV, ElasticNetCV
 # from src import dtw
 from src.utils import utils
 from src.beamformers import tf_dics as tf
-from src.preproc import meg_preproc
-from src.preproc.meg_preproc import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
+from src.preproc import meg
+from src.preproc.meg import (calc_cov, calc_csd, get_cond_fname, get_file_name, make_forward_solution_to_specific_points, TASKS)
 
 warnings.filterwarnings("ignore")
 
@@ -2522,7 +2522,7 @@ if __name__ == '__main__':
     MRI_SUBJECT = 'mg78'
     constrast='interference'
     raw_cleaning_method='nTSSS'
-    task = meg_preproc.TASK_MSIT
+    task = meg.TASK_MSIT
     fname_format = '{subject}_msit_{raw_cleaning_method}_{constrast}_{cond}_1-15-{ana_type}.{file_type}'
     SUBJECT_MEG_FOL = os.path.join(SUBJECTS_MEG_DIR, TASKS[task], MEG_SUBJECT)
     SUBJECT_MRI_FOL = os.path.join(SUBJECTS_MRI_DIR, MRI_SUBJECT)
@@ -2530,9 +2530,9 @@ if __name__ == '__main__':
     MEG_ELEC_CONDS_TRANS = {'noninterference':0, 'interference':1}
     EVENTS_TRANS = {'noninterference':'neutral', 'interference':'interference'}
     EVENTS_TRANS_INV = {v:k for k, v in EVENTS_TRANS.items()}
-    meg_preproc.init_globals(MEG_SUBJECT, MRI_SUBJECT, fname_format, True, raw_cleaning_method, constrast,
-                             SUBJECTS_MEG_DIR, TASKS, task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
-    from src.preproc.meg_preproc import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV, \
+    meg.init_globals(MEG_SUBJECT, MRI_SUBJECT, fname_format, True, raw_cleaning_method, constrast,
+                     SUBJECTS_MEG_DIR, TASKS, task, SUBJECTS_MRI_DIR, BLENDER_ROOT_DIR)
+    from src.preproc.meg import RAW, RAW_NOISE, FWD_X, EVO, EPO, EPO_NOISE, DATA_COV, NOISE_COV, \
         DATA_CSD, NOISE_CSD, NOISE_CSD_EMPTY_ROOM
     now = time.time()
     main()

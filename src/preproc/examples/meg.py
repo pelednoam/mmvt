@@ -1,5 +1,5 @@
 import argparse
-from src.preproc import meg_preproc as meg
+from src.preproc import meg as meg
 from src.utils import utils
 from src.utils import args_utils as au
 

@@ -40,7 +40,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
-from src.preproc import meg_preproc as meg
+from src.preproc import meg as meg
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -148,8 +148,8 @@ def init_clusters(subject, contrast_name, input_fol):
         verts_per_hemi[hemi] = d['verts']
     connectivity_fname = op.join(BLENDER_ROOT_DIR, subject, 'spatial_connectivity.pkl')
     if not op.isfile(connectivity_fname):
-        from src.preproc import anatomy_preproc
-        anatomy_preproc.create_spatial_connectivity(subject)
+        from src.preproc import anatomy
+        anatomy.create_spatial_connectivity(subject)
     connectivity_per_hemi = utils.load(connectivity_fname)
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 

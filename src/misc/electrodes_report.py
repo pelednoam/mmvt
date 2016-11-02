@@ -7,7 +7,7 @@ import numpy as np
 
 from src.utils import utils
 from src.mmvt_addon.mmvt_utils import natural_keys
-from src.preproc import electrodes_preproc as elec_pre
+from src.preproc import electrodes as elec_pre
 from src.utils import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()

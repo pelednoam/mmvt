@@ -1,5 +1,5 @@
 import argparse
-from src.preproc import connections_preproc as con
+from src.preproc import connections as con
 from src.utils import utils
 from src.utils import args_utils as au
 
