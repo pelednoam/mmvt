@@ -256,8 +256,8 @@ def aseg_to_srf(subject, subjects_dir, output_fol, region_name, region_id, mask_
     tmp_fol = op.join(subjects_dir, subject, 'tmp', utils.rand_letters(6))
     utils.make_dir(tmp_fol)
     rs = utils.partial_run_script(locals())
-    output_fname = op.join(output_fol, '{}.srf'.format(region_name))
-    tmp_output_fname = op.join(tmp_fol, '{}.asc'.format(region_name))
+    output_fname = op.join(output_fol, '{}.srf'.format(region_id))
+    tmp_output_fname = op.join(tmp_fol, '{}.asc'.format(region_id))
     if overwrite_subcortical_objs:
         utils.remove_file(output_fname)
     try:
