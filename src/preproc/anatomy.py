@@ -79,7 +79,7 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False):
 
     codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
     subcortical_lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
-    subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, 18)])
+    # subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, 18)])
 
     function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs')
     # function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs_Buckner2011_17')
