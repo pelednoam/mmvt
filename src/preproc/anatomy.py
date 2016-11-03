@@ -91,7 +91,7 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False):
     # mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz')
     norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')
     lookup = load_subcortical_lookup_table()
-    lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
+    # lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
     errors = []
     if len(obj_files) < len(lookup) or overwrite_subcorticals:
