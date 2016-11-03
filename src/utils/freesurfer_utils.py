@@ -19,10 +19,10 @@ mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.d
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
 mris_ca_label = 'mris_ca_label {subject} {hemi} sphere.reg {freesurfer_home}/average/{hemi}.{atlas_type}.gcs {subjects_dir}/{subject}/label/{hemi}.{atlas}.annot -orig white'
 
-mri_pretess = 'mri_pretess {mask_fname} {region_id} {norm_fname} {tmp_fol}/{region_name}_filled.mgz'
-mri_tessellate = 'mri_tessellate {mask_fname} {region_id} {tmp_fol}/{region_name}_notsmooth'
-mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_name}_notsmooth {tmp_fol}/{region_name}_smooth'
-mris_convert = 'mris_convert {tmp_fol}/{region_name}_smooth {tmp_fol}/{region_name}.asc'
+mri_pretess = 'mri_pretess {mask_fname} {region_id} {norm_fname} {tmp_fol}/{region_id}_filled.mgz'
+mri_tessellate = 'mri_tessellate {mask_fname} {region_id} {tmp_fol}/{region_id}_notsmooth'
+mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_id}_notsmooth {tmp_fol}/{region_id}_smooth'
+mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
 
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
