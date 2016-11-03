@@ -388,7 +388,10 @@ def run_script(cmd, verbose=False):
     if is_windows():
         output = subprocess.call(cmd)
     else:
-        output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+        cmd = cmd.replace('\\\\', '')
+        # cmd = cmd.replace('matlab', '/usr/local/matlab2012b/bin/matlab')
+        output = subprocess.check_output(cmd, shell=True)
+        # output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
 
     print(output)
     return output
