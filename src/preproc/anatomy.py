@@ -67,46 +67,50 @@ def subcortical_segmentation_old(subject, overwrite_subcortical_objs=False):
     return flag_ok
 
 
-def subcortical_segmentation(subject, overwrite_subcorticals=False):
+def cerebellum_segmentation(subject, overwrite_subcorticals=False,
+                            mask_fname='Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz',
+                            model='Buckner2011_17Networks', subregions_num=17):
+    # For cerebellum parcellation
+    # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
+    # First download the mask file and put it in the subject's mri folder
+    subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, subregions_num + 1)])
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_fname)
+    lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
+    subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_fname)
+
+
+def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subcortical', lookup=None,
+                             mask_fname='aseg.mgz', norm_fname='norm.mgz'):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
     # 3) mris_smooth: Smooth the new surface
     # 4) mris_convert: Convert the new surface into srf format
-    # Must source freesurfer. You need to have write permissions on SUBJECTS_DIR
 
     if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')):
         return False
 
     codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
     subcortical_lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
-    function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs')
+    function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', '{}_objs'.format(model))
     utils.make_dir(function_output_fol)
-    renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical')
+    renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', model)
     utils.make_dir(renamed_output_fol)
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
-    norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')
-    lookup = load_subcortical_lookup_table()
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_fname)
+    norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', norm_fname)
+    if lookup is None:
+        lookup = load_subcortical_lookup_table()
 
-    # subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, 18)])
-    # function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs_Buckner2011_17')
-    # renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_Buckner2011_17')
-    # mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz')
-    # lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
     errors = []
     if len(obj_files) < len(lookup) or overwrite_subcorticals:
-        # utils.delete_folder_files(function_output_fol)
-        # # utils.delete_folder_files(aseg_to_srf_output_fol)
-        # utils.delete_folder_files(renamed_output_fol)
+        utils.delete_folder_files(function_output_fol)
+        utils.delete_folder_files(renamed_output_fol)
         print('Trying to write into {}'.format(function_output_fol))
         for region_name, region_id in subcortical_lookup:
             ret = fu.aseg_to_srf(subject, SUBJECTS_DIR, function_output_fol, region_name, region_id, mask_fname, norm_fname,
                            overwrite_subcorticals)
             if not ret:
                 errors.append(region_name)
-        # utils.run_script(ASEG_TO_SRF.format(subject))
-        # fu.
-        # os.rename(aseg_to_srf_output_fol, function_output_fol)
     if len(errors) > 0:
         print('Errors: {}'.format(','.join(errors)))
     ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
@@ -609,8 +613,6 @@ def main(subject, args):
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
-        # !!! Should source freesurfer !!!
-        # Remember that you need to have write permissions on SUBJECTS_DIR!!!
         flags['subcortical'] = subcortical_segmentation(subject, args.overwrite_subcorticals)
 
     if utils.should_run(args, 'calc_faces_verts_dic'):
