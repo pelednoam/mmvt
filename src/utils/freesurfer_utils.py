@@ -250,7 +250,7 @@ def check_env_var(var_name, var_val):
             raise Exception('No {}!'.format(var_name))
 
 
-def aseg_to_srf(subject, subjects_dir, output_fol, region_name, region_id, mask_fname, norm_fname,
+def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_fname,
                 overwrite_subcortical_objs=False):
     ret = True
     tmp_fol = op.join(subjects_dir, subject, 'tmp', utils.rand_letters(6))

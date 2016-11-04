@@ -61,42 +61,62 @@ def subcortical_segmentation_old(subject, overwrite_subcortical_objs=False):
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
     blender_dir = op.join(MMVT_DIR, subject, 'subcortical')
     if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
-        copy_subcorticals_to_blender(renamed_output_fol, subject)
+        copy_subcorticals_to_mmvt(renamed_output_fol, subject)
     flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) == len(lookup) and \
         len(glob.glob(op.join(blender_dir, '*.npz'))) == len(lookup)
     return flag_ok
 
 
 def cerebellum_segmentation(subject, overwrite_subcorticals=False,
-                            mask_fname='Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz',
+                            mask_name='Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz',
                             model='Buckner2011_17Networks', subregions_num=17):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
+    if not op.isfile(mask_fname):
+        print('mask file does not exist! {}'.format(mask_fname))
+        return False
+    mask_data = nib.load(mask_fname).get_data()
+    unique_values_num = len(np.unique(mask_data))
+    if unique_values_num < subregions_num:
+        print('subregions_num ({}) is bigger than the unique values num in the mask file ({})!'.format(
+            subregions_num, unique_values_num))
+        return False
     subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, subregions_num + 1)])
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_fname)
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
-    subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_fname)
+    return subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_fname,
+                                    mmvt_subcorticals_fol_name='cerebellum')
 
 
 def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subcortical', lookup=None,
-                             mask_fname='aseg.mgz', norm_fname='norm.mgz'):
+                             mask_name='aseg.mgz', norm_name='norm.mgz', mmvt_subcorticals_fol_name='subcortical'):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
     # 3) mris_smooth: Smooth the new surface
     # 4) mris_convert: Convert the new surface into srf format
 
-    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')):
+    norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', norm_name)
+    if not op.isfile(norm_fname):
+        print('norm file does not exist! {}'.format(norm_fname))
+        return False
+
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
+    if not op.isfile(mask_fname):
+        print('mask file does not exist! {}'.format(mask_fname))
         return False
 
     codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
-    subcortical_lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
+    if not op.isfile(codes_file):
+        print('subcortical codes file does not exist! {}'.format(codes_file))
+        return False
+
+    # subcortical_lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
     function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', '{}_objs'.format(model))
     utils.make_dir(function_output_fol)
     renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', model)
     utils.make_dir(renamed_output_fol)
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_fname)
-    norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', norm_fname)
     if lookup is None:
         lookup = load_subcortical_lookup_table()
 
@@ -106,19 +126,20 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
         utils.delete_folder_files(function_output_fol)
         utils.delete_folder_files(renamed_output_fol)
         print('Trying to write into {}'.format(function_output_fol))
-        for region_name, region_id in subcortical_lookup:
-            ret = fu.aseg_to_srf(subject, SUBJECTS_DIR, function_output_fol, region_name, region_id, mask_fname, norm_fname,
+        for region_id in lookup.keys():
+            ret = fu.aseg_to_srf(subject, SUBJECTS_DIR, function_output_fol, region_id, mask_fname, norm_fname,
                            overwrite_subcorticals)
             if not ret:
-                errors.append(region_name)
+                errors.append(lookup[region_id])
     if len(errors) > 0:
         print('Errors: {}'.format(','.join(errors)))
     ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
     if len(ply_files) < len(lookup) or overwrite_subcorticals:
-        convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
+        convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup,
+                                             mmvt_subcorticals_fol_name)
     blender_dir = op.join(MMVT_DIR, subject, 'subcortical')
     if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
-        copy_subcorticals_to_blender(renamed_output_fol, subject)
+        copy_subcorticals_to_mmvt(renamed_output_fol, subject, mmvt_subcorticals_fol_name)
     flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) == len(lookup) and \
         len(glob.glob(op.join(blender_dir, '*.npz'))) == len(lookup)
     return flag_ok
@@ -132,7 +153,7 @@ def load_subcortical_lookup_table(fname='sub_cortical_codes.txt'):
     return lookup
 
 
-def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
+def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup, mmvt_subcorticals_fol_name='subcortical'):
     obj_files = glob.glob(op.join(fol, '*.srf'))
     utils.delete_folder_files(new_fol)
     for obj_file in obj_files:
@@ -142,11 +163,11 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup):
             utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
             verts, faces = utils.read_ply_file(op.join(new_fol, '{}.ply'.format(new_name)))
             np.savez(op.join(new_fol, '{}.npz'.format(new_name)), verts=verts, faces=faces)
-    copy_subcorticals_to_blender(new_fol, subject)
+    copy_subcorticals_to_mmvt(new_fol, subject, mmvt_subcorticals_fol_name)
 
 
-def copy_subcorticals_to_blender(subcorticals_fol, subject):
-    blender_fol = op.join(MMVT_DIR, subject, 'subcortical')
+def copy_subcorticals_to_mmvt(subcorticals_fol, subject, mmvt_subcorticals_fol_name='subcortical'):
+    blender_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
     if op.isdir(blender_fol):
         shutil.rmtree(blender_fol)
     shutil.copytree(subcorticals_fol, blender_fol)
@@ -649,6 +670,9 @@ def main(subject, args):
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
+
+    if 'cerebellum_segmentation' in args.function:
+        cerebellum_segmentation(subject, args.overwrite_subcorticals)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
