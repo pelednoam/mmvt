@@ -12,6 +12,7 @@ import nibabel as nib
 
 from src.utils import labels_utils as lu
 from src.utils import matlab_utils
+from src.utils import trans_utils as tu
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.mmvt_addon import colors_utils as cu
@@ -23,57 +24,16 @@ FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME'
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
-ASEG_TO_SRF = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf_cerebellum -s "{}"') # -o {}'
 HEMIS = ['rh', 'lh']
-
-
-def subcortical_segmentation_old(subject, overwrite_subcortical_objs=False):
-    # Must source freesurfer. You need to have write permissions on SUBJECTS_DIR
-    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'norm.mgz')):
-        return False
-    # script_fname = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf')
-    script_fname = op.join(BRAINDER_SCRIPTS_DIR, 'aseg2srf_cerebellum')
-    if not op.isfile(script_fname):
-        raise Exception('The subcortical segmentation script is missing! {}'.format(script_fname))
-    if not utils.is_exe(script_fname):
-        utils.set_exe_permissions(script_fname)
-
-    # aseg2srf: For every subcortical region (8 10 11 12 13 16 17 18 26 47 49 50 51 52 53 54 58):
-    # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
-    # 2) mri_tessellate: Creates surface by tessellating
-    # 3) mris_smooth: Smooth the new surface
-    # 4) mris_convert: Convert the new surface into srf format
-
-    function_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical_objs')
-    renamed_output_fol = op.join(SUBJECTS_DIR, subject, 'mmvt', 'subcortical')
-    lookup = load_subcortical_lookup_table()
-    obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
-    if len(obj_files) < len(lookup) or overwrite_subcortical_objs:
-        # utils.delete_folder_files(function_output_fol)
-        # # utils.delete_folder_files(aseg_to_srf_output_fol)
-        # utils.delete_folder_files(renamed_output_fol)
-        print('Trying to write into {}'.format(function_output_fol))
-        utils.run_script(ASEG_TO_SRF.format(subject))
-        # fu.
-        # os.rename(aseg_to_srf_output_fol, function_output_fol)
-    ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
-    if len(ply_files) < len(lookup) or overwrite_subcortical_objs:
-        convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup)
-    blender_dir = op.join(MMVT_DIR, subject, 'subcortical')
-    if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
-        copy_subcorticals_to_mmvt(renamed_output_fol, subject)
-    flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) == len(lookup) and \
-        len(glob.glob(op.join(blender_dir, '*.npz'))) == len(lookup)
-    return flag_ok
 
 
 def cerebellum_segmentation(subject, overwrite_subcorticals=False,
                             mask_name='Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz',
-                            model='Buckner2011_17Networks', subregions_num=17):
+                            model='Buckner2011_17Networks', subregions_num=17, template_subject='fsaverage'):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
+    mask_fname = op.join(SUBJECTS_DIR, template_subject, 'mri', mask_name)
     if not op.isfile(mask_fname):
         print('mask file does not exist! {}'.format(mask_fname))
         return False
@@ -83,26 +43,54 @@ def cerebellum_segmentation(subject, overwrite_subcorticals=False,
         print('subregions_num ({}) is bigger than the unique values num in the mask file ({})!'.format(
             subregions_num, unique_values_num))
         return False
+
     subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, subregions_num + 1)])
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
-    return subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_fname,
-                                    mmvt_subcorticals_fol_name='cerebellum')
+    mmvt_subcorticals_fol_name = 'cerebellum'
+    ret = subcortical_segmentation('colin27', overwrite_subcorticals, model, lookup, mask_name,
+                                    mmvt_subcorticals_fol_name, template_subject)
+    if ret:
+        colin27_xfm = tu.get_talxfm('colin27', SUBJECTS_DIR)
+        tal_xfm = tu.get_talxfm(subject, SUBJECTS_DIR)
+        orig_vox2ras = tu.get_vox2ras(op.join(SUBJECTS_DIR, subject, 'mri', 'orig.mgz'))
+        orig_vox2tkras = tu.get_vox2ras_tkr(op.join(SUBJECTS_DIR, subject, 'mri', 'orig.mgz'))
+        colin27_vox2tkras = tu.get_vox2ras_tkr(op.join(SUBJECTS_DIR, 'colin27', 'mri', 'orig.mgz'))
+
+        for region_fname in glob.glob(op.join(MMVT_DIR, 'colin27', mmvt_subcorticals_fol_name, '*.ply')):
+            verts, faces = utils.read_ply_file(region_fname)
+
+            # verts = tu.mni152_mni305(verts)
+            verts = tu.apply_trans(colin27_xfm, verts)
+            verts = tu.apply_trans(np.linalg.inv(tal_xfm), verts)
+
+            # verts = tu.apply_trans(np.linalg.inv(orig_vox2tkras), verts)
+            # verts = tu.mni152_mni305(verts)
+            # verts = tu.apply_trans(orig_vox2tkras, verts)
+
+            # verts = tu.mni_to_tkras(verts, subject, SUBJECTS_DIR, tal_xfm, orig_vox2ras, orig_vox2tkras)
+            new_region_name = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name, '{}_new.ply'.format(
+                utils.namebase(region_fname)))
+            ret = ret and utils.write_ply_file(verts, faces, new_region_name)
+            # npz_fname = utils.change_fname_extension(new_region_name, 'npz')
+            # np.savez(npz_fname, verts=verts, faces=faces)
+    return ret
 
 
 def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subcortical', lookup=None,
-                             mask_name='aseg.mgz', norm_name='norm.mgz', mmvt_subcorticals_fol_name='subcortical'):
+                             mask_name='aseg.mgz', mmvt_subcorticals_fol_name='subcortical',
+                             template_subject='', norm_name='norm.mgz'):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
     # 3) mris_smooth: Smooth the new surface
     # 4) mris_convert: Convert the new surface into srf format
 
-    norm_fname = op.join(SUBJECTS_DIR, subject, 'mri', norm_name)
+    template_subject = subject if template_subject == '' else template_subject
+    norm_fname = op.join(SUBJECTS_DIR, template_subject, 'mri', norm_name)
     if not op.isfile(norm_fname):
         print('norm file does not exist! {}'.format(norm_fname))
         return False
 
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
+    mask_fname = op.join(SUBJECTS_DIR, template_subject, 'mri', mask_name)
     if not op.isfile(mask_fname):
         print('mask file does not exist! {}'.format(mask_fname))
         return False
@@ -137,11 +125,11 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
     if len(ply_files) < len(lookup) or overwrite_subcorticals:
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup,
                                              mmvt_subcorticals_fol_name)
-    blender_dir = op.join(MMVT_DIR, subject, 'subcortical')
+    blender_dir = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
     if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
         copy_subcorticals_to_mmvt(renamed_output_fol, subject, mmvt_subcorticals_fol_name)
-    flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) == len(lookup) and \
-        len(glob.glob(op.join(blender_dir, '*.npz'))) == len(lookup)
+    flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) >= len(lookup) and \
+        len(glob.glob(op.join(blender_dir, '*.npz'))) >= len(lookup)
     return flag_ok
 
 
@@ -366,7 +354,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
     return lookup
 
 
-def create_annotation_from_fsaverage(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
+def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
@@ -419,13 +407,13 @@ def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
+    utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
         for hemi in HEMIS:
             blender_labels_fol = op.join(MMVT_DIR, subject,'{}.{}.{}'.format(aparc_name, surface_type, hemi))
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
                 len(glob.glob(op.join(blender_labels_fol, '*.ply'))) > minimum_labels_num
-
         # if surface_type == 'inflated':
         if overwrite or not files_exist:
             dont_do_anything = False
@@ -535,21 +523,14 @@ def create_spatial_connectivity(subject):
 
 def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol='', labels=None):
     import csv
-    # if (read_from_annotation):
-    #     labels = mne.read_labels_from_annot(subject, atlas, 'both', surf_name, subjects_dir=SUBJECTS_DIR)
-    #     if len(labels) == 0:
-    #         print('No labels were found in {} annotation file!'.format(atlas))
-    # else:
-    #     labels = []
-    #     if labels_fol == '':
-    #         labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
-    #     for label_file in glob.glob(op.join(labels_fol, '*.label')):
-    #         label = mne.read_label(label_file)
-    #         labels.append(label)
-    #     if len(labels) == 0:
-    #         print('No labels were found in {}!'.format(labels_fol))
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
     if len(labels) > 0:
+        if np.all(labels[0].pos == 0):
+            verts = {}
+            for hemi in utils.HEMIS:
+                verts[hemi], _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+            for label in labels:
+                label.pos = verts[label.hemi][label.vertices]
         center_of_mass = lu.calc_center_of_mass(labels)
         with open(op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.csv'.format(atlas)), 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
@@ -621,10 +602,10 @@ def main(subject, args):
         flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
 
 
-    if utils.should_run(args, 'create_annotation_from_fsaverage'):
+    if utils.should_run(args, 'create_annotation_from_template'):
         # *) Create annotation file from fsaverage
-        flags['annot'] = create_annotation_from_fsaverage(
-            subject, args.atlas, args.fsaverage, args.remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
+        flags['annot'] = create_annotation_from_template(
+            subject, args.atlas, args.template_subject, args.remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
             args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
@@ -672,7 +653,8 @@ def main(subject, args):
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
 
     if 'cerebellum_segmentation' in args.function:
-        cerebellum_segmentation(subject, args.overwrite_subcorticals)
+        flags['cerebellum_segmentation'] = cerebellum_segmentation(
+            subject, args.overwrite_subcorticals, template_subject=args.template_subject)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
@@ -719,7 +701,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
-    parser.add_argument('--fsaverage', help='fsaverage', required=False, default='fsaverage')
+    parser.add_argument('--template_subject', help='template subject', required=False, default='fsaverage')
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
@@ -740,8 +722,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz'],
-        'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg', 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
+        'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
+                 'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
         'mri:transforms' : ['talairach.xfm']}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.overwrite:

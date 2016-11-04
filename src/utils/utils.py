@@ -190,14 +190,20 @@ def read_pial(subject, subjects_dir, hemi):
 
 
 def write_ply_file(verts, faces, ply_file_name):
-    verts_num = verts.shape[0]
-    faces_num = faces.shape[0]
-    faces = np.hstack((np.ones((faces_num, 1)) * 3, faces))
-    with open(ply_file_name, 'w') as f:
-        f.write(PLY_HEADER.format(verts_num, faces_num))
-    with open(ply_file_name, 'ab') as f:
-        np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
-        np.savetxt(f, faces, fmt='%d', delimiter=' ')
+    try:
+        verts_num = verts.shape[0]
+        faces_num = faces.shape[0]
+        faces = np.hstack((np.ones((faces_num, 1)) * 3, faces))
+        with open(ply_file_name, 'w') as f:
+            f.write(PLY_HEADER.format(verts_num, faces_num))
+        with open(ply_file_name, 'ab') as f:
+            np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
+            np.savetxt(f, faces, fmt='%d', delimiter=' ')
+        return True
+    except:
+        print('Error in write_ply_file! ({})'.format(ply_file_name))
+        print(traceback.format_exc())
+        return False
 
 
 def read_obj_file(obj_file):
@@ -388,10 +394,9 @@ def run_script(cmd, verbose=False):
     if is_windows():
         output = subprocess.call(cmd)
     else:
-        cmd = cmd.replace('\\\\', '')
-        # cmd = cmd.replace('matlab', '/usr/local/matlab2012b/bin/matlab')
-        output = subprocess.check_output(cmd, shell=True)
-        # output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+        # cmd = cmd.replace('\\\\', '')
+        # output = subprocess.check_output(cmd, shell=True)
+        output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
 
     print(output)
     return output
@@ -484,12 +489,20 @@ def get_aseg_header(subject_mri_dir):
     return aseg_hdr
 
 
-def namebase(file_name):
-    return op.splitext(op.basename(file_name))[0]
+def namebase(fname):
+    return op.splitext(op.basename(fname))[0]
 
 
-def file_type(file_name):
-    return op.splitext(op.basename(file_name))[1][1:]
+def file_type(fname):
+    return op.splitext(op.basename(fname))[1][1:]
+
+
+def get_fname_folder(fname):
+    return op.sep.join(fname.split(op.sep)[:-1])
+
+
+def change_fname_extension(fname, new_extension):
+    return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 
 #todo: Move to labes utils
@@ -510,6 +523,8 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = op.join(subjects_dir, subject)
+    if both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))):
+        return True
     labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
     labels = []
     if overwrite:

@@ -41,7 +41,7 @@ def darpa(subject, args):
 
 def add_parcellation(subject, args):
     args = anat.read_cmd_args(['-s', subject, '-a', args.atlas])
-    args.function = 'create_annotation_from_fsaverage,parcelate_cortex,calc_faces_verts_dic,' + \
+    args.function = 'create_annotation_from_template,parcelate_cortex,calc_faces_verts_dic,' + \
         'save_labels_vertices,save_hemis_curv,calc_labels_center_of_mass,save_labels_coloring'
     anat.run_on_subjects(args)
 
