@@ -434,25 +434,28 @@ def save_matlab_labels_vertices(subject, aparc_name):
 
 
 def save_labels_vertices(subject, aparc_name):
-    annot_fname_temp = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
-    if not utils.hemi_files_exists(annot_fname_temp):
-        pass
-    labels_fnames = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))
-    if len(labels_fnames) > 0:
-        labels = []
-        for label_fname in labels_fnames:
-            label = mne.read_label(label_fname)
-            labels.append(label)
-    else:
-        # Read from the annotation file
-        labels = utils.read_labels_from_annot(subject, aparc_name, SUBJECTS_DIR)
-    labels_names, labels_vertices = defaultdict(list), defaultdict(list)
-    for label in labels:
-        labels_names[label.hemi].append(label.name)
-        labels_vertices[label.hemi].append(label.vertices)
-    output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
-    utils.save((labels_names, labels_vertices), output_fname)
-    return op.isfile(output_fname)
+    try:
+        annot_fname_temp = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
+        if not utils.hemi_files_exists(annot_fname_temp):
+            pass
+        labels_fnames = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))
+        if len(labels_fnames) > 0:
+            labels = []
+            for label_fname in labels_fnames:
+                label = mne.read_label(label_fname)
+                labels.append(label)
+        else:
+            # Read from the annotation file
+            labels = utils.read_labels_from_annot(subject, aparc_name, SUBJECTS_DIR)
+        labels_names, labels_vertices = defaultdict(list), defaultdict(list)
+        for label in labels:
+            labels_names[label.hemi].append(label.name)
+            labels_vertices[label.hemi].append(label.vertices)
+        output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
+        utils.save((labels_names, labels_vertices), output_fname)
+        return op.isfile(output_fname)
+    except:
+        return False
 
 
 @utils.timeit
