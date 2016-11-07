@@ -88,6 +88,18 @@ class ShowHideSubCorticals(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ShowHideSubCerebellum(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_cerebellum"
+    bl_label = "mmvt show_hide_cerebellum"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.objects_show_hide_cerebellum = not bpy.context.scene.objects_show_hide_cerebellum
+        show_hide_hierarchy(bpy.context.scene.objects_show_hide_cerebellum, "Cerebellum")
+        return {"FINISHED"}
+
+
 class ShowHideObjectsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -112,6 +124,11 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
         sub_icon = show_hide_icon['show' if sub_vis else 'hide']
         layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
+        if bpy.data.objects.get('Cerebellum'):
+            sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
+            sub_show_text = '{} Cerebellum'.format('Hide' if sub_vis else 'Show')
+            sub_icon = show_hide_icon['show' if sub_vis else 'hide']
+            layout.operator(ShowHideSubCerebellum.bl_idname, text=sub_show_text, icon=sub_icon)
         layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(
@@ -120,6 +137,8 @@ bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(
     default=True, description="Show right hemisphere")#, update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(
     default=True, description="Show sub cortical")#, update=show_hide_sub_cortical_update)
+bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
+    default=True, description="Show Cerebellum")
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
 
@@ -149,6 +168,7 @@ def register():
         bpy.utils.register_class(ShowHideLH)
         bpy.utils.register_class(ShowHideRH)
         bpy.utils.register_class(ShowHideSubCorticals)
+        bpy.utils.register_class(ShowHideSubCerebellum)
         # print('Show Hide Panel was registered!')
     except:
         print("Can't register Show Hide Panel!")
@@ -160,6 +180,7 @@ def unregister():
         bpy.utils.unregister_class(ShowHideLH)
         bpy.utils.unregister_class(ShowHideRH)
         bpy.utils.unregister_class(ShowHideSubCorticals)
+        bpy.utils.unregister_class(ShowHideSubCerebellum)
     except:
         pass
         # print("Can't unregister Freeview Panel!")

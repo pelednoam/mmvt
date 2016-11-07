@@ -232,7 +232,8 @@ def import_rois(base_path):
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
-                      'Subcortical_structures': op.join(base_path, 'subcortical')}
+                      'Subcortical_structures': op.join(base_path, 'subcortical'),
+                      'Cerebellum': op.join(base_path, 'cerebellum')}
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
@@ -255,13 +256,14 @@ def import_rois(base_path):
         for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):
             new_obj_name = mu.namebase(ply_fname)
             fol_name = anatomy_input_base_path.split(op.sep)[-1]
-            surf_name = 'pial' if fol_name == 'subcortical' else fol_name.split('.')[1]
+            surf_name = 'pial' if fol_name == 'subcortical' or len(fol_name.split('.')) == 1 else fol_name.split('.')[1]
             if surf_name == 'inflated':
                 new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
                 mu.change_layer(_addon().INFLATED_ROIS_LAYER)
             elif surf_name == 'pial':
                 mu.change_layer(_addon().ROIS_LAYER)
             if not bpy.data.objects.get(new_obj_name) is None:
+                print('{} was already imported'.format(new_obj_name))
                 continue
             if 'inflated' in new_obj_name:
                 inflated_imported = True
