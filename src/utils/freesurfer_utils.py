@@ -20,10 +20,13 @@ mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject
 mris_ca_label = 'mris_ca_label {subject} {hemi} sphere.reg {freesurfer_home}/average/{hemi}.{atlas_type}.gcs {subjects_dir}/{subject}/label/{hemi}.{atlas}.annot -orig white'
 
 mri_pretess = 'mri_pretess {mask_fname} {region_id} {norm_fname} {tmp_fol}/{region_id}_filled.mgz'
-mri_tessellate = 'mri_tessellate {mask_fname} {region_id} {tmp_fol}/{region_id}_notsmooth'
+mri_tessellate = 'mri_tessellate {tmp_fol}/{region_id}_filled.mgz {region_id} {tmp_fol}/{region_id}_notsmooth'
 mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_id}_notsmooth {tmp_fol}/{region_id}_smooth'
 mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
 
+warp_buckner_atlas = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mgz --s {subject} ' + \
+                     '--targ {bunker_atlas_fname} --m3z talairach.m3z ' + \
+                     '--o {subjects_dir}/{subject}/mri/Buckner2011_atlas.nii.gz --nearest --inv-morph'
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
@@ -267,12 +270,13 @@ def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_f
         rs(mris_convert)
         if op.isfile(tmp_output_fname):
             shutil.move(tmp_output_fname, output_fname)
+            shutil.rmtree(tmp_fol)
         else:
             ret = False
     except:
         print('Error in aseg_to_srf! subject: {}'.format(subject))
         print(traceback.format_exc())
         ret = False
-    utils.delete_folder_files(tmp_fol)
+
     return ret
 

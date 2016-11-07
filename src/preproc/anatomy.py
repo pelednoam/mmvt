@@ -28,12 +28,13 @@ HEMIS = ['rh', 'lh']
 
 
 def cerebellum_segmentation(subject, overwrite_subcorticals=False,
-                            mask_name='Buckner2011_17Networks_MNI152_FreeSurferConformed1mm_TightMask.nii.gz',
+                            mask_name='Buckner2011_atlas.nii.gz',
                             model='Buckner2011_17Networks', subregions_num=17, template_subject='fsaverage'):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
-    mask_fname = op.join(SUBJECTS_DIR, template_subject, 'mri', mask_name)
+    # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
+    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
     if not op.isfile(mask_fname):
         print('mask file does not exist! {}'.format(mask_fname))
         return False
@@ -47,32 +48,8 @@ def cerebellum_segmentation(subject, overwrite_subcorticals=False,
     subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, subregions_num + 1)])
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     mmvt_subcorticals_fol_name = 'cerebellum'
-    ret = subcortical_segmentation('colin27', overwrite_subcorticals, model, lookup, mask_name,
-                                    mmvt_subcorticals_fol_name, template_subject)
-    if ret:
-        colin27_xfm = tu.get_talxfm('colin27', SUBJECTS_DIR)
-        tal_xfm = tu.get_talxfm(subject, SUBJECTS_DIR)
-        orig_vox2ras = tu.get_vox2ras(op.join(SUBJECTS_DIR, subject, 'mri', 'orig.mgz'))
-        orig_vox2tkras = tu.get_vox2ras_tkr(op.join(SUBJECTS_DIR, subject, 'mri', 'orig.mgz'))
-        colin27_vox2tkras = tu.get_vox2ras_tkr(op.join(SUBJECTS_DIR, 'colin27', 'mri', 'orig.mgz'))
-
-        for region_fname in glob.glob(op.join(MMVT_DIR, 'colin27', mmvt_subcorticals_fol_name, '*.ply')):
-            verts, faces = utils.read_ply_file(region_fname)
-
-            # verts = tu.mni152_mni305(verts)
-            verts = tu.apply_trans(colin27_xfm, verts)
-            verts = tu.apply_trans(np.linalg.inv(tal_xfm), verts)
-
-            # verts = tu.apply_trans(np.linalg.inv(orig_vox2tkras), verts)
-            # verts = tu.mni152_mni305(verts)
-            # verts = tu.apply_trans(orig_vox2tkras, verts)
-
-            # verts = tu.mni_to_tkras(verts, subject, SUBJECTS_DIR, tal_xfm, orig_vox2ras, orig_vox2tkras)
-            new_region_name = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name, '{}_new.ply'.format(
-                utils.namebase(region_fname)))
-            ret = ret and utils.write_ply_file(verts, faces, new_region_name)
-            # npz_fname = utils.change_fname_extension(new_region_name, 'npz')
-            # np.savez(npz_fname, verts=verts, faces=faces)
+    ret = subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_name,
+                                    mmvt_subcorticals_fol_name, subject)
     return ret
 
 
