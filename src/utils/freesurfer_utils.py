@@ -281,13 +281,17 @@ def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_f
     return ret
 
 
+def warp_buckner_atlas_output_fname(subject, subjects_dir):
+    return op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas.nii.gz')
+
+
 def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname):
     rs = utils.partial_run_script(locals())
     rs(warp_buckner_atlas_cmd)
     output_fname = op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas.nii.gz')
     if not op.isfile(output_fname):
         print('Error in warp_buckner_atlas!')
-        return ''
+        return False
     else:
         print('warp_buckner_atlas output fname: {}'.format(output_fname))
-        return output_fname
+        return True

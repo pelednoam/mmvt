@@ -27,20 +27,22 @@ BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'br
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, overwrite_subcorticals=False,
-                            mask_name='Buckner2011_atlas.nii.gz',
-                            model='Buckner2011_17Networks', subregions_num=17, template_subject='fsaverage'):
+def cerebellum_segmentation(subject, overwrite_subcorticals=False, mask_name='Buckner2011_atlas.nii.gz',
+    model='Buckner2011_17Networks', loose=False, subregions_num=17):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
-    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_FSI.nii.gz')
+    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_FSI_{}.nii.gz'.format(
+        'loose' if loose else 'tight'))
     if not op.isfile(bunker_atlas_fname):
         print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
         return False
 
-    buckner_atlas_fname = fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname)
-    if buckner_atlas_fname == '' or not op.isfile(buckner_atlas_fname):
+    buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR)
+    if not op.isfile(buckner_atlas_fname):
+        fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname)
+    if not op.isfile(buckner_atlas_fname):
         return False
 
     mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
@@ -666,7 +668,7 @@ def main(subject, args):
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(
-            subject, args.overwrite_subcorticals, template_subject=args.template_subject)
+            subject, args.overwrite_subcorticals, loose=args.cerebellum_segmentation_loose)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
@@ -716,6 +718,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--template_subject', help='template subject', required=False, default='fsaverage')
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
+    parser.add_argument('--cerebellum_segmentation_loose', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_subcorticals', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0, type=au.is_true)
