@@ -547,6 +547,23 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
         print(traceback.format_exc())
     return ret
 
+
+def save_cerebellum_coloring(subject):
+    ret = False
+    coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
+    utils.make_dir(coloring_dir)
+    coloring_fname = op.join(coloring_dir, 'cerebellum_coloring.csv')
+    try:
+        colors_rgb = cu.get_distinct_colors()
+        with open(coloring_fname, 'w') as colors_file:
+            for ind in range(1, 18):
+                colors_file.write('{},{},{},{}\n'.format('cerebellum_{}'.format(ind), *next(colors_rgb)))
+        ret = op.isfile(coloring_fname)
+    except:
+        print('Error in save_cerebellum_coloring!')
+        print(traceback.format_exc())
+    return ret
+
 # def find_hemis_boarders(subject):
 #     from scipy.spatial.distance import cdist
 #     verts = {}
@@ -630,6 +647,7 @@ def main(subject, args):
         flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
 
     if 'cerebellum_segmentation' in args.function:
+        flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(
             subject, args.overwrite_subcorticals, template_subject=args.template_subject)
 

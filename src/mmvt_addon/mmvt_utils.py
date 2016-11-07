@@ -40,7 +40,7 @@ print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
-    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG) = range(7)
+    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM) = range(8)
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -520,8 +520,11 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_ELECTRODE
     elif obj.parent.name == 'EEG_electrodes':
         obj_type = OBJ_TYPE_EEG
+    elif obj.parent.name == 'Cerebellum':
+        obj_type = OBJ_TYPE_CEREBELLUM
     else:
         obj_type = None
+        print("Can't find the object type ({})!".format(obj_name))
     return obj_type
 
 

@@ -459,6 +459,11 @@ def color_objects(objects_names, colors, data):
             obj = bpy.data.objects.get(electrode)
             if obj and not obj.hide:
                 object_coloring(obj, color)
+    if mu.OBJ_TYPE_CEREBELLUM in objects_names:
+        for cer, color in zip(objects_names[mu.OBJ_TYPE_CEREBELLUM], colors[mu.OBJ_TYPE_CEREBELLUM]):
+            obj = bpy.data.objects.get(cer)
+            if obj and not obj.hide:
+                object_coloring(obj, color)
     bpy.context.scene.subcortical_layer = 'fmri'
     _addon().show_activity()
 
