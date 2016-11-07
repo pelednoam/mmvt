@@ -34,6 +34,15 @@ def cerebellum_segmentation(subject, overwrite_subcorticals=False,
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
+    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_FSI.nii.gz')
+    if not op.isfile(bunker_atlas_fname):
+        print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
+        return False
+
+    buckner_atlas_fname = fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname)
+    if buckner_atlas_fname == '' or not op.isfile(buckner_atlas_fname):
+        return False
+
     mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
     if not op.isfile(mask_fname):
         print('mask file does not exist! {}'.format(mask_fname))
@@ -556,11 +565,16 @@ def save_cerebellum_coloring(subject):
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'cerebellum_coloring.csv')
+    lut_fname = op.join(MMVT_DIR, 'templates', 'Buckner2011_17Networks_ColorLUT.txt')
+    if not op.isfile(lut_fname):
+        print("The Buckner2011 17Networks Color LUT is missing! ({})".format(lut_fname))
+        return False
     try:
-        colors_rgb = cu.get_distinct_colors()
-        with open(coloring_fname, 'w') as colors_file:
-            for ind in range(1, 18):
-                colors_file.write('{},{},{},{}\n'.format('cerebellum_{}'.format(ind), *next(colors_rgb)))
+        with open(coloring_fname, 'w') as colors_file, open(lut_fname, 'r') as lut_file:
+            lut = lut_file.readlines()
+            for ind, lut_line in zip(range(1, 18), lut[1:]):
+                color_rgb = [float(x) / 255 for x in ' '.join(lut_line.split()).split(' ')[2:-1]]
+                colors_file.write('{},{},{},{}\n'.format('cerebellum_{}'.format(ind), *color_rgb))
         ret = op.isfile(coloring_fname)
     except:
         print('Error in save_cerebellum_coloring!')
