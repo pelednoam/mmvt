@@ -25,7 +25,7 @@ mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_id}_notsmooth {tmp_fol}/{region
 mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
 
 warp_buckner_atlas = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mgz --s {subject} ' + \
-                     '--targ {bunker_atlas_fname} --m3z talairach.m3z ' + \
+                     '--targ {subjects_dir}/fsaverage/mri/{bunker_atlas_fname} --m3z talairach.m3z ' + \
                      '--o {subjects_dir}/{subject}/mri/Buckner2011_atlas.nii.gz --nearest --inv-morph'
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
