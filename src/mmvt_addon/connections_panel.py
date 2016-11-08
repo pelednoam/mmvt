@@ -17,16 +17,20 @@ PARENT_OBJ = 'connections'
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 STAT_AVG, STAT_DIFF = range(2)
 
-CONNECTIONS_LAYER, BRAIN_EMPTY_LAYER = 3,5
+# CONNECTIONS_LAYER, BRAIN_EMPTY_LAYER = 3,5
+
+
+def _addon():
+    return ConnectionsPanel.addon
 
 
 # d(Bag): labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
-def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF):
+def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, verts_color='pink'):
     layers_rods = [False] * 20
-    rods_layer = CONNECTIONS_LAYER
+    rods_layer = _addon().CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
     mu.delete_hierarchy(PARENT_OBJ)
-    mu.create_empty_if_doesnt_exists(PARENT_OBJ, BRAIN_EMPTY_LAYER, None, 'Functional maps')
+    mu.create_empty_if_doesnt_exists(PARENT_OBJ, _addon().BRAIN_EMPTY_LAYER, None, 'Functional maps')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
     if d.con_colors.ndim == 3:
         windows_num = d.con_colors.shape[1]
@@ -55,6 +59,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF):
     N = len(indices)
     print('{} connections are above the threshold'.format(N))
     create_conncection_for_both_conditions(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
+    create_vertices(d, mask, verts_color)
     print('Create connections for the conditions {}'.format('difference' if stat == STAT_DIFF else 'mean'))
     create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat)
     print('finish keyframing!')
@@ -101,6 +106,26 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
                 mu.insert_keyframe_to_custom_prop(cur_obj, '{}-{}'.format(conn_name, cond),
                                                   d.con_values[ind, t, cond_id], timepoint)
         finalize_fcurves(cur_obj)
+
+
+def create_vertices(d, mask, verts_color='pink'):
+    indices = set()
+    layers = [False] * 20
+    layers[_addon().CONNECTIONS_LAYER] = True
+    vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))
+    parent_name = 'connections_vertices'
+    parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, PARENT_OBJ)
+    for (i, j) in d.con_indices[mask]:
+        indices.add(i)
+        indices.add(j)
+    for indice in indices:
+        p1 = d.locations[indice, :] * 0.1
+        vert_name = 'connection_{}'.format(indice)
+        mu.create_ico_sphere(p1, layers, vert_name)
+        mu.create_material('{}_mat'.format(vert_name), vert_color, 1)
+        cur_obj = bpy.context.active_object
+        cur_obj.name = vert_name
+        cur_obj.parent = parent_obj
 
 
 def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
@@ -517,7 +542,7 @@ def connections_draw(self, context):
     filter_text = 'Remove filter' if bpy.context.scene.connections_filter else 'Filter connections'
     layout.operator(FilterGraph.bl_idname, text=filter_text, icon='BORDERMOVE')
     # todo: Check if we need this function
-    layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
+    # layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
     # if ConnectionsPanel.show_connections:
     #     layout.operator("mmvt.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
     # else:

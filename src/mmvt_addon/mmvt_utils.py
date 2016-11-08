@@ -195,6 +195,7 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array=None, root_fol
         bpy.data.objects['Empty'].name = name
         if name != root_fol:
             bpy.data.objects[name].parent = bpy.data.objects[root_fol]
+    return bpy.data.objects[name]
 
 
 def select_hierarchy(obj, val=True, select_parent=True):
@@ -419,6 +420,14 @@ def create_sphere(loc, rad, my_layers, name):
         ring_count=30, size=rad, view_align=False, enter_editmode=False, location=loc, layers=my_layers)
     bpy.ops.object.shade_smooth()
     bpy.context.active_object.name = name
+
+
+def create_ico_sphere(location, layers, name, size=.3, subdivisions=2, rotation=(0.0, 0.0, 0.0)):
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        location=location, layers=layers, size=size, subdivisions=subdivisions,rotation=rotation)
+    bpy.ops.object.shade_smooth()
+    bpy.context.active_object.name = name
+    return bpy.context.active_object
 
 
 def create_spline(points, layers_array, bevel_depth=0.045, resolution_u=5):

@@ -31,16 +31,18 @@ def load_meg_coh_python_data():
 
 def load_tatiana_meg_coh(subject, fsaverage, atlas, ds_all, ds_subject, hc_indices, subject_index, conditions, labels):
     for sub, ds, indices in zip([subject, fsaverage], [ds_subject, ds_all], [hc_indices, subject_index]):
+        if sub != 'fscopy':
+            continue
         print(sub)
         d = {}
         N = len(labels)
         d['labels'] = labels
         d['hemis'] = [l[-2:] for l in d['labels']]
         locations = utils.load(op.join(SUBJECTS_DIR, sub, 'label', '{}_center_of_mass.pkl'.format(atlas)))
-        d['locations'] = np.array([locations[l] for l in d['labels']]) # * 1000.0
+        d['locations'] = np.array([locations[l] for l in d['labels']]) * 1000.0
         # todo: find why...
-        if sub == subject:
-            d['locations'] *= 1000.0
+        # if sub == subject:
+        #     d['locations'] *= 1000.0
         d['conditions'] = conditions
         d['con_indices'], d['con_names'], d['con_types'] = calc_meta_data(d['labels'], d['hemis'], 1, N)
         high_low_diff = np.zeros((len(np.tril_indices(N, -1)[0]), len(ds_all)))
@@ -57,7 +59,7 @@ def load_tatiana_meg_coh(subject, fsaverage, atlas, ds_all, ds_subject, hc_indic
         for ind in range(len(ds)):
             d['con_values'][:, ind, :] = ds[ind]['con_values']
         d['con_colors'] = calc_con_colors(d['con_values'], high_low_diff)
-        np.savez(op.join(BLENDER_ROOT_DIR, sub, 'meg_coh_bev.npz'), **d)
+        np.savez(op.join(BLENDER_ROOT_DIR, sub, 'rois_con.npz'), **d)
 
 
 def calc_meta_data(labels, hemis, conds_num, N):
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     # load_tatiana_data()
     # load_meg_coh_python_data()
 
-    root = '/autofs/space/sophia_002/users/DARPA-MEG/arc/noam'
+    root = '/autofs/space/sophia_002/users/DARPA-MEG/project_slides_160420/noam'
     if not op.isdir(root):
         root = '/home/noam/MEG/ARC/pp009/misc/'
     # coh_d = sio.loadmat(op.join(root, 'alpha_risk.mat'))
