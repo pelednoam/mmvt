@@ -395,7 +395,8 @@ def run_script(cmd, verbose=False):
         output = subprocess.call(cmd)
     else:
         cmd = cmd.replace('\\\\', '')
-        output = subprocess.check_output(cmd, shell=True)
+        output = subprocess.call(cmd)
+        # output = subprocess.check_output(cmd, shell=True)
         # output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
 
     print(output)
