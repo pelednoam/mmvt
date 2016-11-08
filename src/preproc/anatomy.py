@@ -617,13 +617,13 @@ def main(subject, args):
 
     if utils.should_run(args, 'create_annotation_from_template'):
         # *) Create annotation file from fsaverage
-        flags['annot'] = create_annotation_from_template(
+        flags['create_annotation_from_template'] = create_annotation_from_template(
             subject, args.atlas, args.template_subject, args.remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
             args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
         # *) Calls Matlab 'splitting_cortical.m' script
-        flags['parc_cortex'] = parcelate_cortex(
+        flags['parcelate_cortex'] = parcelate_cortex(
             subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files)
 
     if utils.should_run(args, 'subcortical_segmentation'):

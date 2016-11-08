@@ -394,7 +394,7 @@ def run_script(cmd, verbose=False):
     if is_windows():
         output = subprocess.call(cmd)
     else:
-        # cmd = cmd.replace('\\\\', '')
+        cmd = cmd.replace('\\\\', '')
         # output = subprocess.check_output(cmd, shell=True)
         output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
 
