@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import numpy as np
 from collections import defaultdict, OrderedDict
@@ -389,16 +390,22 @@ def how_many_curlies(str):
 
 
 def run_script(cmd, verbose=False):
-    if verbose:
-        print('running: {}'.format(cmd))
-    if is_windows():
-        output = subprocess.call(cmd)
-    else:
-        cmd = cmd.replace('\\\\', '')
-        output = subprocess.call(cmd)
-        # output = subprocess.check_output(cmd, shell=True)
-        # output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+    try:
+        if verbose:
+            print('running: {}'.format(cmd))
+        if is_windows():
+            output = subprocess.call(cmd)
+        else:
+            # cmd = cmd.replace('\\\\', '')
+            # output = subprocess.call(cmd)
+            # output = subprocess.check_output(cmd, shell=True)
+            output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+    except:
+        print('Error in run_script!')
+        print(traceback.format_exc())
+        return ''
 
+    output = output.decode(sys.getfilesystemencoding(), 'ignore')
     print(output)
     return output
 
