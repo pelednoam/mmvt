@@ -286,6 +286,14 @@ def warp_buckner_atlas_output_fname(subject, subjects_dir):
 
 
 def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname):
+    norm_fname = op.join(subjects_dir, subject, 'mri', 'norm.mgz')
+    if not op.isfile(norm_fname):
+        print("Error in warp_buckner_atlas, can't find the file {}".format(norm_fname))
+        return False
+    trans_fname = op.join(subjects_dir, subject, 'mri', 'transforms', 'talairach.m3z')
+    if not op.isfile(trans_fname):
+        print("Error in warp_buckner_atlas, can't find the file {}".format(trans_fname))
+        return False
     rs = utils.partial_run_script(locals())
     rs(warp_buckner_atlas_cmd)
     output_fname = op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas.nii.gz')

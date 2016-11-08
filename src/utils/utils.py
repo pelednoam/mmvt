@@ -295,14 +295,20 @@ def calc_stat_data(data, stat, axis=2):
     return stat_data
 
 
-def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False):
-    freesurfer_home = get_environ_dir('FREESURFER_HOME', freesurfer_home)
-    lut_fname = op.join(freesurfer_home, 'FreeSurferColorLUT.txt')
+#todo: remove the first parameter
+def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False, return_dict=False):
+    lut_fname = op.join(mmvt_fol(), 'FreeSurferColorLUT.txt')
     if get_colors:
         lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1, 2, 3, 4, 5), names=['id', 'name', 'r', 'g', 'b', 'a'])
     else:
         lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1), names=['id', 'name'])
+    if return_dict:
+        lut = {int(val):name.decode(sys.getfilesystemencoding(), 'ignore') for val, name in lut}
     return lut
+
+
+def mmvt_fol():
+    return get_link_dir(get_links_dir(), 'mmvt')
 
 
 def get_environ_dir(var_name, default_val=''):

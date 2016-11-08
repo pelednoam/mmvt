@@ -27,20 +27,21 @@ BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'br
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, overwrite_subcorticals=False, mask_name='Buckner2011_atlas.nii.gz',
-    model='Buckner2011_17Networks', loose=False, subregions_num=17):
+def cerebellum_segmentation(subject, args, mask_name='Buckner2011_atlas.nii.gz',
+    model='Buckner2011_17Networks', subregions_num=17):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
     bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_FSI_{}.nii.gz'.format(
-        'loose' if loose else 'tight'))
+        'loose' if args.cerebellum_segmentation_loose else 'tight'))
     if not op.isfile(bunker_atlas_fname):
         print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
         return False
 
     buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR)
     if not op.isfile(buckner_atlas_fname):
+        prepare_local_subjects_folder(subject, args, {'mri:transforms' : ['talairach.m3z']})
         fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname)
     if not op.isfile(buckner_atlas_fname):
         return False
@@ -55,18 +56,49 @@ def cerebellum_segmentation(subject, overwrite_subcorticals=False, mask_name='Bu
         print('subregions_num ({}) is bigger than the unique values num in the mask file ({})!'.format(
             subregions_num, unique_values_num))
         return False
-
-    subcortical_lookup = np.array([['cerebellum_{}'.format(ind), ind] for ind in range(1, subregions_num + 1)])
+    new_mask_name = '{}_new.nii.gz'.format(mask_name.split('.')[0])
+    new_maks_fname = op.join(SUBJECTS_DIR, subject, 'mri', new_mask_name)
+    subregions_num = split_cerebellum_hemis(subject, mask_fname, new_maks_fname, subregions_num)
+    subcortical_lookup = np.array([['{}_cerebellum_{}'.format(
+        'right' if ind <= 17 else 'left',  ind if ind <= 17 else ind - 17), ind] for ind in range(1, subregions_num + 1)])
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     mmvt_subcorticals_fol_name = 'cerebellum'
-    ret = subcortical_segmentation(subject, overwrite_subcorticals, model, lookup, mask_name,
+    ret = subcortical_segmentation(subject, args.overwrite_subcorticals, model, lookup, new_mask_name,
                                     mmvt_subcorticals_fol_name, subject)
     return ret
 
 
+def split_cerebellum_hemis(subject, mask_fname, new_maks_name, subregions_num):
+    import time
+    if op.isfile(new_maks_name):
+        return subregions_num * 2
+    mask = nib.load(mask_fname)
+    mask_data = mask.get_data()
+    aseg_data = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')).get_data()
+    new_mask_data = np.zeros(mask_data.shape)
+    lookup = utils.read_freesurfer_lookup_table(return_dict=True)
+    inv_lookup = {name:val for val,name in lookup.items()}
+    right_cerebral = inv_lookup['Right-Cerebellum-Cortex']
+    left_cerebral = inv_lookup['Left-Cerebellum-Cortex']
+    now = time.time()
+    for seg_id in range(1, subregions_num + 1):
+        utils.time_to_go(now, seg_id-1, subregions_num, 1)
+        seg_inds = np.where(mask_data == seg_id)
+        aseg_segs = aseg_data[seg_inds]
+        seg_inds = np.vstack((seg_inds[0], seg_inds[1], seg_inds[2]))
+        right_inds = seg_inds[:, np.where(aseg_segs == right_cerebral)[0]]
+        left_inds = seg_inds[:, np.where(aseg_segs == left_cerebral)[0]]
+        new_mask_data[right_inds[0], right_inds[1], right_inds[2]] = seg_id
+        new_mask_data[left_inds[0], left_inds[1], left_inds[2]] = seg_id + subregions_num
+    new_mask = nib.Nifti1Image(new_mask_data, affine=mask.get_affine())
+    print('Saving new mask to {}'.format(new_maks_name))
+    nib.save(new_mask, new_maks_name)
+    return subregions_num * 2
+
+
 def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subcortical', lookup=None,
                              mask_name='aseg.mgz', mmvt_subcorticals_fol_name='subcortical',
-                             template_subject='', norm_name='norm.mgz'):
+                             template_subject='', norm_name='norm.mgz', overwrite=True):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
     # 3) mris_smooth: Smooth the new surface
@@ -99,10 +131,13 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
     obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
     errors = []
     if len(obj_files) < len(lookup) or overwrite_subcorticals:
-        utils.delete_folder_files(function_output_fol)
-        utils.delete_folder_files(renamed_output_fol)
+        if overwrite:
+            utils.delete_folder_files(function_output_fol)
+            utils.delete_folder_files(renamed_output_fol)
         print('Trying to write into {}'.format(function_output_fol))
         for region_id in lookup.keys():
+            if op.isfile(op.join(function_output_fol, '{}.srf'.format(region_id))):
+                continue
             ret = fu.aseg_to_srf(subject, SUBJECTS_DIR, function_output_fol, region_id, mask_fname, norm_fname,
                            overwrite_subcorticals)
             if not ret:
@@ -114,7 +149,8 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
         convert_and_rename_subcortical_files(subject, function_output_fol, renamed_output_fol, lookup,
                                              mmvt_subcorticals_fol_name)
     blender_dir = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
-    if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files):
+    if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files) or overwrite_subcorticals:
+        utils.delete_folder_files(blender_dir)
         copy_subcorticals_to_mmvt(renamed_output_fol, subject, mmvt_subcorticals_fol_name)
     flag_ok = len(glob.glob(op.join(blender_dir, '*.ply'))) >= len(lookup) and \
         len(glob.glob(op.join(blender_dir, '*.npz'))) >= len(lookup)
@@ -569,14 +605,14 @@ def save_cerebellum_coloring(subject):
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'cerebellum_coloring.csv')
-    lut_fname = op.join(MMVT_DIR, 'templates', 'Buckner2011_17Networks_ColorLUT.txt')
+    lut_fname = op.join(MMVT_DIR, 'templates', 'Buckner2011_17Networks_ColorLUT_new.txt')
     if not op.isfile(lut_fname):
         print("The Buckner2011 17Networks Color LUT is missing! ({})".format(lut_fname))
         return False
     try:
         with open(coloring_fname, 'w') as colors_file, open(lut_fname, 'r') as lut_file:
             lut = lut_file.readlines()
-            for ind, lut_line in zip(range(1, 18), lut[1:]):
+            for ind, lut_line in zip(range(1, 34), lut[1:]):
                 color_rgb = [float(x) / 255 for x in ' '.join(lut_line.split()).split(' ')[2:-1]]
                 colors_file.write('{},{},{},{}\n'.format('cerebellum_{}'.format(ind), *color_rgb))
         ret = op.isfile(coloring_fname)
@@ -594,9 +630,11 @@ def save_cerebellum_coloring(subject):
 #     dists = cdist(verts['rh'], verts['lh'])
 
 
-def prepare_local_subjects_folder(subject, args):
+def prepare_local_subjects_folder(subject, args, necessary_files=None):
+    if necessary_files is None:
+        necessary_files = args.necessary_files
     return utils.prepare_local_subjects_folder(
-        args.necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback)
 
@@ -669,8 +707,7 @@ def main(subject, args):
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
-        flags['cerebellum_segmentation'] = cerebellum_segmentation(
-            subject, args.overwrite_subcorticals, loose=args.cerebellum_segmentation_loose)
+        flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, args)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
