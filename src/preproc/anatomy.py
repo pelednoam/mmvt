@@ -641,7 +641,7 @@ def prepare_local_subjects_folder(subject, args, necessary_files=None):
     return utils.prepare_local_subjects_folder(
         necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
-        args.overwrite_fs_files, args.print_traceback)
+        args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
 def main(subject, args):
@@ -778,6 +778,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
     parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
+    parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))

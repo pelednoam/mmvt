@@ -46,6 +46,17 @@ def add_parcellation(subject, args):
     anat.run_on_subjects(args)
 
 
+def get_subject_files_using_sftp_from_ohad(subject, args):
+    args = anat.read_cmd_args(['-s', subject,'-a', args.atlas])
+    args.sftp = True
+    args.sftp_username = 'ohadfel'
+    args.sftp_domain = '127.0.0.1'
+    args.sftp_port = 3333
+    args.sftp_subject_dir = '/media/ohadfel/New_Volume/subs/{}'.format(subject)
+    args.function = 'prepare_local_subjects_folder'
+    anat.run_on_subjects(args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)

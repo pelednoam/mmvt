@@ -782,11 +782,11 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
 
 def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-                                  overwrite_files=False, print_traceback=True):
+                                  overwrite_files=False, print_traceback=True, sftp_port=22):
 
     local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
-        check_if_all_necessary_files_exist(necessary_files, local_subject_dir, True)
+        check_if_all_necessary_files_exist(necessary_files, local_subject_dir)
     if all_files_exists and not overwrite_files:
         return True
     elif remote_subject_dir == '':
@@ -795,7 +795,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
     if sftp:
         sftp_copy_subject_files(subject, necessary_files, sftp_username, sftp_domain,
                                 local_subjects_dir, remote_subject_dir, sftp_password,
-                                overwrite_files, print_traceback)
+                                overwrite_files, print_traceback, sftp_port)
     else:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
@@ -809,7 +809,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
-    all_files_exists = check_if_all_necessary_files_exist(necessary_files, local_subject_dir)
+    all_files_exists = check_if_all_necessary_files_exist(necessary_files, local_subject_dir, True)
     return all_files_exists
 
 
@@ -826,7 +826,7 @@ def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace
 
 
 def sftp_copy_subject_files(subject, necessary_files, username, domain, local_subjects_dir, remote_subject_dir,
-                            password='', overwrite_files=False, print_traceback=True):
+                            password='', overwrite_files=False, print_traceback=True, port=22):
     import pysftp
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
@@ -834,7 +834,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
     local_subject_dir = op.join(local_subjects_dir, subject)
     if password == '':
         password = ask_for_sftp_password(username)
-    with pysftp.Connection(domain, username=username, password=password, cnopts=cnopts) as sftp:
+    with pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port) as sftp:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
             if not op.isdir(op.join(local_subject_dir, fol)):
