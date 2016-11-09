@@ -605,10 +605,15 @@ def save_cerebellum_coloring(subject):
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'cerebellum_coloring.csv')
-    lut_fname = op.join(MMVT_DIR, 'templates', 'Buckner2011_17Networks_ColorLUT_new.txt')
+    lut_name = 'Buckner2011_17Networks_ColorLUT_new.txt'
+    lut_fname = op.join(MMVT_DIR, 'templates', lut_name)
     if not op.isfile(lut_fname):
-        print("The Buckner2011 17Networks Color LUT is missing! ({})".format(lut_fname))
-        return False
+        lut_resources_fname = op.join(utils.get_resources_fol(), lut_name)
+        if op.isfile(lut_resources_fname):
+            shutil.copy(lut_resources_fname, lut_fname)
+        else:
+            print("The Buckner2011 17Networks Color LUT is missing! ({})".format(lut_fname))
+            return False
     try:
         with open(coloring_fname, 'w') as colors_file, open(lut_fname, 'r') as lut_file:
             lut = lut_file.readlines()
