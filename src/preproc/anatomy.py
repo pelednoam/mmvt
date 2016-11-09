@@ -448,8 +448,8 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
                        'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME,
                        'surface_type': surface_type})
             cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-            ret = utils.run_script(cmd)
-            if ret == '':
+            script_ret = utils.run_script(cmd)
+            if script_ret == '':
                 return False
             # convert the  obj files to ply
             lookup = convert_perecelated_cortex(subject, aparc_name, surface_type, overwrite_ply_files)

@@ -69,35 +69,38 @@ def import_hemis_for_functional_maps(base_path):
     ply_files = glob.glob(op.join(base_path, 'surf', '*.ply'))
     N = len(ply_files)
     for ind, ply_fname in enumerate(ply_files):
-        mu.time_to_go(now, ind, N, 10)
-        bpy.ops.object.select_all(action='DESELECT')
-        obj_name = mu.namebase(ply_fname).split(sep='.')[0]
-        surf_name = mu.namebase(ply_fname).split(sep='.')[1]
-        if surf_name == 'inflated':
-            obj_name = '{}_{}'.format(surf_name, obj_name)
-            mu.change_layer(_addon().INFLATED_ACTIVITY_LAYER)
-        elif surf_name == 'pial':
-            mu.change_layer(_addon().ACTIVITY_LAYER)
-        else:
-            raise Exception('The surface type {} is not supported!'.format(surf_name))
-        if bpy.data.objects.get(obj_name) is None:
-            bpy.ops.import_mesh.ply(filepath=op.join(base_path, 'surf', ply_fname))
-            cur_obj = bpy.context.selected_objects[0]
-            cur_obj.select = True
-            bpy.ops.object.shade_smooth()
-            cur_obj.scale = [0.1] * 3
-            cur_obj.hide = False
-            cur_obj.name = obj_name
+        try:
+            mu.time_to_go(now, ind, N, 10)
+            bpy.ops.object.select_all(action='DESELECT')
+            obj_name = mu.namebase(ply_fname).split(sep='.')[0]
+            surf_name = mu.namebase(ply_fname).split(sep='.')[1]
             if surf_name == 'inflated':
-                cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
-                cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
+                obj_name = '{}_{}'.format(surf_name, obj_name)
+                mu.change_layer(_addon().INFLATED_ACTIVITY_LAYER)
+            elif surf_name == 'pial':
+                mu.change_layer(_addon().ACTIVITY_LAYER)
             else:
-                cur_obj.active_material = bpy.data.materials['Activity_map_mat']
-            cur_obj.parent = bpy.data.objects["Functional maps"]
-            cur_obj.hide_select = True
-            cur_obj.data.vertex_colors.new()
-        else:
-            print('{} already exists'.format(ply_fname))
+                raise Exception('The surface type {} is not supported!'.format(surf_name))
+            if bpy.data.objects.get(obj_name) is None:
+                bpy.ops.import_mesh.ply(filepath=op.join(base_path, 'surf', ply_fname))
+                cur_obj = bpy.context.selected_objects[0]
+                cur_obj.select = True
+                bpy.ops.object.shade_smooth()
+                cur_obj.scale = [0.1] * 3
+                cur_obj.hide = False
+                cur_obj.name = obj_name
+                if surf_name == 'inflated':
+                    cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
+                    cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
+                else:
+                    cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+                cur_obj.parent = bpy.data.objects["Functional maps"]
+                cur_obj.hide_select = True
+                cur_obj.data.vertex_colors.new()
+            else:
+                print('{} already exists'.format(ply_fname))
+        except:
+            print('Error in importing {}'.format(ply_fname))
 
     _addon().create_inflated_curv_coloring()
     bpy.ops.object.select_all(action='DESELECT')
@@ -127,40 +130,43 @@ def import_subcorticals(base_path):
     PATH_TYPE_SUB_MEG, PATH_TYPE_SUB_FMRI = range(2)
     for path_type, base_path in enumerate(base_paths):
         for ply_fname in glob.glob(op.join(base_path, '*.ply')):
-            obj_name = mu.namebase(ply_fname)
-            if path_type==PATH_TYPE_SUB_MEG and not bpy.data.objects.get('{}_meg_activity'.format(obj_name)) is None:
-                continue
-            if path_type==PATH_TYPE_SUB_FMRI and not bpy.data.objects.get('{}_fmri_activity'.format(obj_name)) is None:
-                continue
-            bpy.ops.object.select_all(action='DESELECT')
-            print(ply_fname)
-            bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
-            cur_obj = bpy.context.selected_objects[0]
-            cur_obj.select = True
-            bpy.ops.object.shade_smooth()
-            cur_obj.scale = [0.1] * 3
-            cur_obj.hide = False
-            cur_obj.name = obj_name
+            try:
+                obj_name = mu.namebase(ply_fname)
+                if path_type==PATH_TYPE_SUB_MEG and not bpy.data.objects.get('{}_meg_activity'.format(obj_name)) is None:
+                    continue
+                if path_type==PATH_TYPE_SUB_FMRI and not bpy.data.objects.get('{}_fmri_activity'.format(obj_name)) is None:
+                    continue
+                bpy.ops.object.select_all(action='DESELECT')
+                print(ply_fname)
+                bpy.ops.import_mesh.ply(filepath=op.join(base_path, ply_fname))
+                cur_obj = bpy.context.selected_objects[0]
+                cur_obj.select = True
+                bpy.ops.object.shade_smooth()
+                cur_obj.scale = [0.1] * 3
+                cur_obj.hide = False
+                cur_obj.name = obj_name
 
-            if path_type == PATH_TYPE_SUB_MEG:
-                cur_obj.name = '{}_meg_activity'.format(obj_name)
-                curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
-                if curMat is None:
-                    # todo: Fix the succortical_activity_Mat to succortical_activity_mat
-                    curMat = bpy.data.materials['succortical_activity_Mat'].copy()
-                    curMat.name = '{}_mat'.format(cur_obj.name)
-                cur_obj.active_material = bpy.data.materials[curMat.name]
-                cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
-            elif path_type == PATH_TYPE_SUB_FMRI:
-                cur_obj.name = '{}_fmri_activity'.format(obj_name)
-                if 'cerebellum' in cur_obj.name.lower():
-                    cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+                if path_type == PATH_TYPE_SUB_MEG:
+                    cur_obj.name = '{}_meg_activity'.format(obj_name)
+                    curMat = bpy.data.materials.get('{}_mat'.format(cur_obj.name))
+                    if curMat is None:
+                        # todo: Fix the succortical_activity_Mat to succortical_activity_mat
+                        curMat = bpy.data.materials['succortical_activity_Mat'].copy()
+                        curMat.name = '{}_mat'.format(cur_obj.name)
+                    cur_obj.active_material = bpy.data.materials[curMat.name]
+                    cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
+                elif path_type == PATH_TYPE_SUB_FMRI:
+                    cur_obj.name = '{}_fmri_activity'.format(obj_name)
+                    if 'cerebellum' in cur_obj.name.lower():
+                        cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+                    else:
+                        cur_obj.active_material = bpy.data.materials['subcortical_activity_mat']
+                    cur_obj.parent = bpy.data.objects['Subcortical_fmri_activity_map']
                 else:
-                    cur_obj.active_material = bpy.data.materials['subcortical_activity_mat']
-                cur_obj.parent = bpy.data.objects['Subcortical_fmri_activity_map']
-            else:
-                print('import_subcorticals: Wrong path_type! Nothing to do...')
-            cur_obj.hide_select = True
+                    print('import_subcorticals: Wrong path_type! Nothing to do...')
+                cur_obj.hide_select = True
+            except:
+                print('Error in importing {}!'.format(ply_fname))
     bpy.ops.object.select_all(action='DESELECT')
 
 
@@ -254,30 +260,33 @@ def import_rois(base_path):
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
         print('importing from {}'.format(anatomy_input_base_path))
         for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):
-            new_obj_name = mu.namebase(ply_fname)
-            fol_name = anatomy_input_base_path.split(op.sep)[-1]
-            surf_name = 'pial' if fol_name == 'subcortical' or len(fol_name.split('.')) == 1 else fol_name.split('.')[1]
-            if surf_name == 'inflated':
-                new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
-                mu.change_layer(_addon().INFLATED_ROIS_LAYER)
-            elif surf_name == 'pial':
-                mu.change_layer(_addon().ROIS_LAYER)
-            if not bpy.data.objects.get(new_obj_name) is None:
-                print('{} was already imported'.format(new_obj_name))
-                continue
-            if 'inflated' in new_obj_name:
-                inflated_imported = True
-            bpy.ops.object.select_all(action='DESELECT')
-            # print(ply_fname)
-            bpy.ops.import_mesh.ply(filepath=op.join(anatomy_input_base_path, ply_fname))
-            cur_obj = bpy.context.selected_objects[0]
-            cur_obj.select = True
-            bpy.ops.object.shade_smooth()
-            cur_obj.parent = bpy.data.objects[anatomy_name]
-            cur_obj.scale = [0.1] * 3
-            cur_obj.active_material = current_mat
-            cur_obj.hide = False
-            cur_obj.name = new_obj_name
+            try:
+                new_obj_name = mu.namebase(ply_fname)
+                fol_name = anatomy_input_base_path.split(op.sep)[-1]
+                surf_name = 'pial' if fol_name == 'subcortical' or len(fol_name.split('.')) == 1 else fol_name.split('.')[1]
+                if surf_name == 'inflated':
+                    new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
+                    mu.change_layer(_addon().INFLATED_ROIS_LAYER)
+                elif surf_name == 'pial':
+                    mu.change_layer(_addon().ROIS_LAYER)
+                if not bpy.data.objects.get(new_obj_name) is None:
+                    print('{} was already imported'.format(new_obj_name))
+                    continue
+                if 'inflated' in new_obj_name:
+                    inflated_imported = True
+                bpy.ops.object.select_all(action='DESELECT')
+                # print(ply_fname)
+                bpy.ops.import_mesh.ply(filepath=op.join(anatomy_input_base_path, ply_fname))
+                cur_obj = bpy.context.selected_objects[0]
+                cur_obj.select = True
+                bpy.ops.object.shade_smooth()
+                cur_obj.parent = bpy.data.objects[anatomy_name]
+                cur_obj.scale = [0.1] * 3
+                cur_obj.active_material = current_mat
+                cur_obj.hide = False
+                cur_obj.name = new_obj_name
+            except:
+                print('Error in importing {}'.format(ply_fname))
             # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
     if inflated_imported:
