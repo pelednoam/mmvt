@@ -111,13 +111,13 @@ def create_subcortical_activity_mat(name):
     cur_mat.name = name + '_Mat'
 
 
-def import_subcorticals(base_path):
+def import_subcorticals(base_path, parent_name='Subcortical'):
     empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     brain_layer = DataMakerPanel.addon.ACTIVITY_LAYER
 
     bpy.context.scene.layers = [ind == empty_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers
-    emptys_names = ['Functional maps', 'Subcortical_meg_activity_map', 'Subcortical_fmri_activity_map']
+    emptys_names = ['Functional maps', '{}_meg_activity_map'.format(parent_name), '{}_fmri_activity_map'.format(parent_name)]
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, empty_layer, layers_array, 'Functional maps')
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
@@ -154,14 +154,14 @@ def import_subcorticals(base_path):
                         curMat = bpy.data.materials['succortical_activity_Mat'].copy()
                         curMat.name = '{}_mat'.format(cur_obj.name)
                     cur_obj.active_material = bpy.data.materials[curMat.name]
-                    cur_obj.parent = bpy.data.objects['Subcortical_meg_activity_map']
+                    cur_obj.parent = bpy.data.objects['{}_meg_activity_map'.format(parent_name)]
                 elif path_type == PATH_TYPE_SUB_FMRI:
                     cur_obj.name = '{}_fmri_activity'.format(obj_name)
                     if 'cerebellum' in cur_obj.name.lower():
                         cur_obj.active_material = bpy.data.materials['Activity_map_mat']
                     else:
                         cur_obj.active_material = bpy.data.materials['subcortical_activity_mat']
-                    cur_obj.parent = bpy.data.objects['Subcortical_fmri_activity_map']
+                    cur_obj.parent = bpy.data.objects['{}_fmri_activity_map'.format(parent_name)]
                 else:
                     print('import_subcorticals: Wrong path_type! Nothing to do...')
                 cur_obj.hide_select = True
@@ -191,6 +191,8 @@ def import_brain(context=None):
     import_rois(user_fol)
     import_hemis_for_functional_maps(user_fol)
     import_subcorticals(op.join(user_fol, 'subcortical'))
+    if op.isdir(op.join(user_fol, 'cerebellum')):
+        import_subcorticals(op.join(user_fol, 'cerebellum'), 'Cerebellum')
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
@@ -256,7 +258,7 @@ def import_rois(base_path):
             print('The anatomy folder {} does not exist'.format(anatomy_input_base_path))
             continue
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-        if anatomy_name == 'Subcortical_structures':
+        if anatomy_name in ['Subcortical_structures', 'Cerebellum']:
             current_mat = bpy.data.materials['unselected_label_Mat_subcortical']
         print('importing from {}'.format(anatomy_input_base_path))
         for ply_fname in glob.glob(op.join(anatomy_input_base_path, '*.ply')):

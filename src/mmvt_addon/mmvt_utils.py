@@ -529,7 +529,7 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_ELECTRODE
     elif obj.parent.name == 'EEG_electrodes':
         obj_type = OBJ_TYPE_EEG
-    elif obj.parent.name == 'Cerebellum':
+    elif obj.parent.name in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         obj_type = OBJ_TYPE_CEREBELLUM
     else:
         obj_type = None

@@ -181,6 +181,8 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
+    if 'Key' in bpy.data.shape_keys:
+        layout.prop(context.scene, 'inflating')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
@@ -201,6 +203,10 @@ def update_solidity(self, context):
     make_brain_solid_or_transparent()
     update_layers()
 
+
+def inflating_update(self, context):
+    bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1 - bpy.context.scene.inflating
+    bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1 - bpy.context.scene.inflating
 
 class SelectionListener(bpy.types.Operator):
     bl_idname = 'mmvt.selection_listener'
@@ -272,6 +278,8 @@ bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(
 
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
+
+bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 
 
 class ShowHideEEG(bpy.types.Operator):
