@@ -83,6 +83,20 @@ def is_rois():
     return bpy.context.scene.appearance_show_rois_activity == 'rois'
 
 
+def hemis_inf_distance_update(self, context):
+    bpy.data.objects['Cortex-inflated-rh'].location[0] = bpy.data.objects['inflated_rh'].location[0] = \
+        AppearanceMakerPanel.cortex_inflated_rh + bpy.context.scene.hemis_inf_distance
+    bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = \
+        AppearanceMakerPanel.cortex_inflated_lh - bpy.context.scene.hemis_inf_distance
+
+
+def hemis_distance_update(elf, context):
+    bpy.data.objects['Cortex-rh'].location[0] = bpy.data.objects['rh'].location[0] = \
+        AppearanceMakerPanel.cortex_rh + bpy.context.scene.hemis_distance
+    bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['lh'].location[0] = \
+        AppearanceMakerPanel.cortex_lh - bpy.context.scene.hemis_distance
+
+
 def appearance_show_rois_activity_update(self, context):
     # todo: Figure out why the hell
     for _ in range(2):
@@ -183,6 +197,10 @@ def appearance_draw(self, context):
     layout.prop(context.scene, "surface_type", expand=True)
     if 'Key' in bpy.data.shape_keys:
         layout.prop(context.scene, 'inflating')
+    if bpy.context.scene.surface_type == 'pial':
+        layout.prop(context.scene, 'hemis_distance', text='hemis dist')
+    else:
+        layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
@@ -280,6 +298,8 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
 
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
+bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-2.5, max=2.5, default=0, update=hemis_inf_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=4, default=0, update=hemis_distance_update)
 
 
 class ShowHideEEG(bpy.types.Operator):
@@ -341,8 +361,13 @@ def init(addon):
     change_to_solid_brain()
     # bpy.context.scene.appearance_show_rois_activity = 'rois' # 'activity'
     show_rois()
+    AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = bpy.data.objects['inflated_rh'].location[0] = 5.5
+    AppearanceMakerPanel.cortex_inflated_lh = bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = -5.5
+    AppearanceMakerPanel.cortex_rh = bpy.data.objects['Cortex-rh'].location[0] = bpy.data.objects['rh'].location[0] = 0
+    AppearanceMakerPanel.cortex_lh = bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['rh'].location[0] = 0
+    bpy.context.scene.hemis_distance = 0
+    bpy.context.scene.hemis_inf_distance = 0
     bpy.ops.mmvt.selection_listener()
-
 
 
 def register():

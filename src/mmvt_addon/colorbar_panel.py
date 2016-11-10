@@ -24,10 +24,14 @@ def set_colorbar_title(val):
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
 
 
-def set_colorbar_max_min(max_val, min_val, prec=None):
+def set_colorbar_max_min(max_val, min_val, force_update=False):
     if max_val > min_val:
+        init = ColorbarPanel.init
+        if force_update:
+            ColorbarPanel.init = True
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
+        ColorbarPanel.init = init
 
 
 def set_colorbar_max(val, prec=None, check_minmax=True):
@@ -71,6 +75,7 @@ def colormap_update(self, context):
 
 def colorbar_update(self, context):
     if ColorbarPanel.init:
+        ColorbarPanel.colorbar_updated = True
         set_colorbar_title(bpy.context.scene.colorbar_title)
         set_colorbar_max(bpy.context.scene.colorbar_max)
         set_colorbar_min(bpy.context.scene.colorbar_min)
@@ -142,6 +147,7 @@ class ColorbarPanel(bpy.types.Panel):
     bl_label = "Colorbar"
     addon = None
     init = False
+    colorbar_updated = False
 
     def draw(self, context):
         if ColorbarPanel.init:
@@ -167,9 +173,10 @@ def init(addon):
     ColorbarPanel.init = True
     bpy.context.scene.show_cb_in_render = False
     mu.select_hierarchy('colorbar_camera', False, False)
-    bpy.context.scene.colorbar_min = -1
-    bpy.context.scene.colorbar_max = 1
-    bpy.context.scene.colorbar_title = 'MEG'
+    if not ColorbarPanel.colorbar_updated:
+        bpy.context.scene.colorbar_min = -1
+        bpy.context.scene.colorbar_max = 1
+        bpy.context.scene.colorbar_title = 'MEG'
     bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
     bpy.context.scene.colorbar_y = 0.18
     bpy.context.scene.colorbar_text_y = -1.53

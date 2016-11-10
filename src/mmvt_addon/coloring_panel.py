@@ -895,6 +895,8 @@ def init(addon):
         ColoringMakerPanel.meg_activity_data_min = data_min
         ColoringMakerPanel.meg_activity_data_max = data_max
         print('data meg: {}-{}'.format(data_min, data_max))
+        _addon().set_colorbar_max_min(data_max, data_min, True)
+        _addon().set_colorbar_title('MEG')
 
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
     if len(fmri_files) > 0:
