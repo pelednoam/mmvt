@@ -299,7 +299,7 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
 
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-2.5, max=2.5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=4, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
 
 
 class ShowHideEEG(bpy.types.Operator):
