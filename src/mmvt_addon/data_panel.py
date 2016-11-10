@@ -368,10 +368,9 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
         base_path = mu.get_user_fol()
     source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
                     op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
-                    op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+                    op.join(base_path, '{}subcortical_meg_activity.npz'.format(files_prefix))]
     print('Adding data to Brain')
     number_of_maximal_time_steps = -1
-    obj_counter = 0
     conditions = []
     for input_file in source_files:
         if not op.isfile(input_file):
@@ -381,20 +380,15 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
         print('{} loaded'.format(input_file))
         number_of_maximal_time_steps = max(number_of_maximal_time_steps, len(f['data'][0]))
         for obj_name, data in zip(f['names'], f['data']):
-            # print('in label loop')
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
-            # obj_name = '{}{}'.format(objs_prefix, obj_name)
-            # print(obj_name)
             cur_obj = bpy.data.objects[obj_name]
-            # print('cur_obj name = '+cur_obj.name)
-
+            if not cur_obj.animation_data is None:
+                print('{} has already fcurves'.format(obj_name))
+                continue
             print('keyframing {}'.format(obj_name))
             for cond_ind, cond_str in enumerate(f['conditions']):
-                # cond_str = str(cond_str)
-                # if cond_str[1] == "'":
-                #     cond_str = cond_str[2:-1]
                 cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
@@ -402,7 +396,6 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
 
                 # For every time point insert keyframe to current object
                 for ind, timepoint in enumerate(data[:, cond_ind]):
-                    # print('keyframing '+obj_name+' object')
                     mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, timepoint, ind + 2)
 
                 # remove the orange keyframe sign in the fcurves window
