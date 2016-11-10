@@ -700,9 +700,6 @@ class AddDataToElectrodes(bpy.types.Operator):
             source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_data.npy'.format(
                 '_bipolar' if bpy.context.scene.bipolar else '',
                 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-            # colors_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_colors.npy'.format(
-            #     '_bipolar' if bpy.context.scene.bipolar else '',
-            #     'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
             meta_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_meta.npz'.format(
                 '_bipolar' if bpy.context.scene.bipolar else '',
                 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
@@ -713,9 +710,9 @@ class AddDataToElectrodes(bpy.types.Operator):
                 print('No electrodes data file!')
         if not data is None and not meta is None:
             print('Loading electordes data from {}'.format(source_file))
-            conditions = add_data_to_electrodes(source_file, meta_file)
+            conditions = add_data_to_electrodes(data, meta)
             selection_panel.set_conditions_enum(conditions)
-            add_data_to_electrodes_parent_obj(parent_obj, source_file, meta_file)
+            add_data_to_electrodes_parent_obj(parent_obj, data, meta)
             bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
             bpy.context.scene.objects.active = bpy.data.objects[' ']

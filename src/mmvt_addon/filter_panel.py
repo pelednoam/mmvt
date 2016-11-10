@@ -198,8 +198,10 @@ def update_filter_items(topk, objects_indices, filter_objects):
 
 def show_one_by_one_update(self, context):
     if bpy.context.scene.filter_items_one_by_one:
+        _addon().show_rois()
         update_filter_items(bpy.context.scene.filter_topK, Filtering.objects_indices, Filtering.filter_objects)
     else:
+        _addon().show_activity()
         #todo: do something here
         pass
 
@@ -357,8 +359,10 @@ class Filtering(bpy.types.Operator):
             self.topK = min(self.topK, len(names))
         print(self.type_of_func)
         filter_func = get_func(self.type_of_func)
-        # d = np.vstack((d for d in data))
-        d = data
+        if isinstance(data, list):
+            d = np.vstack((d for d in data))
+        else:
+            d = data
         print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
@@ -397,7 +401,6 @@ class Filtering(bpy.types.Operator):
 
     def filter_rois(self, current_file_to_upload):
         print('filter_ROIs')
-        _addon().show_rois()
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in mu.HEMIS]
         objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
@@ -413,6 +416,13 @@ class Filtering(bpy.types.Operator):
                 fcurve.select = not fcurve.hide
             brain_obj.select = True
 
+        if bpy.context.scene.filter_items_one_by_one:
+            _addon().show_rois()
+        else:
+            objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
+            _addon().color_objects(objects_names, objects_colors, objects_data)
+
+    def get_objects_to_color(self, names, objects_indices):
         curves_num = 0
         for ind in range(min(self.topK, len(objects_indices))):
             orig_name = names[objects_indices[ind]]
@@ -437,8 +447,7 @@ class Filtering(bpy.types.Operator):
                         fcurve.color = tuple(next(colors))
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
-
-        _addon().color_objects(objects_names, objects_colors, objects_data)
+        return objects_names, objects_colors, objects_data
 
     def invoke(self, context, event=None):
         _addon().change_view3d()

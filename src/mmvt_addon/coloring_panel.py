@@ -201,7 +201,7 @@ def meg_labels_coloring(override_current_mat=True):
                                  hemi, threshold, override_current_mat)
 
 
-def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold, override_current_mat=True):
+def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, override_current_mat=True):
     now = time.time()
     labels_names = ColoringMakerPanel.labels_vertices['labels_names']
     labels_vertices = ColoringMakerPanel.labels_vertices['labels_vertices']
@@ -346,12 +346,16 @@ def create_inflated_curv_coloring():
 
 
 # @mu.timeit
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None, colors_ratio=None):
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
+                              colors_ratio=None, bigger_or_equall=False):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
     values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
-    valid_verts = np.where(np.abs(values) >= threshold)[0]
+    if bigger_or_equall:
+        valid_verts = np.where(np.abs(values) >= threshold)[0]
+    else:
+        valid_verts = np.where(np.abs(values) > threshold)[0]
     colors_picked_from_cm = False
     if vert_values.ndim == 1 and not data_min is None:
         colors_picked_from_cm = True
@@ -451,7 +455,7 @@ def color_objects(objects_names, colors, data):
             continue
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
         # print('color hemi {}: {}'.format(hemi, labels_names))
-        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi, 0)
+        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi)
     clear_subcortical_regions()
     if mu.OBJ_TYPE_SUBCORTEX in objects_names:
         for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
@@ -885,6 +889,7 @@ def init(addon):
         return None
     labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
+    ColoringMakerPanel.max_labels_vertices_num = {}
 
     meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
     if meg_files_exist:

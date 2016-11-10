@@ -259,8 +259,8 @@ def get_window_length(obj_name):
 
 
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
-    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2),
-           ("spec_cond", "Specific condition", "", 3)], description="Selection type")
+    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2)])
+           # ("spec_cond", "Specific condition", "", 3)], description="Selection type")
 bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
                                                               update=conditions_selection_update)
 bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
@@ -288,8 +288,8 @@ class SelectionMakerPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.prop(context.scene, "selection_type", text="")
-        if bpy.context.scene.selection_type == 'spec_cond':
-            layout.prop(context.scene, "conditions_selection", text="")
+        # if bpy.context.scene.selection_type == 'spec_cond':
+        #     layout.prop(context.scene, "conditions_selection", text="")
         layout.operator(SelectAllRois.bl_idname, text="Select all cortical ROIs", icon='BORDER_RECT')
         layout.operator(SelectAllSubcorticals.bl_idname, text="Select all subcorticals", icon = 'BORDER_RECT' )
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
