@@ -313,8 +313,8 @@ def create_inflated_curv_coloring():
         mesh = cur_obj.data
         scn = bpy.context.scene
         verts_colors = np.zeros((curv.shape[0], 3))
-        verts_colors[np.where(curv == 1)] = [1, 1, 1]
-        verts_colors[np.where(curv == 0)] = [0.3, 0.3, 0.3]
+        verts_colors[np.where(curv == 0)] = [1, 1, 1]
+        verts_colors[np.where(curv == 1)] = [0.55, 0.55, 0.55]
         scn.objects.active = cur_obj
         cur_obj.select = True
         bpy.ops.mesh.vertex_color_remove()
@@ -327,6 +327,7 @@ def create_inflated_curv_coloring():
 
     try:
         # todo: check not to overwrite
+        print('Creating the inflated curvatures coloring')
         for hemi in mu.HEMIS:
             cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
             curv = np.load(op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi)))
