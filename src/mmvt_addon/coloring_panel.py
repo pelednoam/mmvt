@@ -262,19 +262,20 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 print("Can't load {}".format(fname))
                 return False
         elif map_type == 'FMRI':
-            # fname = op.join(current_root_path, 'fmri_{}{}.npy'.format('clusters_' if clusters else '', hemi))
-            # f = np.load(fname)
             if clusters:
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
-        if _addon().is_pial():
-            cur_obj = bpy.data.objects[hemi]
-        elif _addon().is_inflated():
-            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        # cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        # for cur_obj in [bpy.data.objects['inflated_{}'.format(hemi)], bpy.data.objects[hemi]]:
-        activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
+        if bpy.context.scene.coloring_both_pial_and_inflated:
+            for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+                activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min,
+                                          colors_ratio)
+        else:
+            if _addon().is_pial():
+                cur_obj = bpy.data.objects[hemi]
+            elif _addon().is_inflated():
+                cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+            activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
         if map_type == 'MEG':
@@ -775,6 +776,7 @@ bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI 
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
+bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -815,6 +817,7 @@ class ColoringMakerPanel(bpy.types.Panel):
             '{}_groups.csv'.format(bpy.context.scene.atlas)))
         volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
+        layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
         if faces_verts_exist:
             if meg_files_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
