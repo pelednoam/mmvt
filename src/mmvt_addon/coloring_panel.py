@@ -72,11 +72,15 @@ def clear_subcortical_fmri_activity():
 
 def clear_cortex(hemis=HEMIS):
     for hemi in hemis:
-        if _addon().is_pial():
-            cur_obj = bpy.data.objects[hemi]
-        elif _addon().is_inflated():
-            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        clear_object_vertex_colors(cur_obj)
+        if bpy.context.scene.coloring_both_pial_and_inflated:
+            for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+                clear_object_vertex_colors(cur_obj)
+        else:
+            if _addon().is_pial():
+                cur_obj = bpy.data.objects[hemi]
+            elif _addon().is_inflated():
+                cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+            clear_object_vertex_colors(cur_obj)
 
 
 #todo: call this code from the coloring
@@ -229,8 +233,15 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
             label_colors_data = np.hstack((label_data_t, label_colors_t))
             label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
             colors_data[label_vertices, :] = label_colors_data
-    cur_obj = bpy.data.objects[hemi]
-    activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+    if bpy.context.scene.coloring_both_pial_and_inflated:
+        for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+            activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+    else:
+        if _addon().is_pial():
+            cur_obj = bpy.data.objects[hemi]
+        elif _addon().is_inflated():
+            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
     print('Finish meg_labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
