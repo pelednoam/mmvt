@@ -96,7 +96,9 @@ class ShowHideSubCerebellum(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         bpy.context.scene.objects_show_hide_cerebellum = not bpy.context.scene.objects_show_hide_cerebellum
-        show_hide_hierarchy(bpy.context.scene.objects_show_hide_cerebellum, "Cerebellum")
+        show_hide_hierarchy(bpy.context.scene.objects_show_hide_cerebellum, 'Cerebellum')
+        show_hide_hierarchy(bpy.context.scene.objects_show_hide_cerebellum, 'Cerebellum_fmri_activity_map')
+        show_hide_hierarchy(bpy.context.scene.objects_show_hide_cerebellum, 'Cerebellum_meg_activity_map')
         return {"FINISHED"}
 
 
