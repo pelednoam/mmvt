@@ -1059,12 +1059,10 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
         figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
         figu.plot_color_bar(data_minmax, -data_minmax, colors_map, fol=figures_fol)
 
-        # scalar_map = utils.get_scalar_map(data_min, data_max, colors_map)
         for hemi in HEMIS:
-            # verts, faces = utils.read_ply_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
             verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
-            if verts.shape[0]!=data.shape[0]:
+            if verts.shape[0] != data.shape[0]:
                 raise Exception('save_activity_map: wrong number of vertices!')
             else:
                 print('Both {}.pial.ply and the stc file have {} vertices'.format(hemi, data.shape[0]))
@@ -1075,17 +1073,6 @@ def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', invers
             T = data.shape[1]
             for t in range(T):
                 utils.time_to_go(now, t, T, runs_num_to_print=10)
-                # if data_min > 0:
-                #     colors = utils.arr_to_colors(data[:, t], 0, data_max, scalar_map=scalar_map)[:,:3]
-                # else:
-                #     colors = utils.arr_to_colors_two_colors_maps(
-                #         data[:, t], threshold=threshold, x_max=data_minmax, x_min=-data_minmax,
-                #         cm_big=cm_big, cm_small=cm_small, default_val=1, flip_cm_big=flip_cm_big,
-                #         flip_cm_small=flip_cm_small)
-
-                # Stacking the values with the colors
-                # colors = np.hstack((np.reshape(data[:, t], (data[:, t].shape[0], 1)), colors))
-                # np.save(op.join(fol, 't{}'.format(t)), colors)
                 np.save(op.join(fol, 't{}'.format(t)), data[:, t])
 
         flag = True

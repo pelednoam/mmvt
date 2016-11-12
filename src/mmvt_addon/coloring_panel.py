@@ -252,18 +252,12 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
 
-    # hemis_in_order = ['lh', 'rh'] # Same order like in the creating of the merged ply object
-    # f = np.hstack([np.load(op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')) for hemi in hemis_in_order])
-    # activity_map_obj_coloring(bpy.data.objects['cortex'], f, faces_verts['cortex'], threshold, override_current_mat,
-    #                           ColoringMakerPanel.meg_activity_data_min, ColoringMakerPanel.meg_activity_colors_ratio)
-
     loop_indices = {}
     for hemi in not_hiden_hemis:
         colors_ratio, data_min = None, None
         if map_type == 'MEG':
             fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
             if op.isfile(fname):
-                # fname = '/autofs/space/thibault_001/users/npeled/mmvt/mg78/surf/{}.curv.npy'.format(hemi)
                 f = np.load(fname)
                 colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
                 data_min = ColoringMakerPanel.meg_activity_data_min
@@ -543,7 +537,6 @@ def default_coloring(loop_indices):
 def fmri_files_update(self, context):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
-    # fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
     for hemi in mu.HEMIS:
         fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)

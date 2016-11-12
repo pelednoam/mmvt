@@ -143,6 +143,7 @@ def unfilter_clusters():
 
 
 def plot_all_blobs():
+    #todo: update the colorbar
     faces_verts = _addon().get_faces_verts()
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     fmri_contrast, blobs_activity = {}, {}
@@ -163,9 +164,14 @@ def plot_all_blobs():
             blobs_activity[hemi][blob_vertices] = fmri_contrast[hemi][blob_vertices]
 
     for hemi in hemis:
-        inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
-        _addon().activity_map_obj_coloring(
-            bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
+        if bpy.context.scene.coloring_both_pial_and_inflated:
+            for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
+                _addon().activity_map_obj_coloring(
+                    bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], 2, True)
+        else:
+            inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
+            _addon().activity_map_obj_coloring(
+                bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
 
     for hemi in set(mu.HEMIS) - hemis:
         _addon().clear_cortex([hemi])

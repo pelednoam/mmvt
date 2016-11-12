@@ -84,17 +84,21 @@ def is_rois():
 
 
 def hemis_inf_distance_update(self, context):
-    bpy.data.objects['Cortex-inflated-rh'].location[0] = bpy.data.objects['inflated_rh'].location[0] = \
-        AppearanceMakerPanel.cortex_inflated_rh + bpy.context.scene.hemis_inf_distance
-    bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = \
-        AppearanceMakerPanel.cortex_inflated_lh - bpy.context.scene.hemis_inf_distance
+    if AppearanceMakerPanel.init:
+        if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
+            bpy.data.objects['Cortex-inflated-rh'].location[0] = bpy.data.objects['inflated_rh'].location[0] = \
+                AppearanceMakerPanel.cortex_inflated_rh + bpy.context.scene.hemis_inf_distance
+            bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = \
+                AppearanceMakerPanel.cortex_inflated_lh - bpy.context.scene.hemis_inf_distance
 
 
-def hemis_distance_update(elf, context):
-    bpy.data.objects['Cortex-rh'].location[0] = bpy.data.objects['rh'].location[0] = \
-        AppearanceMakerPanel.cortex_rh + bpy.context.scene.hemis_distance
-    bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['lh'].location[0] = \
-        AppearanceMakerPanel.cortex_lh - bpy.context.scene.hemis_distance
+def hemis_distance_update(self, context):
+    if AppearanceMakerPanel.init:
+        if bpy.data.objects.get('Cortex-rh') and bpy.data.objects.get('rh'):
+            bpy.data.objects['Cortex-rh'].location[0] = bpy.data.objects['rh'].location[0] = \
+                AppearanceMakerPanel.cortex_rh + bpy.context.scene.hemis_distance
+            bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['lh'].location[0] = \
+                AppearanceMakerPanel.cortex_lh - bpy.context.scene.hemis_distance
 
 
 def appearance_show_rois_activity_update(self, context):
@@ -200,7 +204,8 @@ def appearance_draw(self, context):
     if bpy.context.scene.surface_type == 'pial':
         layout.prop(context.scene, 'hemis_distance', text='hemis dist')
     else:
-        layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
+        if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
+            layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
@@ -346,6 +351,10 @@ class AppearanceMakerPanel(bpy.types.Panel):
     bl_label = "Appearance"
     addon = None
     init = False
+    cortex_inflated_rh = 0
+    cortex_inflated_lh = 0
+    cortex_rh = 0
+    cortex_lh = 0
 
     def draw(self, context):
         if AppearanceMakerPanel.init:
@@ -361,10 +370,16 @@ def init(addon):
     change_to_solid_brain()
     # bpy.context.scene.appearance_show_rois_activity = 'rois' # 'activity'
     show_rois()
-    AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = bpy.data.objects['inflated_rh'].location[0] = 5.5
-    AppearanceMakerPanel.cortex_inflated_lh = bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = -5.5
-    AppearanceMakerPanel.cortex_rh = bpy.data.objects['Cortex-rh'].location[0] = bpy.data.objects['rh'].location[0] = 0
-    AppearanceMakerPanel.cortex_lh = bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['rh'].location[0] = 0
+    if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
+        AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
+            bpy.data.objects['inflated_rh'].location[0] = 5.5
+        AppearanceMakerPanel.cortex_inflated_lh = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
+            bpy.data.objects['inflated_lh'].location[0] = -5.5
+    if bpy.data.objects.get('Cortex-rh') and bpy.data.objects.get('lh'):
+        AppearanceMakerPanel.cortex_rh = bpy.data.objects['Cortex-rh'].location[0] = \
+            bpy.data.objects['rh'].location[0] = 0
+        AppearanceMakerPanel.cortex_lh = bpy.data.objects['Cortex-lh'].location[0] = \
+            bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0
     bpy.ops.mmvt.selection_listener()

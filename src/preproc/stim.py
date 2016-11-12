@@ -38,7 +38,7 @@ def load_stim_file(subject, args):
         if args.downsample > 1:
             psd_slice = utils.downsample(psd_slice, args.downsample)
         data[:, :, freq_ind] = psd_slice
-        data_min, data_max = utils.check_min_max(psd_slice, norm_percs=args.norm_percs)
+        data_min, data_max = utils.calc_min_max(psd_slice, norm_percs=args.norm_percs)
         if colors is None:
             colors = np.zeros((*data.shape, 3))
         for elec_ind, elec_name in enumerate(labels):
@@ -197,7 +197,7 @@ def calc_labels_data(elecs_lookup, stim_data, stim_labels, hemi=None):
         label_ind += 1
     # Calc colors for each freq
     for freq_id in range(labels_data.shape[2]):
-        data_min, data_max = utils.check_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
+        data_min, data_max = utils.calc_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
         colors[:, :, freq_id] = utils.mat_to_colors(
             labels_data[:, :, freq_id], data_min, data_max, colorsMap=args.colors_map)
     return labels_data, colors, labels_data_names

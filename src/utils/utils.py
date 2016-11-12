@@ -83,7 +83,7 @@ def get_scalar_map(x_min, x_max, color_map='jet'):
 
 def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
     if scalar_map is None:
-        x_min, x_max = check_min_max(x, x_min, x_max)
+        x_min, x_max = calc_min_max(x, x_min, x_max)
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
     return scalar_map.to_rgba(x)
 
@@ -94,7 +94,7 @@ def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, f
         x_min = np.min(x) if x_max is None else -x_max
         x_max = np.max(x) if x_min is None else -x_min
 
-    x_min, x_max = check_min_max(x, x_min, x_max)
+    x_min, x_max = calc_min_max(x, x_min, x_max)
     colors = arr_to_colors(x, x_min, x_max, colorsMap, scalar_map)
     if colors.ndim == 2:
         return colors[:, :3]
@@ -103,7 +103,9 @@ def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, f
     raise Exception('colors ndim not 2 or 3!')
 
 
-def check_min_max(x, x_min=None, x_max=None, norm_percs=None):
+def calc_min_max(x, x_min=None, x_max=None, norm_percs=None, norm_by_percentile=False):
+    if not norm_by_percentile:
+        norm_percs = None
     if x_min is None:
         x_min = np.min(x) if norm_percs is None else np.percentile(x, norm_percs[0])
     if x_max is None:
@@ -112,9 +114,11 @@ def check_min_max(x, x_min=None, x_max=None, norm_percs=None):
 
 
 def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm_small='PuBu', threshold=0, default_val=0,
-                                  scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False):
+                                  scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False,
+                                  norm_percs=(3, 97), norm_by_percentile=True):
     colors = np.ones((len(x), 3)) * default_val
-    x_min, x_max = check_min_max(x, x_min, x_max)
+    norm_percs = norm_percs if norm_by_percentile else None
+    x_min, x_max = calc_min_max(x, x_min, x_max, norm_percs)
 
     if np.sum(x >= threshold) > 0:
         if not flip_cm_big:
@@ -135,7 +139,7 @@ def mat_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm
         scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False, min_is_abs_max=False,
         norm_percs = None):
     colors = np.ones((x.shape[0],x.shape[1], 3)) * default_val
-    x_min, x_max = check_min_max(x, x_min, x_max, norm_percs)
+    x_min, x_max = calc_min_max(x, x_min, x_max, norm_percs)
     if min_is_abs_max:
         x_max = max(map(abs, [x_min, x_max]))
         x_min = -x_max
@@ -334,7 +338,7 @@ def get_environ_dir(var_name, default_val=''):
     return ret_val
 
 
-def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
+def get_link_dir(links_dir: object, link_name: object, var_name: object = '', default_val: object = '', throw_exception: object = False) -> object:
     val = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
     if op.isfile('{}.lnk'.format(val)):
