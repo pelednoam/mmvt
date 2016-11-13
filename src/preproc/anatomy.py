@@ -660,7 +660,6 @@ def main(subject, args):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
         flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
 
-
     if utils.should_run(args, 'create_annotation_from_template'):
         # *) Create annotation file from fsaverage
         flags['create_annotation_from_template'] = create_annotation_from_template(

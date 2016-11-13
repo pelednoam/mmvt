@@ -17,21 +17,22 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 
 #todo: Add the necessary parameters
-def save_electrodes_coh(subject, conditions=(), mat_fname='', stat=STAT_DIFF, t_max=-1, threshold=0.8, bipolar=False):
+# args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
+def save_electrodes_coh(subject, args): # conditions=(), mat_fname='', stat=STAT_DIFF, t_max=-1, threshold=0.8, bipolar=False):
     d = dict()
-    d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
+    d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh.npy')
+    coh_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
     if not op.isfile(coh_fname):
         coh = calc_electrodes_coh(
-            subject, conditions, mat_fname, t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
+            subject, args.conditions, args.mat_fname, args.t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
             dt=0.1, window_len=0.1, n_jobs=6)
     else:
         coh = np.load(coh_fname)
-    d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'] = \
-        calc_connections_colors(coh, d['labels'], d['hemis'], args)
-    d['conditions'] = ['interference', 'neutral']
-    np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh'), **d)
+    (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
+     d['data_max'], d['data_min']) = calc_connections_colors(coh, d['labels'], d['hemis'], args)
+    d['conditions'] = args.conditions # ['interference', 'neutral']
+    np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_con'), **d)
 
 
 def get_electrodes_info(subject, bipolar=False):
@@ -121,7 +122,7 @@ def calc_connections_colors(data, labels, hemis, args):
     for cond in range(len(args.conditions)):
         for w in range(W):
             for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
-                if W > 1:
+                if W > 1 and data.ndim == 4:
                     con_values[ind, w, cond] = data[i, j, w, cond]
                 elif data.ndim > 2:
                     con_values[ind, w, cond] = data[i, j, cond]
@@ -139,8 +140,12 @@ def calc_connections_colors(data, labels, hemis, args):
 
     con_indices = con_indices.astype(np.int)
     con_names = np.array(con_names)
+    data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
+    data_minmax = max(map(abs, [data_max, data_min]))
     if args.threshold_percentile > 0:
         args.threshold = np.percentile(np.abs(stat_data), args.threshold_percentile)
+    if args.threshold > data_minmax:
+        raise Exception('threshold > abs(max(data)) ({})'.format(data_minmax))
     if args.threshold >= 0:
         indices = np.where(np.abs(stat_data) > args.threshold)[0]
         # con_colors = con_colors[indices]
@@ -152,12 +157,11 @@ def calc_connections_colors(data, labels, hemis, args):
 
     con_values = np.squeeze(con_values)
     if args.data_max == 0 and args.data_min == 0:
-        data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
         if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
-            data_minmax = max(map(abs, [data_max, data_min]))
             data_max, data_min = data_minmax, -data_minmax
     else:
         data_max, data_min = args.data_max, args.data_min
+    print('data_max: {}, data_min: {}'.format(data_max, data_min))
     con_colors = utils.mat_to_colors(stat_data, data_min, data_max, args.color_map)
 
     print(len(con_names))
@@ -170,7 +174,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'save_electrodes_coh'):
         # todo: Add the necessary parameters
-        save_electrodes_coh(subject, args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
+        save_electrodes_coh(subject, args)
 
 
 
@@ -187,6 +191,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
                         type=au.str_arr_type)
+    parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)

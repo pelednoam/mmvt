@@ -33,6 +33,10 @@ def example2(subject):
     con.save_rois_connectivity(subject, args)
 
 
+def calc_electrodes_con(subject):
+    # -s mg78 -a laus250 -f save_electrodes_coh --threshold_percentile 95 -c interference,non-interference
+    pass
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
