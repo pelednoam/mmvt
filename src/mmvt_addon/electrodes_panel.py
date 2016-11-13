@@ -102,6 +102,7 @@ def select_electrode(current_electrode):
 
 
 def color_electrodes(current_electrode, prev_electrode):
+    # bpy.context.scene.bipolar = '-' in current_electrode
     current_electrode_group = mu.elec_group(current_electrode, bpy.context.scene.bipolar)
     current_electrode_hemi = ElecsPanel.groups_hemi[current_electrode_group]
     prev_electrode_group = mu.elec_group(prev_electrode, bpy.context.scene.bipolar)

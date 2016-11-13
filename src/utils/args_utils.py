@@ -41,9 +41,6 @@ def get_args_list(args, key, var_type, default_val):
         return default_val
     # Remove '"' if any and replace '_' with ' '
     args[key] = args[key].replace("'", '')
-    # todo: Why??
-    # if key != 'function':
-    #     args[key] = args[key].replace('_', ' ')
     if ',' in args[key]:
         ret = args[key].split(',')
     elif len(args[key]) == 0:

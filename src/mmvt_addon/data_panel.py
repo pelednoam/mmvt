@@ -51,6 +51,7 @@ def eeg_data_and_meta():
     return DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
 
 
+@mu.tryit
 def import_hemis_for_functional_maps(base_path):
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     layers_array = bpy.context.scene.layers
@@ -111,6 +112,7 @@ def create_subcortical_activity_mat(name):
     cur_mat.name = name + '_Mat'
 
 
+@mu.tryit
 def import_subcorticals(base_path, parent_name='Subcortical'):
     empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     brain_layer = DataMakerPanel.addon.ACTIVITY_LAYER
@@ -235,13 +237,14 @@ def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_na
             bpy.data.objects[name].parent = bpy.data.objects[parent_obj_name]
 
 
+@mu.tryit
 def import_rois(base_path):
     anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
-                      'Subcortical_structures': op.join(base_path, 'subcortical'),
-                      'Cerebellum': op.join(base_path, 'cerebellum')}
+                      'Subcortical_structures': op.join(base_path, 'subcortical')}
+                      # 'Cerebellum': op.join(base_path, 'cerebellum')}
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
@@ -265,7 +268,7 @@ def import_rois(base_path):
             try:
                 new_obj_name = mu.namebase(ply_fname)
                 fol_name = anatomy_input_base_path.split(op.sep)[-1]
-                surf_name = 'pial' if fol_name == 'subcortical' or len(fol_name.split('.')) == 1 else fol_name.split('.')[1]
+                surf_name = 'pial' if fol_name == 'subcortical' or len(fol_name.split('.')) == 1 else fol_name.split('.')[-2]
                 if surf_name == 'inflated':
                     new_obj_name = '{}_{}'.format(surf_name, new_obj_name)
                     mu.change_layer(_addon().INFLATED_ROIS_LAYER)
@@ -797,6 +800,7 @@ def init(addon):
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
             items=positions_items,description="Electrodes positions")
         bpy.context.scene.electrodes_positions_files = files_names[0]
+    bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
     register()
 
 

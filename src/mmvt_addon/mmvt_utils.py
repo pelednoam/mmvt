@@ -718,6 +718,18 @@ def dump_args(func):
     return wrapper
 
 
+def tryit(func):
+    def wrapper(*args, **kwargs):
+        try:
+            retval = func(*args, **kwargs)
+        except:
+            print('Error in {}!'.format(func.__name__))
+            print(traceback.format_exc())
+        return retval
+
+    return wrapper
+
+
 def get_all_children(parents):
     children = [bpy.data.objects[parent].children for parent in parents if bpy.data.objects.get(parent)]
     return list(chain.from_iterable([obj for obj in children]))

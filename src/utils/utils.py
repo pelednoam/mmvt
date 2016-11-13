@@ -790,7 +790,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
 
     local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
-        check_if_all_necessary_files_exist(necessary_files, local_subject_dir)
+        check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace=False)
     if all_files_exists and not overwrite_files:
         return True
     elif remote_subject_dir == '':
