@@ -900,9 +900,9 @@ def init(addon):
     ColoringMakerPanel.max_labels_vertices_num = {}
 
     meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
-    if meg_files_exist:
-        data_min, data_max = mu.load(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        # todo: check why it doesn't work
+    meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl')
+    if meg_files_exist and op.isfile(meg_data_maxmin_fname):
+        data_min, data_max = mu.load(meg_data_maxmin_fname)
         _addon().set_colorbar_max_min(data_max, data_min)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_activity_data_min = data_min

@@ -12,11 +12,10 @@ import nibabel as nib
 
 from src.utils import labels_utils as lu
 from src.utils import matlab_utils
-from src.utils import trans_utils as tu
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.mmvt_addon import colors_utils as cu
-
+from src.utils import args_utils as au
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -653,7 +652,9 @@ def main(subject, args):
         # *) Prepare the local subject's folder
         flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, args)
         if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
-            return flags
+            ans = input('Do you which to continue (y/n)? ')
+            if not au.is_true(ans):
+                return flags
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -752,7 +753,6 @@ def run_on_subjects(args):
 
 def read_cmd_args(argv=None):
     import argparse
-    from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
