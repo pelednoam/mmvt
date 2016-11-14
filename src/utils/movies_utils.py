@@ -133,9 +133,11 @@ if __name__ == '__main__':
     parser.add_argument('--fol', required=False)
     parser.add_argument('--movie_name', required=False, default='output')
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
-    parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('--frame_rate', required=False, default=10)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](**args)
 
     # combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',
     #                         ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')
+
