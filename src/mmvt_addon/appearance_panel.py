@@ -101,6 +101,12 @@ def hemis_distance_update(self, context):
                 AppearanceMakerPanel.cortex_lh - bpy.context.scene.hemis_distance
 
 
+def inflating_update(self, context):
+    bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
+    bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
+    bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+
+
 def appearance_show_rois_activity_update(self, context):
     # todo: Figure out why the hell
     for _ in range(2):
@@ -199,7 +205,7 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
-    if 'Key' in bpy.data.shape_keys:
+    if 'Key' in bpy.data.shape_keys and is_inflated() and is_activity():
         layout.prop(context.scene, 'inflating')
     if bpy.context.scene.surface_type == 'pial':
         layout.prop(context.scene, 'hemis_distance', text='hemis dist')
@@ -226,10 +232,6 @@ def update_solidity(self, context):
     make_brain_solid_or_transparent()
     update_layers()
 
-
-def inflating_update(self, context):
-    bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1 - bpy.context.scene.inflating
-    bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1 - bpy.context.scene.inflating
 
 class SelectionListener(bpy.types.Operator):
     bl_idname = 'mmvt.selection_listener'
@@ -303,7 +305,7 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
     default=False, description="Show connections")
 
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
-bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-2.5, max=2.5, default=0, update=hemis_inf_distance_update)
+bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=2.5, default=0, update=hemis_inf_distance_update)
 bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
 
 

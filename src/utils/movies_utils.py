@@ -37,11 +37,11 @@ def cut_movie(movie_fol, movie_name, out_movie_name, subclips_times):
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def crop_movie(movie_fol, movie_name, out_movie_name, crop_ys=(60, 1170)):
+def crop_movie(fol, movie_name, out_movie_name, crop_ys=(60, 1170), **kwargs):
     from moviepy import editor
-    video = editor.VideoFileClip(op.join(movie_fol, movie_name))
+    video = editor.VideoFileClip(op.join(fol, '{}.mp4'.format(movie_name)))
     crop_video = video.crop(y1=crop_ys[0], y2=crop_ys[1])
-    crop_video.write_videofile(op.join(movie_fol, out_movie_name))
+    crop_video.write_videofile(op.join(fol, '{}.mp4'.format(out_movie_name)))
 
 
 def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold'):
@@ -132,6 +132,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('--fol', required=False)
     parser.add_argument('--movie_name', required=False, default='output')
+    parser.add_argument('--out_movie_name', required=False, default='output2')
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
     parser.add_argument('--frame_rate', required=False, default=10)
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
