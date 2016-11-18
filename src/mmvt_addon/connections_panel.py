@@ -170,6 +170,8 @@ def insert_frame_keyframes(parent_obj, conn_name, last_data, T):
 
 
 def finalize_fcurves(parent_obj, interpolation=''):
+    if not parent_obj.animation_data:
+        return
     for fcurve in parent_obj.animation_data.action.fcurves:
         fcurve.modifiers.new(type='LIMITS')
         if interpolation == '':
@@ -631,7 +633,9 @@ def init(addon):
         bpy.context.scene.connections_threshold = 0
         _connections_origin_update()
         register()
-        # print('connection panel initialization completed successfully!')
+    else:
+        unregister()
+    # print('connection panel initialization completed successfully!')
 
 
 def register():
