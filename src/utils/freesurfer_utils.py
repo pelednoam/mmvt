@@ -24,9 +24,24 @@ mri_tessellate = 'mri_tessellate {tmp_fol}/{region_id}_filled.mgz {region_id} {t
 mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_id}_notsmooth {tmp_fol}/{region_id}_smooth'
 mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
 
+mri_vol2surf_pet = 'mri_vol2surf --mov {volume_fname} --hemi {hemi} --projfrac {projfrac} --o {output_fname} --cortex --regheader {subject} --trgsubject {subject}'
+
 warp_buckner_atlas_cmd = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mgz --s {subject} ' + \
                      '--targ {bunker_atlas_fname} --m3z talairach.m3z ' + \
                      '--o {subjects_dir}/{subject}/mri/Buckner2011_atlas.nii.gz --nearest --inv-morph'
+
+
+def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
+    temp_output = output_fname is None
+    if output_fname is None:
+        output_fname = mktemp(prefix="pysurfer-v2s", suffix='.mgz')
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(mri_vol2surf_pet)
+    surf_data = read_scalar_data(output_fname)
+    if temp_output:
+        os.remove(output_fname)
+    return surf_data
+
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,

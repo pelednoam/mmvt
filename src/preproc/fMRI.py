@@ -396,22 +396,26 @@ def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
 
 
 def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fname,
-                       target_subject=None, overwrite_surf_data=False):
+                       target_subject=None, overwrite_surf_data=False, is_pet=False):
     if target_subject is None:
         target_subject = subject
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     for hemi in utils.HEMIS:
         print('project {} to {}'.format(volume_file, hemi))
-        if not op.isfile(surf_output_fname.format(hemi=hemi)) and not overwrite_surf_data:
-            surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
-                target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
+        if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
+            if not is_pet:
+                surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
+                    target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
+            else:
+                surf_data = fu.project_pet_volume_data(subject, volume_file, hemi)
             nans = np.sum(np.isnan(surf_data))
             if nans > 0:
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
         else:
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
-        if not op.isfile(colors_output_fname.format(hemi=hemi)):
-            np.save(op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi))), surf_data)
+        output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi)))
+        if not output_fname or overwrite_surf_data:
+            np.save(output_fname, surf_data)
 
 
 def load_images_file(image_fname):
@@ -465,8 +469,9 @@ def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrit
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
         
     project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
-                       target_subject, overwrite_surf_data=overwrite_surf_data)
-    utils.make_dir(MMVT_DIR, subject, 'freeview')
+                       target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=args.is_pet)
+    utils.make_dir(MMVT_DIR, subject, 'freeview', op.basename(volume_fname))
+    shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
 
 # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
     # load_images_file(surf_output_fname)
@@ -626,11 +631,11 @@ def misc(args):
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
 
-def prepare_local_subjects_folder(subject, args, necessary_files=None):
+def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
     if necessary_files is None:
         necessary_files = args.necessary_files
     return utils.prepare_local_subjects_folder(
-        necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
@@ -647,11 +652,12 @@ def main(subject, args):
     args.sftp_password = utils.get_sftp_password(
         args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
         if args.sftp else ''
+    remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
 
     flags = {}
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, args)
+        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
         if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
             ans = input('Do you which to continue (y/n)? ')
             if not au.is_true(ans):
@@ -702,6 +708,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-t', '--task', help='task', required=False, default='')
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
     parser.add_argument('--fsfast', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
     parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')
     parser.add_argument('--volume_name', help='volume file name', required=False, default='')
@@ -719,6 +726,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     # Prepare subject dir
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
+    parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0,
                         type=au.is_true)
     parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
@@ -729,7 +737,9 @@ def read_cmd_args(argv=None):
 
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
-    args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness']}
+    args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label']}
+    if args.is_pet:
+        args.fsfast = False
     print(args)
     return args
 
