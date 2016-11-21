@@ -8,9 +8,11 @@ import time
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import shutil
+import glob
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
+from src.utils import args_utils as au
 from src.preproc import meg as meg
 
 try:
@@ -59,10 +61,7 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
 
 def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs=(3, 97), norm_by_percentile=True,
                       contrast_format='mgz'):
-    if '{contrast}' in fmri_contrast_file_template:
-        contrast_file = fmri_contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
-    else:
-        contrast_file = fmri_contrast_file_template.format(hemi='{hemi}', format=contrast_format)
+    contrast_file = fmri_contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
     data = None
     for hemi in utils.HEMIS:
         contrast_file_hemi = contrast_file.format(hemi=hemi)
@@ -100,7 +99,7 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
         # Try to read the hemi ply file to check if the vertices number is correct    
         ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
         if op.isfile(ply_file):
-            verts, _ = utils.read_ply_file(ply_file)
+            verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
             if len(x) != verts.shape[0]:
                 raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
         else:
@@ -122,15 +121,15 @@ def init_clusters(subject, contrast_name, input_fol):
         fmri_fname = input_fname.format(hemi=hemi)
         if utils.file_type(input_fname) == 'npy':
             x = np.load(fmri_fname)
-            contrast_per_hemi[hemi] = x[:, 0]
+            contrast_per_hemi[hemi] = x #[:, 0]
         else:
             # try nibabel
             x = nib.load(fmri_fname)
             contrast_per_hemi[hemi] = x.get_data().ravel()
-        pial_npz_fname = op.join(MMVT_DIR, subject, '{}.pial.npz'.format(hemi))
+        pial_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi))
         if not op.isfile(pial_npz_fname):
             print('No pial npz file (), creating one'.format(pial_npz_fname))
-            verts, faces = utils.read_ply_file(op.join(MMVT_DIR, subject, '{}.pial.ply'.format(hemi)))
+            verts, faces = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
             np.savez(pial_npz_fname[:-4], verts=verts, faces=faces)
         d = np.load(pial_npz_fname)
         verts_per_hemi[hemi] = d['verts']
@@ -158,7 +157,7 @@ def find_clusters(subject, contrast_name, t_val, atlas, volume_name, input_fol='
             print("Can't find clusters in {}!".format(hemi))
         else:
             clusters_labels['values'].extend(clusters_labels_hemi)
-    # todo: should be pkl, not npy
+
     clusters_labels_output_fname = op.join(
         MMVT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(volume_name))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
@@ -399,23 +398,24 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
     if target_subject is None:
         target_subject = subject
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
-    for hemi in ['rh', 'lh']:
+    for hemi in utils.HEMIS:
         print('project {} to {}'.format(volume_file, hemi))
-        if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
+        if not op.isfile(surf_output_fname.format(hemi=hemi)) and not overwrite_surf_data:
             surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
                 target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
             nans = np.sum(np.isnan(surf_data))
             if nans > 0:
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
-            # np.save(surf_output_fname.format(hemi=hemi), surf_data)
         else:
-            surf_data = np.load(surf_output_fname.format(hemi=hemi))
-        if not op.isfile(colors_output_fname.format(hemi=hemi)) or overwrite_colors_file:
-            print('Calulating the activaton colors for {}'.format(surf_output_fname))
-            _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi),
-                              norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
-        shutil.copyfile(colors_output_fname.format(hemi=hemi), op.join(MMVT_DIR, subject, 'fmri',
-            op.basename(colors_output_fname.format(hemi=hemi))))
+            surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
+        if not op.isfile(colors_output_fname.format(hemi=hemi)):
+            np.save(op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi))), surf_data)
+        # if not op.isfile(colors_output_fname.format(hemi=hemi)) or overwrite_colors_file:
+        #     print('Calulating the activaton colors for {}'.format(surf_output_fname))
+        #     _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi),
+        #                       norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+        # shutil.copyfile(colors_output_fname.format(hemi=hemi), op.join(MMVT_DIR, subject, 'fmri',
+        #     op.basename(colors_output_fname.format(hemi=hemi))))
 
 
 def load_images_file(image_fname):
@@ -444,23 +444,26 @@ def load_and_show_npy(subject, npy_file, hemi):
 
 
 def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_mgz=True):
-    if op.isfile(volume_fname_template.format(format='mgh')) and (not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz):
+    if op.isfile(volume_fname_template.format(format='mgh')) and \
+            (not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz):
         mri_convert(volume_fname_template, 'mgh', 'mgz')
-    volume_fname = volume_fname_template.format(format='mgz')
-    blender_volume_fname = op.basename(volume_fname) if contrast=='' else '{}.mgz'.format(contrast)
+        format = 'mgz'
+    else:
+        format = utils.file_type(glob.glob(op.join(volume_fname_template.replace('{format}', '*')))[0])
+    volume_fname = volume_fname_template.format(format=format)
+    blender_volume_fname = op.basename(volume_fname) if contrast=='' else '{}.{}'.format(contrast, format)
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     shutil.copyfile(volume_fname, op.join(MMVT_DIR, subject, 'freeview', blender_volume_fname))
     return volume_fname
 
 
 def project_volume_to_surface(subject, data_fol, threshold, volume_name, contrast, target_subject='',
-                              overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume_mgz=True,
-                              existing_format='nii.gz'):
+                              overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume=True):
     if target_subject == '':
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
     # mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
-    copy_volume_to_blender(volume_fname_template, contrast, overwrite_volume_mgz)
-    volume_fname = volume_fname_template.format(format=existing_format)
+    volume_fname = copy_volume_to_blender(volume_fname_template, contrast, overwrite_volume)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
@@ -554,6 +557,8 @@ def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, su
         find_clusters(subject, contrast, t_val, atlas, fmri_files_fol, load_labels_from_annotation, n_jobs)
         # Create functional rois out of the blobs
         create_functional_rois(subject, contrast)
+    # todo: check what to return
+    return True
 
 
 def misc(args):
@@ -631,39 +636,68 @@ def misc(args):
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
 
+def prepare_local_subjects_folder(subject, args, necessary_files=None):
+    if necessary_files is None:
+        necessary_files = args.necessary_files
+    return utils.prepare_local_subjects_folder(
+        necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
+        args.overwrite_fs_files, args.print_traceback, args.sftp_port)
+
+
 def main(subject, args):
     os.environ['SUBJECT'] = subject
-    volume_name = args.volume_name if args.volume_name != '' else args.volume_name
+    volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
-    fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
-        contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
+    if args.fsfast:
+        fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
+            contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
+    else:
+        fmri_contrast_file_template = op.join(fol, '{}_{}.mgz'.format(volume_name, '{hemi}'))
+    args.sftp_password = utils.get_sftp_password(
+        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
+        if args.sftp else ''
+
+    flags = {}
+    if utils.should_run(args, 'prepare_local_subjects_folder'):
+        # *) Prepare the local subject's folder
+        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, args)
+        if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
+            ans = input('Do you which to continue (y/n)? ')
+            if not au.is_true(ans):
+                return flags
+
 
     # todo: should find automatically the existing_format
     if 'fmri_pipeline' in args.function:
-        fmri_pipeline(subject, args.atlas, None, fmri_contrast_file_template, t_val=args.threshold,
-                      existing_format=args.existing_format, volume_type=args.volume_type,
-                      load_labels_from_annotation=True, surface_name=args.surface_name, n_jobs=args.n_jobs)
+        flags['fmri_pipeline'] = fmri_pipeline(
+            subject, args.atlas, None, fmri_contrast_file_template, t_val=args.threshold,
+            existing_format=args.existing_format, volume_type=args.volume_type, load_labels_from_annotation=True,
+            surface_name=args.surface_name, n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'project_volume_to_surface'):
-        project_volume_to_surface(subject, fol, args.threshold, volume_name, args.ontrast,
-                                  existing_format=args.existing_format)
+        flags['project_volume_to_surface'] = project_volume_to_surface(
+            subject, fol, args.threshold, volume_name, args.contrast,
+            overwrite_surf_data=args.overwrite_surf_data, overwrite_colors_file=args.overwrite_colors_file,
+            overwrite_volume=args.overwrite_volume)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
-        calc_fmri_min_max(subject, args.contrast, fmri_contrast_file_template, norm_percs=args.norm_percs,
-                          norm_by_percentile=args.norm_by_percentile)
+        flags['calc_fmri_min_max'] = calc_fmri_min_max(
+            subject, args.contrast, fmri_contrast_file_template, norm_percs=args.norm_percs,
+            norm_by_percentile=args.norm_by_percentile)
 
     if utils.should_run(args, 'find_clusters'):
-        find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
+        flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
         if meg_subject == '':
             print('You must set MEG subject (--meg_subject) to run calc_meg_activity function!')
         else:
-            calc_meg_activity_for_functional_rois(
+            flags['calc_meg_activity'] = calc_meg_activity_for_functional_rois(
                 subject, meg_subject, args.atlas, args.task, args.contrast_name, args.contrast, args.inverse_method)
     if 'copy_volumes' in args.function:
-        copy_volumes(subject, fmri_contrast_file_template)
+        flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
 
 def read_cmd_args(argv=None):
@@ -673,22 +707,39 @@ def read_cmd_args(argv=None):
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='all')
-    parser.add_argument('-c', '--contrast', help='contrast map', required=True)
-    parser.add_argument('-n', '--contrast_name', help='contrast map', required=True)
+    parser.add_argument('-c', '--contrast', help='contrast map', required=False, default='')
+    parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-t', '--task', help='task', required=True)
-    parser.add_argument('--threshold', help='clustering threshold', required=False, default='2')
+    parser.add_argument('-t', '--task', help='task', required=False, default='')
+    parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
+    parser.add_argument('--fsfast', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
     parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')
     parser.add_argument('--volume_name', help='volume file name', required=False, default='')
     parser.add_argument('--surface_name', help='surface_name', required=False, default='pial')
     parser.add_argument('--meg_subject', help='meg_subject', required=False, default='')
     parser.add_argument('--inverse_method', help='inverse method', required=False, default='dSPM')
+
+    parser.add_argument('--overwrite_surf_data', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_colors_file', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_volume', help='', required=False, default=0, type=au.is_true)
+
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    # Prepare subject dir
+    parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
+    parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0,
+                        type=au.is_true)
+    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
+    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
+    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
+    parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
+    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness']}
     print(args)
     return args
 

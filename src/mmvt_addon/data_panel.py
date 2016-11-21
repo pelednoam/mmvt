@@ -300,6 +300,50 @@ def import_rois(base_path):
     bpy.ops.object.select_all(action='DESELECT')
 
 
+def create_eeg_mesh(input_file):
+    f = np.load(input_file)
+    verts = [(x, y, z) for x, y, z in f['pos']]
+    print(len(verts))
+
+    act = 'create_eeg_mesh'
+    current_mat = bpy.data.materials['unselected_label_Mat_cortex']
+    if act == 'create_eeg_mesh':
+        eeg_mesh = bpy.data.meshes.new('eeg_mesh')
+        eeg_mesh.from_pydata(verts, [], [])
+        eeg_mesh.update()
+        mesh_obj = bpy.data.objects.new("eeg_plain", eeg_mesh)
+        scene = bpy.context.scene
+        scene.objects.link(mesh_obj)
+        mesh_obj.select = True
+        bpy.ops.object.shade_smooth()
+        mesh_obj.parent = bpy.data.objects['EEG_electrodes']
+        mesh_obj.scale = [0.1] * 3
+        mesh_obj.active_material = current_mat
+        mesh_obj.hide = False
+
+    return eeg_mesh
+        # cur_obj = bpy.context.selected_objects[0]
+        # eeg_mesh.parent = bpy.data.objects['EEG_electrodes']
+        # cur_obj.scale = [0.1] * 3
+        # cur_obj.active_material = current_mat
+        # cur_obj.hide = False
+        # cur_obj.name = 'eeg_mesh'
+        # bpy.ops.object.select_all(action='DESELECT')
+        # bpy.context.scene.objects.active = bpy.data.meshes['eeg_mesh']
+        # bpy.ops.export_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_mesh.ply'))
+    if act == 'import_eeg':
+        current_mat = bpy.data.materials['unselected_label_Mat_cortex']
+        bpy.ops.import_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_mesh.ply'))
+        cur_obj = bpy.context.selected_objects[0]
+        cur_obj.select = True
+        bpy.ops.object.shade_smooth()
+        cur_obj.parent = bpy.data.objects['EEG_electrodes']
+        cur_obj.scale = [0.1] * 3
+        cur_obj.active_material = current_mat
+        cur_obj.hide = False
+        cur_obj.name = 'eeg_mesh'
+
+
 class ImportRois(bpy.types.Operator):
     bl_idname = "mmvt.roi_importing"
     bl_label = "import2 ROIs"
@@ -364,6 +408,20 @@ class ImportEEG(bpy.types.Operator):
         bpy.types.Scene.eeg_imported = True
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
+
+
+class CreateEEGMesh(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_mesh"
+    bl_label = "eeg mesh"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+        eeg_mesh = create_eeg_mesh(input_file)
+        eeg_mesh.validate(verbose=True)
+        print('Finished creating EEG Mesh')
+        return {"FINISHED"}
+
 
 
 def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
@@ -773,6 +831,7 @@ class DataMakerPanel(bpy.types.Panel):
                 layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
         if op.isfile(eeg_sensors_positions_file):
             col.operator("mmvt.eeg_importing", text="Import EEG", icon='COLOR_GREEN')
+            col.operator("mmvt.eeg_mesh", text="Creating EEG mesh", icon='COLOR_GREEN')
         # if op.isfile(eeg_data):
         if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
             col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
@@ -800,7 +859,8 @@ def init(addon):
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
             items=positions_items,description="Electrodes positions")
         bpy.context.scene.electrodes_positions_files = files_names[0]
-    bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
+    if bpy.data.objects.get('Deep_electrodes'):
+        bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
     register()
 
 
@@ -816,6 +876,7 @@ def register():
         bpy.utils.register_class(ImportEEG)
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
+        bpy.utils.register_class(CreateEEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
         bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         bpy.utils.register_class(SelectExternalMEGEvoked)
@@ -835,6 +896,7 @@ def unregister():
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportEEG)
         bpy.utils.unregister_class(ImportBrain)
+        bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
         bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
         bpy.utils.unregister_class(SelectExternalMEGEvoked)

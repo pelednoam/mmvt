@@ -747,9 +747,10 @@ def run_on_subjects(args):
             print('{}: {}'.format(flag_type, val))
             if not val:
                 errors[subject].append(flag_type)
-    print('Errors:')
-    for subject, error in errors.items():
-        print('{}: {}'.format(subject, error))
+    if len(errors) > 0:
+        print('Errors:')
+        for subject, error in errors.items():
+            print('{}: {}'.format(subject, error))
 
 
 def read_cmd_args(argv=None):

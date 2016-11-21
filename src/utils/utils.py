@@ -122,15 +122,15 @@ def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm
 
     if np.sum(x >= threshold) > 0:
         if not flip_cm_big:
-            big_colors = arr_to_colors(x[x>=threshold], threshold, x_max, cm_big, scalar_map_big)[:, :3]
+            big_colors = arr_to_colors(x[x >= threshold], threshold, x_max, cm_big, scalar_map_big)[:, :3]
         else:
-            big_colors = arr_to_colors(-x[x>=threshold], -x_max, -threshold, cm_big, scalar_map_big)[:, :3]
-        colors[x>=threshold, :] = big_colors
+            big_colors = arr_to_colors(-x[x >= threshold], -x_max, -threshold, cm_big, scalar_map_big)[:, :3]
+        colors[x >= threshold, :] = big_colors
     if np.sum(x <= -threshold) > 0:
         if not flip_cm_small:
-            small_colors = arr_to_colors(x[x<=-threshold], x_min, -threshold, cm_small, scalar_map_small)[:, :3]
+            small_colors = arr_to_colors(x[x <= -threshold], x_min, -threshold, cm_small, scalar_map_small)[:, :3]
         else:
-            small_colors = arr_to_colors(-x[x<=-threshold], threshold, -x_min, cm_small, scalar_map_small)[:, :3]
+            small_colors = arr_to_colors(-x[x <= -threshold], threshold, -x_min, cm_small, scalar_map_small)[:, :3]
         colors[x<=-threshold, :] = small_colors
     return colors
 
