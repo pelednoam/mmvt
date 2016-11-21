@@ -13,6 +13,11 @@ def load_rest_to_colin():
     fmri.main(subject, mri_subject, args)
 
 
+def pet():
+    args = fmri.read_cmd_args(['-s', subject])
+    '-s s02 -a laus250 --threshold 0 --is_pet 1 --symetric_colors 0 --overwrite_surf_data 1 --remote_subject_dir /local_mount/space/thibault/1/users/npeled/artur/recon_tese/{subject}'
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=False, type=au.str_arr_type, default='colin27')

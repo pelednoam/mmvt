@@ -303,13 +303,14 @@ def import_rois(base_path):
 def create_eeg_mesh(input_file):
     f = np.load(input_file)
     verts = [(x, y, z) for x, y, z in f['pos']]
+    faces = [(x, y, z) for x, y, z in f['tri']]
     print(len(verts))
 
     act = 'create_eeg_mesh'
     current_mat = bpy.data.materials['unselected_label_Mat_cortex']
     if act == 'create_eeg_mesh':
         eeg_mesh = bpy.data.meshes.new('eeg_mesh')
-        eeg_mesh.from_pydata(verts, [], [])
+        eeg_mesh.from_pydata(verts, [], faces)
         eeg_mesh.update()
         mesh_obj = bpy.data.objects.new("eeg_plain", eeg_mesh)
         scene = bpy.context.scene
