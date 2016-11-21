@@ -380,7 +380,7 @@ def calc_vert_vals(verts, pts, vals, method='max', k_points=100):
     return verts_vals
 
 
-def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
+def plot_points(subject, verts, pts=None, colors=None, fig_name='', ax=None):
     if ax is None:
         fig = plt.figure()
         ax = Axes3D(fig)
@@ -391,7 +391,7 @@ def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
         ax.plot(pts[:, 0], pts[:, 1], pts[:, 2], 'o', color='blue', label='voxels')
         plt.legend()
     if ax is None:
-        plt.savefig('/home/noam/subjects/mri/mg78/subcortical_fmri_activity/figures/{}.jpg'.format(fig_name))
+        plt.savefig(op.join(MMVT_DIR, subject, 'fmri', '{}.jpg'.format(fig_name)))
         plt.close()
 
 
@@ -407,7 +407,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
                 surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
                     target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
             else:
-                surf_data = fu.project_pet_volume_data(subject, volume_file, hemi)
+                surf_data = fu.project_pet_volume_data(subject, volume_file, hemi, surf_output_fname.format(hemi=hemi))
             nans = np.sum(np.isnan(surf_data))
             if nans > 0:
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
@@ -470,7 +470,7 @@ def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrit
         
     project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=args.is_pet)
-    utils.make_dir(MMVT_DIR, subject, 'freeview', op.basename(volume_fname))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
 
 # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
