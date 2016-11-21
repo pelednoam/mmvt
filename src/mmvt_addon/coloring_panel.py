@@ -264,10 +264,17 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 data_min = ColoringMakerPanel.meg_activity_data_min
                 data_max = ColoringMakerPanel.meg_activity_data_max
                 _addon().set_colorbar_max_min(data_max, data_min)
+                _addon().set_colorbar_title('MEG')
             else:
                 print("Can't load {}".format(fname))
                 return False
         elif map_type == 'FMRI':
+            if ColoringMakerPanel.fmri_activity_data_min and ColoringMakerPanel.fmri_activity_data_max:
+                colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
+                data_min = ColoringMakerPanel.fmri_activity_data_min
+                data_max = ColoringMakerPanel.fmri_activity_data_max
+                _addon().set_colorbar_max_min(data_max, data_min)
+                _addon().set_colorbar_title('fMRI')
             if clusters:
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
@@ -366,6 +373,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     else:
         valid_verts = np.where(np.abs(values) > threshold)[0]
     colors_picked_from_cm = False
+    cm = _addon().get_cm()
     if vert_values.ndim == 1 and not data_min is None:
         colors_picked_from_cm = True
         # now = time.time()
@@ -374,10 +382,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
         colors_indices[colors_indices < 0] = 0
         colors_indices[colors_indices > 255] = 255
-        verts_colors = ColoringMakerPanel.cm[colors_indices]
-        # print('color white and gray')
-        # verts_colors[np.where(values == 1)] = [255, 255, 255]
-        # verts_colors[np.where(values == 0)] = [.1, .1, .1]
+        verts_colors = cm[colors_indices]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
@@ -798,6 +803,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     electrodes_sources_labels_data = None
     electrodes_sources_subcortical_data = None
     what_is_colored = set()
+    fmri_activity_data_min, fmri_activity_data_max, fmri_activity_colors_ratio = None, None, None
 
     def draw(self, context):
         layout = self.layout
@@ -922,8 +928,15 @@ def init(addon):
         bpy.context.scene.fmri_files = files_names[0]
         for hemi in mu.HEMIS:
             ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
+        # Check separately for each contrast
+        fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax.pkl')
+        if op.isfile(fmri_data_maxmin_fname):
+            data_min, data_max = mu.load(fmri_data_maxmin_fname)
+            ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
+            ColoringMakerPanel.fmri_activity_data_min = data_min
+            ColoringMakerPanel.fmri_activity_data_max = data_max
 
-    electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
+        electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
     if len(electrodes_source_files) > 0:
         files_names = [mu.namebase(fname)[:-len('-rh')] for fname in electrodes_source_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
@@ -955,7 +968,7 @@ def init(addon):
             items=groups_items, description="Groups")
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
-    ColoringMakerPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
+    # ColoringMakerPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
     register()
 
 

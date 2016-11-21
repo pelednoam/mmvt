@@ -8,10 +8,15 @@ import mmvt_utils as mu
 PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
 
 
+def get_cm():
+    return ColorbarPanel.cm
+
+
 def load_colormap():
     colormap_fname = op.join(mu.file_fol(), 'color_maps', '{}.npy'.format(
         bpy.context.scene.colorbar_files.replace('-', '_')))
     colormap = np.load(colormap_fname)
+    ColorbarPanel.cm = colormap
     for ind in range(colormap.shape[0]):
         cb_obj_name = 'cb.{0:0>3}'.format(ind)
         cb_obj = bpy.data.objects[cb_obj_name]
@@ -148,6 +153,7 @@ class ColorbarPanel(bpy.types.Panel):
     addon = None
     init = False
     colorbar_updated = False
+    cm = None
 
     def draw(self, context):
         if ColorbarPanel.init:

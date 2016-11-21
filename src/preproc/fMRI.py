@@ -72,10 +72,13 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs
         data = x if data is None else np.hstack((x, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     data_minmax = utils.get_max_abs(data_max, data_min)
+    if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
+        data_max, data_min = data_minmax, -data_minmax
     output_fname = op.join(
-        MMVT_DIR, subject, 'fmri','fmri_activity_map_minmax_{}.pkl'.format(contrast))
+        MMVT_DIR, subject, 'fmri','fmri_activity_map_minmax{}.pkl'.format(
+            '_{}'.format(contrast) if contrast != '' else ''))
     print('Saving {}'.format(output_fname))
-    utils.save((-data_minmax, data_minmax), output_fname)
+    utils.save((data_min, data_max), output_fname)
 
 
 def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', threshold=2, output_fol='',
@@ -726,6 +729,7 @@ def read_cmd_args(argv=None):
 
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
+    parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     # Prepare subject dir
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')

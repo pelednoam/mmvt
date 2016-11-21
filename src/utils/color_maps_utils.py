@@ -24,6 +24,12 @@ def create_jet_cm(n=256):
     return colors_map
 
 
+def create_YlOrRd_cm(n=256):
+    colors = plt.cm.YlOrRd(np.linspace(0, 1, n))
+    colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
+    return colors_map
+
+
 def color_map_to_np_mat(colors_map):
     N = colors_map.N
     cm_mat = np.zeros((N, 3))
@@ -55,5 +61,5 @@ def create_cm(cm_func, cm_name):
 
 
 if __name__ == '__main__':
-    create_cm(create_BuPu_YlOrRd_cm, 'BuPu_YlOrRd')
-    create_cm(create_jet_cm, 'jet')
+    create_cm(create_YlOrRd_cm, 'YlOrRd')
+    # create_cm(create_jet_cm, 'jet')
