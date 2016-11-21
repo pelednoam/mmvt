@@ -634,11 +634,11 @@ def save_cerebellum_coloring(subject):
 #     dists = cdist(verts['rh'], verts['lh'])
 
 
-def prepare_local_subjects_folder(subject, args, necessary_files=None):
+def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
     if necessary_files is None:
         necessary_files = args.necessary_files
     return utils.prepare_local_subjects_folder(
-        necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
+        necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
@@ -646,11 +646,15 @@ def prepare_local_subjects_folder(subject, args, necessary_files=None):
 def main(subject, args):
     flags = dict()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    args.remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
+    remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
+    print('****************************************************************')
+    print('subject: {}, atlas: {}'.format(subject, args.atlas))
+    print('remote dir: {}'.format(remote_subject_dir))
+    print('****************************************************************')
 
     if utils.should_run(args, 'prepare_local_subjects_folder'):
         # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, args)
+        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
         if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
             ans = input('Do you which to continue (y/n)? ')
             if not au.is_true(ans):
@@ -663,7 +667,7 @@ def main(subject, args):
     if utils.should_run(args, 'create_annotation_from_template'):
         # *) Create annotation file from fsaverage
         flags['create_annotation_from_template'] = create_annotation_from_template(
-            subject, args.atlas, args.template_subject, args.remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
+            subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
             args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
@@ -730,9 +734,6 @@ def run_on_subjects(args):
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         try:
-            print('*******************************************')
-            print('subject: {}, atlas: {}'.format(subject, args.atlas))
-            print('*******************************************')
             flags = main(subject, args)
             subjects_flags[subject] = flags
         except:
@@ -811,6 +812,7 @@ if __name__ == '__main__':
         print('Source freesurfer and rerun')
     else:
         args = read_cmd_args()
+        print(args.remote_subject_dir)
         run_on_subjects(args)
         print('finish!')
 

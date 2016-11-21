@@ -16,8 +16,11 @@ def parse_parser(parser, argv=None):
         in_args = vars(parser.parse_args(argv))
     args = {}
     for val in parser._option_string_actions.values():
-        if val.type is str:
-            args[val.dest] = args[val.dest].replace('_', ' ')
+        # if val.type is None and val.dest in in_args:
+        #     val.type = str
+        #     print(val.dest, in_args[val.dest], val.type)
+        # if val.type is str:
+        #     args[val.dest] = in_args[val.dest].replace('_', ' ')
         if val.type is bool or val.type is is_true:
             args[val.dest] = is_true(in_args[val.dest])
         elif val.type is str_arr_type:
@@ -78,6 +81,7 @@ def float_or_none(val):
         return float(val)
     except:
         return None
+
 
 def str_arr_to_markers(args, field_name):
     if args[field_name] and len(args[field_name]) > 0:

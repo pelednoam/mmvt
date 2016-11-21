@@ -807,9 +807,13 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                 os.makedirs(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
-                    if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
-                        shutil.copyfile(op.join(remote_subject_dir, fol, file_name),
-                                    op.join(local_subject_dir, fol, file_name))
+                    local_fname = op.join(local_subject_dir, fol, file_name)
+                    remote_fname = op.join(remote_subject_dir, fol, file_name)
+                    if not op.isfile(local_fname) or overwrite_files:
+                        if op.isfile(remote_fname):
+                            shutil.copyfile(remote_fname, local_fname)
+                        else:
+                            print("Remote file can't be found! {}".format(remote_fname))
                 except:
                     if print_traceback:
                         print(traceback.format_exc())

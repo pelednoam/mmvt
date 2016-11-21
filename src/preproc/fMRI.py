@@ -396,8 +396,7 @@ def plot_points(verts, pts=None, colors=None, fig_name='', ax=None):
 
 
 def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fname,
-                       target_subject=None, threshold=2, overwrite_surf_data=False, overwrite_colors_file=True,
-                       norm_percs=(3, 97), norm_by_percentile=True):
+                       target_subject=None, overwrite_surf_data=False):
     if target_subject is None:
         target_subject = subject
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
@@ -413,12 +412,6 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
         if not op.isfile(colors_output_fname.format(hemi=hemi)):
             np.save(op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi))), surf_data)
-        # if not op.isfile(colors_output_fname.format(hemi=hemi)) or overwrite_colors_file:
-        #     print('Calulating the activaton colors for {}'.format(surf_output_fname))
-        #     _save_fmri_colors(target_subject, hemi, surf_data, threshold, colors_output_fname.format(hemi=hemi),
-        #                       norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
-        # shutil.copyfile(colors_output_fname.format(hemi=hemi), op.join(MMVT_DIR, subject, 'fmri',
-        #     op.basename(colors_output_fname.format(hemi=hemi))))
 
 
 def load_images_file(image_fname):
@@ -460,8 +453,8 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
     return volume_fname
 
 
-def project_volume_to_surface(subject, data_fol, threshold, volume_name, contrast, target_subject='',
-                              overwrite_surf_data=True, overwrite_colors_file=True, overwrite_volume=True):
+def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrite_surf_data=True,
+                              overwrite_volume=True, target_subject=''):
     if target_subject == '':
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
@@ -472,9 +465,10 @@ def project_volume_to_surface(subject, data_fol, threshold, volume_name, contras
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
         
     project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
-                       target_subject, threshold, overwrite_surf_data=overwrite_surf_data,
-                       overwrite_colors_file=overwrite_colors_file)
-    # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
+                       target_subject, overwrite_surf_data=overwrite_surf_data)
+    utils.make_dir(MMVT_DIR, subject, 'freeview')
+
+# fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
     # load_images_file(surf_output_fname)
 
 
@@ -494,28 +488,21 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
             labels_output_fname_template=labels_output_fname)
 
 
-def copy_volumes(contrast_file_template):
+def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_name):
     contrast_format = 'mgz'
     volume_type = 'mni305'
-    for contrast in contrasts.keys():
-        if '{contrast}' in contrast_file_template:
-            contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}',
-                                                          format=contrast_format)
-            volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
-        else:
-            contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
-            volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
-        if not op.isfile(volume_file.format(format=contrast_format)):
-            mri_convert(volume_file, 'nii.gz', contrast_format)
-        volume_fname = volume_file.format(format=contrast_format)
-        subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
-        if not op.isfile(subject_volume_fname):
-            volume_fol, volume_name = op.split(volume_fname)
-            fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
-        blender_volume_fname = op.join(MMVT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
-        if not op.isfile(blender_volume_fname):
-            print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))
-            shutil.copyfile(subject_volume_fname, blender_volume_fname)
+    volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
+    if not op.isfile(volume_file.format(format=contrast_format)):
+        mri_convert(volume_file, 'nii.gz', contrast_format)
+    volume_fname = volume_file.format(format=contrast_format)
+    subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
+    if not op.isfile(subject_volume_fname):
+        volume_fol, volume_name = op.split(volume_fname)
+        fu.transform_mni_to_subject(subject, volume_fol, volume_name, '{}_{}'.format(subject, volume_name))
+    blender_volume_fname = op.join(MMVT_DIR, subject, 'freeview', '{}.{}'.format(contrast, contrast_format))
+    if not op.isfile(blender_volume_fname):
+        print('copy {} to {}'.format(subject_volume_fname, blender_volume_fname))
+        shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
 def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
@@ -680,9 +667,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'project_volume_to_surface'):
         flags['project_volume_to_surface'] = project_volume_to_surface(
-            subject, fol, args.threshold, volume_name, args.contrast,
-            overwrite_surf_data=args.overwrite_surf_data, overwrite_colors_file=args.overwrite_colors_file,
-            overwrite_volume=args.overwrite_volume)
+            subject, fol, volume_name, args.contrast, args.overwrite_surf_data, args.overwrite_volume)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
@@ -699,6 +684,7 @@ def main(subject, args):
         else:
             flags['calc_meg_activity'] = calc_meg_activity_for_functional_rois(
                 subject, meg_subject, args.atlas, args.task, args.contrast_name, args.contrast, args.inverse_method)
+
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
