@@ -245,7 +245,7 @@ def import_rois(base_path):
                       'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
                       'Subcortical_structures': op.join(base_path, 'subcortical'),
                       'Cerebellum': op.join(base_path, 'cerebellum')}
-    brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
+    brain_layer = _addon().BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
     layers_array = bpy.context.scene.layers

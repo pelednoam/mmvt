@@ -936,7 +936,7 @@ def init(addon):
             ColoringMakerPanel.fmri_activity_data_min = data_min
             ColoringMakerPanel.fmri_activity_data_max = data_max
 
-        electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
+    electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
     if len(electrodes_source_files) > 0:
         files_names = [mu.namebase(fname)[:-len('-rh')] for fname in electrodes_source_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
