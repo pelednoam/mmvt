@@ -384,7 +384,9 @@ def import_electrodes(input_file, electrodes_layer, bipolar='', electrode_size=N
         mu.create_and_set_material(cur_obj)
 
 
+@mu.tryit
 def create_inflating_morphing():
+    print('Creating inflation morphing')
     for hemi in mu.HEMIS:
         pial = bpy.data.objects[hemi]
         inflated = bpy.data.objects['inflated_{}'.format(hemi)]
