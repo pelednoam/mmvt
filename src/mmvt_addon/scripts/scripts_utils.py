@@ -131,7 +131,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
     if not op.isdir(args.blender_fol):
         print('No Blender folder!')
         return
-
+    blend_fname_is_None = True if blend_fname is None else False
+    call_args_is_None = True if call_args is None else False
     logs_fol = op.join(utils.get_parent_fol(__file__, 4), 'logs')
     if only_verbose:
         print('Creating logs fol: {}'.format(logs_fol))
@@ -143,7 +144,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             print('log name: {}'.format(log_name))
     if len(args.subjects) == 0:
         args.subjects = [args.subject]
-    for subject in args.subjects:
+    subjects = args.subjects
+    for subject in subjects:
         args.subject = subject
         args.subjects = ''
         print('*********** {} ***********'.format(subject))
@@ -162,6 +164,12 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if not only_verbose:
             os.chdir(mmvt_addon_fol)
             utils.run_script(cmd)
+        # Initialize blend_fname and call_args to None if that was their init value
+        if blend_fname_is_None:
+            blend_fname = None
+        if call_args_is_None:
+            call_args = None
+        call_args, blend_fname = None, None
     print('Finish! For more details look in {}'.format(log_fname))
 
 
