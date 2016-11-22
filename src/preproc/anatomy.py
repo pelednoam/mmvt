@@ -27,7 +27,7 @@ HEMIS = ['rh', 'lh']
 
 
 def cerebellum_segmentation(subject, args, mask_name='Buckner2011_atlas.nii.gz',
-    model='Buckner2011_17Networks', subregions_num=17):
+    model='Buckner2011_7Networks', subregions_num=7):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
@@ -59,7 +59,7 @@ def cerebellum_segmentation(subject, args, mask_name='Buckner2011_atlas.nii.gz',
     new_maks_fname = op.join(SUBJECTS_DIR, subject, 'mri', new_mask_name)
     subregions_num = split_cerebellum_hemis(subject, mask_fname, new_maks_fname, subregions_num)
     subcortical_lookup = np.array([['{}_cerebellum_{}'.format(
-        'right' if ind <= 17 else 'left',  ind if ind <= 17 else ind - 17), ind] for ind in range(1, subregions_num + 1)])
+        'right' if ind <= subregions_num/2 else 'left',  ind if ind <= subregions_num/2 else int(ind - subregions_num/2)), ind] for ind in range(1, subregions_num + 1)])
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     mmvt_subcorticals_fol_name = 'cerebellum'
     ret = subcortical_segmentation(subject, args.overwrite_subcorticals, model, lookup, new_mask_name,
