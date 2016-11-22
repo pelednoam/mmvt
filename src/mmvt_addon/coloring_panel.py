@@ -326,19 +326,20 @@ def create_inflated_curv_coloring():
 
     def color_obj_curvs(cur_obj, curv, lookup):
         mesh = cur_obj.data
-        scn = bpy.context.scene
-        verts_colors = np.zeros((curv.shape[0], 3))
-        verts_colors[np.where(curv == 0)] = [1, 1, 1]
-        verts_colors[np.where(curv == 1)] = [0.55, 0.55, 0.55]
-        scn.objects.active = cur_obj
-        cur_obj.select = True
-        bpy.ops.mesh.vertex_color_remove()
-        vcol_layer = mesh.vertex_colors.new('curve')
-        for vert in range(curv.shape[0]):
-            x = lookup[vert]
-            for loop_ind in x[x>-1]:
-                d = vcol_layer.data[loop_ind]
-                d.color = verts_colors[vert]
+        if not 'curve' in mesh.vertex_colors.keys():
+            scn = bpy.context.scene
+            verts_colors = np.zeros((curv.shape[0], 3))
+            verts_colors[np.where(curv == 0)] = [1, 1, 1]
+            verts_colors[np.where(curv == 1)] = [0.55, 0.55, 0.55]
+            scn.objects.active = cur_obj
+            cur_obj.select = True
+            bpy.ops.mesh.vertex_color_remove()
+            vcol_layer = mesh.vertex_colors.new('curve')
+            for vert in range(curv.shape[0]):
+                x = lookup[vert]
+                for loop_ind in x[x>-1]:
+                    d = vcol_layer.data[loop_ind]
+                    d.color = verts_colors[vert]
 
     try:
         # todo: check not to overwrite

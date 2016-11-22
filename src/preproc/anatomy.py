@@ -26,43 +26,41 @@ BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'br
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, remote_subject_dir, args, mask_name='Buckner2011_atlas.nii.gz',
-    model='Buckner2011_7Networks', subregions_num=7):
+def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner2011_17Networks', subregions_num=17):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
+    loose_tight = 'loose' if args.cerebellum_segmentation_loose else 'tight'
     bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_{}_{}.nii.gz'.format(
-        subregions_num, 'loose' if args.cerebellum_segmentation_loose else 'tight'))
+        subregions_num,loose_tight ))
     if not op.isfile(bunker_atlas_fname):
         print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
         return False
 
-    warp_buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR)
+    warp_buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR,  subregions_num, loose_tight)
     if not op.isfile(warp_buckner_atlas_fname):
         prepare_local_subjects_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
         fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname, warp_buckner_atlas_fname)
     if not op.isfile(warp_buckner_atlas_fname):
+        print('mask file does not exist! {}'.format(warp_buckner_atlas_fname))
         return False
 
-    mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
-    if not op.isfile(mask_fname):
-        print('mask file does not exist! {}'.format(mask_fname))
-        return False
-    mask_data = nib.load(mask_fname).get_data()
+    mask_data = nib.load(warp_buckner_atlas_fname).get_data()
     unique_values_num = len(np.unique(mask_data))
     if unique_values_num < subregions_num:
         print('subregions_num ({}) is bigger than the unique values num in the mask file ({})!'.format(
             subregions_num, unique_values_num))
         return False
-    new_mask_name = '{}_new.nii.gz'.format(mask_name.split('.')[0])
-    new_maks_fname = op.join(SUBJECTS_DIR, subject, 'mri', new_mask_name)
-    subregions_num = split_cerebellum_hemis(subject, mask_fname, new_maks_fname, subregions_num)
+    warp_buckner_hemis_atlas_fname = '{}_hemis.{}'.format(
+        warp_buckner_atlas_fname.split('.')[0], '.'.join(warp_buckner_atlas_fname.split('.')[1:]))
+    new_maks_fname = op.join(SUBJECTS_DIR, subject, 'mri', warp_buckner_hemis_atlas_fname)
+    subregions_num = split_cerebellum_hemis(subject, warp_buckner_atlas_fname, new_maks_fname, subregions_num)
     subcortical_lookup = np.array([['{}_cerebellum_{}'.format(
         'right' if ind <= subregions_num/2 else 'left',  ind if ind <= subregions_num/2 else int(ind - subregions_num/2)), ind] for ind in range(1, subregions_num + 1)])
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     mmvt_subcorticals_fol_name = 'cerebellum'
-    ret = subcortical_segmentation(subject, args.overwrite_subcorticals, model, lookup, new_mask_name,
+    ret = subcortical_segmentation(subject, args.overwrite_subcorticals, model, lookup, warp_buckner_hemis_atlas_fname,
                                     mmvt_subcorticals_fol_name, subject)
     return ret
 

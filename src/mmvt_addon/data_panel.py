@@ -98,8 +98,8 @@ def import_hemis_for_functional_maps(base_path):
                 cur_obj.parent = bpy.data.objects["Functional maps"]
                 cur_obj.hide_select = True
                 cur_obj.data.vertex_colors.new()
-            else:
-                print('{} already exists'.format(ply_fname))
+            # else:
+            #     print('{} already exists'.format(ply_fname))
         except:
             print('Error in importing {}'.format(ply_fname))
 
@@ -188,13 +188,16 @@ class AnatomyPreproc(bpy.types.Operator):
 def import_brain(context=None):
     # self.brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     # self.current_root_path = mu.get_user_fol()  # bpy.path.abspath(bpy.context.scene.conf_path)
+    if _addon() is None:
+        print('addon is None!')
+        return
     user_fol = mu.get_user_fol()
     print("importing ROIs")
     import_rois(user_fol)
     import_hemis_for_functional_maps(user_fol)
     import_subcorticals(op.join(user_fol, 'subcortical'))
-    if op.isdir(op.join(user_fol, 'cerebellum')):
-        import_subcorticals(op.join(user_fol, 'cerebellum'), 'Cerebellum')
+    # if op.isdir(op.join(user_fol, 'cerebellum')):
+    #     import_subcorticals(op.join(user_fol, 'cerebellum'), 'Cerebellum')
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
@@ -275,7 +278,7 @@ def import_rois(base_path):
                 elif surf_name == 'pial':
                     mu.change_layer(_addon().ROIS_LAYER)
                 if not bpy.data.objects.get(new_obj_name) is None:
-                    print('{} was already imported'.format(new_obj_name))
+                    # print('{} was already imported'.format(new_obj_name))
                     continue
                 if 'inflated' in new_obj_name:
                     inflated_imported = True
@@ -390,6 +393,9 @@ def create_inflating_morphing():
     for hemi in mu.HEMIS:
         pial = bpy.data.objects[hemi]
         inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+        if inflated.active_shape_key_index >= 0:
+        #     print('{} already has a shape key'.format(hemi))
+            continue
         inflated.shape_key_add(name='pial')
         inflated.shape_key_add(name='inflated')
         for vert_ind in range(len(inflated.data.vertices)):
@@ -460,7 +466,7 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
                 continue
             cur_obj = bpy.data.objects[obj_name]
             if not cur_obj.animation_data is None:
-                print('{} has already fcurves'.format(obj_name))
+                # print('{} has already fcurves'.format(obj_name))
                 continue
             print('keyframing {}'.format(obj_name))
             for cond_ind, cond_str in enumerate(f['conditions']):

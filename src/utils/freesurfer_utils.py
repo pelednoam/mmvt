@@ -301,7 +301,7 @@ def warp_buckner_atlas_output_fname(subject, subjects_dir, subregions_num=7, cer
         subregions_num, cerebellum_segmentation))
 
 
-def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname):
+def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname, print_only=False):
     norm_fname = op.join(subjects_dir, subject, 'mri', 'norm.mgz')
     if not op.isfile(norm_fname):
         print("Error in warp_buckner_atlas, can't find the file {}".format(norm_fname))
@@ -311,11 +311,10 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname
         print("Error in warp_buckner_atlas, can't find the file {}".format(trans_fname))
         return False
     wrap_map_name = op.basename(wrap_map_fname)
-    rs = utils.partial_run_script(locals())
+    rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(warp_buckner_atlas_cmd)
-    if not op.isfile(wrap_map_name):
-        print('Error in warp_buckner_atlas!')
-        return False
+    if not op.isfile(wrap_map_fname):
+        raise Exception('Error in warp_buckner_atlas!')
     else:
-        print('warp_buckner_atlas output fname: {}'.format(wrap_map_name))
+        print('warp_buckner_atlas output fname: {}'.format(wrap_map_fname))
         return True

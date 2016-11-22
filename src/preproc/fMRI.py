@@ -450,7 +450,13 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
         mri_convert(volume_fname_template, 'mgh', 'mgz')
         format = 'mgz'
     else:
-        format = utils.file_type(glob.glob(op.join(volume_fname_template.replace('{format}', '*')))[0])
+        volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
+        if len(volume_files) == 0:
+            raise Exception('No volume file! Should be in {}'.format(volume_fname_template.replace('{format}', '*')))
+        if len(volume_files) > 1:
+            raise Exception('Too many volume files!')
+        else:
+            format = utils.file_type(volume_files[0])
     volume_fname = volume_fname_template.format(format=format)
     blender_volume_fname = op.basename(volume_fname) if contrast=='' else '{}.{}'.format(contrast, format)
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))

@@ -93,6 +93,10 @@ def namebase(file_name):
     return op.splitext(op.basename(file_name))[0]
 
 
+def file_type(fname):
+    return op.splitext(op.basename(fname))[1][1:]
+
+
 def file_fol():
     return os.path.dirname(bpy.data.filepath)
 
@@ -725,6 +729,7 @@ def tryit(func):
         except:
             print('Error in {}!'.format(func.__name__))
             print(traceback.format_exc())
+            retval = None
         return retval
 
     return wrapper
