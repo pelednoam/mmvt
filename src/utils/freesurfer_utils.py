@@ -28,7 +28,7 @@ mri_vol2surf_pet = 'mri_vol2surf --mov {volume_fname} --hemi {hemi} --projfrac {
 
 warp_buckner_atlas_cmd = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mgz --s {subject} ' + \
                      '--targ {bunker_atlas_fname} --m3z talairach.m3z ' + \
-                     '--o {subjects_dir}/{subject}/mri/Buckner2011_atlas.nii.gz --nearest --inv-morph'
+                     '--o {subjects_dir}/{subject}/mri/{wrap_map_name} --nearest --inv-morph'
 
 
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
@@ -296,11 +296,12 @@ def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_f
     return ret
 
 
-def warp_buckner_atlas_output_fname(subject, subjects_dir):
-    return op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas.nii.gz')
+def warp_buckner_atlas_output_fname(subject, subjects_dir, subregions_num=7, cerebellum_segmentation='loose'):
+    return op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas_{}_{}.nii.gz'.format(
+        subregions_num, cerebellum_segmentation))
 
 
-def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname):
+def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_name):
     norm_fname = op.join(subjects_dir, subject, 'mri', 'norm.mgz')
     if not op.isfile(norm_fname):
         print("Error in warp_buckner_atlas, can't find the file {}".format(norm_fname))
@@ -311,10 +312,9 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname):
         return False
     rs = utils.partial_run_script(locals())
     rs(warp_buckner_atlas_cmd)
-    output_fname = op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas.nii.gz')
-    if not op.isfile(output_fname):
+    if not op.isfile(wrap_map_name):
         print('Error in warp_buckner_atlas!')
         return False
     else:
-        print('warp_buckner_atlas output fname: {}'.format(output_fname))
+        print('warp_buckner_atlas output fname: {}'.format(wrap_map_name))
         return True

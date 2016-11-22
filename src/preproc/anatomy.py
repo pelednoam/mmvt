@@ -26,23 +26,23 @@ BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'br
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, args, mask_name='Buckner2011_atlas.nii.gz',
+def cerebellum_segmentation(subject, remote_subject_dir, args, mask_name='Buckner2011_atlas.nii.gz',
     model='Buckner2011_7Networks', subregions_num=7):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
-    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_FSI_{}.nii.gz'.format(
-        'loose' if args.cerebellum_segmentation_loose else 'tight'))
+    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_{}_{}.nii.gz'.format(
+        subregions_num, 'loose' if args.cerebellum_segmentation_loose else 'tight'))
     if not op.isfile(bunker_atlas_fname):
         print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
         return False
 
-    buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR)
-    if not op.isfile(buckner_atlas_fname):
-        prepare_local_subjects_folder(subject, args, {'mri:transforms' : ['talairach.m3z']})
-        fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname)
-    if not op.isfile(buckner_atlas_fname):
+    warp_buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR)
+    if not op.isfile(warp_buckner_atlas_fname):
+        prepare_local_subjects_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
+        fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname, warp_buckner_atlas_fname)
+    if not op.isfile(warp_buckner_atlas_fname):
         return False
 
     mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', mask_name)
@@ -716,7 +716,7 @@ def main(subject, args):
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
-        flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, args)
+        flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
