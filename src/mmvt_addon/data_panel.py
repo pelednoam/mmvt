@@ -243,8 +243,8 @@ def import_rois(base_path):
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
-                      'Subcortical_structures': op.join(base_path, 'subcortical')}
-                      # 'Cerebellum': op.join(base_path, 'cerebellum')}
+                      'Subcortical_structures': op.join(base_path, 'subcortical'),
+                      'Cerebellum': op.join(base_path, 'cerebellum')}
     brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
