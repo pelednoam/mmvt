@@ -198,7 +198,7 @@ def import_brain(context=None):
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
-
+    create_inflating_morphing()
     if bpy.data.objects.get(' '):
         bpy.data.objects[' '].select = True
         if context:
@@ -382,6 +382,17 @@ def import_electrodes(input_file, electrodes_layer, bipolar='', electrode_size=N
         cur_obj.select = True
         cur_obj.parent = bpy.data.objects[parnet_name]
         mu.create_and_set_material(cur_obj)
+
+
+def create_inflating_morphing():
+    for hemi in mu.HEMIS:
+        pial = bpy.data.objects[hemi]
+        inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+        inflated.shape_key_add(name='pial')
+        inflated.shape_key_add(name='inflated')
+        for vert_ind in range(len(inflated.data.vertices)):
+            for ii in range(3):
+                inflated.data.shape_keys.key_blocks['pial'].data[vert_ind].co[ii] = pial.data.vertices[vert_ind].co[ii]
 
 
 class ImportElectrodes(bpy.types.Operator):
