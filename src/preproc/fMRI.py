@@ -71,6 +71,7 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs
         x = fmri.get_data().ravel()
         data = x if data is None else np.hstack((x, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+    print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
     data_minmax = utils.get_max_abs(data_max, data_min)
     if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
         data_max, data_min = data_minmax, -data_minmax

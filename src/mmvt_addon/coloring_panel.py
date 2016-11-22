@@ -269,7 +269,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 print("Can't load {}".format(fname))
                 return False
         elif map_type == 'FMRI':
-            if ColoringMakerPanel.fmri_activity_data_min and ColoringMakerPanel.fmri_activity_data_max:
+            if not ColoringMakerPanel.fmri_activity_data_min is None and \
+                    not ColoringMakerPanel.fmri_activity_data_max is None:
                 colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
                 data_min = ColoringMakerPanel.fmri_activity_data_min
                 data_max = ColoringMakerPanel.fmri_activity_data_max
