@@ -478,7 +478,7 @@ def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrit
     project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=args.is_pet)
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-    shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
+    # shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
 
 # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
     # load_images_file(surf_output_fname)
@@ -684,7 +684,7 @@ def main(subject, args):
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
-            subject, args.contrast, fmri_contrast_file_template, norm_percs=args.norm_percs,
+            subject, volume_name, fmri_contrast_file_template, norm_percs=args.norm_percs,
             norm_by_percentile=args.norm_by_percentile)
 
     if utils.should_run(args, 'find_clusters'):

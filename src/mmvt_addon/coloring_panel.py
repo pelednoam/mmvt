@@ -549,6 +549,13 @@ def fmri_files_update(self, context):
     for hemi in mu.HEMIS:
         fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
+    fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
+        bpy.context.scene.fmri_files))
+    if op.isfile(fmri_data_maxmin_fname):
+        data_min, data_max = mu.load(fmri_data_maxmin_fname)
+        ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
+        ColoringMakerPanel.fmri_activity_data_min = data_min
+        ColoringMakerPanel.fmri_activity_data_max = data_max
 
 
 def electrodes_sources_files_update(self, context):

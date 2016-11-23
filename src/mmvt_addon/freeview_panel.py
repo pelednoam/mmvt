@@ -161,7 +161,8 @@ class FreeviewOpen(bpy.types.Operator):
     def invoke(self, context, event=None):
         root = mu.get_user_fol()
         if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
-            sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files)))
+            sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files))) + \
+                         glob.glob(op.join(root, 'freeview', '*{}*.nii'.format(bpy.context.scene.fmri_files)))
             if len(sig_fnames) > 0:
                 sig_fname = sig_fnames[0]
                 sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
@@ -219,9 +220,11 @@ class FreeviewPanel(bpy.types.Panel):
         layout.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
         if bpy.data.objects.get('Deep_electrodes'):
             layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
-        if bpy.context.scene.fMRI_files_exist and \
-                len(glob.glob(op.join(mu.get_user_fol(),
-                'freeview','*{}*.mgz'.format(bpy.context.scene.fmri_files)))) > 0:
+        fmri_files_template = op.join(mu.get_user_fol(),
+                'freeview','*{}*.{}'.format(bpy.context.scene.fmri_files, '{format}'))
+        fmri_vol_files = glob.glob(fmri_files_template.format(format='mgz')) + \
+                         glob.glob(fmri_files_template.format(format='nii'))
+        if bpy.context.scene.fMRI_files_exist and len(fmri_vol_files) > 0:
             layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
