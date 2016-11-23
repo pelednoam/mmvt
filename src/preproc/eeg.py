@@ -24,7 +24,7 @@ MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 
 
-def read_eeg_sensors_layout(mri_subject):
+def read_eeg_sensors_layout(subject, mri_subject, args):
     if not op.isfile(meg.INFO):
         raw = mne.io.read_raw_fif(meg.RAW)
         info = raw.info
@@ -38,11 +38,13 @@ def read_eeg_sensors_layout(mri_subject):
         event_ind = np.where(eeg_names == 'Event')[0]
         eeg_names = np.delete(eeg_names, event_ind)
         eeg_pos = np.delete(eeg_pos, event_ind)
-    fol = op.join(MMVT_DIR, mri_subject, 'eeg')
-    utils.make_dir(fol)
-    output_fname = op.join(fol, 'eeg_positions.npz')
+    # fol = op.join(MMVT_DIR, mri_subject, 'eeg')
+    # utils.make_dir(fol)
+    # output_fname = op.join(fol, 'eeg_positions.npz')
+    output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
     if len(eeg_pos) > 0:
-        trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
+        # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
+        trans_files = glob.glob(op.join(SUBJECTS_MEG_DIR, args.task, subject, '*COR*.fif'))
         if len(trans_files) == 1:
             trans = mne.transforms.read_trans(trans_files[0])
             head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
@@ -87,23 +89,27 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
     return True
 
 
-def create_eeg_mesh(subject, overwrite_faces_verts=False):
+def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
     try:
         from scipy.spatial import Delaunay
         from src.utils import trig_utils
         input_file = op.join(MMVT_DIR, subject, 'eeg', 'eeg_positions.npz')
+        mesh_ply_fname = op.join(MMVT_DIR, subject, 'eeg', 'eeg_helmet.ply')
         faces_verts_out_fname = op.join(MMVT_DIR, subject, 'eeg', 'eeg_faces_verts.npy')
         f = np.load(input_file)
         verts = f['pos']
+        excluded_inds = [np.where(f['names'] == e)[0] for e in excludes]
+        # verts = np.delete(verts, excluded_inds, 0)
         verts_tup = [(x, y, z) for x, y, z in verts]
         tris = Delaunay(verts_tup)
+        faces = tris.convex_hull
         areas = [trig_utils.poly_area(verts[poly]) for poly in tris.convex_hull]
         inds = [k for k, s in enumerate(areas) if s > np.percentile(areas, 97)]
-        faces = np.delete(tris.convex_hull, inds, 0)
+        faces = np.delete(faces, inds, 0)
+        utils.write_ply_file(verts, faces, mesh_ply_fname, True)
         utils.calc_ply_faces_verts(verts, faces, faces_verts_out_fname, overwrite_faces_verts,
                                    utils.namebase(faces_verts_out_fname))
-        # faces = tris.convex_hull
-        np.savez(input_file, pos=f['pos'], names=f['names'], tri=faces)
+        np.savez(input_file, pos=f['pos'], names=f['names'], tri=faces, excludes=excludes)
     except:
         print('Error in create_eeg_mesh!')
         print(traceback.format_exc())
@@ -123,12 +129,12 @@ def main(subject, mri_subject, inverse_method, args):
     flags = {}
 
     if utils.should_run(args, 'read_eeg_sensors_layout'):
-        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject)
+        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
 
     flags = meg.calc_evoked_wrapper(subject, conditions, args, flags)
 
     if utils.should_run(args, 'create_eeg_mesh'):
-        create_eeg_mesh(subject)
+        create_eeg_mesh(mri_subject, args.eeg_electrodes_excluded_from_mesh)
 
     if utils.should_run(args, 'save_evoked_to_blender'):
         flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)

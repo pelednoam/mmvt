@@ -122,6 +122,7 @@ clear_colors = coloring_panel.clear_colors
 clear_and_recolor = coloring_panel.clear_and_recolor
 set_threshold = coloring_panel.set_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
+color_eeg_helmet = coloring_panel.color_eeg_helmet
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

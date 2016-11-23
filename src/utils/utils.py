@@ -195,7 +195,7 @@ def read_pial(subject, subjects_dir, hemi):
     return verts, faces
 
 
-def write_ply_file(verts, faces, ply_file_name):
+def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     try:
         verts_num = verts.shape[0]
         faces_num = faces.shape[0]
@@ -205,6 +205,8 @@ def write_ply_file(verts, faces, ply_file_name):
         with open(ply_file_name, 'ab') as f:
             np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
             np.savetxt(f, faces, fmt='%d', delimiter=' ')
+        if write_also_npz:
+            np.savez('{}.npz'.format(op.splitext(ply_file_name)[0]), verts=verts, faces=faces)
         return True
     except:
         print('Error in write_ply_file! ({})'.format(ply_file_name))

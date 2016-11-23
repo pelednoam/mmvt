@@ -1740,6 +1740,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+    parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)

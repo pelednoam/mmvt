@@ -401,7 +401,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     for vert in valid_verts:
         x = lookup[vert]
-        for loop_ind in x[x>-1]:
+        for loop_ind in x[x > -1]:
             d = vcol_layer.data[loop_ind]
             if colors_picked_from_cm:
                 # colors = ColoringMakerPanel.cm[int(vert_values[vert] * colors_ratio)]
@@ -593,21 +593,17 @@ def color_electrodes_sources():
 def color_eeg_helmet():
     fol = mu.get_user_fol()
     data_fname = op.join(fol, 'eeg', 'eeg_data.npy')
-    meta_fname = op.join(fol, 'eeg', 'eeg_data_meta.npz')
-
     data = np.load(data_fname)
     data = np.diff(data).squeeze()
-    meta = np.load(meta_fname)
-    # colors = np.load(op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat)))
-    names = meta['names']
     lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
     threshold = 0
-    data_min = np.max(data)
-    data_max = np.min(data)
+    data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
     colors_ratio = 256 / (data_max - data_min)
+    _addon().set_colorbar_max_min(data_max, data_min, True)
+    _addon().set_colorbar_title('EEG')
     data_t = data[:, bpy.context.scene.frame_current]
 
-    cur_obj = bpy.data.objects['eeg_plain']
+    cur_obj = bpy.data.objects['eeg_helmet']
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False)
 
@@ -889,7 +885,7 @@ class ColoringMakerPanel(bpy.types.Panel):
             if volumetric_coloring_files_exist:
                 layout.prop(context.scene, "vol_coloring_files", text="")
                 layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
-        if not bpy.data.objects.get('eeg_plain', None) is None:
+        if not bpy.data.objects.get('eeg_helmet', None) is None:
             layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
@@ -955,7 +951,6 @@ def init(addon):
     meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl')
     if meg_files_exist and op.isfile(meg_data_maxmin_fname):
         data_min, data_max = mu.load(meg_data_maxmin_fname)
-        _addon().set_colorbar_max_min(data_max, data_min)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_activity_data_min = data_min
         ColoringMakerPanel.meg_activity_data_max = data_max

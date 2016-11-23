@@ -23,7 +23,8 @@ bpy.types.Scene.play_type = bpy.props.EnumProperty(
            ("elecs_coh", "Electrodes coherence", "",5), ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
            ("stim", "Electrodes stimulation", "", 7), ("stim_sources", "Electrodes stimulation & sources", "", 8),
            ("meg_elecs", "Meg & Electrodes activity", "", 9),
-           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",10)],
+           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",10),
+           ("eeg_helmet", "EEG helmet", "",11)],
            description='Type pf data to play')
 
 
@@ -159,6 +160,8 @@ def plot_something(self, context, cur_frame, uuid=''):
         PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         PlayPanel.addon.color_electrodes_sources()
+    if play_type in ['eeg_helmet']:
+        PlayPanel.addon.color_eeg_helmet()
     if bpy.context.scene.render_movie:
         if successful_ret:
             PlayPanel.addon.render_image()
