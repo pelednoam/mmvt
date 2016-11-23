@@ -51,6 +51,7 @@ read_floats_rx = mu.read_floats_rx
 read_numbers_rx = mu.read_numbers_rx
 timeit = mu.timeit
 get_time = mu.get_time
+get_data_max_min = mu.get_data_max_min
 
 
 def get_exisiting_dir(dirs):
@@ -285,24 +286,6 @@ def check_hemi(hemi):
     else:
         raise ValueError('wrong hemi value!')
     return hemi
-
-
-def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis = HEMIS):
-    if data_per_hemi:
-        if norm_by_percentile:
-            data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
-            data_min = min([np.percentile(data[hemi], norm_percs[0]) for hemi in hemis])
-        else:
-            data_max = max([np.max(data[hemi]) for hemi in hemis])
-            data_min = min([np.min(data[hemi]) for hemi in hemis])
-    else:
-        if norm_by_percentile:
-            data_max = np.percentile(data, norm_percs[1])
-            data_min = np.percentile(data, norm_percs[0])
-        else:
-            data_max = np.max(data)
-            data_min = np.min(data)
-    return data_max, data_min
 
 
 def get_max_abs(data_max, data_min):

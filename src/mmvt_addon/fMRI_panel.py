@@ -19,10 +19,20 @@ def _clusters_update():
         return
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     fMRIPanel.cluster_labels = fMRIPanel.lookup[clusters_labels_file][bpy.context.scene.fmri_clusters]
-    if bpy.context.scene.plot_current_cluster:
+    if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             plot_blob(fMRIPanel.cluster_labels, faces_verts)
+
+
+def fmri_blobs_percentile_min_update(self, context):
+    if bpy.context.scene.fmri_blobs_percentile_min > bpy.context.scene.fmri_blobs_percentile_max:
+        bpy.context.scene.fmri_blobs_percentile_min = bpy.context.scene.fmri_blobs_percentile_max
+
+
+def fmri_blobs_percentile_max_update(self, context):
+    if bpy.context.scene.fmri_blobs_percentile_max < bpy.context.scene.fmri_blobs_percentile_min:
+        bpy.context.scene.fmri_blobs_percentile_max = bpy.context.scene.fmri_blobs_percentile_min
 
 
 def plot_blob(cluster_labels, faces_verts):
@@ -34,11 +44,16 @@ def plot_blob(cluster_labels, faces_verts):
         hemi = 'inflated_{}'.format(hemi)
     fMRIPanel.colors_in_hemis[hemi] = True
     activity = _addon().get_fMRI_activity(real_hemi)
-    blob_activity = np.ones((len(activity), 4))
+    blob_activity = np.ones(activity.shape)
     blob_activity[blob_vertices] = activity[blob_vertices]
+    if fMRIPanel.blobs_activity is None:
+        calc_blobs_activity()
+    data_min, colors_ratio = calc_colors_ratio(fMRIPanel.blobs_activity)
+    threshold = bpy.context.scene.fmri_clustering_threshold
     cur_obj = bpy.data.objects[hemi]
-    _addon().activity_map_obj_coloring(cur_obj, blob_activity, faces_verts[real_hemi],
-                                       bpy.context.scene.fmri_cluster_val_threshold, True)
+    _addon().activity_map_obj_coloring(
+        cur_obj, blob_activity, faces_verts[real_hemi], threshold, True,
+        data_min=data_min, colors_ratio=colors_ratio)
     other_real_hemi = mu.other_hemi(real_hemi)
     other_hemi = mu.other_hemi(hemi)
     if fMRIPanel.colors_in_hemis[other_hemi]:
@@ -143,16 +158,32 @@ def unfilter_clusters():
 
 
 def plot_all_blobs():
-    #todo: update the colorbar
     faces_verts = _addon().get_faces_verts()
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
+    blobs_activity, hemis = calc_blobs_activity()
+    data_min, colors_ratio = calc_colors_ratio(blobs_activity)
+    threshold = bpy.context.scene.fmri_clustering_threshold
+    for hemi in hemis:
+        if bpy.context.scene.coloring_both_pial_and_inflated:
+            for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
+                _addon().activity_map_obj_coloring(
+                    bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
+                    data_min=data_min, colors_ratio=colors_ratio)
+        else:
+            inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
+            _addon().activity_map_obj_coloring(
+                bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], threshold, True,
+                data_min=data_min, colors_ratio=colors_ratio)
+    for hemi in set(mu.HEMIS) - hemis:
+        _addon().clear_cortex([hemi])
+    fMRIPanel.blobs_plotted = True
+
+
+def calc_blobs_activity():
     fmri_contrast, blobs_activity = {}, {}
     for hemi in mu.HEMIS:
-        # if _addon().is_inflated():
-        #     hemi = 'inflated_{}'.format(hemi)
         fmri_contrast[hemi] = _addon().get_fMRI_activity(hemi)
-        blobs_activity[hemi] = np.zeros((len(fmri_contrast[hemi]), 4))
-
+        blobs_activity[hemi] = np.zeros(fmri_contrast[hemi].shape)
     hemis = set()
     for cluster_labels in fMRIPanel.clusters_labels_filtered:
         if bpy.context.scene.fmri_what_to_plot == 'blob':
@@ -162,19 +193,22 @@ def plot_all_blobs():
             inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
             fMRIPanel.colors_in_hemis[inf_hemi] = True
             blobs_activity[hemi][blob_vertices] = fmri_contrast[hemi][blob_vertices]
+    fMRIPanel.blobs_activity = blobs_activity
+    return blobs_activity, hemis
 
-    for hemi in hemis:
-        if bpy.context.scene.coloring_both_pial_and_inflated:
-            for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
-                _addon().activity_map_obj_coloring(
-                    bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], 2, True)
-        else:
-            inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
-            _addon().activity_map_obj_coloring(
-                bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], 2, True)
 
-    for hemi in set(mu.HEMIS) - hemis:
-        _addon().clear_cortex([hemi])
+@mu.timeit
+def calc_colors_ratio(activity):
+    norm_percs = (bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max)
+    data_max, data_min = mu.get_data_max_min(
+        activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True)
+    if data_max == 0 and data_min == 0:
+        print('Both data max and min are zeros!')
+        return
+    colors_ratio = 256 / (data_max - data_min)
+    _addon().set_colorbar_max_min(data_max, data_min)
+    _addon().set_colorbar_title('fMRI')
+    return data_min, colors_ratio
 
 
 def cluster_name(x):
@@ -235,6 +269,10 @@ def fMRI_draw(self, context):
         if labels_num_to_show < len(fMRIPanel.cluster_labels['intersects']):
             layout.label(text='Out of {} labels'.format(len(fMRIPanel.cluster_labels['intersects'])))
     # row = layout.row(align=True)
+    layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
+    if bpy.context.scene.fmri_blobs_norm_by_percentile:
+        layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
+        layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
@@ -251,6 +289,7 @@ class fmriClearColors(bpy.types.Operator):
     def invoke(self, context, event=None):
         _addon().clear_cortex()
         _addon().clear_subcortical_fmri_activity()
+        fMRIPanel.blobs_plotted = False
         return {"FINISHED"}
 
 
@@ -332,8 +371,7 @@ bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
 bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
     default=False, description="Plot current cluster")
 bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
-    items=[('cluster', 'Plot cluster', '', 1), ('blob', 'Plot blob', '', 2)],
-    description='What do plot')
+    items=[('blob', 'Plot blob', '', 1)], description='What do plot') # ('cluster', 'Plot cluster', '', 1)
 bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
     items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
     description='How to sort', update=fmri_how_to_sort_update)
@@ -345,6 +383,11 @@ bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
     description='clustering threshold', min=0, max=20)
 bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
     items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
+bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.fmri_blobs_percentile_min = bpy.props.FloatProperty(
+    default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
+bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
+    default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
 
 
 class fMRIPanel(bpy.types.Panel):
@@ -361,6 +404,8 @@ class fMRIPanel(bpy.types.Panel):
     clusters = []
     clusters_labels_filtered = []
     colors_in_hemis = {'rh':False, 'lh':False}
+    blobs_activity = None
+    blobs_plotted = False
 
     def draw(self, context):
         if fMRIPanel.init:
@@ -396,6 +441,7 @@ def init(addon):
     bpy.context.scene.fmri_how_to_sort = 'tval'
 
     update_clusters()
+    calc_blobs_activity()
     # addon.clear_cortex()
     register()
     fMRIPanel.init = True

@@ -26,7 +26,11 @@ def load_colormap():
 
 
 def set_colorbar_title(val):
+    init = ColorbarPanel.init
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
+    ColorbarPanel.init = False
+    bpy.context.scene.colorbar_title = val
+    ColorbarPanel.init = init
 
 
 def set_colorbar_max_min(max_val, min_val, force_update=False):

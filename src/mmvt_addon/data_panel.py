@@ -348,9 +348,9 @@ def create_inflating_morphing():
     for hemi in mu.HEMIS:
         pial = bpy.data.objects[hemi]
         inflated = bpy.data.objects['inflated_{}'.format(hemi)]
-        if inflated.active_shape_key_index >= 0:
+        # if inflated.active_shape_key_index >= 0:
         #     print('{} already has a shape key'.format(hemi))
-            continue
+        #     continue
         inflated.shape_key_add(name='pial')
         inflated.shape_key_add(name='inflated')
         for vert_ind in range(len(inflated.data.vertices)):

@@ -612,7 +612,6 @@ def color_eeg_helmet():
                               colors_ratio=colors_ratio, bigger_or_equall=False)
 
 
-
 def color_electrodes():
     # mu.set_show_textured_solid(False)
     bpy.context.scene.show_hide_electrodes = True
