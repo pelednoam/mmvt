@@ -3,7 +3,7 @@ import os
 import os.path as op
 import shutil
 import traceback
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 import mne
 import numpy as np
@@ -291,7 +291,7 @@ def calc_faces_verts_dic(subject, atlas, overwrite=False):
     ply_files = [op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)) for hemi in utils.HEMIS]
     out_files = [op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format(hemi)) for hemi in utils.HEMIS]
     subcortical_plys = glob.glob(op.join(MMVT_DIR, subject, 'subcortical', '*.ply'))
-    errors = []
+    errors = {}
     if len(subcortical_plys) > 0:
         faces_verts_dic_fnames = [op.join(MMVT_DIR, subject, 'subcortical', '{}_faces_verts.npy'.format(
                 utils.namebase(ply))) for ply in subcortical_plys]
@@ -312,24 +312,7 @@ def calc_faces_verts_dic(subject, atlas, overwrite=False):
         # ply_file = op.join(SUBJECTS_DIR, subject,'surf', '{}.pial.ply'.format(hemi))
         # print('preparing a lookup table for {}'.format(ply_file))
         verts, faces = utils.read_ply_file(ply_file)
-        _faces = faces.ravel()
-        print('{}: verts: {}, faces: {}, faces ravel: {}'.format(utils.namebase(ply_file), verts.shape[0], faces.shape[0], len(_faces)))
-        faces_arg_sort = np.argsort(_faces)
-        faces_sort = np.sort(_faces)
-        faces_count = Counter(faces_sort)
-        max_len = max([v for v in faces_count.values()])
-        lookup = np.ones((verts.shape[0], max_len)) * -1
-        diff = np.diff(faces_sort)
-        n = 0
-        for ind, (k, v) in enumerate(zip(faces_sort, faces_arg_sort)):
-            lookup[k, n] = v
-            n = 0 if ind < len(diff) and diff[ind] > 0 else n+1
-        # print('writing {}'.format(out_file))
-        np.save(out_file, lookup.astype(np.int))
-        print('{} max lookup val: {}'.format(utils.namebase(ply_file), int(np.max(lookup))))
-        if len(_faces) != int(np.max(lookup)) + 1:
-            errors[utils.namebase(ply_file)] = 'Wrong values in lookup table! ' + \
-                'faces ravel: {}, max looup val: {}'.format(len(_faces), int(np.max(lookup)))
+        errors = utils.calc_ply_faces_verts(verts, faces, out_file, overwrite, utils.namebase(ply_file), errors)
     if len(errors) > 0:
         for k, message in errors.items():
             print('{}: {}'.format(k, message))

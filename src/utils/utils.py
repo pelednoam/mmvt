@@ -2,7 +2,7 @@ import os
 import sys
 import shutil
 import numpy as np
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, OrderedDict, Counter
 import itertools
 import time
 import re
@@ -248,6 +248,33 @@ def get_ply_vertices_num(ply_file_template):
     else:
         print('No surface ply files!')
         return None
+
+
+def calc_ply_faces_verts(verts, faces, out_file, overwrite, ply_name='', errors={}, verbose=False):
+    if not overwrite and op.isfile(out_file):
+        if verbose:
+            print('{} already exist.'.format(out_file))
+    else:
+        _faces = faces.ravel()
+        if verbose:
+            print('{}: verts: {}, faces: {}, faces ravel: {}'.format(
+                ply_name, verts.shape[0], faces.shape[0], len(_faces)))
+        faces_arg_sort = np.argsort(_faces)
+        faces_sort = np.sort(_faces)
+        faces_count = Counter(faces_sort)
+        max_len = max([v for v in faces_count.values()])
+        lookup = np.ones((verts.shape[0], max_len)) * -1
+        diff = np.diff(faces_sort)
+        n = 0
+        for ind, (k, v) in enumerate(zip(faces_sort, faces_arg_sort)):
+            lookup[k, n] = v
+            n = 0 if ind < len(diff) and diff[ind] > 0 else n+1
+        np.save(out_file, lookup.astype(np.int))
+        print('{} max lookup val: {}'.format(ply_name, int(np.max(lookup))))
+        if len(_faces) != int(np.max(lookup)) + 1:
+            errors[ply_name] = 'Wrong values in lookup table! ' + \
+                'faces ravel: {}, max looup val: {}'.format(len(_faces), int(np.max(lookup)))
+    return errors
 
 
 def check_hemi(hemi):

@@ -583,6 +583,29 @@ def color_electrodes_sources():
         meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
 
 
+def color_eeg_helmet():
+    fol = mu.get_user_fol()
+    data_fname = op.join(fol, 'eeg', 'eeg_data.npy')
+    meta_fname = op.join(fol, 'eeg', 'eeg_data_meta.npz')
+
+    data = np.load(data_fname)
+    data = np.diff(data).squeeze()
+    meta = np.load(meta_fname)
+    # colors = np.load(op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat)))
+    names = meta['names']
+    lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
+    threshold = 0
+    data_min = np.max(data)
+    data_max = np.min(data)
+    colors_ratio = 256 / (data_max - data_min)
+    data_t = data[:, bpy.context.scene.frame_current]
+
+    cur_obj = bpy.data.objects['eeg_plain']
+    activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
+                              colors_ratio=colors_ratio, bigger_or_equall=False)
+
+
+
 def color_electrodes():
     # mu.set_show_textured_solid(False)
     bpy.context.scene.show_hide_electrodes = True
@@ -650,6 +673,17 @@ def clear_and_recolor():
     clear_colors()
     for wic in what_is_colored:
         wic_funcs[wic]()
+
+
+class ColorEEGHelmet(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_helmet"
+    bl_label = "mmvt eeg helmet"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_eeg_helmet()
+        return {"FINISHED"}
 
 
 class ColorElectrodes(bpy.types.Operator):
@@ -849,6 +883,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             if volumetric_coloring_files_exist:
                 layout.prop(context.scene, "vol_coloring_files", text="")
                 layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
+        if not bpy.data.objects.get('eeg_plain', None) is None:
+            layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         if electrodes_labels_files_exist:
@@ -987,6 +1023,7 @@ def register():
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorFmri)
         bpy.utils.register_class(ColorClustersFmri)
+        bpy.utils.register_class(ColorEEGHelmet)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         # print('Freeview Panel was registered!')
@@ -1006,6 +1043,7 @@ def unregister():
         bpy.utils.unregister_class(ColorMegLabels)
         bpy.utils.unregister_class(ColorFmri)
         bpy.utils.unregister_class(ColorClustersFmri)
+        bpy.utils.unregister_class(ColorEEGHelmet)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:

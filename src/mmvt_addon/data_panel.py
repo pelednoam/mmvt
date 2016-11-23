@@ -303,51 +303,6 @@ def import_rois(base_path):
     bpy.ops.object.select_all(action='DESELECT')
 
 
-def create_eeg_mesh(input_file):
-    f = np.load(input_file)
-    verts = [(x, y, z) for x, y, z in f['pos']]
-    faces = [(x, y, z) for x, y, z in f['tri']]
-    print(len(verts))
-
-    act = 'create_eeg_mesh'
-    current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-    if act == 'create_eeg_mesh':
-        eeg_mesh = bpy.data.meshes.new('eeg_mesh')
-        eeg_mesh.from_pydata(verts, [], faces)
-        eeg_mesh.update()
-        mesh_obj = bpy.data.objects.new("eeg_plain", eeg_mesh)
-        scene = bpy.context.scene
-        scene.objects.link(mesh_obj)
-        mesh_obj.select = True
-        bpy.ops.object.shade_smooth()
-        mesh_obj.parent = bpy.data.objects['EEG_electrodes']
-        mesh_obj.scale = [0.1] * 3
-        mesh_obj.active_material = current_mat
-        mesh_obj.hide = False
-
-    return eeg_mesh
-        # cur_obj = bpy.context.selected_objects[0]
-        # eeg_mesh.parent = bpy.data.objects['EEG_electrodes']
-        # cur_obj.scale = [0.1] * 3
-        # cur_obj.active_material = current_mat
-        # cur_obj.hide = False
-        # cur_obj.name = 'eeg_mesh'
-        # bpy.ops.object.select_all(action='DESELECT')
-        # bpy.context.scene.objects.active = bpy.data.meshes['eeg_mesh']
-        # bpy.ops.export_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_mesh.ply'))
-    if act == 'import_eeg':
-        current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-        bpy.ops.import_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_mesh.ply'))
-        cur_obj = bpy.context.selected_objects[0]
-        cur_obj.select = True
-        bpy.ops.object.shade_smooth()
-        cur_obj.parent = bpy.data.objects['EEG_electrodes']
-        cur_obj.scale = [0.1] * 3
-        cur_obj.active_material = current_mat
-        cur_obj.hide = False
-        cur_obj.name = 'eeg_mesh'
-
-
 class ImportRois(bpy.types.Operator):
     bl_idname = "mmvt.roi_importing"
     bl_label = "import2 ROIs"

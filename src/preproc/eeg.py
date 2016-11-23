@@ -3,6 +3,7 @@ import os.path as op
 import numpy as np
 import mne.io
 import glob
+import traceback
 
 from src.utils import utils
 from src.preproc import meg as meg
@@ -86,47 +87,28 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
     return True
 
 
-def create_eeg_mesh(subject):
-    from scipy.spatial import Delaunay
-    input_file = op.join(MMVT_DIR, subject, 'eeg', 'eeg_positions.npz')
-    f = np.load(input_file)
-    verts = [(x, y, z) for x, y, z in f['pos']]
-    tri = Delaunay(verts)
-    areas = [poly_area(f['pos'][poly]) for poly in tri.convex_hull]
-    inds = [k for k, s in enumerate(areas) if s > np.percentile(areas, 97)]
-    tris = np.delete(tri.convex_hull, inds, 0)
-    np.savez(input_file, pos=f['pos'], names=f['names'], tri=tris)
-
-
-#unit normal vector of plane defined by points a, b, and c
-def unit_normal(a, b, c):
-    x = np.linalg.det([[1,a[1],a[2]],
-         [1,b[1],b[2]],
-         [1,c[1],c[2]]])
-    y = np.linalg.det([[a[0],1,a[2]],
-         [b[0],1,b[2]],
-         [c[0],1,c[2]]])
-    z = np.linalg.det([[a[0],a[1],1],
-         [b[0],b[1],1],
-         [c[0],c[1],1]])
-    magnitude = (x**2 + y**2 + z**2)**.5
-    return (x/magnitude, y/magnitude, z/magnitude)
-
-#area of polygon poly
-def poly_area(poly):
-    if len(poly) < 3: # not a plane - no area
-        return 0
-    total = [0, 0, 0]
-    N = len(poly)
-    for i in range(N):
-        vi1 = poly[i]
-        vi2 = poly[(i+1) % N]
-        prod = np.cross(vi1, vi2)
-        total[0] += prod[0]
-        total[1] += prod[1]
-        total[2] += prod[2]
-    result = np.dot(total, unit_normal(poly[0], poly[1], poly[2]))
-    return abs(result/2)
+def create_eeg_mesh(subject, overwrite_faces_verts=False):
+    try:
+        from scipy.spatial import Delaunay
+        from src.utils import trig_utils
+        input_file = op.join(MMVT_DIR, subject, 'eeg', 'eeg_positions.npz')
+        faces_verts_out_fname = op.join(MMVT_DIR, subject, 'eeg', 'eeg_faces_verts.npy')
+        f = np.load(input_file)
+        verts = f['pos']
+        verts_tup = [(x, y, z) for x, y, z in verts]
+        tris = Delaunay(verts_tup)
+        areas = [trig_utils.poly_area(verts[poly]) for poly in tris.convex_hull]
+        inds = [k for k, s in enumerate(areas) if s > np.percentile(areas, 97)]
+        faces = np.delete(tris.convex_hull, inds, 0)
+        utils.calc_ply_faces_verts(verts, faces, faces_verts_out_fname, overwrite_faces_verts,
+                                   utils.namebase(faces_verts_out_fname))
+        # faces = tris.convex_hull
+        np.savez(input_file, pos=f['pos'], names=f['names'], tri=faces)
+    except:
+        print('Error in create_eeg_mesh!')
+        print(traceback.format_exc())
+        return False
+    return True
 
 
 def main(subject, mri_subject, inverse_method, args):
