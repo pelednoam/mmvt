@@ -201,7 +201,7 @@ def import_brain(context=None):
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
-    create_inflating_morphing()
+    # create_inflating_morphing()
     if bpy.data.objects.get(' '):
         bpy.data.objects[' '].select = True
         if context:

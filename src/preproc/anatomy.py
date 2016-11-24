@@ -26,14 +26,14 @@ BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'br
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner2011_17Networks', subregions_num=17):
+def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner2011_7Networks', subregions_num=7):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
     # https://mail.nmr.mgh.harvard.edu/pipermail//freesurfer/2016-June/046380.html
     loose_tight = 'loose' if args.cerebellum_segmentation_loose else 'tight'
-    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'BucknerAtlas1mm_{}_{}.nii.gz'.format(
-        subregions_num,loose_tight ))
+    bunker_atlas_fname = op.join(MMVT_DIR, 'templates', 'Buckner2011_atlas_{}_{}.nii.gz'.format(
+        subregions_num, loose_tight))
     if not op.isfile(bunker_atlas_fname):
         print("Can't find Bunker atlas! Should be here: {}".format(bunker_atlas_fname))
         return False
