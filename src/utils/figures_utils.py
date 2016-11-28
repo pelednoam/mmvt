@@ -34,6 +34,12 @@ def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol=''):
     plot_color_bar(data_max, data_min, mymap, fol=fol)
 
 
+def crop_image(image_fname, new_fname, dx=0, dy=0, dw=0, dh=0):
+    image = Image.open(image_fname)
+    w, h = image.size
+    image.crop((dx, dy, w - dw, h -dh)).save(new_fname)
+
+
 def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
                        facecolor='black'):
     image1 = Image.open(figure1_fname)
@@ -56,6 +62,73 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     ax1.imshow(image1)
     ax2.imshow(image2)
     plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
+
+
+def combine_four_brain_perspectives(fol, dpi=100, facecolor='black', crop=True, **kargs):
+    figs = [[f for f in glob.glob(op.join(fol, '*lateral*rh*')) if 'crop' not in f][0],
+            [f for f in glob.glob(op.join(fol, '*lateral*lh*')) if 'crop' not in f][0],
+            [f for f in glob.glob(op.join(fol, '*medial*rh*')) if 'crop' not in f][0],
+            [f for f in glob.glob(op.join(fol, '*medial*lh*')) if 'crop' not in f][0]]
+    if crop:
+        crop_figs = []
+        for fig in figs:
+            new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
+            crop_figs.append(new_fig_fname)
+            crop_image(fig, new_fig_fname, dx=50, dw=50)
+    new_image_fname = combine_four_images(
+        crop_figs if crop else figs, op.join(fol, 'all_perspectives.png'), dpi, facecolor)
+    if crop:
+        crop_image(new_image_fname, new_image_fname, dx=30, dh=20)
+
+
+def combine_four_images(figs, new_image_fname, dpi=100,
+                       facecolor='black'):
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+    images = [Image.open(fig) for fig in figs]
+    new_img_width = images[0].size[0] + images[1].size[0]
+    new_img_height = images[0].size[1] + images[2].size[1]
+    w, h = new_img_width / dpi, new_img_height / dpi
+    # fig, axes = plt.subplots(2, 2, sharex='col', sharey='row', figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    # fig.canvas.draw()
+    # axs = list(itertools.chain(*axes))
+    fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    gs = gridspec.GridSpec(2, 2)
+    gs.update(wspace=0, hspace=0)  # set the spacing between axes.
+
+    for g, image in zip(gs, images):
+        ax = plt.subplot(g)
+        ax.imshow(image)
+        ax.axis('off')
+    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
+    plt.close()
+    return new_image_fname
+
+
+def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black'):
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+
+    images = [Image.open(fig) for fig in figs]
+    new_img_width =  images[0].size[0] + images[1].size[0] + images[2].size[0]
+    new_img_height = images[0].size[1] + images[3].size[1] + images[6].size[1]
+    w, h = new_img_width / dpi, new_img_height / dpi
+    # fig, axes = plt.subplots(2, 2, sharex='col', sharey='row', figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    # fig.canvas.draw()
+    # axs = list(itertools.chain(*axes))
+    fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    gs = gridspec.GridSpec(3, 3)
+    gs.update(wspace=0, hspace=0)  # set the spacing between axes.
+
+    for g, image in zip(gs, images):
+        ax = plt.subplot(g)
+        ax.imshow(image)
+        ax.axis('off')
+    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
+    plt.close()
+    return new_image_fname
 
 
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, root, overwrite=False, dpi=100,
@@ -121,11 +194,24 @@ def example3():
 
 
 if __name__ is '__main__':
+    import argparse
+    from src.utils.utils import Bag
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT')
+    parser.add_argument('--fol', help='folder', required=True)
+    parser.add_argument('--dpi', required=False, default=100, type=int)
+    parser.add_argument('--crop', required=False, default=1, type=au.is_true)
+    parser.add_argument('--facecolor', required=False, default='black')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='combine_four_brain_perspectives')
+    args = Bag(au.parse_parser(parser))
+    locals()[args.function](**args)
+
     # example2()
     # combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\
     #                    '/cluster/neuromind/npeled/Documents/ELA/figs/grid_most_prob_rois.png',
     #                    '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
     #                    dpi=100, facecolor='black')
     # example3()
-    plot_color_bar_from_rwo_color_maps(10, -10, fol='C:\\Users\\2014\\mmvt\\ESZC25\\figures')
+    # plot_color_bar_from_rwo_color_maps(10, -10, fol='C:\\Users\\2014\\mmvt\\ESZC25\\figures')
+    # combine_four_brain_perspectives('/homes/5/npeled/space1/mmvt/colin27/figures/ver3', facecolor='black', crop=True)
     print('finish!')

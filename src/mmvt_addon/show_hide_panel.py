@@ -37,7 +37,7 @@ def show_hide_sub_cortical_update(self, context):
     show_hide_sub_corticals(bpy.context.scene.objects_show_hide_sub_cortical)
 
 
-def show_hide_sub_corticals(do_hide):
+def show_hide_sub_corticals(do_hide=True):
     show_hide_hierarchy(do_hide, "Subcortical_structures")
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
     # We split the activity map into two types: meg for the same activation for the each structure, and fmri

@@ -290,6 +290,10 @@ def get_real_atlas_name(atlas, csv_fol=''):
         return ''
 
 
+def get_mmvt_fol():
+    return bpy.path.abspath('//')
+
+
 def get_user_fol():
     root_fol = bpy.path.abspath('//')
     user = get_user()

@@ -2,11 +2,15 @@ import bpy
 import math
 import os.path as op
 import glob
+import numpy as np
 import mmvt_utils as mu
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
 
+
+def _addon():
+    return RenderingMakerPanel.addon
 
 def set_render_quality(quality):
     bpy.context.scene.quality = quality
@@ -21,9 +25,15 @@ def set_render_smooth_figure(smooth_figure):
 
 
 def load_camera(camera_fname=''):
-    if camera_fname == '':
-        camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
+    # if camera_fname == '':
+    #     camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
+    camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
     if op.isfile(camera_fname):
+        camera_name = mu.namebase(camera_fname)
+        for hemi in mu.HEMIS:
+            if hemi in camera_name:
+                _addon().show_hide_hemi(False, hemi)
+                _addon().show_hide_hemi(True, mu.other_hemi(hemi))
         X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location = mu.load(camera_fname)
         RenderFigure.update_camera = False
         bpy.context.scene.X_rotation = X_rotation
@@ -39,12 +49,13 @@ def load_camera(camera_fname=''):
 
 
 def camera_mode():
-    for obj in bpy.data.objects:
-        obj.select = False
-    for obj in bpy.context.visible_objects:
-        if not (obj.hide or obj.hide_render):
-            obj.select = True
+    # for obj in bpy.data.objects:
+    #     obj.select = False
+    # for obj in bpy.context.visible_objects:
+    #     if not (obj.hide or obj.hide_render):
+    #         obj.select = True
     ret = bpy.ops.view3d.camera_to_view_selected()
+    ret = bpy.ops.view3d.viewnumpad(type='CAMERA')
     print(ret)
 
 
@@ -57,12 +68,12 @@ def grab_camera(self=None, do_save=True):
     bpy.context.scene.Y_location = Y_location = bpy.data.objects['Camera'].location.y
     bpy.context.scene.Z_location = Z_location = bpy.data.objects['Camera'].location.z
     if do_save:
-        if op.isdir(bpy.path.abspath(bpy.context.scene.output_path)):
-            camera_fname = op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera.pkl')
+        if op.isdir(mu.get_user_fol(), 'camera'):
+            camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
             mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
             print('Camera location was saved to {}'.format(camera_fname))
         else:
-            mu.message(self, "Can't find the folder {}".format(bpy.path.abspath(bpy.context.scene.output_path)))
+            mu.message(self, "Can't find the folder {}".format(mu.get_user_fol(), 'camera'))
     RenderFigure.update_camera = True
 
 
@@ -75,13 +86,25 @@ def render_draw(self, context):
     # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
     # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
     layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
-    if len(glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera*.pkl'))) > 1:
+    camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl')) + \
+                   glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
+    if len(camera_files) > 1:
         layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
+    perspectives_files_exist = op.isdir(
+        op.join(mu.get_user_fol(), 'camera')) and \
+        np.all([op.isfile(op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name))) for pers_name in
+        ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
+    if perspectives_files_exist:
+        layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
     layout.prop(context.scene, 'render_background')
     layout.prop(context.scene, 'smooth_figure')
+    # layout.operator(CameraMode.bl_idname, text="Camera view", icon='CAMERA_DATA')
     layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
-    layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
+    if len(bpy.context.scene.camera_files) > 0:
+        layout.prop(context.scene, 'camera_files', text='')
+        layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
     layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
+    # layout.prop(context.scene, "lighting", text='Lighting')
 
     col = layout.column(align=True)
     col.prop(context.scene, "X_rotation", text='X rotation')
@@ -101,6 +124,11 @@ def update_camera(self=None, context=None):
         bpy.data.objects['Camera'].location.x = bpy.context.scene.X_location
         bpy.data.objects['Camera'].location.y = bpy.context.scene.Y_location
         bpy.data.objects['Camera'].location.z = bpy.context.scene.Z_location
+
+
+def lighting_update(self, context):
+    bpy.data.materials['light'].node_tree.nodes["Emission"].inputs[1].default_value = bpy.context.scene.lighting
+    pass
 
 
 def mirror():
@@ -125,7 +153,9 @@ bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(
     name='Smooth image', description="This significantly affect rendering speed")
 bpy.types.Scene.render_background = bpy.props.BoolProperty(
     name='Background rendering', description="Render in the background")
-
+bpy.types.Scene.lighting = bpy.props.FloatProperty(
+    default=1, min=0, max=2,description="lighting", update=lighting_update)
+bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[], description="")
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -175,7 +205,26 @@ class RenderFigure(bpy.types.Operator):
     update_camera = True
 
     def invoke(self, context, event=None):
+        _addon().change_to_rendered_brain()
         render_image()
+        return {"FINISHED"}
+
+
+class RenderPerspectives(bpy.types.Operator):
+    bl_idname = "mmvt.render_all_perspectives"
+    bl_label = "Render all perspectives"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        _addon().change_to_rendered_brain()
+        _addon().show_hide_sub_corticals()
+        camera_files = [op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name)) for pers_name in
+            ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']]
+        render_all_images(camera_files)
+        cmd = '{} -m src.utils.figures_utils --fol {}'.format(
+            bpy.context.scene.python_cmd, mu.get_user_fol(), 'camera')
+        print('Running {}'.format(cmd))
+        mu.run_command_in_new_thread(cmd, False)
         return {"FINISHED"}
 
 
@@ -186,19 +235,17 @@ class RenderAllFigures(bpy.types.Operator):
     update_camera = True
 
     def invoke(self, context, event=None):
+        _addon().change_to_rendered_brain()
         render_all_images()
         return {"FINISHED"}
 
 
-def render_all_images():
-    camera_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.output_path), 'camera_*.pkl'))
+def render_all_images(camera_files=None):
+    if camera_files is None:
+        camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
     for camera_file in camera_files:
         load_camera(camera_file)
         camera_name = mu.namebase(camera_file)
-        for hemi in mu.HEMIS:
-            if hemi in camera_name:
-                RenderingMakerPanel.addon.show_hide_hemi(False, hemi)
-                RenderingMakerPanel.addon.show_hide_hemi(True, mu.other_hemi(hemi))
         render_image('{}_fig'.format(camera_name[len('camera') + 1:]))
 
 
@@ -228,7 +275,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     else:
         grab_camera()
         mu.change_fol_to_mmvt_root()
-        electrode_marked = RenderingMakerPanel.addon.is_current_electrode_marked()
+        electrode_marked = _addon().is_current_electrode_marked()
         script = 'src.mmvt_addon.scripts.render_image'
         cmd = '{} -m {} -s {} -a {} -q {} -b {} '.format(
             bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
@@ -238,8 +285,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
             bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.appearance_show_electrodes_layer,
             bpy.context.scene.electrodes if electrode_marked else None,
             bpy.context.scene.show_only_lead if electrode_marked else None) + \
-            '--show_connections {}'.format(
-            RenderingMakerPanel.addon.connections_visible())
+            '--show_connections {}'.format(_addon().connections_visible())
         print('Running {}'.format(cmd))
         mu.save_blender_file()
         mu.run_command_in_new_thread(cmd, queues=False)
@@ -267,7 +313,15 @@ def init(addon):
     bpy.data.objects['Target'].location.x = 0
     bpy.data.objects['Target'].location.y = 0
     bpy.data.objects['Target'].location.z = 0
+    mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
     grab_camera(None, False)
+    caera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', '*camera*.pkl'))
+    if len(caera_files) > 0:
+        files_names = [mu.namebase(fname) for fname in caera_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.camera_files = bpy.props.EnumProperty(
+            items=items, description="electrodes sources")
+        bpy.context.scene.camera_files = files_names[0]
     register()
 
 
@@ -277,11 +331,13 @@ def register():
         bpy.utils.register_class(RenderingMakerPanel)
         bpy.utils.register_class(RenderAllFigures)
 
-        # bpy.utils.register_class(CameraMode)
+        bpy.utils.register_class(CameraMode)
         bpy.utils.register_class(GrabCamera)
         bpy.utils.register_class(LoadCamera)
         bpy.utils.register_class(MirrorCamera)
         bpy.utils.register_class(RenderFigure)
+        bpy.utils.register_class(RenderPerspectives)
+
         # print('Render Panel was registered!')
     except:
         print("Can't register Render Panel!")
@@ -291,11 +347,12 @@ def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
         bpy.utils.unregister_class(RenderAllFigures)
-        # bpy.utils.unregister_class(CameraMode)
+        bpy.utils.unregister_class(CameraMode)
         bpy.utils.unregister_class(GrabCamera)
         bpy.utils.unregister_class(LoadCamera)
         bpy.utils.unregister_class(MirrorCamera)
         bpy.utils.unregister_class(RenderFigure)
+        bpy.utils.unregister_class(RenderPerspectives)
     except:
         pass
         # print("Can't unregister Render Panel!")
