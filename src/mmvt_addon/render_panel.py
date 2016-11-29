@@ -25,9 +25,9 @@ def set_render_smooth_figure(smooth_figure):
 
 
 def load_camera(camera_fname=''):
-    # if camera_fname == '':
+    if camera_fname == '':
     #     camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
-    camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
+        camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
     if op.isfile(camera_fname):
         camera_name = mu.namebase(camera_fname)
         for hemi in mu.HEMIS:
@@ -68,7 +68,7 @@ def grab_camera(self=None, do_save=True):
     bpy.context.scene.Y_location = Y_location = bpy.data.objects['Camera'].location.y
     bpy.context.scene.Z_location = Z_location = bpy.data.objects['Camera'].location.z
     if do_save:
-        if op.isdir(mu.get_user_fol(), 'camera'):
+        if op.isdir(op.join(mu.get_user_fol(), 'camera')):
             camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
             mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
             print('Camera location was saved to {}'.format(camera_fname))
@@ -205,7 +205,6 @@ class RenderFigure(bpy.types.Operator):
     update_camera = True
 
     def invoke(self, context, event=None):
-        _addon().change_to_rendered_brain()
         render_image()
         return {"FINISHED"}
 
@@ -235,7 +234,6 @@ class RenderAllFigures(bpy.types.Operator):
     update_camera = True
 
     def invoke(self, context, event=None):
-        _addon().change_to_rendered_brain()
         render_all_images()
         return {"FINISHED"}
 
@@ -246,10 +244,12 @@ def render_all_images(camera_files=None):
     for camera_file in camera_files:
         load_camera(camera_file)
         camera_name = mu.namebase(camera_file)
-        render_image('{}_fig'.format(camera_name[len('camera') + 1:]))
+        render_image('{}_fig'.format(camera_name[len('camera') + 1:]), camera_fname=camera_file)
 
 
-def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None):
+def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
+                 camera_fname=''):
+    _addon().change_to_rendered_brain()
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
     bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \
         else use_square_samples
@@ -273,16 +273,17 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     if not bpy.context.scene.render_background:
         bpy.ops.render.render(write_still=True)
     else:
-        grab_camera()
+        if camera_fname == '':
+            camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
         mu.change_fol_to_mmvt_root()
         electrode_marked = _addon().is_current_electrode_marked()
         script = 'src.mmvt_addon.scripts.render_image'
-        cmd = '{} -m {} -s {} -a {} -q {} -b {} '.format(
+        cmd = '{} -m {} -s {} -a {} -q {} -b {} -c "{}" '.format(
             bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
-            bpy.context.scene.render.resolution_percentage, bpy.context.scene.bipolar) + \
+            bpy.context.scene.render.resolution_percentage, bpy.context.scene.bipolar, camera_fname) + \
             '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} '.format(
             bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
-            bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.appearance_show_electrodes_layer,
+            bpy.context.scene.objects_show_hide_sub_cortical, bpy.context.scene.show_hide_electrodes,
             bpy.context.scene.electrodes if electrode_marked else None,
             bpy.context.scene.show_only_lead if electrode_marked else None) + \
             '--show_connections {}'.format(_addon().connections_visible())
@@ -314,14 +315,14 @@ def init(addon):
     bpy.data.objects['Target'].location.y = 0
     bpy.data.objects['Target'].location.z = 0
     mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
-    grab_camera(None, False)
+    grab_camera()
     caera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', '*camera*.pkl'))
     if len(caera_files) > 0:
         files_names = [mu.namebase(fname) for fname in caera_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.camera_files = bpy.props.EnumProperty(
             items=items, description="electrodes sources")
-        bpy.context.scene.camera_files = files_names[0]
+        bpy.context.scene.camera_files = 'camera'
     register()
 
 

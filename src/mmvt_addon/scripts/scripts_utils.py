@@ -139,7 +139,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
     else:
         utils.make_dir(logs_fol)
     if log_name == '':
-        log_name = utils.namebase(script_fname)
+        log_name = namebase(script_fname)
         if only_verbose:
             print('log name: {}'.format(log_name))
     if len(args.subjects) == 0:
@@ -256,6 +256,10 @@ def get_figures_dir(args):
 
 def get_full_atlas_name(atlas):
     return mu.get_real_atlas_name(atlas, get_mmvt_dir())
+
+
+def namebase(fname):
+    return op.splitext(op.basename(fname))[0]
 
 
 if __name__ == '__main__':
