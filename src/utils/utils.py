@@ -848,13 +848,16 @@ def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace
 def sftp_copy_subject_files(subject, necessary_files, username, domain, local_subjects_dir, remote_subject_dir,
                             password='', overwrite_files=False, print_traceback=True, port=22):
     import pysftp
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
-
     local_subject_dir = op.join(local_subjects_dir, subject)
     if password == '':
         password = ask_for_sftp_password(username)
-    with pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port) as sftp:
+    try:
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
+        sftp_con = pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port)
+    except:
+        sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+    with sftp_con as sftp:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
             if not op.isdir(op.join(local_subject_dir, fol)):

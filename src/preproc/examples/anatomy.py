@@ -51,8 +51,9 @@ def get_subject_files_using_sftp_from_ohad(subject, args):
     args.sftp = True
     args.sftp_username = 'ohadfel'
     args.sftp_domain = '127.0.0.1'
-    args.sftp_port = 3333
+    args.sftp_port = 4444
     args.sftp_subject_dir = '/media/ohadfel/New_Volume/subs/{}'.format(subject)
+    args.remote_subject_dir = '/media/ohadfel/New_Volume/subs/{}'.format(subject)
     args.function = 'prepare_local_subjects_folder'
     anat.run_on_subjects(args)
 
