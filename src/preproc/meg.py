@@ -1354,6 +1354,48 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         flag = False
     return flag
 
+
+def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False):
+    if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
+        raise Exception('read_sensors_layout: You should pick only meg or eeg!')
+    if not op.isfile(INFO):
+        raw = mne.io.read_raw_fif(RAW)
+        info = raw.info
+        utils.save(info, INFO)
+    else:
+        info = utils.load(INFO)
+    picks = mne.io.pick.pick_types(info, meg=pick_meg, eeg=pick_eeg)
+    sensors_pos = np.array([info['chs'][k]['loc'][:3] for k in picks])
+    sensors_names = np.array([info['ch_names'][k] for k in picks])
+    if 'Event' in sensors_names:
+        event_ind = np.where(sensors_names == 'Event')[0]
+        eeg_names = np.delete(sensors_names, event_ind)
+        eeg_pos = np.delete(sensors_pos, event_ind)
+    if pick_meg:
+        utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
+        output_fname = op.join(MMVT_DIR, mri_subject, 'meg', 'meg_positions.npz')
+    else:
+        utils.make_dir(op.join(MMVT_DIR, mri_subject, 'eeg'))
+        output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
+    ret = False
+    if len(sensors_pos) > 0:
+        # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
+        trans_pat = op.join(SUBJECTS_MEG_DIR, args.task, subject, '*COR*.fif')
+        trans_files = glob.glob(trans_pat)
+        if len(trans_files) == 1:
+            trans = mne.transforms.read_trans(trans_files[0])
+            head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
+            sensors_pos = mne.transforms.apply_trans(head_mri_t, sensors_pos)
+            sensors_pos *= 1000
+            np.savez(output_fname, pos=sensors_pos, names=sensors_names)
+            ret = True
+        else:
+            print('No trans files! {}'.format(trans_pat))
+    else:
+        print('No sensors found!')
+    return ret
+
+
 def plot_labels_data(plot_each_label=False):
     plt.close('all')
     for hemi in HEMIS:
@@ -1503,41 +1545,6 @@ def get_meg_files(subject, necessary_fnames, args, events):
     prepare_local_subjects_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
-def run_on_subjects(args, main_func=None):
-    subjects_flags, subjects_errors = {}, {}
-    args.sftp_password = utils.get_sftp_password(
-        args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
-        if args.sftp else ''
-    if args.sftp_sso and args.sftp_password == '':
-        args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
-
-    for (subject, mri_subject), inverse_method in product(zip(args.subject, args.mri_subject), args.inverse_method):
-        utils.make_dir(op.join(MMVT_DIR, mri_subject, 'mmvt'))
-        try:
-            print('*******************************************')
-            print('subject: {}, atlas: {}'.format(subject, args.atlas))
-            print('*******************************************')
-            if main_func is None:
-                main_func = locals()['main']
-            flags = main_func(subject, mri_subject, inverse_method, args)
-            subjects_flags[subject] = flags
-        except:
-            subjects_errors[subject] = traceback.format_exc()
-            print('Error in subject {}'.format(subject))
-            print(traceback.format_exc())
-
-    errors = defaultdict(list)
-    for subject, flags in subjects_flags.items():
-        print('subject {}:'.format(subject))
-        for flag_type, val in flags.items():
-            print('{}: {}'.format(flag_type, val))
-            if not val:
-                errors[subject].append(flag_type)
-    print('Errors:')
-    for subject, error in errors.items():
-        print('{}: {}'.format(subject, error))
-
-
 def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
     get_meg_files(subject, [inv_fname], args, conditions)
@@ -1618,10 +1625,14 @@ def main(subject, mri_subject, inverse_method, args):
         subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
     flags = {}
+
     flags = calc_evoked_wrapper(subject, conditions, args, flags)
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
     flags = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags)
+
+    if utils.should_run(args, 'read_sensors_layout'):
+        flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
 
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
@@ -1665,6 +1676,42 @@ def main(subject, mri_subject, inverse_method, args):
         calc_activity_significance(conditions, inverse_method, stcs_conds)
 
     return flags
+
+
+def run_on_subjects(args, main_func=None):
+    subjects_flags, subjects_errors = {}, {}
+    args.sftp_password = utils.get_sftp_password(
+        args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
+        if args.sftp else ''
+    if args.sftp_sso and args.sftp_password == '':
+        args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
+
+    for (subject, mri_subject), inverse_method in product(zip(args.subject, args.mri_subject), args.inverse_method):
+        utils.make_dir(op.join(MMVT_DIR, mri_subject, 'mmvt'))
+        try:
+            print('*******************************************')
+            print('subject: {}, atlas: {}'.format(subject, args.atlas))
+            print('*******************************************')
+            if main_func is None:
+                from src.preproc.meg import main as meg_main
+                main_func = meg_main
+            flags = main_func(subject, mri_subject, inverse_method, args)
+            subjects_flags[subject] = flags
+        except:
+            subjects_errors[subject] = traceback.format_exc()
+            print('Error in subject {}'.format(subject))
+            print(traceback.format_exc())
+
+    errors = defaultdict(list)
+    for subject, flags in subjects_flags.items():
+        print('subject {}:'.format(subject))
+        for flag_type, val in flags.items():
+            print('{}: {}'.format(flag_type, val))
+            if not val:
+                errors[subject].append(flag_type)
+    print('Errors:')
+    for subject, error in errors.items():
+        print('{}: {}'.format(subject, error))
 
 
 def read_cmd_args(argv=None):

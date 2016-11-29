@@ -25,34 +25,7 @@ os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 
 
 def read_eeg_sensors_layout(subject, mri_subject, args):
-    if not op.isfile(meg.INFO):
-        raw = mne.io.read_raw_fif(meg.RAW)
-        info = raw.info
-        utils.save(info, meg.INFO)
-    else:
-        info = utils.load(meg.INFO)
-    eeg_picks = mne.io.pick.pick_types(info, meg=False, eeg=True)
-    eeg_pos = np.array([info['chs'][k]['loc'][:3] for k in eeg_picks])
-    eeg_names = np.array([info['ch_names'][k] for k in eeg_picks])
-    if 'Event' in eeg_names:
-        event_ind = np.where(eeg_names == 'Event')[0]
-        eeg_names = np.delete(eeg_names, event_ind)
-        eeg_pos = np.delete(eeg_pos, event_ind)
-    # fol = op.join(MMVT_DIR, mri_subject, 'eeg')
-    # utils.make_dir(fol)
-    # output_fname = op.join(fol, 'eeg_positions.npz')
-    output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
-    if len(eeg_pos) > 0:
-        # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
-        trans_files = glob.glob(op.join(SUBJECTS_MEG_DIR, args.task, subject, '*COR*.fif'))
-        if len(trans_files) == 1:
-            trans = mne.transforms.read_trans(trans_files[0])
-            head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
-            eeg_pos = mne.transforms.apply_trans(head_mri_t, eeg_pos)
-            eeg_pos *= 1000
-            np.savez(output_fname, pos=eeg_pos, names=eeg_names)
-            return True
-    return False
+    return meg.read_sensors_layout(subject, mri_subject, args, pick_meg=False, pick_eeg=True)
 
 
 def save_evoked_to_blender(mri_subject, events, args, evoked=None):
