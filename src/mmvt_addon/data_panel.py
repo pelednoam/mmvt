@@ -303,24 +303,12 @@ def import_rois(base_path):
     bpy.ops.object.select_all(action='DESELECT')
 
 
-def create_eeg_mesh(input_file):
-    f = np.load(input_file)
-    verts = [(x, y, z) for x, y, z in f['pos']]
-    faces = [(x, y, z) for x, y, z in f['tri']]
-    print(len(verts))
-
+def create_eeg_mesh():
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     create_empty_if_doesnt_exists('Helmets', _addon().BRAIN_EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
     mu.change_layer(_addon().EEG_LAYER)
-
     current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-    # eeg_mesh = bpy.data.meshes.new('eeg_mesh')
-    # eeg_mesh.from_pydata(verts, [], faces)
-    # eeg_mesh.update()
     bpy.ops.import_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply'))
-    # mesh_obj = bpy.data.objects.new("eeg_helmet", eeg_mesh)
-    # scene = bpy.context.scene
-    # scene.objects.link(mesh_obj)
     mesh_obj = bpy.context.selected_objects[0]
     mesh_obj.name = 'eeg_helmet'
     mesh_obj.select = True
@@ -330,17 +318,6 @@ def create_eeg_mesh(input_file):
     mesh_obj.active_material = current_mat
     mesh_obj.hide = False
     return mesh_obj
-    # if act == 'import_eeg':
-    #     current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-    #     bpy.ops.import_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_mesh.ply'))
-    #     cur_obj = bpy.context.selected_objects[0]
-    #     cur_obj.select = True
-    #     bpy.ops.object.shade_smooth()
-    #     cur_obj.parent = bpy.data.objects['Helmets']
-    #     cur_obj.scale = [0.1] * 3
-    #     cur_obj.active_material = current_mat
-    #     cur_obj.hide = False
-    #     cur_obj.name = 'eeg_mesh'
 
 
 class ImportRois(bpy.types.Operator):
@@ -412,16 +389,29 @@ class ImportElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ImportMEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.import_meg_sensors"
+    bl_label = "import meg sensors"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        input_file = op.join(mu.get_user_fol(), 'meg', 'meg_positions.npz')
+        import_electrodes(input_file, _addon().MEG_LAYER, bipolar=False, parnet_name='MEG_electrodes')
+        bpy.types.Scene.meg_sensors_imported = True
+        print('MEG sensors importing is Finished ')
+        return {"FINISHED"}
+
+
 class ImportEEG(bpy.types.Operator):
-    bl_idname = "mmvt.eeg_importing"
-    bl_label = "import eeg"
+    bl_idname = "mmvt.import_eeg_sensors"
+    bl_label = "import eeg sensors"
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
         input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
         import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_electrodes')
         bpy.types.Scene.eeg_imported = True
-        print('Electrodes importing is Finished ')
+        print('EEG sensors importing is Finished ')
         return {"FINISHED"}
 
 
@@ -431,12 +421,8 @@ class CreateEEGMesh(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_mesh = create_eeg_mesh(input_file)
-        # eeg_mesh.validate(verbose=True)
-        print('Finished creating EEG Mesh')
+        create_eeg_mesh()
         return {"FINISHED"}
-
 
 
 def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
@@ -818,6 +804,7 @@ class DataMakerPanel(bpy.types.Panel):
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
+        meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_positions.npz')
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
         eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
         eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
@@ -844,9 +831,12 @@ class DataMakerPanel(bpy.types.Panel):
                 select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
                 select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
                 layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
+        if op.isfile(meg_sensors_positions_file):
+            col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
+            col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
         if op.isfile(eeg_sensors_positions_file):
-            col.operator("mmvt.eeg_importing", text="Import EEG", icon='COLOR_GREEN')
-            col.operator("mmvt.eeg_mesh", text="Creating EEG mesh", icon='COLOR_GREEN')
+            col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
+            col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
         # if op.isfile(eeg_data):
         if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
             col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
@@ -887,6 +877,7 @@ def register():
         bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
         bpy.utils.register_class(AddDataToEEG)
+        bpy.utils.register_class(ImportMEGSensors)
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportEEG)
         bpy.utils.register_class(ImportRois)
@@ -907,6 +898,7 @@ def unregister():
         bpy.utils.unregister_class(AddDataNoCondsToBrain)
         bpy.utils.unregister_class(AddDataToBrain)
         bpy.utils.unregister_class(AddDataToEEG)
+        bpy.utils.unregister_class(ImportMEGSensors)
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportEEG)

@@ -37,6 +37,10 @@ def change_view3d():
             break
 
 
+def show_hide_meg_sensors(do_show):
+    bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
+
+
 def show_hide_eeg(do_show):
     bpy.context.scene.layers[_addon().EEG_LAYER] = do_show
 
@@ -215,8 +219,10 @@ def appearance_draw(self, context):
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
+    if bpy.data.objects.get('MEG_electrodes'):
+        show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
     if bpy.data.objects.get('EEG_electrodes'):
-        show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG')
+        show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(connections_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
 
@@ -281,32 +287,32 @@ class SelectionListener(bpy.types.Operator):
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
     items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
     update=appearance_show_rois_activity_update)
-# bpy.types.Scene.appearance_show_connections_layer = bpy.props.BoolProperty(
-#     default=False, description="Show connectivity", update=appearance_show_connections_layer_update)
-# bpy.types.Scene.appearance_show_electrodes_layer = bpy.props.BoolProperty(
-#     default=False, description="Show electrodes", update=appearance_show_electrodes_layer_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
-
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
     update = filter_view_type_update)
-
 bpy.types.Scene.surface_type = bpy.props.EnumProperty(
     items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
     update = surface_type_update)
-
-bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(
-    default=False, description="Show electrodes")
-
-bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(
-    default=False, description="Show EEG")
-
-bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(
-    default=False, description="Show connections")
-
+bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=2.5, default=0, update=hemis_inf_distance_update)
 bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+
+
+class ShowHideMEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_meg_sensors"
+    bl_label = "mmvt show_hide_meg_sensors"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.show_hide_meg_sensors = not bpy.context.scene.show_hide_meg_sensors
+        show_hide_meg_sensors(bpy.context.scene.show_hide_meg_sensors)
+        return {"FINISHED"}
 
 
 class ShowHideEEG(bpy.types.Operator):
@@ -391,6 +397,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(AppearanceMakerPanel)
+        bpy.utils.register_class(ShowHideMEGSensors)
         bpy.utils.register_class(ShowHideElectrodes)
         bpy.utils.register_class(ShowHideEEG)
         bpy.utils.register_class(ShowHideConnections)
@@ -402,6 +409,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(AppearanceMakerPanel)
+        bpy.utils.unregister_class(ShowHideMEGSensors)
         bpy.utils.unregister_class(ShowHideElectrodes)
         bpy.utils.unregister_class(ShowHideEEG)
         bpy.utils.unregister_class(ShowHideConnections)

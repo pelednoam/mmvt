@@ -154,6 +154,8 @@ def init(addon):
     show_hide_sub_corticals(False)
     show_hemis()
     bpy.context.scene.show_only_render = False
+    for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
+        show_hide_hierarchy(True, fol)
 
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')
