@@ -374,10 +374,8 @@ def init(addon):
     register()
     AppearanceMakerPanel.init = True
     bpy.context.scene.subcortical_layer = 'fmri'
-    # bpy.context.scene.filter_view_type = 'solid' # 'rendered'
     change_to_solid_brain()
-    # bpy.context.scene.appearance_show_rois_activity = 'rois' # 'activity'
-    show_rois()
+    # show_rois()
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
             bpy.data.objects['inflated_rh'].location[0] = 5.5

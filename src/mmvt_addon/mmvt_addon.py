@@ -249,7 +249,6 @@ def init(addon_prefs):
 def main(addon_prefs=None):
     init(addon_prefs)
     try:
-        # _listener_in_queue, _listener__out_queue = start_listener()
         current_module = sys.modules[__name__]
         appearance_panel.init(current_module)
         show_hide_panel.init(current_module)
@@ -270,9 +269,11 @@ def main(addon_prefs=None):
         stim_panel.init(current_module)
         dti_panel.init(current_module)
         connections_panel.init(current_module)
-        # listener_panel.init(current_module)
         vertex_data_panel.init(current_module)
 
+        # _listener_in_queue, _listener__out_queue = start_listener()
+        # listener_panel.init(current_module)
+        pass
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
@@ -281,7 +282,7 @@ def main(addon_prefs=None):
     show_hide_connections(False)
     show_pial()
     mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
-    # show_activity()
+
 
 
 if __name__ == "__main__":
