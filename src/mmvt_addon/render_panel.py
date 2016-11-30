@@ -3,7 +3,7 @@ import math
 import os.path as op
 import glob
 import numpy as np
-import traceback
+from queue import Queue
 import mmvt_utils as mu
 
 
@@ -22,6 +22,7 @@ def render_in_queue():
 def finish_rendering():
     RenderingMakerPanel.background_rendering = False
     RenderingMakerPanel.render_in_queue = None
+
 
 def reading_from_rendering_stdout_func():
     return RenderingMakerPanel.background_rendering
@@ -263,7 +264,6 @@ def render_all_images(camera_files=None, hide_subcorticals=False):
     if camera_files is None:
         camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
     for camera_file in camera_files:
-        # load_camera(camera_file)
         render_image(camera_fname=camera_file, hide_subcorticals=hide_subcorticals)
 
 
