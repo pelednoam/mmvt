@@ -556,11 +556,13 @@ def get_obj_hemi(obj_name):
     return hemi
 
 
-def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, read_stdout=True, read_stderr=False):
+def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, read_stdout=True, read_stderr=False,
+                              stdin_func=lambda: True, stdout_func=lambda: True, stderr_func=lambda: True):
     if queues:
         q_in, q_out = Queue(), Queue()
         thread = threading.Thread(target=run_command_and_read_queue, args=(
-            cmd, q_in, q_out, shell, read_stdin, read_stdout, read_stderr))
+            cmd, q_in, q_out, shell, read_stdin, read_stdout, read_stderr,
+            stdin_func, stdout_func, stderr_func))
     else:
         thread = threading.Thread(target=run_command, args=(cmd, shell))
         q_in, q_out = None, None
@@ -569,10 +571,11 @@ def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, rea
     return q_in, q_out
 
 
-def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, read_stdout=True, read_stderr=False):
+def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, read_stdout=True, read_stderr=False,
+                               stdin_func=lambda:True, stdout_func=lambda:True, stderr_func=lambda:True):
 
-    def write_to_stdin(proc, q_in):
-        while True:
+    def write_to_stdin(proc, q_in, while_func):
+        while while_func():
             # Get some data
             data = q_in.get()
             try:
@@ -583,9 +586,10 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
             except:
                 print("Something is wrong with the in pipe, can't write to stdin!!!")
                 print(traceback.format_exc())
+        print('End of write_to_stdin')
 
-    def read_from_stdout(proc, q_out):
-        while True:
+    def read_from_stdout(proc, q_out, while_func):
+        while while_func():
             try:
                 line = proc.stdout.readline()
                 if line != b'':
@@ -594,9 +598,10 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
             except:
                 print('Error in reading stdout!!!')
                 print(traceback.format_exc())
+        print('End of read_from_stdout')
 
-    def read_from_stderr(proc):
-        while True:
+    def read_from_stderr(proc, while_func):
+        while while_func():
             try:
                 line = proc.stderr.readline()
                 line = line.decode(sys.getfilesystemencoding(), 'ignore')
@@ -605,19 +610,20 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
             except:
                 print('Error in reading stderr!!!')
                 print(traceback.format_exc())
+        print('End of read_from_stderr')
 
     stdout = PIPE if read_stdout else None
     stdin = PIPE if read_stdin else None
     stderr = PIPE if read_stderr else None
     p = Popen(cmd, shell=shell, stdout=stdout, stdin=stdin, stderr=stderr, bufsize=1, close_fds=True) #, universal_newlines=True)
     if read_stdin:
-        thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
+        thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in, stdin_func))
         thread_write_to_stdin.start()
     if read_stdout:
-        thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+        thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out, stdout_func))
         thread_read_from_stdout.start()
     if read_stderr:
-        thread_read_from_stderr = threading.Thread(target=read_from_stderr, args=(p, ))
+        thread_read_from_stderr = threading.Thread(target=read_from_stderr, args=(p, stderr_func))
         thread_read_from_stderr.start()
 
 

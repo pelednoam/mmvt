@@ -20,13 +20,11 @@ def render_in_queue():
 
 
 def finish_rendering():
-    try:
-        RenderingMakerPanel.background_rendering = False
-        RenderingMakerPanel.render_in_queue.close()
-        RenderingMakerPanel.render_in_queue = None
-    except:
-        print(traceback.format_exc())
-        print('Error in finish_rendering')
+    RenderingMakerPanel.background_rendering = False
+    RenderingMakerPanel.render_in_queue = None
+
+def reading_from_rendering_stdout_func():
+    return RenderingMakerPanel.background_rendering
 
 
 def camera_files_update(self, context):
@@ -312,45 +310,10 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         print('Running {}'.format(cmd))
         RenderingMakerPanel.background_rendering = True
         mu.save_blender_file()
-        _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(cmd, read_stderr=False, read_stdin=False)
+        _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(
+            cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
         # mu.run_command_in_new_thread(cmd, queues=False)
     print("Finished")
-
-
-# class RenderingListener(bpy.types.Operator):
-#     bl_idname = 'mmvt.rendering_listener'
-#     bl_label = 'rendering_listener'
-#     bl_options = {'UNDO'}
-#     press_time = time.time()
-#     running = False
-#
-#     def modal(self, context, event):
-#         if not RenderingMakerPanel.render_in_queue is None:
-#             from queue import Empty
-#             try:
-#                 print('render_in_queue.get')
-#                 rendering_data = RenderingMakerPanel.render_in_queue.get(block=False)
-#                 try:
-#                     rendering_data = rendering_data.decode(sys.getfilesystemencoding(), 'ignore')
-#                     print('rendering_data')
-#                     if 'finish' in rendering_data.lower():
-#                         print('Finish rendering!')
-#                     print('stdout from rendering: {}'.format(rendering_data))
-#                 except:
-#                     print("Can't read the stdout from the rendering")
-#             except Empty:
-#                 pass
-#
-#         return {'PASS_THROUGH'}
-#
-#     def invoke(self, context, event=None):
-#         return {'RUNNING_MODAL'}
-#
-#     def execute(self, context):
-#         if not self.running:
-#             context.window_manager.modal_handler_add(self)
-#             self.running = True
-#         return {'RUNNING_MODAL'}
 
 
 class RenderingMakerPanel(bpy.types.Panel):
