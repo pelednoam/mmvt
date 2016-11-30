@@ -3,6 +3,7 @@ import connections_panel
 import electrodes_panel
 import mmvt_utils as mu
 import time
+import sys
 
 
 def _addon():
@@ -272,6 +273,21 @@ class SelectionListener(bpy.types.Operator):
         if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
             self.press_time = time.time()
             self.right_clicked = True
+
+        if not _addon().render_in_queue() is None:
+            from queue import Empty
+            try:
+                rendering_data = _addon().render_in_queue().get(block=False)
+                try:
+                    rendering_data = rendering_data.decode(sys.getfilesystemencoding(), 'ignore')
+                    if '*** finish rendering! ***' in rendering_data.lower():
+                        print('Finish rendering!')
+                        _addon().finish_rendering()
+                except:
+                    print("Can't read the stdout from the rendering")
+            except Empty:
+                pass
+
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event=None):

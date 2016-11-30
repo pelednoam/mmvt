@@ -262,5 +262,11 @@ def namebase(fname):
     return op.splitext(op.basename(fname))[0]
 
 
+def stdout_print(str):
+    sys.stdout.write(str)
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+
+
 if __name__ == '__main__':
     init_mmvt_addon()

@@ -556,10 +556,11 @@ def get_obj_hemi(obj_name):
     return hemi
 
 
-def run_command_in_new_thread(cmd, queues=True, shell=True):
+def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, read_stdout=True, read_stderr=False):
     if queues:
         q_in, q_out = Queue(), Queue()
-        thread = threading.Thread(target=run_command_and_read_queue, args=(cmd, q_in, q_out, shell))
+        thread = threading.Thread(target=run_command_and_read_queue, args=(
+            cmd, q_in, q_out, shell, read_stdin, read_stdout, read_stderr))
     else:
         thread = threading.Thread(target=run_command, args=(cmd, shell))
         q_in, q_out = None, None
@@ -568,7 +569,7 @@ def run_command_in_new_thread(cmd, queues=True, shell=True):
     return q_in, q_out
 
 
-def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
+def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, read_stdout=True, read_stderr=False):
 
     def write_to_stdin(proc, q_in):
         while True:
@@ -598,19 +599,26 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True):
         while True:
             try:
                 line = proc.stderr.readline()
-                if line != b'':
+                line = line.decode(sys.getfilesystemencoding(), 'ignore')
+                if line != '':
                     print('stderr: {}'.format(line))
             except:
                 print('Error in reading stderr!!!')
                 print(traceback.format_exc())
 
-    p = Popen(cmd, shell=shell, stdout=PIPE, stdin=PIPE, stderr=PIPE, bufsize=1) #, universal_newlines=True)
-    thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
-    thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
-    thread_read_from_stderr = threading.Thread(target=read_from_stderr, args=(p, ))
-    thread_write_to_stdin.start()
-    thread_read_from_stdout.start()
-    thread_read_from_stderr.start()
+    stdout = PIPE if read_stdout else None
+    stdin = PIPE if read_stdin else None
+    stderr = PIPE if read_stderr else None
+    p = Popen(cmd, shell=shell, stdout=stdout, stdin=stdin, stderr=stderr, bufsize=1, close_fds=True) #, universal_newlines=True)
+    if read_stdin:
+        thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in,))
+        thread_write_to_stdin.start()
+    if read_stdout:
+        thread_read_from_stdout = threading.Thread(target=read_from_stdout, args=(p, q_out,))
+        thread_read_from_stdout.start()
+    if read_stderr:
+        thread_read_from_stderr = threading.Thread(target=read_from_stderr, args=(p, ))
+        thread_read_from_stderr.start()
 
 
 def run_command(cmd, shell=True, pipe=False):

@@ -137,6 +137,8 @@ set_render_quality = render_panel.set_render_quality
 set_render_output_path = render_panel.set_render_output_path
 set_render_smooth_figure = render_panel.set_render_smooth_figure
 render_image = render_panel.render_image
+render_in_queue = render_panel.render_in_queue
+finish_renedring = render_panel.finish_rendering
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi

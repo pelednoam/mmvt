@@ -3,8 +3,9 @@ import math
 import os.path as op
 import glob
 import numpy as np
-import time
+import traceback
 import mmvt_utils as mu
+
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
@@ -14,8 +15,23 @@ def _addon():
     return RenderingMakerPanel.addon
 
 
+def render_in_queue():
+    return RenderingMakerPanel.render_in_queue
+
+
+def finish_rendering():
+    try:
+        RenderingMakerPanel.background_rendering = False
+        RenderingMakerPanel.render_in_queue.close()
+        RenderingMakerPanel.render_in_queue = None
+    except:
+        print(traceback.format_exc())
+        print('Error in finish_rendering')
+
+
 def camera_files_update(self, context):
     load_camera()
+
 
 def set_render_quality(quality):
     bpy.context.scene.quality = quality
@@ -100,6 +116,8 @@ def render_draw(self, context):
         ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
     if perspectives_files_exist:
         layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
+    if RenderingMakerPanel.background_rendering:
+        layout.label(text='Rendering in the background...')
     layout.prop(context.scene, 'render_background')
     layout.prop(context.scene, 'smooth_figure')
     # layout.operator(CameraMode.bl_idname, text="Camera view", icon='CAMERA_DATA')
@@ -108,7 +126,7 @@ def render_draw(self, context):
         layout.prop(context.scene, 'camera_files', text='')
         layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
     layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
-    # layout.prop(context.scene, "lighting", text='Lighting')
+    layout.prop(context.scene, "lighting", text='Lighting')
     layout.prop(context.scene, "show_camera_props", text='Show camera props')
     if bpy.context.scene.show_camera_props:
         col = layout.column(align=True)
@@ -292,55 +310,47 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
             bpy.context.scene.show_only_lead if electrode_marked else None) + \
             '--show_connections {}'.format(_addon().connections_visible())
         print('Running {}'.format(cmd))
+        RenderingMakerPanel.background_rendering = True
         mu.save_blender_file()
-        mu.run_command_in_new_thread(cmd, queues=False)
-
+        _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(cmd, read_stderr=False, read_stdin=False)
+        # mu.run_command_in_new_thread(cmd, queues=False)
     print("Finished")
 
 
-class RenderingListener(bpy.types.Operator):
-    bl_idname = 'mmvt.rendering_listener'
-    bl_label = 'rendering_listener'
-    bl_options = {'UNDO'}
-    press_time = time.time()
-    running = False
-    right_clicked = False
-
-    def modal(self, context, event):
-        # def show_fcurves(obj):
-        #     mu.change_fcurves_colors(obj)
-            # mu.view_all_in_graph_editor()
-
-        if self.right_clicked:
-            if len(bpy.context.selected_objects):
-                selected_obj_name = bpy.context.selected_objects[0].name
-                selected_obj_type = mu.check_obj_type(selected_obj_name)
-                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
-                                         mu.OBJ_TYPE_EEG]:
-                    obj = bpy.data.objects.get(selected_obj_name)
-                    if obj:
-                        mu.change_fcurves_colors(obj)
-                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
-                    pial_obj_name = selected_obj_name[len('inflated_'):]
-                    pial_obj = bpy.data.objects.get(pial_obj_name)
-                    if not pial_obj is None:
-                        pial_obj.select = True
-                        mu.change_fcurves_colors(pial_obj)
-            self.right_clicked = False
-
-        if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
-            self.press_time = time.time()
-            self.right_clicked = True
-        return {'PASS_THROUGH'}
-
-    def invoke(self, context, event=None):
-        return {'RUNNING_MODAL'}
-
-    def execute(self, context):
-        if not self.running:
-            context.window_manager.modal_handler_add(self)
-            self.running = True
-        return {'RUNNING_MODAL'}
+# class RenderingListener(bpy.types.Operator):
+#     bl_idname = 'mmvt.rendering_listener'
+#     bl_label = 'rendering_listener'
+#     bl_options = {'UNDO'}
+#     press_time = time.time()
+#     running = False
+#
+#     def modal(self, context, event):
+#         if not RenderingMakerPanel.render_in_queue is None:
+#             from queue import Empty
+#             try:
+#                 print('render_in_queue.get')
+#                 rendering_data = RenderingMakerPanel.render_in_queue.get(block=False)
+#                 try:
+#                     rendering_data = rendering_data.decode(sys.getfilesystemencoding(), 'ignore')
+#                     print('rendering_data')
+#                     if 'finish' in rendering_data.lower():
+#                         print('Finish rendering!')
+#                     print('stdout from rendering: {}'.format(rendering_data))
+#                 except:
+#                     print("Can't read the stdout from the rendering")
+#             except Empty:
+#                 pass
+#
+#         return {'PASS_THROUGH'}
+#
+#     def invoke(self, context, event=None):
+#         return {'RUNNING_MODAL'}
+#
+#     def execute(self, context):
+#         if not self.running:
+#             context.window_manager.modal_handler_add(self)
+#             self.running = True
+#         return {'RUNNING_MODAL'}
 
 
 class RenderingMakerPanel(bpy.types.Panel):
@@ -350,6 +360,8 @@ class RenderingMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Render"
     addon = None
+    render_in_queue = None
+    background_rendering = False
 
     def draw(self, context):
         render_draw(self, context)
@@ -372,6 +384,8 @@ def init(addon):
         bpy.types.Scene.camera_files = bpy.props.EnumProperty(
             items=items, description="electrodes sources", update=camera_files_update)
         bpy.context.scene.camera_files = 'camera'
+    bpy.context.scene.lighting = 1.0
+    # bpy.ops.mmvt.rendering_listener()
     register()
 
 
@@ -386,7 +400,7 @@ def register():
         bpy.utils.register_class(MirrorCamera)
         bpy.utils.register_class(RenderFigure)
         bpy.utils.register_class(RenderPerspectives)
-        bpy.utils.register_class(RenderingListener)
+        # bpy.utils.register_class(RenderingListener)
         # print('Render Panel was registered!')
     except:
         print("Can't register Render Panel!")
@@ -402,7 +416,7 @@ def unregister():
         bpy.utils.unregister_class(MirrorCamera)
         bpy.utils.unregister_class(RenderFigure)
         bpy.utils.unregister_class(RenderPerspectives)
-        bpy.utils.unregister_class(RenderingListener)
+        # bpy.utils.unregister_class(RenderingListener)
     except:
         pass
         # print("Can't unregister Render Panel!")

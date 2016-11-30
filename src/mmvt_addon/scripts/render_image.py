@@ -30,6 +30,7 @@ def read_args(argv=None):
     parser.add_argument('--show_only_lead', help='show only current lead', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--curr_elec', help='current electrode', required=False, default='')
     parser.add_argument('--show_connections', help='show connections', required=False, default=None, type=su.is_true_or_none)
+    parser.add_argument('--interactive', required=False, default=1, type=su.is_true)
     args = su.parse_args(parser, argv)
     return args
 
@@ -67,11 +68,16 @@ def render_image(subject_fname):
     if op.isfile(args.camera):
         mmvt.load_camera(args.camera)
     else:
-        cont = input('No camera file was detected in the output folder, continue?')
-        if not su.is_true(cont):
+        if args.interactive:
+            cont = input('No camera file was detected in the output folder, continue?')
+            if not su.is_true(cont):
+                return
+        else:
+            su.stdout_print('No camera file was detected in the output folder!!!')
             return
     # su.save_blend_file(subject_fname)
     mmvt.render_image(args.image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
+    su.stdout_print('*** finish rendering! ***')
     su.exit_blender()
 
 
