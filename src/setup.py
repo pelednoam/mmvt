@@ -120,13 +120,17 @@ def install_reqs(only_verbose=False):
 
 
 def main(args):
-    # 1) Create links
+    # 1) Install dependencies from requirements.txt (created using pipreqs)
+    if utils.should_run(args, 'install_reqs'):
+        install_reqs(args.only_verbose)
+
+    # 2) Create links
     if utils.should_run(args, 'create_links'):
         links_created = create_links(args.links, args.gui, args.only_verbose)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
 
-    # 2) Copy resources files
+    # 3) Copy resources files
     if utils.should_run(args, 'copy_resources_files'):
         links_dir = utils.get_links_dir(args.links)
         mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
@@ -135,15 +139,12 @@ def main(args):
             print('Not all the resources files were copied to the MMVT folder.\n'.format(mmvt_root_dir) +
                   'Please copy them manually from the mmvt_code/resources folder')
 
-    # 3) Install the addon in Blender (depends on resources and links)
+    # 4) Install the addon in Blender (depends on resources and links)
     if utils.should_run(args, 'install_addon'):
         from src.mmvt_addon.scripts import install_addon
         install_addon.wrap_blender_call(args.only_verbose)
 
-    # 4) Install dependencies from requirements.txt (created using pipreqs)
-    if utils.should_run(args, 'install_reqs'):
-        install_reqs(args.only_verbose)
-        print('Finish!')
+    print('Finish!')
 
 
 if __name__ == '__main__':
