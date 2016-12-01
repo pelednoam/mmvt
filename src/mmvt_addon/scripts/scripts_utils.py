@@ -80,7 +80,7 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
         if throw_exception:
             raise Exception('No {} dir in {}!'.format(link_name, links_dir))
         else:
-            print('No {} dir!'.format(link_name))
+            print('No {} dir in {}!'.format(link_name, links_dir))
     return val
 
 
