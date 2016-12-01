@@ -86,7 +86,10 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False):
 
 def create_link(links_fol, link_name, message, gui=True, create_default_dir=False):
     if not utils.is_link(op.join(links_fol, link_name)):
-        ret = utils.message_box(message, TITLE)
+        if gui:
+            ret = utils.message_box(message, TITLE)
+        else:
+            ret = input(message)
         if ret == 1:
             fol = utils.choose_folder_gui() if gui else input()
             create_real_folder(fol)
