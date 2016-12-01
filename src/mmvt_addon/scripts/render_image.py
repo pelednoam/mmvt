@@ -19,7 +19,7 @@ def wrap_blender_call():
 def read_args(argv=None):
     parser = su.add_default_args()
     parser.add_argument('-o', '--output_path', help='output path', required=False, default='')
-    parser.add_argument('-i', '--image_name', help='image name', required=False, default='')
+    parser.add_argument('-i', '--image_name', help='image name', required=False, default='', type=su.str_arr_type)
     parser.add_argument('-q', '--quality', help='render quality', required=False, default=60, type=int)
     parser.add_argument('-c', '--camera', help='camera fname', required=False, default='', type=su.str_arr_type)
     parser.add_argument('--smooth_figure', help='smooth figure', required=False, default=False, type=su.is_true)
@@ -41,7 +41,7 @@ def render_image(subject_fname):
     subject = su.namebase(subject_fname).split('_')[0]
     if args.output_path == '':
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')
-    for camera in args.camera:
+    for image_name, camera in zip(args.image_name, args.camera):
         if camera == '':
             camera = op.join(mmvt_dir, subject, 'camera', 'camera.pkl')
         print('Camera fname: {}'.format(camera))
@@ -77,7 +77,7 @@ def render_image(subject_fname):
                 su.stdout_print('No camera file was detected in the output folder!!!')
                 return
         # su.save_blend_file(subject_fname)
-        mmvt.render_image(args.image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
+        mmvt.render_image(image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
     su.stdout_print('*** finish rendering! ***')
     su.exit_blender()
 

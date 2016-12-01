@@ -1,3 +1,5 @@
+import traceback
+
 def bool_arr_type(var): return var
 def str_arr_type(var): return var
 def int_arr_type(var): return var
@@ -64,6 +66,7 @@ def is_true(val):
         elif is_int(val):
             return bool(int(val))
         else:
+            print(traceback.format_exc())
             raise Exception('Wrong value for boolean variable')
     else:
         return bool(val)

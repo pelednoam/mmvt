@@ -280,8 +280,11 @@ class RenderAllFigures(bpy.types.Operator):
 def render_all_images(camera_files=None, hide_subcorticals=False):
     if camera_files is None:
         camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
-    for camera_file in camera_files:
-        render_image(camera_fname=camera_file, hide_subcorticals=hide_subcorticals)
+    if bpy.context.scene.render_background:
+        render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
+    else:
+        for camera_file in camera_files:
+            render_image(camera_fname=camera_file, hide_subcorticals=hide_subcorticals)
 
 
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
@@ -293,24 +296,32 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         bpy.context.scene.render_background = render_background
     if camera_fname == '':
         camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
-    if image_name == '':
-        cur_frame = bpy.context.scene.frame_current
-        camera_name = mu.namebase(camera_fname)
-        image_name = '{}_{}'.format(camera_name[len('camera') + 1:], cur_frame)
+    camera_fnames = [camera_fname] if isinstance(camera_fname, str) else camera_fname
+    images_names = []
+    for camera_fname in camera_fnames:
+        if image_name == '':
+            cur_frame = bpy.context.scene.frame_current
+            camera_name = mu.namebase(camera_fname)
+            images_names.append('{}_{}'.format(camera_name[len('camera') + 1:], cur_frame))
+        else:
+            images_names.append(image_name)
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
-    bpy.context.scene.render.filepath = op.join(image_fol, image_name)
     if not bpy.context.scene.render_background:
-        print('file name: {}'.format(op.join(image_fol, image_name)))
-        print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
-        print("Rendering...")
-        _addon().change_to_rendered_brain()
-        if hide_subcorticals:
-            _addon().show_hide_sub_corticals()
-        bpy.ops.render.render(write_still=True)
+        for image_name, camera_fname in zip(images_names, camera_fnames):
+            bpy.context.scene.render.filepath = op.join(image_fol, image_name)
+            print('file name: {}'.format(op.join(image_fol, image_name)))
+            print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
+            print("Rendering...")
+            _addon().change_to_rendered_brain()
+            if hide_subcorticals:
+                _addon().show_hide_sub_corticals()
+            bpy.ops.render.render(write_still=True)
         print("Finished")
     else:
-        render_func = partial(render_in_background, image_name=image_name, image_fol=image_fol,
-                              camera_fname=camera_fname, hide_subcorticals=hide_subcorticals)
+        camera_fnames = ','.join(camera_fnames)
+        images_names = ','.join(images_names)
+        render_func = partial(render_in_background, image_name=images_names, image_fol=image_fol,
+                              camera_fname=camera_fnames, hide_subcorticals=hide_subcorticals)
         put_func_in_queue(render_func)
         if queue_len() == 1:
             run_func_in_queue()
@@ -325,7 +336,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals)
         bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
         image_name, image_fol, bpy.context.scene.render.resolution_percentage,
         bpy.context.scene.bipolar, camera_fname) + \
-        '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} '.format(
+        '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} --interactive 0'.format(
         bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
         hide_subs_in_background, bpy.context.scene.show_hide_electrodes,
         bpy.context.scene.electrodes if electrode_marked else None,
