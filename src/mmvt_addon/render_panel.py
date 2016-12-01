@@ -332,16 +332,16 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals)
     mu.change_fol_to_mmvt_root()
     electrode_marked = _addon().is_current_electrode_marked()
     script = 'src.mmvt_addon.scripts.render_image'
-    cmd = '{} -m {} -s {} -a {} -i {} -o {} -q {} -b {} -c "{}" '.format(
+    cmd = '{} -m {} -s {} -a {} -i {} -o {} -q {} -b {} -c "{}"'.format(
         bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
         image_name, image_fol, bpy.context.scene.render.resolution_percentage,
         bpy.context.scene.bipolar, camera_fname) + \
-        '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} --interactive 0'.format(
+        ' --hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {}'.format(
         bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
         hide_subs_in_background, bpy.context.scene.show_hide_electrodes,
         bpy.context.scene.electrodes if electrode_marked else None,
         bpy.context.scene.show_only_lead if electrode_marked else None) + \
-        '--show_connections {}'.format(_addon().connections_visible())
+        ' --show_connections {}  --interactive 0'.format(_addon().connections_visible())
     print('Running {}'.format(cmd))
     RenderingMakerPanel.background_rendering = True
     mu.save_blender_file()

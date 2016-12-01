@@ -66,8 +66,7 @@ def is_true(val):
         elif is_int(val):
             return bool(int(val))
         else:
-            print(traceback.format_exc())
-            raise Exception('Wrong value for boolean variable')
+            raise Exception('Wrong value for boolean variable ("{}")'.format(val))
     else:
         return bool(val)
 
