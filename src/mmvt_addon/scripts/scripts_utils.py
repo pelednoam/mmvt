@@ -78,7 +78,7 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
         val = os.environ.get(var_name, '')
     if not op.isdir(val):
         if throw_exception:
-            raise Exception('No {} dir!'.format(link_name))
+            raise Exception('No {} dir in {}!'.format(link_name, links_dir))
         else:
             print('No {} dir!'.format(link_name))
     return val
