@@ -61,12 +61,20 @@ def is_true(val):
             return True
         elif val.lower() in ['false', 'no', 'n']:
             return False
-        elif val.isnumeric():
+        elif is_int(val):
             return bool(int(val))
         else:
             raise Exception('Wrong value for boolean variable')
     else:
         return bool(val)
+
+
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
 
 
 def is_true_or_none(val):

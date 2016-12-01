@@ -275,9 +275,8 @@ class SelectionListener(bpy.types.Operator):
             self.right_clicked = True
 
         if not _addon().render_in_queue() is None:
-            from queue import Empty
-            try:
-                rendering_data = _addon().render_in_queue().get(block=False)
+            rendering_data = mu.queue_get(_addon().render_in_queue())
+            if not rendering_data is None:
                 try:
                     rendering_data = rendering_data.decode(sys.getfilesystemencoding(), 'ignore')
                     if '*** finish rendering! ***' in rendering_data.lower():
@@ -285,8 +284,6 @@ class SelectionListener(bpy.types.Operator):
                         _addon().finish_rendering()
                 except:
                     print("Can't read the stdout from the rendering")
-            except Empty:
-                pass
 
         return {'PASS_THROUGH'}
 

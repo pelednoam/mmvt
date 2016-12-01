@@ -65,20 +65,24 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
 
 
 def combine_four_brain_perspectives(fol, dpi=100, facecolor='black', crop=True, **kargs):
-    figs = [[f for f in glob.glob(op.join(fol, '*lateral*rh*')) if 'crop' not in f][0],
-            [f for f in glob.glob(op.join(fol, '*lateral*lh*')) if 'crop' not in f][0],
-            [f for f in glob.glob(op.join(fol, '*medial*rh*')) if 'crop' not in f][0],
-            [f for f in glob.glob(op.join(fol, '*medial*lh*')) if 'crop' not in f][0]]
-    if crop:
-        crop_figs = []
-        for fig in figs:
-            new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
-            crop_figs.append(new_fig_fname)
-            crop_image(fig, new_fig_fname, dx=50, dw=50)
-    new_image_fname = combine_four_images(
-        crop_figs if crop else figs, op.join(fol, 'all_perspectives.png'), dpi, facecolor)
-    if crop:
-        crop_image(new_image_fname, new_image_fname, dx=30, dh=20)
+    figs = []
+    for patt in ['*lateral*rh*', '*lateral*lh*', '*medial*rh*', '*medial*lh*']:
+        files = [f for f in glob.glob(op.join(fol, patt)) if 'crop' not in f]
+        if len(files) == 1:
+            figs.append(files[0])
+        elif len(files) == 0:
+            print("Couldn't find {} in {} !!!".format(patt, fol))
+    if len(figs) == 4:
+        if crop:
+            crop_figs = []
+            for fig in figs:
+                new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
+                crop_figs.append(new_fig_fname)
+                crop_image(fig, new_fig_fname, dx=50, dw=50)
+        new_image_fname = combine_four_images(
+            crop_figs if crop else figs, op.join(fol, 'all_perspectives.png'), dpi, facecolor)
+        if crop:
+            crop_image(new_image_fname, new_image_fname, dx=30, dh=20)
 
 
 def combine_four_images(figs, new_image_fname, dpi=100,

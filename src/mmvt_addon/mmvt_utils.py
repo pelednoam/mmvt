@@ -31,7 +31,7 @@ import cProfile
 from itertools import chain
 from sys import platform as _platform
 from datetime import datetime
-
+from queue import Empty
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
@@ -1141,3 +1141,10 @@ def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=Fa
             data_max = np.max(data)
             data_min = np.min(data)
     return data_max, data_min
+
+
+def queue_get(queue):
+    try:
+        return queue.get(block=False)
+    except Empty:
+        return None

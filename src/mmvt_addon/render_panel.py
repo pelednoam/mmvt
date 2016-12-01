@@ -3,7 +3,10 @@ import math
 import os.path as op
 import glob
 import numpy as np
-from queue import Queue
+from queue import PriorityQueue
+from functools import partial
+import traceback
+import logging
 import mmvt_utils as mu
 
 
@@ -20,8 +23,13 @@ def render_in_queue():
 
 
 def finish_rendering():
+    logging.info('render panel: finish rendering!')
     RenderingMakerPanel.background_rendering = False
     RenderingMakerPanel.render_in_queue = None
+    pop_from_queue()
+    if queue_len() > 0:
+        logging.info('render panel: run another rendering job')
+        run_func_in_queue()
 
 
 def reading_from_rendering_stdout_func():
@@ -242,11 +250,20 @@ class RenderPerspectives(bpy.types.Operator):
         camera_files = [op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name)) for pers_name in
             ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']]
         render_all_images(camera_files, hide_subcorticals=True)
-        cmd = '{} -m src.utils.figures_utils --fol {}'.format(
-            bpy.context.scene.python_cmd, mu.get_user_fol(), 'camera')
-        print('Running {}'.format(cmd))
-        mu.run_command_in_new_thread(cmd, False)
+        if bpy.context.scene.render_background:
+            put_func_in_queue(combine_four_brain_perspectives)
+        else:
+            combine_four_brain_perspectives()
         return {"FINISHED"}
+
+
+def combine_four_brain_perspectives():
+    facecolor = 'black'
+    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives --facecolor {}'.format(
+        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures'), facecolor)
+    print('Running {}'.format(cmd))
+    logging.info('Running {}'.format(cmd))
+    mu.run_command_in_new_thread(cmd, False)
 
 
 class RenderAllFigures(bpy.types.Operator):
@@ -281,39 +298,79 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         camera_name = mu.namebase(camera_fname)
         image_name = '{}_{}'.format(camera_name[len('camera') + 1:], cur_frame)
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
-    print('file name: {}'.format(op.join(image_fol, image_name)))
     bpy.context.scene.render.filepath = op.join(image_fol, image_name)
-    # Render and save the rendered scene to file. ------------------------------
-    print('Image quality:')
-    print(bpy.context.scene.render.resolution_percentage)
-    print("Rendering...")
     if not bpy.context.scene.render_background:
+        print('file name: {}'.format(op.join(image_fol, image_name)))
+        print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
+        print("Rendering...")
         _addon().change_to_rendered_brain()
         if hide_subcorticals:
             _addon().show_hide_sub_corticals()
         bpy.ops.render.render(write_still=True)
+        print("Finished")
     else:
-        hide_subs_in_background = True if hide_subcorticals else bpy.context.scene.objects_show_hide_sub_cortical
-        mu.change_fol_to_mmvt_root()
-        electrode_marked = _addon().is_current_electrode_marked()
-        script = 'src.mmvt_addon.scripts.render_image'
-        cmd = '{} -m {} -s {} -a {} -i {} -o {} -q {} -b {} -c "{}" '.format(
-            bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
-            image_name, image_fol, bpy.context.scene.render.resolution_percentage,
-            bpy.context.scene.bipolar, camera_fname) + \
-            '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} '.format(
-            bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
-            hide_subs_in_background, bpy.context.scene.show_hide_electrodes,
-            bpy.context.scene.electrodes if electrode_marked else None,
-            bpy.context.scene.show_only_lead if electrode_marked else None) + \
-            '--show_connections {}'.format(_addon().connections_visible())
-        print('Running {}'.format(cmd))
-        RenderingMakerPanel.background_rendering = True
-        mu.save_blender_file()
-        _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(
-            cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
-        # mu.run_command_in_new_thread(cmd, queues=False)
-    print("Finished")
+        render_func = partial(render_in_background, image_name=image_name, image_fol=image_fol,
+                              camera_fname=camera_fname, hide_subcorticals=hide_subcorticals)
+        put_func_in_queue(render_func)
+        if queue_len() == 1:
+            run_func_in_queue()
+
+
+def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals):
+    hide_subs_in_background = True if hide_subcorticals else bpy.context.scene.objects_show_hide_sub_cortical
+    mu.change_fol_to_mmvt_root()
+    electrode_marked = _addon().is_current_electrode_marked()
+    script = 'src.mmvt_addon.scripts.render_image'
+    cmd = '{} -m {} -s {} -a {} -i {} -o {} -q {} -b {} -c "{}" '.format(
+        bpy.context.scene.python_cmd, script, mu.get_user(), bpy.context.scene.atlas,
+        image_name, image_fol, bpy.context.scene.render.resolution_percentage,
+        bpy.context.scene.bipolar, camera_fname) + \
+        '--hide_lh {} --hide_rh {} --hide_subs {} --show_elecs {} --curr_elec {} --show_only_lead {} '.format(
+        bpy.context.scene.objects_show_hide_lh, bpy.context.scene.objects_show_hide_rh,
+        hide_subs_in_background, bpy.context.scene.show_hide_electrodes,
+        bpy.context.scene.electrodes if electrode_marked else None,
+        bpy.context.scene.show_only_lead if electrode_marked else None) + \
+        '--show_connections {}'.format(_addon().connections_visible())
+    print('Running {}'.format(cmd))
+    RenderingMakerPanel.background_rendering = True
+    mu.save_blender_file()
+    _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(
+        cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
+    # mu.run_command_in_new_thread(cmd, queues=False)
+
+
+def queue_len():
+    return len(RenderingMakerPanel.queue.queue)
+
+
+def put_func_in_queue(func):
+    try:
+        logging.info('in put_func_in_queue')
+        RenderingMakerPanel.queue.put((mu.rand_letters(5), func))
+    except:
+        print(traceback.format_exc())
+        logging.error('Error in put_func_in_queue!')
+        logging.error(traceback.format_exc())
+
+
+def run_func_in_queue():
+    try:
+        logging.info('run_func_in_queue')
+        (_, func) = RenderingMakerPanel.queue.queue[0]
+        func()
+    except:
+        print(traceback.format_exc())
+        logging.error('Error in run_func_in_queue!')
+        logging.error(traceback.format_exc())
+
+
+def pop_from_queue():
+    try:
+        return RenderingMakerPanel.queue.get()
+    except:
+        print(traceback.format_exc())
+        logging.error('Error in pop_from_queue!')
+        logging.error(traceback.format_exc())
 
 
 class RenderingMakerPanel(bpy.types.Panel):
@@ -325,6 +382,8 @@ class RenderingMakerPanel(bpy.types.Panel):
     addon = None
     render_in_queue = None
     background_rendering = False
+    queue = None
+    item_id = 0
 
     def draw(self, context):
         render_draw(self, context)
@@ -348,7 +407,9 @@ def init(addon):
             items=items, description="electrodes sources", update=camera_files_update)
         bpy.context.scene.camera_files = 'camera'
     bpy.context.scene.lighting = 1.0
-    # bpy.ops.mmvt.rendering_listener()
+    RenderingMakerPanel.queue = PriorityQueue()
+    mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
+    logging.basicConfig(filename=op.join(mu.get_user_fol(), 'logs', 'reander_panel.log'), level=logging.DEBUG)
     register()
 
 
