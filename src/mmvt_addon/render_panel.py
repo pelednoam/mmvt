@@ -124,6 +124,7 @@ def render_draw(self, context):
         ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
     if perspectives_files_exist:
         layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
+        layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='SCENE')
     if RenderingMakerPanel.background_rendering:
         layout.label(text='Rendering in the background...')
     layout.prop(context.scene, 'render_background')
@@ -190,7 +191,6 @@ bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[], update=camera_fi
 bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
 
 
-
 class MirrorCamera(bpy.types.Operator):
     bl_idname = "mmvt.mirror_camera"
     bl_label = "Mirror Camera"
@@ -248,7 +248,8 @@ class RenderPerspectives(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        camera_files = [op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name)) for pers_name in
+        camera_files = [op.join(mu.get_user_fol(), 'camera', '{}{}.pkl'.format(
+            pers_name, '_inf' if _addon().is_inflated() else '')) for pers_name in
             ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']]
         render_all_images(camera_files, hide_subcorticals=True)
         if bpy.context.scene.render_background:
@@ -258,10 +259,20 @@ class RenderPerspectives(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class CombinePerspectives(bpy.types.Operator):
+    bl_idname = "mmvt.combine_all_perspectives"
+    bl_label = "Combine all perspectives"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        combine_four_brain_perspectives()
+        return {"FINISHED"}
+
+
 def combine_four_brain_perspectives():
     facecolor = 'black'
-    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives --facecolor {}'.format(
-        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures'), facecolor)
+    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives --inflated {} --facecolor {}'.format(
+        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures'), int(_addon().is_inflated()), facecolor)
     print('Running {}'.format(cmd))
     logging.info('Running {}'.format(cmd))
     mu.run_command_in_new_thread(cmd, False)
@@ -390,7 +401,7 @@ def update_camera_files():
         files_names = [mu.namebase(fname) for fname in camera_files]
         if _addon().is_inflated():
             files_names = [name for name in files_names if 'inf' in name]
-            files_names.append('camera.pkl')
+            files_names.append('camera')
         else:
             files_names = [name for name in files_names if 'inf' not in name]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
@@ -446,7 +457,7 @@ def register():
         bpy.utils.register_class(MirrorCamera)
         bpy.utils.register_class(RenderFigure)
         bpy.utils.register_class(RenderPerspectives)
-        # bpy.utils.register_class(RenderingListener)
+        bpy.utils.register_class(CombinePerspectives)
         # print('Render Panel was registered!')
     except:
         print("Can't register Render Panel!")
@@ -462,7 +473,7 @@ def unregister():
         bpy.utils.unregister_class(MirrorCamera)
         bpy.utils.unregister_class(RenderFigure)
         bpy.utils.unregister_class(RenderPerspectives)
-        # bpy.utils.unregister_class(RenderingListener)
+        bpy.utils.unregister_class(CombinePerspectives)
     except:
         pass
         # print("Can't unregister Render Panel!")

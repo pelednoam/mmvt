@@ -65,9 +65,11 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
-def combine_four_brain_perspectives(fol, dpi=100, facecolor='black', crop=True, **kargs):
+def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='black', crop=True, **kargs):
     figs = []
-    for patt in ['*lateral*rh*', '*lateral*lh*', '*medial*rh*', '*medial*lh*']:
+    patterns = ['*{}{}*'.format(patt, '_inf' if inflated else '') for patt in
+                ['lateral_rh', 'lateral_lh', 'medial_rh', 'medial_lh']]
+    for patt in patterns:
         files = [f for f in glob.glob(op.join(fol, patt)) if 'crop' not in f]
         if len(files) == 1:
             figs.append(files[0])
@@ -79,13 +81,16 @@ def combine_four_brain_perspectives(fol, dpi=100, facecolor='black', crop=True, 
             for fig in figs:
                 new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
                 crop_figs.append(new_fig_fname)
-                crop_image(fig, new_fig_fname, dx=50, dw=50)
+                dx = dw = 20 if inflated else 50
+                crop_image(fig, new_fig_fname, dx=dx, dw=dw)
         new_image_fname = combine_four_images(
-            crop_figs if crop else figs, op.join(fol, 'all_perspectives.png'), dpi, facecolor)
+            crop_figs if crop else figs, op.join(fol, 'splitted_lateral_medial.png'), dpi, facecolor)
         if crop:
-            crop_image(new_image_fname, new_image_fname, dx=30, dh=20)
-    for fname in glob.glob(op.join(fol, '*crop*')):
-        os.remove(fname)
+            dx = 50 if inflated else 30
+            dh = 20 if inflated else 20
+            crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
+    # for fname in glob.glob(op.join(fol, '*crop*')):
+    #     os.remove(fname)
 
 
 def combine_four_images(figs, new_image_fname, dpi=100,
@@ -206,6 +211,7 @@ if __name__ is '__main__':
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('--fol', help='folder', required=True)
+    parser.add_argument('--inflated', help='inflated', required=False, default=0, type=au.is_true)
     parser.add_argument('--dpi', required=False, default=100, type=int)
     parser.add_argument('--crop', required=False, default=1, type=au.is_true)
     parser.add_argument('--facecolor', required=False, default='black')
