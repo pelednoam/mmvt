@@ -1125,7 +1125,7 @@ def get_fcurves_ordering(obj_name, ch_names):
     return ch_inds
 
 
-def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS):
+def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):
     if data_per_hemi:
         if norm_by_percentile:
             data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
@@ -1140,7 +1140,14 @@ def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=Fa
         else:
             data_max = np.max(data)
             data_min = np.min(data)
+    if symmetric:
+        data_minmax = get_max_abs(data_max, data_min)
+        data_max, data_min = data_minmax, -data_minmax
     return data_max, data_min
+
+
+def get_max_abs(data_max, data_min):
+    return max(map(abs, [data_max, data_min]))
 
 
 def queue_get(queue):

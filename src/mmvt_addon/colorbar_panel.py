@@ -25,12 +25,20 @@ def load_colormap():
         # print('Changing {} to {}'.format(cb_obj_name, colormap[ind]))
 
 
+def get_colormap_name():
+    return bpy.context.scene.colorbar_files
+
+
 def set_colorbar_title(val):
     init = ColorbarPanel.init
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
     ColorbarPanel.init = False
     bpy.context.scene.colorbar_title = val
     ColorbarPanel.init = init
+
+
+def get_colorbar_title():
+    return bpy.context.scene.colorbar_title
 
 
 def set_colorbar_max_min(max_val, min_val, force_update=False):
@@ -43,6 +51,10 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
         ColorbarPanel.init = init
 
 
+def get_colorbar_max_min():
+    return bpy.context.scene.colorbar_max, bpy.context.scene.colorbar_min
+
+
 def set_colorbar_max(val, prec=None, check_minmax=True):
     if not check_minmax or bpy.context.scene.colorbar_max > bpy.context.scene.colorbar_min:
         _set_colorbar_min_max('max', val, prec)
@@ -53,6 +65,10 @@ def set_colorbar_max(val, prec=None, check_minmax=True):
         ColorbarPanel.init = True
 
 
+def get_colorbar_max():
+    return bpy.context.scene.colorbar_max
+
+
 def set_colorbar_min(val, prec=None, check_minmax=True):
     if not check_minmax or bpy.context.scene.colorbar_max > bpy.context.scene.colorbar_min:
         _set_colorbar_min_max('min', val, prec)
@@ -61,6 +77,10 @@ def set_colorbar_min(val, prec=None, check_minmax=True):
         ColorbarPanel.init = False
         bpy.context.scene.colorbar_min = prev_min
         ColorbarPanel.init = True
+
+
+def get_colorbar_min():
+    return bpy.context.scene.colorbar_min
 
 
 def _set_colorbar_min_max(field, val, prec):

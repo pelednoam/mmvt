@@ -52,6 +52,7 @@ read_numbers_rx = mu.read_numbers_rx
 timeit = mu.timeit
 get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
+get_max_abs = mu.get_max_abs
 
 
 def get_exisiting_dir(dirs):
@@ -288,10 +289,6 @@ def check_hemi(hemi):
     else:
         raise ValueError('wrong hemi value!')
     return hemi
-
-
-def get_max_abs(data_max, data_min):
-    return max(map(abs, [data_max, data_min]))
 
 
 def normalize_data(data, norm_by_percentile, norm_percs=None):

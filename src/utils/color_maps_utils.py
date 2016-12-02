@@ -52,14 +52,25 @@ def check_cm_mat(cm_mat):
     plt.show()
 
 
-def create_cm(cm_func, cm_name):
-    cm = cm_func()
+def get_cm_obj(cm_name):
+    cm_func = cms.get(cm_name, None)
+    if cm_func is None:
+        print('{} is not in the cms dic!'.format(cm_name))
+        return None
+    else:
+        return cm_func()
+
+
+def create_cm(cm_name):
+    cm = get_cm_obj(cm_name)
     cm_mat = color_map_to_np_mat(cm)
     # check_cm_mat(cm_mat)
     save_colors_map(cm_mat, cm_name)
     figu.plot_color_bar(1, -1, cm, do_save=True, fol=op.join(MMVT_DIR, 'color_maps'))
 
 
+cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'YlOrRd':create_YlOrRd_cm, 'jet':create_jet_cm}
+
 if __name__ == '__main__':
-    create_cm(create_YlOrRd_cm, 'YlOrRd')
-    # create_cm(create_jet_cm, 'jet')
+    create_cm('YlOrRd')
+    # create_cm('jet')

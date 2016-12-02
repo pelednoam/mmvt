@@ -7,19 +7,25 @@ import glob
 import numpy as np
 
 from src.utils import utils
+from src.utils import color_maps_utils as cmu
 
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 
-def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True):
+def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, **kargs):
     import matplotlib as mpl
-    import matplotlib.pyplot as plt
+
+    color_map_name = color_map if isinstance(color_map, str) else color_map.name
+    if color_map_name not in plt.cm.cmap_d:
+        if color_map_name in cmu.cms:
+            color_map = cmu.get_cm_obj(color_map_name)
+        else:
+            raise Exception("Can't find colormap {}!".format(color_map_name))
 
     if ax is None:
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
-    color_map_name = color_map if isinstance(color_map, str) else color_map.name
     if do_save:
         plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map_name)))
     else:
@@ -27,7 +33,7 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True)
     return cb
 
 
-def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol=''):
+def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol='', **kargs):
     import matplotlib.colors as mcolors
 
     colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
@@ -37,14 +43,14 @@ def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol=''):
     plot_color_bar(data_max, data_min, mymap, fol=fol)
 
 
-def crop_image(image_fname, new_fname, dx=0, dy=0, dw=0, dh=0):
+def crop_image(image_fname, new_fname, dx=0, dy=0, dw=0, dh=0, **kargs):
     image = Image.open(image_fname)
     w, h = image.size
     image.crop((dx, dy, w - dw, h -dh)).save(new_fname)
 
 
 def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
-                       facecolor='black'):
+                       facecolor='black', **kargs):
     image1 = Image.open(figure1_fname)
     image2 = Image.open(figure2_fname)
     if comb_dim==PICS_COMB_HORZ:
@@ -96,8 +102,7 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
         os.remove(fname)
 
 
-def combine_four_images(figs, new_image_fname, dpi=100,
-                       facecolor='black'):
+def combine_four_images(figs, new_image_fname, dpi=100, facecolor='black', **kargs):
     from PIL import Image
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -121,7 +126,7 @@ def combine_four_images(figs, new_image_fname, dpi=100,
     return new_image_fname
 
 
-def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black'):
+def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kargs):
     from PIL import Image
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
@@ -148,8 +153,7 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black'):
 
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0,
-                                 w_fac=2, h_fac=3/2, facecolor='black'):
-
+                                 w_fac=2, h_fac=3/2, facecolor='black', **kargs):
     image = Image.open(figure_fname)
     img_width, img_height = image.size
     w, h = img_width/dpi * w_fac, img_height/dpi * h_fac
@@ -174,7 +178,7 @@ def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, o
     image.crop((x_left_crop, y_top_crop, w-x_right_crop, h-y_buttom_crop)).save(image_fname)
 
 
-def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
+def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1, **kargs):
     ax_pos = ax.get_position() # get the original position
     ax_pos_new = [ax_pos.x0 * ddx + dx, ax_pos.y0  * ddy + dy,  ax_pos.width * ddw + dw, ax_pos.height * ddh + dh]
     ax.set_position(ax_pos_new) # set a new position
@@ -190,9 +194,23 @@ if __name__ is '__main__':
     parser.add_argument('--dpi', required=False, default=100, type=int)
     parser.add_argument('--crop', required=False, default=1, type=au.is_true)
     parser.add_argument('--facecolor', required=False, default='black')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='combine_four_brain_perspectives')
+
+    parser.add_argument('--data_max', required=False, default=0, type=float)
+    parser.add_argument('--data_min', required=False, default=0, type=float)
+    parser.add_argument('--figure_fname', required=False, default='')
+    parser.add_argument('--colors_map', required=False, default='')
+    parser.add_argument('--x_left_crop', required=False, default=0, type=float)
+    parser.add_argument('--x_right_crop', required=False, default=0, type=float)
+    parser.add_argument('--y_top_crop', required=False, default=0, type=float)
+    parser.add_argument('--y_buttom_crop', required=False, default=0, type=float)
+    parser.add_argument('--w_fac', required=False, default=2, type=float)
+    parser.add_argument('--h_fac', required=False, default=3/2, type=float)
+
+    parser.add_argument('-f', '--function', help='function name', required=True,
+                        default='combine_four_brain_perspectives', type=au.str_arr_type)
     args = Bag(au.parse_parser(parser))
-    locals()[args.function](**args)
+    for func in args.function:
+        locals()[func](**args)
 
     # example2()
     # combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\

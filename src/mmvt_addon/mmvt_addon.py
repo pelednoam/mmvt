@@ -195,6 +195,11 @@ set_colorbar_max = colorbar_panel.set_colorbar_max
 set_colorbar_min = colorbar_panel.set_colorbar_min
 set_colorbar_title = colorbar_panel.set_colorbar_title
 get_cm = colorbar_panel.get_cm
+get_colorbar_max_min = colorbar_panel.get_colorbar_max_min
+get_colorbar_max = colorbar_panel.get_colorbar_max
+get_colorbar_min = colorbar_panel.get_colorbar_min
+get_colorbar_title = colorbar_panel.get_colorbar_title
+get_colormap_name = colorbar_panel.get_colormap_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 

@@ -197,14 +197,14 @@ def calc_blobs_activity():
     return blobs_activity, hemis
 
 
-@mu.timeit
 def calc_colors_ratio(activity):
     norm_percs = (bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max)
     data_max, data_min = mu.get_data_max_min(
-        activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True)
+        activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True,
+        symmetric=True)
     if data_max == 0 and data_min == 0:
         print('Both data max and min are zeros!')
-        return
+        return 0, 0
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_max_min(data_max, data_min)
     _addon().set_colorbar_title('fMRI')

@@ -279,12 +279,28 @@ class CombinePerspectives(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# def combine_four_brain_perspectives():
+#     cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives '.format(
+#         bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures')) + \
+#         '--inflated {} --facecolor {}'.format(int(_addon().is_inflated()), bpy.context.scene.background_color)
+#     mu.run_command_in_new_thread(cmd, False)
+
+
 def combine_four_brain_perspectives():
-    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives '.format(
-        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures')) + \
-        '--inflated {} --facecolor {}'.format(int(_addon().is_inflated()), bpy.context.scene.background_color)
-    print('Running {}'.format(cmd))
-    logging.info('Running {}'.format(cmd))
+    data_min, data_max = _addon().get_colorbar_max_min()
+    background = bpy.context.scene.background_color
+    figure_name = 'splitted_lateral_medial_{}_{}.png'.format(
+        'inflated' if _addon().is_inflated() else 'pial', background)
+    figure_fname = op.join(mu.get_user_fol(), 'figures', figure_name)
+    colors_map = _addon().get_colormap_name().replace('-', '_')
+    x_left_crop, x_right_crop, y_top_crop, y_buttom_crop = (300, 300, 0, 0)
+    w_fac, h_fac = (1.5, 1)
+    cmd = '{} -m src.utils.figures_utils '.format(bpy.context.scene.python_cmd) + \
+        '-f combine_four_brain_perspectives,combine_brain_with_color_bar --fol {} --data_max {} --data_min {} '.format(
+        op.join(mu.get_user_fol(), 'figures'), data_max, data_min) + \
+        '--figure_fname {} --colors_map {} --x_left_crop {} --x_right_crop {} --y_top_crop {} --y_buttom_crop {} '.format(
+        figure_fname, colors_map, x_left_crop, x_right_crop, y_top_crop, y_buttom_crop) + \
+        '--w_fac {} --h_fac {} --facecolor {}'.format(w_fac, h_fac, background)
     mu.run_command_in_new_thread(cmd, False)
 
 

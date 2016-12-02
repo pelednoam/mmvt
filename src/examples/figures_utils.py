@@ -2,7 +2,6 @@ import os.path as op
 import glob
 from src.utils import figures_utils as fu
 from src.utils import utils
-from src.utils import color_maps_utils as cmu
 
 LINKS_DIR = utils.get_links_dir()
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
@@ -43,7 +42,7 @@ def example4(subject='colin27', map_name='s32_spmT', figure_name='splitted_later
     data_min = utils.ceil_floor(data_min)
     data_max = utils.ceil_floor(data_max)
     figure_fname = op.join(MMVT_DIR, subject, 'figures', figure_name)
-    colors_map = cmu.create_BuPu_YlOrRd_cm() # 'BuPu_YlOrRd'
+    colors_map = 'BuPu_YlOrRd'
     background = 'white' if 'white' in figure_name else 'black'
     fu.combine_brain_with_color_bar(
         data_max, data_min, figure_fname, colors_map,
