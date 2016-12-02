@@ -189,7 +189,7 @@ if __name__ is '__main__':
     from src.utils.utils import Bag
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('--fol', help='folder', required=True)
+    parser.add_argument('--fol', help='folder', required=False)
     parser.add_argument('--inflated', help='inflated', required=False, default=0, type=au.is_true)
     parser.add_argument('--dpi', required=False, default=100, type=int)
     parser.add_argument('--crop', required=False, default=1, type=au.is_true)
