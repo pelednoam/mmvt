@@ -162,6 +162,7 @@ def surface_type_update(self, context):
         elif is_activity():
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
+    _addon().update_camera_files()
 
 
 def show_pial():

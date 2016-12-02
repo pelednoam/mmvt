@@ -384,6 +384,21 @@ def pop_from_queue():
         logging.error(traceback.format_exc())
 
 
+def update_camera_files():
+    camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', '*camera*.pkl'))
+    if len(camera_files) > 0:
+        files_names = [mu.namebase(fname) for fname in camera_files]
+        if _addon().is_inflated():
+            files_names = [name for name in files_names if 'inf' in name]
+            files_names.append('camera.pkl')
+        else:
+            files_names = [name for name in files_names if 'inf' not in name]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.camera_files = bpy.props.EnumProperty(
+            items=items, description="electrodes sources", update=camera_files_update)
+        bpy.context.scene.camera_files = 'camera'
+
+
 class RenderingMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -410,13 +425,7 @@ def init(addon):
     bpy.data.objects['Target'].location.z = 0
     mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
     grab_camera()
-    caera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', '*camera*.pkl'))
-    if len(caera_files) > 0:
-        files_names = [mu.namebase(fname) for fname in caera_files]
-        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.camera_files = bpy.props.EnumProperty(
-            items=items, description="electrodes sources", update=camera_files_update)
-        bpy.context.scene.camera_files = 'camera'
+    update_camera_files()
     bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
