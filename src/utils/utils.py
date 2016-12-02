@@ -1556,6 +1556,10 @@ def all(arr):
     return list(set(arr))[0] == True
 
 
+def ceil_floor(x):
+    import math
+    return math.ceil(x) if x > 0 else math.floor(x)
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
