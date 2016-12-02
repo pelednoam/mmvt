@@ -41,6 +41,13 @@ def camera_files_update(self, context):
     load_camera()
 
 
+def background_color_update(self, context):
+    if bpy.context.scene.background_color == 'white':
+        bpy.data.worlds['World'].horizon_color = [1.0, 1.0, 1.0]
+    else:
+        bpy.data.worlds['World'].horizon_color = [.0, .0, .0]
+
+
 def set_render_quality(quality):
     bpy.context.scene.quality = quality
     
@@ -124,7 +131,7 @@ def render_draw(self, context):
         ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
     if perspectives_files_exist:
         layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
-        layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='SCENE')
+        layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='OUTLINER_OB_LATTICE')
     if RenderingMakerPanel.background_rendering:
         layout.label(text='Rendering in the background...')
     layout.prop(context.scene, 'render_background')
@@ -136,6 +143,7 @@ def render_draw(self, context):
         layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
     layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
     layout.prop(context.scene, "lighting", text='Lighting')
+    layout.prop(context.scene, "background_color", expand=True)
     layout.prop(context.scene, "show_camera_props", text='Show camera props')
     if bpy.context.scene.show_camera_props:
         col = layout.column(align=True)
@@ -189,6 +197,8 @@ bpy.types.Scene.lighting = bpy.props.FloatProperty(
     default=1, min=0, max=2,description="lighting", update=lighting_update)
 bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[], update=camera_files_update)
 bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.background_color = bpy.props.EnumProperty(
+    items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -270,9 +280,9 @@ class CombinePerspectives(bpy.types.Operator):
 
 
 def combine_four_brain_perspectives():
-    facecolor = 'black'
-    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives --inflated {} --facecolor {}'.format(
-        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures'), int(_addon().is_inflated()), facecolor)
+    cmd = '{} -m src.utils.figures_utils --fol {} -f combine_four_brain_perspectives '.format(
+        bpy.context.scene.python_cmd, op.join(mu.get_user_fol(), 'figures')) + \
+        '--inflated {} --facecolor {}'.format(int(_addon().is_inflated()), bpy.context.scene.background_color)
     print('Running {}'.format(cmd))
     logging.info('Running {}'.format(cmd))
     mu.run_command_in_new_thread(cmd, False)
@@ -437,7 +447,7 @@ def init(addon):
     mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
     grab_camera()
     update_camera_files()
-    bpy.context.scene.lighting = 1.0
+    # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
     logging.basicConfig(

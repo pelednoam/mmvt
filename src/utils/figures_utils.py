@@ -83,14 +83,15 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
                 crop_figs.append(new_fig_fname)
                 dx = dw = 20 if inflated else 50
                 crop_image(fig, new_fig_fname, dx=dx, dw=dw)
+            fig_name = 'splitted_lateral_medial_{}_{}.png'.format('inflated' if inflated else 'pial', facecolor)
         new_image_fname = combine_four_images(
-            crop_figs if crop else figs, op.join(fol, 'splitted_lateral_medial.png'), dpi, facecolor)
+            crop_figs if crop else figs, op.join(fol, fig_name), dpi, facecolor)
         if crop:
             dx = 50 if inflated else 30
             dh = 20 if inflated else 20
             crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
-    # for fname in glob.glob(op.join(fol, '*crop*')):
-    #     os.remove(fname)
+    for fname in glob.glob(op.join(fol, '*crop*')):
+        os.remove(fname)
 
 
 def combine_four_images(figs, new_image_fname, dpi=100,
