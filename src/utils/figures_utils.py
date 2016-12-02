@@ -2,6 +2,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import os.path as op
+import os
 import glob
 import numpy as np
 
@@ -83,6 +84,8 @@ def combine_four_brain_perspectives(fol, dpi=100, facecolor='black', crop=True, 
             crop_figs if crop else figs, op.join(fol, 'all_perspectives.png'), dpi, facecolor)
         if crop:
             crop_image(new_image_fname, new_image_fname, dx=30, dh=20)
+    for fname in glob.glob(op.join(fol, '*crop*')):
+        os.remove(fname)
 
 
 def combine_four_images(figs, new_image_fname, dpi=100,

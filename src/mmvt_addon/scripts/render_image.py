@@ -41,41 +41,41 @@ def render_image(subject_fname):
     subject = su.namebase(subject_fname).split('_')[0]
     if args.output_path == '':
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')
+    su.make_dir(args.output_path)
+    mmvt = su.init_mmvt_addon()
+    mmvt.set_render_quality(args.quality)
+    mmvt.set_render_output_path(args.output_path)
+    mmvt.set_render_smooth_figure(args.smooth_figure)
+    if not args.hide_lh is None:
+        mmvt.show_hide_hemi(args.hide_lh, 'lh')
+    if not args.hide_rh is None:
+        mmvt.show_hide_hemi(args.hide_rh, 'rh')
+    if not args.hide_subs is None:
+        mmvt.show_hide_sub_corticals(args.hide_subs)
+    if not args.show_elecs is None:
+        mmvt.show_electrodes(args.show_elecs)
+    if not args.show_only_lead is None:
+        print('Showing only the current lead: {}'.format(args.show_only_lead))
+        mmvt.set_show_only_lead(args.show_only_lead)
+    if args.curr_elec not in ['', 'None']:
+        print('Setting current electrode to {}'.format(args.curr_elec))
+        mmvt.set_current_electrode(args.curr_elec)
+    if not args.show_connections is None:
+        mmvt.show_hide_connections(args.show_connections)
     for image_name, camera in zip(args.image_name, args.camera):
         if camera == '':
             camera = op.join(mmvt_dir, subject, 'camera', 'camera.pkl')
         print('Camera fname: {}'.format(camera))
-        su.make_dir(args.output_path)
-        mmvt = su.init_mmvt_addon()
-        mmvt.set_render_quality(args.quality)
-        mmvt.set_render_output_path(args.output_path)
-        mmvt.set_render_smooth_figure(args.smooth_figure)
-        if not args.hide_lh is None:
-            mmvt.show_hide_hemi(args.hide_lh, 'lh')
-        if not args.hide_rh is None:
-            mmvt.show_hide_hemi(args.hide_rh, 'rh')
-        if not args.hide_subs is None:
-            mmvt.show_hide_sub_corticals(args.hide_subs)
-        if not args.show_elecs is None:
-            mmvt.show_electrodes(args.show_elecs)
-        if not args.show_only_lead is None:
-            print('Showing only the current lead: {}'.format(args.show_only_lead))
-            mmvt.set_show_only_lead(args.show_only_lead)
-        if args.curr_elec not in ['', 'None']:
-            print('Setting current electrode to {}'.format(args.curr_elec))
-            mmvt.set_current_electrode(args.curr_elec)
-        if not args.show_connections is None:
-            mmvt.show_hide_connections(args.show_connections)
         if op.isfile(camera):
             mmvt.load_camera(camera)
         else:
             if args.interactive:
                 cont = input('No camera file was detected in the output folder, continue?')
                 if not su.is_true(cont):
-                    return
+                    continue
             else:
                 su.stdout_print('No camera file was detected in the output folder!!!')
-                return
+                continue
         # su.save_blend_file(subject_fname)
         mmvt.render_image(image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
     su.stdout_print('*** finish rendering! ***')

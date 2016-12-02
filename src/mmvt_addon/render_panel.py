@@ -30,6 +30,7 @@ def finish_rendering():
     if queue_len() > 0:
         logging.info('render panel: run another rendering job')
         run_func_in_queue()
+    # logging.handlers[0].flush()
 
 
 def reading_from_rendering_stdout_func():
@@ -251,7 +252,7 @@ class RenderPerspectives(bpy.types.Operator):
             ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']]
         render_all_images(camera_files, hide_subcorticals=True)
         if bpy.context.scene.render_background:
-            put_func_in_queue(combine_four_brain_perspectives)
+            put_func_in_queue(combine_four_brain_perspectives, pop_immediately=True)
         else:
             combine_four_brain_perspectives()
         return {"FINISHED"}
@@ -280,11 +281,7 @@ class RenderAllFigures(bpy.types.Operator):
 def render_all_images(camera_files=None, hide_subcorticals=False):
     if camera_files is None:
         camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
-    if bpy.context.scene.render_background:
-        render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
-    else:
-        for camera_file in camera_files:
-            render_image(camera_fname=camera_file, hide_subcorticals=hide_subcorticals)
+    render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
 
 
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
@@ -354,10 +351,11 @@ def queue_len():
     return len(RenderingMakerPanel.queue.queue)
 
 
-def put_func_in_queue(func):
+def put_func_in_queue(func, pop_immediately=False):
     try:
         logging.info('in put_func_in_queue')
-        RenderingMakerPanel.queue.put((mu.rand_letters(5), func))
+        RenderingMakerPanel.queue.put((RenderingMakerPanel.item_id, func, pop_immediately))
+        RenderingMakerPanel.item_id += 1
     except:
         print(traceback.format_exc())
         logging.error('Error in put_func_in_queue!')
@@ -367,8 +365,10 @@ def put_func_in_queue(func):
 def run_func_in_queue():
     try:
         logging.info('run_func_in_queue')
-        (_, func) = RenderingMakerPanel.queue.queue[0]
+        (_, func, pop_immediately) = RenderingMakerPanel.queue.queue[0]
         func()
+        if pop_immediately:
+            pop_from_queue()
     except:
         print(traceback.format_exc())
         logging.error('Error in run_func_in_queue!')
@@ -420,7 +420,9 @@ def init(addon):
     bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
-    logging.basicConfig(filename=op.join(mu.get_user_fol(), 'logs', 'reander_panel.log'), level=logging.DEBUG)
+    logging.basicConfig(
+        filename=op.join(mu.get_user_fol(), 'logs', 'reander_panel.log'),
+        level=logging.DEBUG, format='%(asctime)-15s %(levelname)8s %(name)s %(message)s')
     register()
 
 

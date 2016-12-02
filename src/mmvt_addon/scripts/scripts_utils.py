@@ -181,6 +181,8 @@ def get_subject_fname(args):
 def create_call_args(args):
     call_args = ''
     for arg, value in args.items():
+        if isinstance(value, list):
+            value = ','.join(value)
         call_args += '--{} "{}" '.format(arg, value)
     return call_args
 
