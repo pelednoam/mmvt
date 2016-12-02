@@ -17,12 +17,16 @@ def wrap_blender_call():
 
 
 def render_image(subject, atlas, image_name, output_path, quality=60, inflated=False, inflated_ratio=1,
-                 background_color='black', smooth_figure=False, hide_lh=False, hide_rh=False, hide_subs=False,
-                 show_elecs=False, bipolar=False, show_only_lead=False, curr_elec='', show_connections=False,
-                 interactive=True, blender_fol='', subjects=''):
-    camera = [op.join(su.get_mmvt_dir(), subject, 'camera', 'camera_{}.pkl'.format(camera_name)) for camera_name in image_name]
+                 background_color='black', lighting=1.0, smooth_figure=False, hide_lh=False, hide_rh=False,
+                 hide_subs=False, show_elecs=False, bipolar=False, show_only_lead=False, curr_elec='',
+                 show_connections=False, interactive=True, blender_fol='', subjects=''):
+    image_name = [image_name] if isinstance(image_name, str) else image_name
+    camera = [op.join(su.get_mmvt_dir(), subject, 'camera', 'camera_{}{}.pkl'.format(
+        camera_name, '_inf' if inflated else '')) for camera_name in image_name]
+    image_name = ['{}_{}_{}'.format(name, 'inflated_{}'.format(inflated_ratio)if inflated else 'pial',
+                                    background_color) for name in image_name]
     camera = ','.join(camera)
-    image_name = ','.join(image_name) if isinstance(image_name, list) else image_name
+    image_name = ','.join(image_name)
     args = su.Bag(locals())
     su.call_script(__file__, args)
 
@@ -36,6 +40,7 @@ def read_args(argv=None):
     parser.add_argument('--inflated', required=False, default=0, type=su.is_true)
     parser.add_argument('--inflated_ratio', required=False, default=1.0, type=float)
     parser.add_argument('--background_color', required=False, default='black')
+    parser.add_argument('--lighting', required=False, default=1.0, type=float)
     parser.add_argument('--smooth_figure', help='smooth figure', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=None, type=su.is_true_or_none)
@@ -80,6 +85,7 @@ def render_image_blender(subject_fname):
         mmvt.show_inflated()
         mmvt.set_inflated_ratio = args.inflated_ratio
     mmvt.set_background_color(args.background_color)
+    mmvt.set_lighting(args.lighting)
     for image_name, camera in zip(args.image_name, args.camera):
         if camera == '':
             camera = op.join(mmvt_dir, subject, 'camera', 'camera.pkl')

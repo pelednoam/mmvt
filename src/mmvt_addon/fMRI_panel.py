@@ -118,6 +118,7 @@ def prev_cluster():
 
 
 def fmri_clusters_labels_files_update(self, context):
+    #todo: BUG! show the right data only if plotting first the fMRI data!!!
     if fMRIPanel.init:
         update_clusters()
 
@@ -202,6 +203,10 @@ def calc_colors_ratio(activity):
     data_max, data_min = mu.get_data_max_min(
         activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True,
         symmetric=True)
+    output_fname = op.join(mu.get_user_fol(), 'fmri','fmri_blobs_{}_minmax.pkl'.format(
+            bpy.context.scene.fmri_clusters_labels_files))
+    print('Saving {}'.format(output_fname))
+    mu.save((data_min, data_max), output_fname)
     if data_max == 0 and data_min == 0:
         print('Both data max and min are zeros!')
         return 0, 0

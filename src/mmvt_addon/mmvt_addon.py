@@ -141,6 +141,7 @@ render_in_queue = render_panel.render_in_queue
 finish_rendering = render_panel.finish_rendering
 update_camera_files = render_panel.update_camera_files
 set_background_color = render_panel.set_background_color
+set_lighting = render_panel.set_lighting
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi

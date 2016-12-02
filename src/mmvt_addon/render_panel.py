@@ -175,7 +175,10 @@ def update_camera(self=None, context=None):
 
 def lighting_update(self, context):
     bpy.data.materials['light'].node_tree.nodes["Emission"].inputs[1].default_value = bpy.context.scene.lighting
-    pass
+
+
+def set_lighting(val):
+    bpy.context.scene.lighting = val
 
 
 def mirror():
