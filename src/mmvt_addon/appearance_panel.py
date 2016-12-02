@@ -112,6 +112,10 @@ def inflating_update(self, context):
     bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
 
 
+def set_inflated_ratio(ratio):
+    bpy.context.scene.inflating = ratio
+
+
 def appearance_show_rois_activity_update(self, context):
     # todo: Figure out why the hell
     for _ in range(2):

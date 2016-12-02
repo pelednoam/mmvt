@@ -466,6 +466,8 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
 
 def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrite_surf_data=True,
                               overwrite_volume=True, target_subject=''):
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')
     if target_subject == '':
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))

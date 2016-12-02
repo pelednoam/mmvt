@@ -16,12 +16,26 @@ def wrap_blender_call():
     su.call_script(__file__, args)
 
 
+def render_image(subject, atlas, image_name, output_path, quality=60, inflated=False, inflated_ratio=1,
+                 background_color='black', smooth_figure=False, hide_lh=False, hide_rh=False, hide_subs=False,
+                 show_elecs=False, bipolar=False, show_only_lead=False, curr_elec='', show_connections=False,
+                 interactive=True, blender_fol='', subjects=''):
+    camera = [op.join(su.get_mmvt_dir(), subject, 'camera', 'camera_{}.pkl'.format(camera_name)) for camera_name in image_name]
+    camera = ','.join(camera)
+    image_name = ','.join(image_name) if isinstance(image_name, list) else image_name
+    args = su.Bag(locals())
+    su.call_script(__file__, args)
+
+
 def read_args(argv=None):
     parser = su.add_default_args()
     parser.add_argument('-o', '--output_path', help='output path', required=False, default='')
     parser.add_argument('-i', '--image_name', help='image name', required=False, default='', type=su.str_arr_type)
     parser.add_argument('-q', '--quality', help='render quality', required=False, default=60, type=int)
     parser.add_argument('-c', '--camera', help='camera fname', required=False, default='', type=su.str_arr_type)
+    parser.add_argument('--inflated', required=False, default=0, type=su.is_true)
+    parser.add_argument('--inflated_ratio', required=False, default=1.0, type=float)
+    parser.add_argument('--background_color', required=False, default='black')
     parser.add_argument('--smooth_figure', help='smooth figure', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=None, type=su.is_true_or_none)
@@ -35,7 +49,7 @@ def read_args(argv=None):
     return args
 
 
-def render_image(subject_fname):
+def render_image_blender(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
     subject = su.namebase(subject_fname).split('_')[0]
@@ -62,6 +76,10 @@ def render_image(subject_fname):
         mmvt.set_current_electrode(args.curr_elec)
     if not args.show_connections is None:
         mmvt.show_hide_connections(args.show_connections)
+    if args.inflated:
+        mmvt.show_inflated()
+        mmvt.set_inflated_ratio = args.inflated_ratio
+    mmvt.set_background_color(args.background_color)
     for image_name, camera in zip(args.image_name, args.camera):
         if camera == '':
             camera = op.join(mmvt_dir, subject, 'camera', 'camera.pkl')
@@ -86,6 +104,6 @@ if __name__ == '__main__':
     import sys
     subject_fname = sys.argv[1]
     if sys.argv[2] == '--background':
-        render_image(subject_fname)
+        render_image_blender(subject_fname)
     else:
         wrap_blender_call()

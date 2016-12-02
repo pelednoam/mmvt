@@ -140,6 +140,7 @@ render_image = render_panel.render_image
 render_in_queue = render_panel.render_in_queue
 finish_rendering = render_panel.finish_rendering
 update_camera_files = render_panel.update_camera_files
+set_background_color = render_panel.set_background_color
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -163,6 +164,7 @@ connections_visible = appearance_panel.connections_visible
 show_hide_connections = appearance_panel.show_hide_connections
 show_pial = appearance_panel.show_pial
 show_inflated = appearance_panel.show_inflated
+set_inflated_ratio = appearance_panel.set_inflated_ratio
 is_pial = appearance_panel.is_pial
 is_inflated = appearance_panel.is_inflated
 is_activity = appearance_panel.is_activity

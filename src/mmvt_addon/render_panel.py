@@ -48,6 +48,13 @@ def background_color_update(self, context):
         bpy.data.worlds['World'].horizon_color = [.0, .0, .0]
 
 
+def set_background_color(color):
+    if color in ['white', 'black']:
+        bpy.context.scene.background_color = color
+    else:
+        print('Background color can be only white/black!')
+
+
 def set_render_quality(quality):
     bpy.context.scene.quality = quality
     
