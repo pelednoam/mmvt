@@ -258,10 +258,14 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
             if op.isfile(fname):
                 f = np.load(fname)
-                colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
-                data_min = ColoringMakerPanel.meg_activity_data_min
-                data_max = ColoringMakerPanel.meg_activity_data_max
-                _addon().set_colorbar_max_min(data_max, data_min)
+                if _addon().colorbar_values_are_locked():
+                    data_max, data_min = _addon().get_colorbar_max_min()
+                    colors_ratio = 256 / (data_max - data_min)
+                else:
+                    colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
+                    data_min = ColoringMakerPanel.meg_activity_data_min
+                    data_max = ColoringMakerPanel.meg_activity_data_max
+                    _addon().set_colorbar_max_min(data_max, data_min)
                 _addon().set_colorbar_title('MEG')
             else:
                 print("Can't load {}".format(fname))
@@ -269,10 +273,14 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         elif map_type == 'FMRI':
             if not ColoringMakerPanel.fmri_activity_data_min is None and \
                     not ColoringMakerPanel.fmri_activity_data_max is None:
-                colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
-                data_min = ColoringMakerPanel.fmri_activity_data_min
-                data_max = ColoringMakerPanel.fmri_activity_data_max
-                _addon().set_colorbar_max_min(data_max, data_min)
+                if _addon().colorbar_values_are_locked():
+                    data_max, data_min = _addon().get_colorbar_max_min()
+                    colors_ratio = 256 / (data_max - data_min)
+                else:
+                    colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
+                    data_min = ColoringMakerPanel.fmri_activity_data_min
+                    data_max = ColoringMakerPanel.fmri_activity_data_max
+                    _addon().set_colorbar_max_min(data_max, data_min)
                 _addon().set_colorbar_title('fMRI')
             if clusters:
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
@@ -595,9 +603,12 @@ def color_eeg_helmet():
     data = np.diff(data).squeeze()
     lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
     threshold = 0
-    data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        _addon().set_colorbar_max_min(data_max, data_min, True)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_max_min(data_max, data_min, True)
     _addon().set_colorbar_title('EEG')
     data_t = data[:, bpy.context.scene.frame_current]
 

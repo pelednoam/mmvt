@@ -12,6 +12,10 @@ def get_cm():
     return ColorbarPanel.cm
 
 
+def colorbar_values_are_locked():
+    return bpy.context.scene.lock_min_max
+
+
 def load_colormap():
     colormap_fname = op.join(mu.file_fol(), 'color_maps', '{}.npy'.format(
         bpy.context.scene.colorbar_files.replace('-', '_')))
@@ -137,6 +141,7 @@ def colorbar_draw(self, context):
     row.prop(context.scene, "colorbar_min", text="min:")
     row.prop(context.scene, "colorbar_max", text="max:")
     layout.prop(context.scene, 'colorbar_prec', text='precision')
+    layout.prop(context.scene, 'lock_min_max', text='Lock values')
     layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
     layout.prop(context.scene, 'update_cb_location', text='Update location')
     if bpy.context.scene.update_cb_location:
@@ -165,7 +170,7 @@ bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
 bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
 bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
-
+bpy.types.Scene.lock_min_max = bpy.props.BoolProperty(default=False, description="lock values")
 
 
 class ColorbarPanel(bpy.types.Panel):
