@@ -17,6 +17,9 @@ bpy.types.Scene.play_dt = bpy.props.IntProperty(default=50, min=1, description="
 bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
                                                   description="How much time (s) to wait between frames")
 bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
+bpy.types.Scene.meg_threshold = bpy.props.FloatProperty(default=2, min=0)
+bpy.types.Scene.electrodes_threshold = bpy.props.FloatProperty(default=2, min=0)
+bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
            ("elecs", "Electrodes activity", "", 4),
@@ -112,10 +115,8 @@ def plot_something(self, context, cur_frame, uuid=''):
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
-    threshold = bpy.context.scene.coloring_threshold
     plot_subcorticals = True
     play_type = bpy.context.scene.play_type
-    # image_fol = op.join(mu.get_user_fol(), 'images', uuid)
 
     # todo: implement the important times
     # imp_time = False
@@ -125,10 +126,6 @@ def plot_something(self, context, cur_frame, uuid=''):
     # if not imp_time:
     #     return
 
-    #todo: need a different threshold value for each modality!
-    meg_threshold = threshold
-    electrodes_threshold = threshold
-
     #todo: Check the init_play!
     # if False: #PlayPanel.init_play:
 
@@ -137,11 +134,11 @@ def plot_something(self, context, cur_frame, uuid=''):
         # if PlayPanel.loop_indices:
         #     PlayPanel.addon.default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
-        successful_ret = PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, meg_threshold,
+        successful_ret = PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
-        plot_electrodes(cur_frame, electrodes_threshold)
+        plot_electrodes(cur_frame, bpy.context.scene.electrodes_threshold)
     if play_type == 'meg_labels':
         # todo: get the aparc_name
         PlayPanel.addon.meg_labels_coloring(override_current_mat=True)
@@ -151,10 +148,10 @@ def plot_something(self, context, cur_frame, uuid=''):
         p = PlayPanel.addon.connections_panel
         d = p.ConnectionsPanel.d
         connections_type = bpy.context.scene.connections_type
-        threshold = bpy.context.scene.connections_threshold
         abs_threshold = bpy.context.scene.abs_threshold
         condition = bpy.context.scene.conditions
-        p.plot_connections(self, context, d, cur_frame, connections_type, condition, threshold, abs_threshold)
+        p.plot_connections(self, context, d, cur_frame, connections_type, condition,
+                           bpy.context.scene.connectivity_threshold, abs_threshold)
     if play_type in ['stim', 'stim_sources']:
         # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
         PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
@@ -436,6 +433,14 @@ class PlayPanel(bpy.types.Panel):
 
 
 def play_panel_draw(context, layout):
+    play_type = bpy.context.scene.play_type
+    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
+        layout.prop(context.scene, "meg_threshold", text="MEG threshold")
+    if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
+        layout.prop(context.scene, "electrodes_threshold", text="Electrodes threshold")
+    if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
+        layout.prop(context.scene, "connectivity_threshold", text="Conectivity threshold")
+
     row = layout.row(align=0)
     row.prop(context.scene, "play_from", text="From")
     row.operator(GrabFromPlay.bl_idname, text="", icon='BORDERMOVE')

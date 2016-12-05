@@ -152,8 +152,7 @@ def init_activity_map_coloring(map_type, subcorticals=True):
             _addon().show_hide_hierarchy(map_type != 'FMRI', 'Subcortical_fmri_activity_map')
             _addon().show_hide_hierarchy(map_type != 'MEG', 'Subcortical_meg_activity_map')
         else:
-            hide_subcorticals = not subcorticals
-            _addon().show_hide_sub_corticals(hide_subcorticals)
+            _addon().show_hide_sub_corticals(not subcorticals)
     # change_view3d()
 
 
@@ -168,9 +167,8 @@ def load_faces_verts():
 
 def load_meg_subcortical_activity():
     meg_sub_activity = None
-    current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    subcortical_activity_file = op.join(current_root_path,'subcortical_meg_activity.npz')
-    if op.isfile(subcortical_activity_file):
+    subcortical_activity_file = op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')
+    if op.isfile(subcortical_activity_file) and bpy.context.scene.coloring_meg_subcorticals:
         meg_sub_activity = np.load(subcortical_activity_file)
     return meg_sub_activity
 
@@ -291,7 +289,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
             activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
-    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
+    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
         if map_type == 'MEG':
             if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
                 color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
@@ -826,6 +824,7 @@ bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], desc
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -871,6 +870,8 @@ class ColoringMakerPanel(bpy.types.Panel):
         if faces_verts_exist:
             if meg_files_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+                if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
+                    layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
             # if meg_labels_files_exist:
             #     layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
@@ -1007,6 +1008,7 @@ def init(addon):
             items=groups_items, description="Groups")
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
+    bpy.context.scene.coloring_meg_subcorticals = False
     # ColoringMakerPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
     register()
 
