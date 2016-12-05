@@ -10,6 +10,10 @@ def _addon():
     return fMRIPanel.addon
 
 
+def get_clusters_file_names():
+    return fMRIPanel.clusters_labels_file_names
+
+
 def fMRI_clusters_files_exist():
     return fMRIPanel.fMRI_clusters_files_exist
 
@@ -132,6 +136,10 @@ def prev_cluster():
 def fmri_clusters_update(self, context):
     if fMRIPanel.init:
         update_clusters()
+
+
+def set_fmri_clusters_file_name(file_name):
+    bpy.context.scene.fmri_clusters_labels_files = file_name
 
 
 def fmri_clusters_labels_files_update(self, context):
@@ -271,7 +279,7 @@ def support_old_verions(clusters_labels):
     return new_clusters_labels
 
 
-def find_files_min_max():
+def find_fmri_files_min_max():
     _addon().lock_colorbar_values()
     abs_values = []
     for constrast_name in fMRIPanel.clusters_labels_file_names:
@@ -351,7 +359,7 @@ class FindfMRIFilesMinMax(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        find_files_min_max()
+        find_fmri_files_min_max()
         return {"FINISHED"}
 
 

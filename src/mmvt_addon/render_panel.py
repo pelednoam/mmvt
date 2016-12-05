@@ -331,7 +331,7 @@ def render_all_images(camera_files=None, hide_subcorticals=False):
     render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
 
 
-def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
+def render_image(image_name='', image_fol='', quality=20, use_square_samples=None, render_background=None,
                  camera_fname='', hide_subcorticals=False):
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
     bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \

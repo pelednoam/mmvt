@@ -264,6 +264,10 @@ def namebase(fname):
     return op.splitext(op.basename(fname))[0]
 
 
+def get_subject_name(subject_fname):
+    return namebase(subject_fname).split('_')[0]
+
+
 def stdout_print(str):
     sys.stdout.write(str)
     sys.stdout.write('\n')

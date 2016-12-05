@@ -57,7 +57,7 @@ def read_args(argv=None):
 def render_image_blender(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
-    subject = su.namebase(subject_fname).split('_')[0]
+    subject = su.get_subject_name(subject_fname)
     if args.output_path == '':
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')
     su.make_dir(args.output_path)
