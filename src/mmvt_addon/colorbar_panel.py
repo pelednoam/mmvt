@@ -16,6 +16,10 @@ def colorbar_values_are_locked():
     return bpy.context.scene.lock_min_max
 
 
+def lock_colorbar_values(val=True):
+    bpy.context.scene.lock_min_max = val
+
+
 def load_colormap():
     colormap_fname = op.join(mu.file_fol(), 'color_maps', '{}.npy'.format(
         bpy.context.scene.colorbar_files.replace('-', '_')))

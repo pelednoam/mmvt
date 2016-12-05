@@ -53,7 +53,8 @@ def plot_blob(cluster_labels, faces_verts):
     blob_activity = np.ones(activity.shape)
     blob_activity[blob_vertices] = activity[blob_vertices]
     if fMRIPanel.blobs_activity is None:
-        calc_blobs_activity()
+        fMRIPanel.blobs_activity, _ = calc_blobs_activity(
+            fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
     data_min, colors_ratio = calc_colors_ratio(fMRIPanel.blobs_activity)
     threshold = bpy.context.scene.fmri_clustering_threshold
     cur_obj = bpy.data.objects[hemi]
@@ -128,8 +129,14 @@ def prev_cluster():
     bpy.context.scene.fmri_clusters = prev_cluster
 
 
+def fmri_clusters_update(self, context):
+    if fMRIPanel.init:
+        update_clusters()
+
+
 def fmri_clusters_labels_files_update(self, context):
     constrast_name = bpy.context.scene.fmri_clusters_labels_files
+    fMRIPanel.constrast = {}
     for hemi in mu.HEMIS:
         contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(constrast_name, hemi))
         fMRIPanel.constrast[hemi] = np.load(contrast_fname)
@@ -154,8 +161,7 @@ def update_clusters(val_threshold=None, size_threshold=None):
     else:
         bpy.context.scene.fmri_clustering_threshold = 2
     # bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold
-    fMRIPanel.clusters_labels_filtered = [c for c in fMRIPanel.clusters_labels[clusters_labels_file]['values']
-                           if abs(c['max']) >= val_threshold and len(c['vertices']) >= size_threshold]
+    fMRIPanel.clusters_labels_filtered = filter_clusters(clusters_labels_file, val_threshold, size_threshold)
     sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
     clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
@@ -177,7 +183,8 @@ def plot_all_blobs():
     # fMRIPanel.dont_show_clusters_info = False
     faces_verts = _addon().get_faces_verts()
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
-    blobs_activity, hemis = calc_blobs_activity()
+    blobs_activity, hemis = calc_blobs_activity(
+        fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
     data_min, colors_ratio = calc_colors_ratio(blobs_activity)
     threshold = bpy.context.scene.fmri_clustering_threshold
     for hemi in hemis:
@@ -196,21 +203,21 @@ def plot_all_blobs():
     fMRIPanel.blobs_plotted = True
 
 
-def calc_blobs_activity():
+def calc_blobs_activity(constrast, clusters_labels_filtered, colors_in_hemis={}):
     fmri_contrast, blobs_activity = {}, {}
     for hemi in mu.HEMIS:
-        fmri_contrast[hemi] = fMRIPanel.constrast[hemi]
+        fmri_contrast[hemi] = constrast[hemi]
         blobs_activity[hemi] = np.zeros(fmri_contrast[hemi].shape)
     hemis = set()
-    for cluster_labels in fMRIPanel.clusters_labels_filtered:
+    for cluster_labels in clusters_labels_filtered:
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             blob_vertices = cluster_labels['vertices']
             hemi = cluster_labels['hemi']
             hemis.add(hemi)
             inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
-            fMRIPanel.colors_in_hemis[inf_hemi] = True
+            #todo: check if colors_in_hemis should be initialized (I guess it should be...)
+            colors_in_hemis[inf_hemi] = True
             blobs_activity[hemi][blob_vertices] = fmri_contrast[hemi][blob_vertices]
-    fMRIPanel.blobs_activity = blobs_activity
     return blobs_activity, hemis
 
 
@@ -218,10 +225,7 @@ def calc_colors_ratio(activity):
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
-        norm_percs = (bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max)
-        data_max, data_min = mu.get_data_max_min(
-            activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True,
-            symmetric=True)
+        data_max, data_min = get_activity_max_min(activity)
         # output_fname = op.join(mu.get_user_fol(), 'fmri','fmri_blobs_{}_minmax.pkl'.format(
         #         bpy.context.scene.fmri_clusters_labels_files))
         # print('Saving {}'.format(output_fname))
@@ -234,6 +238,14 @@ def calc_colors_ratio(activity):
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('fMRI')
     return data_min, colors_ratio
+
+
+def get_activity_max_min(activity):
+    norm_percs = (bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max)
+    data_max, data_min = mu.get_data_max_min(
+        activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True,
+        symmetric=True)
+    return data_max, data_min
 
 
 def cluster_name(x):
@@ -257,6 +269,31 @@ def support_old_verions(clusters_labels):
             if not 'size' in cluster_labels:
                 cluster_labels['size'] = len(cluster_labels['vertices'])
     return new_clusters_labels
+
+
+def find_files_min_max():
+    _addon().lock_colorbar_values()
+    abs_values = []
+    for constrast_name in fMRIPanel.clusters_labels_file_names:
+        constrast = {}
+        for hemi in mu.HEMIS:
+            contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(constrast_name, hemi))
+            constrast[hemi] = np.load(contrast_fname)
+        clusters_labels_filtered = filter_clusters(constrast_name)
+        blobs_activity, _ = calc_blobs_activity(constrast, clusters_labels_filtered)
+        data_max, data_min = get_activity_max_min(blobs_activity)
+        abs_values.extend([abs(data_max), abs(data_min)])
+    data_max = max(abs_values)
+    _addon().set_colorbar_max_min(data_max, -data_max)
+
+
+def filter_clusters(constrast_name, val_threshold=None, size_threshold=None):
+    if val_threshold is None:
+        val_threshold = bpy.context.scene.fmri_cluster_val_threshold
+    if size_threshold is None:
+        size_threshold = bpy.context.scene.fmri_cluster_size_threshold
+    return [c for c in fMRIPanel.clusters_labels[constrast_name]['values']
+            if abs(c['max']) >= val_threshold and len(c['vertices']) >= size_threshold]
 
 
 def fMRI_draw(self, context):
@@ -302,8 +339,20 @@ def fMRI_draw(self, context):
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
-    layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
+    # layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
+    layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+
+
+class FindfMRIFilesMinMax(bpy.types.Operator):
+    bl_idname = "mmvt.find_fmri_files_min_max"
+    bl_label = "mmvt find_fmri_files_min_max"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        find_files_min_max()
+        return {"FINISHED"}
 
 
 class fmriClearColors(bpy.types.Operator):
@@ -405,9 +454,9 @@ bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
     items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
     description='How to sort', update=fmri_how_to_sort_update)
 bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
-    description='clusters t-val threshold', min=0, max=20, update=fmri_clusters_labels_files_update)
+    description='clusters t-val threshold', min=0, max=20, update=fmri_clusters_update)
 bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
-    description='clusters size threshold', min=1, max=2000, update=fmri_clusters_labels_files_update)
+    description='clusters size threshold', min=1, max=2000, update=fmri_clusters_update)
 bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
     description='clustering threshold', min=0, max=20)
 bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
@@ -437,6 +486,7 @@ class fMRIPanel(bpy.types.Panel):
     blobs_plotted = False
     fMRI_clusters_files_exist = False
     constrast = {'rh':None, 'lh':None}
+    clusters_labels_file_names = []
 
     def draw(self, context):
         if fMRIPanel.init:
@@ -456,6 +506,7 @@ def init(addon):
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
     fMRIPanel.cluster_labels = {}
     files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    fMRIPanel.clusters_labels_file_names = files_names
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
@@ -474,7 +525,8 @@ def init(addon):
     bpy.context.scene.fmri_how_to_sort = 'tval'
 
     update_clusters()
-    calc_blobs_activity()
+    fMRIPanel.blobs_activity, _ = calc_blobs_activity(
+        fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
     bpy.context.scene.plot_fmri_cluster_per_click = False
     fMRIPanel.dont_show_clusters_info = True
     # addon.clear_cortex()
@@ -503,6 +555,7 @@ def register():
         bpy.utils.register_class(PlotAllBlobs)
         bpy.utils.register_class(RefinefMRIClusters)
         bpy.utils.register_class(LoadMEGData)
+        bpy.utils.register_class(FindfMRIFilesMinMax)
         bpy.utils.register_class(fmriClearColors)
         # print('fMRI Panel was registered!')
     except:
@@ -519,6 +572,7 @@ def unregister():
         bpy.utils.unregister_class(PlotAllBlobs)
         bpy.utils.unregister_class(RefinefMRIClusters)
         bpy.utils.unregister_class(LoadMEGData)
+        bpy.utils.unregister_class(FindfMRIFilesMinMax)
         bpy.utils.unregister_class(fmriClearColors)
     except:
         pass
