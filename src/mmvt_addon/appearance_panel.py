@@ -275,9 +275,13 @@ class SelectionListener(bpy.types.Operator):
                         mu.change_fcurves_colors(pial_obj)
             self.right_clicked = False
 
-        if time.time() - self.press_time > 1 and event.type == 'RIGHTMOUSE':
-            self.press_time = time.time()
-            self.right_clicked = True
+        if time.time() - self.press_time > 1:
+            if event.type == 'RIGHTMOUSE':
+                self.press_time = time.time()
+                self.right_clicked = True
+            if event.type == 'LEFTMOUSE':
+                if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
+                    _addon().find_closest_cluster(only_within=True)
 
         if not _addon().render_in_queue() is None:
             rendering_data = mu.queue_get(_addon().render_in_queue())

@@ -833,7 +833,7 @@ class DataMakerPanel(bpy.types.Panel):
                 layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
         if op.isfile(meg_sensors_positions_file):
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
-            col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
+            # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
         if op.isfile(eeg_sensors_positions_file):
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')

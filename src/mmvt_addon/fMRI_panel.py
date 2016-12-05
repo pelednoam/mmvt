@@ -10,6 +10,10 @@ def _addon():
     return fMRIPanel.addon
 
 
+def fMRI_clusters_files_exist():
+    return fMRIPanel.fMRI_clusters_files_exist
+
+
 def clusters_update(self, context):
     _clusters_update()
 
@@ -36,12 +40,14 @@ def fmri_blobs_percentile_max_update(self, context):
 
 
 def plot_blob(cluster_labels, faces_verts):
+    fMRIPanel.dont_show_clusters_info = False
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     blob_vertices = cluster_labels['vertices']
     hemi = cluster_labels['hemi']
     real_hemi = hemi
     if _addon().is_inflated():
         hemi = 'inflated_{}'.format(hemi)
+    # fMRIPanel.blobs_plotted = True
     fMRIPanel.colors_in_hemis[hemi] = True
     activity = _addon().get_fMRI_activity(real_hemi)
     blob_activity = np.ones(activity.shape)
@@ -62,7 +68,7 @@ def plot_blob(cluster_labels, faces_verts):
 
 
 # @mu.profileit()
-def find_closest_cluster():
+def find_closest_cluster(only_within=False):
     cursor = np.array(bpy.context.scene.cursor_location) * 10
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
@@ -78,11 +84,16 @@ def find_closest_cluster():
         print('No cluster was found!')
     else:
         min_index = np.argmin(np.array(dists))
-        closest_cluster = cluster_to_search_in[min_index]
-        bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
-        fMRIPanel.cluster_labels = closest_cluster
-        print('Closest cluster: {}'.format(bpy.context.scene.fmri_clusters))
-        _clusters_update()
+        min_dist = dists[min_index]
+        if not (only_within and min_dist > 1):
+            fMRIPanel.dont_show_clusters_info = False
+            closest_cluster = cluster_to_search_in[min_index]
+            bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
+            fMRIPanel.cluster_labels = closest_cluster
+            print('Closest cluster: {}, dist: {}'.format(bpy.context.scene.fmri_clusters, min_dist))
+            _clusters_update()
+        else:
+            print('only within: dist to big ({})'.format(min_dist))
 
 
 class NextCluster(bpy.types.Operator):
@@ -129,6 +140,7 @@ def fmri_how_to_sort_update(self, context):
 
 
 def update_clusters(val_threshold=None, size_threshold=None):
+    fMRIPanel.dont_show_clusters_info = False
     if val_threshold is None:
         val_threshold = bpy.context.scene.fmri_cluster_val_threshold
     if size_threshold is None:
@@ -159,6 +171,7 @@ def unfilter_clusters():
 
 
 def plot_all_blobs():
+    # fMRIPanel.dont_show_clusters_info = False
     faces_verts = _addon().get_faces_verts()
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     blobs_activity, hemis = calc_blobs_activity()
@@ -203,10 +216,10 @@ def calc_colors_ratio(activity):
     data_max, data_min = mu.get_data_max_min(
         activity, bpy.context.scene.fmri_blobs_norm_by_percentile, norm_percs=norm_percs, data_per_hemi=True,
         symmetric=True)
-    output_fname = op.join(mu.get_user_fol(), 'fmri','fmri_blobs_{}_minmax.pkl'.format(
-            bpy.context.scene.fmri_clusters_labels_files))
-    print('Saving {}'.format(output_fname))
-    mu.save((data_min, data_max), output_fname)
+    # output_fname = op.join(mu.get_user_fol(), 'fmri','fmri_blobs_{}_minmax.pkl'.format(
+    #         bpy.context.scene.fmri_clusters_labels_files))
+    # print('Saving {}'.format(output_fname))
+    # mu.save((data_min, data_max), output_fname)
     if data_max == 0 and data_min == 0:
         print('Both data max and min are zeros!')
         return 0, 0
@@ -256,11 +269,12 @@ def fMRI_draw(self, context):
     row.prop(context.scene, 'fmri_clusters', text="")
     row.operator(NextCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
+    layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     row = layout.row(align=True)
     row.label(text='Sort: ')
     row.prop(context.scene, 'fmri_how_to_sort', expand=True)
-    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0:
+    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and not fMRIPanel.dont_show_clusters_info:
         if 'size' not in fMRIPanel.cluster_labels:
             fMRIPanel.cluster_labels['size'] = len(fMRIPanel.cluster_labels['vertices'])
         blob_size = fMRIPanel.cluster_labels['size']
@@ -295,6 +309,7 @@ class fmriClearColors(bpy.types.Operator):
         _addon().clear_cortex()
         _addon().clear_subcortical_fmri_activity()
         fMRIPanel.blobs_plotted = False
+        fMRIPanel.dont_show_clusters_info = True
         return {"FINISHED"}
 
 
@@ -373,6 +388,8 @@ class FilterfMRIBlobs(bpy.types.Operator):
 
 bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
     default=False, description="Plot current cluster")
+bpy.types.Scene.plot_fmri_cluster_per_click = bpy.props.BoolProperty(
+    default=False, description="Plot cluster per left click")
 bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
     default=False, description="Plot current cluster")
 bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
@@ -411,6 +428,7 @@ class fMRIPanel(bpy.types.Panel):
     colors_in_hemis = {'rh':False, 'lh':False}
     blobs_activity = None
     blobs_plotted = False
+    fMRI_clusters_files_exist = False
 
     def draw(self, context):
         if fMRIPanel.init:
@@ -423,8 +441,8 @@ def init(addon):
     # old code was saving those files as npy instead of pkl
     clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
     # fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
-    fMRI_clusters_files_exist = len(clusters_labels_files) > 0 # and len(fmri_blobs) > 0
-    if not fMRI_clusters_files_exist:
+    fMRIPanel.fMRI_clusters_files_exist = len(clusters_labels_files) > 0 # and len(fmri_blobs) > 0
+    if not fMRIPanel.fMRI_clusters_files_exist:
         return None
     fMRIPanel.addon = addon
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
@@ -447,6 +465,8 @@ def init(addon):
 
     update_clusters()
     calc_blobs_activity()
+    bpy.context.scene.plot_fmri_cluster_per_click = False
+    fMRIPanel.dont_show_clusters_info = True
     # addon.clear_cortex()
     register()
     fMRIPanel.init = True
