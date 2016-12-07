@@ -50,6 +50,7 @@ def read_args(argv=None):
     parser.add_argument('--curr_elec', help='current electrode', required=False, default='')
     parser.add_argument('--show_connections', help='show connections', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--interactive', required=False, default=1, type=su.is_true)
+    parser.add_argument('--overwrite', required=False, default=1, type=su.is_true)
     args = su.parse_args(parser, argv)
     return args
 
@@ -101,7 +102,8 @@ def render_image_blender(subject_fname):
                 su.stdout_print('No camera file was detected in the output folder!!!')
                 continue
         # su.save_blend_file(subject_fname)
-        mmvt.render_image(image_name, args.output_path, args.quality, args.smooth_figure, render_background=False)
+        mmvt.render_image(image_name, args.output_path, args.quality, args.smooth_figure, render_background=False,
+                          overwrite=args.overwrite)
     su.stdout_print('*** finish rendering! ***')
     su.exit_blender()
 

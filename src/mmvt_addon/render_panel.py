@@ -352,18 +352,18 @@ def render_all_images(camera_files=None, hide_subcorticals=False):
     render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
 
 
-def render_lateral_medial_split_brain(data_type='', quality=20):
+def render_lateral_medial_split_brain(data_type='', quality=20, overwrite=True):
     image_name = ['lateral_lh', 'lateral_rh', 'medial_lh', 'medial_rh']
     camera = [op.join(mu.get_user_fol(), 'camera', 'camera_{}{}.pkl'.format(
         camera_name, '_inf' if _addon().is_inflated() else '')) for camera_name in image_name]
-    image_name = ['{}{}_{}_{}'.format('{}_' if data_type != '' else '', name, 'inflated_{}'.format(
+    image_name = ['{}{}_{}_{}'.format('{}_'.format(data_type) if data_type != '' else '', name, 'inflated_{}'.format(
         _addon().get_inflated_ratio()) if _addon().is_inflated() else 'pial', bpy.context.scene.background_color)
                   for name in image_name]
-    render_image(image_name, quality=quality, camera_fname=camera, hide_subcorticals=True)
+    render_image(image_name, quality=quality, camera_fname=camera, hide_subcorticals=True, overwrite=overwrite)
 
 
 def render_image(image_name='', image_fol='', quality=20, use_square_samples=None, render_background=None,
-                 camera_fname='', hide_subcorticals=False):
+                 camera_fname='', hide_subcorticals=False, overwrite=True):
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
     bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \
         else use_square_samples
@@ -385,23 +385,24 @@ def render_image(image_name='', image_fol='', quality=20, use_square_samples=Non
         for image_name, camera_fname in zip(images_names, camera_fnames):
             print('file name: {}'.format(op.join(image_fol, image_name)))
             bpy.context.scene.render.filepath = op.join(image_fol, image_name)
-            _addon().load_camera(camera_fname)
-            _addon().change_to_rendered_brain()
-            if hide_subcorticals:
-                _addon().show_hide_sub_corticals()
-            bpy.ops.render.render(write_still=True)
+            if overwrite or not op.isfile(bpy.context.scene.render.filepath):
+                _addon().load_camera(camera_fname)
+                _addon().change_to_rendered_brain()
+                if hide_subcorticals:
+                    _addon().show_hide_sub_corticals()
+                bpy.ops.render.render(write_still=True)
         print("Finished")
     else:
         camera_fnames = ','.join(camera_fnames)
         images_names = ','.join(images_names)
         render_func = partial(render_in_background, image_name=images_names, image_fol=image_fol,
-                              camera_fname=camera_fnames, hide_subcorticals=hide_subcorticals)
+                              camera_fname=camera_fnames, hide_subcorticals=hide_subcorticals, overwrite=overwrite)
         put_func_in_queue(render_func)
         if queue_len() == 1:
             run_func_in_queue()
 
 
-def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals):
+def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals, overwrite=True):
     hide_subs_in_background = True if hide_subcorticals else bpy.context.scene.objects_show_hide_sub_cortical
     mu.change_fol_to_mmvt_root()
     electrode_marked = _addon().is_current_electrode_marked()
@@ -415,7 +416,8 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals)
         hide_subs_in_background, bpy.context.scene.show_hide_electrodes,
         bpy.context.scene.electrodes if electrode_marked else None,
         bpy.context.scene.show_only_lead if electrode_marked else None) + \
-        ' --show_connections {}  --interactive 0'.format(_addon().connections_visible())
+        ' --show_connections {}  --interactive 0  --overwrite {}'.format(
+            _addon().connections_visible(), overwrite)
     print('Running {}'.format(cmd))
     RenderingMakerPanel.background_rendering = True
     mu.save_blender_file()
