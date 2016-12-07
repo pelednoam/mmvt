@@ -112,6 +112,9 @@ except:
 is_true = au.is_true
 is_true_or_none = au.is_true_or_none
 str_arr_type = au.str_arr_type
+int_arr_type = au.int_arr_type
+float_arr_type = au.float_arr_type
+bool_arr_type = au.bool_arr_type
 
 
 class Bag( dict ):

@@ -1,6 +1,6 @@
 import sys
 import os
-import os.path as op
+from itertools import product
 
 
 try:
@@ -19,6 +19,15 @@ def wrap_blender_call():
 def read_args(argv=None):
     parser = su.add_default_args()
     # Add more args here
+    parser.add_argument('-q', '--quality', help='render quality', required=False, default=60, type=int)
+    parser.add_argument('--inflated', required=False, default=[True, False], type=su.bool_arr_type)
+    parser.add_argument('--inflated_ratio', required=False, default=1.0, type=float)
+    parser.add_argument('--background_color', required=False, default=['black', 'white'], type=su.str_arr_type)
+    parser.add_argument('--lighting', required=False, default=[1.0, 0.7], type=su.float_arr_type)
+    parser.add_argument('--transparency', required=False, default=0.0, type=float)
+    parser.add_argument('--light_layers_depth', required=False, default=0, type=int)
+    parser.add_argument('--rendering_in_the_background', required=False, default=0, type=su.is_true)
+    parser.add_argument('--clusters_type', required=False, default='')
     return su.parse_args(parser, argv)
 
 
@@ -27,27 +36,19 @@ def run_script(subject_fname):
     if args.debug:
         su.debug()
     mmvt = su.init_mmvt_addon()
-    mmvt.clear_colors()
     mmvt.find_fmri_files_min_max()
-    mmvt.set_brain_transparency(0)
-    mmvt.set_light_layers_depth(0)
-    inflated = False
-    inflated_ratio = 0.5
-    background_color= 'black'
-    quality = 60
-    cluster_type = 'spm'
-    clusters_names = [f for f in mmvt.get_clusters_file_names() if cluster_type in f]
+    clusters_names = [f for f in mmvt.get_clusters_file_names() if args.clusters_type in f]
     print('clusters_names: {}'.format(clusters_names))
+    if len(args.lighting) == 1 and len(args.background_color) == 2:
+        args.lighting = [args.lighting] * 2
     for clusters_file_name in clusters_names:
-        mmvt.set_fmri_clusters_file_name(clusters_file_name)
-        mmvt.plot_all_blobs()
-        image_name = ['lateral_lh', 'lateral_rh', 'medial_lh', 'medial_rh']
-        camera = [op.join(su.get_mmvt_dir(), args.subject, 'camera', 'camera_{}{}.pkl'.format(
-            camera_name, '_inf' if inflated else '')) for camera_name in image_name]
-        image_name = ['{}_{}_{}_{}'.format(clusters_file_name, name, 'inflated_{}'.format(
-            inflated_ratio) if inflated else 'pial', background_color) for name in image_name]
-        mmvt.render_image(image_name, quality=quality, render_background=False,
-                          camera_fname=camera, hide_subcorticals=True)
+        for inflated, background_color in product(args.inflated, args.background_color):
+            lighting = args.lighting[0] if background_color == 'black' else args.lighting[1]
+            mmvt.init_rendering(args.inflated, args.inflated_ratio, args.transparency, args.light_layers_depth,
+                                lighting, background_color, args.rendering_in_the_background)
+            mmvt.load_fmri_cluster(clusters_file_name)
+            mmvt.plot_all_blobs()
+            mmvt.render_lateral_medial_split_brain(clusters_file_name, args.quality)
     su.save_blend_file(subject_fname)
     su.exit_blender()
 

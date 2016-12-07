@@ -137,11 +137,15 @@ set_render_quality = render_panel.set_render_quality
 set_render_output_path = render_panel.set_render_output_path
 set_render_smooth_figure = render_panel.set_render_smooth_figure
 render_image = render_panel.render_image
+render_lateral_medial_split_brain = render_panel.render_lateral_medial_split_brain
 render_in_queue = render_panel.render_in_queue
 finish_rendering = render_panel.finish_rendering
 update_camera_files = render_panel.update_camera_files
 set_background_color = render_panel.set_background_color
 set_lighting = render_panel.set_lighting
+get_rendering_in_the_background = render_panel.get_rendering_in_the_background
+set_rendering_in_the_background = render_panel.set_rendering_in_the_background
+init_rendering = render_panel.init_rendering
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -166,6 +170,7 @@ show_hide_connections = appearance_panel.show_hide_connections
 show_pial = appearance_panel.show_pial
 show_inflated = appearance_panel.show_inflated
 set_inflated_ratio = appearance_panel.set_inflated_ratio
+get_inflated_ratio = appearance_panel.get_inflated_ratio
 is_pial = appearance_panel.is_pial
 is_inflated = appearance_panel.is_inflated
 is_activity = appearance_panel.is_activity
@@ -211,7 +216,7 @@ find_closest_cluster = fMRI_panel.find_closest_cluster
 find_fmri_files_min_max = fMRI_panel.find_fmri_files_min_max
 get_clusters_file_names = fMRI_panel.get_clusters_file_names
 plot_all_blobs = fMRI_panel.plot_all_blobs
-set_fmri_clusters_file_name = fMRI_panel.set_fmri_clusters_file_name
+load_fmri_cluster = fMRI_panel.load_fmri_cluster
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ransparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

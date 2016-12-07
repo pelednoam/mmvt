@@ -67,6 +67,14 @@ def set_render_smooth_figure(smooth_figure):
     bpy.context.scene.smooth_figure = smooth_figure
 
 
+def get_rendering_in_the_background():
+    return bpy.context.scene.render_background
+
+
+def set_rendering_in_the_background(val):
+    bpy.context.scene.render_background = val
+
+
 def load_camera(camera_fname=''):
     if camera_fname == '':
         camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
@@ -325,10 +333,33 @@ class RenderAllFigures(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def init_rendering(inflated, inflated_ratio, transparency, light_layers_depth, lighting=1, background_color='black',
+                   rendering_in_the_background=False):
+    _addon().clear_colors()
+    _addon().set_brain_transparency(transparency)
+    _addon().set_light_layers_depth(light_layers_depth)
+    set_rendering_in_the_background(rendering_in_the_background)
+    if inflated:
+        _addon().show_inflated()
+        _addon().set_inflated_ratio(inflated_ratio)
+    set_background_color(background_color)
+    set_lighting(lighting)
+
+
 def render_all_images(camera_files=None, hide_subcorticals=False):
     if camera_files is None:
         camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
     render_image(camera_fname=camera_files, hide_subcorticals=hide_subcorticals)
+
+
+def render_lateral_medial_split_brain(data_type='', quality=20):
+    image_name = ['lateral_lh', 'lateral_rh', 'medial_lh', 'medial_rh']
+    camera = [op.join(mu.get_user_fol(), 'camera', 'camera_{}{}.pkl'.format(
+        camera_name, '_inf' if _addon().is_inflated() else '')) for camera_name in image_name]
+    image_name = ['{}{}_{}_{}'.format('{}_' if data_type != '' else '', name, 'inflated_{}'.format(
+        _addon().get_inflated_ratio()) if _addon().is_inflated() else 'pial', bpy.context.scene.background_color)
+                  for name in image_name]
+    render_image(image_name, quality=quality, camera_fname=camera, hide_subcorticals=True)
 
 
 def render_image(image_name='', image_fol='', quality=20, use_square_samples=None, render_background=None,

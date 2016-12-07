@@ -116,6 +116,10 @@ def set_inflated_ratio(ratio):
     bpy.context.scene.inflating = ratio
 
 
+def get_inflated_ratio():
+    return bpy.context.scene.inflating
+
+
 def appearance_show_rois_activity_update(self, context):
     # todo: Figure out why the hell
     for _ in range(2):

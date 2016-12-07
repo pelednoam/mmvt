@@ -138,7 +138,7 @@ def fmri_clusters_update(self, context):
         update_clusters()
 
 
-def set_fmri_clusters_file_name(file_name):
+def load_fmri_cluster(file_name):
     bpy.context.scene.fmri_clusters_labels_files = file_name
 
 
