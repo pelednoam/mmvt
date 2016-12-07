@@ -27,7 +27,6 @@ def run_script(subject_fname):
     if args.debug:
         su.debug()
     mmvt = su.init_mmvt_addon()
-    # Call mmvt functions
     mmvt.clear_colors()
     mmvt.find_fmri_files_min_max()
     mmvt.set_brain_transparency(0)
