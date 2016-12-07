@@ -215,6 +215,7 @@ fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
 find_fmri_files_min_max = fMRI_panel.find_fmri_files_min_max
 get_clusters_file_names = fMRI_panel.get_clusters_file_names
+get_clusters_files = fMRI_panel.get_clusters_files
 plot_all_blobs = fMRI_panel.plot_all_blobs
 load_fmri_cluster = fMRI_panel.load_fmri_cluster
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

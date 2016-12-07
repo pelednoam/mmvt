@@ -1155,3 +1155,11 @@ def queue_get(queue):
         return queue.get(block=False)
     except Empty:
         return None
+
+
+class dummy_bpy(object):
+    class types(object):
+        class Operator(object):
+            pass
+        class Panel(object):
+            pass

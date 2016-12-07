@@ -1,5 +1,6 @@
 import sys
 import os
+import os.path as op
 from itertools import product
 
 
@@ -14,6 +15,7 @@ except:
 def wrap_blender_call():
     args = read_args()
     su.call_script(__file__, args)
+    post_script(args)
 
 
 def read_args(argv=None):
@@ -45,7 +47,7 @@ def run_script(subject_fname):
     for clusters_file_name in clusters_names:
         for inflated, background_color in product(args.inflated, args.background_color):
             lighting = args.lighting[0] if background_color == 'black' else args.lighting[1]
-            mmvt.init_rendering(args.inflated, args.inflated_ratio, args.transparency, args.light_layers_depth,
+            mmvt.init_rendering(inflated, args.inflated_ratio, args.transparency, args.light_layers_depth,
                                 lighting, background_color, args.rendering_in_the_background)
             mmvt.load_fmri_cluster(clusters_file_name)
             mmvt.plot_all_blobs()
@@ -53,6 +55,20 @@ def run_script(subject_fname):
     su.save_blend_file(subject_fname)
     su.exit_blender()
 
+
+def post_script(args):
+    from src.utils import figures_utils as fu
+    from src.mmvt_addon import fMRI_panel as fmri
+
+    subject_fol = op.join(su.get_mmvt_dir(), args.subject)
+    figures_fol = op.join(subject_fol, 'figures')
+    clusters_file_names, _ = fmri.get_clusters_files(subject_fol)
+    clusters_names = [f for f in clusters_file_names if args.clusters_type in f]
+    print('clusters_names: {}'.format(clusters_names))
+    for clusters_name, inflated, background_color in product(clusters_names, args.inflated, args.background_color):
+        fu.combine_four_brain_perspectives(figures_fol, inflated=args.inflated, facecolor=background_color,
+                                           clusters_name=clusters_name, inflated_ratio=args.inflated_ratio,
+                                           overwrite=args.overwrite)
 
 if __name__ == '__main__':
     import sys

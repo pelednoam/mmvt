@@ -342,6 +342,8 @@ def init_rendering(inflated, inflated_ratio, transparency, light_layers_depth, l
     if inflated:
         _addon().show_inflated()
         _addon().set_inflated_ratio(inflated_ratio)
+    else:
+        _addon().show_pial()
     set_background_color(background_color)
     set_lighting(lighting)
 
@@ -385,7 +387,7 @@ def render_image(image_name='', image_fol='', quality=20, use_square_samples=Non
         for image_name, camera_fname in zip(images_names, camera_fnames):
             print('file name: {}'.format(op.join(image_fol, image_name)))
             bpy.context.scene.render.filepath = op.join(image_fol, image_name)
-            if overwrite or not op.isfile(bpy.context.scene.render.filepath):
+            if overwrite or len(glob.glob('{}.*'.format(bpy.context.scene.render.filepath))) == 0:
                 _addon().load_camera(camera_fname)
                 _addon().change_to_rendered_brain()
                 if hide_subcorticals:

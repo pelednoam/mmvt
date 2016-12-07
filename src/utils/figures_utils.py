@@ -73,10 +73,12 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
-def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='black', crop=True, **kargs):
+def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='black', clusters_name='', inflated_ratio=1,
+                                    crop=True, overwrite=True, **kargs):
     figs = []
-    patterns = ['*{}{}*'.format(patt, '_inf' if inflated else '') for patt in
-                ['lateral_rh', 'lateral_lh', 'medial_rh', 'medial_lh']]
+    patterns = ['{}{}_{}_{}*'.format('{}_'.format(clusters_name if clusters_name != '' else ''), perpective,
+        'inflated_{}'.format(inflated_ratio) if inflated else 'pial', facecolor) for perpective in
+        ['lateral_rh', 'lateral_lh', 'medial_rh', 'medial_lh']]
     for patt in patterns:
         files = [f for f in glob.glob(op.join(fol, patt)) if 'crop' not in f]
         if len(files) == 1:
@@ -84,20 +86,23 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
         elif len(files) == 0:
             print("Couldn't find {} in {} !!!".format(patt, fol))
     if len(figs) == 4:
-        if crop:
-            crop_figs = []
-            for fig in figs:
-                new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
-                crop_figs.append(new_fig_fname)
-                dx = dw = 20 if inflated else 50
-                crop_image(fig, new_fig_fname, dx=dx, dw=dw)
-            fig_name = 'splitted_lateral_medial_{}_{}.png'.format('inflated' if inflated else 'pial', facecolor)
-        new_image_fname = combine_four_images(
-            crop_figs if crop else figs, op.join(fol, fig_name), dpi, facecolor)
-        if crop:
-            dx = 50 if inflated else 30
-            dh = 20 if inflated else 20
-            crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
+        fig_name = '{}splitted_lateral_medial_{}_{}.png'.format(
+            '{}_'.format(clusters_name if clusters_name != '' else ''),
+            'inflated' if inflated else 'pial', facecolor)
+        if overwrite or not op.isfile(op.join(fol, fig_name)):
+            if crop:
+                crop_figs = []
+                for fig in figs:
+                    new_fig_fname = '{}_crop{}'.format(op.splitext(fig)[0], op.splitext(fig)[1])
+                    crop_figs.append(new_fig_fname)
+                    dx = dw = 20 if inflated else 50
+                    crop_image(fig, new_fig_fname, dx=dx, dw=dw)
+            new_image_fname = combine_four_images(
+                crop_figs if crop else figs, op.join(fol, fig_name), dpi, facecolor)
+            if crop:
+                dx = 50 if inflated else 30
+                dh = 20 if inflated else 20
+                crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
     for fname in glob.glob(op.join(fol, '*crop*')):
         os.remove(fname)
 

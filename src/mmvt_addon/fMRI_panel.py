@@ -1,9 +1,16 @@
-import bpy
 import os.path as op
 import numpy as np
-import mmvt_utils as mu
 import glob
 from queue import Empty
+
+try:
+    import bpy
+    import mmvt_utils as mu
+    BLENDER_EMBEDDED = True
+except:
+    from src.mmvt_addon import mmvt_utils as mu
+    bpy = mu.dummy_bpy()
+    BLENDER_EMBEDDED = False
 
 
 def _addon():
@@ -12,6 +19,14 @@ def _addon():
 
 def get_clusters_file_names():
     return fMRIPanel.clusters_labels_file_names
+
+
+def get_clusters_files(user_fol=''):
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
+    # old code was saving those files as npy instead of pkl
+    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
+    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    return files_names, clusters_labels_files
 
 
 def fMRI_clusters_files_exist():
@@ -449,32 +464,33 @@ class FilterfMRIBlobs(bpy.types.Operator):
         update_clusters()
         return {'PASS_THROUGH'}
 
-
-bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
-    default=False, description="Plot current cluster")
-bpy.types.Scene.plot_fmri_cluster_per_click = bpy.props.BoolProperty(
-    default=False, description="Plot cluster per left click")
-bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
-    default=False, description="Plot current cluster")
-bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
-    items=[('blob', 'Plot blob', '', 1)], description='What do plot') # ('cluster', 'Plot cluster', '', 1)
-bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
-    items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
-    description='How to sort', update=fmri_how_to_sort_update)
-bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
-    description='clusters t-val threshold', min=0, max=20, update=fmri_clusters_update)
-bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
-    description='clusters size threshold', min=1, max=2000, update=fmri_clusters_update)
-bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
-    description='clustering threshold', min=0, max=20)
-bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
-    items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
-bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.fmri_blobs_percentile_min = bpy.props.FloatProperty(
-    default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
-bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
-    default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
-
+try:
+    bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
+        default=False, description="Plot current cluster")
+    bpy.types.Scene.plot_fmri_cluster_per_click = bpy.props.BoolProperty(
+        default=False, description="Plot cluster per left click")
+    bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
+        default=False, description="Plot current cluster")
+    bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
+        items=[('blob', 'Plot blob', '', 1)], description='What do plot') # ('cluster', 'Plot cluster', '', 1)
+    bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
+        items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
+        description='How to sort', update=fmri_how_to_sort_update)
+    bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
+        description='clusters t-val threshold', min=0, max=20, update=fmri_clusters_update)
+    bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
+        description='clusters size threshold', min=1, max=2000, update=fmri_clusters_update)
+    bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
+        description='clustering threshold', min=0, max=20)
+    bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
+        items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
+    bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=True)
+    bpy.types.Scene.fmri_blobs_percentile_min = bpy.props.FloatProperty(
+        default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
+    bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
+        default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
+except:
+    pass
 
 class fMRIPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -503,17 +519,18 @@ class fMRIPanel(bpy.types.Panel):
 
 def init(addon):
     user_fol = mu.get_user_fol()
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
+    # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
     # old code was saving those files as npy instead of pkl
-    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
+    # clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
     # fmri_blobs = glob.glob(op.join(user_fol, 'fmri', 'blobs_*_rh.npy'))
-    fMRIPanel.fMRI_clusters_files_exist = len(clusters_labels_files) > 0 # and len(fmri_blobs) > 0
-    if not fMRIPanel.fMRI_clusters_files_exist:
-        return None
     fMRIPanel.addon = addon
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
     fMRIPanel.cluster_labels = {}
-    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    files_names, clusters_labels_files = get_clusters_files(user_fol)
+    fMRIPanel.fMRI_clusters_files_exist = len(files_names) > 0 # and len(fmri_blobs) > 0
+    if not fMRIPanel.fMRI_clusters_files_exist:
+        return None
+    # files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     fMRIPanel.clusters_labels_file_names = files_names
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
