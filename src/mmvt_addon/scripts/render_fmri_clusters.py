@@ -35,7 +35,8 @@ def run_script(subject_fname):
     inflated_ratio = 0.5
     background_color= 'black'
     quality = 60
-    clusters_names = [f for f in mmvt.get_clusters_file_names() if 'spm' in f]
+    cluster_type = 'spm'
+    clusters_names = [f for f in mmvt.get_clusters_file_names() if cluster_type in f]
     print('clusters_names: {}'.format(clusters_names))
     for clusters_file_name in clusters_names:
         mmvt.set_fmri_clusters_file_name(clusters_file_name)
