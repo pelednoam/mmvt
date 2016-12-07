@@ -214,6 +214,9 @@ plot_all_blobs = fMRI_panel.plot_all_blobs
 set_fmri_clusters_file_name = fMRI_panel.set_fmri_clusters_file_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ransparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+set_brain_transparency = transparency_panel.set_brain_transparency
+set_light_layers_depth = transparency_panel.set_light_layers_depth
 
 def get_max_time_steps():
     # Check if maximal_time_steps is in bpy.types.Scene

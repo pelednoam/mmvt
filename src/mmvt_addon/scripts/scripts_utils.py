@@ -81,6 +81,7 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
             raise Exception('No {} dir in {}!'.format(link_name, links_dir))
         else:
             print('No {} dir in {}!'.format(link_name, links_dir))
+            return default_val
     return val
 
 
@@ -234,6 +235,7 @@ def add_default_args():
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
+    parser.add_argument('-d', '--debug', help='debug', required=False, default=1, type=au.is_true)
     parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 
@@ -266,6 +268,15 @@ def namebase(fname):
 
 def get_subject_name(subject_fname):
     return namebase(subject_fname).split('_')[0]
+
+
+def debug(port=1090):
+    pycharm_fol = get_link_dir(get_links_dir(), 'pycharm', throw_exception=True)
+    eggpath = op.join(pycharm_fol, 'debug-eggs', 'pycharm-debug-py3k.egg')
+    if not any('pycharm-debug' in p for p in sys.path):
+        sys.path.append(eggpath)
+    import pydevd
+    pydevd.settrace('localhost', port=port, stdoutToServer=True, stderrToServer=True)
 
 
 def stdout_print(str):

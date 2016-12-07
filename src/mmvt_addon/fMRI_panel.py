@@ -204,7 +204,7 @@ def plot_all_blobs():
         else:
             inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
             _addon().activity_map_obj_coloring(
-                bpy.data.objects[inf_hemi],blobs_activity[hemi], faces_verts[hemi], threshold, True,
+                bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
                 data_min=data_min, colors_ratio=colors_ratio)
     for hemi in set(mu.HEMIS) - hemis:
         _addon().clear_cortex([hemi])

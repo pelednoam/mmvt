@@ -341,21 +341,20 @@ def render_image(image_name='', image_fol='', quality=20, use_square_samples=Non
     if camera_fname == '':
         camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
     camera_fnames = [camera_fname] if isinstance(camera_fname, str) else camera_fname
-    images_names = []
+    images_names = [image_name] if isinstance(image_name, str) else image_name
     for camera_fname in camera_fnames:
         if image_name == '':
             cur_frame = bpy.context.scene.frame_current
             camera_name = mu.namebase(camera_fname)
             images_names.append('{}_{}'.format(camera_name[len('camera') + 1:], cur_frame))
-        else:
-            images_names.append(image_name)
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
+    print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
+    print("Rendering...")
     if not bpy.context.scene.render_background:
         for image_name, camera_fname in zip(images_names, camera_fnames):
-            bpy.context.scene.render.filepath = op.join(image_fol, image_name)
             print('file name: {}'.format(op.join(image_fol, image_name)))
-            print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
-            print("Rendering...")
+            bpy.context.scene.render.filepath = op.join(image_fol, image_name)
+            _addon().load_camera(camera_fname)
             _addon().change_to_rendered_brain()
             if hide_subcorticals:
                 _addon().show_hide_sub_corticals()

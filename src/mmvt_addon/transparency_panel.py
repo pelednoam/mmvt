@@ -1,11 +1,29 @@
 import bpy
 
-bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, description="")
-bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0, max=10, description="")
-# bpy.types.Scene.appearance_depth_Bool = bpy.props.BoolProperty(default=False, description="")
 
 def _addon():
     return TransparencyPanel.addon
+
+
+def appearance_update(self=None, context=None):
+    _addon().make_brain_solid_or_transparent()
+    _addon().update_layers()
+
+
+def set_brain_transparency(val):
+    if 0 >= val <= 1:
+        bpy.context.scene.appearance_solid_slider = 1 - val
+        appearance_update()
+    else:
+        print('transparency value must be between 0 (not transparent) and 1')
+
+
+def set_light_layers_depth(val):
+    if 0 <= val <= 10:
+        bpy.context.scene.appearance_depth_slider = val
+        appearance_update()
+    else:
+        print('light layers depth must be between 0 and 10')
 
 
 def transparency_draw(self, context):
@@ -16,7 +34,7 @@ def transparency_draw(self, context):
         split2 = layout.split()
         # split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
         split2.prop(context.scene, 'appearance_depth_slider', text="Depth")
-        layout.operator("mmvt.appearance_update", text="Update")
+        # layout.operator("mmvt.appearance_update", text="Update")
 
 
 class UpdateAppearance(bpy.types.Operator):
@@ -26,11 +44,8 @@ class UpdateAppearance(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        # if context.scene.filter_view_type == 'rendered' and bpy.context.scene.appearance_show_activity_layer is True:
         _addon().make_brain_solid_or_transparent()
         _addon().update_layers()
-        # else:
-        #     self.report({'ERROR'}, 'You should change the view to Rendered Brain first.')
         return {"FINISHED"}
 
 
@@ -44,6 +59,10 @@ class TransparencyPanel(bpy.types.Panel):
 
     def draw(self, context):
         transparency_draw(self, context)
+
+
+bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, update=appearance_update)
+bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0, max=10, update=appearance_update)
 
 
 def init(addon):
