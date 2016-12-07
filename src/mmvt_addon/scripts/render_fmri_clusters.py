@@ -35,7 +35,7 @@ def run_script(subject_fname):
     inflated = False
     inflated_ratio = 0.5
     background_color= 'black'
-    quality = 20
+    quality = 60
     clusters_names = [f for f in mmvt.get_clusters_file_names() if 'spm' in f]
     print('clusters_names: {}'.format(clusters_names))
     for clusters_file_name in clusters_names:
