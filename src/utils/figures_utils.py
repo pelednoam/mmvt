@@ -105,6 +105,7 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
                 crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
     for fname in glob.glob(op.join(fol, '*crop*')):
         os.remove(fname)
+    return new_image_fname
 
 
 def combine_four_images(figs, new_image_fname, dpi=100, facecolor='black', **kargs):

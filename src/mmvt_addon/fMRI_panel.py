@@ -308,6 +308,9 @@ def find_fmri_files_min_max():
         abs_values.extend([abs(data_max), abs(data_min)])
     data_max = max(abs_values)
     _addon().set_colorbar_max_min(data_max, -data_max)
+    cm_name = _addon().get_colormap_name()
+    output_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_files_minmax_cm.pkl')
+    mu.save((data_min, data_max, cm_name), output_fname)
 
 
 def filter_clusters(constrast_name, val_threshold=None, size_threshold=None):
