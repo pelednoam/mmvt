@@ -17,6 +17,7 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
 
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
     if color_map_name not in plt.cm.cmap_d:
+        color_map_name = color_map_name.replace('-', '_')
         if color_map_name in cmu.cms:
             color_map = cmu.get_cm_obj(color_map_name)
         else:
@@ -73,8 +74,13 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
-def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='black', clusters_name='', inflated_ratio=1,
-                                    crop=True, overwrite=True, **kargs):
+def combine_four_brain_perspectives_output_fname(fol, inflated=False, facecolor='black', clusters_name=''):
+    return op.join(fol, '{}splitted_lateral_medial_{}_{}.png'.format(
+        '{}_'.format(clusters_name if clusters_name != '' else ''),
+        'inflated' if inflated else 'pial', facecolor))
+
+
+def get_brain_perspectives_figures(fol, inflated=False, facecolor='black', clusters_name='', inflated_ratio=1):
     figs = []
     patterns = ['{}{}_{}_{}*'.format('{}_'.format(clusters_name if clusters_name != '' else ''), perpective,
         'inflated_{}'.format(inflated_ratio) if inflated else 'pial', facecolor) for perpective in
@@ -85,11 +91,15 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
             figs.append(files[0])
         elif len(files) == 0:
             print("Couldn't find {} in {} !!!".format(patt, fol))
+    return figs
+
+
+def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='black', clusters_name='', inflated_ratio=1,
+                                    crop=True, overwrite=True, **kargs):
+    figs = get_brain_perspectives_figures(fol, inflated, facecolor, clusters_name, inflated_ratio)
     if len(figs) == 4:
-        fig_name = '{}splitted_lateral_medial_{}_{}.png'.format(
-            '{}_'.format(clusters_name if clusters_name != '' else ''),
-            'inflated' if inflated else 'pial', facecolor)
-        if overwrite or not op.isfile(op.join(fol, fig_name)):
+        fig_name = combine_four_brain_perspectives_output_fname(fol, inflated, facecolor, clusters_name)
+        if overwrite or not op.isfile(fig_name):
             if crop:
                 crop_figs = []
                 for fig in figs:
@@ -97,15 +107,17 @@ def combine_four_brain_perspectives(fol, inflated=False, dpi=100, facecolor='bla
                     crop_figs.append(new_fig_fname)
                     dx = dw = 20 if inflated else 50
                     crop_image(fig, new_fig_fname, dx=dx, dw=dw)
-            new_image_fname = combine_four_images(
-                crop_figs if crop else figs, op.join(fol, fig_name), dpi, facecolor)
+            combine_four_images(
+                crop_figs if crop else figs, fig_name, dpi, facecolor)
             if crop:
                 dx = 50 if inflated else 30
                 dh = 20 if inflated else 20
-                crop_image(new_image_fname, new_image_fname, dx=dx, dh=dh)
+                crop_image(fig_name, fig_name, dx=dx, dh=dh)
+    else:
+        raise Exception('Wrong number of perspectives! {}'.format(figs))
     for fname in glob.glob(op.join(fol, '*crop*')):
         os.remove(fname)
-    return new_image_fname
+    return fig_name
 
 
 def combine_four_images(figs, new_image_fname, dpi=100, facecolor='black', **kargs):
@@ -129,7 +141,6 @@ def combine_four_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
         ax.axis('off')
     plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
     plt.close()
-    return new_image_fname
 
 
 def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kargs):
@@ -160,6 +171,10 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0,
                                  w_fac=2, h_fac=3/2, facecolor='black', **kargs):
+    image_fol = utils.get_fname_folder(figure_fname)
+    image_fname = op.join(image_fol, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
+    if op.isfile(image_fname) and not overwrite:
+        return
     image = Image.open(figure_fname)
     img_width, img_height = image.size
     w, h = img_width/dpi * w_fac, img_height/dpi * h_fac
@@ -174,11 +189,8 @@ def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, o
     ax_cb.tick_params(axis='y', colors='white' if facecolor=='black' else 'black')
     resize_and_move_ax(ax_cb, dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1)
     plot_color_bar(data_max, data_min, colors_map, ax_cb)
-    # plt.show()
-
-    image_fol = utils.get_fname_folder(figure_fname)
-    image_fname = figure_fname if overwrite else op.join(image_fol, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
     plt.savefig(image_fname, facecolor=fig.get_facecolor(), transparent=True)
+    plt.close()
     image = Image.open(image_fname)
     w, h = image.size
     image.crop((x_left_crop, y_top_crop, w-x_right_crop, h-y_buttom_crop)).save(image_fname)
