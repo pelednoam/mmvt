@@ -212,7 +212,6 @@ def create_labels_lookup(subject, hemi, aparc_name):
 
 
 def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
-    # verts, faces = {}, {}
     for hemi in utils.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
         for surf_type in ['inflated', 'pial']:
@@ -223,16 +222,11 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
             if overwrite or not op.isfile(mmvt_hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
-                print('{}: convert srf to asc'.format(hemi))
+                print('{} {}: convert srf to asc'.format(hemi, surf_type))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
-                print('{}: convert asc to ply'.format(hemi))
+                print('{} {}: convert asc to ply'.format(hemi, surf_type))
                 convert_hemis_srf_to_ply(subject, hemi, surf_type)
-                # if surf_type == 'inflated':
-                #     verts, faces = utils.read_ply_file(hemi_ply_fname)
-                #     verts_offset = 5.5 if hemi == 'rh' else -5.5
-                #     verts[:, 0] = verts[:, 0] + verts_offset
-                #     utils.write_ply_file(verts, faces, '{}_offset.ply'.format(surf_name))
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
@@ -240,19 +234,10 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             if not op.isfile(mmvt_hemi_npz_fname):
                 verts, faces = utils.read_ply_file(ply_fname)
                 np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
-                # verts[hemi], faces[hemi] = utils.read_ply_file(mmvt_hemi_npz_fname)
-    # if not op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz')):
-    #     faces['rh'] += np.max(faces['lh']) + 1
-    #     verts_cortex = np.vstack((verts['lh'], verts['rh']))
-    #     faces_cortex = np.vstack((faces['lh'], faces['rh']))
-    #     utils.write_ply_file(verts_cortex, faces_cortex, op.join(MMVT_DIR, subject, 'cortex.pial.ply'))
-    #     np.savez(op.join(MMVT_DIR, subject, 'cortex.pial.npz'), verts=verts_cortex, faces=faces_cortex)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.inflated.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.inflated.npz'))
-        # op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.ply')) and \
-           # op.isfile(op.join(MMVT_DIR, subject, 'cortex.pial.npz'))
 
 
 def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
