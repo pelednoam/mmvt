@@ -13,9 +13,23 @@ def load_rest_to_colin():
     fmri.main(subject, mri_subject, args)
 
 
+def fsfast():
+    args = fmri.read_cmd_args(['-s', subject])
+    args.task = 'MSIT'
+    args.function = 'fmri_pipeline'
+    args.contrast_name = 'interference'
+    args.atlas = 'laus250'
+    fmri.main(subject, mri_subject, args)
+
+
 def pet():
     args = fmri.read_cmd_args(['-s', subject])
-    '-s s02 -a laus250 --threshold 0 --is_pet 1 --symetric_colors 0 --overwrite_surf_data 1 --remote_subject_dir /local_mount/space/thibault/1/users/npeled/artur/recon_tese/{subject}'
+    args.threshold = 0
+    args.is_pet = True
+    args.symetric_colors = False
+    args.atlas = 'laus250'
+    fmri.main(subject, mri_subject, args)
+    '-s s02 --threshold 0 --is_pet 1 --symetric_colors 0 --overwrite_surf_data 1 --remote_subject_dir /local_mount/space/thibault/1/users/npeled/artur/recon_tese/{subject}'
 
 
 if __name__ == '__main__':

@@ -82,8 +82,7 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs
     utils.save((data_min, data_max), output_fname)
 
 
-def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', threshold=2, output_fol='',
-                     norm_percs=(3, 97), norm_by_percentile=True):
+def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_file, surf_name='pial', output_fol=''):
     if not op.isfile(fmri_file.format(hemi)):
         print('No such file {}!'.format(fmri_file.format(hemi)))
         return
@@ -93,12 +92,10 @@ def save_fmri_colors(subject, hemi, contrast_name, fmri_file, surf_name='pial', 
         output_fol = op.join(MMVT_DIR, subject, 'fmri')
     utils.make_dir(output_fol)
     output_name = op.join(output_fol, 'fmri_{}_{}'.format(contrast_name, hemi))
-    _save_fmri_colors(subject, hemi, x, threshold, output_name, surf_name=surf_name,
-                      norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+    _save_fmri_hemi_data(subject, hemi, x, output_name, surf_name=surf_name)
 
 
-def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, surf_name='pial',
-                      norm_percs=(3, 97), norm_by_percentile=True):
+def _save_fmri_hemi_data(subject, hemi, x, output_file='', verts=None, surf_name='pial'):
     if verts is None:
         # Try to read the hemi ply file to check if the vertices number is correct    
         ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
@@ -109,13 +106,13 @@ def _save_fmri_colors(subject, hemi, x, threshold, output_file='', verts=None, s
         else:
             print("No ply file, Can't check the vertices number")
 
-    colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
-        threshold=threshold, default_val=1, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
-    colors = np.hstack((x.reshape((len(x), 1)), colors))
+    # colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
+    #     threshold=threshold, default_val=1, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+    # colors = np.hstack((x.reshape((len(x), 1)), colors))
     if output_file != '':
         op.join(MMVT_DIR, subject, 'fmri_{}.npy'.format(hemi))
     print('Saving {}'.format(output_file))
-    np.save(output_file, colors)
+    np.save(output_file, x)
 
 
 def init_clusters(subject, contrast_name, input_fol):
@@ -145,10 +142,12 @@ def init_clusters(subject, contrast_name, input_fol):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, contrast_name, t_val, atlas, volume_name, input_fol='', load_from_annotation=True, n_jobs=1):
+def find_clusters(subject, contrast_name, t_val, atlas, volume_name='', input_fol='', load_from_annotation=True, n_jobs=1):
+    contrast_name = contrast_name if volume_name == '' else volume_name
+    volume_name = volume_name if volume_name != '' else contrast_name
     if input_fol == '':
         input_fol = op.join(MMVT_DIR, subject, 'fmri')
-    contrast, connectivity, verts = init_clusters(subject, volume_name, input_fol)
+    contrast, connectivity, verts = init_clusters(subject, contrast_name, input_fol)
     clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
@@ -452,9 +451,11 @@ def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_
     else:
         volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
         if len(volume_files) == 0:
-            raise Exception('No volume file! Should be in {}'.format(volume_fname_template.replace('{format}', '*')))
+            print('No volume file! Should be in {}'.format(volume_fname_template.replace('{format}', '*')))
+            return ''
         if len(volume_files) > 1:
-            raise Exception('Too many volume files!')
+            print('Too many volume files!')
+            return ''
         else:
             format = utils.file_type(volume_files[0])
     volume_fname = volume_fname_template.format(format=format)
@@ -541,6 +542,9 @@ def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, su
     -------
 
     '''
+    if contrasts is None and '{contrast}' in contrast_file_template:
+        contrasts_fol = op.sep.join(contrast_file_template.split(op.sep)[:-2]).format(hemi='rh')
+        contrasts = [op.sep.join(c.split(op.sep)[-1:]) for c in glob.glob(op.join(contrasts_fol, '*'))]
     # Check if the contrast is in mgz, and if not convert it to mgz
     mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
     if contrasts is None:
@@ -553,14 +557,16 @@ def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, su
             contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
             volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
         copy_volume_to_blender(volume_file, contrast, overwrite_volume_mgz=True)
+        calc_fmri_min_max(
+            subject, contrast, contrast_file_template, norm_percs=args.norm_percs,
+            norm_by_percentile=args.norm_by_percentile)
         for hemi in ['rh', 'lh']:
-            # Save the contrast values with corresponding colors
-            save_fmri_colors(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name, threshold=2,
+            save_fmri_hemi_data(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name,
                              output_fol=fmri_files_fol)
         # Find the fMRI blobs (clusters of activation)
-        find_clusters(subject, contrast, t_val, atlas, fmri_files_fol, load_labels_from_annotation, n_jobs)
+        find_clusters(subject, contrast, t_val, atlas, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
         # Create functional rois out of the blobs
-        create_functional_rois(subject, contrast)
+        # create_functional_rois(subject, contrast)
     # todo: check what to return
     return True
 
