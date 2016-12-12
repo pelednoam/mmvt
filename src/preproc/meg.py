@@ -14,6 +14,7 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
 from src.utils import utils
+from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
@@ -1780,7 +1781,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
@@ -1795,7 +1795,6 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
-    from src.utils import preproc_utils as pu
     args = read_cmd_args()
     subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
     subject_func = lambda x:x[0][1]

@@ -4,13 +4,13 @@ import numpy as np
 import scipy.io as sio
 
 from src.utils import utils
+from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
@@ -168,25 +168,22 @@ def calc_connections_colors(data, labels, hemis, args):
     return con_colors, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
-def main(subject, args):
+def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_rois_connectivity'):
-        save_rois_connectivity(subject, args)
+        flags['save_rois_connectivity'] = save_rois_connectivity(subject, args)
 
     if utils.should_run(args, 'save_electrodes_coh'):
         # todo: Add the necessary parameters
-        save_electrodes_coh(subject, args)
+        flags['save_electrodes_coh'] = save_electrodes_coh(subject, args)
 
+    return flags
 
 
 def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-c', '--conditions', help='conditions names', required=False, default='contrast', type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
     parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
@@ -203,9 +200,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--data_max', help='', required=False, default=0, type=float)
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    pu.add_common_args(parser)
+
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if len(args.conditions) == 1:
         args.stat = STAT_AVG
     print(args)
@@ -214,6 +211,5 @@ def read_cmd_args(argv=None):
 
 if __name__ == '__main__':
     args = read_cmd_args()
-    for subject in args.subject:
-        main(subject, args)
+    pu.run_on_subjects(args, main)
     print('finish!')

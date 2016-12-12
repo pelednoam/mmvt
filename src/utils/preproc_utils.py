@@ -22,6 +22,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         if args.sftp else ''
     if '*' in args.subject:
         args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
+    os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
@@ -102,3 +103,8 @@ def add_common_args(parser):
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+
+
+def check_freesurfer():
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')

@@ -13,6 +13,7 @@ import glob
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
+from src.utils import preproc_utils as pu
 
 try:
     from sklearn.neighbors import BallTree
@@ -36,7 +37,6 @@ FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME'
 MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
 os.environ['FREESURFER_HOME'] = FREE_SURFER_HOME
-os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 _bbregister = 'bbregister --mov {fsl_input}.nii --bold --s {subject} --init-fsl --lta register.lta'
 _mri_robust_register = 'mri_robust_register --mov {fsl_input}.nii --dst $SUBJECTS_DIR/colin27/mri/orig.mgz' +\
@@ -713,7 +713,6 @@ def read_cmd_args(argv=None):
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
     args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label']}
     if args.is_pet:
         args.fsfast = False
@@ -722,7 +721,6 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
-    from src.utils import preproc_utils as pu
     args = read_cmd_args()
     pu.run_on_subjects(args, main)
     print('finish!')

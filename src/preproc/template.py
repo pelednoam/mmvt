@@ -6,7 +6,6 @@ LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
 
 
 def do_something(subject, args):
@@ -29,7 +28,6 @@ if __name__ == '__main__':
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     print(args)
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
 
     for subject in args.subject:
         main(subject, args)

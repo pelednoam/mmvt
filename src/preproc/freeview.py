@@ -5,8 +5,9 @@ import shutil
 import time
 import csv
 from mne.label import _read_annot
-from src.utils import utils
 
+from src.utils import utils
+from src.utils import preproc_utils as pu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -166,47 +167,38 @@ def read_electrodes_pos(subject, args):
 #     print('sdf')
 
 
-def run_on_subjects(subject, args):
-    args.sftp_password = utils.get_sftp_password(
-        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
-        if args.sftp else ''
-    utils.prepare_local_subjects_folder(
-        args.necessary_files, subject, args.remote_subject_dir, SUBJECTS_DIR,
-        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
-        args.overwrite_fs_files, args.print_traceback)
-    # Create the files for freeview bridge
+def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
     args.elecs_pos, args.elecs_names = read_electrodes_pos(subject, args)
-    if 'all' in args.function or 'copy_T1' in args.function:
-        copy_T1(subject)
-    if 'all' in args.function or 'create_freeview_cmd' in args.function:
-        create_freeview_cmd(subject, args)
-    if 'all' in args.function or 'create_electrodes_points' in args.function:
-        create_electrodes_points(subject, args)
-    if 'all' in args.function or 'create_aparc_aseg_file' in args.function:
-        create_aparc_aseg_file(subject, args)
-    if 'all' in args.function or 'create_lut_file_for_atlas' in args.function:
-        create_lut_file_for_atlas(subject, args.atlas)
+
+    if utils.should_run(args, 'copy_T1'):
+        flags['copy_T1'] = copy_T1(subject)
+
+    if utils.should_run(args, 'create_freeview_cmd'):
+        flags['create_freeview_cmd'] = create_freeview_cmd(subject, args)
+
+    if utils.should_run(args, 'create_electrodes_points'):
+        flags['create_electrodes_points'] = create_electrodes_points(subject, args)
+
+    if utils.should_run(args, 'create_aparc_aseg_file'):
+        flags['create_aparc_aseg_file'] = create_aparc_aseg_file(subject, args)
+
+    if utils.should_run(args, 'create_lut_file_for_atlas'):
+        flags['create_lut_file_for_atlas'] = create_lut_file_for_atlas(subject, args.atlas)
+
+    return flags
 
 
 def read_cmd_args(argv):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT freeview preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--create_volume_file', help='create_volume_file', required=False, default=1, type=au.is_true)
     parser.add_argument('--electrodes_pos_fname', help='electrodes_pos_fname', required=False, default='')
     parser.add_argument('--way_points', help='way_points', required=False, default=0, type=au.is_true)
-    parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
-    parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0, type=au.is_true)
-    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
-    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
-    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
-    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['T1.mgz', 'orig.mgz']}
     print(args)
@@ -215,10 +207,6 @@ def read_cmd_args(argv):
 
 if __name__ == '__main__':
     args = read_cmd_args(None)
-    if os.environ.get('FREESURFER_HOME', '') == '':
-        raise Exception('Source freesurfer and rerun')
-    os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
-
-    for subject in args.subject:
-        run_on_subjects(subject, args)
+    pu.check_freesurfer()
+    pu.run_on_subjects(args, main)
     print('finish!')

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
 from src.utils import matlab_utils as mu
+from src.utils import preproc_utils as pu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -910,7 +911,6 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
-    from src.utils import preproc_utils as pu
     args = read_cmd_args()
     pu.run_on_subjects(args, main)
     print('finish!')
