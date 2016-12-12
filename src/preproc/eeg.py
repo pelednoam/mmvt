@@ -90,7 +90,8 @@ def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
     return True
 
 
-def main(subject, mri_subject, inverse_method, args):
+def main(tup, remote_subject_dir, args, flags):
+    (subject, mri_subject), inverse_method = tup
     evoked, epochs = None, None
     fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, args)
     meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
@@ -99,7 +100,6 @@ def main(subject, mri_subject, inverse_method, args):
     meg.FWD = meg.FWD_EEG
     meg.INV = meg.INV_EEG
     stat = meg.STAT_AVG if len(conditions) == 1 else meg.STAT_DIFF
-    flags = {}
 
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
@@ -107,7 +107,7 @@ def main(subject, mri_subject, inverse_method, args):
     flags = meg.calc_evoked_wrapper(subject, conditions, args, flags)
 
     if utils.should_run(args, 'create_eeg_mesh'):
-        create_eeg_mesh(mri_subject, args.eeg_electrodes_excluded_from_mesh)
+        flags['create_eeg_mesh'] = create_eeg_mesh(mri_subject, args.eeg_electrodes_excluded_from_mesh)
 
     if utils.should_run(args, 'save_evoked_to_blender'):
         flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
@@ -121,11 +121,6 @@ def main(subject, mri_subject, inverse_method, args):
     return flags
 
 
-def run_on_subjects(args):
-    from src.preproc.eeg import main as eeg_main
-    meg.run_on_subjects(args, eeg_main)
-
-
 def read_cmd_args(argv=None):
     args = meg.read_cmd_args(argv)
     args.pick_meg = False
@@ -137,6 +132,11 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
+    from src.utils import preproc_utils as pu
+    from itertools import product
+
     args = read_cmd_args()
-    run_on_subjects(args)
+    subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
+    subject_func = lambda x:x[0][1]
+    pu.run_on_subjects(args, main, subjects_itr, subject_func)
     print('finish!')

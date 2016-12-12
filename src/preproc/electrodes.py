@@ -1,12 +1,10 @@
 import numpy as np
 from functools import partial
-import os
 import os.path as op
 import shutil
 import mne
 import scipy.io as sio
 import scipy
-import csv
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 
@@ -827,39 +825,43 @@ def set_args(args):
     return args
 
 
-def main(subject, args):
+def main(subject, remote_subject_dir, args, flags):
+    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
     utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
     args = set_args(args)
 
     if utils.should_run(args, 'convert_electrodes_file_to_npy'):
-        convert_electrodes_coordinates_file_to_npy(
+        flags['convert_electrodes_file_to_npy'] = convert_electrodes_coordinates_file_to_npy(
             subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
 
     if utils.should_run(args, 'sort_electrodes_groups'):
-        sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
+        flags['sort_electrodes_groups'] = sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
-        create_electrode_data_file(subject, args.task, args.from_t_ind, args.to_t_ind, args.stat, args.conditions,
-                                   args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
-                                   args.input_matlab_fname, args.input_type, args.field_cond_template)
+        flags['create_electrode_data_file'] = create_electrode_data_file(
+            subject, args.task, args.from_t_ind, args.to_t_ind, args.stat, args.conditions,
+            args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
+            args.input_matlab_fname, args.input_type, args.field_cond_template)
 
     if utils.should_run(args, 'create_electrodes_labeling_coloring'):
-        create_electrodes_labeling_coloring(subject, args.bipolar, args.atlas)
+        flags['create_electrodes_labeling_coloring'] = create_electrodes_labeling_coloring(
+            subject, args.bipolar, args.atlas)
 
     if utils.should_run(args, 'create_electrodes_groups_coloring'):
-        create_electrodes_groups_coloring(subject, args.bipolar, args.electrodes_groups_coloring_fname)
+        flags['create_electrodes_groups_coloring'] = create_electrodes_groups_coloring(
+            subject, args.bipolar, args.electrodes_groups_coloring_fname)
 
     if utils.should_run(args, 'transform_electrodes_to_mni'):
-        transform_electrodes_to_mni(subject, args)
+        flags['transform_electrodes_to_mni'] = transform_electrodes_to_mni(subject, args)
 
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
-        utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
+        flags['show_image'] =  utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
 
     if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
-        create_raw_data_for_blender(subject, args.raw_fname, args.conditions, do_plot=args.do_plot)
+        flags['create_raw_data_for_blender'] = create_raw_data_for_blender(
+            subject, args.raw_fname, args.conditions, do_plot=args.do_plot)
 
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
@@ -868,12 +870,7 @@ def read_cmd_args(argv=None):
     from src.utils import args_utils as au
     import argparse
     parser = argparse.ArgumentParser(description='MMVT electrodes preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-t', '--task', help='task', required=False)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--good_channels', help='good channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--bad_channels', help='bad channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default='0', type=au.float_arr_type)# float) # was -500
@@ -901,18 +898,19 @@ def read_cmd_args(argv=None):
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
+    args.ignore_missing = True
     for field in ['from_t', 'to_t']:
         if len(args[field]) == 1:
             args[field] = args[field][0]
-
+    args.necessary_files = {'electrodes': ['{subject}_RAS.csv']}
     print(args)
     return args
 
 
 if __name__ == '__main__':
+    from src.utils import preproc_utils as pu
     args = read_cmd_args()
-    for subject in args.subject:
-        print('********* {} ***********'.format(subject))
-        main(subject, args)
+    pu.run_on_subjects(args, main)
     print('finish!')

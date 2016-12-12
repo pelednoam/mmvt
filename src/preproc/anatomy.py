@@ -609,22 +609,16 @@ def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_f
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
-def main(subject, args):
-    flags = dict()
+def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-    remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
-    print('****************************************************************')
-    print('subject: {}, atlas: {}'.format(subject, args.atlas))
-    print('remote dir: {}'.format(remote_subject_dir))
-    print('****************************************************************')
 
-    if utils.should_run(args, 'prepare_local_subjects_folder'):
-        # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
-        if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
-            ans = input('Do you which to continue (y/n)? ')
-            if not au.is_true(ans):
-                return flags
+    # if utils.should_run(args, 'prepare_local_subjects_folder'):
+    #     # *) Prepare the local subject's folder
+    #     flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
+    #     if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
+    #         ans = input('Do you which to continue (y/n)? ')
+    #         if not au.is_true(ans):
+    #             return flags
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -689,44 +683,40 @@ def main(subject, args):
     return flags
 
 
-def run_on_subjects(args):
-    subjects_flags, subjects_errors = {}, {}
-    args.sftp_password = utils.get_sftp_password(
-        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
-        if args.sftp else ''
-    if '*' in args.subject:
-        args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
-    for subject in args.subject:
-        utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
-        # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-        try:
-            flags = main(subject, args)
-            subjects_flags[subject] = flags
-        except:
-            subjects_errors[subject] = traceback.format_exc()
-            print('Error in subject {}'.format(subject))
-            print(traceback.format_exc())
-
-    errors = defaultdict(list)
-    for subject, flags in subjects_flags.items():
-        print('subject {}:'.format(subject))
-        for flag_type, val in flags.items():
-            print('{}: {}'.format(flag_type, val))
-            if not val:
-                errors[subject].append(flag_type)
-    if len(errors) > 0:
-        print('Errors:')
-        for subject, error in errors.items():
-            print('{}: {}'.format(subject, error))
+# def run_on_subjects(args):
+#     subjects_flags, subjects_errors = {}, {}
+#     args.sftp_password = utils.get_sftp_password(
+#         args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
+#         if args.sftp else ''
+#     if '*' in args.subject:
+#         args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
+#     for subject in args.subject:
+#         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
+#         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+#         try:
+#             flags = main(subject, args)
+#             subjects_flags[subject] = flags
+#         except:
+#             subjects_errors[subject] = traceback.format_exc()
+#             print('Error in subject {}'.format(subject))
+#             print(traceback.format_exc())
+#
+#     errors = defaultdict(list)
+#     for subject, flags in subjects_flags.items():
+#         print('subject {}:'.format(subject))
+#         for flag_type, val in flags.items():
+#             print('{}: {}'.format(flag_type, val))
+#             if not val:
+#                 errors[subject].append(flag_type)
+#     if len(errors) > 0:
+#         print('Errors:')
+#         for subject, error in errors.items():
+#             print('{}: {}'.format(subject, error))
 
 
 def read_cmd_args(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--exclude', help='functions not to run', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--template_subject', help='template subject', required=False, default='fsaverage')
     parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
@@ -744,18 +734,12 @@ def read_cmd_args(argv=None):
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
-    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
-    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
-    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
-    parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
-    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
         'mri:transforms' : ['talairach.xfm']}
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
@@ -777,9 +761,9 @@ if __name__ == '__main__':
     if os.environ.get('FREESURFER_HOME', '') == '':
         print('Source freesurfer and rerun')
     else:
+        from src.utils import preproc_utils as pu
         args = read_cmd_args()
-        print(args.remote_subject_dir)
-        run_on_subjects(args)
+        pu.run_on_subjects(args, main)
         print('finish!')
 
     # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'

@@ -12,7 +12,6 @@ import glob
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
-from src.utils import args_utils as au
 from src.preproc import meg as meg
 
 try:
@@ -646,17 +645,7 @@ def misc(args):
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
-    if necessary_files is None:
-        necessary_files = args.necessary_files
-    return utils.prepare_local_subjects_folder(
-        necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
-        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
-        args.overwrite_fs_files, args.print_traceback, args.sftp_port)
-
-
-def main(subject, args):
-    os.environ['SUBJECT'] = subject
+def main(subject, remote_subject_dir, args, flags):
     volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
     if args.fsfast:
@@ -664,20 +653,6 @@ def main(subject, args):
             contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
     else:
         fmri_contrast_file_template = op.join(fol, '{}_{}.mgz'.format(volume_name, '{hemi}'))
-    args.sftp_password = utils.get_sftp_password(
-        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
-        if args.sftp else ''
-    remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
-
-    flags = {}
-    if utils.should_run(args, 'prepare_local_subjects_folder'):
-        # *) Prepare the local subject's folder
-        flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
-        if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
-            ans = input('Do you which to continue (y/n)? ')
-            if not au.is_true(ans):
-                return flags
-
 
     # todo: should find automatically the existing_format
     if 'fmri_pipeline' in args.function:
@@ -715,11 +690,8 @@ def read_cmd_args(argv=None):
     from src.utils import args_utils as au
 
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all')
     parser.add_argument('-c', '--contrast', help='contrast map', required=False, default='')
     parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-t', '--task', help='task', required=False, default='')
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
     parser.add_argument('--fsfast', help='', required=False, default=1, type=au.is_true)
@@ -738,18 +710,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
-    # Prepare subject dir
-    parser.add_argument('--remote_subject_dir', help='remote_subject_dir', required=False, default='')
-    parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
-    parser.add_argument('--overwrite_fs_files', help='overwrite freesurfer files', required=False, default=0,
-                        type=au.is_true)
-    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
-    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
-    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
-    parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
-    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
 
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label']}
@@ -760,9 +722,9 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
+    from src.utils import preproc_utils as pu
     args = read_cmd_args()
-    for subject in args.subject:
-        main(subject, args)
+    pu.run_on_subjects(args, main)
     print('finish!')
 
 

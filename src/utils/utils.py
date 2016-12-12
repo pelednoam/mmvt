@@ -799,7 +799,7 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
 
     local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
-        check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace=False)
+        check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=False)
     if all_files_exists and not overwrite_files:
         return True
     elif remote_subject_dir == '':
@@ -816,25 +816,28 @@ def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, 
                 os.makedirs(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
+                    file_name = file_name.replace('{subject}', subject)
                     local_fname = op.join(local_subject_dir, fol, file_name)
                     remote_fname = op.join(remote_subject_dir, fol, file_name)
                     if not op.isfile(local_fname) or overwrite_files:
                         if op.isfile(remote_fname):
+                            print('coping {} to {}'.format(remote_fname, local_fname))
                             shutil.copyfile(remote_fname, local_fname)
                         else:
                             print("Remote file can't be found! {}".format(remote_fname))
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
-    all_files_exists = check_if_all_necessary_files_exist(necessary_files, local_subject_dir, True)
+    all_files_exists = check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, True)
     return all_files_exists
 
 
-def check_if_all_necessary_files_exist(necessary_files, local_subject_dir, trace=True):
+def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=True):
     all_files_exists = True
     for fol, files in necessary_files.items():
         fol = fol.replace(':', op.sep)
         for file_name in files:
+            file_name = file_name.replace('{subject}', subject)
             if not op.isfile(op.join(local_subject_dir, fol, file_name)):
                 if trace:
                     print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
@@ -862,6 +865,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
             os.chdir(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
+                    file_name = file_name.replace('{subject}', subject)
                     if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
                         # with sftp.cd(op.join(remote_subject_dir, fol)):
                         with sftp.cd(remote_subject_dir + '/' + fol):
@@ -1482,7 +1486,7 @@ def sort_according_to_another_list(list_to_sort, list_to_sort_by):
 def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, overwrite_fs_files=False):
     sftp_password = ''
     all_necessary_files_exist = False if overwrite_fs_files else np.all(
-        [check_if_all_necessary_files_exist(necessary_files, op.join(subjects_dir, subject), False)
+        [check_if_all_necessary_files_exist(subject, necessary_files, op.join(subjects_dir, subject), False)
          for subject in subjects])
     if not all_necessary_files_exist or overwrite_fs_files:
         sftp_password = ask_for_sftp_password(sftp_username)

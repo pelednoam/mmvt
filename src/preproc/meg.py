@@ -1617,14 +1617,14 @@ def init_main(subject, mri_subject, args):
     return fname_format, fname_format_cond, conditions
 
 
-def main(subject, mri_subject, inverse_method, args):
+def main(tup, remote_subject_dir, args, flags):
+    (subject, mri_subject), inverse_method = tup
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
     fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, args)
     init_globals_args(
         subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
-    flags = {}
 
     flags = calc_evoked_wrapper(subject, conditions, args, flags)
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
@@ -1678,54 +1678,49 @@ def main(subject, mri_subject, inverse_method, args):
     return flags
 
 
-def run_on_subjects(args, main_func=None):
-    subjects_flags, subjects_errors = {}, {}
-    args.sftp_password = utils.get_sftp_password(
-        args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
-        if args.sftp else ''
-    if args.sftp_sso and args.sftp_password == '':
-        args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
-
-    for (subject, mri_subject), inverse_method in product(zip(args.subject, args.mri_subject), args.inverse_method):
-        utils.make_dir(op.join(MMVT_DIR, mri_subject, 'mmvt'))
-        try:
-            print('*******************************************')
-            print('subject: {}, atlas: {}'.format(subject, args.atlas))
-            print('*******************************************')
-            if main_func is None:
-                from src.preproc.meg import main as meg_main
-                main_func = meg_main
-            flags = main_func(subject, mri_subject, inverse_method, args)
-            subjects_flags[subject] = flags
-        except:
-            subjects_errors[subject] = traceback.format_exc()
-            print('Error in subject {}'.format(subject))
-            print(traceback.format_exc())
-
-    errors = defaultdict(list)
-    for subject, flags in subjects_flags.items():
-        print('subject {}:'.format(subject))
-        for flag_type, val in flags.items():
-            print('{}: {}'.format(flag_type, val))
-            if not val:
-                errors[subject].append(flag_type)
-    print('Errors:')
-    for subject, error in errors.items():
-        print('{}: {}'.format(subject, error))
+# def run_on_subjects(args, main_func=None):
+#     subjects_flags, subjects_errors = {}, {}
+#     args.sftp_password = utils.get_sftp_password(
+#         args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
+#         if args.sftp else ''
+#     if args.sftp_sso and args.sftp_password == '':
+#         args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
+#
+#     for (subject, mri_subject), inverse_method in product(zip(args.subject, args.mri_subject), args.inverse_method):
+#         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'mmvt'))
+#         try:
+#             print('*******************************************')
+#             print('subject: {}, atlas: {}'.format(subject, args.atlas))
+#             print('*******************************************')
+#             if main_func is None:
+#                 from src.preproc.meg import main as meg_main
+#                 main_func = meg_main
+#             flags = main_func(subject, mri_subject, inverse_method, args)
+#             subjects_flags[subject] = flags
+#         except:
+#             subjects_errors[subject] = traceback.format_exc()
+#             print('Error in subject {}'.format(subject))
+#             print(traceback.format_exc())
+#
+#     errors = defaultdict(list)
+#     for subject, flags in subjects_flags.items():
+#         print('subject {}:'.format(subject))
+#         for flag_type, val in flags.items():
+#             print('{}: {}'.format(flag_type, val))
+#             if not val:
+#                 errors[subject].append(flag_type)
+#     print('Errors:')
+#     for subject, error in errors.items():
+#         print('{}: {}'.format(subject, error))
 
 
 def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
-    parser.add_argument('-f', '--function', help='function names to run', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('-c', '--conditions', help='conditions', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--exclude', help='function names not to run', required=False, default=[], type=au.str_arr_type)
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
@@ -1780,15 +1775,10 @@ def read_cmd_args(argv=None):
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
-    parser.add_argument('--remote_subject_mri_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
-    parser.add_argument('--sftp', help='copy subjects files over sftp', required=False, default=0, type=au.is_true)
-    parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
-    parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
-    parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
-    parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
+    # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
@@ -1805,6 +1795,10 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
+    from src.utils import preproc_utils as pu
     args = read_cmd_args()
-    run_on_subjects(args)
+    subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
+    subject_func = lambda x:x[0][1]
+    pu.run_on_subjects(args, main, subjects_itr, subject_func)
+    # run_on_subjects(args)
     print('finish!')
