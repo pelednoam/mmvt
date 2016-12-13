@@ -1,35 +1,29 @@
-import os
-import os.path as op
 from src.utils import utils
+from src.utils import preproc_utils as pu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 def do_something(subject, args):
     pass
 
 
-def main(subject, args):
+def main(subject, remote_subject_dir, args, flags):
     if utils.should_run('do_something'):
-        do_something(subject, args)
+        flags['do_something'] = do_something(subject, args)
+    return flags
 
 
-
-if __name__ == '__main__':
+def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
-    parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
-    parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='all', type=au.str_arr_type)
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    parser = argparse.ArgumentParser(description='MMVT template preprocessing')
+    pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser))
     print(args)
+    return args
 
-    for subject in args.subject:
-        main(subject, args)
-
+if __name__ == '__main__':
+    args = read_cmd_args()
+    pu.run_on_subjects(args, main)
     print('finish!')

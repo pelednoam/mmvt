@@ -5,7 +5,7 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
-SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 def load_stim_file(subject, args):

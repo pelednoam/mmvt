@@ -30,7 +30,7 @@ except:
     print('no pysurfer!')
 
 
-SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 SUBJECTS_MEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'meg')
 FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 

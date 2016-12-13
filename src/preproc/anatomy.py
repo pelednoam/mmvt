@@ -19,7 +19,7 @@ from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
 
-SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
 HEMIS = ['rh', 'lh']
 

@@ -9,7 +9,7 @@ from mne.label import _read_annot
 from src.utils import utils
 from src.utils import preproc_utils as pu
 
-SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 APARC2ASEG = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 

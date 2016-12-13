@@ -13,7 +13,7 @@ from src.mmvt_addon import colors_utils as cu
 from src.utils import matlab_utils as mu
 from src.utils import preproc_utils as pu
 
-SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
 HEMIS = utils.HEMIS
 STAT_AVG, STAT_DIFF = range(2)
@@ -172,7 +172,7 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
     output_file = op.join(SUBJECTS_DIR, subject, 'electrodes', output_file_name)
     electrodes_csv_to_npy(csv_file, output_file, bipolar)
     if copy_to_blender:
-        blender_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', output_file_name)
+        blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
         shutil.copyfile(output_file, blender_file)
     return output_file
 
@@ -212,7 +212,7 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
     else:
         print('No electrodes data file!!!')
         return
-    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
+    output_file = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}_data_{}.npz'.format(
             '_bipolar' if bipolar else '', STAT_NAME[stat]))
     if field_cond_template == '':
         if input_type.lower() == 'evo':
@@ -224,16 +224,16 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
         # pass
     # else:
     if task == 'ECR':
-        read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
+        read_electrodes_data_one_mat(subject, input_file, conditions, stat, output_file, bipolar,
             electrodes_names_field, field_cond_template = field_cond_template, from_t=from_t, to_t=to_t,
             moving_average_win_size=moving_average_win_size)# from_t=0, to_t=2500)
     elif task == 'MSIT':
         if bipolar:
-            read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
+            read_electrodes_data_one_mat(subject, input_file, conditions, stat, output_file, bipolar,
                 electrodes_names_field, field_cond_template=field_cond_template, # '{}_bipolar_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
         else:
-            read_electrodes_data_one_mat(input_file, conditions, stat, output_file, bipolar,
+            read_electrodes_data_one_mat(subject, input_file, conditions, stat, output_file, bipolar,
                 electrodes_names_field, field_cond_template = '{}_evoked',
                 from_t=from_t, to_t=to_t, moving_average_win_size=moving_average_win_size) #from_t=500, to_t=3000)
 
@@ -302,7 +302,7 @@ def calc_bipolar_electrodes_number(labels):
     return bipolar_data_index
 
 
-def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, bipolar, electrodes_names_field,
+def read_electrodes_data_one_mat(subject, mat_file, conditions, stat, output_file_name, bipolar, electrodes_names_field,
         field_cond_template, from_t=0, to_t=None, norm_by_percentile=True, norm_percs=(3, 97), threshold=0,
         color_map='jet', cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False, flip_cm_small=True,
         moving_average_win_size=0, downsample=2):
@@ -353,7 +353,7 @@ def read_electrodes_data_one_mat(mat_file, conditions, stat, output_file_name, b
         data, labels = bipolarize_data(data, labels)
 
     if single_trials:
-        output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes{}_data_st.npz'.format(
+        output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}_data_st.npz'.format(
             '_bipolar' if bipolar else ''))
         data_conds = [(data[key], key) for key in data.keys()]
         data = [d[0] for d in data_conds]
@@ -456,7 +456,7 @@ def sort_electrodes_groups(subject, bipolar, do_plot=True):
     groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
     sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
     print(sorted_groups)
-    utils.save(sorted_groups, op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
+    utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
     if do_plot:
         # utils.plot_3d_scatter(pos, names=electrodes.tolist(), labels=first_electrodes.values())
         # electrodes_3d_scatter_plot(pos, first_pos)
@@ -524,7 +524,7 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
     conditions = [c['name'] for c in conds]
     data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
-    fol = op.join(BLENDER_ROOT_DIR, subject, 'electrodes')
+    fol = op.join(MMVT_DIR, subject, 'electrodes')
     output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if bipolar else '', STAT_NAME[stat]))
 
     calc_colors = partial(
@@ -642,8 +642,8 @@ def create_electrodes_groups_coloring(subject, bipolar, coloring_fname='electrod
     electrodes, groups = get_electrodes_groups(subject, bipolar)
     colors_rgb_and_names = cu.get_distinct_colors_and_names(len(groups) - 1, boynton=True)
     group_colors = dict()
-    coloring_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', coloring_fname)
-    coloring_names_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'electrodes_groups_coloring_names.csv')
+    coloring_fname = op.join(MMVT_DIR, subject, 'coloring', coloring_fname)
+    coloring_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'electrodes_groups_coloring_names.csv')
     with open(coloring_names_fname, 'w') as colors_names_file:
         for group, (color_rgb, color_name) in zip(groups, colors_rgb_and_names):
             if 'ref' in group.lower():
@@ -662,21 +662,21 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
         p_threshold=0.05, legend_name='', coloring_fname=''):
     elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
     elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(
-        subject, BLENDER_ROOT_DIR, atlas, bipolar, error_radius, elec_length)
+        subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
-    if electrode_labeling_fname != op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+    if electrode_labeling_fname != op.join(MMVT_DIR, subject, 'electrodes',
             op.basename(electrode_labeling_fname)):
-        shutil.copy(electrode_labeling_fname, op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+        shutil.copy(electrode_labeling_fname, op.join(MMVT_DIR, subject, 'electrodes',
             op.basename(electrode_labeling_fname)))
     most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
     rois_colors_rgbs, rois_colors_names = get_rois_colors(subject, atlas, most_probable_rois)
     save_rois_colors_legend(subject, rois_colors_rgbs, bipolar, legend_name)
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     if coloring_fname == '':
         coloring_fname = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
-    coloring_fol = op.join(BLENDER_ROOT_DIR, subject, 'coloring')
+    coloring_fol = op.join(MMVT_DIR, subject, 'coloring')
     coloring_fname =  op.join(coloring_fol, coloring_fname)
     colors_names_fname = op.join(coloring_fol, 'electrodes{}_colors_names.txt'.format('_bipolar' if bipolar else ''))
     elec_names_rois_colors = defaultdict(list)
@@ -727,8 +727,8 @@ def get_rois_colors(subject, atlas, rois):
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
     colors = cu.get_distinct_colors_and_names()
-    lables_colors_rgbs_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
-    lables_colors_names_fname = op.join(BLENDER_ROOT_DIR, subject, 'coloring', 'labels_{}_colors_names.csv'.format(atlas))
+    lables_colors_rgbs_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    lables_colors_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_colors_names.csv'.format(atlas))
     labels_colors_exist = op.isfile(lables_colors_rgbs_fname) and op.isfile(lables_colors_names_fname)
     rois_colors_rgbs, rois_colors_names = OrderedDict(), OrderedDict()
     if not labels_colors_exist:
@@ -764,7 +764,7 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
         dots.append(ax.scatter([0],[0], c=color))
         labels.append(roi)
     figlegend.legend(dots, labels, 'center')
-    figlegend.savefig(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
+    figlegend.savefig(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
 
 def transform_electrodes_to_mni(subject, args):
@@ -783,8 +783,8 @@ def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None, ba
     good_elecs_coords_mni = np.array(good_elecs_coords_mni)
     electrodes_mni_fname = save_electrodes_file(subject, args.bipolar, good_elecs_names, good_elecs_coords_mni, '_mni')
     output_file_name = op.split(electrodes_mni_fname)[1]
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes'))
-    blender_file = op.join(BLENDER_ROOT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
+    utils.make_dir(op.join(MMVT_DIR, 'colin27', 'electrodes'))
+    blender_file = op.join(MMVT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
     shutil.copyfile(electrodes_mni_fname, blender_file)
 
 
@@ -823,9 +823,9 @@ def set_args(args):
 
 
 def main(subject, remote_subject_dir, args, flags):
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'coloring'))
+    utils.make_dir(op.join(MMVT_DIR, subject))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     args = set_args(args)
 
     if utils.should_run(args, 'convert_electrodes_file_to_npy'):
@@ -854,7 +854,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
-        flags['show_image'] =  utils.show_image(op.join(BLENDER_ROOT_DIR, subject, 'coloring', legend_name))
+        flags['show_image'] =  utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
     if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
         flags['create_raw_data_for_blender'] = create_raw_data_for_blender(

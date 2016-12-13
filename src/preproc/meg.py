@@ -23,7 +23,6 @@ LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 
-os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
