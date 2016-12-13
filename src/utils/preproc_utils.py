@@ -108,3 +108,11 @@ def add_common_args(parser):
 def check_freesurfer():
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
+
+
+def get_links():
+    links_dir = utils.get_links_dir()
+    subjects_dir = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
+    freesurfer_home = utils.get_link_dir(links_dir, 'freesurfer', 'FREESURFER_HOME')
+    mmvt_dir = op.join(links_dir, 'mmvt')
+    return subjects_dir, mmvt_dir, freesurfer_home

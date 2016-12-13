@@ -5,13 +5,11 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 def load_stim_file(subject, args):
-    stim_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}{}.npz'.format(
+    stim_fname = op.join(MMVT_DIR, subject, 'electrodes', '{}{}.npz'.format(
         args.file_frefix, args.stim_channel))
     stim = np.load(stim_fname)
     labels, psd, time, freqs = (stim[k] for k in ['labels', 'psd', 'time', 'freqs'])
@@ -46,7 +44,7 @@ def load_stim_file(subject, args):
             # else:
             colors[elec_ind, :, freq_ind] = utils.mat_to_colors(psd_slice[elec_ind], data_min, data_max, colorsMap=args.colors_map)
         conditions.append('{}-{}Hz'.format(freq_from, freq_to))
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
             args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
     print('Saving {}'.format(output_fname))
     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors)
@@ -55,10 +53,10 @@ def load_stim_file(subject, args):
 
 def get_stim_labels(subject, args, stim_labels):
     if stim_labels is None:
-        stim = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', '{}{}.npz'.format(
+        stim = np.load(op.join(MMVT_DIR, subject, 'electrodes', '{}{}.npz'.format(
             args.file_frefix, args.stim_channel)))
         bipolar = '-' in stim['labels'][0]
-        stim_data = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
+        stim_data = np.load(op.join(MMVT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
             args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel)))
         stim_labels = stim_data['names']
     else:
@@ -71,11 +69,11 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
 
     stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
     output_file_name = 'electrodes{}_stim_{}_positions.npz'.format('_bipolar' if bipolar else '', args.stim_channel)
-    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', output_file_name)
+    output_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
     # if op.isfile(output_file):
     #     return
 
-    f = np.load(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
+    f = np.load(op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
     org_pos, org_labels = f['pos'], f['names']
     if bipolar:
         pos, dists = [], []
@@ -139,15 +137,15 @@ def set_labels_colors(subject, args, stim_dict=None):
     stim_labels = stim_dict['labels'] if stim_dict else None
     stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
     if stim_dict is None:
-        stim_data_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
+        stim_data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
                 args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
         stim_dict = np.load(stim_data_fname)
     stim_data = stim_dict['data']
-    electrode_labeling_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes',
+    electrode_labeling_fname = op.join(MMVT_DIR, subject, 'electrodes',
             '{}_{}_electrodes_cigar_r_{}_l_{}{}_stim_{}.pkl'.format(subject, args.atlas, args.error_radius,
             args.elec_length, '_bipolar' if bipolar else '', args.stim_channel))
     elecs_labeling, electrode_labeling_fname = utils.get_electrodes_labeling(
-        subject, BLENDER_ROOT_DIR, args.atlas, bipolar, args.error_radius, args.elec_length,
+        subject, MMVT_DIR, args.atlas, bipolar, args.error_radius, args.elec_length,
         other_fname=electrode_labeling_fname)
     if elecs_labeling is None:
         print('No electrodes labeling file!')
@@ -163,14 +161,14 @@ def set_labels_colors(subject, args, stim_dict=None):
     for hemi in utils.HEMIS:
         labels_data[hemi], labels_colors[hemi], data_labels_names[hemi] = \
             calc_labels_data(labels_elecs_lookup[hemi], stim_data, stim_labels, hemi)
-        output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_labels_{}{}_{}-{}.npz'.format(
+        output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_labels_{}{}_{}-{}.npz'.format(
                 args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel, hemi))
         np.savez(output_fname, data=labels_data[hemi], names=data_labels_names[hemi],
                  conditions=stim_dict['conditions'], colors=labels_colors[hemi])
 
     subcortical_data, subcortical_colors, data_subcortical_names = calc_labels_data(
         subcortical_elecs_lookup, stim_data, stim_labels)
-    output_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'stim_subcortical_{}{}_{}.npz'.format(
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_subcortical_{}{}_{}.npz'.format(
             args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
     np.savez(output_fname, data=subcortical_data, names=data_subcortical_names,
              conditions=stim_dict['conditions'], colors=subcortical_colors)
@@ -219,7 +217,7 @@ def create_labels_electordes_lookup(subject, atlas, elecs_labeling, n_jobs):
 
 
 def main(subject, remote_subject_dir, args, flags):
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'electrodes'))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     stim_data = None
 
     if utils.should_run(args, 'load_stim_file'):

@@ -1,27 +1,23 @@
-import os
 import os.path as op
 import numpy as np
 import mne.io
-import glob
 import traceback
 
 from src.utils import utils
+from src.utils import preproc_utils as pu
 from src.preproc import meg as meg
 
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+
 LINKS_DIR = utils.get_links_dir()
-SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
+MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 SUBJECTS_EEG_DIR = utils.get_link_dir(LINKS_DIR, 'eeg')
 if SUBJECTS_EEG_DIR == '':
     print('No EEG folder, using MEG folder')
-    SUBJECTS_EEG_DIR = SUBJECTS_MEG_DIR
+    SUBJECTS_EEG_DIR = MEG_DIR
 if SUBJECTS_EEG_DIR == '':
     raise Exception('No EEG folder (not MEG)!')
 SUBJECT_EEG_DIR = ''
-SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREESURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-print('FREE_SURFER_HOME: {}'.format(FREESURFER_HOME))
-MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
-os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 
 
 def read_eeg_sensors_layout(subject, mri_subject, args):
@@ -96,7 +92,7 @@ def main(tup, remote_subject_dir, args, flags):
     fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, args)
     meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
                      MMVT_DIR, args)
-    meg.SUBJECTS_MEG_DIR = SUBJECTS_EEG_DIR
+    meg.MEG_DIR = SUBJECTS_EEG_DIR
     meg.FWD = meg.FWD_EEG
     meg.INV = meg.INV_EEG
     stat = meg.STAT_AVG if len(conditions) == 1 else meg.STAT_DIFF

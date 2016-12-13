@@ -17,12 +17,10 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+
 LINKS_DIR = utils.get_links_dir()
-SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
-SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREESURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-print('FREE_SURFER_HOME: {}'.format(FREESURFER_HOME))
-MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
+MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
@@ -109,7 +107,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
-    STC_MORPH = op.join(SUBJECTS_MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
+    STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
     LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
@@ -998,7 +996,7 @@ def morph_stc(subject_to, cond='all', grade=None, n_jobs=6, inverse_method='dSPM
     stc = mne.read_source_estimate(STC.format(cond, inverse_method))
     vertices_to = mne.grade_to_vertices(subject_to, grade=grade)
     stc_to = mne.morph_data(SUBJECT, subject_to, stc, n_jobs=n_jobs, grade=vertices_to)
-    fol_to = op.join(SUBJECTS_MEG_DIR, TASK, subject_to)
+    fol_to = op.join(MEG_DIR, TASK, subject_to)
     if not op.isdir(fol_to):
         os.mkdir(fol_to)
     stc_to.save(STC_MORPH.format(subject_to, cond, inverse_method))
@@ -1381,7 +1379,7 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     ret = False
     if len(sensors_pos) > 0:
         # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
-        trans_pat = op.join(SUBJECTS_MEG_DIR, args.task, subject, '*COR*.fif')
+        trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
         trans_files = glob.glob(trans_pat)
         if len(trans_files) == 1:
             trans = mne.transforms.read_trans(trans_files[0])
@@ -1542,7 +1540,7 @@ def get_meg_files(subject, necessary_fnames, args, events):
             fnames.extend([get_cond_fname(fname, event) for event in events.keys()])
         else:
             fnames.append(fname)
-    local_fol = op.join(SUBJECTS_MEG_DIR, args.task)
+    local_fol = op.join(MEG_DIR, args.task)
     prepare_local_subjects_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
@@ -1607,7 +1605,7 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
 
 def init_main(subject, mri_subject, args):
     if args.events_file_name != '':
-        args.events_file_name = op.join(SUBJECTS_MEG_DIR, args.task, subject, args.events_file_name)
+        args.events_file_name = op.join(MEG_DIR, args.task, subject, args.events_file_name)
         if '{subject}' in args.events_file_name:
             args.events_file_name = args.events_file_name.format(subject=subject)
     args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
@@ -1624,7 +1622,7 @@ def main(tup, remote_subject_dir, args, flags):
     stcs_conds, stcs_conds_smooth = None, None
     fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, args)
     init_globals_args(
-        subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+        subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
     flags = calc_evoked_wrapper(subject, conditions, args, flags)

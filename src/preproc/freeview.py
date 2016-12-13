@@ -9,16 +9,12 @@ from mne.label import _read_annot
 from src.utils import utils
 from src.utils import preproc_utils as pu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 APARC2ASEG = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 
 def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=True, way_points=False):
-    blender_freeview_fol = op.join(BLENDER_ROOT_DIR, subject, 'freeview')
+    blender_freeview_fol = op.join(MMVT_DIR, subject, 'freeview')
     freeview_command = 'freeview -v T1.mgz:opacity=0.3 ' + \
         '{0}+aseg.mgz:opacity=0.05:colormap=lut:lut={0}ColorLUT.txt '.format(args.atlas)
     if args.elecs_names:
@@ -57,8 +53,8 @@ def create_lut_file_for_atlas(subject, atlas):
         csv_writer = csv.writer(fp, delimiter='\t')
         csv_writer.writerows(lut_new)
     # np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
-    shutil.copyfile(new_lut_fname, op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas)))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    shutil.copyfile(new_lut_fname, op.join(MMVT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas)))
 
 
 def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
@@ -70,7 +66,7 @@ def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=F
     aparc_aseg_file = '{}+aseg.mgz'.format(args.atlas)
     mri_file_fol = op.join(SUBJECTS_DIR, subject, 'mri')
     mri_file = op.join(mri_file_fol, aparc_aseg_file)
-    blender_file = op.join(BLENDER_ROOT_DIR, subject, 'freeview', aparc_aseg_file)
+    blender_file = op.join(MMVT_DIR, subject, 'freeview', aparc_aseg_file)
     if not op.isfile(blender_file) or args.overwrite_aseg_file:
         current_dir = op.dirname(op.realpath(__file__))
         os.chdir(mri_file_fol)
@@ -85,7 +81,7 @@ def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=F
 
 def check_mgz_values(atlas):
     import nibabel as nib
-    vol = nib.load(op.join(BLENDER_ROOT_DIR, subject, 'freeview', '{}+aseg.mgz'.format(atlas)))
+    vol = nib.load(op.join(MMVT_DIR, subject, 'freeview', '{}+aseg.mgz'.format(atlas)))
     vol_data = vol.get_data()
     vol_data = vol_data[np.where(vol_data)]
     data = vol_data.ravel()
@@ -107,7 +103,7 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
         group_pos = np.array([pos for name, pos in zip(args.elecs_names, args.elecs_pos) if
                               utils.elec_group(name, args.bipolar) == group])
         file_name = '{}.{}'.format(group, postfix)
-        with open(op.join(BLENDER_ROOT_DIR, subject, 'freeview', file_name), 'w') as fp:
+        with open(op.join(MMVT_DIR, subject, 'freeview', file_name), 'w') as fp:
             writer = csv.writer(fp, delimiter=' ')
             if args.way_points:
                 writer.writerow(['#!ascii label  , from subject  vox2ras=Scanner'])
@@ -123,7 +119,7 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
     if args.create_volume_file:
         import nibabel as nib
         from itertools import product
-        sig = nib.load(op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'T1.mgz'))
+        sig = nib.load(op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz'))
         sig_header = sig.get_header()
         data = np.zeros((256, 256, 256), dtype=np.int16)
         # positions_ras = np.array(utils.to_ras(electrodes_positions, round_coo=True))
@@ -132,12 +128,12 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
             for x, y, z in product(*([[d+i for i in range(-5,6)] for d in pos_ras])):
                 data[z,y,z] = 1
         img = nib.Nifti1Image(data, sig_header.get_affine(), sig_header)
-        nib.save(img, op.join(BLENDER_ROOT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
+        nib.save(img, op.join(MMVT_DIR, subject, 'freeview', 'electrodes.nii.gz'))
 
 
 def copy_T1(subject):
     for brain_file in ['T1.mgz', 'orig.mgz']:
-        blender_brain_file = op.join(BLENDER_ROOT_DIR, subject, 'freeview', brain_file)
+        blender_brain_file = op.join(MMVT_DIR, subject, 'freeview', brain_file)
         subject_brain_file = op.join(SUBJECTS_DIR, subject, 'mri', brain_file)
         if not op.isfile(blender_brain_file):
             utils.copy_file(subject_brain_file, blender_brain_file)
@@ -168,7 +164,7 @@ def read_electrodes_pos(subject, args):
 
 
 def main(subject, remote_subject_dir, args, flags):
-    utils.make_dir(op.join(BLENDER_ROOT_DIR, subject, 'freeview'))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     args.elecs_pos, args.elecs_names = read_electrodes_pos(subject, args)
 
     if utils.should_run(args, 'copy_T1'):

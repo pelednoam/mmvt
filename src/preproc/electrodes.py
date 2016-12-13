@@ -13,12 +13,8 @@ from src.mmvt_addon import colors_utils as cu
 from src.utils import matlab_utils as mu
 from src.utils import preproc_utils as pu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-ELECTRODES_DIR = op.join(LINKS_DIR, 'electrodes')
-
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
 HEMIS = utils.HEMIS
 STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}

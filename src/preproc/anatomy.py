@@ -18,10 +18,8 @@ from src.mmvt_addon import colors_utils as cu
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
 HEMIS = ['rh', 'lh']
 

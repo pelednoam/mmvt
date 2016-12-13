@@ -7,11 +7,7 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-BLENDER_ROOT_DIR = op.join(LINKS_DIR, 'mmvt')
-
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
@@ -22,7 +18,7 @@ def save_electrodes_coh(subject, args): # conditions=(), mat_fname='', stat=STAT
     d = dict()
     d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh_fname = op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
+    coh_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
     if not op.isfile(coh_fname):
         coh = calc_electrodes_coh(
             subject, args.conditions, args.mat_fname, args.t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
@@ -32,7 +28,7 @@ def save_electrodes_coh(subject, args): # conditions=(), mat_fname='', stat=STAT
     (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connections_colors(coh, d['labels'], d['hemis'], args)
     d['conditions'] = args.conditions # ['interference', 'neutral']
-    np.savez(op.join(BLENDER_ROOT_DIR, subject, 'electrodes', 'electrodes_con'), **d)
+    np.savez(op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_con'), **d)
 
 
 def get_electrodes_info(subject, bipolar=False):
@@ -51,7 +47,7 @@ def calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind, to_t_
 
     input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', mat_fname)
     d = sio.loadmat(input_file)
-    output_file = op.join(BLENDER_ROOT_DIR, subject, 'electrodes_coh.npy')
+    output_file = op.join(MMVT_DIR, subject, 'electrodes_coh.npy')
     windows = np.linspace(0, t_max - dt, t_max / dt)
     for cond, data in enumerate([d[cond] for cond in conditions]):
         if cond == 0:
@@ -106,7 +102,7 @@ def save_rois_connectivity(subject, args):
     # args.stat, args.conditions, args.windows, args.threshold,
     #     args.threshold_percentile, args.color_map, args.norm_by_percentile, args.norm_percs, args.symetric_colors)
     d['conditions'] = args.conditions
-    np.savez(op.join(BLENDER_ROOT_DIR, subject, 'rois_con'), **d)
+    np.savez(op.join(MMVT_DIR, subject, 'rois_con'), **d)
 
 
 def calc_connections_colors(data, labels, hemis, args):

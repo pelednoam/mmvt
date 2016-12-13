@@ -30,13 +30,9 @@ except:
     print('no pysurfer!')
 
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-SUBJECTS_MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
-MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
-FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
-os.environ['FREESURFER_HOME'] = FREE_SURFER_HOME
+SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_MEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'meg')
+FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 
 _bbregister = 'bbregister --mov {fsl_input}.nii --bold --s {subject} --init-fsl --lta register.lta'
 _mri_robust_register = 'mri_robust_register --mov {fsl_input}.nii --dst $SUBJECTS_DIR/colin27/mri/orig.mgz' +\
