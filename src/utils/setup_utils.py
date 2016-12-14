@@ -41,23 +41,24 @@ def get_resources_fol():
 
 
 def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
-    val = op.join(links_dir, link_name)
+    link = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
-    if op.isfile('{}.lnk'.format(val)):
+    if op.isfile('{}.lnk'.format(link)):
         from src.mmvt_addon.scripts import windows_utils as wu
-        sc = wu.MSShortcut('{}.lnk'.format(val))
+        sc = wu.MSShortcut('{}.lnk'.format(link))
         return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
-    if not op.isdir(val) and default_val != '':
-        val = default_val
-    if not op.isdir(val):
-        val = os.environ.get(var_name, '')
-    if not op.isdir(val):
+    ret = op.realpath(link)
+    if not op.isdir(ret) and default_val != '':
+        ret = default_val
+    if not op.isdir(ret):
+        ret = os.environ.get(var_name, '')
+    if not op.isdir(ret):
         if throw_exception:
             raise Exception('No {} dir!'.format(link_name))
         else:
             print('No {} dir!'.format(link_name))
-    return val
+    return ret
 
 
 def get_links_dir(links_fol_name='links'):
@@ -126,6 +127,16 @@ def should_run(args, func_name):
     if 'exclude' not in args:
         args.exclude = []
     return ('all' in args.function or func_name in args.function) and func_name not in args.exclude
+
+
+def namebase(fname):
+    return op.splitext(op.basename(fname))[0]
+
+
+def merge_two_dics(dic1, dic2):
+    ret = dic1.copy()
+    ret.update(dic2)
+    return ret
 
 
 class Bag( dict ):
