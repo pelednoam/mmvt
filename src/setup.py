@@ -94,6 +94,7 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
 
 
 def create_link(links_fol, link_name, message, gui=True, create_default_dir=False):
+    fol = ''
     if not utils.is_link(op.join(links_fol, link_name)):
         if gui:
             ret = utils.message_box(message, TITLE)
