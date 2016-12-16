@@ -37,18 +37,28 @@ def change_graph(next_val):
     fcurve_name = 'LMF6_interference'
     bpy.data.objects[obj_name].select = True
     parent_obj = bpy.data.objects[obj_name]
-    # T = 2500
-    # next_val = next(StreamingPanel.fixed_data)
-    for fcurve in parent_obj.animation_data.action.fcurves:
-        if mu.get_fcurve_name(fcurve) == fcurve_name:
-            # for kp in fcurve.keyframe_points:
-                # kp.co[1] = next(StreamingPanel.fixed_data)#[kp.co[0] + index * 100]
-                # kp.co[1] = np.sin(2 * np.pi * (kp.co[0] / T * 4 - 0.1 * index))
-            N = len(fcurve.keyframe_points)
-            for ind in range(N - 1, 0, -1):
-                fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - 1].co[1]
-            fcurve.keyframe_points[0].co[1] = next_val
+    curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
+    for fcurve in curves:
+        N = len(fcurve.keyframe_points)
+        for ind in range(N - 1, 0, -1):
+            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - 1].co[1]
+        fcurve.keyframe_points[0].co[1] = next_val
     return next_val
+
+
+def change_graph_vals(next_vals):
+    obj_name = 'LMF6'
+    fcurve_name = 'LMF6_interference'
+    bpy.data.objects[obj_name].select = True
+    parent_obj = bpy.data.objects[obj_name]
+    curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
+    for fcurve in curves:
+        N = len(fcurve.keyframe_points)
+        for ind in range(N - 1, len(next_vals), -1):
+            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - 1].co[1]
+        for ind in range(len(next_vals)):
+            fcurve.keyframe_points[ind].co[1] = next_vals[ind]
+    return next_vals
 
 
 def change_color(obj, val, data_min, colors_ratio):
@@ -77,6 +87,7 @@ class StreamButton(bpy.types.Operator):
     _index = 0
     _time_step = 0.01
     _obj = None
+    _buffer = []
 
     def invoke(self, context, event=None):
         self._time = time.time()
@@ -111,7 +122,10 @@ class StreamButton(bpy.types.Operator):
                     try:
                         data = data.decode(sys.getfilesystemencoding(), 'ignore')
                         data = float(data)
-                        change_graph(data)
+                        self._buffer.append(data)
+                        if len(self._buffer) == bpy.types.Scene.straming_buffer_size:
+                            change_graph_vals(self._buffer)
+                            self._buffer = []
                         # print('data from listener: {}'.format(data))
                     except:
                         print("Can't read the stdout from freeview")
@@ -147,9 +161,13 @@ class StreamButton(bpy.types.Operator):
 
 def template_draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, "straming_buffer_size", text="buffer size:")
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
+
+
+bpy.types.Scene.straming_buffer_size = bpy.props.IntProperty(default=10, min=1)
 
 
 class StreamingPanel(bpy.types.Panel):
