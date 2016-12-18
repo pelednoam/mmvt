@@ -285,8 +285,8 @@ def get_real_atlas_name(atlas, csv_fol=''):
             return atlas
         return real_atlas_name
     else:
-        print('No atlas file was found! Please create a atlas file (csv) in {}, where ' +
-                        'the columns are name in blend file, annot name, description'.format(csv_fname))
+        print('No atlas file was found! Please create a atlas file (csv) in {}, where '.format(csv_fname) +
+                        'the columns are name in blend file, annot name, description')
         return ''
 
 
