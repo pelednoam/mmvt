@@ -715,7 +715,6 @@ def main(subject, remote_subject_dir, args, flags):
 def read_cmd_args(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
-    parser.add_argument('--ignore_missing', help='ignore missing files', required=False, default=0, type=au.is_true)
     parser.add_argument('--template_subject', help='template subject', required=False, default='fsaverage')
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--cerebellum_segmentation_loose', help='', required=False, default=1, type=au.is_true)
