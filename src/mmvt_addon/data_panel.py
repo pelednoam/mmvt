@@ -5,7 +5,7 @@ import numpy as np
 import time
 import mmvt_utils as mu
 import selection_panel
-
+import logging
 
 STAT_AVG, STAT_DIFF = range(2)
 
@@ -101,7 +101,7 @@ def import_hemis_for_functional_maps(base_path):
             # else:
             #     print('{} already exists'.format(ply_fname))
         except:
-            print('Error in importing {}'.format(ply_fname))
+            mu.log_err('Error in importing {}'.format(ply_fname), logging)
 
     _addon().create_inflated_curv_coloring()
     bpy.ops.object.select_all(action='DESELECT')
@@ -165,10 +165,10 @@ def import_subcorticals(base_path, parent_name='Subcortical'):
                         cur_obj.active_material = bpy.data.materials['subcortical_activity_mat']
                     cur_obj.parent = bpy.data.objects['{}_fmri_activity_map'.format(parent_name)]
                 else:
-                    print('import_subcorticals: Wrong path_type! Nothing to do...')
+                    mu.log_err('import_subcorticals: Wrong path_type! Nothing to do...', logging)
                 cur_obj.hide_select = True
             except:
-                print('Error in importing {}!'.format(ply_fname))
+                mu.log_err('Error in importing {}!'.format(ply_fname), logging)
     bpy.ops.object.select_all(action='DESELECT')
 
 
@@ -189,7 +189,7 @@ def import_brain(context=None):
     # self.brain_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     # self.current_root_path = mu.get_user_fol()  # bpy.path.abspath(bpy.context.scene.conf_path)
     if _addon() is None:
-        print('addon is None!')
+        mu.log_err('import_brain: addon is None!', logging)
         return
     user_fol = mu.get_user_fol()
     print("importing ROIs")
@@ -261,7 +261,7 @@ def import_rois(base_path):
     inflated_imported = False
     for anatomy_name, anatomy_input_base_path in anatomy_inputs.items():
         if not op.isdir(anatomy_input_base_path):
-            print('The anatomy folder {} does not exist'.format(anatomy_input_base_path))
+            mu.log_err('import_rois: The anatomy folder {} does not exist'.format(anatomy_input_base_path), logging)
             continue
         current_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if anatomy_name in ['Subcortical_structures', 'Cerebellum']:
@@ -294,7 +294,7 @@ def import_rois(base_path):
                 cur_obj.hide = False
                 cur_obj.name = new_obj_name
             except:
-                print('Error in importing {}'.format(ply_fname))
+                mu.log_err('import_rois: Error in importing {}'.format(ply_fname), logging)
             # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
     if inflated_imported:
@@ -436,7 +436,7 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
     conditions = []
     for input_file in source_files:
         if not op.isfile(input_file):
-            print('{} does not exist!'.format(input_file))
+            mu.log_err('{} does not exist!'.format(input_file), logging)
             continue
         f = np.load(input_file)
         print('{} loaded'.format(input_file))
@@ -496,7 +496,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
     parent_obj.animation_data_clear()
     for input_file in source_files:
         if not op.isfile(input_file):
-            print(self, "Can't load file {}!".format(input_file))
+            mu.log_err(self, "Can't load file {}!".format(input_file), logging)
             continue
         print('loading {}'.format(input_file))
         f = np.load(input_file)
@@ -520,7 +520,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
                 data_stat = data
             sources[obj_name] = data_stat
     if len(sources) == 0:
-        print('No sources in {}'.format(source_files))
+        mu.log_err('No sources in {}'.format(source_files), logging)
         return
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
@@ -645,7 +645,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
         obj_name = obj_name.astype(str)
         # print(obj_name)
         if bpy.data.objects.get(obj_name, None) is None:
-            print("{} doesn't exist!".format(obj_name))
+            mu.log_err("{} doesn't exist!".format(obj_name), logging)
             continue
         cur_obj = bpy.data.objects[obj_name]
         for cond_ind, cond_str in enumerate(meta_data['conditions']):
@@ -729,7 +729,7 @@ class AddDataToEEG(bpy.types.Operator):
         data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
         if not op.isfile(data_fname) or not op.isfile(meta_fname):
-            print('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname))
+            mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
         else:
             data = DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
             meta = DataMakerPanel.eeg_meta = np.load(meta_fname)
@@ -769,7 +769,7 @@ class AddDataToElectrodes(bpy.types.Operator):
                 data = np.load(source_file)
                 meta = np.load(meta_file)
             else:
-                print('No electrodes data file!')
+                mu.log_err('No electrodes data file!', logging)
         if not data is None and not meta is None:
             print('Loading electordes data from {}'.format(source_file))
             conditions = add_data_to_electrodes(data, meta)
@@ -854,6 +854,7 @@ def load_meg_evoked():
 
 def init(addon):
     DataMakerPanel.addon = addon
+    logging.basicConfig(filename='mmvt_addon.log', level=logging.DEBUG)
     bpy.context.scene.electrodes_radius = 0.15
     load_meg_evoked()
     _meg_evoked_files_update()

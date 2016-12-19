@@ -1163,3 +1163,14 @@ class dummy_bpy(object):
             pass
         class Panel(object):
             pass
+
+
+def caller_func():
+    return sys._getframe(2).f_code.co_name
+
+
+def log_err(text, logging=None):
+    message = '{}: {}'.format(caller_func(), text)
+    print(message)
+    if not logging is None:
+        logging.error(message)
