@@ -18,7 +18,6 @@ def wrap_blender_call():
 
 def read_args(argv=None):
     parser = su.add_default_args()
-    parser.add_argument('-b', '--bipolar', help='bipolar', required=True, type=su.is_true)
     parser.add_argument('-q', '--quality', help='render quality', required=False, default=60, type=int)
     parser.add_argument('--labeling', help="electrodes' labeling file name", required=False)
     parser.add_argument('--output_path', help='output path', required=False, default='electrodes_labeling')
@@ -27,11 +26,15 @@ def read_args(argv=None):
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=su.is_true)
+    parser.add_argument('--show_only_current_lead', required=False, default=False, type=su.is_true)
+    parser.add_argument('--camera_name', required=False, default='camera')
     return su.parse_args(parser, argv)
 
 
 def render_electrodes_probs(subject_fname):
     args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     figures_dir = su.get_figures_dir(args)
     if args.rel_output_path:
         args.output_path = op.join(figures_dir, args.output_path)
@@ -58,22 +61,18 @@ def render_electrodes_probs(subject_fname):
     mmvt.set_render_quality(args.quality)
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
-    if op.isfile(op.join(args.output_path, 'camera.pkl')):
+    camera_fol = su.get_camera_dir(args)
+    if op.isfile(op.join(camera_fol, '{}.pkl'.format(args.camera_name))):
         mmvt.load_camera()
     else:
-        # Try to find the camera in the figures folder
-        if op.isfile(op.join(figures_dir, 'camera.pkl')):
-            mmvt.set_render_output_path(figures_dir)
-            mmvt.load_camera()
-            mmvt.set_render_output_path(args.output_path)
-        else:
-            cont = input('No camera file was detected in the output folder, continue?')
-            if not su.is_true(cont):
-                return
+        cont = input('No camera file was detected in the output folder, continue?')
+        if not su.is_true(cont):
+            return
 
     mmvt.set_electrodes_labeling_file(labeling_file)
     mmvt.show_electrodes()
     mmvt.color_the_relevant_lables(True)
+    mmvt.set_show_only_lead(args.show_only_current_lead)
     leads = mmvt.get_leads()
     for lead in leads:
         electrodes = mmvt.get_lead_electrodes(lead)
