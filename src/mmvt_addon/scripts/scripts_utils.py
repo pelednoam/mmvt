@@ -179,7 +179,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
 
 def get_subject_fname(args):
     mmvt_dir = get_mmvt_dir()
-    return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
+    # return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
+    return op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, args.atlas))
 
 
 def create_call_args(args):

@@ -480,7 +480,7 @@ def natural_keys(text):
     # http://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
     if isinstance(text, tuple):
         text = text[0]
-    return [ atoi(c) for c in re.split('(\d+)', text) ]
+    return [atoi(c) for c in re.split('(\d+)', text)]
 
 
 def elec_group_number(elec_name, bipolar=False):
@@ -499,10 +499,11 @@ def elec_group_number(elec_name, bipolar=False):
 
 
 def elec_group(elec_name, bipolar):
-    if bipolar and '-' in elec_name:
-        group, _, _ = elec_group_number(elec_name, bipolar)
+    #todo: should check the electrode type, if it's grid, it should be bipolar
+    if '-' in elec_name:
+        group, _, _ = elec_group_number(elec_name, True)
     else:
-        group, _ = elec_group_number(elec_name, bipolar)
+        group, _ = elec_group_number(elec_name, False)
     return group
 
 

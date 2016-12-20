@@ -77,7 +77,7 @@ def _electrodes_update():
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
     color_electrodes(current_electrode, prev_electrode)
-    if prev_electrode != '':
+    if prev_electrode != '' and prev_electrode != current_electrode:
         unselect_prev_electrode(prev_electrode)
         # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
         #      _show_only_current_lead_update()
@@ -565,15 +565,8 @@ def init_electrodes_list():
 
 def init_electrodes_labeling(addon):
     #todo: this panel should work also without labeling file
-    labeling_fname = '{}_{}_electrodes_cigar_r_*_l_*{}*.pkl'.format(mu.get_user(), bpy.context.scene.atlas,
-        '_bipolar' if bpy.context.scene.bipolar else '')
-    labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_fname))
-    if not bpy.context.scene.bipolar:
-        labling_files = [fname for fname in labling_files if 'bipolar' not in fname]
-    if len(labling_files) == 0:
-        print("!!! Can't find any electrodes labeling file in {} !!!".format(
-            op.join(mu.get_user_fol(), 'electrodes', labeling_fname)))
-    else:
+    labling_files = find_elecrode_labeling_files()
+    if len(labling_files) > 0:
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
         labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
@@ -582,6 +575,23 @@ def init_electrodes_labeling(addon):
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
     ElecsPanel.faces_verts = addon.get_faces_verts()
+
+
+def find_elecrode_labeling_files():
+    files = []
+    blender_electrodes_names = set([o.name for o in bpy.data.objects['Deep_electrodes'].children])
+    labeling_template = '{}_{}_electrodes_cigar_r_*_l_*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)
+    labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_template))
+    for labling_file in labling_files:
+        d = mu.load(labling_file)
+        electrodes_names = set([e['name'] for e in d])
+        if len(electrodes_names - blender_electrodes_names) == 0:
+            files.append(labling_file)
+    if len(files) == 0:
+        print("Can't find any labeling file that match the electrodes names in{}!".format(
+            op.join(mu.get_user_fol(), 'electrodes')))
+    return files
+
 
 
 def create_lookup_table(electrodes_locs, electrodes):

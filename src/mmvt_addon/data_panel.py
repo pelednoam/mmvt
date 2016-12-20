@@ -332,7 +332,9 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def import_electrodes(input_file, electrodes_layer, bipolar='', electrode_size=None, parnet_name='Deep_electrodes'):
+def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_size=None, parnet_name='Deep_electrodes'):
+    if electrodes_layer is None:
+        electrodes_layer = _addon().ELECTRODES_LAYER
     if not electrode_size is None:
         bpy.context.scene.electrodes_radius = electrode_size
     if bipolar != '':

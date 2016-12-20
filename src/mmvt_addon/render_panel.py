@@ -213,7 +213,7 @@ bpy.types.Scene.render_background = bpy.props.BoolProperty(
     name='Background rendering', description="Render in the background")
 bpy.types.Scene.lighting = bpy.props.FloatProperty(
     default=1, min=0, max=2,description="lighting", update=lighting_update)
-bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[], update=camera_files_update)
+bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[('default', 'camera.pkl', '', 0)], update=camera_files_update)
 bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.background_color = bpy.props.EnumProperty(
     items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
