@@ -42,7 +42,7 @@ except:
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_MEG_DIR = os.path.join(LINKS_DIR, 'meg')
 SUBJECTS_MRI_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
-FREE_SURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
+FREESURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 BLENDER_ROOT_DIR = os.path.join(LINKS_DIR, 'mmvt_addon')
 
 # Setting frequency bins as in Dalal et al. 2008
@@ -57,7 +57,7 @@ def load_all_subcorticals(subject_meg_fol, sub_corticals_codes_file, cond, from_
     sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
     meg_data = {}
     for sub_cortical_index in sub_corticals:
-        sub_cortical, _ = utils.get_numeric_index_to_label(sub_cortical_index, None, FREE_SURFER_HOME)
+        sub_cortical, _ = utils.get_numeric_index_to_label(sub_cortical_index, None, FREESURFER_HOME)
         meg_data_file_name = '{}-{}-{}{}.npy'.format(cond, sub_cortical, inverse_method, '-all-vertices' if all_vertices else '')
         data = np.load(os.path.join(subject_meg_fol, 'subcorticals', meg_data_file_name))
         data = data.T

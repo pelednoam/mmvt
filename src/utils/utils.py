@@ -446,7 +446,7 @@ def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_r
 def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
     if lut is None:
         if free_surfer_home == '':
-            free_surfer_home = os.environ['FREE_SURFER_HOME']
+            free_surfer_home = os.environ['FREESURFER_HOME']
         lut = read_freesurfer_lookup_table(free_surfer_home)
     if type(label) == str:
         seg_name = label
@@ -506,7 +506,7 @@ def _run_script_wrapper(cmd, vars, print_only=False, **kwargs):
 
 def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True, freesurfer_home=''):
     if freesurfer_home=='':
-        freesurfer_home = os.environ['FREE_SURFER_HOME']
+        freesurfer_home = os.environ['FREESURFER_HOME']
 
     # Read the segmentation data using nibabel
     aseg_data = aseg.get_data()

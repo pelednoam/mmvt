@@ -331,7 +331,7 @@ def calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file
     out_folder = op.join(SUBJECTS_DIR, subject, 'subcortical_fmri_activity')
     if not op.isdir(out_folder):
         os.mkdir(out_folder)
-    sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, 5, False, FREE_SURFER_HOME)
+    sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, 5, False, FREESURFER_HOME)
     for pts, seg_name, seg_id in sub_cortical_generator:
         print(seg_name)
         verts, _ = utils.read_ply_file(op.join(SUBJECTS_DIR, subject, 'subcortical', '{}.ply'.format(seg_name)))

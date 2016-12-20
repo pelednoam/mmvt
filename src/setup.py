@@ -127,6 +127,13 @@ def write_links_into_csv_file(links, links_dir, links_file_name='links.csv'):
             csv_writer.writerow([link_name, link_dir])
 
 
+def create_empty_links_csv(links_fol_name='links', links_file_name='links.csv'):
+    links_fol = utils.get_links_dir(links_fol_name)
+    links_names = ['mmvt', 'subjects', 'blender', 'eeg', 'meg', 'fMRI', 'electrodes']
+    links = {link_name:'' for link_name in links_names}
+    write_links_into_csv_file(links, links_fol, links_file_name)
+
+
 def create_real_folder(real_fol):
     try:
         if real_fol == '':
@@ -175,6 +182,9 @@ def main(args):
     if utils.should_run(args, 'install_addon'):
         from src.mmvt_addon.scripts import install_addon
         install_addon.wrap_blender_call(args.only_verbose)
+
+    if 'create_links_csv' in args.function:
+        create_empty_links_csv()
 
     print('Finish!')
 

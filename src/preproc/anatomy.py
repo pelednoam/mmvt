@@ -361,7 +361,8 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         do_solve_labels_collisions = False
         if not annotations_exist:
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
-            annotations_exist = fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREE_SURFER_HOME)
+            annotations_exist = fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR,
+                                                          freesurfer_home=FREESURFER_HOME)
     if morph_labels_from_fsaverage:
         lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
@@ -408,7 +409,7 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
             matlab_command = "'{}'".format(matlab_command)
             sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
                 mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
-                       'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREE_SURFER_HOME,
+                       'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREESURFER_HOME,
                        'surface_type': surface_type})
             cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
             script_ret = utils.run_script(cmd)

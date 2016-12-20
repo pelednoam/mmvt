@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from preproc_for_blender import SUBJECTS_DIR, BLENDER_ROOT_DIR
-from meg_preproc import FREE_SURFER_HOME, SUBJECTS_MEG_DIR, TASKS, TASK_ECR, TASK_MSIT
+from meg_preproc import FREESURFER_HOME, SUBJECTS_MEG_DIR, TASKS, TASK_ECR, TASK_MSIT
 import utils
 
 
@@ -40,7 +40,7 @@ def load_electrode_data(root_fol, electrode, bipolar, meg_conditions, meg_elec_c
 
 
 def load_meg_data(subject, region, inverse_methods, task, normalize_data=True, all_vertices=False, do_plot=False):
-    sub_cortical, _ = utils.get_numeric_index_to_label(region, None, FREE_SURFER_HOME)
+    sub_cortical, _ = utils.get_numeric_index_to_label(region, None, FREESURFER_HOME)
     subject_meg_fol = os.path.join(SUBJECTS_MEG_DIR, TASKS[task], subject)
 
     meg_data = defaultdict(dict)

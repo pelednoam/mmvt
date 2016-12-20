@@ -1486,7 +1486,7 @@ def misc():
     # plot3DActivity(stc)
     # permuationTest()
     # check_both_hemi_in_stc(events)
-    # lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    # lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
     pass
 
 

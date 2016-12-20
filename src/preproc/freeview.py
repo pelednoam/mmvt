@@ -32,7 +32,7 @@ def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=Tr
 # todo: fix duplications!
 def create_lut_file_for_atlas(subject, atlas):
     # Read the subcortical segmentation from the freesurfer lut
-    lut = utils.read_freesurfer_lookup_table(FREE_SURFER_HOME, get_colors=True)
+    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME, get_colors=True)
     lut_new = [list(l) for l in lut if l[0] < 1000]
     for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
         if hemi == 'lh':

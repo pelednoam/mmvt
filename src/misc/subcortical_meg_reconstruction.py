@@ -10,7 +10,7 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
 SUBJECTS_MRI_DIR = '/autofs/space/lilli_001/users/DARPA-MEG/freesurfs'
-FREE_SURFER_HOME = '/usr/local/freesurfer/stable5_3_0'
+FREESURFER_HOME = '/usr/local/freesurfer/stable5_3_0'
 os.environ['SUBJECTS_DIR'] = SUBJECTS_MRI_DIR
 
 def make_forward_solution(events_id, src_fn, fwd_sub_fn, epochs_fn, cor_fn, bem_fn, sub_corticals_codes_file, usingEEG=True, n_jobs=4):
@@ -47,7 +47,7 @@ def calc_sub_cortical_activity(events_id, evoked_fn, inv_fn, sub_corticals_codes
         return
 
     lambda2 = 1.0 / snr ** 2
-    lut = read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = read_freesurfer_lookup_table(FREESURFER_HOME)
     for cond in events_id.keys():
         evo = evoked_fn.format(cond=cond)
         evoked = {event:mne.read_evokeds(evo, baseline=(baseline_min_t, baseline_max_t))[0] for event in [event]}
@@ -104,7 +104,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     aseg_fname = os.path.join(SUBJECTS_MRI_DIR, SUBJECT, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     aseg_hdr = aseg.get_header()
-    sub_cortical_generator = sub_cortical_voxels_generator(aseg, seg_labels, spacing, use_grid, FREE_SURFER_HOME)
+    sub_cortical_generator = sub_cortical_voxels_generator(aseg, seg_labels, spacing, use_grid, FREESURFER_HOME)
     for pts, seg_name, seg_id in sub_cortical_generator:
         pts = transform_voxels_to_RAS(aseg_hdr, pts)
         # Convert to meters
@@ -131,7 +131,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
 
 def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True, freesurfer_home=''):
     if freesurfer_home=='':
-        freesurfer_home = os.environ['FREE_SURFER_HOME']
+        freesurfer_home = os.environ['FREESURFER_HOME']
 
     # Read the segmentation data using nibabel
     aseg_data = aseg.get_data()
@@ -197,7 +197,7 @@ def transform_voxels_to_RAS(aseg_hdr, pts):
 
 
 def plot_sub_cortical_activity(events_id, sub_corticals_codes_file, inverse_method='dSPM'):
-    lut = read_freesurfer_lookup_table(FREE_SURFER_HOME)
+    lut = read_freesurfer_lookup_table(FREESURFER_HOME)
     sub_corticals = read_sub_corticals_code_file(sub_corticals_codes_file)
     for label in sub_corticals:
         sub_cortical, _ = get_numeric_index_to_label(label, lut)

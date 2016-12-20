@@ -16,7 +16,7 @@ mri_vol2surf = 'mri_vol2surf --mov {spm_mask} --hemi {hemi} --surf pial --reg {r
 
 SUBJECTS_DIR = '/homes/5/npeled/space3/subjects'
 os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
-FREE_SURFER_HOME = utils.get_exisiting_dir([os.environ.get('FREESURFER_HOME', ''),
+FREESURFER_HOME = utils.get_exisiting_dir([os.environ.get('FREESURFER_HOME', ''),
     '/usr/local/freesurfer/stable5_3_0', '/home/noam/freesurfer'])
 
 SPM_ROOT = '/homes/5/npeled/space3/spm_subjects'
