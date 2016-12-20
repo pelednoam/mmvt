@@ -464,6 +464,7 @@ def lut_labels_to_indices(regions, lut):
         sub_corticals.append(id)
     return sub_corticals
 
+
 def how_many_curlies(str):
     return len(re.findall('\{*\}', str))
 

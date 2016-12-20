@@ -166,7 +166,7 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
     csv_file = op.join(electrodes_folder, '{}_RAS.csv'.format(subject))
     if not op.isfile(csv_file):
         print('No electrodes coordinates file! {}'.format(csv_file))
-        return None
+        return False
 
     output_file_name = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
     output_file = op.join(SUBJECTS_DIR, subject, 'electrodes', output_file_name)
@@ -174,7 +174,7 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
     if copy_to_blender:
         blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
         shutil.copyfile(output_file, blender_file)
-    return output_file
+    return True
 
 
 def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
@@ -197,6 +197,7 @@ def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
         utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv, ras_xls_sheet_name)
 
 
+@pu.tryit_ret_bool
 def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bipolar,
                                electrodes_names_field, moving_average_win_size=0, input_fname='',
                                input_type='ERP', field_cond_template=''):
@@ -444,6 +445,7 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
     return sorted_groups
 
 
+@pu.tryit_ret_bool
 def sort_electrodes_groups(subject, bipolar, do_plot=True):
     from sklearn.decomposition import PCA
     electrodes, pos = read_electrodes_file(subject, bipolar)
@@ -638,6 +640,7 @@ def get_electrodes_groups(subject, bipolar):
     return electrodes, groups
 
 
+@pu.tryit_ret_bool
 def create_electrodes_groups_coloring(subject, bipolar, coloring_fname='electrodes_groups_coloring.csv'):
     electrodes, groups = get_electrodes_groups(subject, bipolar)
     colors_rgb_and_names = cu.get_distinct_colors_and_names(len(groups) - 1, boynton=True)
@@ -658,9 +661,10 @@ def create_electrodes_groups_coloring(subject, bipolar, coloring_fname='electrod
             colors_file.write('{},{},{},{}\n'.format(elc, *group_colors[elc_group]))
 
 
+@pu.tryit_ret_bool
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
         p_threshold=0.05, legend_name='', coloring_fname=''):
-    elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
+    # elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
     elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(
         subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
     if elecs_probs is None:
@@ -682,8 +686,8 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
     elec_names_rois_colors = defaultdict(list)
     with open(coloring_fname, 'w') as colors_rgbs_file, open(colors_names_fname, 'w') as colors_names_file:
         # colors_csv_writer = csv.writer(colors_csv_file, delimiter=',')
-        for elec_name, elec_probs in zip(elecs_names, elecs_probs):
-            assert(elec_name == elec_probs['name'])
+        for elec_probs in elecs_probs:
+            elec_name = elec_probs['name']
             if not good_channels is None and elec_name not in good_channels:
                 continue
             roi = get_most_probable_roi([*elec_probs['cortical_probs'], *elec_probs['subcortical_probs']],
@@ -767,14 +771,15 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
 
+@pu.tryit_ret_bool
 def transform_electrodes_to_mni(subject, args):
     from src.utils import freesurfer_utils as fu
     elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
-    save_electrodes_coords(elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels)
+    save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels)
 
 
-def save_electrodes_coords(elecs_names, elecs_coords_mni, good_channels=None, bad_channels=None):
+def save_electrodes_coords(subject, elecs_names, elecs_coords_mni, good_channels=None, bad_channels=None):
     good_elecs_names, good_elecs_coords_mni = [], []
     for elec_name, elec_coord_min in zip(elecs_names, elecs_coords_mni):
         if (not good_channels or elec_name in good_channels) and (not bad_channels or elec_name not in bad_channels):
@@ -854,12 +859,14 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
-        flags['show_image'] =  utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
+        flags['show_image'] = utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
     if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
         flags['create_raw_data_for_blender'] = create_raw_data_for_blender(
             subject, args.raw_fname, args.conditions, do_plot=args.do_plot)
 
+
+    return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
@@ -868,6 +875,7 @@ def read_cmd_args(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description='MMVT electrodes preprocessing')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
+    parser.add_argument('-t', '--task', help='task', required=False)
     parser.add_argument('--good_channels', help='good channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--bad_channels', help='bad channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default='0', type=au.float_arr_type)# float) # was -500

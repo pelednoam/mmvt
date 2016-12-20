@@ -116,3 +116,17 @@ def get_links():
     freesurfer_home = utils.get_link_dir(links_dir, 'freesurfer', 'FREESURFER_HOME')
     mmvt_dir = utils.get_link_dir(links_dir, 'mmvt')
     return subjects_dir, mmvt_dir, freesurfer_home
+
+
+def tryit_ret_bool(func):
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+            retval = True
+        except:
+            print('Error in {}!'.format(func.__name__))
+            print(traceback.format_exc())
+            retval = False
+        return retval
+
+    return wrapper
