@@ -92,6 +92,25 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
                             images_type='', ffmpeg_cmd='ffmpeg', **kwargs):
+    images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
+        fol, start_number, images_prefix, images_format, images_type)
+    # change_frames_names(fol, images_prefix, images_type, images_format_len)
+    images_prefix = op.join(fol, images_prefix)
+    movie_name = op.join(fol, movie_name)
+    combine_images_cmd = '{ffmpeg_cmd} -framerate {frame_rate} '
+    if start_number > 1:
+        # You might want to use a static ffmpeg if your ffmepg version doesn't support the start_number flag, like:
+        # ffmpeg_cmd = '~/space1/Downloads/ffmpeg-git-static/ffmpeg'
+        combine_images_cmd += '-start_number {start_number} '
+    combine_images_cmd += '-i {images_prefix}{images_format}.{images_type} '
+    # http://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
+    combine_images_cmd += '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" '
+    combine_images_cmd += '-c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
+    rs = utils.partial_run_script(locals())
+    rs(combine_images_cmd)
+
+
+def find_images_props(fol, start_number=-1, images_prefix='', images_format='', images_type=''):
     if images_type == '':
         images_types = set([utils.file_type(image) for image in glob.glob(op.join(fol, '{}*.*'.format(images_prefix)))])
         for opt_type in ['png', 'jpg', 'bmp', 'gif']:
@@ -110,20 +129,20 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
         images_format = '%0{}d'.format(len(number))
     if start_number == -1:
         start_number = min([int(utils.namebase(image)[len(images_prefix):]) for image in images])
-    images_prefix = op.join(fol, images_prefix)
-    movie_name = op.join(fol, movie_name)
-    combine_images_cmd = '{ffmpeg_cmd} -framerate {frame_rate} '
-    if start_number > 1:
-        # You might want to use a static ffmpeg if your ffmepg version doesn't support the start_number flag, like:
-        # ffmpeg_cmd = '~/space1/Downloads/ffmpeg-git-static/ffmpeg'
-        combine_images_cmd += '-start_number {start_number} '
-    combine_images_cmd += '-i {images_prefix}{images_format}.{images_type} '
-    # http://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
-    combine_images_cmd += '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" '
-    combine_images_cmd += '-c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
-    rs = utils.partial_run_script(locals())
-    rs(combine_images_cmd)
+    return images_type, images_prefix, images_format, len(number), start_number
 
+
+def change_frames_names(fol, images_prefix, images_type, images_format_len):
+    import shutil
+    images = glob.glob(op.join(fol, '{}*.{}'.format(images_prefix, images_type)))
+    images_formats = {1: '{0:0>1}', 2: '{0:0>2}', 3: '{0:0>3}', 4: '{0:0>4}', 5: '{0:0>5}'}
+    root = op.join(op.sep.join(images[0].split(op.sep)[:-1]))
+    new_fol = op.join(root, 'new_images')
+    utils.make_dir(new_fol)
+    for num, image_fname in enumerate(images):
+        num_str = images_formats[images_format_len].format(num + 1)
+        new_image_fname = op.join(new_fol, '{}{}.{}'.format(images_prefix, num_str, images_type))
+        shutil.copy(image_fname, new_image_fname)
 
 if __name__ == '__main__':
     import argparse
