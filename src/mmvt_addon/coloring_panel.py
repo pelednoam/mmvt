@@ -204,43 +204,60 @@ def meg_labels_coloring(override_current_mat=True):
                                  hemi, threshold, override_current_mat)
 
 
-def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, override_current_mat=True):
+def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, override_current_mat=True,
+                             colors_min=None, colors_max=None):
     now = time.time()
+    colors_ratio = None
     labels_names = ColoringMakerPanel.labels_vertices['labels_names']
     labels_vertices = ColoringMakerPanel.labels_vertices['labels_vertices']
     vertices_num = max(itertools.chain.from_iterable(labels_vertices[hemi])) + 1
-    colors_data = np.ones((vertices_num, 4))
-    colors_data[:, 0] = 0
     no_t = labels_data['data'][0].ndim == 0
     t = bpy.context.scene.frame_current
+    if not colors_min is None and not colors_max is None:
+        colors_data = np.zeros((vertices_num))
+    else:
+        colors_data = np.ones((vertices_num, 4))
+        colors_data[:, 0] = 0
     for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
-        label_colors = np.array(label_colors)
-        if 'unknown' in label_name:
-            continue
-        if label_colors.ndim == 3:
-            cond_inds = np.where(labels_data['conditions'] == bpy.context.scene.conditions_selection)[0]
-            if len(cond_inds) == 0:
-                print("!!! Can't find the current condition in the data['conditions'] !!!")
-                return {"FINISHED"}
-            label_colors = label_colors[:, cond_inds[0], :]
-            label_data = label_data[:, cond_inds[0]]
+        if label_data.ndim == 0:
+            label_data = np.array([label_data])
+        if not colors_min is None and not colors_max is None:
+            colors_ratio = 256 / (colors_max - colors_min)
+            label_colors = calc_colors(label_data, colors_min, colors_ratio)
+            _addon().set_colorbar_max_min(colors_max, colors_min)
+        else:
+            label_colors = np.array(label_colors)
+            if 'unknown' in label_name:
+                continue
+            if label_colors.ndim == 3:
+                cond_inds = np.where(labels_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+                if len(cond_inds) == 0:
+                    print("!!! Can't find the current condition in the data['conditions'] !!!")
+                    return {"FINISHED"}
+                label_colors = label_colors[:, cond_inds[0], :]
+                label_data = label_data[:, cond_inds[0]]
         label_index = labels_names[hemi].index(label_name)
         label_vertices = np.array(labels_vertices[hemi][label_index])
         if len(label_vertices) > 0:
             label_data_t, label_colors_t = (label_data, label_colors) if no_t else (label_data[t], label_colors[t])
             # print('coloring {} with {}'.format(label_name, label_colors_t))
-            label_colors_data = np.hstack((label_data_t, label_colors_t))
-            label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
-            colors_data[label_vertices, :] = label_colors_data
+            if not colors_min is None and not colors_max is None:
+                colors_data[label_vertices] = label_data_t
+            else:
+                label_colors_data = np.hstack((label_data_t, label_colors_t))
+                label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
+                colors_data[label_vertices, :] = label_colors_data
     if bpy.context.scene.coloring_both_pial_and_inflated:
         for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-            activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+            activity_map_obj_coloring(
+                cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
     else:
         if _addon().is_pial():
             cur_obj = bpy.data.objects[hemi]
         elif _addon().is_inflated():
             cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        activity_map_obj_coloring(cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat)
+        activity_map_obj_coloring(
+            cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
     print('Finish meg_labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
@@ -369,6 +386,15 @@ def create_inflated_curv_coloring():
         print(traceback.format_exc())
 
 
+def calc_colors(vert_values, data_min, colors_ratio):
+    cm = _addon().get_cm()
+    colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
+    # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
+    colors_indices[colors_indices < 0] = 0
+    colors_indices[colors_indices > 255] = 255
+    verts_colors = cm[colors_indices]
+    return verts_colors
+
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
                               colors_ratio=None, bigger_or_equall=False):
@@ -381,16 +407,15 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     else:
         valid_verts = np.where(np.abs(values) > threshold)[0]
     colors_picked_from_cm = False
-    cm = _addon().get_cm()
+    # cm = _addon().get_cm()
     if vert_values.ndim == 1 and not data_min is None:
+        verts_colors = calc_colors(vert_values, data_min, colors_ratio)
         colors_picked_from_cm = True
         # now = time.time()
-        colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
-        # print('{} took {:.10f}s'.format('colors_indices', time.time() - now))
-        # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
-        colors_indices[colors_indices < 0] = 0
-        colors_indices[colors_indices > 255] = 255
-        verts_colors = cm[colors_indices]
+        # colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
+        # colors_indices[colors_indices < 0] = 0
+        # colors_indices[colors_indices > 255] = 255
+        # verts_colors = cm[colors_indices]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True

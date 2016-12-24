@@ -10,6 +10,10 @@ from collections import defaultdict
 PARENT_OBJ = 'Deep_electrodes'
 
 
+def _addon():
+    return ElecsPanel.addon
+
+
 def get_leads():
     return ElecsPanel.leads
 
@@ -42,9 +46,9 @@ def leads_update(self, context):
 
 # @mu.profileit(op.join(mu.get_user_fol(), 'leads_update_profile'), 'cumtime')
 def _leads_update():
-    if ElecsPanel.addon is None or not ElecsPanel.init:
+    if _addon() is None or not ElecsPanel.init:
         return
-    # ElecsPanel.addon.show_electrodes()
+    # _addon().show_electrodes()
     # show_elecs_hemi_update()
     ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
     init_electrodes_list()
@@ -67,9 +71,9 @@ def electrodes_update(self, context):
 
 
 def _electrodes_update():
-    if ElecsPanel.addon is None or not ElecsPanel.init:
+    if _addon() is None or not ElecsPanel.init:
         return
-    # ElecsPanel.addon.show_electrodes()
+    # _addon().show_electrodes()
     # show_elecs_hemi_update()
     # _show_only_current_lead_update()
     prev_electrode = ElecsPanel.current_electrode
@@ -98,7 +102,7 @@ def _electrodes_update():
 def select_electrode(current_electrode):
     for elec in ElecsPanel.all_electrodes:
         bpy.data.objects[elec].select = elec == current_electrode
-    # ElecsPanel.addon.filter_electrode_func(bpy.context.scene.electrodes)
+    # _addon().filter_electrode_func(bpy.context.scene.electrodes)
 
 
 def color_electrodes(current_electrode, prev_electrode):
@@ -109,18 +113,18 @@ def color_electrodes(current_electrode, prev_electrode):
     prev_electrode_hemi = ElecsPanel.groups_hemi[prev_electrode_group]
     if current_electrode_hemi != prev_electrode_hemi:
         print('flip hemis! clear {}'.format(prev_electrode_hemi))
-        ElecsPanel.addon.clear_cortex([prev_electrode_hemi])
+        _addon().clear_cortex([prev_electrode_hemi])
     color = bpy.context.scene.electrode_color
-    ElecsPanel.addon.object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
+    _addon().object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
     if prev_electrode != current_electrode:
-        ElecsPanel.addon.object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
+        _addon().object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
 
 
 def is_current_electrode_marked():
     current_electrode_marked = False
     current_electrode_obj = bpy.data.objects.get(bpy.context.scene.electrodes, None)
     if not current_electrode_obj is None:
-        current_electrode_marked = ElecsPanel.addon.get_obj_color(current_electrode_obj)[:3] == tuple(
+        current_electrode_marked = _addon().get_obj_color(current_electrode_obj)[:3] == tuple(
             bpy.context.scene.electrode_color)
     return current_electrode_marked
 
@@ -140,7 +144,7 @@ def print_electrode_loc(loc):
 def update_cursor():
     current_electrode_obj = bpy.data.objects[ElecsPanel.current_electrode]
     bpy.context.scene.cursor_location = current_electrode_obj.location
-    ElecsPanel.addon.freeview_panel.save_cursor_position()
+    _addon().freeview_panel.save_cursor_position()
 
 
 def show_lh_update(self, context):
@@ -195,9 +199,11 @@ def set_electrodes_labeling_file(fname):
 
 def color_labels_update(self, context):
     if ElecsPanel.init:
-        if not bpy.context.scene.color_lables:
-            ElecsPanel.addon.clear_cortex()
-            ElecsPanel.addon.clear_subcortical_regions()
+        if bpy.context.scene.color_lables:
+            _electrodes_update()
+        else:
+            _addon().clear_cortex()
+            _addon().clear_subcortical_regions()
 
 
 def electrodes_labeling_files_update(self, context):
@@ -243,28 +249,29 @@ def set_show_only_lead(val):
 
 
 def plot_labels_probs(elc):
-    ElecsPanel.addon.init_activity_map_coloring('FMRI')
+    _addon().init_activity_map_coloring('FMRI')
     if bpy.context.scene.electrodes_what_to_color == 'probs':
         if len(elc['cortical_rois']) > 0:
             hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
             if not hemi is None:
-                # if no matplotlib should calculate the colors offline :(
                 labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3],
                                    names=elc['cortical_rois'])
-                ElecsPanel.addon.meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0)
+                _addon().set_colorbar_title('Electrodes probabilities')
+                _addon().set_colormap('YlOrRd')
+                _addon().meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0, True, 0, 1)
             else:
                 print("Can't get the rois hemi!")
         else:
-            ElecsPanel.addon.clear_cortex()
-        ElecsPanel.addon.clear_subcortical_regions()
+            _addon().clear_cortex()
+        _addon().clear_subcortical_regions()
         if len(elc['subcortical_rois']) > 0:
             for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
-                ElecsPanel.addon.color_subcortical_region(region, color)
+                _addon().color_subcortical_region(region, color)
     elif bpy.context.scene.electrodes_what_to_color == 'verts':
         if len(elc['cortical_indices']) > 0:
             hemi = bpy.data.objects[elc['hemi']]
             if not hemi is None:
-                ElecsPanel.addon.init_activity_map_coloring('FMRI', subcorticals=True)
+                _addon().init_activity_map_coloring('FMRI', subcorticals=True)
                 vertices_num = np.max(elc['cortical_indices']) + 1
                 activity = np.ones((vertices_num, 4))
                 activity[:, 0] = 0
@@ -272,18 +279,18 @@ def plot_labels_probs(elc):
                 activity[elc['cortical_indices'], 1:] = np.tile(
                     cu.name_to_rgb('blue'), (len(elc['cortical_indices']), 1))
                 print('Plot {} vertices with blue'.format(len(elc['cortical_indices'])))
-                ElecsPanel.addon.activity_map_obj_coloring(hemi, activity, ElecsPanel.faces_verts[elc['hemi']], 0, True)
+                _addon().activity_map_obj_coloring(hemi, activity, ElecsPanel.faces_verts[elc['hemi']], 0, True)
             else:
                 print("Can't get the elec's hemi!")
         else:
-            ElecsPanel.addon.clear_cortex()
+            _addon().clear_cortex()
             print('No cortical vertices for {}'.format(elc['name']))
 
 
 def unselect_prev_electrode(prev_electrode):
     prev_elc = bpy.data.objects.get(prev_electrode)
     if not prev_elc is None:
-        ElecsPanel.addon.de_select_electrode(prev_elc, False)
+        _addon().de_select_electrode(prev_elc, False)
 
 
 def elecs_draw(self, context):
@@ -340,7 +347,7 @@ class ClearElectrodes(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
-        ElecsPanel.addon.clear_colors()
+        _addon().clear_colors()
         return {'FINISHED'}
 
 
@@ -441,7 +448,7 @@ class KeyboardListener(bpy.types.Operator):
         if not bpy.context.scene.listener_is_running:
             context.window_manager.modal_handler_add(self)
             bpy.context.scene.listener_is_running = True
-            ElecsPanel.addon.show_electrodes()
+            _addon().show_electrodes()
             _leads_update()
         bpy.context.scene.listen_to_keyboard = not bpy.context.scene.listen_to_keyboard
         return {'RUNNING_MODAL'}
@@ -493,8 +500,7 @@ class ElecsPanel(bpy.types.Panel):
 
 
 def init(addon):
-    import shutil
-    ElecsPanel.addon = addon
+    ElecsPanel.addon  = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
         print("!!!! Can't register electrodes panel, no Deep_electrodes object!!!!")

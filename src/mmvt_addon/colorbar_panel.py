@@ -105,6 +105,13 @@ def _set_colorbar_min_max(field, val, prec):
         print('_set_colorbar_min_max: field error ({})! must be max / min!'.format(field))
 
 
+def set_colormap(colormap_name):
+    if colormap_name in ColorbarPanel.maps_names:
+        bpy.context.scene.colorbar_files = colormap_name
+    else:
+        print('No such colormap! {}'.format(colormap_name))
+
+
 def colormap_update(self, context):
     if ColorbarPanel.init:
         load_colormap()
@@ -187,6 +194,7 @@ class ColorbarPanel(bpy.types.Panel):
     init = False
     colorbar_updated = False
     cm = None
+    maps_names = []
 
     def draw(self, context):
         if ColorbarPanel.init:
@@ -201,6 +209,7 @@ def init(addon):
     if len(colorbar_files) == 0:
         return None
     files_names = [mu.namebase(fname).replace('_', '-') for fname in colorbar_files]
+    ColorbarPanel.maps_names = files_names
     colorbar_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(
         items=colorbar_items, description="colormaps files",update=colormap_update)

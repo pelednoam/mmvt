@@ -124,6 +124,7 @@ clear_and_recolor = coloring_panel.clear_and_recolor
 set_threshold = coloring_panel.set_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
 color_eeg_helmet = coloring_panel.color_eeg_helmet
+calc_colors = coloring_panel.calc_colors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -211,6 +212,7 @@ get_colorbar_title = colorbar_panel.get_colorbar_title
 get_colormap_name = colorbar_panel.get_colormap_name
 colorbar_values_are_locked = colorbar_panel.colorbar_values_are_locked
 lock_colorbar_values = colorbar_panel.lock_colorbar_values
+set_colormap = colorbar_panel.set_colormap
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
