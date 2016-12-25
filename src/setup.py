@@ -196,6 +196,11 @@ def main(args):
     print('Finish!')
 
 
+def print_help():
+    str = 'functions: install_reqs, create_links, copy_resources_files, install_addon, create_links_csv and create_csv'
+    print(str)
+
+
 if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
@@ -205,4 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     args = utils.Bag(au.parse_parser(parser))
-    main(args)
+    if 'help' in args.function:
+        print_help()
+    else:
+        main(args)
