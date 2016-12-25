@@ -112,7 +112,7 @@ def create_link(links_fol, link_name, message, gui=True, create_default_dir=Fals
     return fol
 
 
-def get_all_links(links=[], links_fol=None, links_fol_name='links'):
+def get_all_links(links={}, links_fol=None, links_fol_name='links'):
     if links_fol is None:
         links_fol = utils.get_links_dir(links_fol_name)
     all_links = [utils.namebase(f) for f in glob.glob(op.join(links_fol, '*')) if op.islink(f)]
