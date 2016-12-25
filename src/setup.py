@@ -46,7 +46,7 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     else:
         utils.make_dir(links_fol)
     links_names = ['mmvt', 'subjects', 'blender', 'eeg', 'meg', 'fMRI', 'electrodes']
-    all_links_exist = utils.all([op.islink(op.join(links_fol, link_name)) for link_name in links_names])
+    all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         print('All links exist!')
         links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in links_names}
@@ -115,7 +115,7 @@ def create_link(links_fol, link_name, message, gui=True, create_default_dir=Fals
 def get_all_links(links={}, links_fol=None, links_fol_name='links'):
     if links_fol is None:
         links_fol = utils.get_links_dir(links_fol_name)
-    all_links = [utils.namebase(f) for f in glob.glob(op.join(links_fol, '*')) if op.islink(f)]
+    all_links = [utils.namebase(f) for f in glob.glob(op.join(links_fol, '*')) if utils.is_link(f)]
     all_links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in all_links if link_name not in links}
     links = utils.merge_two_dics(links, all_links)
     return links
