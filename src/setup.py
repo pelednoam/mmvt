@@ -114,7 +114,7 @@ def create_link(links_fol, link_name, message, gui=True, create_default_dir=Fals
 
 def get_all_links(links=[], links_fol=None, links_fol_name='links'):
     if links_fol is None:
-        utils.get_links_dir(links_fol_name)
+        links_fol = utils.get_links_dir(links_fol_name)
     all_links = [utils.namebase(f) for f in glob.glob(op.join(links_fol, '*')) if op.islink(f)]
     all_links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in all_links if link_name not in links}
     links = utils.merge_two_dics(links, all_links)
@@ -124,7 +124,7 @@ def get_all_links(links=[], links_fol=None, links_fol_name='links'):
 def write_links_into_csv_file(links, links_fol=None, links_file_name='links.csv', links_fol_name='links'):
     import csv
     if links_fol is None:
-        utils.get_links_dir(links_fol_name)
+        links_fol = utils.get_links_dir(links_fol_name)
     with open(op.join(links_fol, links_file_name), 'w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',')
         for link_name, link_dir in links.items():
