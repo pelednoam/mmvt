@@ -507,7 +507,6 @@ def elec_group(elec_name, bipolar):
     return group
 
 
-
 def csv_file_reader(csv_fname, delimiter=',', skip_header=0):
     import csv
     with open(csv_fname, 'r') as csvfile:

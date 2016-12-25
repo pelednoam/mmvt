@@ -67,22 +67,55 @@ def get_windows_link(shortcut):
 
 
 def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
-    val = op.join(links_dir, link_name)
+    link = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
-    if op.isfile('{}.lnk'.format(val)):
+    if op.isfile('{}.lnk'.format(link)):
+        from src.mmvt_addon.scripts import windows_utils as wu
+        sc = wu.MSShortcut('{}.lnk'.format(link))
+        return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
-        return get_windows_link(val)
-    if not op.isdir(val) and default_val != '':
-        val = default_val
-    if not op.isdir(val):
-        val = os.environ.get(var_name, '')
-    if not op.isdir(val):
-        if throw_exception:
-            raise Exception('No {} dir in {}!'.format(link_name, links_dir))
-        else:
-            print('No {} dir in {}!'.format(link_name, links_dir))
-            return default_val
-    return val
+    ret = op.realpath(link)
+    if not op.isdir(ret) and default_val != '':
+        ret = default_val
+    if not op.isdir(ret):
+        ret = os.environ.get(var_name, '')
+    if not op.isdir(ret):
+        ret = get_link_dir_from_csv(links_dir, link_name)
+        if ret == '':
+            if throw_exception:
+                raise Exception('No {} dir!'.format(link_name))
+            else:
+                print('No {} dir!'.format(link_name))
+    return ret
+
+
+def get_link_dir_from_csv(links_dir, link_name, csv_file_name='links.csv'):
+    csv_fname = op.join(links_dir, csv_file_name)
+    if op.isfile(csv_fname):
+        for line in csv_file_reader(csv_fname, ','):
+            if len(line) < 2:
+                continue
+            if line[0][0] == '#':
+                continue
+            if link_name == line[0]:
+                link_dir = line[1]
+                if not op.isdir(link_dir):
+                    print('get_link_dir_from_csv: the dir for link {} does not exist! {}'.format(link_name, link_dir))
+                    link_dir = ''
+                return link_dir
+    else:
+        print('No links csv file was found ({})'.format(csv_fname))
+    return ''
+
+
+def csv_file_reader(csv_fname, delimiter=',', skip_header=0):
+    import csv
+    with open(csv_fname, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=delimiter)
+        for line_num, line in enumerate(reader):
+            if line_num < skip_header:
+                continue
+            yield [val.strip() for val in line]
 
 
 def get_mmvt_dir():

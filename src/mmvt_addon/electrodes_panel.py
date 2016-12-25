@@ -589,10 +589,14 @@ def find_elecrode_labeling_files():
     labeling_template = '{}_{}_electrodes_cigar_r_*_l_*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)
     labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_template))
     for labling_file in labling_files:
-        d = mu.load(labling_file)
-        electrodes_names = set([e['name'] for e in d])
-        if len(electrodes_names - blender_electrodes_names) == 0:
-            files.append(labling_file)
+        try:
+            d = mu.load(labling_file)
+            electrodes_names = set([e['name'] for e in d])
+            if len(electrodes_names - blender_electrodes_names) == 0:
+                files.append(labling_file)
+        except:
+            print('Error reading {}'.format(labling_file))
+            continue
     if len(files) == 0:
         print("Can't find any labeling file that match the electrodes names in{}!".format(
             op.join(mu.get_user_fol(), 'electrodes')))

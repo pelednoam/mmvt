@@ -2,6 +2,7 @@
 
 import os
 import os.path as op
+import traceback
 from sys import platform as _platform
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
@@ -54,11 +55,42 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     if not op.isdir(ret):
         ret = os.environ.get(var_name, '')
     if not op.isdir(ret):
-        if throw_exception:
-            raise Exception('No {} dir!'.format(link_name))
-        else:
-            print('No {} dir!'.format(link_name))
+        ret = get_link_dir_from_csv(links_dir, link_name)
+        if ret == '':
+            if throw_exception:
+                raise Exception('No {} dir!'.format(link_name))
+            else:
+                print('No {} dir!'.format(link_name))
     return ret
+
+
+def get_link_dir_from_csv(links_dir, link_name, csv_file_name='links.csv'):
+    csv_fname = op.join(links_dir, csv_file_name)
+    if op.isfile(csv_fname):
+        for line in csv_file_reader(csv_fname, ','):
+            if len(line) < 2:
+                continue
+            if line[0][0] == '#':
+                continue
+            if link_name == line[0]:
+                link_dir = line[1]
+                if not op.isdir(link_dir):
+                    print('get_link_dir_from_csv: the dir for link {} does not exist! {}'.format(link_name, link_dir))
+                    link_dir = ''
+                return link_dir
+    else:
+        print('No links csv file was found ({})'.format(csv_fname))
+    return ''
+
+
+def csv_file_reader(csv_fname, delimiter=',', skip_header=0):
+    import csv
+    with open(csv_fname, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=delimiter)
+        for line_num, line in enumerate(reader):
+            if line_num < skip_header:
+                continue
+            yield [val.strip() for val in line]
 
 
 def get_links_dir(links_fol_name='links'):
@@ -71,10 +103,12 @@ def is_link(link_path):
     if is_windows():
         try:
             from src.mmvt_addon.scripts import windows_utils as wu
-            sc = wu.MSShortcut('{}.lnk'.format(link_path))
+            link_fname = link_path if link_path[-4:] == '.lnk' else '{}.lnk'.format(link_path)
+            sc = wu.MSShortcut(link_fname)
             real_folder_path = op.join(sc.localBasePath, sc.commonPathSuffix)
             return op.isdir(real_folder_path)
         except:
+            print(traceback.format_exc())
             return False
     else:
         return op.islink(link_path)

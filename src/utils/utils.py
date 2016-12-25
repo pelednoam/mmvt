@@ -25,6 +25,7 @@ import multiprocessing
 import getpass
 
 from src.mmvt_addon import mmvt_utils as mu
+from src.mmvt_addon.scripts import scripts_utils as su
 
 try:
     import cPickle as pickle
@@ -54,6 +55,8 @@ get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
 csv_file_reader = mu.csv_file_reader
+
+get_link_dir = su.get_link_dir
 
 def get_exisiting_dir(dirs):
     ex_dirs = [d for d in dirs if op.isdir(d)]
@@ -347,27 +350,27 @@ def get_environ_dir(var_name, default_val=''):
     return ret_val
 
 
-def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
-    link = op.join(links_dir, link_name)
-    # check if this is a windows folder shortcup
-    if op.isfile('{}.lnk'.format(link)):
-        from src.mmvt_addon.scripts import windows_utils as wu
-        sc = wu.MSShortcut('{}.lnk'.format(link))
-        return op.join(sc.localBasePath, sc.commonPathSuffix)
-        # return read_windows_dir_shortcut('{}.lnk'.format(val))
-    ret = op.realpath(link)
-    if not op.isdir(ret) and default_val != '':
-        ret = default_val
-    if not op.isdir(ret):
-        ret = os.environ.get(var_name, '')
-    if not op.isdir(ret):
-        ret = get_link_dir_from_csv(links_dir, link_name)
-        if ret == '':
-            if throw_exception:
-                raise Exception('No {} dir!'.format(link_name))
-            else:
-                print('No {} dir!'.format(link_name))
-    return ret
+# def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
+#     link = op.join(links_dir, link_name)
+#     # check if this is a windows folder shortcup
+#     if op.isfile('{}.lnk'.format(link)):
+#         from src.mmvt_addon.scripts import windows_utils as wu
+#         sc = wu.MSShortcut('{}.lnk'.format(link))
+#         return op.join(sc.localBasePath, sc.commonPathSuffix)
+#         # return read_windows_dir_shortcut('{}.lnk'.format(val))
+#     ret = op.realpath(link)
+#     if not op.isdir(ret) and default_val != '':
+#         ret = default_val
+#     if not op.isdir(ret):
+#         ret = os.environ.get(var_name, '')
+#     if not op.isdir(ret):
+#         ret = get_link_dir_from_csv(links_dir, link_name)
+#         if ret == '':
+#             if throw_exception:
+#                 raise Exception('No {} dir!'.format(link_name))
+#             else:
+#                 print('No {} dir!'.format(link_name))
+#     return ret
 
 
 # def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_exception=False):
@@ -396,25 +399,6 @@ def get_links_dir(links_fol_name='links'):
     parent_fol = get_parent_fol(levels=3)
     links_dir = op.join(parent_fol, links_fol_name)
     return links_dir
-
-
-def get_link_dir_from_csv(links_dir, link_name, csv_file_name='links.csv'):
-    csv_fname = op.join(links_dir, csv_file_name)
-    if op.isfile(csv_fname):
-        for line in csv_file_reader(csv_fname, ','):
-            if len(line) < 2:
-                continue
-            if line[0][0] == '#':
-                continue
-            if link_name == line[0]:
-                link_dir = line[1]
-                if not op.isdir(link_dir):
-                    print('get_link_dir_from_csv: the dir for link {} does not exist! {}'.format(link_name, link_dir))
-                    link_dir = ''
-                return link_dir
-    else:
-        print('No links csv file was found ({})'.format(csv_fname))
-    return ''
 
 
 def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
