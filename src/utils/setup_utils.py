@@ -101,6 +101,8 @@ def get_links_dir(links_fol_name='links'):
 
 def is_link(link_path):
     if is_windows():
+        if not op.isfile(link_path):
+            return False
         try:
             from src.mmvt_addon.scripts import windows_utils as wu
             link_fname = link_path if link_path[-4:] == '.lnk' else '{}.lnk'.format(link_path)
@@ -108,7 +110,7 @@ def is_link(link_path):
             real_folder_path = op.join(sc.localBasePath, sc.commonPathSuffix)
             return op.isdir(real_folder_path)
         except:
-            print(traceback.format_exc())
+            # print(traceback.format_exc())
             return False
     else:
         return op.islink(link_path)

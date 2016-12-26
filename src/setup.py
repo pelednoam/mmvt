@@ -7,8 +7,8 @@ import traceback
 from src.utils import setup_utils as utils
 import glob
 
-
 TITLE = 'MMVT Installation'
+BLENDER_WIN_DIR = 'C:\Program Files\Blender Foundation\Blender'
 
 
 def copy_resources_files(mmvt_root_dir, only_verbose=False):
@@ -45,24 +45,25 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
         print('making links dir {}'.format(links_fol))
     else:
         utils.make_dir(links_fol)
-    links_names = ['mmvt', 'subjects', 'blender', 'eeg', 'meg', 'fMRI', 'electrodes']
+    links_names = ['blender', 'mmvt', 'eeg', 'meg', 'fMRI', 'electrodes']
+    if not utils.is_windows():
+        links_names.insert(1, 'subjects')
     all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         print('All links exist!')
         links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in links_names}
         write_links_into_csv_file(links, links_fol, links_file_name)
         return True
-    if not utils.is_link(op.join(links_fol, 'freesurfer')):
-        if not utils.is_windows():
-            if os.environ.get('FREESURFER_HOME', '') == '':
-                print('If you are going to use FreeSurfer locally, please source it and rerun')
-                cont = input("Do you want to continue (y/n)?") # If you choose to continue, you'll need to create a link to FreeSurfer manually")
-                if cont.lower() != 'y':
-                    return
-            else:
-                freesurfer_fol = os.environ['FREESURFER_HOME']
-                if not only_verbose:
-                    create_real_folder(freesurfer_fol)
+    if not utils.is_windows() and not utils.is_link(op.join(links_fol, 'freesurfer')):
+        if os.environ.get('FREESURFER_HOME', '') == '':
+            print('If you are going to use FreeSurfer locally, please source it and rerun')
+            cont = input("Do you want to continue (y/n)?") # If you choose to continue, you'll need to create a link to FreeSurfer manually")
+            if cont.lower() != 'y':
+                return
+        else:
+            freesurfer_fol = os.environ['FREESURFER_HOME']
+            if not only_verbose:
+                create_real_folder(freesurfer_fol)
 
     mmvt_message = 'Please select where do you want to put the blend files? '
     subjects_message = 'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' + \
@@ -73,33 +74,42 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     fmri_message = 'Please select where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): '
     electrodes_message = 'Please select where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): '
 
-    messages = [mmvt_message, subjects_message, blender_message, eeg_message, meg_message, fmri_message,
-                electrodes_message]
-    create_default_dirs = [False] * 3 + [True] * 2 + [False] * 2
+    if utils.is_windows() and op.isdir(BLENDER_WIN_DIR):
+        utils.create_folder_link(BLENDER_WIN_DIR, op.join(links_fol, 'blender'))
+    else:
+        ask_and_create_link(links_fol, 'blender',  blender_message, gui)
+    create_default_folders = mmvt_input("Would you like to set default links to the MMVT's folders?", gui)
+
+    messages = [mmvt_message, eeg_message, meg_message, fmri_message, electrodes_message]
+    if not utils.is_windows():
+        messages.insert(0, subjects_message)
+    create_default_dirs = [False] * (1 if utils.is_windows() else 2) + [True] * 2 + [False] * 2
+
     links = {}
     if not only_verbose:
-        for link_name, message, create_default_dir in zip(links_names, messages, create_default_dirs):
-            links[link_name] = create_link(links_fol, link_name, message, gui, create_default_dir)
-        # create_link(links_fol, 'mmvt', mmvt_message, gui)
-        # create_link(links_fol, 'subjects', subjects_message , gui)
-        # create_link(links_fol, 'blender', blender_message, gui)
-        # create_link(links_fol, 'eeg', eeg_message, gui, True)
-        # create_link(links_fol, 'meg', meg_message, gui, True)
-        # create_link(links_fol, 'fMRI', fmri_message, gui)
-        # create_link(links_fol, 'electrodes', electrodes_message, gui)
+        for link_name, message, create_default_dir in zip(links_names[1:], messages, create_default_dirs):
+            if create_default_folders:
+                create_default_link(links_fol, link_name, create_default_dir)
+            else:
+                links[link_name] = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
 
     links = get_all_links(links, links_fol)
     write_links_into_csv_file(links, links_fol, links_file_name)
     return utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
 
 
-def create_link(links_fol, link_name, message, gui=True, create_default_dir=False):
+def mmvt_input(message, gui):
+    if gui:
+        ret = utils.message_box(message, TITLE)
+    else:
+        ret = input(message)
+    return ret
+
+
+def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_dir=False):
     fol = ''
     if not utils.is_link(op.join(links_fol, link_name)):
-        if gui:
-            ret = utils.message_box(message, TITLE)
-        else:
-            ret = input(message)
+        ret = mmvt_input(message, gui)
         if ret == 1:
             fol = utils.choose_folder_gui() if gui else input()
             if fol != '':
@@ -110,6 +120,15 @@ def create_link(links_fol, link_name, message, gui=True, create_default_dir=Fals
     else:
         fol = utils.get_link_dir(links_fol, link_name)
     return fol
+
+
+def create_default_link(links_fol, link_name, create_default_dir=False):
+    root_fol = utils.get_parent_fol(levels=3)
+    fol = op.join(root_fol, link_name)
+    create_real_folder(fol)
+    utils.create_folder_link(fol, op.join(links_fol, link_name))
+    if create_default_dir:
+        utils.make_dir(op.join(fol, 'default'))
 
 
 def get_all_links(links={}, links_fol=None, links_fol_name='links'):
