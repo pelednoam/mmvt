@@ -101,11 +101,11 @@ def get_links_dir(links_fol_name='links'):
 
 def is_link(link_path):
     if is_windows():
-        if not op.isfile(link_path):
+        link_fname = link_path if link_path[-4:] == '.lnk' else '{}.lnk'.format(link_path)
+        if not op.isfile(link_fname):
             return False
         try:
             from src.mmvt_addon.scripts import windows_utils as wu
-            link_fname = link_path if link_path[-4:] == '.lnk' else '{}.lnk'.format(link_path)
             sc = wu.MSShortcut(link_fname)
             real_folder_path = op.join(sc.localBasePath, sc.commonPathSuffix)
             return op.isdir(real_folder_path)
@@ -116,14 +116,15 @@ def is_link(link_path):
         return op.islink(link_path)
 
 
-def create_folder_link(real_fol, link_fol):
-    if not is_link(link_fol):
+def create_folder_link(real_fol, link_fol, overwrite=True):
+    if not overwrite and is_link(link_fol):
+        print('The link {} is already exist'.format(link_fol))
+    else:
         if is_windows():
             try:
                 if not op.isdir(real_fol):
                     print('The target is not a directory!!')
                     return
-
                 import winshell
                 from win32com.client import Dispatch
                 path = '{}.lnk'.format(link_fol)
@@ -135,19 +136,17 @@ def create_folder_link(real_fol, link_fol):
                 print("Can't create a link to the folder {}!".format(real_fol))
         else:
             os.symlink(real_fol, link_fol)
-    else:
-        print('The link {} is already exist!'.format(link_fol))
 
 
 def message_box(text, title='', style=1):
-    if is_windows():
-        import ctypes
-        return ctypes.windll.user32.MessageBoxW(0, text, title, style=1)
-    else:
-        import pymsgbox
-        buttons = {0:['Ok'], 1:['Ok', 'Cancel'], 2:['Abort', 'No', 'Cancel'], 3:['Yes', 'No', 'Cancel'],
-                   4:['Yes', 'No'], 5:['Retry', 'No'], 6:['Cancel', 'Try Again', 'Continue']}
-        return pymsgbox.confirm(text=text, title=title, buttons=buttons[style])
+    # if is_windows():
+    #     import ctypes
+    #     return ctypes.windll.user32.MessageBoxW(0, text, title, style)
+    # else:
+    import pymsgbox
+    buttons = {0: ['Ok'], 1: ['Ok', 'Cancel'], 2: ['Abort', 'No', 'Cancel'], 3: ['Yes', 'No', 'Cancel'],
+               4: ['Yes', 'No'], 5: ['Retry', 'No'], 6: ['Cancel', 'Try Again', 'Continue']}
+    return pymsgbox.confirm(text=text, title=title, buttons=buttons[style])
         # from tkinter import Tk, Label
         # root = Tk()
         # w = Label(root, text=text)
@@ -156,9 +155,15 @@ def message_box(text, title='', style=1):
         # return 1
 
 
-def choose_folder_gui():
+def choose_folder_gui(initialdir='', title=''):
+    import tkinter
     from tkinter.filedialog import askdirectory
-    fol = askdirectory()
+    root = tkinter.Tk()
+    root.withdraw()  # hide root
+    if initialdir != '':
+        fol = askdirectory(initialdir=initialdir, title=title)
+    else:
+        fol = askdirectory(title=title)
     if is_windows():
         fol = fol.replace('/', '\\')
     return fol

@@ -39,7 +39,7 @@ def copy_resources_files(mmvt_root_dir, only_verbose=False):
     return utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
 
 
-def create_links(links_fol_name='links', gui=True, only_verbose=False, links_file_name='links.csv'):
+def create_links(links_fol_name='links', gui=True, only_verbose=False, links_file_name='links.csv', overwrite=True):
     links_fol = utils.get_links_dir(links_fol_name)
     if only_verbose:
         print('making links dir {}'.format(links_fol))
@@ -48,12 +48,13 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     links_names = ['blender', 'mmvt', 'subjects', 'eeg', 'meg', 'fMRI', 'electrodes']
     # if not utils.is_windows():
     #     links_names.insert(1, 'subjects')
-    all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
-    if all_links_exist:
-        print('All links exist!')
-        links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in links_names}
-        write_links_into_csv_file(links, links_fol, links_file_name)
-        return True
+    if not overwrite:
+        all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
+        if all_links_exist:
+            print('All links exist!')
+            links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in links_names}
+            write_links_into_csv_file(links, links_fol, links_file_name)
+            return True
     if not utils.is_windows() and not utils.is_link(op.join(links_fol, 'freesurfer')):
         if os.environ.get('FREESURFER_HOME', '') == '':
             print('If you are going to use FreeSurfer locally, please source it and rerun')
@@ -69,17 +70,20 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     subjects_message = 'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
               '(It is prefered to create a local folder, because MMVT is going to save files to this directory) '
     blender_message = 'Please select where did you install Blender '
-    meg_message = 'Please select where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data) '
-    eeg_message = 'Please select where do you want to put the EEG files (Enter/Cancel if you are not going to use EEG data) '
-    fmri_message = 'Please select where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data) '
-    electrodes_message = 'Please select where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data) '
+    meg_message = 'Please select where do you want to put the MEG files (Cancel if you are not going to use MEG data) '
+    eeg_message = 'Please select where do you want to put the EEG files (Cancel if you are not going to use EEG data) '
+    fmri_message = 'Please select where do you want to put the fMRI files (Cancel if you are not going to use fMRI data) '
+    electrodes_message = 'Please select where do you want to put the electrodes files (Cancel if you are not going to use electrodes data) '
 
     blender_fol = find_blender()
     if blender_fol != '':
-        utils.create_folder_link(blender_fol, op.join(links_fol, 'blender'))
+        utils.create_folder_link(blender_fol, op.join(links_fol, 'blender'), overwrite)
     else:
-        ask_and_create_link(links_fol, 'blender',  blender_message, gui)
-    create_default_folders = mmvt_input("Would you like to set default links to the MMVT's folders?", gui)
+        ask_and_create_link(links_fol, 'blender',  blender_message, gui, overwrite)
+    default_message = "Would you like to set default links to the MMVT's folders?\n" + \
+        "You can always change that later by running\n" + \
+        "python -m src.setup -f create_links"
+    create_default_folders = mmvt_input(default_message, gui, 4) == 'Yes'
 
     messages = [mmvt_message, subjects_message, eeg_message, meg_message, fmri_message, electrodes_message]
     deafault_fol_names = ['mmvt_blend', 'subjects', 'eeg', 'meg', 'fMRI', 'electrodes']
@@ -91,46 +95,49 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     if not only_verbose:
         for link_name, default_fol_name, message, create_default_dir in zip(
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
-            if create_default_folders:
-                fol = create_default_link(links_fol, link_name, default_fol_name, create_default_dir)
+            if not create_default_folders:
+                fol = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
+            if fol == '' or create_default_folders:
+                fol = create_default_link(
+                    links_fol, link_name, default_fol_name, create_default_dir, overwrite=overwrite)
                 print('The "{}" link was created to {}'.format(link_name, fol))
-            else:
-                links[link_name] = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
+            links[link_name] = fol
 
     links = get_all_links(links, links_fol)
     write_links_into_csv_file(links, links_fol, links_file_name)
     return utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
 
 
-def mmvt_input(message, gui):
+def mmvt_input(message, gui, style=1):
     if gui:
-        ret = utils.message_box(message, TITLE)
+        ret = utils.message_box(message, TITLE, style)
     else:
         ret = input(message)
     return ret
 
 
-def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_dir=False):
+def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_dir=False, overwrite=True):
     fol = ''
-    if not utils.is_link(op.join(links_fol, link_name)):
-        ret = mmvt_input(message, gui)
-        if ret == 1:
-            fol = utils.choose_folder_gui() if gui else input()
+    if not overwrite and utils.is_link(op.join(links_fol, link_name)):
+        fol = utils.get_link_dir(links_fol, link_name)
+    else:
+        choose_folder = mmvt_input(message, gui) == 'Ok'
+        if choose_folder:
+            root_fol = utils.get_parent_fol(links_fol)
+            fol = utils.choose_folder_gui(root_fol, message) if gui else input()
             if fol != '':
                 create_real_folder(fol)
                 utils.create_folder_link(fol, op.join(links_fol, link_name))
                 if create_default_dir:
                     utils.make_dir(op.join(fol, 'default'))
-    else:
-        fol = utils.get_link_dir(links_fol, link_name)
     return fol
 
 
-def create_default_link(links_fol, link_name, default_fol_name, create_default_dir=False):
+def create_default_link(links_fol, link_name, default_fol_name, create_default_dir=False, overwrite=True):
     root_fol = utils.get_parent_fol(levels=3)
     fol = op.join(root_fol, default_fol_name)
     create_real_folder(fol)
-    utils.create_folder_link(fol, op.join(links_fol, link_name))
+    utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
     if create_default_dir:
         utils.make_dir(op.join(fol, 'default'))
     return fol
@@ -174,6 +181,7 @@ def create_real_folder(real_fol):
 
 def install_reqs(only_verbose=False):
     import pip
+    pip.main(['install', '--upgrade', 'pip'])
     retcode = 0
     reqs_fname = op.join(utils.get_parent_fol(levels=2), 'requirements.txt')
     with open(reqs_fname, 'r') as f:

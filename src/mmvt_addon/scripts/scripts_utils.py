@@ -2,6 +2,7 @@ import sys
 import os
 import os.path as op
 import argparse
+from sys import platform as _platform
 
 try:
     from src.mmvt_addon.scripts import call_script_utils as utils
@@ -12,6 +13,23 @@ try:
     import bpy
 except:
     pass
+
+
+IS_LINUX = _platform == "linux" or _platform == "linux2"
+IS_MAC = _platform == "darwin"
+IS_WINDOWS = _platform == "win32"
+
+
+def is_mac():
+    return IS_MAC
+
+
+def is_windows():
+    return IS_WINDOWS
+
+
+def is_linux():
+    return IS_LINUX
 
 
 def get_current_dir():
