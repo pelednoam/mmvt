@@ -45,9 +45,9 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
         print('making links dir {}'.format(links_fol))
     else:
         utils.make_dir(links_fol)
-    links_names = ['blender', 'mmvt', 'eeg', 'meg', 'fMRI', 'electrodes']
-    if not utils.is_windows():
-        links_names.insert(1, 'subjects')
+    links_names = ['blender', 'mmvt', 'subjects', 'eeg', 'meg', 'fMRI', 'electrodes']
+    # if not utils.is_windows():
+    #     links_names.insert(1, 'subjects')
     all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
     if all_links_exist:
         print('All links exist!')
@@ -65,31 +65,35 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
             if not only_verbose:
                 create_real_folder(freesurfer_fol)
 
-    mmvt_message = 'Please select where do you want to put the blend files? '
-    subjects_message = 'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT?\n' + \
-              'It prefered to create a local folder, because MMVT is going to save files to this directory: '
-    blender_message = 'Please select where did you install Blender? '
-    meg_message = 'Please select where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data): '
-    eeg_message = 'Please select where do you want to put the EEG files (Enter/Cancel if you are not going to use EEG data): '
-    fmri_message = 'Please select where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data): '
-    electrodes_message = 'Please select where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data): '
+    mmvt_message = 'Please select where do you want to put the blend files '
+    subjects_message = 'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
+              '(It is prefered to create a local folder, because MMVT is going to save files to this directory) '
+    blender_message = 'Please select where did you install Blender '
+    meg_message = 'Please select where do you want to put the MEG files (Enter/Cancel if you are not going to use MEG data) '
+    eeg_message = 'Please select where do you want to put the EEG files (Enter/Cancel if you are not going to use EEG data) '
+    fmri_message = 'Please select where do you want to put the fMRI files (Enter/Cancel if you are not going to use fMRI data) '
+    electrodes_message = 'Please select where do you want to put the electrodes files (Enter/Cancel if you are not going to use electrodes data) '
 
-    if utils.is_windows() and op.isdir(BLENDER_WIN_DIR):
-        utils.create_folder_link(BLENDER_WIN_DIR, op.join(links_fol, 'blender'))
+    blender_fol = find_blender()
+    if blender_fol != '':
+        utils.create_folder_link(blender_fol, op.join(links_fol, 'blender'))
     else:
         ask_and_create_link(links_fol, 'blender',  blender_message, gui)
     create_default_folders = mmvt_input("Would you like to set default links to the MMVT's folders?", gui)
 
-    messages = [mmvt_message, eeg_message, meg_message, fmri_message, electrodes_message]
-    if not utils.is_windows():
-        messages.insert(0, subjects_message)
-    create_default_dirs = [False] * (1 if utils.is_windows() else 2) + [True] * 2 + [False] * 2
+    messages = [mmvt_message, subjects_message, eeg_message, meg_message, fmri_message, electrodes_message]
+    deafault_fol_names = ['mmvt_blend', 'subjects', 'eeg', 'meg', 'fMRI', 'electrodes']
+    # if not utils.is_windows():
+    #     messages.insert(0, subjects_message)
+    create_default_dirs = [False] * 3 + [True] * 2 + [False] * 2
 
     links = {}
     if not only_verbose:
-        for link_name, message, create_default_dir in zip(links_names[1:], messages, create_default_dirs):
+        for link_name, default_fol_name, message, create_default_dir in zip(
+                links_names[1:], deafault_fol_names, messages, create_default_dirs):
             if create_default_folders:
-                create_default_link(links_fol, link_name, create_default_dir)
+                fol = create_default_link(links_fol, link_name, default_fol_name, create_default_dir)
+                print('The "{}" link was created to {}'.format(link_name, fol))
             else:
                 links[link_name] = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
 
@@ -122,13 +126,14 @@ def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_
     return fol
 
 
-def create_default_link(links_fol, link_name, create_default_dir=False):
+def create_default_link(links_fol, link_name, default_fol_name, create_default_dir=False):
     root_fol = utils.get_parent_fol(levels=3)
-    fol = op.join(root_fol, link_name)
+    fol = op.join(root_fol, default_fol_name)
     create_real_folder(fol)
     utils.create_folder_link(fol, op.join(links_fol, link_name))
     if create_default_dir:
         utils.make_dir(op.join(fol, 'default'))
+    return fol
 
 
 def get_all_links(links={}, links_fol=None, links_fol_name='links'):
@@ -181,6 +186,23 @@ def install_reqs(only_verbose=False):
     return retcode
 
 
+def find_blender():
+    blender_fol = ''
+    if utils.is_windows():
+        blender_win_fol = 'Program Files\Blender Foundation\Blender'
+        if op.isdir(op.join('C:\\', blender_win_fol)):
+            blender_fol = op.join('C:\\', blender_win_fol)
+        elif op.isdir(op.join('D:\\', blender_win_fol)):
+            blender_fol = op.join('D:\\', blender_win_fol)
+    else:
+        output = utils.run_script("find ~/ -name 'blender'")
+        blender_fols = [fol for fol in output.split('\n') if op.isfile(op.join(
+            utils.get_parent_fol(fol), 'blender.svg'))]
+        if len(blender_fols) == 1:
+            blender_fol = utils.get_parent_fol(blender_fols[0])
+    return blender_fol
+
+
 def main(args):
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
@@ -211,6 +233,9 @@ def main(args):
 
     if 'create_csv' in args.function:
         write_links_into_csv_file(get_all_links())
+
+    if 'find_blender' in args.function:
+        find_blender()
 
     print('Finish!')
 

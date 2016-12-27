@@ -135,20 +135,25 @@ def create_folder_link(real_fol, link_fol):
                 print("Can't create a link to the folder {}!".format(real_fol))
         else:
             os.symlink(real_fol, link_fol)
+    else:
+        print('The link {} is already exist!'.format(link_fol))
 
 
-def message_box(text, title=''):
+def message_box(text, title='', style=1):
     if is_windows():
         import ctypes
-        return ctypes.windll.user32.MessageBoxW(0, text, title, 1)
+        return ctypes.windll.user32.MessageBoxW(0, text, title, style=1)
     else:
-        # print(text)
-        from tkinter import Tk, Label
-        root = Tk()
-        w = Label(root, text=text)
-        w.pack()
-        root.mainloop()
-        return 1
+        import pymsgbox
+        buttons = {0:['Ok'], 1:['Ok', 'Cancel'], 2:['Abort', 'No', 'Cancel'], 3:['Yes', 'No', 'Cancel'],
+                   4:['Yes', 'No'], 5:['Retry', 'No'], 6:['Cancel', 'Try Again', 'Continue']}
+        return pymsgbox.confirm(text=text, title=title, buttons=buttons[style])
+        # from tkinter import Tk, Label
+        # root = Tk()
+        # w = Label(root, text=text)
+        # w.pack()
+        # root.mainloop()
+        # return 1
 
 
 def choose_folder_gui():
@@ -179,3 +184,32 @@ class Bag( dict ):
     def __init__(self, *args, **kwargs):
         dict.__init__( self, *args, **kwargs )
         self.__dict__ = self
+
+
+def run_script(cmd, verbose=False):
+    import subprocess
+    import sys
+    try:
+        if verbose:
+            print('running: {}'.format(cmd))
+        if is_windows():
+            output = subprocess.call(cmd)
+        else:
+            output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+    except:
+        print('Error in run_script!')
+        print(traceback.format_exc())
+        return ''
+
+    output = output.decode(sys.getfilesystemencoding(), 'ignore')
+    print(output)
+    return output
+
+
+def get_parent_fol(curr_dir='', levels=1):
+    if curr_dir == '':
+        curr_dir = get_current_fol()
+    parent_fol = op.split(curr_dir)[0]
+    for _ in range(levels - 1):
+        parent_fol = get_parent_fol(parent_fol)
+    return parent_fol
