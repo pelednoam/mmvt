@@ -28,7 +28,7 @@ def bind_socket():
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=0.01): #0.01):
+def send_data(sock, server_address, data, interval=0.001): #0.01):
     while True:
         data_to_send = next(data)
         data_to_send = str(data_to_send).encode('utf-8')

@@ -627,6 +627,13 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
         thread_read_from_stderr.start()
 
 
+def run_thread(target_func, while_func=lambda:True, **kwargs):
+    q = Queue()
+    t = threading.Thread(target=target_func, args=(q, while_func), kwargs=kwargs)
+    t.start()
+    return q
+
+
 def run_command(cmd, shell=True, pipe=False):
     # global p
     from subprocess import Popen, PIPE, STDOUT

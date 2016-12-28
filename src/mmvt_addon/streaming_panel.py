@@ -2,12 +2,11 @@ import bpy
 import mmvt_utils as mu
 import sys
 import os.path as op
-import glob
 import time
 import numpy as np
 import traceback
 from itertools import cycle
-from queue import Empty
+from datetime import datetime
 
 
 def _addon():
@@ -47,6 +46,8 @@ def change_graph(next_val):
 
 
 def change_graph_vals(next_vals):
+    # print(str(datetime.now() - StreamingPanel.time))
+    # StreamingPanel.time = datetime.now()
     obj_name = 'LMF6'
     fcurve_name = 'LMF6_interference'
     bpy.data.objects[obj_name].select = True
@@ -55,7 +56,7 @@ def change_graph_vals(next_vals):
     for fcurve in curves:
         N = len(fcurve.keyframe_points)
         for ind in range(N - 1, len(next_vals), -1):
-            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - 1].co[1]
+            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - len(next_vals)].co[1]
         for ind in range(len(next_vals)):
             fcurve.keyframe_points[ind].co[1] = next_vals[ind]
     return next_vals
@@ -77,37 +78,77 @@ def calc_color_ind(val, data_min, colors_ratio):
     return colors_ind
 
 
+def reading_from_udp_while_termination_func():
+    return StreamingPanel.is_streaming
+
+
+def udp_reader(queue, while_termination_func, **kargs):
+    import socket
+    buffer_size = kargs.get('buffer_size', 10)
+    server = kargs.get('server', 'localhost')
+    ip = kargs.get('ip', 10000)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_address = (server, ip)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(server_address)
+    buffer = []
+
+    while while_termination_func():
+        next_val = sock.recv(1024)
+        next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+        buffer.append(next_val)
+        if len(buffer) >= buffer_size:
+            queue.put(','.join(buffer))
+            buffer = []
+    print('exiting')
+#
+# class StreamListenerButton(bpy.types.Operator):
+#     bl_idname = "mmvt.stream_listerner_button"
+#     bl_label = "Stream Listener botton"
+#     bl_options = {"UNDO"}
+#
+#     def invoke(self, context, event=None):
+#         StreamingPanel.is_listening = not StreamingPanel.is_listening
+#         if StreamingPanel.is_listening:
+#             # script = 'src.udp.udp_listener'
+#             # cmd = '{} -m {}'.format(bpy.context.scene.python_cmd, script)
+#             # _, StreamingPanel.out_queue = mu.run_command_in_new_thread(
+#             #     cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_usp_stdout_func)
+#             StreamingPanel.out_queue = mu.run_thread(udp_reader, while_func=reading_from_udp_while_termination_func)
+#         return {"FINISHED"}
+
+
 class StreamButton(bpy.types.Operator):
-    bl_idname = "mmvt.template_button"
+    bl_idname = "mmvt.stream_button"
     bl_label = "Stream botton"
     bl_options = {"UNDO"}
 
     _timer = None
-    _time = time.time()
+    _time = datetime.now()
     _index = 0
-    _time_step = 0.01
+    # _time_step = 0.001
     _obj = None
     _buffer = []
 
     def invoke(self, context, event=None):
-        self._time = time.time()
         self._obj = bpy.data.objects['LMF6']
+        StreamingPanel.is_streaming = not StreamingPanel.is_streaming
         if StreamingPanel.first_time:
             StreamingPanel.first_time = False
+            try:
+                context.window_manager.event_timer_remove(self._timer)
+            except:
+                pass
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
-            # script = op.join(mu.get_mmvt_code_root(), 'src', 'misc', 'udp_listener.py')
-            script = 'src.misc.udp_listener'
-            cmd = '{} -m {}'.format(bpy.context.scene.python_cmd, script)
-            StreamingPanel.in_queue, StreamingPanel.out_queue = mu.run_command_in_new_thread(cmd, queues=True)
+        if StreamingPanel.is_streaming:
+            args = dict(buffer_size=100, server='localhost', ip=10000)
+            StreamingPanel.out_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
 
-        StreamingPanel.is_streaming = not StreamingPanel.is_streaming
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
         # First frame initialization:
-        if not StreamingPanel.is_streaming:
-            return {'PASS_THROUGH'}
 
         if event.type in {'RIGHTMOUSE', 'ESC'}:
             StreamingPanel.is_streaming = False
@@ -116,45 +157,36 @@ class StreamButton(bpy.types.Operator):
             return {'PASS_THROUGH'}
 
         if event.type == 'TIMER':
+            # print(str(datetime.now() - self._time))
+            # self._time = datetime.now()
             if not StreamingPanel.out_queue is None:
-                try:
-                    data = StreamingPanel.out_queue.get(block=False)
+                listener_stdout = mu.queue_get(StreamingPanel.out_queue)
+                if not listener_stdout is None: # and StreamingPanel.is_streaming:
                     try:
-                        data = data.decode(sys.getfilesystemencoding(), 'ignore')
-                        data = float(data)
-                        self._buffer.append(data)
-                        if len(self._buffer) == bpy.types.Scene.straming_buffer_size:
-                            change_graph_vals(self._buffer)
-                            self._buffer = []
-                        # print('data from listener: {}'.format(data))
+                        if not isinstance(listener_stdout, str):
+                            listener_stdout = listener_stdout.decode(sys.getfilesystemencoding(), 'ignore')
                     except:
-                        print("Can't read the stdout from freeview")
-                except Empty:
-                    pass
-
-            # print(time.time() - self._time)
-            # now = time.time()
-            # print(now - self._time)
-            # mu.print_current_time()
-            # if now - self._time >= self._time_step:
-            # print('In! {}, {}'.format(now - self._time, self._time_step))
-            # mu.print_current_time()
-            # self._time = now
-            # self._index += 1
-
-
-            # change_color(self._obj, next_val, StreamingPanel.activity_data_min, StreamingPanel.activity_colors_ratio)
-
-            # ready = select.select([StreamingPanel.sock], [], [], 0.1)
-            # if ready[0]:
-            #     next_val = StreamingPanel.sock.recv(4096)
-            #     change_color(self._obj, next_val, StreamingPanel.activity_data_min,
-            #                  StreamingPanel.activity_colors_ratio)
+                        print("Can't read the stdout from udp")
+                        print(traceback.format_exc())
+                    else:
+                        try:
+                            data = [float(x) for x in listener_stdout.split(',')]
+                        except ValueError:
+                            print('Listener: {}'.format(listener_stdout))
+                        else:
+                            self._buffer.extend(data)
+                            if len(self._buffer) >= bpy.context.scene.straming_buffer_size:
+                                change_graph_vals(self._buffer)
+                                self._buffer = []
+                            # print('data from listener: {}'.format(data))
 
         return {'PASS_THROUGH'}
 
     def cancel(self, context):
-        context.window_manager.event_timer_remove(self._timer)
+        try:
+            context.window_manager.event_timer_remove(self._timer)
+        except:
+            pass
         self._timer = None
         return {'CANCELLED'}
 
@@ -162,6 +194,9 @@ class StreamButton(bpy.types.Operator):
 def template_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "straming_buffer_size", text="buffer size:")
+    # layout.operator(StreamListenerButton.bl_idname,
+    #                 text="Start Listener" if not StreamingPanel.is_listening else 'Stop Listener',
+    #                 icon='COLOR_GREEN' if not StreamingPanel.is_listening else 'COLOR_RED')
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
@@ -179,11 +214,12 @@ class StreamingPanel(bpy.types.Panel):
     addon = None
     init = False
     is_streaming = False
+    is_listening = False
     first_time = True
     fixed_data = []
     in_queue = None
     out_queue = None
-
+    time = datetime.now()
 
     def draw(self, context):
         if StreamingPanel.init:
@@ -195,6 +231,9 @@ def init(addon):
     if not op.isfile(cm_fname):
         return
     StreamingPanel.addon = addon
+    StreamingPanel.is_listening = False
+    StreamingPanel.is_streaming = False
+    StreamingPanel.first_time = True
     register()
     StreamingPanel.cm = np.load(cm_fname)
     StreamingPanel.fixed_data = fixed_data()
@@ -206,6 +245,7 @@ def register():
         unregister()
         bpy.utils.register_class(StreamingPanel)
         bpy.utils.register_class(StreamButton)
+        # bpy.utils.register_class(StreamListenerButton)
     except:
         print("Can't register Stream Panel!")
 
@@ -214,5 +254,6 @@ def unregister():
     try:
         bpy.utils.unregister_class(StreamingPanel)
         bpy.utils.unregister_class(StreamButton)
+        # bpy.utils.unregister_class(StreamListenerButton)
     except:
         pass
