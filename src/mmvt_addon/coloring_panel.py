@@ -103,17 +103,20 @@ def clear_object_vertex_colors(cur_obj):
 
 
 # todo: do something with the threshold parameter
-def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, colors=None):
+def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold=0, postfix_str=''):
     if data is None:
-        print('color_object_homogeneously: No data to color!')
+        print('color_objects_homogeneously: No data to color!')
         return
     if names is None:
-        data, names, colors, conditions = data['data'], data['names'], data['colors'], data['conditions']
+        data, names, conditions = data['data'], data['names'], data['conditions']
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
-    for obj_name, object_colors, values in zip(names, colors, data):
+    for obj_name, values in zip(names, data):
         obj_name = obj_name.astype(str)
-        if bpy.context.scene.selection_type == 'spec_cond':
+        t_ind = min(len(values) - 1, cur_frame)
+        if values[t_ind].ndim == 0:
+            value = values[t_ind]
+        elif bpy.context.scene.selection_type == 'spec_cond':
             cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
             if len(cond_inds) == 0:
                 print("!!! Can't find the current condition in the data['conditions'] !!!")
@@ -121,24 +124,25 @@ def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, co
             else:
                 cond_ind = cond_inds[0]
                 object_colors = object_colors[:, cond_ind]
-                value = values[cur_frame, cond_ind]
+                value = values[t_ind, cond_ind]
         else:
-            value = np.diff(values[cur_frame])[0]
+            value = np.diff(values[t_ind])[0]
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
-        new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
+        # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
+        new_color = calc_colors([value], data_min, colors_ratio)[0]
         # todo: check if the stat should be avg or diff
         obj = bpy.data.objects.get(obj_name+postfix_str)
         # if obj and not obj.hide:
         #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
         ret = object_coloring(obj, new_color)
         if not ret:
-            print('color_object_homogeneously: Error in coloring the object {}!'.format(obj_name))
+            print('color_objects_homogeneously: Error in coloring the object {}!'.format(obj_name))
             # print(obj_name, value, new_color)
         # else:
-        #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+        #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
-    print('Finished coloring!!')
+    # print('Finished coloring!!')
 
 
 def init_activity_map_coloring(map_type, subcorticals=True):
@@ -317,7 +321,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
         if map_type == 'MEG':
             if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
-                color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
+                color_objects_homogeneously(meg_sub_activity, '_meg_activity', threshold)
         if map_type == 'FMRI':
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
@@ -648,20 +652,13 @@ def color_electrodes():
     _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
-    stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
-    fol = op.join(mu.get_user_fol(), 'electrodes')
-    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
-    if op.isfile(data_file):
-        data = np.load(data_file)
-        color_object_homogeneously(data, threshold=threshold)
-    else:
-        data_file = op.join(fol, 'electrodes_data_{}_data.npy'.format(stat))
-        data = np.load(data_file)
-        colors = np.load(op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat)))
-        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
-        names = meta_data['names']
-        color_object_homogeneously(data, '', threshold, names=names, colors=colors)
-
+    data, names, conditions = _addon().load_electrodes_data()
+    norm_percs = (3, 97) #todo: add to gui
+    data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+    colors_ratio = 256 / (data_max - data_min)
+    _addon().set_colorbar_max_min(data_max, data_min)
+    _addon().set_colorbar_title('Electordes conditions difference')
+    color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
     #     bpy.ops.object.editmode_toggle()
@@ -682,7 +679,7 @@ def color_electrodes_stim():
     stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
     stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
     data = np.load(stim_data_fname)
-    color_object_homogeneously(data, threshold=threshold)
+    color_objects_homogeneously(data, threshold=threshold)
     _addon().show_electrodes()
     _addon().change_to_rendered_brain()
 

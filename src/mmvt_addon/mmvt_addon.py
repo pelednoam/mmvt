@@ -84,6 +84,7 @@ add_data_to_parent_brain_obj = data_panel.add_data_to_parent_brain_obj
 add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
+load_electrodes_data = data_panel.load_electrodes_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
@@ -100,7 +101,7 @@ get_obj_color = coloring_panel.get_obj_color
 clear_subcortical_fmri_activity = coloring_panel.clear_subcortical_fmri_activity
 clear_cortex = coloring_panel.clear_cortex
 clear_object_vertex_colors = coloring_panel.clear_object_vertex_colors
-color_object_homogeneously = coloring_panel.color_object_homogeneously
+color_objects_homogeneously = coloring_panel.color_objects_homogeneously
 init_activity_map_coloring = coloring_panel.init_activity_map_coloring
 load_faces_verts = coloring_panel.load_faces_verts
 load_meg_subcortical_activity = coloring_panel.load_meg_subcortical_activity
@@ -229,27 +230,31 @@ set_light_layers_depth = transparency_panel.set_light_layers_depth
 
 
 def get_max_time_steps():
-    # Check if maximal_time_steps is in bpy.types.Scene
+    # Check if there is animation data in MEG
     try:
         return bpy.types.Scene.maximal_time_steps
     except:
         print('No preperty maximal_time_steps in bpy.types.Scene')
 
-    # Check if there is animation data in MEG
     try:
         hemi = bpy.data.objects['Cortex-lh']
         # Takes the first child first condition fcurve
         fcurves = hemi.children[0].animation_data.action.fcurves[0]
-        return len(fcurves.keyframe_points) - 3
+        bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 3
     except:
         print('No MEG data')
 
     try:
         elec = bpy.data.objects['Deep_electrodes'].children[0]
         fcurves = elec.animation_data.action.fcurves[0]
-        return len(fcurves.keyframe_points) - 2
+        bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
     except:
         print('No deep electrodes data')
+
+    try:
+        return bpy.types.Scene.maximal_time_steps
+    except:
+        print('No preperty maximal_time_steps in bpy.types.Scene')
 
     # Bad fallback...
     return 2500

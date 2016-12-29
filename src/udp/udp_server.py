@@ -10,13 +10,16 @@ LINKS_DIR = utils.get_links_dir()
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 
-def load_electrodes_data(bipolar=False):
+def load_electrodes_data(bipolar=False, electrode_name='LMF6', condition='interference'):
     source_fname = op.join(MMVT_DIR, 'mg78', 'electrodes', 'electrodes{}_data_diff.npz'.format(
         '_bipolar' if bipolar else ''))
     f = np.load(source_fname)
-    ind = np.where(f['names']=='LMF6')[0][0]
-    cond_ind = np.where(f['conditions']=='interference')[0]
-    data = f['data'][ind, :, cond_ind].squeeze()
+    if electrode_name == 'all':
+        ind = np.arange(0, len(f['names']))
+    else:
+        ind = np.where(f['names']==electrode_name)[0][0]
+    cond_ind = np.where(f['conditions']==condition)[0]
+    data = f['data'][ind, :, cond_ind].squeeze().T
     return cycle(data)
 
 
@@ -28,16 +31,17 @@ def bind_socket():
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=0.001): #0.01):
+def send_data(sock, server_address, data, interval=0.001):
     while True:
         data_to_send = next(data)
-        data_to_send = str(data_to_send).encode('utf-8')
+        # data_to_send = str(data_to_send).encode('utf-8')
+        data_to_send = ','.join([str(d) for d in data_to_send]).encode('utf-8')
         sock.sendto(data_to_send, server_address)
         # print('{}: sending data {}'.format(utils.get_time(), data_to_send))
         time.sleep(interval)
 
 
 if __name__ == '__main__':
-    data = load_electrodes_data()
+    data = load_electrodes_data(False, 'all')
     sock, server_address = bind_socket()
     send_data(sock, server_address, data)

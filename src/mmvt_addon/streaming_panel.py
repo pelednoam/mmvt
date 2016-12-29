@@ -13,54 +13,27 @@ def _addon():
     return StreamingPanel.addon
 
 
-def fixed_data():
-    obj_name = 'LMF6'
-    bpy.data.objects[obj_name].select = True
-    _, y = mu.get_fcurve_values('LMF6', 'LMF6_interference')
-
-    data_min, data_max = np.percentile(y, 3), np.percentile(y, 97)
-    StreamingPanel.activity_colors_ratio = 256 / (data_max - data_min)
-    StreamingPanel.activity_data_min = data_min
-
-    y = cycle(y)
-    for _y in y:
-        yield _y
-    # x = cycle(np.linspace(0, 10, 25000))
-    # for _x in x:
-    #     next = np.sin(2 * np.pi * _x)
-    #     yield next
-
-
-def change_graph(next_val):
-    obj_name = 'LMF6'
-    fcurve_name = 'LMF6_interference'
-    bpy.data.objects[obj_name].select = True
-    parent_obj = bpy.data.objects[obj_name]
-    curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
-    for fcurve in curves:
-        N = len(fcurve.keyframe_points)
-        for ind in range(N - 1, 0, -1):
-            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - 1].co[1]
-        fcurve.keyframe_points[0].co[1] = next_val
-    return next_val
-
-
-def change_graph_vals(next_vals):
+# @mu.timeit
+def change_graph_all_vals(mat, condition = 'interference'):
     print(str(datetime.now() - StreamingPanel.time))
     StreamingPanel.time = datetime.now()
-    obj_name = 'LMF6'
-    fcurve_name = 'LMF6_interference'
-    bpy.data.objects[obj_name].select = True
-    parent_obj = bpy.data.objects[obj_name]
-    curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
-    T = min(len(next_vals), _addon().get_max_time_steps())
-    for fcurve in curves:
-        N = len(fcurve.keyframe_points)
-        for ind in range(N - 1, T - 1, -1):
-            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - T].co[1]
-        for ind in range(T):
-            fcurve.keyframe_points[ind].co[1] = next_vals[ind]
-    return next_vals
+    T = min(mat.shape[1], _addon().get_max_time_steps())
+    for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
+        bpy.data.objects[elc_name].select = True
+        parent_obj = bpy.data.objects[elc_name]
+        curve_name = '{}_{}'.format(elc_name, condition)
+        for fcurve in parent_obj.animation_data.action.fcurves:
+            if mu.get_fcurve_name(fcurve) != curve_name:
+                fcurve.hide = True
+                continue
+            fcurve.hide = False
+            N = len(fcurve.keyframe_points)
+            for ind in range(N - 1, T - 1, -1):
+                fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - T].co[1]
+            for ind in range(T):
+                fcurve.keyframe_points[ind].co[1] = mat[elc_ind][ind]
+            fcurve.keyframe_points[N - 1].co[1] = 0
+            fcurve.keyframe_points[0].co[1] = 0
 
 
 def change_color(obj, val, data_min, colors_ratio):
@@ -83,7 +56,7 @@ def reading_from_udp_while_termination_func():
     return StreamingPanel.is_streaming
 
 
-def udp_reader(queue, while_termination_func, **kargs):
+def udp_reader(udp_ts_queue, udp_viz_queue, while_termination_func, **kargs):
     import socket
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
@@ -95,27 +68,15 @@ def udp_reader(queue, while_termination_func, **kargs):
     buffer = []
 
     while while_termination_func():
-        next_val = sock.recv(1024)
+        next_val = sock.recv(4096)
         next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-        buffer.append(next_val)
-        if len(buffer) >= buffer_size:
-            queue.put(','.join(buffer))
+        next_val = np.array([float(f) for f in next_val.split(',')])
+        next_val = next_val[..., np.newaxis]
+        udp_viz_queue.put(buffer)
+        buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+        if buffer.shape[1] >= buffer_size:
+            udp_ts_queue.put(buffer)
             buffer = []
-
-# class StreamListenerButton(bpy.types.Operator):
-#     bl_idname = "mmvt.stream_listerner_button"
-#     bl_label = "Stream Listener botton"
-#     bl_options = {"UNDO"}
-#
-#     def invoke(self, context, event=None):
-#         StreamingPanel.is_listening = not StreamingPanel.is_listening
-#         if StreamingPanel.is_listening:
-#             # script = 'src.udp.udp_listener'
-#             # cmd = '{} -m {}'.format(bpy.context.scene.python_cmd, script)
-#             # _, StreamingPanel.out_queue = mu.run_command_in_new_thread(
-#             #     cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_usp_stdout_func)
-#             StreamingPanel.out_queue = mu.run_thread(udp_reader, while_func=reading_from_udp_while_termination_func)
-#         return {"FINISHED"}
 
 
 class StreamButton(bpy.types.Operator):
@@ -124,14 +85,12 @@ class StreamButton(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     _timer = None
-    _time = datetime.now()
+    _time = time.time()
     _index = 0
-    # _time_step = 0.001
     _obj = None
     _buffer = []
 
     def invoke(self, context, event=None):
-        self._obj = bpy.data.objects['LMF6']
         StreamingPanel.is_streaming = not StreamingPanel.is_streaming
         if StreamingPanel.first_time:
             StreamingPanel.first_time = False
@@ -142,14 +101,13 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            args = dict(buffer_size=100, server='localhost', ip=10000)
-            StreamingPanel.out_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
+            args = dict(buffer_size=500, server='localhost', ip=10000)
+            StreamingPanel.udp_ts_queue, StreamingPanel.udp_viz_queue = \
+                mu.run_thread_2q(udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
-        # First frame initialization:
-
         if event.type in {'RIGHTMOUSE', 'ESC'}:
             StreamingPanel.is_streaming = False
             bpy.context.scene.update()
@@ -157,31 +115,28 @@ class StreamButton(bpy.types.Operator):
             return {'PASS_THROUGH'}
 
         if event.type == 'TIMER':
-            # print(str(datetime.now() - self._time))
-            self._time = datetime.now()
+            # if time.time() - self._time >= 0.5:
+            #     self._time = time.time()
             if not StreamingPanel.is_streaming:
-                # change_graph_vals(np.zeros(bpy.context.scene.straming_buffer_size))
-                self._buffer.extend(np.zeros(bpy.context.scene.straming_buffer_size))
-            elif not StreamingPanel.out_queue is None:
-                listener_stdout = mu.queue_get(StreamingPanel.out_queue)
-                if not listener_stdout is None: # and StreamingPanel.is_streaming:
-                    try:
-                        if not isinstance(listener_stdout, str):
-                            listener_stdout = listener_stdout.decode(sys.getfilesystemencoding(), 'ignore')
-                    except:
-                        print("Can't read the stdout from udp")
-                        print(traceback.format_exc())
-                    else:
-                        try:
-                            data = [float(x) for x in listener_stdout.split(',')]
-                        except ValueError:
-                            print('Listener: {}'.format(listener_stdout))
-                        else:
-                            self._buffer.extend(data)
-                            if len(self._buffer) >= bpy.context.scene.straming_buffer_size:
-                                change_graph_vals(self._buffer)
-                                self._buffer = []
-                            # print('data from listener: {}'.format(data))
+                if self._buffer == [] or self._buffer.shape[1] < _addon().get_max_time_steps():
+                    data = np.zeros(
+                        (len(StreamingPanel.electrodes_names), bpy.context.scene.straming_buffer_size))
+                    self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
+            else:
+                data = mu.queue_get(StreamingPanel.udp_ts_queue)
+                if not data is None:
+                    self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
+                    print(str(datetime.now() - StreamingPanel.time))
+                    StreamingPanel.time = datetime.now()
+                    if self._buffer.shape[1] >= bpy.context.scene.straming_buffer_size:
+                        # change_graph_all_vals(self._buffer)
+                        self._buffer = []
+
+                data = mu.queue_get(StreamingPanel.udp_viz_queue)
+                if not data is None:
+                    _addon().color_objects_homogeneously(
+                        data, StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
+                        StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
 
         return {'PASS_THROUGH'}
 
@@ -205,7 +160,7 @@ def template_draw(self, context):
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
 
 
-bpy.types.Scene.straming_buffer_size = bpy.props.IntProperty(default=10, min=1)
+bpy.types.Scene.straming_buffer_size = bpy.props.IntProperty(default=100, min=10)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -219,10 +174,13 @@ class StreamingPanel(bpy.types.Panel):
     is_streaming = False
     is_listening = False
     first_time = True
-    fixed_data = []
-    in_queue = None
-    out_queue = None
+    # fixed_data = []
+    udp_ts_queue = None
+    udp_viz_queue = None
+    electrodes_file = None
     time = datetime.now()
+    electrodes_names, electrodes_conditions = [], []
+    data_max, data_min, electrodes_colors_ratio = 0, 0, 1
 
     def draw(self, context):
         if StreamingPanel.init:
@@ -239,7 +197,14 @@ def init(addon):
     StreamingPanel.first_time = True
     register()
     StreamingPanel.cm = np.load(cm_fname)
-    StreamingPanel.fixed_data = fixed_data()
+    # StreamingPanel.fixed_data = fixed_data()
+    electrodes_data, StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions = \
+        _addon().load_electrodes_data()
+    norm_percs = (3, 97) #todo: add to gui
+    StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
+        electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+    StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
+
     StreamingPanel.init = True
 
 

@@ -703,6 +703,25 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
+def load_electrodes_data(stat='diff'):
+    # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
+    fol = op.join(mu.get_user_fol(), 'electrodes')
+    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
+    if op.isfile(data_file):
+        f = np.load(data_file)
+        data = f['data']
+        names = f['names']
+        conditions = f['conditions']
+    else:
+        data_file = op.join(fol, 'electrodes_data_{}_data.npy'.format(stat))
+        f = np.load(data_file)
+        data = f['data']
+        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
+        names = meta_data['names']
+        conditions = meta_data['conditions']
+    return data, names, conditions
+
+
 def meg_evoked_files_update(self, context):
     _meg_evoked_files_update()
 

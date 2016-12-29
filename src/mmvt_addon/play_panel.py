@@ -154,7 +154,7 @@ def plot_something(self, context, cur_frame, uuid=''):
                            bpy.context.scene.connectivity_threshold, abs_threshold)
     if play_type in ['stim', 'stim_sources']:
         # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
-        PlayPanel.addon.color_object_homogeneously(PlayPanel.stim_data)
+        PlayPanel.addon.color_objects_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         PlayPanel.addon.color_electrodes_sources()
     if play_type in ['eeg_helmet']:
@@ -279,7 +279,7 @@ def plot_electrodes(cur_frame, threshold, stim=False):
             if bpy.data.objects.get(obj_name) is not None:
                 PlayPanel.addon.object_coloring(bpy.data.objects[obj_name], new_color)
             else:
-                print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+                print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_meg_data(per_condition=True):

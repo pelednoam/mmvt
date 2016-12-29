@@ -634,6 +634,13 @@ def run_thread(target_func, while_func=lambda:True, **kwargs):
     return q
 
 
+def run_thread_2q(target_func, while_func=lambda:True, **kwargs):
+    q1, q2 = Queue(), Queue()
+    t = threading.Thread(target=target_func, args=(q1, q2, while_func), kwargs=kwargs)
+    t.start()
+    return q1, q2
+
+
 def run_command(cmd, shell=True, pipe=False):
     # global p
     from subprocess import Popen, PIPE, STDOUT
@@ -1159,7 +1166,10 @@ def get_max_abs(data_max, data_min):
 
 def queue_get(queue):
     try:
-        return queue.get(block=False)
+        if queue is None:
+            return None
+        else:
+            return queue.get(block=False)
     except Empty:
         return None
 
