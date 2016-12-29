@@ -53,11 +53,12 @@ def change_graph_vals(next_vals):
     bpy.data.objects[obj_name].select = True
     parent_obj = bpy.data.objects[obj_name]
     curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
+    T = min(len(next_vals), _addon().get_max_time_steps())
     for fcurve in curves:
         N = len(fcurve.keyframe_points)
-        for ind in range(N - 1, len(next_vals) - 1, -1):
-            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - len(next_vals)].co[1]
-        for ind in range(len(next_vals)):
+        for ind in range(N - 1, T - 1, -1):
+            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - T].co[1]
+        for ind in range(T):
             fcurve.keyframe_points[ind].co[1] = next_vals[ind]
     return next_vals
 
@@ -159,7 +160,8 @@ class StreamButton(bpy.types.Operator):
             # print(str(datetime.now() - self._time))
             self._time = datetime.now()
             if not StreamingPanel.is_streaming:
-                change_graph_vals(np.zeros(bpy.context.scene.straming_buffer_size))
+                # change_graph_vals(np.zeros(bpy.context.scene.straming_buffer_size))
+                self._buffer.extend(np.zeros(bpy.context.scene.straming_buffer_size))
             elif not StreamingPanel.out_queue is None:
                 listener_stdout = mu.queue_get(StreamingPanel.out_queue)
                 if not listener_stdout is None: # and StreamingPanel.is_streaming:
