@@ -46,8 +46,8 @@ def change_graph(next_val):
 
 
 def change_graph_vals(next_vals):
-    # print(str(datetime.now() - StreamingPanel.time))
-    # StreamingPanel.time = datetime.now()
+    print(str(datetime.now() - StreamingPanel.time))
+    StreamingPanel.time = datetime.now()
     obj_name = 'LMF6'
     fcurve_name = 'LMF6_interference'
     bpy.data.objects[obj_name].select = True
@@ -55,7 +55,7 @@ def change_graph_vals(next_vals):
     curves = [c for c in parent_obj.animation_data.action.fcurves if mu.get_fcurve_name(c) == fcurve_name]
     for fcurve in curves:
         N = len(fcurve.keyframe_points)
-        for ind in range(N - 1, len(next_vals), -1):
+        for ind in range(N - 1, len(next_vals) - 1, -1):
             fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - len(next_vals)].co[1]
         for ind in range(len(next_vals)):
             fcurve.keyframe_points[ind].co[1] = next_vals[ind]
@@ -100,8 +100,7 @@ def udp_reader(queue, while_termination_func, **kargs):
         if len(buffer) >= buffer_size:
             queue.put(','.join(buffer))
             buffer = []
-    print('exiting')
-#
+
 # class StreamListenerButton(bpy.types.Operator):
 #     bl_idname = "mmvt.stream_listerner_button"
 #     bl_label = "Stream Listener botton"
@@ -158,8 +157,10 @@ class StreamButton(bpy.types.Operator):
 
         if event.type == 'TIMER':
             # print(str(datetime.now() - self._time))
-            # self._time = datetime.now()
-            if not StreamingPanel.out_queue is None:
+            self._time = datetime.now()
+            if not StreamingPanel.is_streaming:
+                change_graph_vals(np.zeros(bpy.context.scene.straming_buffer_size))
+            elif not StreamingPanel.out_queue is None:
                 listener_stdout = mu.queue_get(StreamingPanel.out_queue)
                 if not listener_stdout is None: # and StreamingPanel.is_streaming:
                     try:
