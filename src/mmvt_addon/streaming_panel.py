@@ -18,28 +18,27 @@ def change_graph_all_vals_thread(q, while_termination_func, **kargs):
     buffer = kargs['buffer']
     change_graph_all_vals(buffer)
 
+
+def change_graph_reverse(mat):
+    T = min(mat.shape[1], _addon().get_max_time_steps())
+    for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
+        bpy.data.objects[elc_name].select = True
+        parent_obj = bpy.data.objects[elc_name]
+        fcurve = parent_obj.animation_data.action.fcurves[0]
+        N = len(fcurve.keyframe_points)
+        for ind in range(N - 1, T - 1, -1):
+            fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - T].co[1]
+        for ind in range(T):
+            fcurve.keyframe_points[ind].co[1] = mat[elc_ind][ind]
+        fcurve.keyframe_points[N - 1].co[1] = 0
+        fcurve.keyframe_points[0].co[1] = 0
+
 # @mu.timeit
 def change_graph_all_vals(mat, condition='interference'):
-    # print(str(datetime.now() - StreamingPanel.time))
+    # print('change_graph_all_vals', str(datetime.now() - StreamingPanel.time))
     # StreamingPanel.time = datetime.now()
+    # print('change_graph_all_vals start: ', datetime.now())
     T = min(mat.shape[1], _addon().get_max_time_steps())
-    # T = _addon().get_max_time_steps()
-    # for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
-    #     bpy.data.objects[elc_name].select = True
-    #     parent_obj = bpy.data.objects[elc_name]
-    #     curve_name = '{}_{}'.format(elc_name, condition)
-    #     for fcurve in parent_obj.animation_data.action.fcurves:
-    #         if mu.get_fcurve_name(fcurve) != curve_name:
-    #             fcurve.hide = True
-    #             continue
-    #         fcurve.hide = False
-    #         N = len(fcurve.keyframe_points)
-            # for ind in range(N - 1, T - 1, -1):
-            #     fcurve.keyframe_points[ind].co[1] = fcurve.keyframe_points[ind - T].co[1]
-            # for ind in range(T):
-            #     fcurve.keyframe_points[ind].co[1] = mat[elc_ind][ind]
-            # fcurve.keyframe_points[N - 1].co[1] = 0
-            # fcurve.keyframe_points[0].co[1] = 0
     for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
         parent_obj = bpy.data.objects[elc_name]
         fcurve = parent_obj.animation_data.action.fcurves[0]
@@ -49,10 +48,16 @@ def change_graph_all_vals(mat, condition='interference'):
             if t > _addon().get_max_time_steps() - 1:
                 t = ind
             fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind]
+        fcurve.keyframe_points[len(fcurve.keyframe_points) - 1].co[1] = 0
+        fcurve.keyframe_points[0].co[1] = 0
+
     bpy.context.scene.frame_current += mat.shape[1]
     if bpy.context.scene.frame_current > _addon().get_max_time_steps() - 1:
         bpy.context.scene.frame_current = bpy.context.scene.frame_current - _addon().get_max_time_steps()
+        print('cycle! ', str(datetime.now() - StreamingPanel.time))
+        StreamingPanel.time = datetime.now()
 
+        # print('change_graph_all_vals finish: ', datetime.now())
 
 def show_electrodes_fcurves():
     for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
@@ -88,7 +93,7 @@ def reading_from_udp_while_termination_func():
     return StreamingPanel.is_streaming
 
 
-def udp_reader(udp_ts_queue, udp_viz_queue, while_termination_func, **kargs):
+def udp_reader(udp_queue, while_termination_func, **kargs):
     import socket
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
@@ -98,23 +103,41 @@ def udp_reader(udp_ts_queue, udp_viz_queue, while_termination_func, **kargs):
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(server_address)
     buffer = []
+    prev_val = np.zeros((80, 1))
 
-    now = time.time()
+
     while while_termination_func():
-        # time.sleep(0.001)
+        # time.sleep(0.0001)
         now = time.time()
-        #todo: Should add timeout
-        # http://stackoverflow.com/questions/16745409/what-does-pythons-socket-recv-return-for-non-blocking-sockets-if-no-data-is-r
-        next_val = sock.recv(2048)
-        next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-        next_val = np.array([float(f) for f in next_val.split(',')])
-        next_val = next_val[..., np.newaxis]
+        try:
+            sock.settimeout(0.0012)
+            next_val = sock.recv(2048)
+        except socket.timeout as e:
+            if e.args[0] == 'timed out':
+                # print('!!! timed out !!!')
+                next_val = prev_val
+            else:
+                print('!!! {} !!!'.format(e))
+                raise Exception(e)
+        else:
+            next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+            next_val = np.array([float(f) for f in next_val.split(',')])
+            next_val = next_val[..., np.newaxis]
+
+        prev_val = next_val
         buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
-        udp_viz_queue.put(next_val)
-        print('{} took {:.5f}s {}'.format('udp_reader', time.time() - now, buffer.shape[1]))
+        # udp_viz_queue.put(next_val)
         if buffer.shape[1] >= buffer_size:
-            udp_ts_queue.put(buffer)
+            # print('{} took {:.5f}s {}'.format('udp_reader', time.time() - now, buffer.shape[1]))
+            # print('udp_reader: ', datetime.now())
+            udp_queue.put(buffer)
             buffer = []
+
+
+def color_electrodes(data):
+    _addon().color_objects_homogeneously(
+        np.mean(data, 1), StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
+        StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
 
 
 class StreamButton(bpy.types.Operator):
@@ -143,21 +166,20 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            args = dict(buffer_size=50, server='localhost', ip=10000)
-            StreamingPanel.udp_ts_queue, StreamingPanel.udp_viz_queue = \
-                mu.run_thread_2q(udp_reader, reading_from_udp_while_termination_func, **args)
+            args = dict(buffer_size=100, server='localhost', ip=10000)
+            StreamingPanel.udp_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
-        if time.time() - self._time > 0.05:
-            self._time = time.time()
-            job_data = mu.queue_get(self._jobs)
-            if not job_data is None:
-                # print(str(datetime.now() - StreamingPanel.time))
-                # StreamingPanel.time = datetime.now()
-                # print(job_data.shape)
-                change_graph_all_vals(job_data)
+        # if time.time() - self._time > 0.1:
+        #     self._time = time.time()
+        #     job_data = mu.queue_get(self._jobs)
+        #     if not job_data is None:
+        #         # print(str(datetime.now() - StreamingPanel.time))
+        #         # StreamingPanel.time = datetime.now()
+        #         # print(job_data.shape)
+        #         change_graph_all_vals(job_data)
 
         if event.type in {'RIGHTMOUSE', 'ESC'}:
             StreamingPanel.is_streaming = False
@@ -176,23 +198,29 @@ class StreamButton(bpy.types.Operator):
             #         self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
             # else:
             if StreamingPanel.is_streaming:
-                data = mu.queue_get(StreamingPanel.udp_ts_queue)
-                if not data is None:
-                    self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
+                data = mu.queue_get(StreamingPanel.udp_queue)
+                while (not data is None):
+                    change_graph_all_vals(data)
+                    color_electrodes(data)
+                    data = mu.queue_get(StreamingPanel.udp_queue)
+                # if not data is None:
+                #     change_graph_all_vals(data)
+                    # print('post', datetime.now())
+                    # self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
                     # print(str(datetime.now() - StreamingPanel.time))
                     # StreamingPanel.time = datetime.now()
-                    if self._buffer.shape[1] >= bpy.context.scene.straming_buffer_size:
+                    # if self._buffer.shape[1] >= bpy.context.scene.straming_buffer_size:
                         # change_graph_all_vals(self._buffer)
                         # args = dict(buffer=self._buffer)
                         # mu.run_thread(change_graph_all_vals_thread, lambda:True, **args)
-                        self._jobs.put(self._buffer)
-                        self._buffer = []
+                    # self._jobs.put(self._buffer)
+                    # self._buffer = []
 
-                data = mu.queue_get(StreamingPanel.udp_viz_queue)
-                if not data is None:
-                    _addon().color_objects_homogeneously(
-                        data, StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
-                        StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
+                # data = mu.queue_get(StreamingPanel.udp_viz_queue)
+                # if not data is None:
+                #     _addon().color_objects_homogeneously(
+                #         np.mean(data, 1), StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
+                #         StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
 
         return {'PASS_THROUGH'}
 
@@ -231,7 +259,7 @@ class StreamingPanel(bpy.types.Panel):
     is_listening = False
     first_time = True
     # fixed_data = []
-    udp_ts_queue = None
+    udp_queue = None
     udp_viz_queue = None
     electrodes_file = None
     time = datetime.now()

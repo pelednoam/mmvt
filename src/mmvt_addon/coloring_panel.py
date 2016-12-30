@@ -103,6 +103,7 @@ def clear_object_vertex_colors(cur_obj):
 
 
 # todo: do something with the threshold parameter
+# @mu.timeit
 def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold=0, postfix_str=''):
     if data is None:
         print('color_objects_homogeneously: No data to color!')
@@ -113,6 +114,8 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
     cur_frame = bpy.context.scene.frame_current
     for obj_name, values in zip(names, data):
         obj_name = obj_name.astype(str)
+        if values.ndim == 0:
+            values = [values]
         t_ind = min(len(values) - 1, cur_frame)
         if values[t_ind].ndim == 0:
             value = values[t_ind]

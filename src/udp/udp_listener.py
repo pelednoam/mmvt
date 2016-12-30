@@ -1,7 +1,9 @@
 import socket
 import sys
+import numpy as np
 import traceback
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 from src.utils import utils
 from src.utils import args_utils as au
@@ -36,6 +38,53 @@ def start_udp_listener(buffer_size=10):
     except:
         print(traceback.format_exc())
 
+
+def start_udp_listener_timeout(buffer_size=10):
+    stdout_print('UDP listener: Start listening')
+    udp_listening = True
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_address = ('localhost', 10000)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(server_address)
+        buffer = []
+        errs_num = 0
+        errs_total, extra_times = [], []
+        time = datetime.now()
+
+        while udp_listening:
+            try:
+                sock.settimeout(0.0012)
+                next_val = sock.recv(2048)
+            except socket.timeout as e:
+                errs_num += 1
+                err = e.args[0]
+                if err == 'timed out':
+                    print('timed out')
+                    next_val = np.zeros((80, 1))
+                else:
+                    raise Exception(e)
+            else:
+                next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+                next_val = np.array([float(f) for f in next_val.split(',')])
+                next_val = next_val[..., np.newaxis]
+            buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+            if buffer.shape[1] >= buffer_size:
+                # print('{}/{} packets with errors'.format(errs_num, buffer_size))
+                errs_total.append(errs_num)
+                errs_num = 0
+                diff = (datetime.now() - time)
+                extra_times.append((diff.microseconds - 10000) / 1000)
+                # stdout_print(str(datetime.now() - time))
+                time = datetime.now()
+                # stdout_print(','.join(buffer))
+                buffer = []
+    except:
+        print(traceback.format_exc())
+
+    import matplotlib.pyplot as plt
+    plt.hist(errs_total)
 
 # def main(args):
 #     cmd = '{} -m src.udp.udp_listener -f start_udp_listener -b {}'.format(args.python_cmd, args.buffer_size)
@@ -74,4 +123,4 @@ if __name__ == '__main__':
     # import time
     # sys.stdin.write('stop')
     # time.sleep(3)
-    start_udp_listener(args.buffer_size)
+    start_udp_listener_timeout(args.buffer_size)

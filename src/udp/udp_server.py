@@ -31,13 +31,24 @@ def bind_socket():
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=0.001):
+def send_data(sock, server_address, data, interval=0.00054):
+    import time
+    ind = 0
+    times = []
+    now = time.time()
     while True:
+        ind += 1
+        if ind % 1000 == 0:
+            print(np.mean(times))
+            times = []
         data_to_send = next(data)
         # data_to_send = str(data_to_send).encode('utf-8')
         data_to_send = ','.join([str(d) for d in data_to_send]).encode('utf-8')
         sock.sendto(data_to_send, server_address)
         # print('{}: sending data {}'.format(utils.get_time(), data_to_send))
+        times.append(time.time() - now)
+        now = time.time()
+
         time.sleep(interval)
 
 
