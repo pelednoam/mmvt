@@ -708,8 +708,9 @@ def profileit(sort_field='cumtime'):
         def wrapper(*args, **kwargs):
             prof = cProfile.Profile()
             retval = prof.runcall(func, *args, **kwargs)
-            make_dir(op.join(get_user_fol(), 'profileit'))
-            prof_fname = op.join(get_user_fol(), 'profileit', func.__name__)
+            prof_dir = op.join(get_user_fol(), 'profileit')
+            make_dir(prof_dir)
+            prof_fname = op.join(prof_dir, '{}_{}'.format(func.__name__, rand_letters(5)))
             stat_fname = '{}.stat'.format(prof_fname)
             prof.dump_stats(prof_fname)
             print_profiler(prof_fname, stat_fname, sort_field)

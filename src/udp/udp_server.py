@@ -31,7 +31,7 @@ def bind_socket():
     return sock, server_address
 
 
-def send_data(sock, server_address, data, interval=0.00054):
+def send_data(sock, server_address, data, interval=0.0006):
     import time
     ind = 0
     times = []

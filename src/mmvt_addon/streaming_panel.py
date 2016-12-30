@@ -33,31 +33,37 @@ def change_graph_reverse(mat):
         fcurve.keyframe_points[N - 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
+#@mu.profileit()
 # @mu.timeit
 def change_graph_all_vals(mat, condition='interference'):
     # print('change_graph_all_vals', str(datetime.now() - StreamingPanel.time))
     # StreamingPanel.time = datetime.now()
     # print('change_graph_all_vals start: ', datetime.now())
-    T = min(mat.shape[1], _addon().get_max_time_steps())
+    MAX_STEPS = StreamingPanel.max_steps
+    T = min(mat.shape[1], MAX_STEPS)
     for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
         parent_obj = bpy.data.objects[elc_name]
         fcurve = parent_obj.animation_data.action.fcurves[0]
         curr_t = bpy.context.scene.frame_current
         for ind in range(T):
             t = curr_t + ind
-            if t > _addon().get_max_time_steps() - 1:
+            if t > MAX_STEPS - 1:
                 t = ind
             fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind]
-        fcurve.keyframe_points[len(fcurve.keyframe_points) - 1].co[1] = 0
+        fcurve.keyframe_points[MAX_STEPS - 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
     bpy.context.scene.frame_current += mat.shape[1]
-    if bpy.context.scene.frame_current > _addon().get_max_time_steps() - 1:
-        bpy.context.scene.frame_current = bpy.context.scene.frame_current - _addon().get_max_time_steps()
-        print('cycle! ', str(datetime.now() - StreamingPanel.time))
+    if bpy.context.scene.frame_current > MAX_STEPS - 1:
+        bpy.context.scene.frame_current = bpy.context.scene.frame_current - MAX_STEPS
+        time_diff = (datetime.now() - StreamingPanel.time)
+        time_diff_sec = time_diff.seconds + time_diff.microseconds * 1e-6
+        print('cycle! ', str(time_diff), time_diff_sec)
+        if time_diff_sec < 2.5:
+            print('sleep for {}'.format(2.5 - time_diff_sec))
+            time.sleep(2.5 - time_diff_sec)
         StreamingPanel.time = datetime.now()
 
-        # print('change_graph_all_vals finish: ', datetime.now())
 
 def show_electrodes_fcurves():
     for elc_ind, elc_name in enumerate(StreamingPanel.electrodes_names):
@@ -105,7 +111,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     buffer = []
     prev_val = np.zeros((80, 1))
 
-
     while while_termination_func():
         # time.sleep(0.0001)
         now = time.time()
@@ -126,7 +131,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
 
         prev_val = next_val
         buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
-        # udp_viz_queue.put(next_val)
         if buffer.shape[1] >= buffer_size:
             # print('{} took {:.5f}s {}'.format('udp_reader', time.time() - now, buffer.shape[1]))
             # print('udp_reader: ', datetime.now())
@@ -166,7 +170,7 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            args = dict(buffer_size=100, server='localhost', ip=10000)
+            args = dict(buffer_size=bpy.context.scene.straming_buffer_size, server='localhost', ip=10000)
             StreamingPanel.udp_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
@@ -188,39 +192,14 @@ class StreamButton(bpy.types.Operator):
             return {'PASS_THROUGH'}
 
         if event.type == 'TIMER':
-            # if time.time() - self._time < 0.005:
-            #     return {'PASS_THROUGH'}
-            # self._time = time.time()
-            # if not StreamingPanel.is_streaming:
-            #     if self._buffer == [] or self._buffer.shape[1] < _addon().get_max_time_steps():
-            #         data = np.zeros(
-            #             (len(StreamingPanel.electrodes_names), bpy.context.scene.straming_buffer_size))
-            #         self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
-            # else:
-            if StreamingPanel.is_streaming:
+            if StreamingPanel.is_streaming and time.time() - self._time > bpy.context.scene.straming_buffer_size / 1000.0:
+                self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
-                while (not data is None):
+                if not data is None:
+                    # self._jobs.put(data)
                     change_graph_all_vals(data)
                     color_electrodes(data)
-                    data = mu.queue_get(StreamingPanel.udp_queue)
-                # if not data is None:
-                #     change_graph_all_vals(data)
-                    # print('post', datetime.now())
-                    # self._buffer = data if self._buffer == [] else np.hstack((self._buffer, data))
-                    # print(str(datetime.now() - StreamingPanel.time))
-                    # StreamingPanel.time = datetime.now()
-                    # if self._buffer.shape[1] >= bpy.context.scene.straming_buffer_size:
-                        # change_graph_all_vals(self._buffer)
-                        # args = dict(buffer=self._buffer)
-                        # mu.run_thread(change_graph_all_vals_thread, lambda:True, **args)
-                    # self._jobs.put(self._buffer)
-                    # self._buffer = []
-
-                # data = mu.queue_get(StreamingPanel.udp_viz_queue)
-                # if not data is None:
-                #     _addon().color_objects_homogeneously(
-                #         np.mean(data, 1), StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
-                #         StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
+                    # data = mu.queue_get(StreamingPanel.udp_queue)
 
         return {'PASS_THROUGH'}
 
@@ -289,6 +268,7 @@ def init(addon):
         electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
     StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
     show_electrodes_fcurves()
+    StreamingPanel.max_steps = _addon().get_max_time_steps()
     StreamingPanel.init = True
 
 
