@@ -608,16 +608,17 @@ def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_f
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
+def create_fsaverage_link():
+    fsveareg_fol = op.join(FREESURFER_HOME, 'subjects', 'fsaverage')
+    utils.create_folder_link(fsveareg_fol, op.join(SUBJECTS_DIR, 'fsaverage'))
+
+
 def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
-    # if utils.should_run(args, 'prepare_local_subjects_folder'):
-    #     # *) Prepare the local subject's folder
-    #     flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
-    #     if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
-    #         ans = input('Do you which to continue (y/n)? ')
-    #         if not au.is_true(ans):
-    #             return flags
+    if utils.should_run(args, 'create_fsaverage_link'):
+        # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
+        flags['create_fsaverage_link'] = create_fsaverage_link()
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -735,7 +736,8 @@ def read_cmd_args(argv=None):
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
-        'mri:transforms' : ['talairach.xfm']}
+        'mri:transforms' : ['talairach.xfm'],
+        'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
