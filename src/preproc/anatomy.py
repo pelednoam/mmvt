@@ -608,17 +608,10 @@ def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_f
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
-def create_fsaverage_link():
-    fsveareg_fol = op.join(FREESURFER_HOME, 'subjects', 'fsaverage')
-    utils.create_folder_link(fsveareg_fol, op.join(SUBJECTS_DIR, 'fsaverage'))
-
-
 def main(subject, remote_subject_dir, args, flags):
+    from src.setup import create_fsaverage_link
+    create_fsaverage_link()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-
-    if utils.should_run(args, 'create_fsaverage_link'):
-        # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-        flags['create_fsaverage_link'] = create_fsaverage_link()
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply

@@ -211,6 +211,17 @@ def find_blender():
     return blender_fol
 
 
+def create_fsaverage_link(links_fol_name='links'):
+    freesurfer_home = os.environ.get('FREESURFER_HOME', '')
+    if freesurfer_home != '':
+        links_fol = utils.get_links_dir(links_fol_name)
+        subjects_dir = utils.get_link_dir(links_fol, 'subjects', 'SUBJECTS_DIR')
+        fsaverage_link = op.join(subjects_dir, 'fsaverage')
+        if not utils.is_link(fsaverage_link):
+            fsveareg_fol = op.join(freesurfer_home, 'subjects', 'fsaverage')
+            utils.create_folder_link(fsveareg_fol, fsaverage_link)
+
+
 def main(args):
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
@@ -221,6 +232,10 @@ def main(args):
         links_created = create_links(args.links, args.gui, args.only_verbose)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
+
+    # 2,5) Create fsaverage folder link
+    if utils.should_run(args, 'create_fsaverage_link'):
+        create_fsaverage_link(args.links)
 
     # 3) Copy resources files
     if utils.should_run(args, 'copy_resources_files'):
