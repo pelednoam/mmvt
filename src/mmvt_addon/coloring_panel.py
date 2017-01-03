@@ -886,6 +886,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+        meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
@@ -904,7 +905,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
         if faces_verts_exist:
-            if meg_files_exist:
+            if meg_files_exist and meg_data_maxmin_file_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                     layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
