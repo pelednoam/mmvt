@@ -438,7 +438,7 @@ def load_and_show_npy(subject, npy_file, hemi):
     brain.add_overlay(x[:, 0], hemi=hemi)
 
 
-def copy_volume_to_blender(volume_fname_template, contrast='', overwrite_volume_mgz=True):
+def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrite_volume_mgz=True):
     if op.isfile(volume_fname_template.format(format='mgh')) and \
             (not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz):
         mri_convert(volume_fname_template, 'mgh', 'mgz')
@@ -468,7 +468,7 @@ def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrit
         target_subject = subject
     volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
     # mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
-    volume_fname = copy_volume_to_blender(volume_fname_template, contrast, overwrite_volume)
+    volume_fname = copy_volume_to_blender(subject, volume_fname_template, contrast, overwrite_volume)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
@@ -515,6 +515,14 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
+def load_resting_state(subject):
+    fmri_fname = op.join(FMRI_DIR, subject, '{}_mri_resting.mgz'.format(subject))
+    f = nib.load(fmri_fname)
+    x = f.get_data()
+    header = f.get_header()
+    print(x.shape)
+    print('sdf')
+
 def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
@@ -551,7 +559,7 @@ def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, su
         else:
             contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
             volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
-        copy_volume_to_blender(volume_file, contrast, overwrite_volume_mgz=True)
+        copy_volume_to_blender(subject, volume_file, contrast, overwrite_volume_mgz=True)
         calc_fmri_min_max(
             subject, contrast, contrast_file_template, norm_percs=args.norm_percs,
             norm_by_percentile=args.norm_by_percentile)
@@ -680,6 +688,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
+
+    if 'load_resting_state' in args.function:
+        flags['load_resting_state'] = load_resting_state(subject)
 
 def read_cmd_args(argv=None):
     import argparse

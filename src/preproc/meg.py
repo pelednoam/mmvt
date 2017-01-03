@@ -36,13 +36,13 @@ def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, sub
     return init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
                  args.cleaning_method, args.contrast, subjects_meg_dir, args.task, subjects_mri_dir, mmvt_dir,
-                 args.fwd_no_cond)
+                 args.fwd_no_cond, args.data_per_task)
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
                  cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
-                 fwd_no_cond=False, inv_no_cond=False):
+                 fwd_no_cond=False, inv_no_cond=False, data_per_task=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
         FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, MRI, SRC, SRC_SMOOTH, BEM, STC, STC_HEMI, STC_HEMI_SMOOTH, \
         STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH, ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, \
@@ -52,7 +52,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
-    if task != '':
+    if task != '' and data_per_task:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
     else:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
@@ -191,7 +191,7 @@ def calcNoiseCov(epoches):
 
 
 def calc_demi_epoches(raw, tmin, baseline, pick_meg=True, pick_eeg=False, pick_eog=False,
-                      reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6):
+                      reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=''):
     N = raw._data.shape[1]
     W = int(N / 20)
     demi_events = np.zeros((20, 3), dtype=np.uint32)
@@ -201,19 +201,19 @@ def calc_demi_epoches(raw, tmin, baseline, pick_meg=True, pick_eeg=False, pick_e
     demi_tmax = raw._times[int(N / 20)]
     demi_events_ids = {'demi_1': 0, 'demi_2': 1}
     calc_epoches(raw, demi_events_ids, tmin, demi_tmax, baseline, False, demi_events, None, pick_meg, pick_eeg,
-                 pick_eog, reject, reject_grad, reject_mag, reject_eog, False, EPO_NOISE)
+                 pick_eog, reject, reject_grad, reject_mag, reject_eog, False, EPO_NOISE, task=task)
 
 
 def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False, events=None,
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                 epoches_fname=None):
+                 epoches_fname=None, task=''):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
     # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
-    reject = dict(grad=reject_grad, mag=reject_mag) if reject else None
-    if not reject is None and pick_eog:
+    reject_dict = dict(grad=reject_grad, mag=reject_mag) if reject else None
+    if not reject_dict is None and pick_eog:
         reject['eog'] = reject_eog
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
     if remove_power_line_noise:
@@ -229,20 +229,21 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
                 events = mne.find_events(raw, stim_channel=stim_channels)
             except:
                 print('No stim channels found!')
-                events = None
-    if events is None:
-        ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
-        if ans != 'y':
-            return None
+                events = np.array([])
+    if events.shape[0] == 0:
+        if task != 'rest':
+            ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
+            if ans != 'y':
+                return None
         events = np.array([[0, 0, 1]], dtype=np.uint32)
         tmin = raw._times[0]
         tmax = raw._times[-1]
         # Create demi event for noise cov:
         calc_demi_epoches(raw, tmin, baseline, pick_meg, pick_eeg, pick_eog,
-                          reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6)
+                          reject=reject, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=task)
 
     epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
-        baseline=baseline, preload=True, reject=reject)
+        baseline=baseline, preload=True, reject=reject_dict)
     if '{cond}' in epoches_fname:
         for event in epochs.event_id: #events.keys():
             epochs[event].save(get_cond_fname(epoches_fname, event))
@@ -269,13 +270,14 @@ def calc_evoked_args(events, args, raw=None):
     return calc_evoked(events, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
             None, args.calc_epochs_from_raw, args.stim_channels,
             args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
-            args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise)
+            args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise,
+            task=args.task)
 
 
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
                 calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
-                reject = True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                bad_channels=[], l_freq=None, h_freq=None):
+                reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
+                bad_channels=[], l_freq=None, h_freq=None, task=''):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_exist = False
@@ -298,12 +300,13 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
-                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise)
+                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, task=task)
         all_evoked = calc_evoked_from_epochs(epochs, events)
         flag = True
     except:
         print(traceback.format_exc())
         print('Error in calculating evoked reposnse')
+        all_evoked, epochs = None, None
         flag = False
 
     return flag, all_evoked, epochs
@@ -1512,6 +1515,9 @@ def get_fname_format(task, fname_format='', fname_format_cond='', args_condition
         fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
         fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
         conditions = dict(low_risk=1, med_risk=2, high_risk=3)
+    elif task == 'rest':
+        fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
+        conditions = dict(rest=1)
     else:
         if fname_format == '' or fname_format_cond == '':
             raise Exception('Empty fname_format and/or fname_format_cond!')
@@ -1602,14 +1608,13 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
     return flags
 
 
-def init_main(subject, mri_subject, args):
+def init_main(subject, mri_subject, remote_subject_dir, args):
     if args.events_file_name != '':
         args.events_file_name = op.join(MEG_DIR, args.task, subject, args.events_file_name)
         if '{subject}' in args.events_file_name:
             args.events_file_name = args.events_file_name.format(subject=subject)
-    args.remote_subject_mri_dir = utils.build_remote_subject_dir(args.remote_subject_mri_dir, mri_subject)
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
-    prepare_local_subjects_folder(mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
+    prepare_local_subjects_folder(mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
     fname_format, fname_format_cond, conditions = get_fname_format_args(args)
     return fname_format, fname_format_cond, conditions
@@ -1619,7 +1624,7 @@ def main(tup, remote_subject_dir, args, flags):
     (subject, mri_subject), inverse_method = tup
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
-    fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, args)
+    fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
     init_globals_args(
         subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
@@ -1676,51 +1681,17 @@ def main(tup, remote_subject_dir, args, flags):
     return flags
 
 
-# def run_on_subjects(args, main_func=None):
-#     subjects_flags, subjects_errors = {}, {}
-#     args.sftp_password = utils.get_sftp_password(
-#         args.mri_subject, SUBJECTS_MRI_DIR, args.mri_necessary_files, args.sftp_username, False) \
-#         if args.sftp else ''
-#     if args.sftp_sso and args.sftp_password == '':
-#         args.sftp_password = utils.ask_for_sftp_password(args.sftp_username)
-#
-#     for (subject, mri_subject), inverse_method in product(zip(args.subject, args.mri_subject), args.inverse_method):
-#         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'mmvt'))
-#         try:
-#             print('*******************************************')
-#             print('subject: {}, atlas: {}'.format(subject, args.atlas))
-#             print('*******************************************')
-#             if main_func is None:
-#                 from src.preproc.meg import main as meg_main
-#                 main_func = meg_main
-#             flags = main_func(subject, mri_subject, inverse_method, args)
-#             subjects_flags[subject] = flags
-#         except:
-#             subjects_errors[subject] = traceback.format_exc()
-#             print('Error in subject {}'.format(subject))
-#             print(traceback.format_exc())
-#
-#     errors = defaultdict(list)
-#     for subject, flags in subjects_flags.items():
-#         print('subject {}:'.format(subject))
-#         for flag_type, val in flags.items():
-#             print('{}: {}'.format(flag_type, val))
-#             if not val:
-#                 errors[subject].append(flag_type)
-#     print('Errors:')
-#     for subject, error in errors.items():
-#         print('{}: {}'.format(subject, error))
-
-
 def read_cmd_args(argv=None):
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
+    parser.add_argument('-c', '--conditions', help='conditions', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
+    parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
@@ -1752,7 +1723,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--contrast', help='', required=False, default='')
-    parser.add_argument('--cleaning_method', help='', required=False, default='nTSSS')
+    parser.add_argument('--cleaning_method', help='', required=False, default='') # nTSSS
     parser.add_argument('--fwd_usingMEG', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_usingEEG', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
