@@ -30,6 +30,8 @@ bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bip
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
+bpy.types.Scene.add_meg_labels_data = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
@@ -841,11 +843,20 @@ class DataMakerPanel(bpy.types.Panel):
             col.operator("mmvt.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
-        col = self.layout.column(align=True)
-        col.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
-        col.prop(context.scene, 'brain_no_conds_stat', text="")
-        col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
-        col.prop(context.scene, 'import_unknown', text="Import unknown")
+        meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_lh.npz')),
+                     op.isfile(op.join(mu.get_user_fol(), 'labels_data_rh.npz')),
+                     op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))]
+        if any(meg_files):
+            col = self.layout.column(align=True)
+            col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
+            if meg_files[0] and meg_files[1]:
+                col.prop(context.scene, 'add_meg_labels_data', text="labels")
+            if meg_files[2]:
+                col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
+            if meg_files[0] and meg_files[1]:
+                col.prop(context.scene, 'brain_no_conds_stat', text="")
+                col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
+                col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:

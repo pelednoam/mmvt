@@ -36,7 +36,7 @@ def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, sub
     return init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
                  args.cleaning_method, args.contrast, subjects_meg_dir, args.task, subjects_mri_dir, mmvt_dir,
-                 args.fwd_no_cond, args.data_per_task)
+                 args.fwd_no_cond, args.inv_no_cond, args.data_per_task)
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
@@ -70,7 +70,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     _get_fif_name_no_cond = partial(_get_fif_name_cond, cond='')
     _get_fif_name = _get_fif_name_cond if files_includes_cond else _get_fif_name_no_cond
     _get_txt_name = partial(get_file_name, fname_format=fname_format, file_type='txt',
-        cleaning_method=cleaning_method, contrast=contrast)
+        cleaning_method=cleaning_method) #, contrast=contrast)
     _get_stc_name = partial(get_file_name, fname_format=fname_format_cond, file_type='stc',
                             cleaning_method=cleaning_method, contrast=contrast)
     _get_pkl_name = partial(get_file_name, fname_format=fname_format_cond, file_type='pkl',
@@ -82,7 +82,9 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     if not op.isfile(RAW) and op.isfile(alt_raw_fname):
         RAW = alt_raw_fname
     INFO = _get_pkl_name_no_cond('raw-info')
-    EVE = _get_txt_name('eve', cond='') if events_fname == '' else events_fname
+    EVE = _get_txt_name('eve', cond='', contrast=contrast) if events_fname == '' else events_fname
+    if not op.isfile(EVE):
+        EVE = _get_txt_name('eve', cond='', contrast='')
     EVO = _get_fif_name('ave')
     COV = _get_fif_name('cov')
     DATA_COV = _get_fif_name('data-cov')
@@ -743,7 +745,11 @@ def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_me
         if not evoked_given:
             evoked = {event:mne.read_evokeds(EVO, condition=event, baseline=(None, 0)) for event in events.keys()}
         inv_fname = INV_SUB if len(sub_corticals) > 1 else INV_X.format(region=regions[0])
-        inverse_operator = read_inverse_operator(inv_fname)
+        if op.isfile(inv_fname):
+            inverse_operator = read_inverse_operator(inv_fname)
+        else:
+            print('The Inverse operator file does not exist! {}'.format(inv_fname))
+            return False
 
     for event in events.keys():
         sub_corticals_activity = {}
@@ -891,8 +897,7 @@ def plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method=
 
 
 def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat, inverse_method='dSPM',
-        colors_map='OrRd', norm_by_percentile=True, norm_percs=(1,99), threshold=0,
-        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False, do_plot=False):
+        norm_by_percentile=True, norm_percs=(1,99), do_plot=False):
     if do_plot:
         plt.figure()
 
@@ -905,13 +910,19 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
         sub_cortical_name = sub_cortical_name.astype(str)
         names_for_blender.append(sub_cortical_name)
         for cond_id, cond in enumerate(events.keys()):
-            x = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
-                '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method)))
-            if first_time:
-                first_time = False
-                T = len(x)
-                data = np.zeros((len(sub_corticals), T, len(events.keys())))
-            data[ind, :, cond_id] = x[:T]
+            data_fname = op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
+                '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method))
+            if op.isfile(data_fname):
+                x = np.load(op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
+                    '{}-{}-{}.npy'.format(cond, sub_cortical_name, inverse_method)))
+                if first_time:
+                    first_time = False
+                    T = len(x)
+                    data = np.zeros((len(sub_corticals), T, len(events.keys())))
+                data[ind, :, cond_id] = x[:T]
+            else:
+                print('The file {} does not exist!'.format(data_fname))
+                return
         if do_plot:
             plt.plot(data[ind, :, 0] - data[ind, :, 1], label='{}-{} {}'.format(
                 events.keys()[0], events.keys()[1], sub_cortical_name))
@@ -921,17 +932,17 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
     # todo: I don't think we should normalize stat_data
     # stat_data = utils.normalize_data(stat_data, norm_by_percentile, norm_percs)
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs)
-    if stat == STAT_AVG:
-        colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap=colors_map)
-    elif stat == STAT_DIFF:
-        data_minmax = max(map(abs, [data_max, data_min]))
-        colors = utils.mat_to_colors_two_colors_maps(stat_data, threshold=threshold,
-            x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
-            default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
+    data_max, data_min = utils.get_data_max_min(stat_data, norm_by_percentile, norm_percs, symmetric=True)
+    # if stat == STAT_AVG:
+    #     colors = utils.mat_to_colors(stat_data, data_min, data_max, colorsMap=colors_map)
+    # elif stat == STAT_DIFF:
+    #     data_minmax = max(map(abs, [data_max, data_min]))
+    #     colors = utils.mat_to_colors_two_colors_maps(stat_data, threshold=threshold,
+    #         x_max=data_minmax,x_min = -data_minmax, cm_big=cm_big, cm_small=cm_small,
+    #         default_val=1, flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small)
 
-    np.savez(op.join(MMVT_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data, colors=colors,
-        names=names_for_blender, conditions=list(events.keys()), data_minmax=data_minmax)
+    np.savez(op.join(MMVT_SUBJECT_FOLDER, 'subcortical_meg_activity'), data=data,
+        names=names_for_blender, conditions=list(events.keys()), data_minmax=data_max)
 
     if do_plot:
         plt.legend()
@@ -1554,14 +1565,16 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname):
         if utils.should_run(args, 'make_forward_solution'):
-            if not args.fwd_recreate_source_space:
-                nec_files_dic = dict(bem='{}-oct-6p-src.fif'.format(mri_subject))
-            else:
-                dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
-                           'lh.sphere', 'rh.sphere'])
-            prepare_local_subjects_folder(
-                mri_subject, args.remote_subject_mri_dir, SUBJECTS_MRI_DIR,
-                nec_files_dic, args)
+            # if not args.fwd_recreate_source_space:
+            src_dic = dict(bem=['{}-oct-6p-src.fif'.format(mri_subject)])
+            create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
+                       'lh.sphere', 'rh.sphere'])
+            for nec_file in [src_dic, create_src_dic]:
+                file_exist = prepare_local_subjects_folder(
+                    mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
+                    nec_file, args)
+                if file_exist:
+                    break
             get_meg_files(subject, [EPO], args, conditions)
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
@@ -1665,13 +1678,13 @@ def main(tup, remote_subject_dir, args, flags):
     if 'calc_single_trial_labels_per_condition' in args.function:
         calc_single_trial_labels_per_condition(args.atlas, conditions, stcs_conds, extract_mode=args.extract_mode)
 
+    sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
     if 'calc_sub_cortical_activity' in args.function:
         # todo: call get_meg_files
         calc_sub_cortical_activity(conditions, sub_corticals_codes_file, inverse_method, args.pick_ori, evoked, epochs)
-        save_subcortical_activity_to_blender(sub_corticals_codes_file, conditions, stat, inverse_method=inverse_method,
-                                             colors_map=args.colors_map, norm_by_percentile=args.norm_by_percentile,
-                                             norm_percs=args.norm_percs)
-
+    if 'save_subcortical_activity_to_blender' in args.function:
+        save_subcortical_activity_to_blender(sub_corticals_codes_file, conditions, stat, inverse_method,
+                                             args.norm_by_percentile, args.norm_percs)
     if 'plot_sub_cortical_activity' in args.function:
         plot_sub_cortical_activity(conditions, sub_corticals_codes_file, inverse_method=inverse_method)
 
@@ -1721,6 +1734,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
     parser.add_argument('--baseline_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--inv_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_no_cond', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--contrast', help='', required=False, default='')
     parser.add_argument('--cleaning_method', help='', required=False, default='') # nTSSS

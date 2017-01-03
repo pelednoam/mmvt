@@ -186,7 +186,8 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         threshold = bpy.context.scene.coloring_threshold
     meg_sub_activity = None
     if map_type == 'MEG':
-        meg_sub_activity = load_meg_subcortical_activity()
+        if bpy.context.scene.coloring_meg_subcorticals:
+            meg_sub_activity = load_meg_subcortical_activity()
         ColoringMakerPanel.what_is_colored.add(WIC_MEG)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_FMRI, WIC_FMRI_CLUSTERS])
     elif map_type == 'FMRI':
@@ -195,7 +196,8 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         else:
             ColoringMakerPanel.what_is_colored.add(WIC_FMRI_CLUSTERS)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS])
-    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters)
+    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters,
+                  plot_subcorticals=bpy.context.scene.coloring_meg_subcorticals)
     # setup_environment_settings()
 
 
@@ -276,6 +278,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     frame_str = str(bpy.context.scene.frame_current)
 
     loop_indices = {}
+    f = None
     for hemi in not_hiden_hemis:
         colors_ratio, data_min = None, None
         if map_type == 'MEG':
@@ -322,10 +325,20 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
-        if map_type == 'MEG':
-            if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
-                color_objects_homogeneously(meg_sub_activity, '_meg_activity', threshold)
-        if map_type == 'FMRI':
+        if map_type == 'MEG' and not bpy.data.objects['Subcortical_meg_activity_map'].hide:
+                if f is None:
+                    if _addon().colorbar_values_are_locked():
+                        data_max, data_min = _addon().get_colorbar_max_min()
+                        colors_ratio = 256 / (data_max - data_min)
+                    else:
+                        data_max, data_min = meg_sub_activity['data_minmax'], -meg_sub_activity['data_minmax']
+                        colors_ratio = 256 / (2 * data_max)
+                        _addon().set_colorbar_max_min(data_max, data_min)
+                    _addon().set_colorbar_title('Subcortical MEG')
+                color_objects_homogeneously(
+                    meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
+                    colors_ratio, threshold, '_meg_activity')
+        elif map_type == 'FMRI' and not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
     return True
@@ -923,8 +936,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             if volumetric_coloring_files_exist:
                 layout.prop(context.scene, "vol_coloring_files", text="")
                 layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
-        if not bpy.data.objects.get('eeg_helmet', None) is None:
-            layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+        # if not bpy.data.objects.get('eeg_helmet', None) is None:
+        #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         if electrodes_labels_files_exist:
