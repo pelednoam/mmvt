@@ -95,6 +95,7 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     if not only_verbose:
         for link_name, default_fol_name, message, create_default_dir in zip(
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
+            fol = ''
             if not create_default_folders:
                 fol = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
             if fol == '' or create_default_folders:
