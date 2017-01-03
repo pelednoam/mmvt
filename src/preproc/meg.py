@@ -1570,7 +1570,9 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname):
         if utils.should_run(args, 'make_forward_solution'):
-            # if not args.fwd_recreate_source_space:
+            prepare_local_subjects_folder(
+                mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
+                {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
             src_dic = dict(bem=['{}-oct-6p-src.fif'.format(mri_subject)])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
