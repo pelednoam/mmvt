@@ -408,7 +408,12 @@ def check_bem(mri_subject):
             [op.isfile(op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
              watershed_files])
         if not bem_files_exist and not watershed_files_exist:
-            raise Exception("BEM files don't exist, you should create it first using mne_watershed_bem")
+            err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
+                For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
+                mne_watershed_bem.
+                You can take a look here:
+                http: // perso.telecom - paristech.fr / ~gramfort / mne / MRC / mne_anatomical_workflow.pdf '''
+            raise Exception(err_msg)
         if not bem_files_exist and watershed_files_exist:
             for bem_file, watershed_file in zip(bem_files, watershed_files):
                 utils.remove_file(bem_file)
@@ -452,7 +457,7 @@ def make_forward_solution(mri_subject, events, sub_corticals_codes_file='', usin
         flag = True
     except:
         print(traceback.format_exc())
-        print('Error in calculating fwd solution'.format(cond))
+        print('Error in calculating fwd solution')
         flag = False
 
     return flag, fwd, fwd_with_subcortical
