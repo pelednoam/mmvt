@@ -206,6 +206,7 @@ def find_blender():
     else:
         output = utils.run_script("find ~/ -name 'blender'")
         blender_fols = [fol.replace('//', '/') for fol in output.split('\n')]
+        # Find the right folder
         blender_fols = [fol for fol in blender_fols if op.isfile(op.join(
             utils.get_parent_fol(fol), 'blender.svg'))]
         if len(blender_fols) == 1:
