@@ -205,7 +205,8 @@ def find_blender():
             blender_fol = op.join('D:\\', blender_win_fol)
     else:
         output = utils.run_script("find ~/ -name 'blender'")
-        blender_fols = [fol for fol in output.split('\n') if op.isfile(op.join(
+        blender_fols = [fol.replace('//', '/') for fol in output.split('\n')]
+        blender_fols = [fol for fol in blender_fols if op.isfile(op.join(
             utils.get_parent_fol(fol), 'blender.svg'))]
         if len(blender_fols) == 1:
             blender_fol = utils.get_parent_fol(blender_fols[0])
