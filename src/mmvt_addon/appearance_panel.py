@@ -120,7 +120,7 @@ def get_inflated_ratio():
     return bpy.context.scene.inflating
 
 
-def appearance_show_rois_activity_update(self, context):
+def appearance_show_rois_activity_update(self=None, context=None):
     # todo: Figure out why the hell
     for _ in range(2):
         if bpy.context.scene.surface_type == 'pial':
@@ -129,11 +129,16 @@ def appearance_show_rois_activity_update(self, context):
         elif bpy.context.scene.surface_type == 'inflated':
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = is_rois()
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()
+            if is_activity():
+                bpy.context.scene.inflating = 0
+                bpy.context.scene.hemis_inf_distance = -5
+            else:
+                bpy.context.scene.hemis_inf_distance = 0
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
     # print('should be {}, {}'.format(is_rois(), is_activity()))
-    if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
-                    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
-        print('Error in displaying the layers!')
+    # if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
+    #                 bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
+    #     print('Error in displaying the layers!')
     if not AppearanceMakerPanel.addon is None and is_activity():
         fmri_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'fmri' else is_activity()
         meg_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'meg' else is_activity()
@@ -414,6 +419,7 @@ def init(addon):
             bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0
+    appearance_show_rois_activity_update()
     bpy.ops.mmvt.selection_listener()
 
 

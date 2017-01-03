@@ -29,6 +29,7 @@ bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250'
 bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes", update=bipolar_update)
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
+bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
@@ -201,7 +202,8 @@ def import_brain(context=None):
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
-    # create_inflating_morphing()
+    if bpy.context.scene.inflated_morphing:
+        create_inflating_morphing()
     if bpy.data.objects.get(' '):
         bpy.data.objects[' '].select = True
         if context:
@@ -712,13 +714,16 @@ def load_electrodes_data(stat='diff'):
         data = f['data']
         names = f['names']
         conditions = f['conditions']
-    else:
-        data_file = op.join(fol, 'electrodes_data_{}_data.npy'.format(stat))
+    elif op.isfile(op.join(fol, 'electrodes_data_{}.npy'.format(stat))) and op.isfile(
+            op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat))):
+        data_file = op.join(fol, 'electrodes_data_{}.npy'.format(stat))
         f = np.load(data_file)
         data = f['data']
         meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
         names = meta_data['names']
         conditions = meta_data['conditions']
+    else:
+        data, names, conditions = None, None, None
     return data, names, conditions
 
 
@@ -814,7 +819,6 @@ class DataMakerPanel(bpy.types.Panel):
     externals = []
     eeg_data, eeg_meta = None, None
 
-
     def draw(self, context):
         layout = self.layout
         # layout.prop(context.scene, 'conf_path')
@@ -823,6 +827,7 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.brain_imported:
         # col.operator("mmvt.anatomy_preproc", text="Run Preporc", icon='BLENDER')
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
+        col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_positions.npz')
@@ -830,9 +835,9 @@ class DataMakerPanel(bpy.types.Panel):
         eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
         eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         if len(electrodes_positions_files) > 0:
-            col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
             col.prop(context.scene, 'electrodes_positions_files', text="")
+            col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator("mmvt.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):

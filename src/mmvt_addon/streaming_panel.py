@@ -266,6 +266,8 @@ def init(addon):
     # StreamingPanel.fixed_data = fixed_data()
     StreamingPanel.electrodes_data, StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions = \
         _addon().load_electrodes_data()
+    if StreamingPanel.electrodes_data is None:
+        return
     norm_percs = (3, 97) #todo: add to gui
     StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
         StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
