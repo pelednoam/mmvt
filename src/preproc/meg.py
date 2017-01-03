@@ -412,7 +412,7 @@ def check_bem(mri_subject):
                 For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
                 mne_watershed_bem.
                 You can take a look here:
-                http: // perso.telecom - paristech.fr / ~gramfort / mne / MRC / mne_anatomical_workflow.pdf '''
+                http://perso.telecom-paristech.fr/~gramfort/mne/MRC/mne_anatomical_workflow.pdf '''
             raise Exception(err_msg)
         if not bem_files_exist and watershed_files_exist:
             for bem_file, watershed_file in zip(bem_files, watershed_files):
