@@ -884,7 +884,13 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
         cnopts.hostkeys = None
         sftp_con = pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port)
     except:
-        sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        try:
+            sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        except:
+            print("Can't connect via sftp!")
+            if print_traceback:
+                print(traceback.format_exc())
+            return False
     with sftp_con as sftp:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
