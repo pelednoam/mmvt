@@ -886,7 +886,13 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
         cnopts.hostkeys = None
         sftp_con = pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port)
     except:
-        sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        try:
+            sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        except:
+            print("Can't connect via sftp!")
+            if print_traceback:
+                print(traceback.format_exc())
+            return False
     with sftp_con as sftp:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
@@ -898,9 +904,13 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
                     file_name = file_name.replace('{subject}', subject)
                     if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
                         # with sftp.cd(op.join(remote_subject_dir, fol)):
-                        with sftp.cd(remote_subject_dir + '/' + fol):
-                            print('sftp: getting {}'.format(file_name))
-                            sftp.get(file_name)
+                        try:
+                            with sftp.cd(remote_subject_dir + '/' + fol):
+                                print('sftp: getting {}'.format(file_name))
+                                sftp.get(file_name)
+                        except FileNotFoundError:
+                            print('The file {} does not exist on the remote server!'.format(file_name))
+
                     if op.getsize(op.join(local_subject_dir, fol, file_name)) == 0:
                         os.remove(op.join(local_subject_dir, fol, file_name))
                 except:

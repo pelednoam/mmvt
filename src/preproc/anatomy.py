@@ -609,8 +609,8 @@ def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_f
 
 
 def main(subject, remote_subject_dir, args, flags):
-    from src.setup import create_fsaverage_link
-    create_fsaverage_link()
+    # from src.setup import create_fsaverage_link
+    # create_fsaverage_link()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):

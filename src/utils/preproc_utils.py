@@ -17,6 +17,8 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         subjects_itr = args.subject
     subjects_flags, subjects_errors = {}, {}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    if args.necessary_files == '':
+        args.necessary_files = dict()
     args.sftp_password = utils.get_sftp_password(
         args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
         if args.sftp else ''
@@ -33,8 +35,6 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         print('****************************************************************')
         os.environ['SUBJECT'] = subject
         flags = dict()
-        if args.necessary_files == '':
-            args.necessary_files = dict()
         try:
             if utils.should_run(args, 'prepare_local_subjects_folder'):
                 # *) Prepare the local subject's folder

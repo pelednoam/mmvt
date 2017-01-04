@@ -192,24 +192,30 @@ def calcNoiseCov(epoches):
     # evoked.save(EVO)
 
 
-def calc_demi_epoches(raw, tmin, baseline, pick_meg=True, pick_eeg=False, pick_eog=False,
-                      reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=''):
-    N = raw._data.shape[1]
-    W = int(N / 20)
-    demi_events = np.zeros((20, 3), dtype=np.uint32)
-    for win_ind, win in enumerate(range(0, N, W * 2)):
+def calc_demi_epoches(raw, tmin, baseline, epoches_nun=20, pick_meg=True, pick_eeg=False, pick_eog=False,
+                      reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task='',
+                      epoches_fname=EPO):
+    T = raw._data.shape[1]
+    demi_events, demi_events_ids = create_demi_events()
+    demi_tmax = raw._times[int(T / epoches_nun)]
+    calc_epoches(raw, demi_events_ids, tmin, demi_tmax, baseline, False, demi_events, None, pick_meg, pick_eeg,
+                 pick_eog, reject, reject_grad, reject_mag, reject_eog, False, epoches_fname, task=task)
+
+
+def create_demi_events(epoches_nun, max_time):
+    W = int(max_time / epoches_nun)
+    demi_events = np.zeros((epoches_nun, 3), dtype=np.uint32)
+    for win_ind, win in enumerate(range(0, max_time, W * 2)):
         demi_events[win_ind * 2] = [win, win + W, 0]
         demi_events[win_ind * 2 + 1] = [win + W + 1, win + W * 2, 1]
-    demi_tmax = raw._times[int(N / 20)]
     demi_events_ids = {'demi_1': 0, 'demi_2': 1}
-    calc_epoches(raw, demi_events_ids, tmin, demi_tmax, baseline, False, demi_events, None, pick_meg, pick_eeg,
-                 pick_eog, reject, reject_grad, reject_mag, reject_eog, False, EPO_NOISE, task=task)
+    return demi_events, demi_events_ids
 
 
 def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False, events=None,
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                 epoches_fname=None, task=''):
+                 epoches_fname=None, task='', demi_epoches_num=20, use_demi_epoches_for_noise_cov=False):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
@@ -240,19 +246,26 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
         events = np.array([[0, 0, 1]], dtype=np.uint32)
         tmin = raw._times[0]
         tmax = raw._times[-1]
-        # Create demi event for noise cov:
-        calc_demi_epoches(raw, tmin, baseline, pick_meg, pick_eeg, pick_eog,
-                          reject=reject, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=task)
+        if use_demi_epoches_for_noise_cov:
+            # Create demi event for noise cov:
+            calc_demi_epoches(raw, tmin, baseline, demi_epoches_num, pick_meg, pick_eeg, pick_eog,
+                                  reject=reject, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=task)
+        else:
+            T = raw._data.shape[1]
+            events, events_ids = create_demi_events(demi_epoches_num, T)
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
     epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
-        baseline=baseline, preload=True, reject=reject_dict)
+        baseline=baseline, preload=False, reject=reject_dict)
     if '{cond}' in epoches_fname:
         for event in epochs.event_id: #events.keys():
             epochs[event].save(get_cond_fname(epoches_fname, event))
     else:
-        epochs.save(epoches_fname)
+        try:
+            epochs.save(epoches_fname)
+        except:
+            print(traceback.format_exc())
     return epochs
 
 
@@ -275,13 +288,13 @@ def calc_evoked_args(events, args, raw=None):
             None, args.calc_epochs_from_raw, args.stim_channels,
             args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
             args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise,
-            task=args.task)
+            task=args.task, demi_epoches_num=args.demi_epoches_num)
 
 
 def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
                 calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
                 reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                bad_channels=[], l_freq=None, h_freq=None, task=''):
+                bad_channels=[], l_freq=None, h_freq=None, task='', demi_epoches_num=20):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_exist = False
@@ -304,8 +317,12 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
-                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, task=task)
-        all_evoked = calc_evoked_from_epochs(epochs, events)
+                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, task=task,
+                                  demi_epoches_num=demi_epoches_num)
+        if task != 'rest':
+            all_evoked = calc_evoked_from_epochs(epochs, events)
+        else:
+            all_evoked = None
         flag = True
     except:
         print(traceback.format_exc())
@@ -1607,7 +1624,7 @@ def calc_evoked_wrapper(subject, conditions, args, flags):
         necessary_files = calc_evoked_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_evoked'], evoked, epochs = calc_evoked_args(conditions, args)
-    return flags
+    return flags, evoked, epochs
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
@@ -1654,7 +1671,7 @@ def main(tup, remote_subject_dir, args, flags):
         subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
-    flags = calc_evoked_wrapper(subject, conditions, args, flags)
+    flags, evoked, epochs = calc_evoked_wrapper(subject, conditions, args, flags)
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
     flags = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags)
@@ -1723,6 +1740,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
+    parser.add_argument('--demi_epoches_num', help='demi_epoches_num', required=False, default=20)
     parser.add_argument('--bad_channels', help='bad_channels', required=False, default=[], type=au.str_arr_type)
     parser.add_argument('--calc_epochs_from_raw', help='calc_epochs_from_raw', required=False, default=0, type=au.is_true)
     parser.add_argument('--l_freq', help='low freq filter', required=False, default=None, type=float)
