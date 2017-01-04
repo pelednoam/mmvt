@@ -438,6 +438,8 @@ def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
     elif type(label) == int:
         seg_id = label
         seg_name = lut['name'][lut['id'] == seg_id][0]
+    if not isinstance(seg_name, str):
+        seg_name = seg_name.astype(str)
     return seg_name, int(seg_id)
 
 

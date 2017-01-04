@@ -244,6 +244,8 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
         calc_demi_epoches(raw, tmin, baseline, pick_meg, pick_eeg, pick_eog,
                           reject=reject, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, task=task)
 
+    if tmax - tmin <= 0:
+        raise Exception('tmax-tmin must be greater than zero!')
     epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
         baseline=baseline, preload=True, reject=reject_dict)
     if '{cond}' in epoches_fname:
@@ -595,7 +597,7 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
 
 def calc_noise_cov(epochs):
     if len(epochs) > 1:
-        noise_cov = mne.compute_covariance(epochs.crop(None, 0, copy=True))
+        noise_cov = mne.compute_covariance(epochs.crop(None, 0)) #, copy=True))
     else:
         if op.isfile(EPO_NOISE):
             demi_epochs = mne.read_epochs(EPO_NOISE)
@@ -621,6 +623,7 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, calc_for_cortica
             epo = get_cond_fname(EPO, cond)
             epochs = mne.read_epochs(epo)
             noise_cov = calc_noise_cov(epochs)
+            # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
@@ -629,12 +632,12 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, calc_for_cortica
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
                 _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov,
-                                       inv_loose, inv_depth)
+                                       None, None)
             if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
                 if spec_subcortical_fwd is None:
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
                 _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs,
-                                       noise_cov, inv_loose, inv_depth)
+                                       noise_cov, None, None)
             flag = True
         except:
             print(traceback.format_exc())
@@ -773,13 +776,13 @@ def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_me
         if inverse_method in ['lcmv', 'rap_music']:
             noise_cov = calc_cov(get_cond_fname(NOISE_COV, event), event, epochs, None, 0)
 
-        if inverse_method=='lcmv':
+        if inverse_method == 'lcmv':
             from mne.beamformer import lcmv
             data_cov = calc_cov(get_cond_fname(DATA_COV, event), event, epochs, 0.0, 1.0)
             # pick_ori = None | 'normal' | 'max-power'
             stc = lcmv(evoked[event], forward, noise_cov, data_cov, reg=0.01, pick_ori='max-power')
 
-        elif inverse_method=='dics':
+        elif inverse_method == 'dics':
             from mne.beamformer import dics
             from mne.time_frequency import compute_epochs_csd
             data_csd = compute_epochs_csd(epochs, mode='multitaper', tmin=0.0, tmax=2.0,
@@ -788,7 +791,7 @@ def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_me
                 fmin=6, fmax=10)
             stc = dics(evoked[event], forward, noise_csd, data_csd)
 
-        elif inverse_method=='rap_music':
+        elif inverse_method == 'rap_music':
             if len(sub_corticals) > 1:
                 print('Need to do more work here for len(sub_corticals) > 1')
             else:
@@ -820,17 +823,20 @@ def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_me
                     read_vertices_from: read_vertices_from + vertices_to_read]
                 read_vertices_from += vertices_to_read
 
-        subs_fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'subcorticals'))
-        for sub_cortical_code, activity in sub_corticals_activity.iteritems():
+        subs_fol = op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method)
+        utils.make_dir(subs_fol)
+        for sub_cortical_code, activity in sub_corticals_activity.items():
             sub_cortical, _ = utils.get_numeric_index_to_label(sub_cortical_code, lut)
-            np.save(op.join(subs_fol, '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
-            np.save(op.join(subs_fol, '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
+            np.save(op.join(subs_fol, '{}-{}-{}.npy'.format(event, sub_cortical, inverse_method)), activity.mean(0))
+            np.save(op.join(subs_fol, '{}-{}-{}-all-vertices.npy'.format(event, sub_cortical, inverse_method)), activity.mean(0))
+            # np.save(op.join(subs_fol, '{}-{}-{}'.format(event, sub_cortical, inverse_method)), activity.mean(0))
+            # np.save(op.join(subs_fol, '{}-{}-{}-all-vertices'.format(event, sub_cortical, inverse_method)), activity)
 
 
 def calc_cov(cov_fname, cond, epochs, from_t, to_t, method='empirical', overwrite=False):
     cov_cond_fname = get_cond_fname(cov_fname, cond)
     if not op.isfile(cov_cond_fname) or overwrite:
-        cov = mne.compute_covariance(epochs.crop(from_t, to_t, copy=True), method=method)
+        cov = mne.compute_covariance(epochs.crop(from_t, to_t), method=method)
         cov.save(cov_cond_fname)
     else:
         cov = mne.read_cov(cov_cond_fname)
@@ -912,7 +918,6 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
     lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
     for ind, sub_cortical_ind in enumerate(sub_corticals):
         sub_cortical_name, _ = utils.get_numeric_index_to_label(sub_cortical_ind, lut)
-        sub_cortical_name = sub_cortical_name.astype(str)
         names_for_blender.append(sub_cortical_name)
         for cond_id, cond in enumerate(events.keys()):
             data_fname = op.join(SUBJECT_MEG_FOLDER, 'subcorticals', inverse_method,
@@ -1568,7 +1573,7 @@ def get_meg_files(subject, necessary_fnames, args, events):
 def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
     get_meg_files(subject, [inv_fname], args, conditions)
-    if args.overwrite_inv or not op.isfile(inv_fname):
+    if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution'):
             prepare_local_subjects_folder(
                 mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
@@ -1591,7 +1596,7 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
 
         if utils.should_run(args, 'calc_inverse_operator'):
             get_meg_files(subject, [EPO, FWD], args, conditions)
-            flags['make_forward_solution'] = calc_inverse_operator(
+            flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, args.inv_loose, args.inv_depth, args.inv_calc_cortical, args.inv_calc_subcorticals,
                 args.fwd_usingMEG, args.fwd_usingEEG)
     return flags
