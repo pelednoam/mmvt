@@ -444,6 +444,10 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
         if not op.isfile(input_file):
             mu.log_err('{} does not exist!'.format(input_file), logging)
             continue
+        if 'labels' in input_file and not bpy.context.scene.add_meg_labels_data:
+            continue
+        if 'subcortical' in input_file and not bpy.context.scene.add_meg_subcorticals_data:
+            continue
         f = np.load(input_file)
         print('{} loaded'.format(input_file))
         number_of_maximal_time_steps = max(number_of_maximal_time_steps, len(f['data'][0]))
