@@ -492,12 +492,15 @@ def add_data_to_parent_brain_obj(stat=STAT_DIFF, self=None):
     base_path = mu.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
     labels_data_file = 'labels_data_{hemi}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
+
     brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in mu.HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
 
-    add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
-    add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
+    if bpy.context.scene.add_meg_labels_data:
+        add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
+    if bpy.context.scene.add_meg_subcorticals_data:
+        add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
     mu.view_all_in_graph_editor()
 
 

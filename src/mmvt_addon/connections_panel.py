@@ -431,8 +431,8 @@ def load_connections_file():
             diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
             conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
         bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
-    else:
-        print('No connections file!')
+    # else:
+    #     print('No connections file!')
     return d
 
 

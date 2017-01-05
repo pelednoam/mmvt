@@ -576,6 +576,10 @@ def get_fname_folder(fname):
     return op.sep.join(fname.split(op.sep)[:-1])
 
 
+def namesbase_with_ext(fname):
+    return fname.split(op.sep)[-1]
+
+
 def change_fname_extension(fname, new_extension):
     return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
