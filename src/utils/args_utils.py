@@ -12,6 +12,8 @@ def add_arguments(parser, arguments):
 
 
 def parse_parser(parser, argv=None):
+    if not argv is None and not isinstance(argv, list):
+        argv = create_arr_args(argv)
     if argv is None:
         in_args = vars(parser.parse_args())
     else:
@@ -41,7 +43,7 @@ def parse_parser(parser, argv=None):
     return args
 
 
-def get_args_list(args, key, var_type, default_val):
+def get_args_list(args, key, var_type, default_val=''):
     if args[key] is None or len(args[key]) == 0:
         return default_val
     # Remove '"' if any and replace '_' with ' '
@@ -102,3 +104,13 @@ def str_arr_to_markers(args, field_name):
             time, marker = args[field_name][ind], args[field_name][ind + 1]
             ret.append((float(time), marker.replace('_', ' ')))
         return ret
+
+
+def create_arr_args(args):
+    call_arr = []
+    for arg, value in args.items():
+        if isinstance(value, list):
+            value = ','.join(map(str, value))
+        call_arr.append('--{}'.format(arg))
+        call_arr.append(str(value))
+    return call_arr

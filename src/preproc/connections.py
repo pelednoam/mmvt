@@ -1,7 +1,7 @@
-import os
 import os.path as op
 import numpy as np
 import scipy.io as sio
+import traceback
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -14,27 +14,37 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
-def save_electrodes_coh(subject, args): # conditions=(), mat_fname='', stat=STAT_DIFF, t_max=-1, threshold=0.8, bipolar=False):
-    d = dict()
-    d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
-    d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-    coh_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
-    if not op.isfile(coh_fname):
-        coh = calc_electrodes_coh(
-            subject, args.conditions, args.mat_fname, args.t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
-            dt=0.1, window_len=0.1, n_jobs=6)
-    else:
-        coh = np.load(coh_fname)
-    (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
-     d['data_max'], d['data_min']) = calc_connections_colors(coh, d['labels'], d['hemis'], args)
-    d['conditions'] = args.conditions # ['interference', 'neutral']
-    np.savez(op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_con'), **d)
+def save_electrodes_coh(subject, args):
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_con.npz')
+    utils.remove_file(output_fname)
+    try:
+        d = dict()
+        d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
+        d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
+        coh_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
+        if not op.isfile(coh_fname):
+            coh = calc_electrodes_coh(
+                subject, args.conditions, args.mat_fname, args.t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
+                dt=0.1, window_len=0.1, n_jobs=6)
+        else:
+            coh = np.load(coh_fname)
+        (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
+         d['data_max'], d['data_min']) = calc_connections_colors(coh, d['labels'], d['hemis'], args)
+        d['conditions'] = args.conditions # ['interference', 'neutral']
+        np.savez(output_fname, **d)
+        print('Electodes coh was saved to {}'.format(output_fname))
+    except:
+        print(traceback.format_exc())
+        return False
+    return op.isfile(output_fname)
 
 
 def get_electrodes_info(subject, bipolar=False):
-    positions_file_name = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
-    positions_file_name = op.join(SUBJECTS_DIR, subject, 'electrodes', positions_file_name)
-    d = np.load(positions_file_name)
+    positions_fname= 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
+    positions_full_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', positions_fname)
+    if not op.isfile(positions_full_fname):
+        positions_full_fname = op.join(MMVT_DIR, subject, 'electrodes', positions_fname)
+    d = np.load(positions_full_fname)
     names = [l.astype(str) for l in d['names']]
     return names, d['pos']
 
