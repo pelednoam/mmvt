@@ -632,9 +632,9 @@ def calc_noise_cov(epochs):
     return noise_cov
 
 
-def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_for_noise_cov=False, 
-                          calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True, fwd_usingMEG=True,
-                          fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
+def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_for_noise_cov=False,
+                          overwrite_noise_cov=False, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
+                          fwd_usingMEG=True, fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
                           spec_subcortical_fwd=None, region=None):
     conds = ['all'] if '{cond}' not in EPO else events.keys()
     fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
@@ -647,11 +647,15 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_f
         try:
             epo = get_cond_fname(EPO, cond)
             epochs = mne.read_epochs(epo)
-            if use_empty_room_for_noise_cov:
-                raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
-                noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
+            if overwrite_noise_cov or not op.isfile(NOISE_COV):
+                if use_empty_room_for_noise_cov:
+                    raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
+                    noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
+                else:
+                    noise_cov = calc_noise_cov(epochs)
+                noise_cov.save(NOISE_COV)
             else:
-                noise_cov = calc_noise_cov(epochs)
+                noise_cov = mne.read_cov(NOISE_COV)
             # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
                 if cortical_fwd is None:
@@ -660,8 +664,7 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_f
             if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
-                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov,
-                                       None, None)
+                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov, None, None)
             if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
                 if spec_subcortical_fwd is None:
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
@@ -1627,7 +1630,8 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
             get_meg_files(subject, [EPO, FWD], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, args.inv_loose, args.inv_depth, args.use_empty_room_for_noise_cov,
-                args.inv_calc_cortical, args.inv_calc_subcorticals, args.fwd_usingMEG, args.fwd_usingEEG)
+                args.overwrite_noise_cov, args.inv_calc_cortical, args.inv_calc_subcorticals,
+                args.fwd_usingMEG, args.fwd_usingEEG)
     return flags
 
 
@@ -1793,6 +1797,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--inv_loose', help='', required=False, default=0.2, type=float)
     parser.add_argument('--inv_depth', help='', required=False, default=0.8, type=float)
     parser.add_argument('--use_empty_room_for_noise_cov', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--inv_calc_cortical', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--inv_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
