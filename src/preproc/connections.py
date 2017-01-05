@@ -133,6 +133,7 @@ def calc_lables_meg_connectivity(subject, args):
     args.symetric_colors = True
     corr = corr[:, :, :, np.newaxis]
     d = dict()
+    # ASDFSADf
     d['conditions'] = f['conditions']
     args.labels_exclude = []
     _, d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
