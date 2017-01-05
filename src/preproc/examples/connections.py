@@ -36,13 +36,13 @@ def example2(subject):
 
 def calc_electrodes_con(subject):
     # -s mg78 -a laus250 -f save_electrodes_coh --threshold_percentile 95 -c interference,non-interference
-    args = utils.Bag(dict(
+    args = con.read_cmd_args(utils.Bag(
         subject=subject,
         atlas='laus250',
         function='save_electrodes_coh',
         threshold_percentile=95,
         conditions='interference,non-interference'))
-    args = con.read_cmd_args(args)
+    # args = con.read_cmd_args(args)
     pu.run_on_subjects(args, con.main)
 
 

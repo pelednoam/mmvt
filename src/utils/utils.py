@@ -58,6 +58,7 @@ csv_file_reader = mu.csv_file_reader
 
 get_link_dir = su.get_link_dir
 
+
 def get_exisiting_dir(dirs):
     ex_dirs = [d for d in dirs if op.isdir(d)]
     if len(ex_dirs)==0:
@@ -1600,7 +1601,6 @@ def all(arr):
 def ceil_floor(x):
     import math
     return math.ceil(x) if x > 0 else math.floor(x)
-
 
 
 # From http://stackoverflow.com/a/28952464/1060738
