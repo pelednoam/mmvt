@@ -346,7 +346,9 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
-    if not annotations_exist:
+    if annotations_exist:
+        return True
+    else:
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
             hemi, aparc_name))) for hemi in HEMIS])
