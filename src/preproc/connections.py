@@ -133,8 +133,10 @@ def calc_lables_meg_connectivity(subject, args):
     args.symetric_colors = True
     corr = corr[:, :, :, np.newaxis]
     d = dict()
+    d['conditions'] = f['conditions']
     args.labels_exclude = []
-    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
+    _, d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
+    d['labels'] = names
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(corr, d['labels'], d['hemis'], args)
     output_fname = op.join(MMVT_DIR, subject, 'rois_con.npz')
@@ -225,6 +227,9 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_electrodes_coh'):
         # todo: Add the necessary parameters
         flags['save_electrodes_coh'] = save_electrodes_coh(subject, args)
+
+    if utils.should_run(args, 'calc_lables_meg_connectivity'):
+        flags['calc_lables_meg_connectivity'] = calc_lables_meg_connectivity(subject, args)
 
     return flags
 
