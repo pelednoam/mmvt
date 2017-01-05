@@ -34,18 +34,21 @@ def connections_data():
 
 def check_connections(stat=STAT_DIFF):
     d = load_connections_file()
-    threshold = bpy.context.scene.connections_threshold
-    threshold_type = bpy.context.scene.connections_threshold_type
-    if d.con_colors.ndim == 3:
-        windows_num = d.con_colors.shape[1]
+    if d is None:
+        indices = []
     else:
-        windows_num = 1
-    if d.con_values.ndim > 2:
-        stat_data = calc_stat_data(d.con_values, stat)
-    else:
-        stat_data = d.con_values
-    mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
-    indices = np.where(mask)[0]
+        threshold = bpy.context.scene.connections_threshold
+        threshold_type = bpy.context.scene.connections_threshold_type
+        if d.con_colors.ndim == 3:
+            windows_num = d.con_colors.shape[1]
+        else:
+            windows_num = 1
+        if d.con_values.ndim > 2:
+            stat_data = calc_stat_data(d.con_values, stat)
+        else:
+            stat_data = d.con_values
+        mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
+        indices = np.where(mask)[0]
     bpy.context.scene.connections_num = len(indices)
 
 
@@ -412,7 +415,9 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
+
 def load_connections_file():
+    d = None
     if op.isfile(bpy.context.scene.connections_file):
         print('loading {}'.format(bpy.context.scene.connections_file))
         d = mu.Bag(np.load(bpy.context.scene.connections_file))
