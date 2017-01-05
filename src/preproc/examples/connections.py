@@ -42,7 +42,6 @@ def calc_electrodes_con(subject):
         function='save_electrodes_coh',
         threshold_percentile=95,
         conditions='interference,non-interference'))
-    # args = con.read_cmd_args(args)
     pu.run_on_subjects(args, con.main)
 
 
