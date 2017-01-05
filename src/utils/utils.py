@@ -55,7 +55,7 @@ get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
 csv_file_reader = mu.csv_file_reader
-
+time_to_go = mu.time_to_go
 get_link_dir = su.get_link_dir
 
 
@@ -1277,11 +1277,11 @@ def params_suffix(optimization_params):
         sorted(optimization_params.items())])
 
 
-def time_to_go(now, run, runs_num, runs_num_to_print=10):
-    if run % runs_num_to_print == 0 and run != 0:
-        time_took = time.time() - now
-        more_time = time_took / run * (runs_num - run)
-        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+# def time_to_go(now, run, runs_num, runs_num_to_print=10):
+#     if run % runs_num_to_print == 0 and run != 0:
+#         time_took = time.time() - now
+#         more_time = time_took / run * (runs_num - run)
+#         print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
 
 
 def lower_rec_indices(m):

@@ -10,6 +10,7 @@ from collections import defaultdict
 from itertools import product
 import traceback
 import mne
+import types
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
@@ -709,7 +710,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
-    stcs = {}
+    stcs, stcs_num = {}, {}
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
@@ -725,6 +726,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                     pick_ori=pick_ori, return_generator=True)
+                stcs_num[cond_name] = epochs.events.shape[0]
                 # if save_stc:
                 #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
@@ -739,7 +741,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
-    return flag, stcs
+    return flag, stcs, stcs_num
 
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
@@ -1336,11 +1338,19 @@ def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_mode='me
         np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}'.format(cond_name)), np.array(labels_ts))
 
 
-def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None,
+def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
         do_plot=False, n_jobs=1):
     try:
+        labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
+            labels_output_fname_template.format(hemi=hemi)
+        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
+        lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi)))
+        if op.isfile(labels_output_fname) and op.isfile(labels_norm_output_fname):
+            if not op.isfile(lables_mmvt_fname):
+                shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+                return True
         if stcs is None:
             stcs = {}
             for cond in events.keys():
@@ -1363,7 +1373,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         conditions = []
         labels_data = None
 
-        for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
+        for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
                 plt.figure()
             conditions.append(cond_name)
@@ -1377,17 +1387,23 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             if len(labels) == 0:
                 raise Exception('No labels!!!')
 
-            for ind, label in enumerate(labels):
-                mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
-                mean_flip = np.squeeze(mean_flip)
-                # Set flip to be always positive
-                # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
-                if labels_data is None:
-                    T = len(stcs[list(stcs.keys())[0]].times)
-                    labels_data = np.zeros((len(labels), T, len(stcs)))
-                labels_data[ind, :, conds_incdices[cond_id]] = mean_flip
-                if do_plot:
-                    plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
+            if isinstance(stc_cond, types.GeneratorType):
+                stc_cond_num = stcs_num[cond_name]
+            else:
+                stc_cond = [stc_cond]
+                stc_cond_num = 1
+            for stc_ind, stc in enumerate(stc_cond):
+                for ind, label in enumerate(labels):
+                    mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
+                    mean_flip = np.squeeze(mean_flip)
+                    # Set flip to be always positive
+                    # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
+                    if labels_data is None:
+                        T = len(stc.times)
+                        labels_data = np.zeros((len(labels), T, len(stcs), stc_cond_num))
+                    labels_data[ind, :, conds_incdices[cond_id], stc_ind] = mean_flip
+                    if do_plot:
+                        plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
 
             if do_plot:
                 plt.xlabel('time (ms)')
@@ -1398,17 +1414,14 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
 
         if positive or moving_average_win_size > 0:
             labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
-        labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
-            labels_output_fname_template.format(hemi=hemi)
         print('Saving to {}'.format(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
         # Normalize the data
         data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
         max_abs = utils.get_max_abs(data_max, data_min)
         labels_data = labels_data / max_abs
-        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
         np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
-        shutil.copyfile(labels_output_fname, op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi))))
+        shutil.copyfile(labels_output_fname, lables_mmvt_fname)
         flag = True
     except:
         print(traceback.format_exc())
@@ -1653,15 +1666,16 @@ def calc_evoked_wrapper(subject, conditions, args, flags):
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
+    stcs_conds, stcs_num = None, {}
     if utils.should_run(args, 'calc_stc_per_condition'):
         get_meg_files(subject, [INV, EVO], args, conditions)
-        flags['calc_stc_per_condition'], stcs_conds = calc_stc_per_condition(
+        flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
-    return flags
+    return flags, stcs_conds, stcs_num
 
 
-def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags):
+def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags, stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
@@ -1671,7 +1685,11 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
                 inverse_method=inverse_method, positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
-                stcs=stcs_conds, n_jobs=args.n_jobs)
+                stcs=stcs_conds, stcs_num=stcs_num, n_jobs=args.n_jobs)
+            if isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType):
+                # Create the stc generator again
+                _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
+                    subject, conditions, inverse_method, args, flags)
     return flags
 
 
@@ -1698,8 +1716,8 @@ def main(tup, remote_subject_dir, args, flags):
 
     flags, evoked, epochs = calc_evoked_wrapper(subject, conditions, args, flags)
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
-    flags = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
-    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags)
+    flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
+    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags, stcs_num)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)

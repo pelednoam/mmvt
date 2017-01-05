@@ -8,6 +8,8 @@ from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+LINKS_DIR = utils.get_links_dir()
+MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
@@ -29,7 +31,7 @@ def save_electrodes_coh(subject, args):
         else:
             coh = np.load(coh_fname)
         (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
-         d['data_max'], d['data_min']) = calc_connections_colors(coh, d['labels'], d['hemis'], args)
+         d['data_max'], d['data_min']) = calc_connectivity(coh, d['labels'], d['hemis'], args)
         d['conditions'] = args.conditions # ['interference', 'neutral']
         np.savez(output_fname, **d)
         print('Electodes coh was saved to {}'.format(output_fname))
@@ -102,32 +104,74 @@ def save_rois_connectivity(subject, args):
 
     d = dict()
     data = sio.loadmat(args.mat_fname)[args.mat_field]
-    d['labels'] = lu.read_labels(
-        subject, SUBJECTS_DIR, args.atlas, exclude=args.labels_exclude,sorted_according_to_annot_file=True)
-    d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True) * 1000
-    d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]
-    d['labels'] = [l.name for l in d['labels']]
+    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject)
     (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
-     d['data_max'], d['data_min']) = calc_connections_colors(data, d['labels'], d['hemis'], args)
+     d['data_max'], d['data_min']) = calc_connectivity(data, d['labels'], d['hemis'], args)
     # args.stat, args.conditions, args.windows, args.threshold,
     #     args.threshold_percentile, args.color_map, args.norm_by_percentile, args.norm_percs, args.symetric_colors)
     d['conditions'] = args.conditions
     np.savez(op.join(MMVT_DIR, subject, 'rois_con'), **d)
 
 
-def calc_connections_colors(data, labels, hemis, args):
+def calc_lables_meg_connectivity(subject, args):
+    data, names = {}, {}
+    LBL = op.join(MMVT_DIR, subject, 'labels_data_{}.npz')
+    for hemi in utils.HEMIS:
+        labels_output_fname = LBL.format(hemi)
+        f = np.load(labels_output_fname)
+        data[hemi] = np.squeeze(f['data'])
+        names[hemi] = f['names']
+    data = np.concatenate((data['lh'], data['rh']))
+    names = np.concatenate((names['lh'], names['rh']))
+    corr = np.zeros((data.shape[0], data.shape[0], data.shape[2]))
+    for w in range(data.shape[2]):
+        corr[:, :, w] = np.corrcoef(data[:, :, w])
+        np.fill_diagonal(corr[:, :, w], 0)
+    # np.sum(abs(np.mean(corr, 2)) > 0.9)
+    args.threshold = 0.9
+    args.threshold_percentile = 0
+    args.symetric_colors = True
+    corr = corr[:, :, :, np.newaxis]
+    d = dict()
+    args.labels_exclude = []
+    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
+    (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
+     d['data_max'], d['data_min']) = calc_connectivity(corr, d['labels'], d['hemis'], args)
+    output_fname = op.join(MMVT_DIR, subject, 'rois_con.npz')
+    print('Saving results to {}'.format(output_fname))
+    np.savez(output_fname, **d)
+    return True
+
+
+def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_labels_names=None):
+    labels = lu.read_labels(
+        subject, SUBJECTS_DIR, args.atlas, exclude=args.labels_exclude,
+        sorted_according_to_annot_file=sorted_according_to_annot_file)
+    if not sorted_labels_names is None:
+        labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
+    locations = lu.calc_center_of_mass(labels, ret_mat=True) * 1000
+    hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
+    return labels, locations, hemis
+
+
+def calc_connectivity(data, labels, hemis, args):
     # stat, conditions, w, threshold=0, threshold_percentile=0, color_map='jet',
     #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
+    # import time
     M = data.shape[0]
-    W = data.shape[2] if args.windows == 0 else args.windows
+    W = data.shape[2] if not 'windows' in args or args.windows == 0 else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, len(args.conditions)))
     con_names = [None] * L
     con_type = np.zeros((L))
+    lower_rec_indices = list(utils.lower_rec_indices(M))
+    LRI = len(lower_rec_indices)
     for cond in range(len(args.conditions)):
         for w in range(W):
-            for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
+            # now = time.time()
+            for ind, (i, j) in enumerate(lower_rec_indices):
+                # utils.time_to_go(now, ind, LRI, LRI/10)
                 if W > 1 and data.ndim == 4:
                     con_values[ind, w, cond] = data[i, j, w, cond]
                 elif data.ndim > 2:
@@ -148,7 +192,7 @@ def calc_connections_colors(data, labels, hemis, args):
     con_names = np.array(con_names)
     data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
     data_minmax = max(map(abs, [data_max, data_min]))
-    if args.threshold_percentile > 0:
+    if 'threshold_percentile' in args and args.threshold_percentile > 0:
         args.threshold = np.percentile(np.abs(stat_data), args.threshold_percentile)
     if args.threshold > data_minmax:
         raise Exception('threshold > abs(max(data)) ({})'.format(data_minmax))
@@ -162,16 +206,16 @@ def calc_connections_colors(data, labels, hemis, args):
         stat_data = stat_data[indices]
 
     con_values = np.squeeze(con_values)
-    if args.data_max == 0 and args.data_min == 0:
+    if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
         if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
             data_max, data_min = data_minmax, -data_minmax
     else:
         data_max, data_min = args.data_max, args.data_min
     print('data_max: {}, data_min: {}'.format(data_max, data_min))
-    con_colors = utils.mat_to_colors(stat_data, data_min, data_max, args.color_map)
+    # con_colors = utils.mat_to_colors(stat_data, data_min, data_max, args.color_map)
 
     print(len(con_names))
-    return con_colors, con_indices, con_names, con_values, con_type, data_max, data_min
+    return None, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
 def main(subject, remote_subject_dir, args, flags):
@@ -190,6 +234,7 @@ def read_cmd_args(argv=None):
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
     parser.add_argument('-c', '--conditions', help='conditions names', required=False, default='contrast', type=au.str_arr_type)
+    parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
     parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
