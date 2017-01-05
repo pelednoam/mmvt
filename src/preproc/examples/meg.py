@@ -68,6 +68,11 @@ def calc_subcorticals(subject, mri_subject):
     pass
 
 
+def calc_rest(subject, mri_subject):
+    '-s hc029 -a laus125 -t rest --reject 0 --remove_power_line_noise 0 --demi_windows_length 1000 --demi_windows_shift 500'
+    pass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
