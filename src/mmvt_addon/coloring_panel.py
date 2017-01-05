@@ -700,8 +700,11 @@ def color_electrodes_stim():
     _addon().change_to_rendered_brain()
 
 
-def clear_and_recolor():
+def color_connections():
+    _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current)
 
+
+def clear_and_recolor():
     color_meg = partial(activity_map_coloring, map_type='MEG')
     color_fmri = partial(activity_map_coloring, map_type='FMRI')
     color_fmri_clusters = partial(activity_map_coloring, map_type='FMRI', clusters=True)
@@ -732,6 +735,17 @@ class ColorEEGHelmet(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         color_eeg_helmet()
+        return {"FINISHED"}
+
+
+class ColorConnections(bpy.types.Operator):
+    bl_idname = "mmvt.connections_color"
+    bl_label = "mmvt connections color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_connections()
         return {"FINISHED"}
 
 
@@ -914,7 +928,8 @@ class ColoringMakerPanel(bpy.types.Panel):
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
             '{}_groups.csv'.format(bpy.context.scene.atlas)))
-        volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
+        connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
+        # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
         if faces_verts_exist:
@@ -933,9 +948,9 @@ class ColoringMakerPanel(bpy.types.Panel):
             if manually_groups_file_exist:
                 layout.prop(context.scene, 'labels_groups', text="")
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
-            if volumetric_coloring_files_exist:
-                layout.prop(context.scene, "vol_coloring_files", text="")
-                layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
+            # if volumetric_coloring_files_exist:
+            #     layout.prop(context.scene, "vol_coloring_files", text="")
+            #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
         # if not bpy.data.objects.get('eeg_helmet', None) is None:
         #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
         if electrodes_files_exist:
@@ -945,6 +960,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
         if electrodes_stim_files_exist:
             layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
+        if connections_files_exit:
+            layout.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -1077,6 +1094,7 @@ def register():
         bpy.utils.register_class(ColorFmri)
         bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ColorEEGHelmet)
+        bpy.utils.register_class(ColorConnections)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         # print('Freeview Panel was registered!')
@@ -1097,6 +1115,7 @@ def unregister():
         bpy.utils.unregister_class(ColorFmri)
         bpy.utils.unregister_class(ColorClustersFmri)
         bpy.utils.unregister_class(ColorEEGHelmet)
+        bpy.utils.unregister_class(ColorConnections)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:

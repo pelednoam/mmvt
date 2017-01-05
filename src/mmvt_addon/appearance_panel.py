@@ -147,7 +147,7 @@ def appearance_show_rois_activity_update(self=None, context=None):
             AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
 
 
-def show_hide_connections(value):
+def show_hide_connections(value=True):
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = value
     # if bpy.data.objects.get(connections_panel.PARENT_OBJ):
     #     bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
