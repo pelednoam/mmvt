@@ -219,7 +219,8 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             hemi_ply_fname = '{}.ply'.format(surf_name)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
-            if overwrite or not op.isfile(mmvt_hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
+            if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
+                    or not op.isfile(surf_new_name):
                 print('{} {}: convert srf to asc'.format(hemi, surf_type))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
@@ -228,9 +229,8 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
-            ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             if not op.isfile(mmvt_hemi_npz_fname):
-                verts, faces = utils.read_ply_file(ply_fname)
+                verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
                 np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
