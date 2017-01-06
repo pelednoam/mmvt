@@ -133,11 +133,9 @@ def calc_lables_meg_connectivity(subject, args):
     args.symetric_colors = True
     corr = corr[:, :, :, np.newaxis]
     d = dict()
-    # ASDFSADf
     d['conditions'] = f['conditions']
     args.labels_exclude = []
-    _, d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
-    d['labels'] = names
+    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(corr, d['labels'], d['hemis'], args)
     output_fname = op.join(MMVT_DIR, subject, 'rois_con.npz')
@@ -154,7 +152,8 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
     locations = lu.calc_center_of_mass(labels, ret_mat=True) * 1000
     hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
-    return labels, locations, hemis
+    labels_names = [l.name for l in labels]
+    return labels_names, locations, hemis
 
 
 def calc_connectivity(data, labels, hemis, args):
@@ -200,7 +199,8 @@ def calc_connectivity(data, labels, hemis, args):
     if args.threshold > data_minmax:
         raise Exception('threshold > abs(max(data)) ({})'.format(data_minmax))
     if args.threshold >= 0:
-        indices = np.where(np.abs(stat_data) > args.threshold)[0]
+        indices = np.where(np.max(abs(stat_data), axis=1) > args.threshold)[0]
+        # indices = np.where(np.abs(stat_data) > args.threshold)[0]
         # con_colors = con_colors[indices]
         con_indices = con_indices[indices]
         con_names = con_names[indices]
