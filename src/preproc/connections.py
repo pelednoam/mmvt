@@ -138,10 +138,23 @@ def calc_lables_meg_connectivity(subject, args):
     d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(corr, d['labels'], d['hemis'], args)
+    vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
     output_fname = op.join(MMVT_DIR, subject, 'rois_con.npz')
     print('Saving results to {}'.format(output_fname))
     np.savez(output_fname, **d)
+    utils.save((vertices, vertices_lookup), op.join(MMVT_DIR, subject, 'rois_con_vertices.pkl'))
     return True
+
+
+def create_vertices_lookup(con_indices, con_names, labels):
+    from collections import defaultdict
+    vertices, vertices_lookup = set(), defaultdict(list)
+    for (i, j), conn_name in zip(con_indices, con_names):
+        vertices.add(i)
+        vertices.add(j)
+        vertices_lookup[labels[i]].append(conn_name)
+        vertices_lookup[labels[j]].append(conn_name)
+    return vertices, vertices_lookup
 
 
 def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_labels_names=None):

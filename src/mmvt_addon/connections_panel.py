@@ -139,23 +139,37 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
 
 
 def create_vertices(d, mask, verts_color='pink'):
-    indices = set()
     layers = [False] * 20
     layers[_addon().CONNECTIONS_LAYER] = True
     vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))
     parent_name = 'connections_vertices'
     parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, PARENT_OBJ)
-    for (i, j) in d.con_indices[mask]:
-        indices.add(i)
-        indices.add(j)
-    for indice in indices:
-        p1 = d.locations[indice, :] * 0.1
-        vert_name = 'connection_{}'.format(indice)
+    for vertice in ConnectionsPanel.vertices[mask]:
+        p1 = d.locations[vertice, :] * 0.1
+        vert_name = '{}_vertice'.format(d.labels[vertice])
         mu.create_ico_sphere(p1, layers, vert_name)
         mu.create_material('{}_mat'.format(vert_name), vert_color, 1)
         cur_obj = bpy.context.active_object
         cur_obj.name = vert_name
         cur_obj.parent = parent_obj
+
+
+def vertices_selected(vertice_name):
+    label_name = vertice_name[:-len('_vertice')]
+    if _addon().both_conditions():
+        for conn_name in ConnectionsPanel.vertices_lookup[label_name]:
+            conn_obj = bpy.data.objects.get(conn_name, None)
+            if conn_obj:
+                conn_obj.select = True
+    elif _addon().conditions_diff():
+        parent_obj = bpy.context.scene.objects['connections']
+        parent_obj.select = True
+        for fcurve in parent_obj.animation_data.action.fcurves:
+            con_name = mu.get_fcurve_name(fcurve)
+            fcurve.select = con_name in ConnectionsPanel.vertices_lookup[label_name]
+            fcurve.hide = not con_name in ConnectionsPanel.vertices_lookup[label_name]
+    mu.change_fcurves_colors(bpy.data.objects['connections'].children)
+    _addon().fit_selection()
 
 
 def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
@@ -655,6 +669,8 @@ def _connections_origin_update():
         ConnectionsPanel.d = load_connections_file()
         if ConnectionsPanel.d.con_values.ndim == 2:
             ConnectionsPanel.d.con_values = ConnectionsPanel.d.con_values[:, :, np.newaxis]
+        ConnectionsPanel.vertices, ConnectionsPanel.vertices_lookup = mu.load(
+            op.join(mu.get_user_fol(), 'rois_con_vertices.pkl'))
 
 
 def set_connection_type(connection_type):

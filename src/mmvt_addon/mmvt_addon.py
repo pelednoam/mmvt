@@ -94,6 +94,10 @@ select_only_subcorticals = selection_panel.select_only_subcorticals
 select_all_rois = selection_panel.select_all_rois
 deselect_all = selection_panel.deselect_all
 set_selection_type = selection_panel.set_selection_type
+conditions_diff = selection_panel.conditions_diff
+both_conditions = selection_panel.both_conditions
+spec_condition = selection_panel.spec_condition
+fit_selection = selection_panel.fit_selection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 color_objects = coloring_panel.color_objects
@@ -226,6 +230,7 @@ load_fmri_cluster = fMRI_panel.load_fmri_cluster
 connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data
 plot_connections = connections_panel.plot_connections
+vertices_selected = connections_panel.vertices_selected
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ransparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
