@@ -4,7 +4,7 @@ import shutil
 
 CACH_SUBJECT_DIR = '/space/huygens/1/users/mia/subjects/{subject}_SurferOutput/'
 
-def prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=False):
+def prepare_subject_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=False):
     local_subject_dir = os.path.join(local_subjects_dir, subject)
     for fol, files in neccesary_files.iteritems():
         if not os.path.isdir(os.path.join(local_subject_dir, fol)):
@@ -33,4 +33,4 @@ if __name__ == '__main__':
     subjects = []
     for subject in subjects:
         remote_subject_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
-        prepare_local_subjects_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=True)
+        prepare_subject_folder(neccesary_files, subject, remote_subject_dir, local_subjects_dir, print_traceback=True)

@@ -829,7 +829,7 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
     return remote_subject_dir
 
 
-def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
+def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                   overwrite_files=False, print_traceback=True, sftp_port=22):
     local_subject_dir = op.join(local_subjects_dir, subject)
@@ -907,7 +907,8 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
             for file_name in files:
                 try:
                     file_name = file_name.replace('{subject}', subject)
-                    if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
+                    local_fname = op.join(local_subject_dir, fol, file_name)
+                    if not op.isfile(local_fname) or overwrite_files:
                         # with sftp.cd(op.join(remote_subject_dir, fol)):
                         try:
                             with sftp.cd(remote_subject_dir + '/' + fol):
@@ -916,8 +917,8 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
                         except FileNotFoundError:
                             print('The file {} does not exist on the remote server!'.format(file_name))
 
-                    if op.getsize(op.join(local_subject_dir, fol, file_name)) == 0:
-                        os.remove(op.join(local_subject_dir, fol, file_name))
+                    if op.isfile(local_fname) and op.getsize(local_fname) == 0:
+                        os.remove(local_fname)
                 except:
                     if print_traceback:
                         print(traceback.format_exc())

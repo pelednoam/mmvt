@@ -38,7 +38,7 @@ def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner201
 
     warp_buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR,  subregions_num, loose_tight)
     if not op.isfile(warp_buckner_atlas_fname):
-        prepare_local_subjects_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
+        prepare_subject_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
         fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname, warp_buckner_atlas_fname)
     if not op.isfile(warp_buckner_atlas_fname):
         print('mask file does not exist! {}'.format(warp_buckner_atlas_fname))
@@ -601,10 +601,10 @@ def save_cerebellum_coloring(subject):
 #     dists = cdist(verts['rh'], verts['lh'])
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
+def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=None):
     if necessary_files is None:
         necessary_files = args.necessary_files
-    return utils.prepare_local_subjects_folder(
+    return utils.prepare_subject_folder(
         necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)

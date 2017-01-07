@@ -138,7 +138,7 @@ def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fnam
         utils.make_dir(op.join(SUBJECTS_MEG_DIR, task, subject))
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
         utils.make_dir(op.join(BLENDER_ROOT_DIR, subject))
-        # utils.prepare_local_subjects_folder(
+        # utils.prepare_subject_folder(
         #     neccesary_files, subject, remote_subjects_dir, SUBJECTS_DIR, print_traceback=False)
         # anatomy_preproc.freesurfer_surface_to_blender_surface(subject, overwrite=False)
         # anatomy_preproc.create_annotation_file_from_fsaverage(subject, atlas, fsaverage, False, False, False, True)
