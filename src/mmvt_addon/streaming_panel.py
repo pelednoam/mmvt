@@ -111,6 +111,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_address = (server, port)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # dsfgdsfg
     sock.bind(server_address)
     buffer = []
     prev_val = np.zeros((mat_len, 1))
