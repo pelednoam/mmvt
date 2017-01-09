@@ -105,11 +105,11 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     import socket
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
-    ip = kargs.get('ip', 10000)
+    port = kargs.get('port', 10000)
     mat_len = kargs.get('mat_len', 1)
-    print('udp_reader:', server, ip, buffer_size, mat_len)
+    print('udp_reader:', server, port, buffer_size, mat_len)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_address = (server, ip)
+    server_address = (server, port)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(server_address)
     buffer = []
@@ -173,8 +173,8 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            args = dict(buffer_size=bpy.context.scene.straming_buffer_size, server='localhost', ip=10000,
-                        mat_len=len(StreamingPanel.electrodes_names))
+            args = dict(buffer_size=bpy.context.scene.streaming_buffer_size, server=bpy.context.scene.streaming_server,
+                        port=bpy.context.scene.streaming_server_port, mat_len=len(StreamingPanel.electrodes_names))
             StreamingPanel.udp_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
@@ -196,7 +196,7 @@ class StreamButton(bpy.types.Operator):
             return {'PASS_THROUGH'}
 
         if event.type == 'TIMER':
-            if StreamingPanel.is_streaming and time.time() - self._time > bpy.context.scene.straming_buffer_size / 1000.0:
+            if StreamingPanel.is_streaming and time.time() - self._time > bpy.context.scene.streaming_buffer_size / 1000.0:
                 self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
@@ -218,14 +218,19 @@ class StreamButton(bpy.types.Operator):
 
 def template_draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, "straming_buffer_size", text="buffer size:")
+
+    layout.prop(context.scene, "streaming_server", text="server:")
+    layout.prop(context.scene, "streaming_server_port", text="port:")
+    layout.prop(context.scene, "streaming_buffer_size", text="buffer size:")
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
 
 
-bpy.types.Scene.straming_buffer_size = bpy.props.IntProperty(default=100, min=10)
+bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
+bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
+bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=10000)
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 
 
@@ -256,6 +261,7 @@ class StreamingPanel(bpy.types.Panel):
 def init(addon):
     cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy')
     if not op.isfile(cm_fname):
+        print("Streaming: Can't load without the cm file {}".format(cm_fname))
         return
     StreamingPanel.addon = addon
     StreamingPanel.is_listening = False
