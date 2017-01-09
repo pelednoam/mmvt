@@ -2,6 +2,7 @@ import argparse
 from src.preproc import connections as con
 from src.utils import utils
 from src.utils import args_utils as au
+from src.utils import preproc_utils as pu
 
 
 def example1(subject):
@@ -35,7 +36,14 @@ def example2(subject):
 
 def calc_electrodes_con(subject):
     # -s mg78 -a laus250 -f save_electrodes_coh --threshold_percentile 95 -c interference,non-interference
-    pass
+    args = con.read_cmd_args(utils.Bag(
+        subject=subject,
+        atlas='laus250',
+        function='save_electrodes_coh',
+        threshold_percentile=95,
+        conditions='interference,non-interference'))
+    pu.run_on_subjects(args, con.main)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')

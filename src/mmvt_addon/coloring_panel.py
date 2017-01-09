@@ -103,17 +103,23 @@ def clear_object_vertex_colors(cur_obj):
 
 
 # todo: do something with the threshold parameter
-def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, colors=None):
+# @mu.timeit
+def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold=0, postfix_str=''):
     if data is None:
-        print('color_object_homogeneously: No data to color!')
+        print('color_objects_homogeneously: No data to color!')
         return
     if names is None:
-        data, names, colors, conditions = data['data'], data['names'], data['colors'], data['conditions']
+        data, names, conditions = data['data'], data['names'], data['conditions']
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
-    for obj_name, object_colors, values in zip(names, colors, data):
+    for obj_name, values in zip(names, data):
         obj_name = obj_name.astype(str)
-        if bpy.context.scene.selection_type == 'spec_cond':
+        if values.ndim == 0:
+            values = [values]
+        t_ind = min(len(values) - 1, cur_frame)
+        if values[t_ind].ndim == 0:
+            value = values[t_ind]
+        elif bpy.context.scene.selection_type == 'spec_cond':
             cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
             if len(cond_inds) == 0:
                 print("!!! Can't find the current condition in the data['conditions'] !!!")
@@ -121,24 +127,25 @@ def color_object_homogeneously(data, postfix_str='', threshold=0, names=None, co
             else:
                 cond_ind = cond_inds[0]
                 object_colors = object_colors[:, cond_ind]
-                value = values[cur_frame, cond_ind]
+                value = values[t_ind, cond_ind]
         else:
-            value = np.diff(values[cur_frame])[0]
+            value = np.diff(values[t_ind])[0]
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
-        new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
+        # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
+        new_color = calc_colors([value], data_min, colors_ratio)[0]
         # todo: check if the stat should be avg or diff
         obj = bpy.data.objects.get(obj_name+postfix_str)
         # if obj and not obj.hide:
         #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
         ret = object_coloring(obj, new_color)
         if not ret:
-            print('color_object_homogeneously: Error in coloring the object {}!'.format(obj_name))
+            print('color_objects_homogeneously: Error in coloring the object {}!'.format(obj_name))
             # print(obj_name, value, new_color)
         # else:
-        #     print('color_object_homogeneously: {} was not loaded!'.format(obj_name))
+        #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
-    print('Finished coloring!!')
+    # print('Finished coloring!!')
 
 
 def init_activity_map_coloring(map_type, subcorticals=True):
@@ -179,7 +186,8 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         threshold = bpy.context.scene.coloring_threshold
     meg_sub_activity = None
     if map_type == 'MEG':
-        meg_sub_activity = load_meg_subcortical_activity()
+        if bpy.context.scene.coloring_meg_subcorticals:
+            meg_sub_activity = load_meg_subcortical_activity()
         ColoringMakerPanel.what_is_colored.add(WIC_MEG)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_FMRI, WIC_FMRI_CLUSTERS])
     elif map_type == 'FMRI':
@@ -188,7 +196,8 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         else:
             ColoringMakerPanel.what_is_colored.add(WIC_FMRI_CLUSTERS)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS])
-    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters)
+    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters,
+                  plot_subcorticals=bpy.context.scene.coloring_meg_subcorticals)
     # setup_environment_settings()
 
 
@@ -269,6 +278,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     frame_str = str(bpy.context.scene.frame_current)
 
     loop_indices = {}
+    f = None
     for hemi in not_hiden_hemis:
         colors_ratio, data_min = None, None
         if map_type == 'MEG':
@@ -315,10 +325,20 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
-        if map_type == 'MEG':
-            if not bpy.data.objects['Subcortical_meg_activity_map'].hide:
-                color_object_homogeneously(meg_sub_activity, '_meg_activity', threshold)
-        if map_type == 'FMRI':
+        if map_type == 'MEG' and not bpy.data.objects['Subcortical_meg_activity_map'].hide:
+                if f is None:
+                    if _addon().colorbar_values_are_locked():
+                        data_max, data_min = _addon().get_colorbar_max_min()
+                        colors_ratio = 256 / (data_max - data_min)
+                    else:
+                        data_max, data_min = meg_sub_activity['data_minmax'], -meg_sub_activity['data_minmax']
+                        colors_ratio = 256 / (2 * data_max)
+                        _addon().set_colorbar_max_min(data_max, data_min)
+                    _addon().set_colorbar_title('Subcortical MEG')
+                color_objects_homogeneously(
+                    meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
+                    colors_ratio, threshold, '_meg_activity')
+        elif map_type == 'FMRI' and not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
     return True
@@ -648,20 +668,13 @@ def color_electrodes():
     _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
-    stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
-    fol = op.join(mu.get_user_fol(), 'electrodes')
-    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
-    if op.isfile(data_file):
-        data = np.load(data_file)
-        color_object_homogeneously(data, threshold=threshold)
-    else:
-        data_file = op.join(fol, 'electrodes_data_{}_data.npy'.format(stat))
-        data = np.load(data_file)
-        colors = np.load(op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat)))
-        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
-        names = meta_data['names']
-        color_object_homogeneously(data, '', threshold, names=names, colors=colors)
-
+    data, names, conditions = _addon().load_electrodes_data()
+    norm_percs = (3, 97) #todo: add to gui
+    data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+    colors_ratio = 256 / (data_max - data_min)
+    _addon().set_colorbar_max_min(data_max, data_min)
+    _addon().set_colorbar_title('Electordes conditions difference')
+    color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
     #     bpy.ops.object.editmode_toggle()
@@ -682,13 +695,16 @@ def color_electrodes_stim():
     stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
     stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
     data = np.load(stim_data_fname)
-    color_object_homogeneously(data, threshold=threshold)
+    color_objects_homogeneously(data, threshold=threshold)
     _addon().show_electrodes()
     _addon().change_to_rendered_brain()
 
 
-def clear_and_recolor():
+def color_connections():
+    _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current)
 
+
+def clear_and_recolor():
     color_meg = partial(activity_map_coloring, map_type='MEG')
     color_fmri = partial(activity_map_coloring, map_type='FMRI')
     color_fmri_clusters = partial(activity_map_coloring, map_type='FMRI', clusters=True)
@@ -719,6 +735,17 @@ class ColorEEGHelmet(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         color_eeg_helmet()
+        return {"FINISHED"}
+
+
+class ColorConnections(bpy.types.Operator):
+    bl_idname = "mmvt.connections_color"
+    bl_label = "mmvt connections color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_connections()
         return {"FINISHED"}
 
 
@@ -886,6 +913,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+        meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
@@ -900,11 +928,12 @@ class ColoringMakerPanel(bpy.types.Panel):
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
             '{}_groups.csv'.format(bpy.context.scene.atlas)))
-        volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
+        connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
+        # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
         if faces_verts_exist:
-            if meg_files_exist:
+            if meg_files_exist and meg_data_maxmin_file_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                     layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
@@ -919,11 +948,11 @@ class ColoringMakerPanel(bpy.types.Panel):
             if manually_groups_file_exist:
                 layout.prop(context.scene, 'labels_groups', text="")
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
-            if volumetric_coloring_files_exist:
-                layout.prop(context.scene, "vol_coloring_files", text="")
-                layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
-        if not bpy.data.objects.get('eeg_helmet', None) is None:
-            layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+            # if volumetric_coloring_files_exist:
+            #     layout.prop(context.scene, "vol_coloring_files", text="")
+            #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
+        # if not bpy.data.objects.get('eeg_helmet', None) is None:
+        #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
         if electrodes_files_exist:
             layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         if electrodes_labels_files_exist:
@@ -931,6 +960,8 @@ class ColoringMakerPanel(bpy.types.Panel):
             layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
         if electrodes_stim_files_exist:
             layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
+        if connections_files_exit:
+            layout.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
         layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -1063,6 +1094,7 @@ def register():
         bpy.utils.register_class(ColorFmri)
         bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ColorEEGHelmet)
+        bpy.utils.register_class(ColorConnections)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         # print('Freeview Panel was registered!')
@@ -1083,6 +1115,7 @@ def unregister():
         bpy.utils.unregister_class(ColorFmri)
         bpy.utils.unregister_class(ColorClustersFmri)
         bpy.utils.unregister_class(ColorEEGHelmet)
+        bpy.utils.unregister_class(ColorConnections)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:

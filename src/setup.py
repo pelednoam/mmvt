@@ -96,6 +96,7 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     if not only_verbose:
         for link_name, default_fol_name, message, create_default_dir in zip(
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
+            fol = ''
             if not create_default_folders:
                 fol = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
             if fol == '' or create_default_folders:
@@ -205,11 +206,23 @@ def find_blender():
             blender_fol = op.join('D:\\', blender_win_fol)
     else:
         output = utils.run_script("find ~/ -name 'blender'")
-        blender_fols = [fol for fol in output.split('\n') if op.isfile(op.join(
-            utils.get_parent_fol(fol), 'blender.svg'))]
+        blender_fols = output.split('\n')
+        blender_fols = [fol for fol in blender_fols if op.isfile(op.join(
+            utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
         if len(blender_fols) == 1:
             blender_fol = utils.get_parent_fol(blender_fols[0])
     return blender_fol
+
+
+def create_fsaverage_link(links_fol_name='links'):
+    freesurfer_home = os.environ.get('FREESURFER_HOME', '')
+    if freesurfer_home != '':
+        links_fol = utils.get_links_dir(links_fol_name)
+        subjects_dir = utils.get_link_dir(links_fol, 'subjects', 'SUBJECTS_DIR')
+        fsaverage_link = op.join(subjects_dir, 'fsaverage')
+        if not utils.is_link(fsaverage_link):
+            fsveareg_fol = op.join(freesurfer_home, 'subjects', 'fsaverage')
+            utils.create_folder_link(fsveareg_fol, fsaverage_link)
 
 
 def main(args):
@@ -222,6 +235,10 @@ def main(args):
         links_created = create_links(args.links, args.gui, args.only_verbose)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
+
+    # 2,5) Create fsaverage folder link
+    if utils.should_run(args, 'create_fsaverage_link'):
+        create_fsaverage_link(args.links)
 
     # 3) Copy resources files
     if utils.should_run(args, 'copy_resources_files'):

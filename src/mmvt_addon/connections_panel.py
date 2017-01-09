@@ -24,6 +24,35 @@ def _addon():
     return ConnectionsPanel.addon
 
 
+def connections_exist():
+    return not bpy.data.objects.get('connections', None) is None
+
+
+def connections_data():
+    return ConnectionsPanel.d
+
+
+def check_connections(stat=STAT_DIFF):
+    # d = load_connections_file()
+    d = ConnectionsPanel.d
+    if d is None:
+        indices = []
+    else:
+        threshold = bpy.context.scene.connections_threshold
+        threshold_type = bpy.context.scene.connections_threshold_type
+        if d.con_values.ndim >= 2:
+            windows_num = d.con_values.shape[1]
+        else:
+            windows_num = 1
+        if d.con_values.ndim > 2:
+            stat_data = calc_stat_data(d.con_values, stat)
+        else:
+            stat_data = d.con_values
+        mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
+        indices = np.where(mask)[0]
+    bpy.context.scene.connections_num = len(indices)
+
+
 # d(Bag): labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions
 def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, verts_color='pink'):
     layers_rods = [False] * 20
@@ -32,8 +61,8 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
     mu.delete_hierarchy(PARENT_OBJ)
     mu.create_empty_if_doesnt_exists(PARENT_OBJ, _addon().BRAIN_EMPTY_LAYER, None, 'Functional maps')
     # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    if d.con_colors.ndim == 3:
-        windows_num = d.con_colors.shape[1]
+    if d.con_values.ndim >= 2:
+        windows_num = d.con_values.shape[1]
     else:
         windows_num = 1
     T = ConnectionsPanel.addon.get_max_time_steps()
@@ -81,13 +110,14 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
     N = len(indices)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     print('Create connections for both conditions')
+    con_color = (1, 1, 1, 1)
     now = time.time()
     for run, (ind, conn_name, (i, j)) in enumerate(zip(indices, d.con_names[mask], d.con_indices[mask])):
         mu.time_to_go(now, run, N, runs_num_to_print=10)
-        if d.con_colors.ndim == 3:
-            con_color = np.hstack((d.con_colors[ind, 0, :], [0.]))
-        else:
-            con_color = np.hstack((d.con_colors[ind, :], [0.]))
+        # if d.con_values.ndim == :
+        #     con_color = np.hstack((d.con_colors[ind, 0, :], [0.]))
+        # else:
+        #     con_color = np.hstack((d.con_colors[ind, :], [0.]))
         p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
         mu.cylinder_between(p1, p2, radius, layers_rods)
         # mu.create_material('{}_mat'.format(conn_name), (0, 0, 1, 1), 1)
@@ -101,7 +131,7 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
         for cond_id, cond in enumerate(d.conditions):
             # insert_frame_keyframes(cur_obj, '{}-{}'.format(conn_name, cond), d.con_values[ind, -1, cond_id], T)
             for t in range(windows_num):
-                extra_time_points = 0 if norm_fac ==1 else 2
+                extra_time_points = 0 if norm_fac == 1 else 2
                 timepoint = t * norm_fac + extra_time_points
                 mu.insert_keyframe_to_custom_prop(cur_obj, '{}-{}'.format(conn_name, cond),
                                                   d.con_values[ind, t, cond_id], timepoint)
@@ -109,23 +139,37 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
 
 
 def create_vertices(d, mask, verts_color='pink'):
-    indices = set()
     layers = [False] * 20
     layers[_addon().CONNECTIONS_LAYER] = True
     vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))
     parent_name = 'connections_vertices'
     parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, PARENT_OBJ)
-    for (i, j) in d.con_indices[mask]:
-        indices.add(i)
-        indices.add(j)
-    for indice in indices:
-        p1 = d.locations[indice, :] * 0.1
-        vert_name = 'connection_{}'.format(indice)
+    for vertice in ConnectionsPanel.vertices[mask]:
+        p1 = d.locations[vertice, :] * 0.1
+        vert_name = '{}_vertice'.format(d.labels[vertice])
         mu.create_ico_sphere(p1, layers, vert_name)
         mu.create_material('{}_mat'.format(vert_name), vert_color, 1)
         cur_obj = bpy.context.active_object
         cur_obj.name = vert_name
         cur_obj.parent = parent_obj
+
+
+def vertices_selected(vertice_name):
+    label_name = vertice_name[:-len('_vertice')]
+    if _addon().both_conditions():
+        for conn_name in ConnectionsPanel.vertices_lookup[label_name]:
+            conn_obj = bpy.data.objects.get(conn_name, None)
+            if conn_obj:
+                conn_obj.select = True
+    elif _addon().conditions_diff():
+        parent_obj = bpy.context.scene.objects['connections']
+        parent_obj.select = True
+        for fcurve in parent_obj.animation_data.action.fcurves:
+            con_name = mu.get_fcurve_name(fcurve)
+            fcurve.select = con_name in ConnectionsPanel.vertices_lookup[label_name]
+            fcurve.hide = not con_name in ConnectionsPanel.vertices_lookup[label_name]
+    mu.change_fcurves_colors(bpy.data.objects['connections'].children)
+    _addon().fit_selection()
 
 
 def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat=STAT_DIFF):
@@ -252,30 +296,32 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 
 
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
-def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
+# def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
+def plot_connections(d, plot_time):
     windows_num = d.con_values.shape[1]
-    # xs, ys = get_fcurve_values('RPT3-RAT5')
-    # cond_id = [i for i, cond in enumerate(d.conditions) if cond == condition][0]
-    t = int(plot_time / ConnectionsPanel.addon.get_max_time_steps() * windows_num) if windows_num > 1 else 0
+    t = int(plot_time / ConnectionsPanel.T * windows_num) if windows_num > 1 else 0
     print('plotting connections for t:{}'.format(t))
-    if t >= d.con_colors.shape[1] and windows_num > 1:
-        mu.message(self, 'time out of bounds! {}'.format(plot_time))
+    if t >= d.con_values.shape[1] and windows_num > 1:
+        print('time out of bounds! {}'.format(plot_time))
     else:
-        # for conn_name, conn_colors in colors.items():
-        # vals = []
         selected_objects, selected_indices = get_all_selected_connections(d)
+        colors_ratio = 256 / (d.data_max - d.data_min)
         for ind, con_name in zip(selected_indices, selected_objects):
             # print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
             cur_obj = bpy.data.objects.get(con_name)
-            color = d.con_colors[ind, t, :] if d.con_colors.ndim == 3 else d.con_colors[ind, :]
+            # color = d.con_colors[ind, t, :] if d.con_colors.ndim == 3 else d.con_colors[ind, :]
+            # stat_val = np.diff(d.con_values[ind, t, :])[0]
+            stat_val = calc_stat_data(d.con_values[ind, t], STAT_DIFF)
+            color = _addon().calc_colors([stat_val], d.data_min, colors_ratio)[0]
             con_color = np.hstack((color, [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
-            # vals.append(np.diff(d.con_values[ind, t])[0])
         bpy.data.objects[PARENT_OBJ].select = True
         ConnectionsPanel.addon.show_hide_connections()
-        # print(max(vals), min(vals))
-        # print(con_color, d.con_values[ind, t, cond_id])
+        _addon().set_colorbar_max_min(d.data_max, d.data_min)
+        colorbar_title = 'Electrodes coherence' if bpy.context.scene.connections_origin == 'electrodes' else \
+            'Cortical labels coherence'
+        _addon().set_colorbar_title(colorbar_title)
 
 
 def get_all_selected_connections(d):
@@ -386,7 +432,9 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.plot_graph(context, data, colors, image_fol)
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
+
 def load_connections_file():
+    d = None
     if op.isfile(bpy.context.scene.connections_file):
         print('loading {}'.format(bpy.context.scene.connections_file))
         d = mu.Bag(np.load(bpy.context.scene.connections_file))
@@ -400,15 +448,27 @@ def load_connections_file():
             diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
             conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
         bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
-    else:
-        print('No connections file!')
+    # else:
+    #     print('No connections file!')
+    return d
 
 
 def create_connections():
-    load_connections_file()
+    # load_connections_file()
     threshold = bpy.context.scene.connections_threshold
     threshold_type = bpy.context.scene.connections_threshold_type
     create_keyframes(ConnectionsPanel.d, threshold, threshold_type, stat=STAT_DIFF)
+
+
+class CheckConnections(bpy.types.Operator):
+    bl_idname = "mmvt.check_connections"
+    bl_label = "mmvt check connections"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        check_connections()
+        return {"FINISHED"}
 
 
 class CreateConnections(bpy.types.Operator):
@@ -446,27 +506,28 @@ class FilterGraph(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# todo: Should move to coloring_panel
-class PlotConnections(bpy.types.Operator):
-    bl_idname = "mmvt.plot_connections"
-    bl_label = "mmvt plot connections"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        if not bpy.data.objects.get(PARENT_OBJ):
-            self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
-        else:
-            connections_type = bpy.context.scene.connections_type
-            threshold = bpy.context.scene.connections_threshold
-            abs_threshold = bpy.context.scene.abs_threshold
-            condition = bpy.context.scene.conditions
-            plot_time = bpy.context.scene.frame_current
-            print(connections_type, condition, threshold, abs_threshold)
-            # mu.delete_hierarchy(PARENT_OBJ)
-            plot_connections(self, context, ConnectionsPanel.d, plot_time, connections_type, condition, threshold,
-                             abs_threshold)
-        return {"FINISHED"}
+# # todo: Should move to coloring_panel
+# class PlotConnections(bpy.types.Operator):
+#     bl_idname = "mmvt.plot_connections"
+#     bl_label = "mmvt plot connections"
+#     bl_options = {"UNDO"}
+#
+#     @staticmethod
+#     def invoke(self, context, event=None):
+#         if not bpy.data.objects.get(PARENT_OBJ):
+#             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+#         else:
+#             connections_type = bpy.context.scene.connections_type
+#             threshold = bpy.context.scene.connections_threshold
+#             abs_threshold = bpy.context.scene.abs_threshold
+#             condition = bpy.context.scene.conditions
+#             plot_time = bpy.context.scene.frame_current
+#             print(connections_type, condition, threshold, abs_threshold)
+#             # mu.delete_hierarchy(PARENT_OBJ)
+#             # plot_connections(ConnectionsPanel.d, plot_time, connections_type, condition, threshold,
+#             #                  abs_threshold)
+#             plot_connections(ConnectionsPanel.d, plot_time)
+#         return {"FINISHED"}
 
 
 # class ShowHideConnections(bpy.types.Operator):
@@ -532,6 +593,8 @@ class ClearConnections(bpy.types.Operator):
 def connections_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "connections_origin", text="")
+    layout.operator(CheckConnections.bl_idname, text="Check connections ", icon='RNA_ADD')
+    layout.label(text='# Connections: {}'.format(bpy.context.scene.connections_num))
     layout.operator(CreateConnections.bl_idname, text="Create connections ", icon='RNA_ADD')
     layout.prop(context.scene, 'connections_threshold', text="Threshold")
     layout.prop(context.scene, 'above_below_threshold', text='')
@@ -573,6 +636,7 @@ bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
     items=[("value", "value", "", 1), ("percentile", "percentile", "", 2)], #, ("top_k", "top k", "", 3)],
     description="Threshold type")
 bpy.types.Scene.connections_filter = bpy.props.BoolProperty(name='connections_filter')
+bpy.types.Scene.connections_num = bpy.props.IntProperty(min=0, default=0, description="")
 
 
 class ConnectionsPanel(bpy.types.Panel):
@@ -582,7 +646,7 @@ class ConnectionsPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Connections"
     addon = None
-    d = mu.Bag({})
+    d = None #mu.Bag({})
     show_connections = True
     do_filter = True
 
@@ -601,8 +665,12 @@ def _connections_origin_update():
         bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
     else:
         print('Wrong connection type!!!')
-    if ConnectionsPanel.d == {}:
-        load_connections_file()
+    if ConnectionsPanel.d == {} or ConnectionsPanel.d is None :
+        ConnectionsPanel.d = load_connections_file()
+        if ConnectionsPanel.d.con_values.ndim == 2:
+            ConnectionsPanel.d.con_values = ConnectionsPanel.d.con_values[:, :, np.newaxis]
+        ConnectionsPanel.vertices, ConnectionsPanel.vertices_lookup = mu.load(
+            op.join(mu.get_user_fol(), 'rois_con_vertices.pkl'))
 
 
 def set_connection_type(connection_type):
@@ -626,12 +694,14 @@ def init(addon):
     else:
         print('No connections file!')
 
+    ConnectionsPanel.T = addon.get_max_time_steps()
     if len(items) > 0:
         bpy.types.Scene.connections_origin = bpy.props.EnumProperty(
             items=items, description="Conditions origin", update=connections_origin_update)
         ConnectionsPanel.addon = addon
         bpy.context.scene.connections_threshold = 0
         _connections_origin_update()
+        check_connections()
         register()
     else:
         unregister()
@@ -642,8 +712,8 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(ConnectionsPanel)
+        bpy.utils.register_class(CheckConnections)
         bpy.utils.register_class(CreateConnections)
-        bpy.utils.register_class(PlotConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
         # print('ConnectionsPanel was registered!')
@@ -654,8 +724,8 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(ConnectionsPanel)
+        bpy.utils.unregister_class(CheckConnections)
         bpy.utils.unregister_class(CreateConnections)
-        bpy.utils.unregister_class(PlotConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
     except:

@@ -55,8 +55,9 @@ get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
 csv_file_reader = mu.csv_file_reader
-
+time_to_go = mu.time_to_go
 get_link_dir = su.get_link_dir
+
 
 def get_exisiting_dir(dirs):
     ex_dirs = [d for d in dirs if op.isdir(d)]
@@ -438,6 +439,8 @@ def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
     elif type(label) == int:
         seg_id = label
         seg_name = lut['name'][lut['id'] == seg_id][0]
+    if not isinstance(seg_name, str):
+        seg_name = seg_name.astype(str)
     return seg_name, int(seg_id)
 
 
@@ -571,6 +574,10 @@ def file_type(fname):
 
 def get_fname_folder(fname):
     return op.sep.join(fname.split(op.sep)[:-1])
+
+
+def namesbase_with_ext(fname):
+    return fname.split(op.sep)[-1]
 
 
 def change_fname_extension(fname, new_extension):
@@ -822,13 +829,12 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
     return remote_subject_dir
 
 
-def prepare_local_subjects_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
+def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
                                   sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                   overwrite_files=False, print_traceback=True, sftp_port=22):
-
     local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
-        check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=False)
+        check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=remote_subject_dir == '')
     if all_files_exists and not overwrite_files:
         return True
     elif remote_subject_dir == '':
@@ -885,7 +891,13 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
         cnopts.hostkeys = None
         sftp_con = pysftp.Connection(domain, username=username, password=password, cnopts=cnopts, port=port)
     except:
-        sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        try:
+            sftp_con = pysftp.Connection(domain, username=username, password=password, port=port)
+        except:
+            print("Can't connect via sftp!")
+            if print_traceback:
+                print(traceback.format_exc())
+            return False
     with sftp_con as sftp:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
@@ -895,13 +907,18 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
             for file_name in files:
                 try:
                     file_name = file_name.replace('{subject}', subject)
-                    if not op.isfile(op.join(local_subject_dir, fol, file_name)) or overwrite_files:
+                    local_fname = op.join(local_subject_dir, fol, file_name)
+                    if not op.isfile(local_fname) or overwrite_files:
                         # with sftp.cd(op.join(remote_subject_dir, fol)):
-                        with sftp.cd(remote_subject_dir + '/' + fol):
-                            print('sftp: getting {}'.format(file_name))
-                            sftp.get(file_name)
-                    if op.getsize(op.join(local_subject_dir, fol, file_name)) == 0:
-                        os.remove(op.join(local_subject_dir, fol, file_name))
+                        try:
+                            with sftp.cd(remote_subject_dir + '/' + fol):
+                                print('sftp: getting {}'.format(file_name))
+                                sftp.get(file_name)
+                        except FileNotFoundError:
+                            print('The file {} does not exist on the remote server!'.format(file_name))
+
+                    if op.isfile(local_fname) and op.getsize(local_fname) == 0:
+                        os.remove(local_fname)
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
@@ -1261,11 +1278,11 @@ def params_suffix(optimization_params):
         sorted(optimization_params.items())])
 
 
-def time_to_go(now, run, runs_num, runs_num_to_print=10):
-    if run % runs_num_to_print == 0 and run != 0:
-        time_took = time.time() - now
-        more_time = time_took / run * (runs_num - run)
-        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+# def time_to_go(now, run, runs_num, runs_num_to_print=10):
+#     if run % runs_num_to_print == 0 and run != 0:
+#         time_took = time.time() - now
+#         more_time = time_took / run * (runs_num - run)
+#         print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
 
 
 def lower_rec_indices(m):
@@ -1589,7 +1606,6 @@ def all(arr):
 def ceil_floor(x):
     import math
     return math.ceil(x) if x > 0 else math.floor(x)
-
 
 
 # From http://stackoverflow.com/a/28952464/1060738

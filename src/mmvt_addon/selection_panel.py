@@ -11,6 +11,22 @@ def _addon():
     return SelectionMakerPanel.addon
 
 
+def conditions_diff():
+    return bpy.context.scene.selection_type == 'diff'
+
+
+def both_conditions():
+    return bpy.context.scene.selection_type == 'conds'
+
+
+def spec_condition():
+    return bpy.context.scene.selection_type == 'spec_cond'
+
+
+def fit_selection(context=None):
+    mu.view_all_in_graph_editor(context)
+
+
 def deselect_all():
     for obj in bpy.data.objects:
         obj.select = False
@@ -183,7 +199,7 @@ class FitSelection(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        mu.view_all_in_graph_editor(context)
+        fit_selection(context)
         return {"FINISHED"}
 
 

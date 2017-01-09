@@ -38,7 +38,7 @@ def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner201
 
     warp_buckner_atlas_fname = fu.warp_buckner_atlas_output_fname(subject, SUBJECTS_DIR,  subregions_num, loose_tight)
     if not op.isfile(warp_buckner_atlas_fname):
-        prepare_local_subjects_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
+        prepare_subject_folder(subject, remote_subject_dir, args, {'mri:transforms' : ['talairach.m3z']})
         fu.warp_buckner_atlas(subject, SUBJECTS_DIR, bunker_atlas_fname, warp_buckner_atlas_fname)
     if not op.isfile(warp_buckner_atlas_fname):
         print('mask file does not exist! {}'.format(warp_buckner_atlas_fname))
@@ -219,7 +219,8 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             hemi_ply_fname = '{}.ply'.format(surf_name)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
-            if overwrite or not op.isfile(mmvt_hemi_ply_fname) and not op.isfile(mmvt_hemi_npz_fname):
+            if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
+                    or not op.isfile(surf_new_name):
                 print('{} {}: convert srf to asc'.format(hemi, surf_type))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
@@ -228,9 +229,8 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
-            ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             if not op.isfile(mmvt_hemi_npz_fname):
-                verts, faces = utils.read_ply_file(ply_fname)
+                verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
                 np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
@@ -346,7 +346,9 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
-    if not annotations_exist:
+    if annotations_exist:
+        return True
+    else:
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
             hemi, aparc_name))) for hemi in HEMIS])
@@ -599,25 +601,19 @@ def save_cerebellum_coloring(subject):
 #     dists = cdist(verts['rh'], verts['lh'])
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
+def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=None):
     if necessary_files is None:
         necessary_files = args.necessary_files
-    return utils.prepare_local_subjects_folder(
+    return utils.prepare_subject_folder(
         necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
 def main(subject, remote_subject_dir, args, flags):
+    # from src.setup import create_fsaverage_link
+    # create_fsaverage_link()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-
-    # if utils.should_run(args, 'prepare_local_subjects_folder'):
-    #     # *) Prepare the local subject's folder
-    #     flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(subject, remote_subject_dir, args)
-    #     if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
-    #         ans = input('Do you which to continue (y/n)? ')
-    #         if not au.is_true(ans):
-    #             return flags
 
     if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
@@ -735,7 +731,8 @@ def read_cmd_args(argv=None):
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
-        'mri:transforms' : ['talairach.xfm']}
+        'mri:transforms' : ['talairach.xfm'],
+        'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True

@@ -120,7 +120,7 @@ def get_inflated_ratio():
     return bpy.context.scene.inflating
 
 
-def appearance_show_rois_activity_update(self, context):
+def appearance_show_rois_activity_update(self=None, context=None):
     # todo: Figure out why the hell
     for _ in range(2):
         if bpy.context.scene.surface_type == 'pial':
@@ -129,11 +129,16 @@ def appearance_show_rois_activity_update(self, context):
         elif bpy.context.scene.surface_type == 'inflated':
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = is_rois()
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()
+            if is_activity():
+                bpy.context.scene.inflating = 0
+                bpy.context.scene.hemis_inf_distance = -5
+            else:
+                bpy.context.scene.hemis_inf_distance = 0
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
     # print('should be {}, {}'.format(is_rois(), is_activity()))
-    if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
-                    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
-        print('Error in displaying the layers!')
+    # if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
+    #                 bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
+    #     print('Error in displaying the layers!')
     if not AppearanceMakerPanel.addon is None and is_activity():
         fmri_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'fmri' else is_activity()
         meg_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'meg' else is_activity()
@@ -142,7 +147,7 @@ def appearance_show_rois_activity_update(self, context):
             AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
 
 
-def show_hide_connections(value):
+def show_hide_connections(value=True):
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = value
     # if bpy.data.objects.get(connections_panel.PARENT_OBJ):
     #     bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
@@ -271,12 +276,14 @@ class SelectionListener(bpy.types.Operator):
                     obj = bpy.data.objects.get(selected_obj_name)
                     if obj:
                         mu.change_fcurves_colors(obj)
-                if selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
+                elif selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)
                     if not pial_obj is None:
                         pial_obj.select = True
                         mu.change_fcurves_colors(pial_obj)
+                elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:
+                    _addon().vertices_selected(selected_obj_name)
             self.right_clicked = False
 
         if time.time() - self.press_time > 1:
@@ -287,7 +294,7 @@ class SelectionListener(bpy.types.Operator):
                 if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                     _addon().find_closest_cluster(only_within=True)
 
-        if not _addon().render_in_queue() is None:
+        if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())
             if not rendering_data is None:
                 try:
@@ -414,6 +421,7 @@ def init(addon):
             bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0
+    appearance_show_rois_activity_update()
     bpy.ops.mmvt.selection_listener()
 
 

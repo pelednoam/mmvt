@@ -17,9 +17,12 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         subjects_itr = args.subject
     subjects_flags, subjects_errors = {}, {}
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
-    args.sftp_password = utils.get_sftp_password(
-        args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
-        if args.sftp else ''
+    if args.necessary_files == '':
+        args.necessary_files = dict()
+    if 'sftp_password' not in args or args.sftp_password == '':
+        args.sftp_password = utils.get_sftp_password(
+            args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
+            if args.sftp else ''
     if '*' in args.subject:
         args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
@@ -33,14 +36,12 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         print('****************************************************************')
         os.environ['SUBJECT'] = subject
         flags = dict()
-        if args.necessary_files == '':
-            args.necessary_files = dict()
         try:
-            if utils.should_run(args, 'prepare_local_subjects_folder'):
+            if utils.should_run(args, 'prepare_subject_folder'):
                 # *) Prepare the local subject's folder
-                flags['prepare_local_subjects_folder'] = prepare_local_subjects_folder(
+                flags['prepare_subject_folder'] = prepare_subject_folder(
                     subject, remote_subject_dir, args)
-                if not flags['prepare_local_subjects_folder'] and not args.ignore_missing:
+                if not flags['prepare_subject_folder'] and not args.ignore_missing:
                     ans = input('Do you which to continue (y/n)? ')
                     if not au.is_true(ans):
                         continue
@@ -65,10 +66,10 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
             print('{}: {}'.format(subject, error))
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, args, necessary_files=None):
+def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=None):
     if necessary_files is None:
         necessary_files = args.necessary_files
-    return utils.prepare_local_subjects_folder(
+    return utils.prepare_subject_folder(
         necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)

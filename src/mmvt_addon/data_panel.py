@@ -29,6 +29,9 @@ bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250'
 bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes", update=bipolar_update)
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
+bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
+bpy.types.Scene.add_meg_labels_data = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
@@ -201,7 +204,8 @@ def import_brain(context=None):
     if context:
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
-    # create_inflating_morphing()
+    if bpy.context.scene.inflated_morphing:
+        create_inflating_morphing()
     if bpy.data.objects.get(' '):
         bpy.data.objects[' '].select = True
         if context:
@@ -440,6 +444,10 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
         if not op.isfile(input_file):
             mu.log_err('{} does not exist!'.format(input_file), logging)
             continue
+        if 'labels' in input_file and not bpy.context.scene.add_meg_labels_data:
+            continue
+        if 'subcortical' in input_file and not bpy.context.scene.add_meg_subcorticals_data:
+            continue
         f = np.load(input_file)
         print('{} loaded'.format(input_file))
         number_of_maximal_time_steps = max(number_of_maximal_time_steps, len(f['data'][0]))
@@ -484,12 +492,15 @@ def add_data_to_parent_brain_obj(stat=STAT_DIFF, self=None):
     base_path = mu.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
     labels_data_file = 'labels_data_{hemi}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
+
     brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in mu.HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
 
-    add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
-    add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
+    if bpy.context.scene.add_meg_labels_data:
+        add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
+    if bpy.context.scene.add_meg_subcorticals_data:
+        add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
     mu.view_all_in_graph_editor()
 
 
@@ -703,6 +714,28 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
+def load_electrodes_data(stat='diff'):
+    # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
+    fol = op.join(mu.get_user_fol(), 'electrodes')
+    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
+    if op.isfile(data_file):
+        f = np.load(data_file)
+        data = f['data']
+        names = f['names']
+        conditions = f['conditions']
+    elif op.isfile(op.join(fol, 'electrodes_data_{}.npy'.format(stat))) and op.isfile(
+            op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat))):
+        data_file = op.join(fol, 'electrodes_data_{}.npy'.format(stat))
+        f = np.load(data_file)
+        data = f['data']
+        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
+        names = meta_data['names']
+        conditions = meta_data['conditions']
+    else:
+        data, names, conditions = None, None, None
+    return data, names, conditions
+
+
 def meg_evoked_files_update(self, context):
     _meg_evoked_files_update()
 
@@ -795,7 +828,6 @@ class DataMakerPanel(bpy.types.Panel):
     externals = []
     eeg_data, eeg_meta = None, None
 
-
     def draw(self, context):
         layout = self.layout
         # layout.prop(context.scene, 'conf_path')
@@ -804,6 +836,7 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.brain_imported:
         # col.operator("mmvt.anatomy_preproc", text="Run Preporc", icon='BLENDER')
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
+        col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_positions.npz')
@@ -811,17 +844,26 @@ class DataMakerPanel(bpy.types.Panel):
         eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
         eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         if len(electrodes_positions_files) > 0:
-            col.prop(context.scene, 'bipolar', text="Bipolar")
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
             col.prop(context.scene, 'electrodes_positions_files', text="")
+            col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator("mmvt.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
-        col = self.layout.column(align=True)
-        col.operator(AddDataToBrain.bl_idname, text="Add data to Brain", icon='FCURVE')
-        col.prop(context.scene, 'brain_no_conds_stat', text="")
-        col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
-        col.prop(context.scene, 'import_unknown', text="Import unknown")
+        meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_lh.npz')),
+                     op.isfile(op.join(mu.get_user_fol(), 'labels_data_rh.npz')),
+                     op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))]
+        if any(meg_files):
+            col = self.layout.column(align=True)
+            col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
+            if meg_files[0] and meg_files[1]:
+                col.prop(context.scene, 'add_meg_labels_data', text="labels")
+            if meg_files[2]:
+                col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
+            if meg_files[0] and meg_files[1]:
+                col.prop(context.scene, 'brain_no_conds_stat', text="")
+                col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
+                col.prop(context.scene, 'import_unknown', text="Import unknown")
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:

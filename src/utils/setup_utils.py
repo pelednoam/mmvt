@@ -135,6 +135,8 @@ def create_folder_link(real_fol, link_fol, overwrite=True):
             except:
                 print("Can't create a link to the folder {}!".format(real_fol))
         else:
+            if overwrite and op.islink(link_fol):
+                os.remove(link_fol)
             os.symlink(real_fol, link_fol)
 
 

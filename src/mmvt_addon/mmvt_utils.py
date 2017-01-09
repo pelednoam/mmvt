@@ -40,7 +40,7 @@ print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
-    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM) = range(8)
+    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM, OBJ_TYPE_CON_VERTICE) = range(9)
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -539,6 +539,8 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_EEG
     elif obj.parent.name in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         obj_type = OBJ_TYPE_CEREBELLUM
+    elif obj.parent.name == 'connections_vertices':
+        obj_type = OBJ_TYPE_CON_VERTICE
     else:
         obj_type = None
         print("Can't find the object type ({})!".format(obj_name))
@@ -627,6 +629,20 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
         thread_read_from_stderr.start()
 
 
+def run_thread(target_func, while_func=lambda:True, **kwargs):
+    q = Queue()
+    t = threading.Thread(target=target_func, args=(q, while_func), kwargs=kwargs)
+    t.start()
+    return q
+
+
+def run_thread_2q(target_func, while_func=lambda:True, **kwargs):
+    q1, q2 = Queue(), Queue()
+    t = threading.Thread(target=target_func, args=(q1, q2, while_func), kwargs=kwargs)
+    t.start()
+    return q1, q2
+
+
 def run_command(cmd, shell=True, pipe=False):
     # global p
     from subprocess import Popen, PIPE, STDOUT
@@ -694,8 +710,9 @@ def profileit(sort_field='cumtime'):
         def wrapper(*args, **kwargs):
             prof = cProfile.Profile()
             retval = prof.runcall(func, *args, **kwargs)
-            make_dir(op.join(get_user_fol(), 'profileit'))
-            prof_fname = op.join(get_user_fol(), 'profileit', func.__name__)
+            prof_dir = op.join(get_user_fol(), 'profileit')
+            make_dir(prof_dir)
+            prof_fname = op.join(prof_dir, '{}_{}'.format(func.__name__, rand_letters(5)))
             stat_fname = '{}.stat'.format(prof_fname)
             prof.dump_stats(prof_fname)
             print_profiler(prof_fname, stat_fname, sort_field)
@@ -1152,7 +1169,10 @@ def get_max_abs(data_max, data_min):
 
 def queue_get(queue):
     try:
-        return queue.get(block=False)
+        if queue is None:
+            return None
+        else:
+            return queue.get(block=False)
     except Empty:
         return None
 
