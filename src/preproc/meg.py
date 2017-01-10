@@ -421,7 +421,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
 
 def check_bem(mri_subject):
     if not op.isfile(BEM):
-        prepare_local_subjects_folder(
+        prepare_subject_folder(
             mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': [utils.namesbase_with_ext(BEM)]}, args)
     if not op.isfile(BEM):
@@ -431,7 +431,7 @@ def check_bem(mri_subject):
         bem_fol = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem')
         bem_files_exist = np.all([op.isfile(op.join(bem_fol, bem_fname)) for bem_fname in bem_files])
         if not bem_files_exist:
-            prepare_local_subjects_folder(
+            prepare_subject_folder(
                 mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
                 {'bem': [f for f in bem_files]}, args)
         watershed_files_exist = np.all(
@@ -1604,8 +1604,8 @@ def get_fname_format(task, fname_format='', fname_format_cond='', args_condition
     return fname_format, fname_format_cond, conditions
 
 
-def prepare_local_subjects_folder(subject, remote_subject_dir, local_subjects_dir, necessary_files, sftp_args):
-    return utils.prepare_local_subjects_folder(
+def prepare_subject_folder(subject, remote_subject_dir, local_subjects_dir, necessary_files, sftp_args):
+    return utils.prepare_subject_folder(
         necessary_files, subject, remote_subject_dir, local_subjects_dir,
         sftp_args.sftp, sftp_args.sftp_username, sftp_args.sftp_domain, sftp_args.sftp_password,
         False, sftp_args.print_traceback)
@@ -1620,7 +1620,7 @@ def get_meg_files(subject, necessary_fnames, args, events):
         else:
             fnames.append(fname)
     local_fol = op.join(MEG_DIR, args.task)
-    prepare_local_subjects_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
+    prepare_subject_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
 def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
@@ -1628,14 +1628,14 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution'):
-            prepare_local_subjects_folder(
+            prepare_subject_folder(
                 mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
                 {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
             src_dic = dict(bem=['{}-oct-6p-src.fif'.format(mri_subject)])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
             for nec_file in [src_dic, create_src_dic]:
-                file_exist = prepare_local_subjects_folder(
+                file_exist = prepare_subject_folder(
                     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
                     nec_file, args)
                 if file_exist:
@@ -1699,7 +1699,7 @@ def init_main(subject, mri_subject, remote_subject_dir, args):
         if '{subject}' in args.events_file_name:
             args.events_file_name = args.events_file_name.format(subject=subject)
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
-    prepare_local_subjects_folder(mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
+    prepare_subject_folder(mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)
     fname_format, fname_format_cond, conditions = get_fname_format_args(args)
     return fname_format, fname_format_cond, conditions

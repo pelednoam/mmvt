@@ -17,7 +17,8 @@ def copy_resources_files(mmvt_root_dir, only_verbose=False):
     files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'empty_subject.blend']
     cm_files = glob.glob(op.join(resource_dir, 'color_maps', '*.npy'))
     all_files_exist = utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
-    all_cm_files_exist = utils.all([op.isfile(fname) for fname in cm_files])
+    all_cm_files_exist = utils.all([op.isfile(
+        op.join(mmvt_root_dir, 'color_maps', '{}.npy'.format(utils.namebase(fname)))) for fname in cm_files])
     if all_files_exist and all_cm_files_exist:
         if only_verbose:
             print('All files exist!')
