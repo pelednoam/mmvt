@@ -154,7 +154,7 @@ def create_vertices_lookup(con_indices, con_names, labels):
         vertices.add(j)
         vertices_lookup[labels[i]].append(conn_name)
         vertices_lookup[labels[j]].append(conn_name)
-    return vertices, vertices_lookup
+    return np.array(list(vertices)), vertices_lookup
 
 
 def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_labels_names=None):

@@ -144,7 +144,9 @@ def create_vertices(d, mask, verts_color='pink'):
     vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))
     parent_name = 'connections_vertices'
     parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, PARENT_OBJ)
-    for vertice in ConnectionsPanel.vertices[mask]:
+    for vertice in ConnectionsPanel.vertices:
+    # for ind in range(len(d.names[mask])):
+    # for indice in indices:
         p1 = d.locations[vertice, :] * 0.1
         vert_name = '{}_vertice'.format(d.labels[vertice])
         mu.create_ico_sphere(p1, layers, vert_name)
