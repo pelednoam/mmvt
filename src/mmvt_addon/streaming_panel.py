@@ -117,7 +117,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
 
     while while_termination_func():
         try:
-            sock.settimeout(0.0012)
+            # sock.settimeout(0.0012)
             next_val = sock.recv(2048)
         except socket.timeout as e:
             if e.args[0] == 'timed out':

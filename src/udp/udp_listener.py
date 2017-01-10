@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from src.utils import utils
 from src.utils import args_utils as au
 
+SERVER = '172.17.146.219' # socket.gethostbyname(socket.gethostname())
+PORT = 45454
+
 def stdout_print(str):
     sys.stdout.write(str)
     sys.stdout.write('\n')
@@ -20,7 +23,7 @@ def start_udp_listener(buffer_size=10):
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('localhost', 10000)
+        server_address = (SERVER, PORT)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(server_address)
         buffer = []
@@ -45,7 +48,7 @@ def start_udp_listener_timeout(buffer_size=10):
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('localhost', 10000)
+        server_address = ('', PORT)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(server_address)
         buffer = []
@@ -55,7 +58,7 @@ def start_udp_listener_timeout(buffer_size=10):
 
         while udp_listening:
             try:
-                sock.settimeout(0.0012)
+                # sock.settimeout(0.0012)
                 next_val = sock.recv(2048)
             except socket.timeout as e:
                 errs_num += 1
@@ -85,6 +88,22 @@ def start_udp_listener_timeout(buffer_size=10):
 
     import matplotlib.pyplot as plt
     plt.hist(errs_total)
+
+
+def listen_raw():
+    # http://stackoverflow.com/questions/1117958/how-do-i-use-raw-socket-in-python
+    HOST = socket.gethostbyname(socket.gethostname())
+    s = socket.socket(socket.AF_INET, socket.SOCK_RAW)
+    # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
+    s.bind((HOST, PORT))
+    # s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
+    while True:
+        x = s.recvfrom(2048)
+        print(x)
+    s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+
 
 # def main(args):
 #     cmd = '{} -m src.udp.udp_listener -f start_udp_listener -b {}'.format(args.python_cmd, args.buffer_size)
@@ -123,4 +142,5 @@ if __name__ == '__main__':
     # import time
     # sys.stdin.write('stop')
     # time.sleep(3)
-    start_udp_listener_timeout(args.buffer_size)
+    # start_udp_listener_timeout(args.buffer_size)
+    listen_raw()
