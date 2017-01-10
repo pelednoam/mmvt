@@ -103,6 +103,7 @@ def reading_from_udp_while_termination_func():
 
 def udp_reader(udp_queue, while_termination_func, **kargs):
     import socket
+
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
     port = kargs.get('port', 10000)
@@ -111,7 +112,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_address = (server, port)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    # dsfgdsfg
     sock.bind(server_address)
     buffer = []
     prev_val = np.zeros((mat_len, 1))
