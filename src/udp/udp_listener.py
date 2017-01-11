@@ -82,15 +82,15 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
             sock = bind_to_server(SERVER, PORT)
         buffer = []
         errs_num = 0
-        errs_total, extra_times = [], []
+        errs_total, extra_times, messages_time = [], [], []
         time = datetime.now()
 
         while udp_listening:
             try:
                 # sock.settimeout(0.0012)
-                # sock.settimeout(0.1)
+                sock.settimeout(0.1)
                 if multicast:
-                    next_val, address = sock.recvfrom(1024)
+                    next_val, address = sock.recvfrom(2048)
                 else:
                     next_val = sock.recv(2048)
             except socket.timeout as e:
@@ -98,22 +98,24 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
                 err = e.args[0]
                 if err == 'timed out':
                     print('timed out')
-                    next_val = np.zeros((80, 1))
+                    next_val = np.zeros((101, 1))
                 else:
                     raise Exception(e)
             else:
+                messages_time.append((datetime.now() - time).microseconds / 1000)
+                time = datetime.now()
                 next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-                next_val = np.array([float(f) for f in next_val.split(',')])
+                next_val = np.array([to_float(f) for f in next_val.split(',')])
                 next_val = next_val[..., np.newaxis]
             buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
             if buffer.shape[1] >= buffer_size:
                 # print('{}/{} packets with errors'.format(errs_num, buffer_size))
                 errs_total.append(errs_num)
                 errs_num = 0
-                diff = (datetime.now() - time)
-                extra_times.append((diff.microseconds - 10000) / 1000)
+                # diff = (datetime.now() - time)
+                # extra_times.append((diff.microseconds - 10000) / 1000)
                 # stdout_print(str(datetime.now() - time))
-                time = datetime.now()
+
                 # stdout_print(','.join(buffer))
                 buffer = []
     except:
@@ -121,6 +123,13 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
 
     # import matplotlib.pyplot as plt
     # plt.hist(errs_total)
+
+
+def to_float(x_str):
+    try:
+        return float(x_str)
+    except ValueError:
+        return 0.0
 
 
 def listen_raw():

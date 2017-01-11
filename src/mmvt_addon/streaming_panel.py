@@ -44,22 +44,23 @@ def electrodes_sep_update(self, context):
 #         fcurve.keyframe_points[N - 1].co[1] = 0
 #         fcurve.keyframe_points[0].co[1] = 0
 
-#@mu.profileit()
-# @mu.timeit
-def change_graph_all_vals(mat, condition='interference'):
+
+def change_graph_all_vals(mat):
     MAX_STEPS = StreamingPanel.max_steps
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+        if fcurve_ind == 0:
+            max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
         elc_ind = StreamingPanel.lookup[mu.get_fcurve_name(fcurve)]
         curr_t = bpy.context.scene.frame_current
         for ind in range(T):
             t = curr_t + ind
-            if t > MAX_STEPS - 1:
+            if t > max_steps:
                 t = ind
             fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
-        fcurve.keyframe_points[MAX_STEPS + 1].co[1] = 0
+        fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
     bpy.context.scene.frame_current += mat.shape[1]
@@ -104,40 +105,88 @@ def reading_from_udp_while_termination_func():
 def udp_reader(udp_queue, while_termination_func, **kargs):
     import socket
 
+    def bind_to_server(server='', port=45454):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_address = (server, port)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(server_address)
+        return sock
+
+    def bind_to_multicast(port=45454, multicast_group='239.255.43.21'):
+        import struct
+        # Create the socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Bind to the server address
+        sock.bind(('', port))
+        # Tell the operating system to add the socket to the multicast group
+        # on all interfaces.
+        mreq = struct.pack('4sl', socket.inet_aton(multicast_group), socket.INADDR_ANY)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        return sock
+
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
-    port = kargs.get('port', 10000)
+    port = kargs.get('port', 45454)
+    multicast_group = kargs.get('multicast_group', '239.255.43.21')
     mat_len = kargs.get('mat_len', 1)
-    print('udp_reader:', server, port, buffer_size, mat_len)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_address = (server, port)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(server_address)
+    multicast = kargs.get('multicast', True)
+    timeout = kargs.get('timeout', 0.1)
+    max_val = kargs.get('max_val', 20000)
+    print('udp_reader:', server, port, multicast_group, buffer_size, multicast, timeout, mat_len)
+    if multicast:
+        sock = bind_to_multicast(port, multicast_group)
+    else:
+        sock = bind_to_server(server, port)
+
     buffer = []
-    prev_val = np.zeros((mat_len, 1))
+    prev_val = None
+    mat_len = 0
+    first_message = True
 
     while while_termination_func():
         try:
-            # sock.settimeout(0.0012)
-            next_val = sock.recv(2048)
+            sock.settimeout(timeout)
+            if multicast:
+                next_val, address = sock.recvfrom(2048)
+            else:
+                next_val = sock.recv(2048)
         except socket.timeout as e:
             if e.args[0] == 'timed out':
                 # print('!!! timed out !!!')
+                if prev_val is None and mat_len > 0:
+                    prev_val = np.zeros((mat_len, 1))
+                else:
+                    continue
                 next_val = prev_val
             else:
                 print('!!! {} !!!'.format(e))
                 raise Exception(e)
         else:
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-            next_val = np.array([float(f) for f in next_val.split(',')])
+            next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
+            big_values = next_val[next_val > max_val]
+            print(big_values)
+            next_val = next_val[next_val < max_val]
+            if first_message:
+                mat_len = len(next_val)
+                first_message = False
+            else:
+                if len(next_val) != mat_len:
+                    print('Wrong message len! {} ({})'.format(len(next_val), big_values))
+            # next_val = next_val[:mat_len]
             next_val = next_val[..., np.newaxis]
 
         prev_val = next_val
         buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+        # buffer.append(next_val)
         if buffer.shape[1] >= buffer_size:
+        # if len(buffer) >= buffer_size:
             # print('{} took {:.5f}s {}'.format('udp_reader', time.time() - now, buffer.shape[1]))
             # print('udp_reader: ', datetime.now())
-            udp_queue.put(buffer)
+            zeros_indices = np.where(np.all(buffer == 0, 1))[0]
+            buffer = buffer[zeros_indices]
+            # udp_queue.put(buffer)
             buffer = []
 
 
@@ -174,8 +223,12 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            args = dict(buffer_size=bpy.context.scene.streaming_buffer_size, server=bpy.context.scene.streaming_server,
-                        port=bpy.context.scene.streaming_server_port, mat_len=len(StreamingPanel.electrodes_names))
+            args = dict(buffer_size=bpy.context.scene.streaming_buffer_size,
+                        server=bpy.context.scene.streaming_server,
+                        multicast_group=bpy.context.scene.multicast_group,
+                        port=bpy.context.scene.streaming_server_port,
+                        timeout=bpy.context.scene.timeout,
+                        mat_len=len(StreamingPanel.electrodes_names))
             StreamingPanel.udp_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
@@ -220,9 +273,14 @@ class StreamButton(bpy.types.Operator):
 def template_draw(self, context):
     layout = self.layout
 
-    layout.prop(context.scene, "streaming_server", text="server:")
-    layout.prop(context.scene, "streaming_server_port", text="port:")
-    layout.prop(context.scene, "streaming_buffer_size", text="buffer size:")
+    layout.prop(context.scene, "multicast", text="multicast")
+    if bpy.context.scene.multicast:
+        layout.prop(context.scene, "multicast_group", text="group")
+    else:
+        layout.prop(context.scene, "streaming_server", text="server")
+    layout.prop(context.scene, "streaming_server_port", text="port")
+    layout.prop(context.scene, "streaming_buffer_size", text="buffer size")
+    layout.prop(context.scene, "streaming_electrodes_num", text="electrodes num")
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
@@ -230,9 +288,13 @@ def template_draw(self, context):
 
 
 bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
+bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=45454)
+bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group', default='239.255.43.21')
+bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=10000)
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
+bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -282,6 +344,13 @@ def init(addon):
     StreamingPanel.max_steps = _addon().get_max_time_steps()
     StreamingPanel.lookup = create_electrodes_dic()
     StreamingPanel.electrodes_objs_names = [l.name for l in bpy.data.objects['Deep_electrodes'].children]
+    bpy.context.scene.streaming_electrodes_num = len(StreamingPanel.electrodes_objs_names)
+
+    for fcurve_ind, fcurve in enumerate( bpy.data.objects['Deep_electrodes'].animation_data.action.fcurves):
+        if fcurve_ind == 0:
+            max_steps = min([len(fcurve.keyframe_points), StreamingPanel.max_steps]) - 2
+        for t in range(max_steps):
+            fcurve.keyframe_points[t].co[1] = 0
     StreamingPanel.init = True
 
 

@@ -757,17 +757,19 @@ def dump_args(func):
     return wrapper
 
 
-def tryit(func):
-    def wrapper(*args, **kwargs):
-        try:
-            retval = func(*args, **kwargs)
-        except:
-            print('Error in {}!'.format(func.__name__))
-            print(traceback.format_exc())
-            retval = None
-        return retval
-
-    return wrapper
+def tryit(throw_exception=True):
+    def _tryit(func):
+        def wrapper(*args, **kwargs):
+            try:
+                retval = func(*args, **kwargs)
+            except:
+                print('Error in {}!'.format(func.__name__))
+                if (throw_exception):
+                    print(traceback.format_exc())
+                retval = None
+            return retval
+        return wrapper
+    return _tryit
 
 
 def get_all_children(parents):
@@ -1194,3 +1196,10 @@ def log_err(text, logging=None):
     print(message)
     if not logging is None:
         logging.error(message)
+
+
+def to_float(x_str, def_val=0.0):
+    try:
+        return float(x_str)
+    except ValueError:
+        return def_val
