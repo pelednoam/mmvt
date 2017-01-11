@@ -54,12 +54,18 @@ def change_graph_all_vals(mat):
         if fcurve_ind == 0:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
         elc_ind = StreamingPanel.lookup[mu.get_fcurve_name(fcurve)]
+        elc_ind = fcurve_ind # No No No!!!
+        if elc_ind >= mat.shape[0]:
+            continue
         curr_t = bpy.context.scene.frame_current
         for ind in range(T):
             t = curr_t + ind
             if t > max_steps:
                 t = ind
-            fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            try:
+                fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            except:
+                s = 2
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
@@ -132,7 +138,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     mat_len = kargs.get('mat_len', 1)
     multicast = kargs.get('multicast', True)
     timeout = kargs.get('timeout', 0.1)
-    max_val = kargs.get('max_val', 20000)
+    max_val = kargs.get('max_val', 50000)
     print('udp_reader:', server, port, multicast_group, buffer_size, multicast, timeout, mat_len)
     if multicast:
         sock = bind_to_multicast(port, multicast_group)
@@ -166,8 +172,8 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
             big_values = next_val[next_val > max_val]
-            print(big_values)
-            next_val = next_val[next_val < max_val]
+            # print(big_values)
+            # next_val = next_val[next_val < max_val]
             if first_message:
                 mat_len = len(next_val)
                 first_message = False
@@ -186,7 +192,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # print('udp_reader: ', datetime.now())
             zeros_indices = np.where(np.all(buffer == 0, 1))[0]
             buffer = buffer[zeros_indices]
-            # udp_queue.put(buffer)
+            udp_queue.put(buffer)
             buffer = []
 
 
