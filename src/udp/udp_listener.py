@@ -10,6 +10,7 @@ from src.utils import args_utils as au
 
 SERVER = '172.17.146.219' # socket.gethostbyname(socket.gethostname())
 PORT = 45454
+MULTICAST_GROUP = '239.255.43.21'
 
 def stdout_print(str):
     sys.stdout.write(str)
@@ -17,20 +18,22 @@ def stdout_print(str):
     sys.stdout.flush()
 
 
-def start_udp_listener(buffer_size=10):
+def start_udp_listener(buffer_size=10, multicast=True):
     stdout_print('UDP listener: Start listening')
     udp_listening = True
 
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = (SERVER, PORT)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(server_address)
         buffer = []
-
+        if multicast:
+            sock = bind_to_multicast(PORT, MULTICAST_GROUP)
+        else:
+            sock = bind_to_server(SERVER, PORT)
         while udp_listening:
             # time.sleep(0.0001)
-            next_val = sock.recv(1024)
+            if multicast:
+                next_val, address = sock.recvfrom(2048)
+            else:
+                next_val = sock.recv(2048)
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             buffer.append(next_val)
             if len(buffer) >= buffer_size:
@@ -42,15 +45,40 @@ def start_udp_listener(buffer_size=10):
         print(traceback.format_exc())
 
 
-def start_udp_listener_timeout(buffer_size=10):
+def bind_to_server(server, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_address = (server, port)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(server_address)
+    return sock
+
+
+def bind_to_multicast(port=10000, multicast_group='239.255.43.21'):
+    import struct
+    # Create the socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # Bind to the server address
+    sock.bind((multicast_group, port))
+    # Tell the operating system to add the socket to the multicast group
+    # on all interfaces.
+    # group = socket.inet_aton(multicast_group)
+    # mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+    mreq = struct.pack('4sl', socket.inet_aton(multicast_group), socket.INADDR_ANY)
+
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    return sock
+
+
+def start_udp_listener_timeout(buffer_size=10, multicast=True):
     stdout_print('UDP listener: Start listening')
     udp_listening = True
 
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('', PORT)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(server_address)
+        if multicast:
+            sock = bind_to_multicast(PORT, MULTICAST_GROUP)
+        else:
+            sock = bind_to_server(SERVER, PORT)
         buffer = []
         errs_num = 0
         errs_total, extra_times = [], []
@@ -59,7 +87,11 @@ def start_udp_listener_timeout(buffer_size=10):
         while udp_listening:
             try:
                 # sock.settimeout(0.0012)
-                next_val = sock.recv(2048)
+                # sock.settimeout(0.1)
+                if multicast:
+                    next_val, address = sock.recvfrom(1024)
+                else:
+                    next_val = sock.recv(2048)
             except socket.timeout as e:
                 errs_num += 1
                 err = e.args[0]
@@ -142,5 +174,5 @@ if __name__ == '__main__':
     # import time
     # sys.stdin.write('stop')
     # time.sleep(3)
-    # start_udp_listener_timeout(args.buffer_size)
-    listen_raw()
+    start_udp_listener_timeout(args.buffer_size)
+    # listen_raw()
