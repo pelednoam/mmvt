@@ -53,13 +53,14 @@ def bind_to_server(server, port):
     return sock
 
 
-def bind_to_multicast(port=10000, multicast_group='239.255.43.21'):
+def bind_to_multicast(port=45454, multicast_group='239.255.43.21'):
     import struct
     # Create the socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # Bind to the server address
-    sock.bind((multicast_group, port))
+    # sock.bind((multicast_group, port))
+    sock.bind(('', port))
     # Tell the operating system to add the socket to the multicast group
     # on all interfaces.
     # group = socket.inet_aton(multicast_group)
@@ -118,8 +119,8 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
     except:
         print(traceback.format_exc())
 
-    import matplotlib.pyplot as plt
-    plt.hist(errs_total)
+    # import matplotlib.pyplot as plt
+    # plt.hist(errs_total)
 
 
 def listen_raw():
