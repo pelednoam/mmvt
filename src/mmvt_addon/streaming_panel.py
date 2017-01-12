@@ -302,18 +302,23 @@ class StreamButton(bpy.types.Operator):
 def template_draw(self, context):
     layout = self.layout
 
-    layout.prop(context.scene, "multicast", text="multicast")
-    if bpy.context.scene.multicast:
-        layout.prop(context.scene, "multicast_group", text="group")
-    else:
-        layout.prop(context.scene, "streaming_server", text="server")
-    layout.prop(context.scene, "streaming_server_port", text="port")
-    layout.prop(context.scene, "streaming_buffer_size", text="buffer size")
-    layout.prop(context.scene, "streaming_electrodes_num", text="electrodes num")
-    layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
+    layout.prop(context.scene, "stream_type", text="")
+    layout.prop(context.scene, "stream_edit", text="Edit settings")
+    if bpy.context.scene.stream_edit:
+        box = layout.box()
+        col = box.column()
+        col.prop(context.scene, "multicast", text="multicast")
+        if bpy.context.scene.multicast:
+            col.prop(context.scene, "multicast_group", text="group")
+        else:
+            col.prop(context.scene, "streaming_server", text="server")
+        col.prop(context.scene, "streaming_server_port", text="port")
+        col.prop(context.scene, "streaming_buffer_size", text="buffer size")
+        # col.prop(context.scene, "streaming_electrodes_num", text="electrodes num")
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
+    layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
 
 bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
@@ -324,6 +329,9 @@ bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
+bpy.types.Scene.stream_type = bpy.props.EnumProperty(
+    items=[("draper", "Draper", "", 1)], description='Type of stream listener')
+bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
 
 
 class StreamingPanel(bpy.types.Panel):
