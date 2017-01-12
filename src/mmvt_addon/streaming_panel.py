@@ -4,8 +4,8 @@ import sys
 import os.path as op
 import time
 import numpy as np
-import traceback
-from itertools import cycle
+# import traceback
+# from itertools import cycle
 from datetime import datetime
 from queue import Queue
 
@@ -53,7 +53,7 @@ def change_graph_all_vals(mat):
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         if fcurve_ind == 0:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
-        elc_ind = StreamingPanel.lookup[mu.get_fcurve_name(fcurve)]
+        # elc_ind = StreamingPanel.lookup[mu.get_fcurve_name(fcurve)]
         elc_ind = fcurve_ind # No No No!!!
         if elc_ind >= mat.shape[0]:
             continue
@@ -75,6 +75,7 @@ def change_graph_all_vals(mat):
         time_diff = (datetime.now() - StreamingPanel.time)
         time_diff_sec = time_diff.seconds + time_diff.microseconds * 1e-6
         print('cycle! ', str(time_diff), time_diff_sec)
+        set_electrodes_data()
         max_steps_secs = MAX_STEPS / 1000
         if time_diff_sec < max_steps_secs:
             print('sleep for {}'.format(max_steps_secs - time_diff_sec))
@@ -190,8 +191,8 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
         # if len(buffer) >= buffer_size:
             # print('{} took {:.5f}s {}'.format('udp_reader', time.time() - now, buffer.shape[1]))
             # print('udp_reader: ', datetime.now())
-            zeros_indices = np.where(np.all(buffer == 0, 1))[0]
-            buffer = buffer[zeros_indices]
+            # zeros_indices = np.where(np.all(buffer == 0, 1))[0]
+            # buffer = buffer[zeros_indices]
             udp_queue.put(buffer)
             buffer = []
 
@@ -200,6 +201,27 @@ def color_electrodes(data):
     _addon().color_objects_homogeneously(
         np.mean(data, 1), StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
         StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
+
+
+def set_electrodes_data():
+    parent_obj = bpy.data.objects['Deep_electrodes']
+    fcurves = parent_obj.animation_data.action.fcurves
+    for fcurve_ind, fcurve in enumerate(fcurves):
+        if fcurve_ind == 0:
+            max_steps = min([len(fcurve.keyframe_points), StreamingPanel.max_steps]) - 2
+            data = np.zeros((len(fcurves), max_steps))
+        for t in range(max_steps):
+            data[fcurve_ind, t] = fcurve.keyframe_points[t].co[1]
+    names = []
+    for elec in parent_obj.children:
+        names.append(elec.name)
+    StreamingPanel.electrodes_data = data
+    StreamingPanel.electrodes_names = names
+    norm_percs = (3, 97) #todo: add to gui
+    StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
+        StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+    StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
+    StreamingPanel.lookup = create_electrodes_dic()
 
 
 class StreamButton(bpy.types.Operator):
@@ -216,6 +238,7 @@ class StreamButton(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         StreamingPanel.is_streaming = not StreamingPanel.is_streaming
+        init_electrodes_fcurves()
         show_electrodes_fcurves()
         _addon().set_colorbar_max_min(StreamingPanel.data_max, StreamingPanel.data_min)
         _addon().set_colorbar_title('Electordes Streaming Data')
@@ -339,25 +362,18 @@ def init(addon):
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
-    StreamingPanel.electrodes_data, StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions = \
-        _addon().load_electrodes_data()
-    if StreamingPanel.electrodes_data is None:
-        return
-    norm_percs = (3, 97) #todo: add to gui
-    StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
-        StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-    StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
-    StreamingPanel.max_steps = _addon().get_max_time_steps()
-    StreamingPanel.lookup = create_electrodes_dic()
     StreamingPanel.electrodes_objs_names = [l.name for l in bpy.data.objects['Deep_electrodes'].children]
     bpy.context.scene.streaming_electrodes_num = len(StreamingPanel.electrodes_objs_names)
+    StreamingPanel.max_steps = _addon().get_max_time_steps()
+    StreamingPanel.init = True
 
+
+def init_electrodes_fcurves():
     for fcurve_ind, fcurve in enumerate( bpy.data.objects['Deep_electrodes'].animation_data.action.fcurves):
         if fcurve_ind == 0:
             max_steps = min([len(fcurve.keyframe_points), StreamingPanel.max_steps]) - 2
         for t in range(max_steps):
             fcurve.keyframe_points[t].co[1] = 0
-    StreamingPanel.init = True
 
 
 def create_electrodes_dic():

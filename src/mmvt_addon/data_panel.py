@@ -647,7 +647,7 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         _meg_evoked_files_update()
         return {"FINISHED"}
 
-
+@mu.tryit(False)
 def add_data_to_electrodes(all_data, meta_data, window_len=None):
     print('Adding data to Electrodes')
     now = time.time()
@@ -679,6 +679,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
     return conditions
 
 
+@mu.tryit(False)
 def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None):
     # todo: merge with add_data_to_brain_parent_obj, same code
     parent_obj.animation_data_clear()

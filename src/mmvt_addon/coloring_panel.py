@@ -113,7 +113,8 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
     default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     for obj_name, values in zip(names, data):
-        obj_name = obj_name.astype(str)
+        if not isinstance(obj_name, str):
+            obj_name = obj_name.astype(str)
         if values.ndim == 0:
             values = [values]
         t_ind = min(len(values) - 1, cur_frame)
@@ -921,10 +922,12 @@ class ColoringMakerPanel(bpy.types.Panel):
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
         meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
             mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
-        electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
-            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))) or \
-            op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_data.npy'.format(
-            'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
+        # electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
+        #     'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))) or \
+        #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_data.npy'.format(
+        #     'avg' if bpy.context.scene.selection_type == 'conds' else 'diff')))
+        electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
+                                 op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
         electrodes_stim_files_exist = len(glob.glob(op.join(
             mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
         electrodes_labels_files_exist = len(glob.glob(op.join(
