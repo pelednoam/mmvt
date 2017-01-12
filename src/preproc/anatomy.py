@@ -726,6 +726,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
+    parser.add_argument('--freesurfer', help='', required=False, default=1, type=au.is_true)
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
@@ -751,10 +752,10 @@ if __name__ == '__main__':
     # Some of the functions are using freesurfer, so if you want to
     # run main, you need to source freesurfer.
     # ******************************************************************
-    if os.environ.get('FREESURFER_HOME', '') == '':
+    args = read_cmd_args()
+    if os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
         print('Source freesurfer and rerun')
     else:
-        args = read_cmd_args()
         pu.run_on_subjects(args, main)
         print('finish!')
 
