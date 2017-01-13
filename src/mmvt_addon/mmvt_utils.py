@@ -1203,3 +1203,10 @@ def to_float(x_str, def_val=0.0):
         return float(x_str)
     except ValueError:
         return def_val
+
+
+def to_int(x_str, def_val=0):
+    try:
+        return int(x_str)
+    except ValueError:
+        return def_val
