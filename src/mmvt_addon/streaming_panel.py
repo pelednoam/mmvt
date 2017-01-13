@@ -4,8 +4,9 @@ import sys
 import os.path as op
 import time
 import numpy as np
+import glob
 # import traceback
-# from itertools import cycle
+from itertools import cycle
 from datetime import datetime
 from queue import Queue
 
@@ -20,13 +21,15 @@ def change_graph_all_vals_thread(q, while_termination_func, **kargs):
 
 
 def electrodes_sep_update(self, context):
+    if StreamingPanel.electrodes_data is None:
+        return
     T = StreamingPanel.max_steps
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
-        elc_ind = StreamingPanel.lookup[mu.get_fcurve_name(fcurve)]
+        elc_ind = fcurve_ind
         for t in range(T):
-            fcurve.keyframe_points[t].co[1] = StreamingPanel.electrodes_data[elc_ind, t, 0] + \
+            fcurve.keyframe_points[t].co[1] = StreamingPanel.electrodes_data[elc_ind, t] + \
                                               (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
     mu.view_all_in_graph_editor()
 
@@ -62,10 +65,7 @@ def change_graph_all_vals(mat):
             t = curr_t + ind
             if t > max_steps:
                 t = ind
-            try:
-                fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
-            except:
-                s = 2
+            fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
@@ -107,6 +107,25 @@ def calc_color_ind(val, data_min, colors_ratio):
 
 def reading_from_udp_while_termination_func():
     return StreamingPanel.is_streaming
+
+
+def offline_logs_reader(udp_queue, while_termination_func, **kargs):
+    buffer_size = kargs.get('buffer_size', 10)
+    input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
+    files = sorted(glob.glob(op.join(input_fol, 'streaming_data_*.npy')))
+    offline_data = []
+    for log_file in files:
+        data = np.load(log_file)
+        offline_data = data if offline_data == [] else np.hstack((offline_data, data))
+    offline_data = cycle(offline_data.T)
+    buffer = []
+    while while_termination_func:
+        next_val = next(offline_data)
+        next_val = next_val[..., np.newaxis]
+        buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+        if buffer.shape[1] >= buffer_size:
+            udp_queue.put(buffer)
+            buffer = []
 
 
 def udp_reader(udp_queue, while_termination_func, **kargs):
@@ -198,9 +217,11 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
 
 
 def color_electrodes(data):
-    _addon().color_objects_homogeneously(
-        np.mean(data, 1), StreamingPanel.electrodes_names, StreamingPanel.electrodes_conditions,
-        StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
+    parent_obj = bpy.data.objects['Deep_electrodes']
+    names = [elec.name for elec in parent_obj.children]
+    # _addon().color_objects_homogeneously(
+    #     np.mean(data, 1), names, StreamingPanel.electrodes_conditions,
+    #     StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
 
 
 def set_electrodes_data():
@@ -212,16 +233,22 @@ def set_electrodes_data():
             data = np.zeros((len(fcurves), max_steps))
         for t in range(max_steps):
             data[fcurve_ind, t] = fcurve.keyframe_points[t].co[1]
+    if bpy.context.scene.save_streaming:
+        output_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
+        output_fname = 'streaming_data_{}.npy'.format(datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S'))
+        mu.make_dir(output_fol)
+        np.save(op.join(output_fol, output_fname), data)
+
     names = []
     for elec in parent_obj.children:
         names.append(elec.name)
     StreamingPanel.electrodes_data = data
-    StreamingPanel.electrodes_names = names
+    # StreamingPanel.electrodes_names = names
     norm_percs = (3, 97) #todo: add to gui
     StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
         StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
     StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
-    StreamingPanel.lookup = create_electrodes_dic()
+    # StreamingPanel.lookup = create_electrodes_dic()
 
 
 class StreamButton(bpy.types.Operator):
@@ -238,11 +265,6 @@ class StreamButton(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         StreamingPanel.is_streaming = not StreamingPanel.is_streaming
-        init_electrodes_fcurves()
-        show_electrodes_fcurves()
-        _addon().set_colorbar_max_min(StreamingPanel.data_max, StreamingPanel.data_min)
-        _addon().set_colorbar_title('Electordes Streaming Data')
-        mu.show_only_render(True)
         if StreamingPanel.first_time:
             StreamingPanel.first_time = False
             try:
@@ -252,13 +274,24 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
+            init_electrodes_fcurves()
+            show_electrodes_fcurves()
+            _addon().set_colorbar_max_min(StreamingPanel.data_max, StreamingPanel.data_min)
+            _addon().set_colorbar_title('Electrodes Streaming Data')
+            mu.show_only_render(True)
+            bpy.context.scene.frame_current = 0
             args = dict(buffer_size=bpy.context.scene.streaming_buffer_size,
                         server=bpy.context.scene.streaming_server,
                         multicast_group=bpy.context.scene.multicast_group,
                         port=bpy.context.scene.streaming_server_port,
                         timeout=bpy.context.scene.timeout,
-                        mat_len=len(StreamingPanel.electrodes_names))
-            StreamingPanel.udp_queue = mu.run_thread(udp_reader, reading_from_udp_while_termination_func, **args)
+                        mat_len=len(bpy.data.objects['Deep_electrodes'].children))
+            if bpy.context.scene.stream_type == 'offline':
+                StreamingPanel.udp_queue = mu.run_thread(
+                    offline_logs_reader, reading_from_udp_while_termination_func, **args)
+            else:
+                StreamingPanel.udp_queue = mu.run_thread(
+                    udp_reader, reading_from_udp_while_termination_func, **args)
 
         return {'RUNNING_MODAL'}
 
@@ -307,17 +340,20 @@ def template_draw(self, context):
     if bpy.context.scene.stream_edit:
         box = layout.box()
         col = box.column()
-        col.prop(context.scene, "multicast", text="multicast")
-        if bpy.context.scene.multicast:
-            col.prop(context.scene, "multicast_group", text="group")
-        else:
-            col.prop(context.scene, "streaming_server", text="server")
-        col.prop(context.scene, "streaming_server_port", text="port")
+        if bpy.context.scene.stream_type != 'offline':
+            col.prop(context.scene, "multicast", text="multicast")
+            if bpy.context.scene.multicast:
+                col.prop(context.scene, "multicast_group", text="group")
+            else:
+                col.prop(context.scene, "streaming_server", text="server")
+            col.prop(context.scene, "streaming_server_port", text="port")
         col.prop(context.scene, "streaming_buffer_size", text="buffer size")
         # col.prop(context.scene, "streaming_electrodes_num", text="electrodes num")
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
+
+    layout.prop(context.scene, 'save_streaming', text='save streaming data')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
 
@@ -330,8 +366,10 @@ bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_serv
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(
-    items=[("draper", "Draper", "", 1)], description='Type of stream listener')
+    items=[("draper", "Draper", "", 1), ('offline', 'Offline recordings', '', 2)],
+    description='Type of stream listener')
 bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -349,6 +387,7 @@ class StreamingPanel(bpy.types.Panel):
     udp_queue = None
     udp_viz_queue = None
     electrodes_file = None
+    electrodes_data = None
     time = datetime.now()
     electrodes_names, electrodes_conditions = [], []
     data_max, data_min, electrodes_colors_ratio = 0, 0, 1
@@ -367,6 +406,7 @@ def init(addon):
     StreamingPanel.is_listening = False
     StreamingPanel.is_streaming = False
     StreamingPanel.first_time = True
+    StreamingPanel.electrodes_data = None
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
@@ -383,16 +423,16 @@ def init_electrodes_fcurves():
         for t in range(max_steps):
             fcurve.keyframe_points[t].co[1] = 0
 
-
-def create_electrodes_dic():
-    parent_obj = bpy.data.objects['Deep_electrodes']
-    objs_names = [l.name for l in parent_obj.children]
-    elcs_names = [l for l in StreamingPanel.electrodes_names]
-    lookup = {}
-    for obj_name in objs_names:
-        ind = elcs_names.index(obj_name)
-        lookup[obj_name] = ind
-    return lookup
+#
+# def create_electrodes_dic():
+#     parent_obj = bpy.data.objects['Deep_electrodes']
+#     objs_names = [l.name for l in parent_obj.children]
+#     elcs_names = [l for l in StreamingPanel.electrodes_names]
+#     lookup = {}
+#     for obj_name in objs_names:
+#         ind = elcs_names.index(obj_name)
+#         lookup[obj_name] = ind
+#     return lookup
 
 
 def register():
