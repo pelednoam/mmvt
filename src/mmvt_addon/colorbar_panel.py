@@ -37,7 +37,7 @@ def get_colormap_name():
     return bpy.context.scene.colorbar_files
 
 
-@mu.tryit(False)
+@mu.tryit
 def set_colorbar_title(val):
     init = ColorbarPanel.init
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val

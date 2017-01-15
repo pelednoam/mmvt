@@ -393,6 +393,9 @@ def init(addon):
     if not op.isfile(cm_fname):
         print("Streaming: Can't load without the cm file {}".format(cm_fname))
         return
+    if not bpy.data.objects.get('Deep_electrodes'):
+        print('Streaming: No electrodes')
+        return
     StreamingPanel.addon = addon
     StreamingPanel.is_listening = False
     StreamingPanel.is_streaming = False

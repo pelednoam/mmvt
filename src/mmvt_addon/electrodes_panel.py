@@ -149,24 +149,30 @@ def update_cursor():
 
 def show_lh_update(self, context):
     if ElecsPanel.init:
-        hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+        show_hide_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
         updade_lead_hemis()
         init_electrodes_list()
 
 
 def show_rh_update(self, context):
     if ElecsPanel.init:
-        hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+        show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
         updade_lead_hemis()
         init_electrodes_list()
 
 
-def hide_show_hemi_electrodes(hemi, val):
+def show_hide_hemi_electrodes(hemi, val):
     for elec_obj in ElecsPanel.parent.children:
         elec_hemi = get_elec_hemi(elec_obj.name)
         if elec_hemi == hemi:
             elec_obj.hide = not val
             elec_obj.hide_render = not val
+
+
+def show_hide_electrodes(val):
+    for elec_obj in ElecsPanel.parent.children:
+        elec_obj.hide = not val
+        elec_obj.hide_render = not val
 
 
 def get_elec_hemi(elec_name):
@@ -232,8 +238,8 @@ def _show_only_current_lead_update():
         for elec_obj in ElecsPanel.parent.children:
             elec_obj.hide = elec_obj.hide_render = ElecsPanel.groups[elec_obj.name] != bpy.context.scene.current_lead
     else:
-        hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
-        hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+        show_hide_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+        show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
         # updade_lead_hemis()
 
 
@@ -243,8 +249,8 @@ def set_show_only_lead(val):
 
 # def show_elecs_hemi_update():
 #     if ElecsPanel.init:
-#         hide_show_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
-#         hide_show_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
+#         show_hide_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
+#         show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
 #         updade_lead_hemis()
 
 
@@ -500,6 +506,7 @@ class ElecsPanel(bpy.types.Panel):
 
 
 def init(addon):
+    import shutil
     ElecsPanel.addon  = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
@@ -514,6 +521,7 @@ def init(addon):
         else:
             print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
             return
+    # show_hide_electrodes(True)
     ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
     ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
     ElecsPanel.all_electrodes = [el.name for el in ElecsPanel.parent.children]
@@ -522,7 +530,10 @@ def init(addon):
     ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.all_electrodes)
     init_leads_list()
     init_electrodes_list()
-    init_electrodes_labeling(addon)
+    ret = init_electrodes_labeling(addon)
+    if not ret:
+        print('No electrodes labeling files.')
+        return
     addon.clear_colors_from_parent_childrens('Deep_electrodes')
     addon.clear_cortex()
     bpy.context.scene.show_only_lead = False
@@ -581,6 +592,7 @@ def init_electrodes_labeling(addon):
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
     ElecsPanel.faces_verts = addon.get_faces_verts()
+    return len(labling_files) > 0
 
 
 def find_elecrode_labeling_files():
