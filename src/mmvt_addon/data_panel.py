@@ -356,13 +356,15 @@ def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_s
     for (x, y, z), name in zip(f['pos'], f['names']):
         elc_name = name.astype(str)
         if not bpy.data.objects.get(elc_name) is None:
-            continue
-        print('creating {}: {}'.format(elc_name, (x, y, z)))
-        mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
-        cur_obj = bpy.data.objects[elc_name]
-        cur_obj.select = True
-        cur_obj.parent = bpy.data.objects[parnet_name]
-        mu.create_and_set_material(cur_obj)
+            elc_obj = bpy.data.objects[elc_name]
+            elc_obj.location = [x * 0.1, y * 0.1, z * 0.1]
+        else:
+            print('creating {}: {}'.format(elc_name, (x, y, z)))
+            mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
+            cur_obj = bpy.data.objects[elc_name]
+            cur_obj.select = True
+            cur_obj.parent = bpy.data.objects[parnet_name]
+            mu.create_and_set_material(cur_obj)
 
 
 @mu.tryit

@@ -31,7 +31,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     data = fix_str_items_in_csv(data)
     # Check if the electrodes coordinates has a header
     try:
-        header = data[0, 1:].astype(float)
+        header = data[0, 1:4].astype(float)
     except:
         data = np.delete(data, (0), axis=0)
 
