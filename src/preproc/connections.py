@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 import scipy.io as sio
+import glob
 import traceback
 
 from src.utils import utils
@@ -92,16 +93,10 @@ def downsample_data(data):
     return new_data
 
 
-def save_rois_connectivity(subject, args):
-    # atlas, mat_fname, mat_field, conditions, stat=STAT_DIFF, windows=0,
-    #                        labels_exclude=['unknown', 'corpuscallosum'], threshold=0, threshold_percentile=0,
-    #                        color_map='jet', norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
-
-    # args.atlas, args.mat_fname, args.mat_field, args.conditions, args.stat,
-    # args.windows, args.labels_exclude, args.threshold, args.threshold_percentile,
-    # args.color_map, args.norm_by_percentile, args.norm_percs)
-
-
+def save_rois_matlab_connectivity(subject, args):
+    if not op.isfile(args.mat_fname):
+        print("Can't find the input file {}!".format(args.mat_fname))
+        return False
     d = dict()
     data = sio.loadmat(args.mat_fname)[args.mat_field]
     d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject)
@@ -111,38 +106,77 @@ def save_rois_connectivity(subject, args):
     #     args.threshold_percentile, args.color_map, args.norm_by_percentile, args.norm_percs, args.symetric_colors)
     d['conditions'] = args.conditions
     np.savez(op.join(MMVT_DIR, subject, 'rois_con'), **d)
+    return op.isfile(op.join(MMVT_DIR, subject, 'rois_con'))
 
 
-def calc_lables_meg_connectivity(subject, args):
+def calc_lables_connectivity(subject, args):
+    import mne.connectivity
+
     data, names = {}, {}
-    LBL = op.join(MMVT_DIR, subject, 'labels_data_{}.npz')
+    output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_rois_con.npz'.format(args.connectivity_modality))
+    conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
+    labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
+    if len(labels_data_fnames) == 0:
+        print("You don't have any connectivity data in {}, create it using the {} preproc".format(
+            conn_fol, args.connectivity_modality))
+        return False
+    if len(labels_data_fnames) != 2:
+        print("You have more than one type of {} connectivity data in {}, please pick one".format(
+            args.connectivity_modality, conn_fol))
+        print('For now, just move the other files somewhere else...')
+        #todo: Write code that lets the user pick one
+        return False
+    labels_data_fname_template = labels_data_fnames[0].replace('rh', '{hemi}').replace('lh', '{hemi}')
+    if not utils.both_hemi_files_exist(labels_data_fname_template):
+        print("Can't find the labels data for both hemi in {}".format(conn_fol))
+        return False
     for hemi in utils.HEMIS:
-        labels_output_fname = LBL.format(hemi)
+        labels_output_fname = labels_data_fname_template.format(hemi=hemi)
         f = np.load(labels_output_fname)
         data[hemi] = np.squeeze(f['data'])
         names[hemi] = f['names']
     data = np.concatenate((data['lh'], data['rh']))
     names = np.concatenate((names['lh'], names['rh']))
-    corr = np.zeros((data.shape[0], data.shape[0], data.shape[2]))
-    for w in range(data.shape[2]):
-        corr[:, :, w] = np.corrcoef(data[:, :, w])
-        np.fill_diagonal(corr[:, :, w], 0)
+    if data.ndim == 2:
+        # No windows yet
+        import math
+        T = data.shape[1] # If this is fMRI data, the real T is T*tr
+        windows_nun = math.floor((T - args.windows_length) / args.windows_shift + 1)
+        windows = np.zeros((windows_nun, 2))
+        for win_ind in range(windows_nun):
+            windows[win_ind] = [win_ind * args.windows_shift, win_ind * args.windows_shift + args.windows_length]
+    elif data.ndim == 3:
+        windows_nun = data.shape[2]
+    else:
+        print('Wronge numner of dims in data! Can be 2 or 3, not {}.'.format(data.ndim))
+        return False
+    conn = np.zeros((data.shape[0], data.shape[0], windows_nun))
+    if args.connectivity_method == 'corr':
+        for w in range(windows_nun):
+            if data.ndim == 3:
+                conn[:, :, w] = np.corrcoef(data[:, :, w])
+            else:
+                conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
+            np.fill_diagonal(conn[:, :, w], 0)
+    elif args.connectivity_method == 'wpli2_debiased':
+        conn_data = np.transpose(data, [2, 0, 1])
+        conn = mne.connectivity.spectral_connectivity(conn_data, 'wpli2_debiased', sfreq=1000.0, fmin=5, fmax=100)
     # np.sum(abs(np.mean(corr, 2)) > 0.9)
-    args.threshold = 0.9
-    args.threshold_percentile = 0
-    args.symetric_colors = True
-    corr = corr[:, :, :, np.newaxis]
+    # args.threshold = 0.9
+    # args.threshold_percentile = 0
+    # args.symetric_colors = True
+    conn = conn[:, :, :, np.newaxis]
     d = dict()
-    d['conditions'] = f['conditions']
+    d['conditions'] = f['conditions'] if 'conditions' in f else ['rest']
     args.labels_exclude = []
     d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
-     d['data_max'], d['data_min']) = calc_connectivity(corr, d['labels'], d['hemis'], args)
+     d['data_max'], d['data_min']) = calc_connectivity(conn, d['labels'], d['hemis'], args)
     vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
-    output_fname = op.join(MMVT_DIR, subject, 'rois_con.npz')
     print('Saving results to {}'.format(output_fname))
     np.savez(output_fname, **d)
-    utils.save((vertices, vertices_lookup), op.join(MMVT_DIR, subject, 'rois_con_vertices.pkl'))
+    utils.save((vertices, vertices_lookup), op.join(
+        MMVT_DIR, subject, 'connectivity', '{}_rois_con_vertices.pkl'.format(args.connectivity_modality)))
     return True
 
 
@@ -236,14 +270,14 @@ def calc_connectivity(data, labels, hemis, args):
 
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_rois_connectivity'):
-        flags['save_rois_connectivity'] = save_rois_connectivity(subject, args)
+        flags['save_rois_connectivity'] = save_rois_matlab_connectivity(subject, args)
 
     if utils.should_run(args, 'save_electrodes_coh'):
         # todo: Add the necessary parameters
         flags['save_electrodes_coh'] = save_electrodes_coh(subject, args)
 
-    if utils.should_run(args, 'calc_lables_meg_connectivity'):
-        flags['calc_lables_meg_connectivity'] = calc_lables_meg_connectivity(subject, args)
+    if utils.should_run(args, 'calc_lables_connectivity'):
+        flags['calc_lables_connectivity'] = calc_lables_connectivity(subject, args)
 
     return flags
 
@@ -259,6 +293,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--connectivity_method', help='', required=False, default='corr')
+    parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
@@ -270,6 +306,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--data_max', help='', required=False, default=0, type=float)
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
+    parser.add_argument('--windows_length', help='', required=False, default=2000, type=int)
+    parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
     pu.add_common_args(parser)
 
     args = utils.Bag(au.parse_parser(parser, argv))

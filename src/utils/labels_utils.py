@@ -271,6 +271,79 @@ def calc_center_of_mass(labels, ret_mat=False):
     return center_of_mass
 
 
+def label_is_excluded(label_name, compiled_excludes):
+    return not compiled_excludes.search(label_name) is None
+
+
+def calc_time_series_per_label(x, labels, measure, excludes=(),
+                               figures_dir='', do_plot=False, do_plot_all_vertices=False):
+    import sklearn.decomposition as deco
+    from functools import partial
+    import re
+    import matplotlib.pyplot as plt
+
+    _label_is_excluded = partial(label_is_excluded, compiled_excludes=re.compile('|'.join(excludes)))
+    labels = [l for l in labels if not _label_is_excluded(l.name)]
+    labels_data = np.zeros((len(labels), x.shape[-1]))
+    labels_names = []
+    if do_plot_all_vertices:
+        all_vertices_plots_dir = op.join(figures_dir, 'all_vertices')
+        utils.make_dir(all_vertices_plots_dir)
+    if do_plot:
+        measure_plots_dir = op.join(figures_dir, measure)
+        utils.make_dir(measure_plots_dir)
+    for ind, label in enumerate(labels):
+        if measure == 'mean':
+            labels_data[ind, :] = np.mean(x[label.vertices, 0, 0, :], 0)
+        elif measure == 'PCA':
+            print(label)
+            _x = x[label.vertices, 0, 0, :].T
+            remove_cols = np.where(np.all(_x == np.mean(_x, 0), 0))[0]
+            _x = np.delete(_x, remove_cols, 1)
+            _x = (_x - np.mean(_x, 0)) / np.std(_x, 0)
+            pca = deco.PCA(1)
+            x_r = pca.fit(_x).transform(_x)
+            labels_data[ind, :] = x_r.ravel()
+        elif measure == 'cv': #''coef_of_variation':
+            label_mean = np.mean(x[label.vertices, 0, 0, :], 0)
+            label_std = np.std(x[label.vertices, 0, 0, :], 0)
+            labels_data[ind, :] = label_std / label_mean
+        labels_names.append(label.name)
+        if do_plot_all_vertices:
+            plt.figure()
+            plt.plot(x[label.vertices, 0, 0, :].T)
+            plt.savefig(op.join(all_vertices_plots_dir, '{}.jpg'.format(label.name)))
+            plt.close()
+        if do_plot:
+            plt.figure()
+            plt.plot(labels_data[ind, :])
+            plt.savefig(op.join(measure_plots_dir, '{}_{}.jpg'.format(measure, label.name)))
+            plt.close()
+
+    return labels_data, labels_names
+
+def morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1):
+    labels_fol = op.join(SUBJECTS_DIR, morph_from_subject, 'label')
+    labels_fname = op.join(labels_fol, '{}.{}.pkl'.format(hemi, atlas))
+    annot_file = op.join(SUBJECTS_DIR, morph_from_subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+    if not op.isfile(annot_file):
+        print("Can't find the annot file in {}!".format(annot_file))
+        return []
+    if not op.isfile(labels_fname):
+        labels = mne.read_labels_from_annot(morph_from_subject, atlas, subjects_dir=SUBJECTS_DIR, hemi=hemi)
+        if morph_from_subject != morph_to_subject:
+            morphed_labels = []
+            for label in labels:
+                label.values.fill(1.0)
+                morphed_label = label.morph(morph_from_subject, morph_to_subject, 5, None, SUBJECTS_DIR, n_jobs)
+                morphed_labels.append(morphed_label)
+            labels = morphed_labels
+        utils.save(labels, labels_fname)
+    else:
+        labels = utils.load(labels_fname)
+    return labels
+
+
 if __name__ == '__main__':
     subject = 'mg96'
     atlas = 'laus250'
@@ -278,3 +351,4 @@ if __name__ == '__main__':
     n_jobs = 6
     # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
     # solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
+

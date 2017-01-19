@@ -14,6 +14,7 @@ from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
 from src.utils import preproc_utils as pu
+from src.utils import labels_utils as lu
 
 try:
     from sklearn.neighbors import BallTree
@@ -294,16 +295,34 @@ def mri_convert_hemis(contrast_file_template, contrasts=None, existing_format='n
             else:
                 contrast_fname = contrast_file_template.format(hemi=hemi, format='{format}')
             if not op.isfile(contrast_fname.format(format='mgz')):
-                mri_convert(contrast_fname, existing_format, 'mgz')
+                convert_fmri_file(contrast_fname, existing_format, 'mgz')
 
 
-def mri_convert(volume_fname, from_format='nii.gz', to_format='mgz'):
+# def mri_convert(volume_fname, from_format='nii.gz', to_format='mgz'):
+#     try:
+#         print('convert {} to {}'.format(volume_fname.format(format=from_format), volume_fname.format(format=to_format)))
+#         utils.run_script('mri_convert {} {}'.format(volume_fname.format(format=from_format),
+#                                                     volume_fname.format(format=to_format)))
+#     except:
+#         print('Error running mri_convert!')
+
+
+def convert_fmri_file(volume_fname_template, from_format='nii.gz', to_format='mgz'):
     try:
-        print('convert {} to {}'.format(volume_fname.format(format=from_format), volume_fname.format(format=to_format)))
-        utils.run_script('mri_convert {} {}'.format(volume_fname.format(format=from_format),
-                                                    volume_fname.format(format=to_format)))
+        output_fname = volume_fname_template.format(format=to_format)
+        intput_fname = volume_fname_template.format(format=from_format)
+        if not op.isfile(output_fname):
+            if op.isfile(intput_fname):
+                utils.run_script('mri_convert {} {}'.format(intput_fname, output_fname))
+                return output_fname
+            else:
+                print('No imput file was found! {}'.format(intput_fname))
+                return ''
+        else:
+            return output_fname
     except:
         print('Error running mri_convert!')
+        return ''
 
 
 def calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file='', aseg_stats_file_name='',
@@ -515,13 +534,37 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def load_resting_state(subject):
-    fmri_fname = op.join(FMRI_DIR, subject, '{}_mri_resting.mgz'.format(subject))
-    f = nib.load(fmri_fname)
-    x = f.get_data()
-    header = f.get_header()
-    print(x.shape)
-    print('sdf')
+def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', morph_from_subject='',
+                          morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
+                          excludes = ('corpuscallosum', 'unknown')):
+    if fmri_file_template == '':
+        print('You should set the fmri_file_template for something like ' +
+              '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +
+              'These files suppose to be located in {}'.format(op.join(FMRI_DIR, subject)))
+        return False
+    fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+    morph_from_subject = subject if morph_from_subject == '' else morph_from_subject
+    morph_to_subject = subject if morph_to_subject == '' else morph_to_subject
+    figures_dir = op.join(FMRI_DIR, subject, 'figures')
+    for hemi in utils.HEMIS:
+        output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, measure, hemi))
+        if op.isfile(output_fname) and not overwrite:
+            print('{} already exist'.format(output_fname))
+            return
+        fmri_fname = convert_fmri_file(fmri_file_template.format(
+            subject=subject, morph_to_subject=morph_to_subject, hemi=hemi, format='{format}'))
+        x = nib.load(fmri_fname).get_data()
+        labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
+        if len(labels) == 0:
+            return False
+        # print(max([max(label.vertices) for label in labels]))
+        labels_data, labels_names = lu.calc_time_series_per_label(
+            x, labels, measure, excludes, figures_dir, do_plot, do_plot_all_vertices)
+        np.savez(output_fname, data=labels_data, names=labels_names)
+
+    return utils.both_hemi_files_exist(op.join(FMRI_DIR, subject, 'labels_data_{}_{}_{}.npz'.format(
+        atlas, measure, '{hemi}')))
+
 
 def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
@@ -677,6 +720,12 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
 
+    if 'analyze_resting_state' in args.function:
+        flags['analyze_resting_state'] = analyze_resting_state(
+            subject, args.atlas, args.fmri_file_template, args.resting_state_measure, args.morph_labels_from_subject,
+            args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
+            args.resting_state_plot_all_vertices, args.excluded_labels)
+
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
         if meg_subject == '':
@@ -688,9 +737,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
+    return flags
 
-    if 'load_resting_state' in args.function:
-        flags['load_resting_state'] = load_resting_state(subject)
 
 def read_cmd_args(argv=None):
     import argparse
@@ -717,6 +765,16 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
+
+    # Resting state flags
+    parser.add_argument('--fmri_file_template', help='', required=False, default='')
+    parser.add_argument('--resting_state_measure', help='', required=False, default='mean')
+    parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
+    parser.add_argument('--morph_labels_to_subject', help='', required=False, default='fsaverage')
+    parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
+    parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
