@@ -550,7 +550,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', mor
         output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, measure, hemi))
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
-            return
+            return False
         fmri_fname = convert_fmri_file(fmri_file_template.format(
             subject=subject, morph_to_subject=morph_to_subject, hemi=hemi, format='{format}'))
         x = nib.load(fmri_fname).get_data()
@@ -560,9 +560,10 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', mor
         # print(max([max(label.vertices) for label in labels]))
         labels_data, labels_names = lu.calc_time_series_per_label(
             x, labels, measure, excludes, figures_dir, do_plot, do_plot_all_vertices)
+        utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
         np.savez(output_fname, data=labels_data, names=labels_names)
 
-    return utils.both_hemi_files_exist(op.join(FMRI_DIR, subject, 'labels_data_{}_{}_{}.npz'.format(
+    return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         atlas, measure, '{hemi}')))
 
 

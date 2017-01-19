@@ -114,6 +114,7 @@ def calc_lables_connectivity(subject, args):
 
     data, names = {}, {}
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_rois_con.npz'.format(args.connectivity_modality))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
     if len(labels_data_fnames) == 0:
