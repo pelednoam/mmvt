@@ -536,7 +536,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
 
 def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
-                          excludes = ('corpuscallosum', 'unknown')):
+                          excludes=('corpuscallosum', 'unknown')):
     if fmri_file_template == '':
         print('You should set the fmri_file_template for something like ' +
               '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +

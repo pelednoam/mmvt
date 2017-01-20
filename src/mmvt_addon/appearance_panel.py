@@ -139,19 +139,20 @@ def appearance_show_rois_activity_update(self=None, context=None):
     # if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
     #                 bpy.context.scene.layers[_addon().ACTIVITY_LAYER] != is_activity():
     #     print('Error in displaying the layers!')
-    if not AppearanceMakerPanel.addon is None and is_activity():
+    if not _addon() is None and is_activity():
         fmri_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'fmri' else is_activity()
         meg_hide = not is_activity() if bpy.context.scene.subcortical_layer == 'meg' else is_activity()
         if not bpy.context.scene.objects_show_hide_sub_cortical:
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=fmri_hide, obj_name="Subcortical_fmri_activity_map")
-            AppearanceMakerPanel.addon.show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
+            _addon().show_hide_hierarchy(do_hide=fmri_hide, obj_name="Subcortical_fmri_activity_map")
+            _addon().show_hide_hierarchy(do_hide=meg_hide, obj_name="Subcortical_meg_activity_map")
 
 
 def show_hide_connections(value=True):
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = value
-    # if bpy.data.objects.get(connections_panel.PARENT_OBJ):
-    #     bpy.data.objects.get(connections_panel.PARENT_OBJ).select = \
-    #         bpy.context.scene.layers[CONNECTIONS_LAYER] == value
+    if value and bpy.data.objects.get(connections_panel.PARENT_OBJ):
+        _addon().show_hide_hierarchy(False, connections_panel.PARENT_OBJ)
+        # bpy.data.objects.get(connections_panel.PARENT_OBJ).hide = False
+        # bpy.data.objects.get(connections_panel.PARENT_OBJ).hide_render = False
 
 
 # def show_connections(value=True):

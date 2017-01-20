@@ -27,9 +27,10 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     else:
         labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     if len(labels) == 0:
-        raise Exception('morph_labels_from_fsaverage: No labels files found!')
+        print('morph_labels_from_fsaverage: No labels files found!')
+        return False
     if subject == fsaverage:
-        return
+        return True
     surf_loaded = False
     for fs_label in labels:
         label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
@@ -47,7 +48,7 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
                     surf_loaded = True
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
-
+    return True
 
 
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, n_jobs=1):

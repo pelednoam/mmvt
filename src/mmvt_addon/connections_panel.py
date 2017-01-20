@@ -87,7 +87,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
     parent_obj.animation_data_clear()
     N = len(indices)
     print('{} connections are above the threshold'.format(N))
-    create_conncection_for_both_conditions(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
+    create_conncection_per_condition(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
     create_vertices(d, mask, verts_color)
     print('Create connections for the conditions {}'.format('difference' if stat == STAT_DIFF else 'mean'))
     create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat)
@@ -101,12 +101,21 @@ def calc_mask(stat_data, threshold, threshold_type, windows_num):
     if stat_data.ndim == 1:
         mask = abs(stat_data) >= threshold if threshold_type == 'above' else abs(stat_data) <= threshold
     else:
-        mask = np.max(abs(stat_data), axis=1) >= threshold if threshold_type == 'above' else \
-            np.max(abs(stat_data), axis=1) <= threshold
+        if threshold_type == 'abs_above':
+            mask = np.max(abs(stat_data), axis=1) >= threshold
+        elif threshold_type == 'above':
+            mask = np.max(stat_data, axis=1) >= threshold
+        elif threshold_type == 'abs_below':
+            mask = np.max(abs(stat_data), axis=1) <= threshold
+        elif threshold_type == 'below':
+            mask = np.max(stat_data, axis=1) <= threshold
+        else:
+            print('Wrong threshold_type! {}'.format(threshold_type))
+            mask = [False] * len(stat_data)
     return mask
 
 
-def create_conncection_for_both_conditions(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius):
+def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius):
     N = len(indices)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     print('Create connections for both conditions')
@@ -114,13 +123,8 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
     now = time.time()
     for run, (ind, conn_name, (i, j)) in enumerate(zip(indices, d.con_names[mask], d.con_indices[mask])):
         mu.time_to_go(now, run, N, runs_num_to_print=10)
-        # if d.con_values.ndim == :
-        #     con_color = np.hstack((d.con_colors[ind, 0, :], [0.]))
-        # else:
-        #     con_color = np.hstack((d.con_colors[ind, :], [0.]))
         p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
         mu.cylinder_between(p1, p2, radius, layers_rods)
-        # mu.create_material('{}_mat'.format(conn_name), (0, 0, 1, 1), 1)
         mu.create_material('{}_mat'.format(conn_name), con_color, 1)
         cur_obj = bpy.context.active_object
         cur_obj.name = conn_name
@@ -135,7 +139,11 @@ def create_conncection_for_both_conditions(d, layers_rods, indices, mask, window
                 timepoint = t * norm_fac + extra_time_points
                 mu.insert_keyframe_to_custom_prop(cur_obj, '{}-{}'.format(conn_name, cond),
                                                   d.con_values[ind, t, cond_id], timepoint)
+            fcurve = cur_obj.animation_data.action.fcurves[cond_id]
+            fcurve.keyframe_points[0].co[1] = 0
+            fcurve.keyframe_points[-1].co[1] = 0
         finalize_fcurves(cur_obj)
+    mu.change_fcurves_colors(parent_obj.children)
 
 
 def create_vertices(d, mask, verts_color='pink'):
@@ -161,7 +169,7 @@ def vertices_selected(vertice_name):
     if _addon().both_conditions():
         for conn_name in ConnectionsPanel.vertices_lookup[label_name]:
             conn_obj = bpy.data.objects.get(conn_name, None)
-            if conn_obj:
+            if conn_obj and not conn_obj.hide:
                 conn_obj.select = True
     elif _addon().conditions_diff():
         parent_obj = bpy.context.scene.objects['connections']
@@ -192,6 +200,10 @@ def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, 
             extra_time_points = 0 if norm_fac ==1 else 2
             timepoint = t * norm_fac + extra_time_points
             mu.insert_keyframe_to_custom_prop(parent_obj, conn_name, stat_data[ind, t], timepoint)
+        fcurve = parent_obj.animation_data.action.fcurves[run]
+        fcurve.keyframe_points[0].co[1] = 0
+        fcurve.keyframe_points[-1].co[1] = 0
+
     finalize_fcurves(parent_obj)
     finalize_objects_creations()
 
@@ -246,6 +258,7 @@ def unfilter_graph(context, d, condition):
 def filter_graph(context, d, condition, threshold, threshold_type, connections_type, stat=STAT_DIFF):
     mu.show_hide_hierarchy(False, PARENT_OBJ)
     masked_con_names = calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat)
+    bpy.context.scene.connections_num = len(masked_con_names)
     parent_obj = bpy.data.objects[PARENT_OBJ]
     for con_name in d.con_names:
         cur_obj = bpy.data.objects.get(con_name)
@@ -274,14 +287,23 @@ def filter_graph(context, d, condition, threshold, threshold_type, connections_t
 
 def calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat):
     # For now, we filter only according to both conditions, not each one seperatly
-    if bpy.context.scene.selection_type == 'conds' and d.con_values.ndim == 3:
+    #todo: filter only the connections that were created, not all the possible connections
+    if bpy.context.scene.selection_type == 'conds' and d.con_values.ndim == 3 and d.con_values.shape[2] > 1:
         if threshold_type == 'percentile':
             threshold = np.percentile(np.abs(np.max(d.con_values, axis=1)), threshold)
         above_below_threshold = bpy.context.scene.above_below_threshold
-        mask1 = np.max(d.con_values[:, :, 0], axis=1) >= threshold if above_below_threshold == 'above' else \
-            np.max(d.con_values[:, :, 0], axis=1) <= threshold
-        mask2 = np.max(d.con_values[:, :, 1], axis=1) >= threshold if above_below_threshold == 'above' else \
-            np.max(d.con_values[:, :, 1], axis=1) <= threshold
+        if above_below_threshold == 'abs_above':
+            mask1 = np.max(abs(d.con_values[:, :, 0]), axis=1) >= threshold
+            mask2 = np.max(abs(d.con_values[:, :, 1]), axis=1) >= threshold
+        elif above_below_threshold == 'above':
+            mask1 = np.max(d.con_values[:, :, 0], axis=1) >= threshold
+            mask2 = np.max(d.con_values[:, :, 1], axis=1) >= threshold
+        elif above_below_threshold == 'abs_below':
+            mask1 = np.max(abs(d.con_values[:, :, 0]), axis=1) <= threshold
+            mask2 = np.max(abs(d.con_values[:, :, 1]), axis=1) <= threshold
+        elif above_below_threshold == 'below':
+            mask1 = np.max(d.con_values[:, :, 0], axis=1) <= threshold
+            mask2 = np.max(d.con_values[:, :, 1], axis=1) <= threshold
         threshold_mask = mask1 | mask2
     else:
         stat_data = calc_stat_data(d.con_values, stat)
@@ -320,9 +342,15 @@ def plot_connections(d, plot_time):
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
         bpy.data.objects[PARENT_OBJ].select = True
         ConnectionsPanel.addon.show_hide_connections()
+        connectivity_method = d['connectivity_method'] if 'connectivity_method' in d else 'connectivity'
+        # if 'corr' in connectivity_method:
+        #     _addon().set_colorbar_max_min(1, -1)
+        # else:
         _addon().set_colorbar_max_min(d.data_max, d.data_min)
-        colorbar_title = 'Electrodes coherence' if bpy.context.scene.connections_origin == 'electrodes' else \
-            'Cortical labels coherence'
+        modality_names = dict(electrodes='Electrodes', meg='MEG', fmri='fMRI')
+        colorbar_title = 'Electrodes {}'.format(connectivity_method) \
+            if bpy.context.scene.connections_origin == 'electrodes' else \
+            'Cortical labels {} {}'.format(modality_names[bpy.context.scene.connections_origin], connectivity_method)
         _addon().set_colorbar_title(colorbar_title)
 
 
@@ -450,8 +478,8 @@ def load_connections_file():
             diff_cond = '{}-{} difference'.format(d.conditions[0], d.conditions[1])
             conditions_items.append((diff_cond, diff_cond, '', len(d.conditions)))
         bpy.types.Scene.conditions = bpy.props.EnumProperty(items=conditions_items, description="Conditions")
-    # else:
-    #     print('No connections file!')
+    else:
+        print('No connections file! {}'.format(bpy.context.scene.connections_file))
     return d
 
 
@@ -631,7 +659,9 @@ bpy.types.Scene.connections_type = bpy.props.EnumProperty(
         items=[("all", "All connections", "", 1), ("between", "Only between hemispheres", "", 2),
                ("within", "Only within hemispheres", "", 3)], description="Connections type")
 bpy.types.Scene.above_below_threshold = bpy.props.EnumProperty(
-        items=[("above", "Above threshold", "", 1), ("below", "Below threshold", "", 2)], description="Threshold type")
+        items=[("abs_above", "Abs above threshold", "", 1), ("above", "Above threshold", "", 2),
+               ("abs_below", "Below threshold", "", 2), ("below", "Below threshold", "", 3)],
+        description="Threshold type")
 bpy.types.Scene.conditions = bpy.props.EnumProperty(items=[], description="Conditions")
 bpy.types.Scene.connections_file = bpy.props.StringProperty(default='', description="connection file")
 bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
@@ -661,18 +691,14 @@ def connections_origin_update(self, context):
 
 
 def _connections_origin_update():
-    if bpy.context.scene.connections_origin == 'rois':
-        bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'rois_con.npz')
-    elif bpy.context.scene.connections_origin == 'electrodes':
-        bpy.context.scene.connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
-    else:
-        print('Wrong connection type!!!')
+    bpy.context.scene.connections_file = ConnectionsPanel.conn_files[bpy.context.scene.connections_origin]
     if ConnectionsPanel.d == {} or ConnectionsPanel.d is None :
         ConnectionsPanel.d = load_connections_file()
         if ConnectionsPanel.d.con_values.ndim == 2:
             ConnectionsPanel.d.con_values = ConnectionsPanel.d.con_values[:, :, np.newaxis]
         ConnectionsPanel.vertices, ConnectionsPanel.vertices_lookup = mu.load(
-            op.join(mu.get_user_fol(), 'rois_con_vertices.pkl'))
+            op.join(mu.get_user_fol(), 'connectivity', '{}_rois_con_vertices.pkl'.format(
+                bpy.context.scene.connections_origin)))
 
 
 def set_connection_type(connection_type):
@@ -684,17 +710,19 @@ def set_connections_threshold(threshold):
 
 
 def init(addon):
-    electrodes_connections_file = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
+    ConnectionsPanel.conn_files = {}
+    ConnectionsPanel.conn_files['electrodes'] = op.join(mu.get_user_fol(), 'electrodes', 'electrodes_con.npz')
     # meg_bev_connections_file = op.join(mu.get_user_fol(), 'meg_coh_bev.npz')
-    rois_connections_file = op.join(mu.get_user_fol(), 'rois_con.npz')
+    ConnectionsPanel.conn_files['fmri'] = op.join(mu.get_user_fol(), 'connectivity', 'fmri_rois_con.npz')
+    ConnectionsPanel.conn_files['meg'] = op.join(mu.get_user_fol(), 'connectivity', 'meg_rois_con.npz')
 
     items = []
-    if op.isfile(electrodes_connections_file):
+    if op.isfile(ConnectionsPanel.conn_files['electrodes']):
         items.append(("electrodes", "Between electrodes", "", 1))
-    elif op.isfile(rois_connections_file):
-        items.append(("rois", "Between cortical labels", "", 2))
-    else:
-        print('No connections file!')
+    if op.isfile(ConnectionsPanel.conn_files['fmri']):
+        items.append(("fmri", "Between cortical labels (fMRI)", "", 2))
+    if op.isfile(ConnectionsPanel.conn_files['meg']):
+        items.append(("meg", "Between cortical labels (MEG)", "", 3))
 
     ConnectionsPanel.T = addon.get_max_time_steps()
     if len(items) > 0:

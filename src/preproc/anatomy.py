@@ -366,8 +366,10 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
             annotations_exist = fu.create_annotation_file(subject, aparc_name, subjects_dir=SUBJECTS_DIR,
                                                           freesurfer_home=FREESURFER_HOME)
     if morph_labels_from_fsaverage:
-        lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, aparc_name, n_jobs=n_jobs,
+        ret = lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, aparc_name, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
+        if not ret:
+            return False
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
     # Note that using the current mne version this code won't work, because of collissions between hemis

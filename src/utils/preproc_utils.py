@@ -42,7 +42,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
                 flags['prepare_subject_folder'] = prepare_subject_folder(
                     subject, remote_subject_dir, args)
                 if not flags['prepare_subject_folder'] and not args.ignore_missing:
-                    ans = input('Do you which to continue (y/n)? ')
+                    ans = input('Do you wish to continue (y/n)? ')
                     if not au.is_true(ans):
                         continue
 

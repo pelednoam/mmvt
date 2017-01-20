@@ -114,6 +114,10 @@ def calc_lables_connectivity(subject, args):
 
     data, names = {}, {}
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_rois_con.npz'.format(args.connectivity_modality))
+    output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
+                                   '{}_rois_con_no_wins.npz'.format(args.connectivity_modality))
+    con_vertices_fname = op.join(
+        MMVT_DIR, subject, 'connectivity', '{}_rois_con_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
@@ -132,12 +136,14 @@ def calc_lables_connectivity(subject, args):
         print("Can't find the labels data for both hemi in {}".format(conn_fol))
         return False
     for hemi in utils.HEMIS:
-        labels_output_fname = labels_data_fname_template.format(hemi=hemi)
-        f = np.load(labels_output_fname)
+        labels_input_fname = labels_data_fname_template.format(hemi=hemi)
+        f = np.load(labels_input_fname)
         data[hemi] = np.squeeze(f['data'])
         names[hemi] = f['names']
     data = np.concatenate((data['lh'], data['rh']))
-    names = np.concatenate((names['lh'], names['rh']))
+    labels_names = np.concatenate((names['lh'], names['rh']))
+    conditions = f['conditions'] if 'conditions' in f else ['rest']
+
     if data.ndim == 2:
         # No windows yet
         import math
@@ -149,36 +155,55 @@ def calc_lables_connectivity(subject, args):
     elif data.ndim == 3:
         windows_nun = data.shape[2]
     else:
-        print('Wronge numner of dims in data! Can be 2 or 3, not {}.'.format(data.ndim))
+        print('Wronge number of dims in data! Can be 2 or 3, not {}.'.format(data.ndim))
         return False
+
     conn = np.zeros((data.shape[0], data.shape[0], windows_nun))
-    if args.connectivity_method == 'corr':
+    conn_no_wins = None
+    if 'corr' in args.connectivity_method:
         for w in range(windows_nun):
             if data.ndim == 3:
                 conn[:, :, w] = np.corrcoef(data[:, :, w])
             else:
                 conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
             np.fill_diagonal(conn[:, :, w], 0)
-    elif args.connectivity_method == 'wpli2_debiased':
+            connectivity_method = 'Pearson corr'
+    elif 'wpli2_debiased' in args.connectivity_method:
         conn_data = np.transpose(data, [2, 0, 1])
         conn = mne.connectivity.spectral_connectivity(conn_data, 'wpli2_debiased', sfreq=1000.0, fmin=5, fmax=100)
-    # np.sum(abs(np.mean(corr, 2)) > 0.9)
-    # args.threshold = 0.9
-    # args.threshold_percentile = 0
-    # args.symetric_colors = True
+        connectivity_method = 'PLI'
+
+    if 'cv' in args.connectivity_method:
+        no_wins_connectivity_method = '{} CV'.format(connectivity_method)
+        conn_no_wins = np.mean(np.abs(conn), 2) / np.nanstd(np.abs(conn), 2)
+        dFC = np.nanmean(conn_no_wins, 1)
+
     conn = conn[:, :, :, np.newaxis]
+    d = save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname)
+    if not conn_no_wins is None:
+        conn_no_wins = conn_no_wins[:, :, np.newaxis]
+        save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, labels_names, conditions,
+                          output_fname_no_wins, '', d['labels'], d['locations'], d['hemis'])
+
+
+def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname='',
+                      labels=None, locations=None, hemis=None):
     d = dict()
-    d['conditions'] = f['conditions'] if 'conditions' in f else ['rest']
-    args.labels_exclude = []
-    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, names)
+    d['conditions'] = conditions
+    # args.labels_exclude = []
+    if labels is None or locations is None or hemis is None:
+        d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, labels_names)
+    else:
+        d['labels'], d['locations'], d['hemis'] = labels, locations, hemis
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(conn, d['labels'], d['hemis'], args)
-    vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
+    d['connectivity_method'] = connectivity_method
     print('Saving results to {}'.format(output_fname))
     np.savez(output_fname, **d)
-    utils.save((vertices, vertices_lookup), op.join(
-        MMVT_DIR, subject, 'connectivity', '{}_rois_con_vertices.pkl'.format(args.connectivity_modality)))
-    return True
+    if con_vertices_fname != '':
+        vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
+        utils.save((vertices, vertices_lookup), con_vertices_fname)
+    return d
 
 
 def create_vertices_lookup(con_indices, con_names, labels):
@@ -198,6 +223,8 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
         sorted_according_to_annot_file=sorted_according_to_annot_file)
     if not sorted_labels_names is None:
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
+        # Remove labels that are not in sorted_labels_names
+        labels = [l for l in labels if l.name in sorted_labels_names]
     locations = lu.calc_center_of_mass(labels, ret_mat=True) * 1000
     hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
     labels_names = [l.name for l in labels]
@@ -247,7 +274,10 @@ def calc_connectivity(data, labels, hemis, args):
     if args.threshold > data_minmax:
         raise Exception('threshold > abs(max(data)) ({})'.format(data_minmax))
     if args.threshold >= 0:
-        indices = np.where(np.max(abs(stat_data), axis=1) > args.threshold)[0]
+        if stat_data.ndim >= 2:
+            indices = np.where(np.max(abs(stat_data), axis=1) > args.threshold)[0]
+        else:
+            indices = np.where(abs(stat_data) > args.threshold)[0]
         # indices = np.where(np.abs(stat_data) > args.threshold)[0]
         # con_colors = con_colors[indices]
         con_indices = con_indices[indices]
@@ -294,7 +324,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
-    parser.add_argument('--connectivity_method', help='', required=False, default='corr')
+    parser.add_argument('--connectivity_method', help='', required=False, default='corr,cv', type=au.str_arr_type)
     parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
