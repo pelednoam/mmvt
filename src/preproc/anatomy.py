@@ -545,7 +545,7 @@ def save_labels_coloring(subject, atlas, n_jobs=2):
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
     coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
-    coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.csv'.format(atlas))
+    coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.txt'.format(atlas))
     try:
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
         colors_rgb_and_names = cu.get_distinct_colors_and_names()

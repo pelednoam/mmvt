@@ -6,10 +6,13 @@ import numpy as np
 import os
 import shutil
 import glob
-from src.utils import utils
+import traceback
 
-LINKS_DIR = utils.get_links_dir()
-SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
+from src.utils import utils
+from src.utils import preproc_utils as pu
+from src.mmvt_addon import colors_utils as cu
+
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 HEMIS = ['rh', 'lh']
 
 
@@ -323,6 +326,7 @@ def calc_time_series_per_label(x, labels, measure, excludes=(),
 
     return labels_data, labels_names
 
+
 def morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1):
     labels_fol = op.join(SUBJECTS_DIR, morph_from_subject, 'label')
     labels_fname = op.join(labels_fol, '{}.{}.pkl'.format(hemi, atlas))
@@ -345,11 +349,39 @@ def morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1):
     return labels
 
 
+def create_labels_coloring(subject, atlas, n_jobs=-1):
+    ret = False
+    coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
+    utils.make_dir(coloring_dir)
+    coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
+    coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.txt'.format(atlas))
+    try:
+        labels = read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
+        colors_rgb_and_names = cu.get_distinct_colors_and_names()
+        labels_colors_rgb, labels_colors_names = {}, {}
+        for label in labels:
+            label_inv_name = get_label_hemi_invariant_name(label.name)
+            if label_inv_name not in labels_colors_rgb:
+                labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
+        with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
+            for label in labels:
+                label_inv_name = get_label_hemi_invariant_name(label.name)
+                color_rgb = labels_colors_rgb[label_inv_name]
+                color_name = labels_colors_names[label_inv_name]
+                colors_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
+                col_names_file.write('{},{}\n'.format(label.name, color_name))
+        ret = op.isfile(coloring_fname)
+    except:
+        print('Error in save_labels_coloring!')
+        print(traceback.format_exc())
+    return ret
+
+
 if __name__ == '__main__':
-    subject = 'mg96'
-    atlas = 'laus250'
-    label_name = 'bankssts_1-lh'
-    n_jobs = 6
+    # subject = 'mg96'
+    # atlas = 'laus250'
+    # label_name = 'bankssts_1-lh'
+    # n_jobs = 6
     # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
     # solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
-
+    pass

@@ -7,7 +7,11 @@ from sys import platform as _platform
 try:
     from src.mmvt_addon.scripts import call_script_utils as utils
 except:
-    pass
+    try:
+        import call_script_utils as utils
+    except:
+        pass
+
 
 try:
     import bpy
@@ -33,20 +37,20 @@ def is_linux():
 
 
 def get_current_dir():
-    return os.path.dirname(os.path.realpath(__file__))
+    return op.dirname(op.realpath(__file__))
 
 
 def get_parent_fol(curr_dir='', levels=1):
     if curr_dir == '':
         curr_dir = get_current_dir()
-    parent_fol = os.path.split(curr_dir)[0]
+    parent_fol = op.split(curr_dir)[0]
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
 
 
 def chdir_to_mmvt_addon():
-    current_dir = os.path.split(get_current_dir())[1]
+    current_dir = op.split(get_current_dir())[1]
     if current_dir == 'scripts':
         code_root_dir = get_mmvt_addon_dir()
         os.chdir(code_root_dir)
@@ -78,7 +82,7 @@ def get_windows_link(shortcut):
     try:
         from src.mmvt_addon.scripts import windows_utils as wu
     except:
-        sys.path.append(os.path.split(__file__)[0])
+        sys.path.append(op.split(__file__)[0])
         import windows_utils as wu
     sc = wu.MSShortcut('{}.lnk'.format(shortcut))
     return op.join(sc.localBasePath, sc.commonPathSuffix)
@@ -175,7 +179,7 @@ class Bag( dict ):
 
 
 def make_dir(fol):
-    if not os.path.isdir(fol):
+    if not op.isdir(fol):
         os.makedirs(fol)
     return fol
 
@@ -188,11 +192,11 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         return
     blend_fname_is_None = True if blend_fname is None else False
     call_args_is_None = True if call_args is None else False
-    logs_fol = op.join(utils.get_parent_fol(__file__, 4), 'logs')
+    logs_fol = op.join(get_parent_fol(__file__, 4), 'logs')
     if only_verbose:
         print('Creating logs fol: {}'.format(logs_fol))
     else:
-        utils.make_dir(logs_fol)
+        make_dir(logs_fol)
     if log_name == '':
         log_name = namebase(script_fname)
         if only_verbose:
@@ -214,7 +218,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         cmd = '{blender_exe} {blend_fname} --background --python "{script_fname}" {call_args}'.format( # > {log_fname}
             blender_exe=op.join(args.blender_fol, 'blender'),
             blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
-        mmvt_addon_fol = utils.get_parent_fol(__file__, 2)
+        mmvt_addon_fol = get_parent_fol(__file__, 2)
         print(cmd)
         if not only_verbose:
             os.chdir(mmvt_addon_fol)

@@ -18,7 +18,7 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
 def save_electrodes_coh(subject, args):
-    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_con.npz')
+    output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'electrodes.npz')
     utils.remove_file(output_fname)
     try:
         d = dict()
@@ -115,7 +115,7 @@ def calc_lables_connectivity(subject, args):
     data, names = {}, {}
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_rois_con.npz'.format(args.connectivity_modality))
     output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
-                                   '{}_rois_con_no_wins.npz'.format(args.connectivity_modality))
+                                   '{}_rois_con_static.npz'.format(args.connectivity_modality))
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_rois_con_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
