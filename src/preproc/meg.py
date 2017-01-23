@@ -1679,15 +1679,15 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
-        for hemi in HEMIS:
+        for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_mode=args.extract_mode,
                 inverse_method=inverse_method, positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
                 stcs=stcs_conds, stcs_num=stcs_num, n_jobs=args.n_jobs)
-            if isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType):
-                # Create the stc generator again
+            if isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
+                # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
                     subject, conditions, inverse_method, args, flags)
     return flags
