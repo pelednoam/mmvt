@@ -11,6 +11,9 @@ from src.utils import labels_utils as lu
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
+FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
+ELECTRODES_DIR = utils.get_link_dir(LINKS_DIR, 'electrodes')
+
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
@@ -122,12 +125,17 @@ def calc_lables_connectivity(subject, args):
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
     if len(labels_data_fnames) == 0:
+        modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
+        conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
+        labels_data_fnames = [f for f in glob.glob(op.join(conn_fol, '*labels_data*.npz')) if 'norm' not in utils.namebase(f)]
+    if len(labels_data_fnames) == 0:
         print("You don't have any connectivity data in {}, create it using the {} preproc".format(
             conn_fol, args.connectivity_modality))
         return False
     if len(labels_data_fnames) != 2:
         print("You have more than one type of {} connectivity data in {}, please pick one".format(
             args.connectivity_modality, conn_fol))
+        print(labels_data_fnames)
         print('For now, just move the other files somewhere else...')
         #todo: Write code that lets the user pick one
         return False
@@ -170,7 +178,12 @@ def calc_lables_connectivity(subject, args):
             connectivity_method = 'Pearson corr'
     elif 'wpli2_debiased' in args.connectivity_method:
         conn_data = np.transpose(data, [2, 0, 1])
-        conn = mne.connectivity.spectral_connectivity(conn_data, 'wpli2_debiased', sfreq=1000.0, fmin=5, fmax=100)
+        for w in range(windows_nun):
+            window_conn_data = conn_data[w, :, :]
+            window_conn_data = window_conn_data[np.newaxis, :, :]
+            con, _, _, _, _ = mne.connectivity.spectral_connectivity(
+                window_conn_data, 'wpli2_debiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax)
+            conn[:, :, w] = np.mean(con, 2) # Over freqs
         connectivity_method = 'PLI'
 
     if 'cv' in args.connectivity_method:
@@ -344,6 +357,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
     parser.add_argument('--windows_length', help='', required=False, default=2000, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
+
+    parser.add_argument('--sfreq', help='', required=False, default=1000, type=float)
+    parser.add_argument('--fmin', help='', required=False, default=5, type=float)
+    parser.add_argument('--fmax', help='', required=False, default=100, type=float)
+
     pu.add_common_args(parser)
 
     args = utils.Bag(au.parse_parser(parser, argv))

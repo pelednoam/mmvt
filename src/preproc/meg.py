@@ -1855,10 +1855,15 @@ def read_cmd_args(argv=None):
     return args
 
 
-if __name__ == '__main__':
-    args = read_cmd_args()
+def get_subjects_itr_func(args):
     subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
     subject_func = lambda x:x[0][1]
+    return subjects_itr, subject_func
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
+    subjects_itr, subject_func = get_subjects_itr_func(args)
     pu.run_on_subjects(args, main, subjects_itr, subject_func)
     # run_on_subjects(args)
     print('finish!')

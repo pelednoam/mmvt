@@ -1,5 +1,4 @@
 import argparse
-from itertools import product
 
 from src.preproc import meg as meg
 from src.utils import utils
@@ -87,16 +86,15 @@ def calc_rest(args):
         single_trial_stc=True,
         demi_windows_length=500,
         demi_windows_shift=100,
-        baseline_min = 0,
-        baseline_max = 0,
+        baseline_min=0,
+        baseline_max=0,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
     ))
     call_main(args)
 
 
 def call_main(args):
-    subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
-    subject_func = lambda x:x[0][1]
+    subjects_itr, subject_func = meg.get_subjects_itr_func(args)
     pu.run_on_subjects(args, meg.main, subjects_itr, subject_func)
 
 
