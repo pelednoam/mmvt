@@ -218,10 +218,19 @@ def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig
 
 
 def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
-    import mne.source_space
     import mne.transforms
     xfm = mne.source_space._read_talxfm(subject, subjects_dir, 'nibabel')
     return mne.transforms.apply_trans(xfm['trans'], coords)
+
+
+def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir):
+    import mne.transforms
+    xfm_from = mne.source_space._read_talxfm(from_subject, subjects_dir, 'nibabel')
+    xfm_to = mne.source_space._read_talxfm(to_subject, subjects_dir, 'nibabel')
+    xfm_to_inv = mne.transforms.invert_transform(xfm_to)
+    mni_coords = mne.transforms.apply_trans(xfm_from['trans'], coords)
+    to_subject_coords = mne.transforms.apply_trans(xfm_to_inv['trans'], mni_coords)
+    return to_subject_coords
 
 
 def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):

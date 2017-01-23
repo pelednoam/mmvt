@@ -785,21 +785,32 @@ def transform_electrodes_to_mni(subject, args):
     from src.utils import freesurfer_utils as fu
     elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
-    save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels)
+    save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels, '_mni')
 
 
-def save_electrodes_coords(subject, elecs_names, elecs_coords_mni, good_channels=None, bad_channels=None):
-    good_elecs_names, good_elecs_coords_mni = [], []
-    for elec_name, elec_coord_min in zip(elecs_names, elecs_coords_mni):
+def transform_electrodes_to_subject(subject, args):
+    from src.utils import freesurfer_utils as fu
+    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
+    elecs_coords_to_subject = fu.transform_subject_to_subject_coordinates(
+        subject, args.trans_to_subject, elecs_coords, SUBJECTS_DIR)
+    save_electrodes_coords(subject, elecs_names, elecs_coords_to_subject, args.good_channels, args.bad_channels,
+                           '_{}'.format(args.trans_to_subject))
+
+
+def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=None, bad_channels=None, fname_postfix=''):
+    good_elecs_names, good_elecs_coords = [], []
+    for elec_name, elec_coord in zip(elecs_names, elecs_coords):
         if (not good_channels or elec_name in good_channels) and (not bad_channels or elec_name not in bad_channels):
             good_elecs_names.append(elec_name)
-            good_elecs_coords_mni.append(elec_coord_min)
-    good_elecs_coords_mni = np.array(good_elecs_coords_mni)
-    electrodes_mni_fname = save_electrodes_file(subject, args.bipolar, good_elecs_names, good_elecs_coords_mni, '_mni')
-    output_file_name = op.split(electrodes_mni_fname)[1]
-    utils.make_dir(op.join(MMVT_DIR, 'colin27', 'electrodes'))
-    blender_file = op.join(MMVT_DIR, 'colin27', 'electrodes', output_file_name.replace('_mni', ''))
-    shutil.copyfile(electrodes_mni_fname, blender_file)
+            good_elecs_coords.append(elec_coord)
+    good_elecs_coords = np.array(good_elecs_coords)
+    electrodes_fname = save_electrodes_file(
+        subject, args.bipolar, good_elecs_names, good_elecs_coords, fname_postfix)
+    if 'mni' in fname_postfix:
+        output_file_name = op.split(electrodes_fname)[1]
+        utils.make_dir(op.join(MMVT_DIR, 'colin27', 'electrodes'))
+        blender_file = op.join(MMVT_DIR, 'colin27', 'electrodes', output_file_name.replace(fname_postfix, ''))
+        shutil.copyfile(electrodes_fname, blender_file)
 
 
 def set_args(args):
@@ -866,6 +877,9 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'transform_electrodes_to_mni'):
         flags['transform_electrodes_to_mni'] = transform_electrodes_to_mni(subject, args)
 
+    if 'transform_electrodes_to_subject' in args.function:
+        flags['transform_electrodes_to_subject'] = transform_electrodes_to_subject(subject, args)
+
     if 'show_image' in args.function:
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         flags['show_image'] = utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
@@ -912,6 +926,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
+    parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.ignore_missing = True
