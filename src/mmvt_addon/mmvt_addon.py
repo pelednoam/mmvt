@@ -201,8 +201,8 @@ set_show_only_lead = electrodes_panel.set_show_only_lead
 is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 create_connections = connections_panel.create_connections
-set_connection_type = connections_panel.set_connection_type
-set_connections_threshold = connections_panel.set_connections_threshold
+# set_connection_type = connections_panel.set_connection_type/
+# set_connections_threshold = connections_panel.set_connections_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
@@ -231,6 +231,7 @@ connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data
 plot_connections = connections_panel.plot_connections
 vertices_selected = connections_panel.vertices_selected
+get_parent_obj_name = connections_panel.get_parent_obj_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ransparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -46,7 +46,8 @@ def read_args(argv=None):
 def import_connections(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
-    mmvt.set_connection_type(args.type)
+    # mmvt.set_connection_type(args.type)
+    #todo: fix, shouldn't use set_connection_type anymores
     mmvt.set_connections_threshold(args.threshold)
     mmvt.create_connections()
     su.save_blend_file(subject_fname)

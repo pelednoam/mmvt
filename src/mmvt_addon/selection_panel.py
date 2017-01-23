@@ -56,7 +56,8 @@ def select_all_electrodes():
 
 
 def select_all_connections():
-    select_brain_objects('connections', bpy.data.objects['connections'].children)
+    connection_parent_name = _addon().get_parent_obj_name()
+    select_brain_objects(connection_parent_name, bpy.data.objects[connection_parent_name].children)
 
 
 def conditions_selection_update(self, context):
@@ -312,8 +313,8 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllElectrodes.bl_idname, text="Select all Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_electrodes'):
             layout.operator(SelectAllEEG.bl_idname, text="Select all EEG", icon='BORDER_RECT')
-        if bpy.data.objects.get(connections_panel.PARENT_OBJ) and \
-                bpy.data.objects[connections_panel.PARENT_OBJ].animation_data:
+        if bpy.data.objects.get(_addon().get_parent_obj_name()) and \
+                bpy.data.objects[_addon().get_parent_obj_name()].animation_data:
             layout.operator(SelectAllConnections.bl_idname, text="Select all Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')

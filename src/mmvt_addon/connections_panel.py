@@ -23,11 +23,11 @@ def _addon():
 
 
 def get_parent_obj_name():
-    return 'connections_{}'.format(bpy.context.scene.connectivity_files)
+    return 'connections_{}'.format(bpy.context.scene.connectivity_files.replace(' ', '_'))
 
 
 def connections_exist():
-    return not bpy.data.objects.get('connections', None) is None
+    return not bpy.data.objects.get(get_parent_obj_name(), None) is None
 
 
 def connections_data():
@@ -54,7 +54,7 @@ def check_connections(stat=STAT_DIFF):
         indices = np.where(mask)[0]
     parent_obj = bpy.data.objects.get(get_parent_obj_name(), None)
     if parent_obj:
-        bpy.context.scene.connections_num = min(len(parent_obj.children), len(indices))
+        bpy.context.scene.connections_num = min(len(parent_obj.children) - 1, len(indices))
     else:
         bpy.context.scene.connections_num = len(indices)
     parent_obj = bpy.data.objects.get(get_parent_obj_name(), None)
@@ -63,8 +63,8 @@ def check_connections(stat=STAT_DIFF):
         bpy.context.scene.connections_min = np.min(d.con_values[ConnectionsPanel.selected_indices])
         bpy.context.scene.connections_max = np.max(d.con_values[ConnectionsPanel.selected_indices])
     else:
-        bpy.context.scene.connections_min = np.min(d.con_values)
-        bpy.context.scene.connections_max = np.max(d.con_values)
+        bpy.context.scene.connections_min = np.min(d.con_values[indices]) if len(indices) > 0 else d['data_min']
+        bpy.context.scene.connections_max = np.max(d.con_values[indices]) if len(indices) > 0 else d['data_max']
     return d
 
 
@@ -214,6 +214,8 @@ def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, 
 
 
 def calc_stat_data(data, stat):
+    if data.ndim == 1:
+        return data
     axis = data.ndim - 1
     if data.shape[axis] == 1:
         stat = STAT_AVG
@@ -264,16 +266,17 @@ def filter_graph(context, d, condition, threshold, threshold_type, connections_t
     parent_obj_name = get_parent_obj_name()
     mu.show_hide_hierarchy(False, parent_obj_name)
     masked_con_names = calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat)
-    bpy.context.scene.connections_num = len(masked_con_names)
     parent_obj = bpy.data.objects[parent_obj_name]
+    bpy.context.scene.connections_num = min(len(masked_con_names), len(parent_obj.children) - 1)
     conn_show = 0
     selected_objects, selected_indices = [], []
     for con_ind, con_name in enumerate(d.con_names):
         cur_obj = bpy.data.objects.get(con_name)
         if cur_obj:
-            selected_objects.append(cur_obj)
-            selected_indices.append(con_ind)
-            conn_show += 1
+            if con_name in masked_con_names:
+                selected_objects.append(cur_obj)
+                selected_indices.append(con_ind)
+                conn_show += 1
             cur_obj.hide = con_name not in masked_con_names
             cur_obj.hide_render = con_name not in masked_con_names
             if bpy.context.scene.selection_type == 'conds':
@@ -281,6 +284,8 @@ def filter_graph(context, d, condition, threshold, threshold_type, connections_t
     ConnectionsPanel.selected_objects = selected_objects
     ConnectionsPanel.selected_indices = selected_indices
     print('Showing {} connections after filtering'.format(conn_show))
+    bpy.context.scene.connections_min = np.min(d.con_values[selected_indices])
+    bpy.context.scene.connections_max = np.max(d.con_values[selected_indices])
     if parent_obj.animation_data is None:
         return
     now = time.time()
@@ -355,7 +360,7 @@ def plot_connections(d, plot_time):
             # stat_val = np.diff(d.con_values[ind, t, :])[0]
             stat_val = calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
             color = _addon().calc_colors([stat_val], d.data_min, colors_ratio)[0]
-            con_color = np.hstack((color, [0.]))
+            con_color = np.concatenate((np.squeeze(color), [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
         parent_obj_name = get_parent_obj_name()
@@ -372,8 +377,8 @@ def plot_connections(d, plot_time):
         _addon().set_colorbar_max_min(data_max, data_min)
         modality_names = dict(electrodes='Electrodes', meg='MEG', fmri='fMRI')
         colorbar_title = 'Electrodes {}'.format(connectivity_method) \
-            if bpy.context.scene.connections_origin == 'electrodes' else \
-            'Cortical labels {} {}'.format(modality_names[bpy.context.scene.connections_origin], connectivity_method)
+            if 'electrodes' in bpy.context.scene.connectivity_files else \
+            '{} {}'.format(bpy.context.scene.connectivity_files, connectivity_method) # Cortical labels
         _addon().set_colorbar_title(colorbar_title)
 
 
@@ -381,6 +386,9 @@ def get_all_selected_connections(d):
     objs, inds = [], []
     parent_obj_name = get_parent_obj_name()
     parent_obj = bpy.data.objects[parent_obj_name]
+    con_objs_names = [obj.name for obj in bpy.data.objects[get_parent_obj_name()].children if obj.name != 'connections_vertices']
+    # all_con_set = set(d.con_names.tolist())
+    # indices = [np.where(d.con_names == obj_name)[0][0] for obj_name in con_objs_names]
     if bpy.context.scene.selection_type == 'conds' or parent_obj.animation_data is None:
         for ind, con_name in enumerate(d.con_names):
             cur_obj = bpy.data.objects.get(con_name)
@@ -664,6 +672,10 @@ def connectivity_files_update(self, context):
     # if ConnectionsPanel.d == {} or ConnectionsPanel.d is None :
     load_connections_file()
     check_connections()
+    for obj in bpy.data.objects['Functional maps'].children:
+        if obj.name.startswith('connections'):
+            val = obj.name == get_parent_obj_name()
+            mu.show_hide_hierarchy(val, obj.name, True, False)
 
 
 def connections_draw(self, context):
@@ -691,7 +703,7 @@ def connections_draw(self, context):
     # else:
     #     layout.operator("mmvt.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
 
-    if bpy.context.scene.connections_origin == 'electrodes':
+    if 'electrodes' in bpy.context.scene.connectivity_files:
         filter_text = '{} electrodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterElectrodes.bl_idname, text=filter_text, icon='BORDERMOVE')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
@@ -737,23 +749,8 @@ class ConnectionsPanel(bpy.types.Panel):
         connections_draw(self, context)
 
 #
-# def connections_origin_update(self, context):
-#     _connections_origin_update()
-#
-#
-# def _connections_origin_update():
-#     bpy.context.scene.connections_file = ConnectionsPanel.conn_files[bpy.context.scene.connections_origin]
-#     if ConnectionsPanel.d == {} or ConnectionsPanel.d is None :
-#         ConnectionsPanel.d = load_connections_file()
-#         if ConnectionsPanel.d.con_values.ndim == 2:
-#             ConnectionsPanel.d.con_values = ConnectionsPanel.d.con_values[:, :, np.newaxis]
-#         ConnectionsPanel.vertices, ConnectionsPanel.vertices_lookup = mu.load(
-#             op.join(mu.get_user_fol(), 'connectivity', '{}_vertices.pkl'.format(
-#                 bpy.context.scene.connections_origin)))
-#
-
-def set_connection_type(connection_type):
-    bpy.context.scene.connections_origin = connection_type
+# def set_connection_type(connection_type):
+#     bpy.context.scene.connections_origin = connection_type
 
 
 def set_connections_threshold(threshold):
