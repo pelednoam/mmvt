@@ -175,7 +175,7 @@ def calc_lables_connectivity(subject, args):
 
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
-        conn_no_wins = np.mean(np.abs(conn), 2) / np.nanstd(np.abs(conn), 2)
+        conn_no_wins = np.nanstd(np.abs(conn), 2) / np.mean(np.abs(conn), 2)
         dFC = np.nanmean(conn_no_wins, 1)
         lu.create_labels_coloring(subject, labels_names, dFC, 'pearson_corr_cv', norm_percs=(3, 99),
                            norm_by_percentile=True, colors_map='YlOrRd')
