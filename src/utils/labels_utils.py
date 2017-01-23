@@ -349,7 +349,7 @@ def morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1):
     return labels
 
 
-def create_labels_coloring(subject, atlas, n_jobs=-1):
+def create_atlas_coloring(subject, atlas, n_jobs=-1):
     ret = False
     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
     utils.make_dir(coloring_dir)
@@ -373,6 +373,25 @@ def create_labels_coloring(subject, atlas, n_jobs=-1):
         ret = op.isfile(coloring_fname)
     except:
         print('Error in save_labels_coloring!')
+        print(traceback.format_exc())
+    return ret
+
+
+def create_labels_coloring(subject, labels_names, labels_values, coloring_name, norm_percs=(3, 99),
+                           norm_by_percentile=True, colors_map='jet'):
+    coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
+    utils.make_dir(coloring_dir)
+    coloring_fname = op.join(coloring_dir, '{}.csv'.format(coloring_name))
+    ret = False
+    try:
+        labels_colors = utils.arr_to_colors(
+            labels_values, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile, colors_map=colors_map)
+        with open(coloring_fname, 'w') as colors_file:
+            for label_name, label_color, label_value in zip(labels_names, labels_colors, labels_values):
+                colors_file.write('{},{},{},{},{}\n'.format(label_name, *label_color[:3], label_value))
+        ret = op.isfile(coloring_fname)
+    except:
+        print('Error in create_labels_coloring!')
         print(traceback.format_exc())
     return ret
 

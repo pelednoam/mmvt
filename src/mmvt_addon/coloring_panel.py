@@ -488,8 +488,11 @@ def color_manually():
     init_activity_map_coloring('FMRI')
     subject_fol = mu.get_user_fol()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
+    values = []
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', '{}.csv'.format(bpy.context.scene.coloring_files))):
-        obj_name, color_name = line[0], line[1:]
+        obj_name, color_name = line[0], line[1:4]
+        if len(line) == 5:
+            values.append(float(line[4]))
         if obj_name[0] == '#':
             continue
         if isinstance(color_name, list) and len(color_name) == 1:
@@ -514,6 +517,10 @@ def color_manually():
                 data[obj_type].append(1.)
 
     color_objects(objects_names, colors, data)
+    if len(values) > 0:
+        _addon().set_colorbar_max_min(np.max(values), np.min(values))
+    _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
+
     if op.isfile(op.join(subject_fol, 'coloring', '{}_legend.jpg'.format(bpy.context.scene.coloring_files))):
         cmd = '{} -m src.preproc.electrodes_preproc -s {} -a {} -f show_labeling_coloring'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)

@@ -540,32 +540,32 @@ def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_n
     return len(labels) > 0 and op.isfile(com_fname) and op.isfile(blend_fname)
 
 
-def save_labels_coloring(subject, atlas, n_jobs=2):
-    ret = False
-    coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
-    utils.make_dir(coloring_dir)
-    coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
-    coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.txt'.format(atlas))
-    try:
-        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
-        colors_rgb_and_names = cu.get_distinct_colors_and_names()
-        labels_colors_rgb, labels_colors_names = {}, {}
-        for label in labels:
-            label_inv_name = lu.get_label_hemi_invariant_name(label.name)
-            if label_inv_name not in labels_colors_rgb:
-                labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
-        with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
-            for label in labels:
-                label_inv_name = lu.get_label_hemi_invariant_name(label.name)
-                color_rgb = labels_colors_rgb[label_inv_name]
-                color_name = labels_colors_names[label_inv_name]
-                colors_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
-                col_names_file.write('{},{}\n'.format(label.name, color_name))
-        ret = op.isfile(coloring_fname)
-    except:
-        print('Error in save_labels_coloring!')
-        print(traceback.format_exc())
-    return ret
+# def save_labels_coloring(subject, atlas, n_jobs=2):
+#     ret = False
+#     coloring_dir = op.join(MMVT_DIR, subject, 'coloring')
+#     utils.make_dir(coloring_dir)
+#     coloring_fname = op.join(coloring_dir, 'labels_{}_coloring.csv'.format(atlas))
+#     coloring_names_fname = op.join(coloring_dir, 'labels_{}_colors_names.txt'.format(atlas))
+#     try:
+#         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
+#         colors_rgb_and_names = cu.get_distinct_colors_and_names()
+#         labels_colors_rgb, labels_colors_names = {}, {}
+#         for label in labels:
+#             label_inv_name = lu.get_label_hemi_invariant_name(label.name)
+#             if label_inv_name not in labels_colors_rgb:
+#                 labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
+#         with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
+#             for label in labels:
+#                 label_inv_name = lu.get_label_hemi_invariant_name(label.name)
+#                 color_rgb = labels_colors_rgb[label_inv_name]
+#                 color_name = labels_colors_names[label_inv_name]
+#                 colors_file.write('{},{},{},{}\n'.format(label.name, *color_rgb))
+#                 col_names_file.write('{},{}\n'.format(label.name, color_name))
+#         ret = op.isfile(coloring_fname)
+#     except:
+#         print('Error in save_labels_coloring!')
+#         print(traceback.format_exc())
+#     return ret
 
 
 def save_cerebellum_coloring(subject):
@@ -669,7 +669,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
-        flags['save_labels_coloring'] = save_labels_coloring(subject, args.atlas, args.n_jobs)
+        flags['save_labels_coloring'] = lu.create_atlas_coloring(subject, args.atlas, args.n_jobs)
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)

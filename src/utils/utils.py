@@ -87,9 +87,10 @@ def get_scalar_map(x_min, x_max, color_map='jet'):
     return cmx.ScalarMappable(norm=cNorm, cmap=cm)
 
 
-def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None):
+def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None, norm_percs=(1, 99),
+                  norm_by_percentile=False):
     if scalar_map is None:
-        x_min, x_max = calc_min_max(x, x_min, x_max)
+        x_min, x_max = calc_min_max(x, x_min, x_max, norm_percs, norm_by_percentile)
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
     return scalar_map.to_rgba(x)
 
