@@ -113,11 +113,11 @@ def calc_lables_connectivity(subject, args):
     import mne.connectivity
 
     data, names = {}, {}
-    output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_rois_con.npz'.format(args.connectivity_modality))
+    output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npz'.format(args.connectivity_modality))
     output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
-                                   '{}_rois_con_static.npz'.format(args.connectivity_modality))
+                                   '{}_static.npz'.format(args.connectivity_modality))
     con_vertices_fname = op.join(
-        MMVT_DIR, subject, 'connectivity', '{}_rois_con_vertices.pkl'.format(args.connectivity_modality))
+        MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
@@ -181,10 +181,14 @@ def calc_lables_connectivity(subject, args):
                            norm_by_percentile=True, colors_map='YlOrRd')
     conn = conn[:, :, :, np.newaxis]
     d = save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname)
+    ret = op.isfile(output_fname)
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
         save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, labels_names, conditions,
                           output_fname_no_wins, '', d['labels'], d['locations'], d['hemis'])
+        ret = ret and op.isfile(output_fname_no_wins)
+
+    return ret
 
 
 def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname='',

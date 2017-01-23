@@ -1,7 +1,10 @@
 import argparse
+from itertools import product
+
 from src.preproc import meg as meg
 from src.utils import utils
 from src.utils import args_utils as au
+from src.utils import preproc_utils as pu
 
 
 def read_epoches_and_calc_activity(subject, mri_subject):
@@ -68,10 +71,33 @@ def calc_subcorticals(subject, mri_subject):
     pass
 
 
-def calc_rest(subject, mri_subject):
+def calc_rest(args):
     # '-s hc029 -a laus125 -t rest -f calc_evoked,make_forward_solution,calc_inverse_operator --reject 0 --remove_power_line_noise 0 --demi_windows_length 1000 --demi_windows_shift 500 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"''
     # '-s hc029 -a laus125 -t rest -f calc_stc_per_condition,calc_labels_avg_per_condition --single_trial_stc 1 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"'
-    pass
+    args = meg.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        atlas='laus125',
+        function='calc_evoked,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition',
+        task='rest',
+        cleaning_method='tsss',
+        reject=False,
+        remove_power_line_noise=True,
+        use_empty_room_for_noise_cov=True,
+        single_trial_stc=True,
+        demi_windows_length=500,
+        demi_windows_shift=100,
+        baseline_min = 0,
+        baseline_max = 0,
+        remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
+    ))
+    call_main(args)
+
+
+def call_main(args):
+    subjects_itr = product(zip(args.subject, args.mri_subject), args.inverse_method)
+    subject_func = lambda x:x[0][1]
+    pu.run_on_subjects(args, meg.main, subjects_itr, subject_func)
 
 
 if __name__ == '__main__':
@@ -79,9 +105,12 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None,
                         type=au.str_arr_type)
+    parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='MNE',
+                        type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=True)
     args = utils.Bag(au.parse_parser(parser))
     if not args.mri_subject:
         args.mri_subject = args.subject
-    for subject, mri_subject in zip(args.subject, args.mri_subject):
-        locals()[args.function](subject, mri_subject)
+    locals()[args.function](args)
+    # for subject, mri_subject in zip(args.subject, args.mri_subject):
+    #     locals()[args.function](subject, mri_subject)

@@ -105,7 +105,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     INV_X = _get_fif_name_no_cond('{region}-inv') if inv_no_cond else _get_fif_name_cond('{region}-inv')
     INV_SMOOTH = _get_fif_name_no_cond('smooth-inv') if inv_no_cond else _get_fif_name_cond('smooth-inv')
     INV_EEG_SMOOTH = _get_fif_name_no_cond('eeg-smooth-inv') if inv_no_cond else _get_fif_name_cond('eeg-smooth-inv')
-    EMPTY_ROOM = _get_fif_name_no_cond('empty-raw').replace('-{}-'.format(task), '-')
+    EMPTY_ROOM = _get_fif_name_no_cond('empty-raw').replace('-{}-'.format(task), '-').replace('_{}'.format(cleaning_method), '')
     STC = _get_stc_name('{method}')
     STC_HEMI = _get_stc_name('{method}-{hemi}')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
@@ -656,12 +656,12 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_f
         try:
             epo = get_cond_fname(EPO, cond)
             epochs = mne.read_epochs(epo)
-            if overwrite_noise_cov or not op.isfile(NOISE_COV):
-                if use_empty_room_for_noise_cov:
-                    raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
-                    noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
-                else:
-                    noise_cov = calc_noise_cov(epochs)
+            if use_empty_room_for_noise_cov:
+                raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
+                noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
+                noise_cov.save(NOISE_COV)
+            elif overwrite_noise_cov or not op.isfile(NOISE_COV):
+                noise_cov = calc_noise_cov(epochs)
                 noise_cov.save(NOISE_COV)
             else:
                 noise_cov = mne.read_cov(NOISE_COV)
@@ -1698,6 +1698,7 @@ def init_main(subject, mri_subject, remote_subject_dir, args):
         args.events_file_name = op.join(MEG_DIR, args.task, subject, args.events_file_name)
         if '{subject}' in args.events_file_name:
             args.events_file_name = args.events_file_name.format(subject=subject)
+    args.remote_subject_dir = remote_subject_dir
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
     prepare_subject_folder(mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
                                   args.mri_necessary_files, args)

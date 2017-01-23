@@ -54,6 +54,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
             print(traceback.format_exc())
 
     errors = defaultdict(list)
+    ret = True
     for subject, flags in subjects_flags.items():
         print('subject {}:'.format(subject))
         for flag_type, val in flags.items():
@@ -61,9 +62,11 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
             if not val:
                 errors[subject].append(flag_type)
     if len(errors) > 0:
+        ret = False
         print('Errors:')
         for subject, error in errors.items():
             print('{}: {}'.format(subject, error))
+    return ret
 
 
 def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=None):
