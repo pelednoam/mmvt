@@ -181,7 +181,7 @@ def calc_lables_connectivity(subject, args):
         chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
         results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
         for chunk in results:
-            for w, con in chunk.items:
+            for w, con in chunk.items():
                 conn[:, :, w] = con
         # conn_data = np.transpose(data, [2, 0, 1])
         # five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
