@@ -177,14 +177,26 @@ def calc_lables_connectivity(subject, args):
             np.fill_diagonal(conn[:, :, w], 0)
             connectivity_method = 'Pearson corr'
     elif 'wpli2_debiased' in args.connectivity_method:
-        conn_data = np.transpose(data, [2, 0, 1])
-        for w in range(windows_nun):
-            window_conn_data = conn_data[w, :, :]
-            window_conn_data = window_conn_data[np.newaxis, :, :]
-            con, _, _, _, _ = mne.connectivity.spectral_connectivity(
-                window_conn_data, 'wpli2_debiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax)
-            conn[:, :, w] = np.mean(con, 2) # Over freqs
+        conn_data = np.transpose(data, [2, 1, 0])
+        chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
+        results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+        for chunk in results:
+            for w, con in chunk.items:
+                conn[:, :, w] = con
+        # conn_data = np.transpose(data, [2, 0, 1])
+        # five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
+        # for w in range(windows_nun):
+        #     window_conn_data = conn_data[w, :, :]
+        #     window_conn_data = window_conn_data[np.newaxis, :, :]
+        #     con, _, _, _, _ = mne.connectivity.spectral_connectivity(
+        #         window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
+        #         n_jobs=args.n_jobs)
+        #     con = np.mean(con, 2) # Over freqs
+        #     conn[:, :, w] = con
         connectivity_method = 'PLI'
+        _conn = conn[:, :, :, np.newaxis]
+        d = save_connectivity(subject, _conn, connectivity_method, labels_names, conditions, output_fname,
+                              con_vertices_fname)
 
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
@@ -192,8 +204,6 @@ def calc_lables_connectivity(subject, args):
         dFC = np.nanmean(conn_no_wins, 1)
         lu.create_labels_coloring(subject, labels_names, dFC, 'pearson_corr_cv', norm_percs=(3, 99),
                            norm_by_percentile=True, colors_map='YlOrRd')
-    conn = conn[:, :, :, np.newaxis]
-    d = save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname)
     ret = op.isfile(output_fname)
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
@@ -202,6 +212,25 @@ def calc_lables_connectivity(subject, args):
         ret = ret and op.isfile(output_fname_no_wins)
 
     return ret
+
+
+def pli(data):
+    from scipy.signal import hilbert
+    nch = data.shape[1]
+    data_hil = hilbert(data)
+    m = np.zeros((nch, nch))
+    for i in range(nch):
+        for j in range(nch):
+            if i < j:
+                m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
+    return m + m.T
+
+
+def _pli_parallel(windows_chunk):
+    res = {}
+    for window_ind, window in windows_chunk:
+        res[window_ind] = pli(window)
+    return res
 
 
 def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname='',

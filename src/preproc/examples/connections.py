@@ -69,7 +69,7 @@ def calc_meg_connectivity(args):
         windows_length=500,
         windows_shift=100,
         sfreq=1000.0,
-        fmin=5,
+        fmin=10,
         fmax=100
     ))
     pu.run_on_subjects(args, con.main)
