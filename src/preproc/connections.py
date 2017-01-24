@@ -150,6 +150,10 @@ def calc_lables_connectivity(subject, args):
         names[hemi] = f['names']
     data = np.concatenate((data['lh'], data['rh']))
     labels_names = np.concatenate((names['lh'], names['rh']))
+    labels_indices = np.array([ind for ind,l in enumerate(labels_names) if not np.any([e in l for e in args.labels_exclude])])
+    if len(labels_indices) < len(labels_names):
+        labels_names = labels_names[labels_indices]
+        data = data[labels_indices]
     conditions = f['conditions'] if 'conditions' in f else ['rest']
 
     if data.ndim == 2:
@@ -176,8 +180,10 @@ def calc_lables_connectivity(subject, args):
                 conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
             np.fill_diagonal(conn[:, :, w], 0)
             connectivity_method = 'Pearson corr'
-    elif 'wpli2_debiased' in args.connectivity_method:
+    elif 'pli' in args.connectivity_method:
         conn_data = np.transpose(data, [2, 1, 0])
+        windows_nun = 50
+        conn_data = conn_data[:windows_nun, :, :]
         chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
         results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
         for chunk in results:
@@ -195,7 +201,7 @@ def calc_lables_connectivity(subject, args):
         #     conn[:, :, w] = con
         connectivity_method = 'PLI'
         _conn = conn[:, :, :, np.newaxis]
-        d = save_connectivity(subject, _conn, connectivity_method, labels_names, conditions, output_fname,
+        d = save_connectivity(subject, _conn, connectivity_method, labels_names, conditions, output_fname, args,
                               con_vertices_fname)
 
     if 'cv' in args.connectivity_method:
@@ -208,7 +214,7 @@ def calc_lables_connectivity(subject, args):
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
         save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, labels_names, conditions,
-                          output_fname_no_wins, '', d['labels'], d['locations'], d['hemis'])
+                          output_fname_no_wins, args, '', d['labels'], d['locations'], d['hemis'])
         ret = ret and op.isfile(output_fname_no_wins)
 
     return ret
@@ -233,8 +239,8 @@ def _pli_parallel(windows_chunk):
     return res
 
 
-def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, con_vertices_fname='',
-                      labels=None, locations=None, hemis=None):
+def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, args,
+                      con_vertices_fname='', labels=None, locations=None, hemis=None):
     d = dict()
     d['conditions'] = conditions
     # args.labels_exclude = []
@@ -290,28 +296,37 @@ def calc_connectivity(data, labels, hemis, args):
     con_names = [None] * L
     con_type = np.zeros((L))
     lower_rec_indices = list(utils.lower_rec_indices(M))
-    LRI = len(lower_rec_indices)
+    # LRI = len(lower_rec_indices)
     for cond in range(len(args.conditions)):
         for w in range(W):
             # now = time.time()
-            for ind, (i, j) in enumerate(lower_rec_indices):
-                # utils.time_to_go(now, ind, LRI, LRI/10)
-                if W > 1 and data.ndim == 4:
-                    con_values[ind, w, cond] = data[i, j, w, cond]
-                elif data.ndim > 2:
-                    con_values[ind, w, cond] = data[i, j, cond]
-                else:
-                    con_values[ind, w, cond] = data[i, j]
+            if W > 1 and data.ndim == 4:
+                con_values[:, w, cond] = [data[i, j, w, cond] for i, j in lower_rec_indices]
+            elif data.ndim > 2:
+                con_values[:, w, cond] = [data[i, j, cond] for i, j in lower_rec_indices]
+            else:
+                con_values[:, w, cond] = [data[i, j] for i, j in lower_rec_indices]
+            # for ind, (i, j) in enumerate(lower_rec_indices):
+            #     # utils.time_to_go(now, ind, LRI, LRI/10)
+            #     if W > 1 and data.ndim == 4:
+            #         con_values[ind, w, cond] = data[i, j, w, cond]
+            #     elif data.ndim > 2:
+            #         con_values[ind, w, cond] = data[i, j, cond]
+            #     else:
+            #         con_values[ind, w, cond] = data[i, j]
     if len(args.conditions) > 1:
         stat_data = utils.calc_stat_data(con_values, args.stat)
     else:
         stat_data = np.squeeze(con_values)
 
+    con_indices = np.array(lower_rec_indices)
     for ind, (i, j) in enumerate(utils.lower_rec_indices(M)):
-        con_indices[ind, :] = [i, j]
-        con_names[ind] = '{}-{}'.format(labels[i], labels[j])
-        con_type[ind] = HEMIS_WITHIN if hemis[i] == hemis[j] else HEMIS_BETWEEN
-
+        try:
+            # con_indices[ind, :] = [i, j]
+            con_names[ind] = '{}-{}'.format(labels[i], labels[j])
+            con_type[ind] = HEMIS_WITHIN if hemis[i] == hemis[j] else HEMIS_BETWEEN
+        except:
+            print('sdf')
     con_indices = con_indices.astype(np.int)
     con_names = np.array(con_names)
     data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
