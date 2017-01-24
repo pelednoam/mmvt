@@ -182,8 +182,8 @@ def calc_lables_connectivity(subject, args):
             connectivity_method = 'Pearson corr'
     elif 'pli' in args.connectivity_method:
         conn_data = np.transpose(data, [2, 1, 0])
-        windows_nun = 50
-        conn_data = conn_data[:windows_nun, :, :]
+        # windows_nun = 50
+        # conn_data = conn_data[:windows_nun, :, :]
         chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
         results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
         for chunk in results:
