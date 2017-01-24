@@ -88,7 +88,7 @@ def calc_rest(args):
         single_trial_stc=True,
         windows_length=500,
         windows_shift=100,
-        # windows_num=30,
+        windows_num=30,
         baseline_min=0,
         baseline_max=0,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
