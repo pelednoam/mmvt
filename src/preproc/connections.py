@@ -181,24 +181,24 @@ def calc_lables_connectivity(subject, args):
             np.fill_diagonal(conn[:, :, w], 0)
             connectivity_method = 'Pearson corr'
     elif 'pli' in args.connectivity_method:
-        conn_data = np.transpose(data, [2, 1, 0])
-        # windows_nun = 50
-        # conn_data = conn_data[:windows_nun, :, :]
-        chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
-        results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
-        for chunk in results:
-            for w, con in chunk.items():
-                conn[:, :, w] = con
-        # conn_data = np.transpose(data, [2, 0, 1])
-        # five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
-        # for w in range(windows_nun):
-        #     window_conn_data = conn_data[w, :, :]
-        #     window_conn_data = window_conn_data[np.newaxis, :, :]
-        #     con, _, _, _, _ = mne.connectivity.spectral_connectivity(
-        #         window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
-        #         n_jobs=args.n_jobs)
-        #     con = np.mean(con, 2) # Over freqs
-        #     conn[:, :, w] = con
+        # conn_data = np.transpose(data, [2, 1, 0])
+        # chunks = utils.chunks(list(enumerate(conn_data)), windows_nun / args.n_jobs)
+        # results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+        # for chunk in results:
+        #     for w, con in chunk.items():
+        #         conn[:, :, w] = con
+        conn = np.zeros((data.shape[0], data.shape[0], windows_nun - 3))
+        conn_data = np.transpose(data, [2, 0, 1])
+        five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
+        for w in range(windows_nun - 3):
+            window_conn_data = conn_data[w:w+3, :, :]
+            # window_conn_data = window_conn_data[np.newaxis, :, :]
+            con, _, _, _, _ = mne.connectivity.spectral_connectivity(
+                window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
+                n_jobs=args.n_jobs)
+            con = np.mean(con, 2) # Over freqs
+            conn[:, :, w] = con + con.T
+
         connectivity_method = 'PLI'
         _conn = conn[:, :, :, np.newaxis]
         d = save_connectivity(subject, _conn, connectivity_method, labels_names, conditions, output_fname, args,
