@@ -71,7 +71,7 @@ def calc_subcorticals(subject, mri_subject):
 
 
 def calc_rest(args):
-    # '-s hc029 -a laus125 -t rest -f calc_evoked,make_forward_solution,calc_inverse_operator --reject 0 --remove_power_line_noise 0 --demi_windows_length 1000 --demi_windows_shift 500 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"''
+    # '-s hc029 -a laus125 -t rest -f calc_evoked,make_forward_solution,calc_inverse_operator --reject 0 --remove_power_line_noise 0 --windows_length 1000 --windows_shift 500 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"''
     # '-s hc029 -a laus125 -t rest -f calc_stc_per_condition,calc_labels_avg_per_condition --single_trial_stc 1 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"'
     args = meg.read_cmd_args(utils.Bag(
         subject=args.subject,
@@ -80,12 +80,15 @@ def calc_rest(args):
         function='calc_evoked,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition',
         task='rest',
         cleaning_method='tsss',
-        reject=False,
-        remove_power_line_noise=True,
+        calc_epochs_from_raw=True,
+        reject=False, # Should be True here, unless you are dealling with bad data...
+        remove_power_line_noise=False,
+        l_freq=8,
         use_empty_room_for_noise_cov=True,
         single_trial_stc=True,
-        demi_windows_length=500,
-        demi_windows_shift=100,
+        windows_length=500,
+        windows_shift=100,
+        # windows_num=30,
         baseline_min=0,
         baseline_max=0,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'

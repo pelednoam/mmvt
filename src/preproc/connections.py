@@ -3,6 +3,7 @@ import numpy as np
 import scipy.io as sio
 import glob
 import traceback
+import matplotlib.pyplot as plt
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -187,11 +188,12 @@ def calc_lables_connectivity(subject, args):
         # for chunk in results:
         #     for w, con in chunk.items():
         #         conn[:, :, w] = con
-        conn = np.zeros((data.shape[0], data.shape[0], windows_nun - 3))
+        pli_wins = 3
+        conn = np.zeros((data.shape[0], data.shape[0], windows_nun - pli_wins))
         conn_data = np.transpose(data, [2, 0, 1])
         five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
-        for w in range(windows_nun - 3):
-            window_conn_data = conn_data[w:w+3, :, :]
+        for w in range(windows_nun - pli_wins):
+            window_conn_data = conn_data[w:w+pli_wins, :, :]
             # window_conn_data = window_conn_data[np.newaxis, :, :]
             con, _, _, _, _ = mne.connectivity.spectral_connectivity(
                 window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
@@ -208,8 +210,8 @@ def calc_lables_connectivity(subject, args):
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
         conn_no_wins = np.nanstd(np.abs(conn), 2) / np.mean(np.abs(conn), 2)
         dFC = np.nanmean(conn_no_wins, 1)
-        lu.create_labels_coloring(subject, labels_names, dFC, 'pearson_corr_cv', norm_percs=(3, 99),
-                           norm_by_percentile=True, colors_map='YlOrRd')
+        lu.create_labels_coloring(subject, labels_names, dFC, '{}_pearson_corr_cv'.format(connectivity_method),
+                                  norm_percs=(1, 99), norm_by_percentile=True, colors_map='YlOrRd')
     ret = op.isfile(output_fname)
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
