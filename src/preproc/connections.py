@@ -157,6 +157,17 @@ def calc_lables_connectivity(subject, args):
         data = data[labels_indices]
     conditions = f['conditions'] if 'conditions' in f else ['rest']
 
+    # from mne import filter
+    # plt.psd(data, Fs=1000)
+    # data = filter.filter_data(data, 1000, 8, None)
+    # plt.figure()
+    # plt.plot(data[:, :, 0].T)
+    # plt.figure()
+    # plt.psd(data, Fs=1000)
+    # plt.figure()
+    # plt.plot(data[:, :500].T)
+    # plt.show()
+
     if data.ndim == 2:
         # No windows yet
         import math

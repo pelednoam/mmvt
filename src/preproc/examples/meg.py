@@ -83,14 +83,15 @@ def calc_rest(args):
         calc_epochs_from_raw=True,
         reject=False, # Should be True here, unless you are dealling with bad data...
         remove_power_line_noise=False,
-        l_freq=8,
+        l_freq=3, h_freq=80,
         use_empty_room_for_noise_cov=True,
         single_trial_stc=True,
         windows_length=500,
         windows_shift=100,
-        windows_num=30,
+        # windows_num=10,
         baseline_min=0,
         baseline_max=0,
+        inverse_method='MNE',
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
     ))
     call_main(args)

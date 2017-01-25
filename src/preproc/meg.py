@@ -179,7 +179,7 @@ def load_raw(bad_channels=[], l_freq=None, h_freq=None):
     if len(bad_channels) > 0:
         raw.info['bads'] = args.bad_channels
     if l_freq or h_freq:
-        raw.filter(l_freq, h_freq)
+        raw = raw.filter(l_freq, h_freq)
     return raw
 
 
@@ -206,7 +206,8 @@ def calcNoiseCov(epoches):
 
 def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
     import math
-    T = raw._data.shape[1]
+    # T = raw._data.shape[1]
+    T = raw.last_samp - raw.first_samp + 1
     if epoches_nun == 0:
         epoches_nun = math.floor((T - windows_length) / windows_shift + 1)
     demi_events = np.zeros((epoches_nun, 3), dtype=np.uint32)
@@ -216,6 +217,7 @@ def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
         # demi_events[win_ind * 2] = [win, win + W, 0]
         # demi_events[win_ind * 2 + 1] = [win + W + 1, win + W * 2, 1]
     # demi_events_ids = {'demi_1': 0, 'demi_2': 1}
+    demi_events[:, :2] += raw.first_samp
     demi_events_ids = {'demi': 0}
     return demi_events, demi_events_ids
 
