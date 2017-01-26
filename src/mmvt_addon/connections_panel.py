@@ -696,13 +696,7 @@ def connections_draw(self, context):
     layout.prop(context.scene, 'connections_threshold_type', text='threshold type', expand=True)
     filter_text = 'Remove filter' if bpy.context.scene.connections_filter else 'Filter connections'
     layout.operator(FilterGraph.bl_idname, text=filter_text, icon='BORDERMOVE')
-    # todo: Check if we need this function
-    # layout.operator(PlotConnections.bl_idname, text="Plot connections ", icon='POTATO')
-    # if ConnectionsPanel.show_connections:
-    #     layout.operator("mmvt.show_hide_connections", text="Show connections ", icon='RESTRICT_VIEW_OFF')
-    # else:
-    #     layout.operator("mmvt.show_hide_connections", text="Hide connections ", icon='RESTRICT_VIEW_OFF')
-
+    layout.prop(context.scene, 'connections_filter_vertices', text="Hide non connected vertices")
     if 'electrodes' in bpy.context.scene.connectivity_files:
         filter_text = '{} electrodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterElectrodes.bl_idname, text=filter_text, icon='BORDERMOVE')
@@ -729,6 +723,7 @@ bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
     description="Threshold type")
 bpy.types.Scene.connections_filter = bpy.props.BoolProperty(name='connections_filter')
 bpy.types.Scene.connections_num = bpy.props.IntProperty(min=0, default=0, description="")
+bpy.types.Scene.connections_filter_vertices = bpy.props.BoolProperty(default=True, description="")
 
 bpy.types.Scene.connections_min = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.connections_max = bpy.props.FloatProperty(default=0)
