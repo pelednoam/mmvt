@@ -390,6 +390,7 @@ def save_electrodes_connectivity(subject, args):
     import mne.connectivity
     args.connectivity_modality = 'electrodes'
     output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npy'.format(args.connectivity_modality))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npz'.format(args.connectivity_modality))
     output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
                                    '{}_static.npz'.format(args.connectivity_modality))
@@ -398,11 +399,10 @@ def save_electrodes_connectivity(subject, args):
     data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
-    data = np.load(data_fname)
-    windows_num, E, windows_length = data.shape
+    conn_data = np.load(data_fname)
+    windows_num, E, windows_length = conn_data.shape
     pli_wins = 3
-    conn = np.zeros((data.shape[0], data.shape[0], windows_num - pli_wins))
-    conn_data = np.transpose(data, [2, 0, 1])
+    conn = np.zeros((E, E, windows_num - pli_wins))
     five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
     for w in range(windows_num - pli_wins):
         window_conn_data = conn_data[w:w+pli_wins, :, :]

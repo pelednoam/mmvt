@@ -113,6 +113,7 @@ def calc_electrodes_connectivity(args):
         windows_length=1000,
         windows_shift=200,
         sfreq=2000.0,
+        n_jobs=args.n_jobs
         # fmin=10,
         # fmax=100
     ))
@@ -123,5 +124,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](args)
