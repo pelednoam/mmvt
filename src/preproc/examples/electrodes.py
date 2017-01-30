@@ -22,9 +22,22 @@ def save_msit_single_trials_data(subject, bipolar):
     elecs.main(subject, args)
 
 
-def load_edf_data():
+def load_edf_data_seizure(args):
     '-s mg80b -t seizure -a laus250 -b 0 -f create_raw_data_for_blender --raw_fname seizure_1.edf --start_time 17:25:02 --seizure_time 17:25:48 --window_length 10 --baseline_delta 10 --seizure_onset_time 5 --ref_elec REF2'
     pass
+
+
+def load_edf_data_rest(args):
+    args = elecs.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        function='create_raw_data_for_blender',
+        task='rest',
+        bipolar=False,
+        raw_fname='MG102_d3_Fri.edf',
+        start_time='6:50:00',
+        end_time='7:05:00'
+    ))
+    pu.run_on_subjects(args, elecs.main)
 
 
 def get_electrodes_file_from_server(args):

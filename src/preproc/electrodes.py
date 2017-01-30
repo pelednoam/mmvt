@@ -497,13 +497,13 @@ def read_edf(edf_fname, from_t, to_t):
     print('sdf')
 
 
-def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by_percentile=True,
-                                norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
-                                flip_cm_small=True, moving_average_win_size=0, stat = STAT_DIFF, do_plot=False):
+def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
+    # edf_name, conds, bipolar=False, norm_by_percentile=True,
+    #                             norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
+    #                             flip_cm_small=True, moving_average_win_size=0, stat=STAT_DIFF, do_plot=False):
     import mne.io
-    import numpy.matlib as npm
 
-    edf_fname = op.join(ELECTRODES_DIR, subject, edf_name)
+    edf_fname = op.join(ELECTRODES_DIR, subject, args.edf_name)
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
@@ -511,17 +511,17 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
-    data_channels, _ = read_electrodes_file(subject, bipolar)
+    data_channels, _ = read_electrodes_file(subject, args.bipolar)
     # live_channels = find_live_channels(edf_raw, hz)
     # no_stim_channels = get_data_channels(edf_raw)
     channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
-    for cond_id, cond in enumerate(conds):
+    for cond_id, cond in enumerate(args.conds):
         cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         C, T = cond_data.shape
         if cond_id == 0:
-            data = np.zeros((C, T, len(conds)))
+            data = np.zeros((C, T, len(args.conds)))
         if cond['name'] == 'baseline':
             baseline = np.mean(cond_data, 1)
         data[:, :, cond_id] = cond_data
@@ -532,29 +532,28 @@ def create_raw_data_for_blender(subject, edf_name, conds, bipolar=False, norm_by
         data -= np.tile(data[ref_ind], (C, 1, 1))
     data[:, :, 0] -= np.tile(baseline, (T, 1)).T
     data[:, :, 1] -= np.tile(baseline, (T, 1)).T
-    conditions = [c['name'] for c in conds]
+    conditions = [c['name'] for c in args.conds]
     data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
     fol = op.join(MMVT_DIR, subject, 'electrodes')
-    output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if bipolar else '', STAT_NAME[stat]))
+    output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
 
-    calc_colors = partial(
-        utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
-        flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
-    if moving_average_win_size > 0:
-        stat_data_mv = utils.moving_avg(stat_data, moving_average_win_size)
-        colors_mv = calc_colors(stat_data_mv)
-        np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, colors=colors_mv,
-                 times=times)
+    # calc_colors = partial(
+    #     utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
+    #     flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
+    if args.moving_average_win_size > 0:
+        stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
+        # colors_mv = calc_colors(stat_data_mv)
+        np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
     else:
-        colors = calc_colors(stat_data)
+        # colors = calc_colors(stat_data)
         # try:
         #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
         # except:
-        np.savez(op.join(fol, 'electrodes{}_data_{}_meta.npz'.format('_bipolar' if bipolar else '', STAT_NAME[stat])),
+        np.savez(op.join(fol, 'electrodes{}_data_{}_meta.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])),
                  names=labels, conditions=conditions, times=times)
-        np.save(op.join(fol, 'electrodes{}_data_{}_data.npy'.format('_bipolar' if bipolar else '', STAT_NAME[stat])), data)
-        np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if bipolar else '', STAT_NAME[stat])), colors)
+        np.save(op.join(fol, 'electrodes{}_data_{}_data.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), data)
+        # np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), colors)
     # if do_plot:
     #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')
     #     utils.make_dir(figs_fol)
@@ -840,6 +839,9 @@ def set_args(args):
                       dict(name='seizure', from_t=args.from_t[1], to_t=args.to_t[1])]
         print(args.conditions)
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
+    elif args.task == 'rest':
+        #todo: write some code here
+        pass
     else:
         if isinstance(args.from_t, Iterable) and isinstance(args.to_t, Iterable):
             args.conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
@@ -885,8 +887,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['show_image'] = utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
     if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
-        flags['create_raw_data_for_blender'] = create_raw_data_for_blender(
-            subject, args.raw_fname, args.conditions, do_plot=args.do_plot)
+        flags['create_raw_data_for_blender'] = create_raw_data_for_blender(subject, args)
 
 
     return flags
@@ -917,6 +918,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--input_matlab_fname', help='', required=False, default='')
 
     parser.add_argument('--start_time', help='', required=False, default='')
+    parser.add_argument('--end_time', help='', required=False, default='')
     parser.add_argument('--seizure_time', help='', required=False, default='')
     parser.add_argument('--window_length', help='', required=False, default=0, type=float)
     parser.add_argument('--seizure_onset_time', help='', required=False, default=0, type=float)
