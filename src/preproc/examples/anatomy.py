@@ -25,11 +25,27 @@ def prepare_subject_folder_from_franklin(subject, args):
     pu.run_on_subjects(args, anat.main)
 
 
-def darpa(subject, args):
-    args = anat.read_cmd_args(['-s', subject, '-a', args.atlas])
-    subject = subject[:2].upper() + subject[2:]
-    args.remote_subject_dir = op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(subject))
-    pu.run_on_subjects(args, anat.main)
+def darpa(args):
+    for subject in args.subject:
+        darpa_subject = subject[:2].upper() + subject[2:]
+        args = anat.read_cmd_args(utils.Bag(
+            subject=subject,
+            remote_subject_dir=op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(darpa_subject))
+        ))
+        pu.run_on_subjects(args, anat.main)
+
+
+def darpa_sftp(args):
+    for subject in args.subject:
+        darpa_subject = subject[:2].upper() + subject[2:]
+        args = anat.read_cmd_args(utils.Bag(
+            subject=subject,
+            remote_subject_dir=op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(darpa_subject)),
+            sftp=True,
+            sftp_username='npeled',
+            sftp_domain='door.nmr.mgh.harvard.edu',
+        ))
+        pu.run_on_subjects(args, anat.main)
 
 
 def darpa_prep_huygens(subject, args):
