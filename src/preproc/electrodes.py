@@ -7,6 +7,7 @@ import scipy.io as sio
 import scipy
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
@@ -396,7 +397,9 @@ def fix_bipolar_labels(labels):
 
 
 def calc_stat_data(data, stat):
-    if stat == STAT_AVG:
+    if data.shape[2] == 1:
+        stat_data = data
+    elif stat == STAT_AVG:
         stat_data = np.squeeze(np.mean(data, axis=2))
     elif stat == STAT_DIFF:
         stat_data = np.squeeze(np.diff(data, axis=2))
@@ -502,12 +505,15 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     #                             norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
     #                             flip_cm_small=True, moving_average_win_size=0, stat=STAT_DIFF, do_plot=False):
     import mne.io
+    from mne.filter import notch_filter
 
-    edf_fname = op.join(ELECTRODES_DIR, subject, args.edf_name)
+    edf_fname = op.join(ELECTRODES_DIR, subject, args.raw_fname)
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
-    edf_raw = mne.io.read_raw_edf(edf_fname, preload=True)
-    edf_raw.notch_filter(np.arange(60, 241, 60))
+    edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
+    fs = float(edf_raw.info['sfreq'])
+    if args.preload:
+        edf_raw.notch_filter(np.arange(60, 241, 60))
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
@@ -517,11 +523,13 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
-    for cond_id, cond in enumerate(args.conds):
-        cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
+    for cond_id, cond in enumerate(args.conditions):
+        cond_data, times = edf_raw[channels_indices, int(cond['from_t'].seconds*hz):int(cond['to_t'].seconds*hz)]
+        if not args.preload:
+            notch_filter(cond_data, fs, np.arange(60, 241, 60), copy=False, n_jobs=args.n_jobs)
         C, T = cond_data.shape
         if cond_id == 0:
-            data = np.zeros((C, T, len(args.conds)))
+            data = np.zeros((C, T, len(args.conditions)))
         if cond['name'] == 'baseline':
             baseline = np.mean(cond_data, 1)
         data[:, :, cond_id] = cond_data
@@ -530,10 +538,12 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     if args.ref_elec != '':
         ref_ind = labels.index(args.ref_elec)
         data -= np.tile(data[ref_ind], (C, 1, 1))
-    data[:, :, 0] -= np.tile(baseline, (T, 1)).T
-    data[:, :, 1] -= np.tile(baseline, (T, 1)).T
-    conditions = [c['name'] for c in args.conds]
-    data = utils.normalize_data(data, norm_by_percentile=False)
+    conditions = [c['name'] for c in args.conditions]
+    if 'baseline' in conditions:
+        data[:, :, 0] -= np.tile(baseline, (T, 1)).T
+        data[:, :, 1] -= np.tile(baseline, (T, 1)).T
+    if args.normalize_data:
+        data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
@@ -561,7 +571,6 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
 
 
 def calc_seizure_times(start_time, seizure_time, window_length, seizure_onset_time, baseline_delta, time_format='%H:%M:%S'):
-    from datetime import datetime
     start_time = datetime.strptime(start_time, time_format)
     seizure_time = datetime.strptime(seizure_time, time_format) - start_time
     seizure_start_t = seizure_time.seconds - seizure_onset_time
@@ -840,8 +849,11 @@ def set_args(args):
         print(args.conditions)
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
     elif args.task == 'rest':
-        #todo: write some code here
-        pass
+        start_time = datetime.strptime(args.start_time, args.time_format)
+        rest_onset_time = datetime.strptime(args.rest_onset_time, args.time_format)
+        args.from_t = [rest_onset_time - start_time]
+        args.to_t = [datetime.strptime(args.end_time, args.time_format) - start_time]
+        args.conditions = [dict(name='rest', from_t=args.from_t[0], to_t=args.to_t[0])]
     else:
         if isinstance(args.from_t, Iterable) and isinstance(args.to_t, Iterable):
             args.conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
@@ -865,7 +877,7 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
             subject, args.task, args.from_t_ind, args.to_t_ind, args.stat, args.conditions,
-            args.bipolar, args.electrodes_names_field, args.moving_average_window_size,
+            args.bipolar, args.electrodes_names_field, args.moving_average_win_size,
             args.input_matlab_fname, args.input_type, args.field_cond_template)
 
     if utils.should_run(args, 'create_electrodes_labeling_coloring'):
@@ -912,13 +924,16 @@ def read_cmd_args(argv=None):
     parser.add_argument('--ref_elec', help='referece electrode', required=False, default='')
     parser.add_argument('--stat', help='stat', required=False, default=STAT_DIFF, type=int)
     parser.add_argument('--electrodes_names_field', help='electrodes_names_field', required=False, default='names')
-    parser.add_argument('--moving_average_window_size', help='', required=False, default=0, type=int)
+    parser.add_argument('--moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--field_cond_template', help='', required=False, default='{}')
     parser.add_argument('--input_type', help='', required=False, default='ERP')
     parser.add_argument('--input_matlab_fname', help='', required=False, default='')
+    parser.add_argument('--normalize_data', help='normalize_data', required=False, default=1, type=au.is_true)
+    parser.add_argument('--preload', help='preload', required=False, default=1, type=au.is_true)
 
-    parser.add_argument('--start_time', help='', required=False, default='')
+    parser.add_argument('--start_time', help='', required=False, default='0:00:00')
     parser.add_argument('--end_time', help='', required=False, default='')
+    parser.add_argument('--rest_onset_time', help='', required=False, default='')
     parser.add_argument('--seizure_time', help='', required=False, default='')
     parser.add_argument('--window_length', help='', required=False, default=0, type=float)
     parser.add_argument('--seizure_onset_time', help='', required=False, default=0, type=float)

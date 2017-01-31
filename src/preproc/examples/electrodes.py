@@ -34,8 +34,10 @@ def load_edf_data_rest(args):
         task='rest',
         bipolar=False,
         raw_fname='MG102_d3_Fri.edf',
-        start_time='6:50:00',
-        end_time='7:05:00'
+        rest_onset_time='6:50:00',
+        end_time='7:05:00',
+        normalize_data=False,
+        preload=False
     ))
     pu.run_on_subjects(args, elecs.main)
 

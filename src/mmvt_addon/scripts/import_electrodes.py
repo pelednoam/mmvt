@@ -42,7 +42,8 @@ def read_args(argv=None):
             else:
                 pos_file_options = [fname for fname in pos_file_options if 'bipolar' not in fname]
             if len(pos_file_options) == 0:
-                raise Exception('No electrodes position files in {}!'.format(pos_files_fol))
+                raise Exception('No electrodes position files ({}) in {}!'.format(
+                    op.join(pos_files_fol, 'electrodes*positions*.npz'), pos_files_fol))
             elif len(pos_file_options) == 1:
                 pos_file = pos_file_options[0]
                 print('electrodes file: {}'.format(pos_file))
