@@ -560,9 +560,10 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
         # try:
         #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
         # except:
-        np.savez(op.join(fol, 'electrodes{}_data_{}_meta.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])),
-                 names=labels, conditions=conditions, times=times)
-        np.save(op.join(fol, 'electrodes{}_data_{}_data.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), data)
+        meta_fname_template = op.join(fol, 'electrodes{}_data{}_{}.npz'.format(
+            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else ''), 'dtype'))
+        np.savez(meta_fname_template.format(dtype='meta'), names=labels, conditions=conditions, times=times)
+        np.save(meta_fname_template.format(dtype='data'), data)
         # np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), colors)
     # if do_plot:
     #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')

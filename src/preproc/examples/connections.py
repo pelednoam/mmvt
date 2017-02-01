@@ -79,32 +79,51 @@ def calc_meg_connectivity(args):
     pu.run_on_subjects(args, con.main)
 
 
-def calc_electrodes_connectivity(args):
-    import scipy.io as sio
-    import math
-    import numpy as np
-    import src.mmvt_addon.mmvt_utils as mu
-    for subject in args.subject:
-        data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
-        if not op.isfile(data_fname):
-            d = sio.loadmat(op.join(ELECTRODES_DIR, subject, 'data.mat'))
-            data_mat = d['data']
-            electrodes_num = data_mat.shape[1]
-            labels = []
-            for label_mat in d['labels']:
-                group, elc1, elc2 = mu.elec_group_number('{1}-{0}'.format(*label_mat.split(' ')), True)
-                labels.append('{0}{1}-{0}{2}'.format(group, elc2, elc1))
-            np.save(op.join(ELECTRODES_DIR, subject, 'electrodes.npy'), labels)
-            data = data_mat.swapaxes(0,1).reshape(electrodes_num, -1)
-            E, T = data.shape
-            windows_length = 1000
-            windows_shift = 200
-            windows_nun = math.floor((T - windows_length) / windows_shift + 1)
-            data_winodws = np.zeros((windows_nun, E, windows_length))
-            for w in range(windows_nun):
-                data_winodws[w] = data[:, w * windows_shift:w * windows_shift + windows_length]
-            np.save(data_fname, data_winodws)
+def calc_electrodes_rest_connectivity(args):
+    args = con.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        function='save_electrodes_connectivity',
+        connectivity_modality='electrodes',
+        connectivity_method='pli,cv',
+        windows_length=1000,
+        windows_shift=200,
+        sfreq=2000.0,
+        n_jobs=args.n_jobs
+        # fmin=10,
+        # fmax=100
+    ))
+    pu.run_on_subjects(args, con.main)
 
+
+def calc_electrodes_connectivity(args):
+
+    def read_matlab_and_split_into_windows(args):
+        import scipy.io as sio
+        import math
+        import numpy as np
+        import src.mmvt_addon.mmvt_utils as mu
+        for subject in args.subject:
+            data_fname = op.join(ELECTRODES_DIR, subject, 'electrodes_data_diff_data.npy')
+            if not op.isfile(data_fname):
+                d = sio.loadmat(op.join(ELECTRODES_DIR, subject, 'data.mat'))
+                data_mat = d['data']
+                electrodes_num = data_mat.shape[1]
+                labels = []
+                for label_mat in d['labels']:
+                    group, elc1, elc2 = mu.elec_group_number('{1}-{0}'.format(*label_mat.split(' ')), True)
+                    labels.append('{0}{1}-{0}{2}'.format(group, elc2, elc1))
+                np.save(op.join(ELECTRODES_DIR, subject, 'electrodes.npy'), labels)
+                data = data_mat.swapaxes(0, 1).reshape(electrodes_num, -1)
+                E, T = data.shape
+                windows_length = 1000
+                windows_shift = 200
+                windows_nun = math.floor((T - windows_length) / windows_shift + 1)
+                data_winodws = np.zeros((windows_nun, E, windows_length))
+                for w in range(windows_nun):
+                    data_winodws[w] = data[:, w * windows_shift:w * windows_shift + windows_length]
+                np.save(data_fname, data_winodws)
+
+    read_matlab_and_split_into_windows(args)
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
         function='save_electrodes_connectivity',

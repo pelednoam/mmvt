@@ -16,6 +16,7 @@ FMRI_DIR = utils.get_link_dir(LINKS_DIR, 'fMRI')
 ELECTRODES_DIR = utils.get_link_dir(LINKS_DIR, 'electrodes')
 
 STAT_AVG, STAT_DIFF = range(2)
+STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 
@@ -395,12 +396,37 @@ def save_electrodes_connectivity(subject, args):
     output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
                                    '{}_static.npz'.format(args.connectivity_modality))
 
-    electrodes_names = np.load(op.join(ELECTRODES_DIR, subject, 'electrodes.npy'))
-    data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
+    fol = op.join(MMVT_DIR, subject, 'electrodes')
+    meta_data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*_meta.npz'.format(
+        '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
+    data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*_data.npy'.format(
+        '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
+    if len(meta_data_fnames) == 1 and len(data_fnames) == 1:
+        d = np.load(meta_data_fnames[0])
+        electrodes_names = d['names'] # conditions=conditions, times=times)
+        conn_data = np.load(data_fnames[0])
+        conn_data = np.transpose(conn_data, [2, 0, 1])
+    else:
+        electrodes_names_fname = op.join(ELECTRODES_DIR, subject, 'electrodes.npy')
+        data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
+        if op.isfile(electrodes_names_fname) and op.isfile(data_fname):
+            electrodes_names = np.load(electrodes_names_fname)
+            conn_data = np.load(data_fname)
+        else:
+            raise Exception("Electrodes data can't be found!")
+
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
-    conn_data = np.load(data_fname)
     windows_num, E, windows_length = conn_data.shape
+    if windows_num == 1:
+        import math
+        T = windows_length
+        windows_num = math.floor((T - args.windows_length) / args.windows_shift + 1)
+        data_winodws = np.zeros((windows_num, E, windows_length))
+        for w in range(windows_num):
+            data_winodws[w] = conn_data[0, :, w * args.windows_shift:w * args.windows_shift + windows_length]
+        conn_data = data_winodws
+
     pli_wins = 3
     conn = np.zeros((E, E, windows_num - pli_wins))
     five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
