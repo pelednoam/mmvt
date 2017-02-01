@@ -352,7 +352,7 @@ def calc_connectivity(data, labels, hemis, args):
             con_names[ind] = '{}-{}'.format(labels[i], labels[j])
             con_type[ind] = HEMIS_WITHIN if hemis[i] == hemis[j] else HEMIS_BETWEEN
         except:
-            print('sdf')
+            print('error in calc_connectivity!')
     con_indices = con_indices.astype(np.int)
     con_names = np.array(con_names)
     data_max, data_min = utils.get_data_max_min(stat_data, args.norm_by_percentile, args.norm_percs)
@@ -387,7 +387,7 @@ def calc_connectivity(data, labels, hemis, args):
     return None, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
-def save_electrodes_connectivity(subject, args):
+def calc_electrodes_connectivity(subject, args):
     import mne.connectivity
     args.connectivity_modality = 'electrodes'
     output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npy'.format(args.connectivity_modality))
@@ -397,9 +397,9 @@ def save_electrodes_connectivity(subject, args):
                                    '{}_static.npz'.format(args.connectivity_modality))
 
     fol = op.join(MMVT_DIR, subject, 'electrodes')
-    meta_data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*_meta.npz'.format(
+    meta_data_fnames = glob.glob(op.join(fol, 'electrodes{}_meta_data*.npz'.format(
         '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
-    data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*_data.npy'.format(
+    data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*.npy'.format(
         '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
     if len(meta_data_fnames) == 1 and len(data_fnames) == 1:
         d = np.load(meta_data_fnames[0])
@@ -414,6 +414,7 @@ def save_electrodes_connectivity(subject, args):
             conn_data = np.load(data_fname)
         else:
             raise Exception("Electrodes data can't be found!")
+    groups_hemis = utils.load(op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
 
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
@@ -422,10 +423,12 @@ def save_electrodes_connectivity(subject, args):
         import math
         T = windows_length
         windows_num = math.floor((T - args.windows_length) / args.windows_shift + 1)
-        data_winodws = np.zeros((windows_num, E, windows_length))
+        data_winodws = np.zeros((windows_num, E, args.windows_length))
         for w in range(windows_num):
-            data_winodws[w] = conn_data[0, :, w * args.windows_shift:w * args.windows_shift + windows_length]
+            data_winodws[w] = conn_data[0, :, w * args.windows_shift:w * args.windows_shift + args.windows_length]
         conn_data = data_winodws
+    if args.max_windows_num != 0:
+        windows_num = min(args.max_windows_num, windows_num)
 
     pli_wins = 3
     conn = np.zeros((E, E, windows_num - pli_wins))
@@ -465,9 +468,9 @@ def main(subject, remote_subject_dir, args, flags):
         # todo: Add the necessary parameters
         flags['save_electrodes_coh'] = save_electrodes_coh(subject, args)
 
-    if utils.should_run(args, 'save_electrodes_connectivity'):
+    if utils.should_run(args, 'calc_electrodes_connectivity'):
         # todo: Add the necessary parameters
-        flags['save_electrodes_coh'] = save_electrodes_connectivity(subject, args)
+        flags['save_electrodes_coh'] = calc_electrodes_connectivity(subject, args)
 
 
     if utils.should_run(args, 'calc_lables_connectivity'):
@@ -502,6 +505,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
     parser.add_argument('--windows_length', help='', required=False, default=2000, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
+    parser.add_argument('--max_windows_num', help='', required=False, default=0, type=int)
 
     parser.add_argument('--sfreq', help='', required=False, default=1000, type=float)
     parser.add_argument('--fmin', help='', required=False, default=5, type=float)

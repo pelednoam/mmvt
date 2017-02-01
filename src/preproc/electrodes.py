@@ -497,7 +497,6 @@ def read_edf(edf_fname, from_t, to_t):
     data, times = edf_raw[:, int(from_t*hz):int(from_t*hz) + hz * window]
     # plot_power(data[0], dt)
     # edf_raw.plot(None, 1, 20, 20)
-    print('sdf')
 
 
 def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
@@ -560,10 +559,12 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
         # try:
         #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
         # except:
-        meta_fname_template = op.join(fol, 'electrodes{}_data{}_{}.npz'.format(
-            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else ''), 'dtype'))
-        np.savez(meta_fname_template.format(dtype='meta'), names=labels, conditions=conditions, times=times)
-        np.save(meta_fname_template.format(dtype='data'), data)
+        meta_fname = op.join(fol, 'electrodes{}_meta_data{}'.format(
+            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+        data_fname = op.join(fol, 'electrodes{}_data{}'.format(
+            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+        np.savez(meta_fname, names=labels, conditions=conditions, times=times)
+        np.save(data_fname, data)
         # np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), colors)
     # if do_plot:
     #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')
