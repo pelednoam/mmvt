@@ -23,7 +23,10 @@ def _addon():
 
 
 def get_parent_obj_name():
-    return 'connections_{}'.format(bpy.context.scene.connectivity_files.replace(' ', '_'))
+    if ConnectionsPanel.connections_files_exist:
+        return 'connections_{}'.format(bpy.context.scene.connectivity_files.replace(' ', '_'))
+    else:
+        return 'no-connections'
 
 
 def connections_exist():
@@ -46,7 +49,7 @@ def check_connections(stat=STAT_DIFF):
             windows_num = d.con_values.shape[1]
         else:
             windows_num = 1
-        if d.con_values.ndim > 2:
+        if d.con_values.ndim > 2 and d.con_values.shape[2] > 1:
             stat_data = calc_stat_data(d.con_values, stat)
         else:
             stat_data = d.con_values
@@ -378,7 +381,7 @@ def plot_connections(d, plot_time):
         modality_names = dict(electrodes='Electrodes', meg='MEG', fmri='fMRI')
         colorbar_title = 'Electrodes {}'.format(connectivity_method) \
             if 'electrodes' in bpy.context.scene.connectivity_files else \
-            '{} {}'.format(bpy.context.scene.connectivity_files, connectivity_method) # Cortical labels
+                '{} {}'.format(bpy.context.scene.connectivity_files, connectivity_method) # Cortical labels
         _addon().set_colorbar_title(colorbar_title)
 
 
@@ -739,6 +742,7 @@ class ConnectionsPanel(bpy.types.Panel):
     d = None #mu.Bag({})
     show_connections = True
     do_filter = True
+    connections_files_exist = False
 
     def draw(self, context):
         connections_draw(self, context)
@@ -756,7 +760,8 @@ def init(addon):
     import glob
     conn_files_template = op.join(mu.get_user_fol(), 'connectivity', '*.npz')
     conn_files = glob.glob(conn_files_template)
-    if len(conn_files) == 0:
+    ConnectionsPanel.connections_files_exist = len(conn_files) > 0
+    if not ConnectionsPanel.connections_files_exist:
         print('No connectivity files were found in {}'.format(conn_files_template))
         unregister()
         return
@@ -765,7 +770,8 @@ def init(addon):
     conn_items = [(c, c, '', ind) for ind, c in enumerate(conn_names)]
     bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(
         items=conn_items, description="connectivity files", update=connectivity_files_update)
-    bpy.context.scene.connectivity_files = conn_names[0]
+    if len(conn_names) > 0:
+        bpy.context.scene.connectivity_files = conn_names[0]
     ConnectionsPanel.T = addon.get_max_time_steps()
     ConnectionsPanel.addon = addon
     bpy.context.scene.connections_threshold = 0

@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 import scipy.io as sio
+import mne.connectivity
 import glob
 import traceback
 import matplotlib.pyplot as plt
@@ -18,11 +19,11 @@ ELECTRODES_DIR = utils.get_link_dir(LINKS_DIR, 'electrodes')
 STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
-
+ROIS_TYPE, ELECTRODES_TYPE = range(2)
 
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
-def save_electrodes_coh(subject, args):
+def calc_electrodes_coh(subject, args):
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'electrodes.npz')
     utils.remove_file(output_fname)
     try:
@@ -234,12 +235,12 @@ def calc_lables_connectivity(subject, args):
                                   norm_percs=(1, 99), norm_by_percentile=True, colors_map='YlOrRd')
 
     conn = conn[:, :, :, np.newaxis]
-    d = save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, args,
+    d = save_connectivity(subject, conn, connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
     ret = op.isfile(output_fname)
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
-        save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, labels_names, conditions,
+        save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, ROIS_TYPE, labels_names, conditions,
                           output_fname_no_wins, args, '', d['labels'], d['locations'], d['hemis'])
         ret = ret and op.isfile(output_fname_no_wins)
 
@@ -265,13 +266,27 @@ def _pli_parallel(windows_chunk):
     return res
 
 
-def save_connectivity(subject, conn, connectivity_method, labels_names, conditions, output_fname, args,
+def save_connectivity(subject, conn, connectivity_method, obj_type, labels_names, conditions, output_fname, args,
                       con_vertices_fname='', labels=None, locations=None, hemis=None):
     d = dict()
     d['conditions'] = conditions
     # args.labels_exclude = []
     if labels is None or locations is None or hemis is None:
-        d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, labels_names)
+        if obj_type == ROIS_TYPE:
+            d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, labels_names)
+        elif obj_type == ELECTRODES_TYPE:
+            bipolar = '-' in labels_names[0]
+            d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
+            assert(np.all(np.array(d['labels']) == labels_names))
+            d['hemis'] = []
+            groups_hemis = utils.load(op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
+            for elc_name in d['labels']:
+                group_name = utils.elec_group(elc_name, bipolar)
+                d['hemis'].append('rh' if group_name in groups_hemis['rh'] else 'lh')
+            wrong_assigments = [(name, hemi) for name, hemi in zip(labels_names, d['hemis']) if name[0].lower()!=hemi[0]]
+            if len(wrong_assigments) > 0:
+                print('hemis wrong assigments:')
+                print(wrong_assigments)
     else:
         d['labels'], d['locations'], d['hemis'] = labels, locations, hemis
     (_, d['con_indices'], d['con_names'], d['con_values'], d['con_types'],
@@ -387,74 +402,95 @@ def calc_connectivity(data, labels, hemis, args):
     return None, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
-def calc_electrodes_connectivity(subject, args):
-    import mne.connectivity
+def calc_electrodes_rest_connectivity(subject, args):
+
+    def get_electrode_conn_data():
+        data_fnames, meta_data_fnames = get_fnames()
+        if len(meta_data_fnames) == 1 and len(data_fnames) == 1:
+            conn_data = np.load(data_fnames[0])
+            conn_data = np.transpose(conn_data, [2, 0, 1])
+        else:
+            electrodes_names_fname = op.join(ELECTRODES_DIR, subject, 'electrodes.npy')
+            data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
+            if op.isfile(electrodes_names_fname) and op.isfile(data_fname):
+                conn_data = np.load(data_fname)
+            else:
+                raise Exception("Electrodes data can't be found!")
+        return conn_data
+
+    def get_electrodes_names():
+        data_fnames, meta_data_fnames = get_fnames()
+        if len(meta_data_fnames) == 1 and len(data_fnames) == 1:
+            d = np.load(meta_data_fnames[0])
+            electrodes_names = d['names'] # conditions=conditions, times=times)
+        else:
+            electrodes_names_fname = op.join(ELECTRODES_DIR, subject, 'electrodes.npy')
+            if op.isfile(electrodes_names_fname):
+                electrodes_names = np.load(electrodes_names_fname)
+            else:
+                raise Exception("Electrodes names can't be found!")
+        return electrodes_names
+
+    def get_fnames():
+        fol = op.join(MMVT_DIR, subject, 'electrodes')
+        meta_data_fnames = glob.glob(op.join(fol, 'electrodes{}_meta_data*.npz'.format(
+            '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
+        data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*.npy'.format(
+            '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
+        return data_fnames, meta_data_fnames
+
+
     args.connectivity_modality = 'electrodes'
     output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npy'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npz'.format(args.connectivity_modality))
     output_fname_no_wins = op.join(MMVT_DIR, subject, 'connectivity',
                                    '{}_static.npz'.format(args.connectivity_modality))
-
-    fol = op.join(MMVT_DIR, subject, 'electrodes')
-    meta_data_fnames = glob.glob(op.join(fol, 'electrodes{}_meta_data*.npz'.format(
-        '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
-    data_fnames = glob.glob(op.join(fol, 'electrodes{}_data*.npy'.format(
-        '_bipolar' if args.bipolar else '', STAT_NAME[args.stat])))
-    if len(meta_data_fnames) == 1 and len(data_fnames) == 1:
-        d = np.load(meta_data_fnames[0])
-        electrodes_names = d['names'] # conditions=conditions, times=times)
-        conn_data = np.load(data_fnames[0])
-        conn_data = np.transpose(conn_data, [2, 0, 1])
-    else:
-        electrodes_names_fname = op.join(ELECTRODES_DIR, subject, 'electrodes.npy')
-        data_fname = op.join(ELECTRODES_DIR, subject, 'data.npy')
-        if op.isfile(electrodes_names_fname) and op.isfile(data_fname):
-            electrodes_names = np.load(electrodes_names_fname)
-            conn_data = np.load(data_fname)
-        else:
-            raise Exception("Electrodes data can't be found!")
-    groups_hemis = utils.load(op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
-
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
-    windows_num, E, windows_length = conn_data.shape
-    if windows_num == 1:
-        import math
-        T = windows_length
-        windows_num = math.floor((T - args.windows_length) / args.windows_shift + 1)
-        data_winodws = np.zeros((windows_num, E, args.windows_length))
-        for w in range(windows_num):
-            data_winodws[w] = conn_data[0, :, w * args.windows_shift:w * args.windows_shift + args.windows_length]
-        conn_data = data_winodws
-    if args.max_windows_num != 0:
-        windows_num = min(args.max_windows_num, windows_num)
 
-    pli_wins = 3
-    conn = np.zeros((E, E, windows_num - pli_wins))
-    five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
-    for w in range(windows_num - pli_wins):
-        window_conn_data = conn_data[w:w+pli_wins, :, :]
-        # window_conn_data = window_conn_data[np.newaxis, :, :]
-        con, _, _, _, _ = mne.connectivity.spectral_connectivity(
-            window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
-            n_jobs=args.n_jobs)
-        con = np.mean(con, 2) # Over freqs
-        conn[:, :, w] = con + con.T
-    np.save(output_mat_fname, conn)
+    if not op.isfile(output_mat_fname):
+        conn_data = get_electrode_conn_data()
+        windows_num, E, windows_length = conn_data.shape
+        if windows_num == 1:
+            import math
+            T = windows_length
+            windows_num = math.floor((T - args.windows_length) / args.windows_shift + 1)
+            data_winodws = np.zeros((windows_num, E, args.windows_length))
+            for w in range(windows_num):
+                data_winodws[w] = conn_data[0, :, w * args.windows_shift:w * args.windows_shift + args.windows_length]
+            conn_data = data_winodws
+        if args.max_windows_num != 0:
+            windows_num = min(args.max_windows_num, windows_num)
+
+        pli_wins = 3
+        conn = np.zeros((E, E, windows_num - pli_wins))
+        five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
+        for w in range(windows_num - pli_wins):
+            window_conn_data = conn_data[w:w+pli_wins, :, :]
+            # window_conn_data = window_conn_data[np.newaxis, :, :]
+            con, _, _, _, _ = mne.connectivity.spectral_connectivity(
+                window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
+                n_jobs=args.n_jobs)
+            con = np.mean(con, 2) # Over freqs
+            conn[:, :, w] = con + con.T
+        np.save(output_mat_fname, conn)
+    else:
+        conn = np.load(output_mat_fname)
+
     connectivity_method = 'PLI'
     no_wins_connectivity_method = '{} CV'.format(connectivity_method)
     conn_no_wins = np.nanstd(np.abs(conn), 2) / np.mean(np.abs(conn), 2)
     np.fill_diagonal(conn_no_wins, 0)
-
     conn = conn[:, :, :, np.newaxis]
     conditions = ['rest']
-    d = save_connectivity(subject, conn, connectivity_method, electrodes_names, conditions, output_fname, args,
+    electrodes_names = get_electrodes_names()
+    d = save_connectivity(subject, conn, connectivity_method, ELECTRODES_TYPE, electrodes_names, conditions, output_fname, args,
                           con_vertices_fname)
     ret = op.isfile(output_fname)
     if not conn_no_wins is None:
         conn_no_wins = conn_no_wins[:, :, np.newaxis]
-        save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, electrodes_names, conditions,
+        save_connectivity(subject, conn_no_wins, no_wins_connectivity_method, ELECTRODES_TYPE, electrodes_names, conditions,
                           output_fname_no_wins, args, '', d['labels'], d['locations'], d['hemis'])
         ret = ret and op.isfile(output_fname_no_wins)
     return ret
@@ -464,13 +500,13 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_rois_connectivity'):
         flags['save_rois_connectivity'] = save_rois_matlab_connectivity(subject, args)
 
-    if utils.should_run(args, 'save_electrodes_coh'):
+    if utils.should_run(args, 'calc_electrodes_coh'):
         # todo: Add the necessary parameters
-        flags['save_electrodes_coh'] = save_electrodes_coh(subject, args)
+        flags['calc_electrodes_coh'] = calc_electrodes_coh(subject, args)
 
-    if utils.should_run(args, 'calc_electrodes_connectivity'):
+    if utils.should_run(args, 'calc_electrodes_rest_connectivity'):
         # todo: Add the necessary parameters
-        flags['save_electrodes_coh'] = calc_electrodes_connectivity(subject, args)
+        flags['calc_electrodes_coh'] = calc_electrodes_rest_connectivity(subject, args)
 
 
     if utils.should_run(args, 'calc_lables_connectivity'):

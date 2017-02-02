@@ -82,7 +82,7 @@ def calc_meg_connectivity(args):
 def calc_electrodes_rest_connectivity(args):
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
-        function='calc_electrodes_connectivity',
+        function='calc_electrodes_rest_connectivity',
         connectivity_modality='electrodes',
         connectivity_method='pli,cv',
         windows_length=1000,
@@ -96,7 +96,7 @@ def calc_electrodes_rest_connectivity(args):
     pu.run_on_subjects(args, con.main)
 
 
-def calc_electrodes_connectivity(args):
+def calc_electrodes_rest_connectivity_from_matlab(args):
 
     def read_matlab_and_split_into_windows(args):
         import scipy.io as sio
@@ -127,7 +127,7 @@ def calc_electrodes_connectivity(args):
     read_matlab_and_split_into_windows(args)
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
-        function='calc_electrodes_connectivity',
+        function='calc_electrodes_rest_connectivity',
         connectivity_modality='electrodes',
         connectivity_method='pli,cv',
         windows_length=1000,
