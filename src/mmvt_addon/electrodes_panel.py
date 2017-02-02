@@ -114,7 +114,7 @@ def color_electrodes(current_electrode, prev_electrode):
     if current_electrode_hemi != prev_electrode_hemi:
         print('flip hemis! clear {}'.format(prev_electrode_hemi))
         _addon().clear_cortex([prev_electrode_hemi])
-    color = bpy.context.scene.electrode_color
+    color = bpy.context.scene.electrodes_color
     _addon().object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
     if prev_electrode != current_electrode:
         _addon().object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
@@ -125,7 +125,7 @@ def is_current_electrode_marked():
     current_electrode_obj = bpy.data.objects.get(bpy.context.scene.electrodes, None)
     if not current_electrode_obj is None:
         current_electrode_marked = _addon().get_obj_color(current_electrode_obj)[:3] == tuple(
-            bpy.context.scene.electrode_color)
+            bpy.context.scene.electrodes_color)
     return current_electrode_marked
 
 
