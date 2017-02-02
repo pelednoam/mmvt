@@ -464,11 +464,22 @@ def sort_electrodes_groups(subject, bipolar, do_plot=True):
     first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
     pca = PCA(n_components=2)
     pca.fit(first_pos)
-    transformed_pos = pca.transform(pos)
-    # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
-    transformed_first_pos = pca.transform(first_pos)
-    groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
-    sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
+    if pca.explained_variance_.shape[0] == 1:
+        # Can't find hemis via PAC, just ask the user
+        sorted_groups = dict(rh=[], lh=[])
+        print("Please set the hemi (rh/lh) for the following electrodes' groups:")
+        for group in elc_pos_groups.keys():
+            hemi = input('{}: '.format(group))
+            while hemi not in ['rh', 'lh']:
+                print('Wrong hemi value!')
+                hemi = input('{}: '.format(group))
+            sorted_groups[hemi].append(group)
+    else:
+        transformed_pos = pca.transform(pos)
+        # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
+        transformed_first_pos = pca.transform(first_pos)
+        groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
+        sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
     print(sorted_groups)
     utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
     if do_plot:
