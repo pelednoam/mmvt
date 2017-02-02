@@ -318,6 +318,9 @@ def elecs_draw(self, context):
     row = layout.row(align=True)
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
+    row = layout.row(align=True)
+    row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
+    row.prop(context.scene, 'electrodes_color', text='')
 
     if not bpy.context.scene.listen_to_keyboard:
         layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
@@ -343,7 +346,7 @@ def elecs_draw(self, context):
     # row.label(text='Selected electrode color:')
     # row = layout.row(align=True)
     # row.label(text='             ')
-    # row.prop(context.scene, 'electrode_color', text='')
+    # row.prop(context.scene, 'electrodes_color', text='')
     # row.label(text='             ')
 
 
@@ -432,6 +435,18 @@ def prev_lead():
     bpy.context.scene.leads = prev_lead
 
 
+class ColorElectrodes(bpy.types.Operator):
+    bl_idname = 'mmvt.color_electrodes'
+    bl_label = 'color_electrodes'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        for elc_obj in ElecsPanel.parent.children:
+            if not elc_obj.hide:
+                _addon().object_coloring(elc_obj, bpy.context.scene.electrodes_color)
+        return {'FINISHED'}
+
+
 class KeyboardListener(bpy.types.Operator):
     bl_idname = 'mmvt.keyboard_listener'
     bl_label = 'keyboard_listener'
@@ -471,7 +486,7 @@ bpy.types.Scene.show_rh_electrodes = bpy.props.BoolProperty(
 bpy.types.Scene.listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.listener_is_running = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.current_lead = bpy.props.StringProperty()
-bpy.types.Scene.electrode_color = bpy.props.FloatVectorProperty(
+bpy.types.Scene.electrodes_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
 bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
@@ -675,6 +690,7 @@ def register():
         bpy.utils.register_class(PrevElectrode)
         bpy.utils.register_class(NextLead)
         bpy.utils.register_class(PrevLead)
+        bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
         # print('Electrodes Panel was registered!')
@@ -689,6 +705,7 @@ def unregister():
         bpy.utils.unregister_class(PrevElectrode)
         bpy.utils.unregister_class(NextLead)
         bpy.utils.unregister_class(PrevLead)
+        bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
     except:
