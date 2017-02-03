@@ -262,6 +262,7 @@ def pli(data):
 def _pli_parallel(windows_chunk):
     res = {}
     for window_ind, window in windows_chunk:
+        print('PLI: Window ind {}'.format(window_ind))
         res[window_ind] = pli(window)
     return res
 
