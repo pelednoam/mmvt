@@ -248,22 +248,30 @@ def calc_lables_connectivity(subject, args):
 
 
 def pli(data):
-    from scipy.signal import hilbert
-    nch = data.shape[1]
-    data_hil = hilbert(data)
-    m = np.zeros((nch, nch))
-    for i in range(nch):
-        for j in range(nch):
-            if i < j:
-                m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
-    return m + m.T
+    try:
+        from scipy.signal import hilbert
+        nch = data.shape[1]
+        data_hil = hilbert(data)
+        m = np.zeros((nch, nch))
+        for i in range(nch):
+            for j in range(nch):
+                if i < j:
+                    m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
+        return m + m.T
+    except:
+        print(traceback.format_exc())
+        return None
 
 
 def _pli_parallel(windows_chunk):
     res = {}
     for window_ind, window in windows_chunk:
         print('PLI: Window ind {}'.format(window_ind))
-        res[window_ind] = pli(window)
+        pli_val = pli(window)
+        if not pli_val is None:
+            res[window_ind] = pli_val
+        else:
+            print('Error in PLI! windowsw ind {}'.format(window_ind))
     return res
 
 
