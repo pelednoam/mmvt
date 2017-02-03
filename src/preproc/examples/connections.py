@@ -88,10 +88,10 @@ def calc_electrodes_rest_connectivity(args):
         windows_length=1000,
         windows_shift=200,
         sfreq=2000.0,
-        fmin=10,
-        fmax=100,
-        # max_windows_num = 10,
-        n_jobs=args.n_jobs,
+        fmin=8,
+        fmax=13,
+        max_windows_num = 10,
+        # n_jobs=1, #args.n_jobs,
     ))
     pu.run_on_subjects(args, con.main)
 

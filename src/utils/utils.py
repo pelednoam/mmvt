@@ -259,7 +259,7 @@ def get_ply_vertices_num(ply_file_template):
         return None
 
 
-def calc_ply_faces_verts(verts, faces, out_file, overwrite, ply_name='', errors={}, verbose=False):
+def calc_ply_faces_verts(verts, faces, out_file, overwrite=False, ply_name='', errors={}, verbose=False):
     if not overwrite and op.isfile(out_file):
         if verbose:
             print('{} already exist.'.format(out_file))

@@ -99,7 +99,7 @@ def downsample_data(data):
     return new_data
 
 
-def save_rois_matlab_connectivity(subject, args):
+def calc_rois_matlab_connectivity(subject, args):
     if not op.isfile(args.mat_fname):
         print("Can't find the input file {}!".format(args.mat_fname))
         return False
@@ -452,7 +452,15 @@ def calc_electrodes_rest_connectivity(subject, args):
     if not op.isfile(output_mat_fname):
         conn_data = get_electrode_conn_data()
         windows_num, E, windows_length = conn_data.shape
+
         if windows_num == 1:
+            from mne import filter
+            conn_data = conn_data[0]
+            conn_data = filter.filter_data(conn_data, args.sfreq, args.fmin, args.fmax)
+            # plt.figure()
+            # plt.psd(conn_data, Fs=args.sfreq)
+            conn_data = conn_data[np.newaxis, :, :]
+
             import math
             T = windows_length
             windows_num = math.floor((T - args.windows_length) / args.windows_shift + 1)
@@ -463,17 +471,24 @@ def calc_electrodes_rest_connectivity(subject, args):
         if args.max_windows_num != 0:
             windows_num = min(args.max_windows_num, windows_num)
 
-        pli_wins = 3
+        pli_wins = 1
         conn = np.zeros((E, E, windows_num - pli_wins))
-        five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
-        for w in range(windows_num - pli_wins):
-            window_conn_data = conn_data[w:w+pli_wins, :, :]
-            # window_conn_data = window_conn_data[np.newaxis, :, :]
-            con, _, _, _, _ = mne.connectivity.spectral_connectivity(
-                window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
-                n_jobs=args.n_jobs)
-            con = np.mean(con, 2) # Over freqs
-            conn[:, :, w] = con + con.T
+        conn_data = conn_data[:windows_num]
+        chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+        results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+        for chunk in results:
+            for w, con in chunk.items():
+                conn[:, :, w] = con
+
+        # five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
+        # for w in range(windows_num - pli_wins):
+        #     window_conn_data = conn_data[w:w+pli_wins, :, :]
+        #     con, _, _, _, _ = mne.connectivity.spectral_connectivity(
+        #         window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
+        #         n_jobs=args.n_jobs)
+        #     con = np.mean(con, 2) # Over freqs
+        #     conn[:, :, w] = con + con.T
+
         np.save(output_mat_fname, conn)
     else:
         conn = np.load(output_mat_fname)
@@ -498,7 +513,7 @@ def calc_electrodes_rest_connectivity(subject, args):
 
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_rois_connectivity'):
-        flags['save_rois_connectivity'] = save_rois_matlab_connectivity(subject, args)
+        flags['save_rois_connectivity'] = calc_rois_matlab_connectivity(subject, args)
 
     if utils.should_run(args, 'calc_electrodes_coh'):
         # todo: Add the necessary parameters
@@ -507,7 +522,6 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_electrodes_rest_connectivity'):
         # todo: Add the necessary parameters
         flags['calc_electrodes_coh'] = calc_electrodes_rest_connectivity(subject, args)
-
 
     if utils.should_run(args, 'calc_lables_connectivity'):
         flags['calc_lables_connectivity'] = calc_lables_connectivity(subject, args)
