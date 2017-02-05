@@ -250,7 +250,7 @@ def calc_lables_connectivity(subject, args):
 def pli(data):
     try:
         from scipy.signal import hilbert
-        nch = data.shape[1]
+        nch = data.shape[0]
         data_hil = hilbert(data)
         m = np.zeros((nch, nch))
         for i in range(nch):
