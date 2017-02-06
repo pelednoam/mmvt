@@ -480,8 +480,8 @@ def calc_electrodes_rest_connectivity(subject, args):
         if args.max_windows_num != 0:
             windows_num = min(args.max_windows_num, windows_num)
 
-        pli_wins = 1
-        conn = np.zeros((E, E, windows_num - pli_wins))
+        # pli_wins = 1
+        conn = np.zeros((E, E, windows_num))
         conn_data = conn_data[:windows_num]
         chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
         results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
