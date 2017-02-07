@@ -4,7 +4,7 @@ import os.path as op
 import time
 import mmvt_utils as mu
 import colors_utils as cu
-import os
+import glob
 
 # try:
 #     import matplotlib as mpl
@@ -29,8 +29,19 @@ def get_parent_obj_name():
         return 'no-connections'
 
 
-def connections_exist():
-    return not bpy.data.objects.get(get_parent_obj_name(), None) is None
+def get_first_existing_parent_obj_name():
+    for con_name in ConnectionsPanel.conn_names:
+        if connections_exist(con_name):
+            return con_name
+    return ''
+
+
+def connections_exist(parent_name=''):
+    if parent_name == '':
+        parent_name = get_parent_obj_name()
+    else:
+        parent_name = parent_name.replace(' ', '_')
+    return not bpy.data.objects.get(parent_name, None) is None
 
 
 def connections_data():
@@ -96,8 +107,8 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
     parent_obj.animation_data_clear()
     N = len(indices)
     print('{} connections are above the threshold'.format(N))
-    create_conncection_per_condition(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
     create_vertices(d, mask, verts_color)
+    create_conncection_per_condition(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius)
     print('Create connections for the conditions {}'.format('difference' if stat == STAT_DIFF else 'mean'))
     create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, stat)
     print('finish keyframing!')
@@ -287,8 +298,9 @@ def filter_graph(context, d, condition, threshold, threshold_type, connections_t
     ConnectionsPanel.selected_objects = selected_objects
     ConnectionsPanel.selected_indices = selected_indices
     print('Showing {} connections after filtering'.format(conn_show))
-    bpy.context.scene.connections_min = np.min(d.con_values[selected_indices])
-    bpy.context.scene.connections_max = np.max(d.con_values[selected_indices])
+    if conn_show > 0:
+        bpy.context.scene.connections_min = np.min(d.con_values[selected_indices])
+        bpy.context.scene.connections_max = np.max(d.con_values[selected_indices])
     if parent_obj.animation_data is None:
         return
     now = time.time()
@@ -353,16 +365,27 @@ def plot_connections(d, plot_time):
         # selected_objects, selected_indices = get_all_selected_connections(d)
         selected_objects = ConnectionsPanel.selected_objects
         selected_indices = ConnectionsPanel.selected_indices
-        d.data_max = np.percentile(d.con_values[selected_indices], 97)
-        d.data_min = np.percentile(d.con_values[selected_indices], 3)
-        colors_ratio = 256 / (d.data_max - d.data_min)
+        if len(selected_objects) == 0:
+            selected_objects, selected_indices = get_all_selected_connections(d)
+        if _addon().colorbar_values_are_locked():
+            data_min = _addon().get_colorbar_min()
+            data_max = _addon().get_colorbar_max()
+        else:
+            # Should set the percentile in GUI
+            data_max = np.percentile(d.con_values[selected_indices], 97)
+            data_min = np.percentile(d.con_values[selected_indices], 3)
+            if np.sign(data_max) != np.sign(data_min):
+                data_minmax = max(map(abs, [data_max, data_min]))
+                data_max, data_min = data_minmax, -data_minmax
+            _addon().set_colorbar_max_min(data_max, data_min)
+        colors_ratio = 256 / (data_max - data_min)
         for ind, con_name in zip(selected_indices, selected_objects):
             # print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
             cur_obj = bpy.data.objects.get(con_name)
             # color = d.con_colors[ind, t, :] if d.con_colors.ndim == 3 else d.con_colors[ind, :]
             # stat_val = np.diff(d.con_values[ind, t, :])[0]
             stat_val = calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
-            color = _addon().calc_colors([stat_val], d.data_min, colors_ratio)[0]
+            color = _addon().calc_colors([stat_val], data_min, colors_ratio)[0]
             con_color = np.concatenate((np.squeeze(color), [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
@@ -373,11 +396,7 @@ def plot_connections(d, plot_time):
         # if 'corr' in connectivity_method:
         #     _addon().set_colorbar_max_min(1, -1)
         # else:
-        data_max, data_min = np.max(d.con_values[selected_indices]), np.min(d.con_values[selected_indices])
-        if np.sign(data_max) != np.sign(data_min):
-            data_minmax = max(map(abs, [data_max, data_min]))
-            data_max, data_min = data_minmax, -data_minmax
-        _addon().set_colorbar_max_min(data_max, data_min)
+        # data_max, data_min = np.max(d.con_values[selected_indices]), np.min(d.con_values[selected_indices])
         modality_names = dict(electrodes='Electrodes', meg='MEG', fmri='fMRI')
         colorbar_title = 'Electrodes {}'.format(connectivity_method) \
             if 'electrodes' in bpy.context.scene.connectivity_files else \
@@ -526,7 +545,13 @@ def load_connections_file():
     if op.isfile(vertices_file):
         vertices, vertices_lookup = mu.load(vertices_file)
     else:
-        print('No vertices file! ({})'.format(vertices_file))
+        name_parts = mu.namebase(vertices_file).split('_')
+        vertices_files = glob.glob(
+            op.join(mu.get_parent_fol(vertices_file), '{}*_{}.pkl'.format(name_parts[0], name_parts[-1])))
+        if len(vertices_files) == 1:
+            vertices, vertices_lookup = mu.load(vertices_files[0])
+        else:
+            print('No vertices file! ({})'.format(vertices_file))
     ConnectionsPanel.d, ConnectionsPanel.vertices, ConnectionsPanel.vertices_lookup = d, vertices, vertices_lookup
 
 
@@ -743,6 +768,7 @@ class ConnectionsPanel(bpy.types.Panel):
     show_connections = True
     do_filter = True
     connections_files_exist = False
+    conn_names = []
 
     def draw(self, context):
         connections_draw(self, context)
@@ -771,7 +797,8 @@ def init(addon):
     bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(
         items=conn_items, description="connectivity files", update=connectivity_files_update)
     if len(conn_names) > 0:
-        bpy.context.scene.connectivity_files = conn_names[0]
+        ConnectionsPanel.conn_names = conn_names
+        bpy.context.scene.connectivity_files = conn_names[0] #get_first_existing_parent_obj_name() #
     ConnectionsPanel.T = addon.get_max_time_steps()
     ConnectionsPanel.addon = addon
     bpy.context.scene.connections_threshold = 0
