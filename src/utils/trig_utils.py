@@ -31,3 +31,21 @@ def poly_area(poly):
         total[2] += prod[2]
     result = np.dot(total, unit_normal(poly[0], poly[1], poly[2]))
     return abs(result/2)
+
+
+def perimeter(points):
+    peri = dist3d(points[0], points[-1])
+    for ind in range(len(points) - 1):
+        peri += dist3d(points[ind], points[ind + 1])
+    return peri
+
+
+def points_dists(points):
+    dists = [dist3d(points[0], points[-1])]
+    for ind in range(len(points) - 1):
+        dists.append(dist3d(points[ind], points[ind + 1]))
+    return np.array(dists)
+
+
+def dist3d(a, b):
+    return np.linalg.norm(a-b)

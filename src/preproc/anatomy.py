@@ -255,9 +255,13 @@ def save_hemis_curv(subject, atlas):
         # Load in curvature values from the ?h.curv file.
         if not op.isfile(out_curv_file.format(hemi=hemi)):
             curv_path = op.join(SUBJECTS_DIR, subject, 'surf', '{}.curv'.format(hemi))
-            curv = nib.freesurfer.read_morph_data(curv_path)
-            bin_curv = np.array(curv > 0, np.int)
-            np.save(out_curv_file.format(hemi=hemi), bin_curv)
+            if op.isfile(curv_path):
+                curv = nib.freesurfer.read_morph_data(curv_path)
+                bin_curv = np.array(curv > 0, np.int)
+                np.save(out_curv_file.format(hemi=hemi), bin_curv)
+            else:
+                print('{} is missing!'.format(curv_path))
+                return False
         else:
             bin_curv = np.load(out_curv_file.format(hemi=hemi))
         labels_fol = op.join(MMVT_DIR, subject, 'surf', '{}_{}_curves'.format(atlas, hemi))
