@@ -205,7 +205,7 @@ def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     try:
         verts_num = verts.shape[0]
         faces_num = faces.shape[0]
-        faces = np.hstack((np.ones((faces_num, 1)) * 3, faces))
+        faces = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
         with open(ply_file_name, 'w') as f:
             f.write(PLY_HEADER.format(verts_num, faces_num))
         with open(ply_file_name, 'ab') as f:
