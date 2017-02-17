@@ -573,6 +573,10 @@ def file_type(fname):
     return op.splitext(op.basename(fname))[1][1:]
 
 
+def is_file_type(fname, file_type):
+    return fname[-len(file_type):] == file_type
+
+
 def get_fname_folder(fname):
     return op.sep.join(fname.split(op.sep)[:-1])
 
@@ -582,6 +586,8 @@ def namesbase_with_ext(fname):
 
 
 def change_fname_extension(fname, new_extension):
+    # splits = fname.split('.')
+    # return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
     return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 

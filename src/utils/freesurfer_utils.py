@@ -327,3 +327,14 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname
     else:
         print('warp_buckner_atlas output fname: {}'.format(wrap_map_fname))
         return True
+
+
+def get_tr(fmri_fname):
+    img = nib.load(fmri_fname)
+    hdr = img.get_header()
+    tr = float(hdr._header_data.tolist()[-1][0])
+    return tr
+
+
+def mri_convert(org_fname, new_fname):
+    utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))

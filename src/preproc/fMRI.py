@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import shutil
 import glob
+import traceback
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
@@ -573,6 +574,28 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
         atlas, measure, '{hemi}')))
 
 
+def get_tr(subject, fmri_fname):
+    try:
+        fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
+        if utils.is_file_type(fmri_fname, 'nii.gz'):
+            old_fmri_fname = fmri_fname
+            fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
+            if not op.isfile(fmri_fname):
+                fu.mri_convert(old_fmri_fname, fmri_fname)
+        if utils.is_file_type(fmri_fname, 'mgz'):
+            fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
+            tr = fu.get_tr(fmri_fname)
+            print('fMRI fname: {}'.format(fmri_fname))
+            print('tr: {}'.format(tr))
+            return True
+        else:
+            print('file format not supported!')
+            return False
+    except:
+        print(traceback.format_exc())
+        return False
+
+
 def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
@@ -744,6 +767,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
+    if 'get_tr' in args.function:
+        flags['get_tr'] = get_tr(subject, args.fmri_fname)
+
     return flags
 
 
@@ -784,12 +810,15 @@ def read_cmd_args(argv=None):
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
 
+    # Misc flags
+    parser.add_argument('--fmri_fname', help='', required=False, default='')
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label']}
     if args.is_pet:
         args.fsfast = False
-    print(args)
+    # print(args)
     return args
 
 

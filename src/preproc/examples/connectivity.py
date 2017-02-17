@@ -1,6 +1,6 @@
 import argparse
 import os.path as op
-from src.preproc import connections as con
+from src.preproc import connectivity as con
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
