@@ -227,7 +227,7 @@ def calc_lables_connectivity(subject, args):
 
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
-        conn_no_wins = np.nanstd(np.abs(conn), 2) / np.mean(np.abs(conn), 2)
+        conn_no_wins = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
         np.fill_diagonal(conn_no_wins, 0)
         # conn_no_wins[np.isnan(conn_no_wins)] = 0
         dFC = np.nanmean(conn_no_wins, 1)
@@ -504,7 +504,7 @@ def calc_electrodes_rest_connectivity(subject, args):
 
     connectivity_method = 'PLI'
     no_wins_connectivity_method = '{} CV'.format(connectivity_method)
-    conn_no_wins = np.nanstd(np.abs(conn), 2) / np.mean(np.abs(conn), 2)
+    conn_no_wins = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
     np.fill_diagonal(conn_no_wins, 0)
     conn = conn[:, :, :, np.newaxis]
     conditions = ['rest']
