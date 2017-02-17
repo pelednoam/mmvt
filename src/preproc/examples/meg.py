@@ -77,22 +77,23 @@ def calc_rest(args):
         subject=args.subject,
         mri_subject=args.mri_subject,
         atlas='laus125',
-        function='calc_evoked,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition',
+        function='rest_functions',
         task='rest',
         cleaning_method='tsss',
-        calc_epochs_from_raw=True,
         reject=False, # Should be True here, unless you are dealling with bad data...
-        remove_power_line_noise=False,
+        remove_power_line_noise=True,
         l_freq=3, h_freq=80,
-        use_empty_room_for_noise_cov=True,
-        single_trial_stc=True,
         windows_length=500,
         windows_shift=100,
-        # windows_num=10,
-        baseline_min=0,
-        baseline_max=0,
         inverse_method='MNE',
-        remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
+        remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
+        # This properties are set automatically if task=='rest'
+        # calc_epochs_from_raw=True,
+        # single_trial_stc=True,
+        # use_empty_room_for_noise_cov=True,
+        # windows_num=10,
+        # baseline_min=0,
+        # baseline_max=0,
     ))
     call_main(args)
 

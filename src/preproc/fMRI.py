@@ -312,11 +312,16 @@ def convert_fmri_file(volume_fname_template, from_format='nii.gz', to_format='mg
         output_fname = volume_fname_template.format(format=to_format)
         intput_fname = volume_fname_template.format(format=from_format)
         if not op.isfile(output_fname):
-            if op.isfile(intput_fname):
+            inputs_files = glob.glob(intput_fname)
+            if len(inputs_files) == 1:
+                intput_fname = inputs_files[0]
                 utils.run_script('mri_convert {} {}'.format(intput_fname, output_fname))
                 return output_fname
-            else:
+            elif len(inputs_files) == 0:
                 print('No imput file was found! {}'.format(intput_fname))
+                return ''
+            else:
+                print('Too many input files were found! {}'.format(intput_fname))
                 return ''
         else:
             return output_fname
@@ -534,9 +539,9 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', morph_from_subject='',
+def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
-                          excludes=('corpuscallosum', 'unknown')):
+                          excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     if fmri_file_template == '':
         print('You should set the fmri_file_template for something like ' +
               '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +
@@ -552,7 +557,8 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='PCA', mor
             print('{} already exist'.format(output_fname))
             return False
         fmri_fname = convert_fmri_file(fmri_file_template.format(
-            subject=subject, morph_to_subject=morph_to_subject, hemi=hemi, format='{format}'))
+            subject=subject, morph_to_subject=morph_to_subject, hemi=hemi, format='{format}'),
+            from_format=input_format)
         x = nib.load(fmri_fname).get_data()
         labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
         if len(labels) == 0:
@@ -725,7 +731,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['analyze_resting_state'] = analyze_resting_state(
             subject, args.atlas, args.fmri_file_template, args.resting_state_measure, args.morph_labels_from_subject,
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
-            args.resting_state_plot_all_vertices, args.excluded_labels)
+            args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -753,6 +759,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fsfast', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
+    parser.add_argument('--input_format', help='input format', required=False, default='nii.gz')
     parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')
     parser.add_argument('--volume_name', help='volume file name', required=False, default='')
     parser.add_argument('--surface_name', help='surface_name', required=False, default='pial')

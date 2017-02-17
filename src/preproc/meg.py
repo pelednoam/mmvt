@@ -218,11 +218,11 @@ def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
         # demi_events[win_ind * 2 + 1] = [win + W + 1, win + W * 2, 1]
     # demi_events_ids = {'demi_1': 0, 'demi_2': 1}
     demi_events[:, :2] += raw.first_samp
-    demi_events_ids = {'demi': 0}
-    return demi_events, demi_events_ids
+    demi_conditions = {'demi': 0}
+    return demi_events, demi_conditions
 
 
-def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=False, events=None,
+def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=False, events=None,
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  epoches_fname=None, task='', windows_length=1000, windows_shift=500, windows_num=0):
@@ -252,13 +252,13 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
             ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
             if ans != 'y':
                 return None
-        events, events_ids = create_demi_events(raw, windows_length, windows_shift, windows_num)
+        events, conditions = create_demi_events(raw, windows_length, windows_shift, windows_num)
         tmax = windows_length / 1000.0
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
-    epochs = mne.Epochs(raw, events, events_ids, tmin, tmax, proj=True, picks=picks,
-        baseline=baseline, preload=True, reject=reject_dict)
+    epochs = mne.Epochs(raw, events, conditions, tmin, tmax, proj=True, picks=picks,
+                        baseline=baseline, preload=True, reject=reject_dict)
     if '{cond}' in epoches_fname:
         for event in epochs.event_id: #events.keys():
             epochs[event].save(get_cond_fname(epoches_fname, event))
@@ -273,7 +273,7 @@ def calc_epoches(raw, events_ids, tmin, tmax, baseline, read_events_from_file=Fa
 # def createEventsFiles(behavior_file, pattern):
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
 
-def calc_evoked_necessary_files(args):
+def calc_epochs_necessary_files(args):
     necessary_files = []
     if args.calc_epochs_from_raw:
         necessary_files.append(RAW)
@@ -284,20 +284,22 @@ def calc_evoked_necessary_files(args):
     return necessary_files
 
 
-def calc_evoked_args(events, args, raw=None):
-    return calc_evoked(events, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
-            None, args.calc_epochs_from_raw, args.stim_channels,
-            args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
-            args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise,
-            args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-            args.windows_num)
+def calc_epochs_wrapper_args(conditions, args, raw=None):
+    return calc_epochs_wrapper(
+        conditions, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
+        None, args.calc_epochs_from_raw, args.stim_channels,
+        args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
+        args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise,
+        args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
+        args.windows_num)
 
 
-def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
-                calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
-                reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-                windows_num=0):
+def calc_epochs_wrapper(
+        conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
+        calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
+        reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
+        bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
+        windows_num=0):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_exist = False
@@ -305,9 +307,9 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
             if '{cond}' in EPO:
                 epo_exist = True
                 epochs = {}
-                for event in events.keys():
-                    if op.isfile(get_cond_fname(EPO, event)):
-                        epochs[event] = mne.read_epochs(get_cond_fname(EPO, event))
+                for cond in conditions.keys():
+                    if op.isfile(get_cond_fname(EPO, cond)):
+                        epochs[cond] = mne.read_epochs(get_cond_fname(EPO, cond))
                     else:
                         epo_exist = False
                         break
@@ -318,33 +320,41 @@ def calc_evoked(events, tmin, tmax, baseline, raw=None, read_events_from_file=Fa
         if not epo_exist or calc_epochs_from_raw:
             if raw is None:
                 raw = load_raw(bad_channels, l_freq, h_freq)
-            epochs = calc_epoches(raw, events, tmin, tmax, baseline, read_events_from_file, events_mat,
+            epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, None, task,
                                   windows_length, windows_shift, windows_num)
-        if task != 'rest':
-            all_evoked = calc_evoked_from_epochs(epochs, events)
-        else:
-            all_evoked = None
+        # if task != 'rest':
+        #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
+        # else:
+        #     all_evoked = None
         flag = True
     except:
         print(traceback.format_exc())
-        print('Error in calculating evoked reposnse')
-        all_evoked, epochs = None, None
+        epochs = None
         flag = False
 
-    return flag, all_evoked, epochs
+    return flag, epochs
 
 
-def calc_evoked_from_epochs(epochs, events):
-    if '{cond}' in EVO:
-        all_evoked = {event: epochs[event].average() for event in events.keys()}
-        for event, evoked in all_evoked.items():
-            mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+def calc_evokes(epochs, events):
+    try:
+        if '{cond}' in EVO:
+            evokes = {event: epochs[event].average() for event in events.keys()}
+            for event, evoked in evokes.items():
+                mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+        else:
+            evokes = [epochs[event].average() for event in events.keys()]
+            mne.write_evokeds(EVO, evokes)
+    except:
+        print(traceback.format_exc())
+        return False
     else:
-        all_evoked = [epochs[event].average() for event in events.keys()]
-        mne.write_evokeds(EVO, all_evoked)
-    return all_evoked
+        if '{cond}' in EVO:
+            flag = all([op.isfile(get_cond_fname(EVO, event)) for event in evokes.keys()])
+        else:
+            flag = op.isfile(EVO)
+    return flag, evokes
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -1658,10 +1668,14 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
 
 def calc_evoked_wrapper(subject, conditions, args, flags):
     evoked, epochs = None, None
-    if utils.should_run(args, 'calc_evoked'):
-        necessary_files = calc_evoked_necessary_files(args)
+    if utils.should_run(args, 'calc_epochs'):
+        necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_evoked'], evoked, epochs = calc_evoked_args(conditions, args)
+        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args)
+
+        if utils.should_run(args, 'calc_evokes'):
+            flags['calc_evokes'], evoked = calc_evokes(epochs, conditions)
+
     return flags, evoked, epochs
 
 
@@ -1715,9 +1729,13 @@ def main(tup, remote_subject_dir, args, flags):
         subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
+    # flags: calc_evoked
     flags, evoked, epochs = calc_evoked_wrapper(subject, conditions, args, flags)
+    # flags: make_forward_solution, calc_inverse_operator
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
+    # flags: calc_stc_per_condition
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
+    # flags: calc_labels_avg_per_condition
     flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags, stcs_num)
 
     if utils.should_run(args, 'read_sensors_layout'):
@@ -1851,7 +1869,14 @@ def read_cmd_args(argv=None):
     else:
         args.baseline = (args.baseline_min, args.baseline_max)
     if args.task == 'rest':
+        args.single_trial_stc = True
+        calc_epochs_from_raw = True
         args.use_empty_room_for_noise_cov = True
+        args.baseline_min = 0
+        args.baseline_max = 0
+    if args.function == 'rest_functions':
+        args.function = 'calc_epochs,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,' + \
+                        'calc_labels_avg_per_condition'
     # print(args)
     return args
 
