@@ -50,7 +50,7 @@ def calc_electrodes_con(args):
 
 
 def calc_fmri_connectivity(args):
-    '-s hc029 -a laus125 -f calc_lables_connectivity --connectivity_modality fmri --windows_length 20 --windows_shift 3'
+    '-s hc029 -a laus125 -f calc_lables_connectivity --connectivity_modality fmri connectivity_method=corr,cv--windows_length 20 --windows_shift 3'
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
         atlas='laus125',
