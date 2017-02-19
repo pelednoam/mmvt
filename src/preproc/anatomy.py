@@ -609,7 +609,7 @@ def transform_coordinates(subject, args):
                 subject, args.trans_to_subject, points, SUBJECTS_DIR)
             np.save(output_fname, points_coords_to_subject)
         else:
-            print('transform_coordinates expecting coordinates file as input! ()'.format(input_fname))
+            print('transform_coordinates expecting coordinates file as input! ({})'.format(input_fname))
     except:
         print('Error in transform_coordinates!')
         print(traceback.format_exc())
