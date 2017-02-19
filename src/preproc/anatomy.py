@@ -598,6 +598,24 @@ def save_cerebellum_coloring(subject):
         print(traceback.format_exc())
     return ret
 
+
+def transform_coordinates(subject, args):
+    input_fname = op.join(MMVT_DIR, subject, 'cortical_points.npy')
+    output_fname = op.join(MMVT_DIR, subject, 'cortical_points_{}'.format(args.trans_to_subject))
+    try:
+        if op.isfile(input_fname):
+            points = np.genfromtxt(input_fname, dtype=np.float, delimiter=',')
+            points_coords_to_subject = fu.transform_subject_to_subject_coordinates(
+                subject, args.trans_to_subject, points, SUBJECTS_DIR)
+            np.save(output_fname, points_coords_to_subject)
+        else:
+            print('transform_coordinates expecting coordinates file as input! ()'.format(input_fname))
+    except:
+        print('Error in transform_coordinates!')
+        print(traceback.format_exc())
+    return op.isfile(output_fname)
+
+
 # def find_hemis_boarders(subject):
 #     from scipy.spatial.distance import cdist
 #     verts = {}
@@ -679,6 +697,10 @@ def main(subject, remote_subject_dir, args, flags):
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
 
+    if 'transform_coordinates' in args.function:
+        flags['transform_coordinates'] = transform_coordinates(subject, args)
+
+
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
     return flags
@@ -733,6 +755,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
     parser.add_argument('--freesurfer', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
