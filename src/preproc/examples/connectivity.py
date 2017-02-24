@@ -51,7 +51,7 @@ def calc_electrodes_con(args):
 
 def calc_fmri_connectivity(args):
     '-s hc029 -a laus125 -f calc_lables_connectivity --connectivity_modality fmri connectivity_method=corr,cv--windows_length 20 --windows_shift 3'
-    args = con.read_cmd_args(utils.Bag(
+    args = con.read_cmd_args(dict(
         subject=args.subject,
         atlas='laus125',
         function='calc_lables_connectivity',
@@ -60,7 +60,7 @@ def calc_fmri_connectivity(args):
         windows_length=20,
         windows_shift=3
     ))
-    pu.run_on_subjects(args, con.main)
+    con.call_main(args)
 
 
 def calc_meg_connectivity(args):

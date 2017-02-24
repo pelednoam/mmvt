@@ -457,17 +457,17 @@ def how_many_curlies(str):
     return len(re.findall('\{*\}', str))
 
 
-def run_script(cmd, verbose=False):
+def run_script(cmd, verbose=False, cwd=None):
     try:
         if verbose:
             print('running: {}'.format(cmd))
         if is_windows():
-            output = subprocess.call(cmd)
+            output = subprocess.call(cmd, cwd=cwd)
         else:
             # cmd = cmd.replace('\\\\', '')
             # output = subprocess.call(cmd)
             # output = subprocess.check_output(cmd, shell=True)
-            output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+            output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True, cwd=cwd)
     except:
         print('Error in run_script!')
         print(traceback.format_exc())

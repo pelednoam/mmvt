@@ -225,7 +225,8 @@ def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
 def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=False, events=None,
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                 epoches_fname=None, task='', windows_length=1000, windows_shift=500, windows_num=0):
+                 power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
+                 windows_num=0):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
@@ -235,7 +236,8 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         reject['eog'] = reject_eog
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
     if remove_power_line_noise:
-        raw.notch_filter(np.arange(60, 241, 60), picks=picks)
+        raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
+        # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
     if read_events_from_file and events is None and op.isfile(EVE):
         # events_fname = events_fname if events_fname != '' else EVE
         print('read events from {}'.format(EVE))
@@ -289,7 +291,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         conditions, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
         None, args.calc_epochs_from_raw, args.stim_channels,
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
-        args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise,
+        args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
         args.windows_num)
 
@@ -298,7 +300,7 @@ def calc_epochs_wrapper(
         conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
         calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-        bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
+        power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
         windows_num=0):
     # Calc evoked data for averaged data and for each condition
     try:
@@ -322,8 +324,8 @@ def calc_epochs_wrapper(
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
-                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, None, task,
-                                  windows_length, windows_shift, windows_num)
+                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
+                                  None, task, windows_length, windows_shift, windows_num)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -1814,6 +1816,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_eeg', help='pick eeg events', required=False, default=0, type=au.is_true)
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
+    parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
     parser.add_argument('--stim_channels', help='stim_channels', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
@@ -1887,9 +1890,12 @@ def get_subjects_itr_func(args):
     return subjects_itr, subject_func
 
 
-if __name__ == '__main__':
-    args = read_cmd_args()
+def call_main(args):
     subjects_itr, subject_func = get_subjects_itr_func(args)
     pu.run_on_subjects(args, main, subjects_itr, subject_func)
-    # run_on_subjects(args)
+
+
+if __name__ == '__main__':
+    args = read_cmd_args()
+    call_main(args)
     print('finish!')

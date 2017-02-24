@@ -579,7 +579,11 @@ def read_cmd_args(argv=None):
     return args
 
 
+def call_main(args):
+    pu.run_on_subjects(args, main)
+
+
 if __name__ == '__main__':
     args = read_cmd_args()
-    pu.run_on_subjects(args, main)
+    call_main(args)
     print('finish!')

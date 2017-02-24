@@ -10,12 +10,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import shutil
 import glob
 import traceback
+import subprocess
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
+from src.utils import qa_utils
 
 try:
     from sklearn.neighbors import BallTree
@@ -572,6 +574,65 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
 
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         atlas, measure, '{hemi}')))
+
+
+def clean_resting_state_data(subject, subjects_dir):
+    # preproc-sess, fcseed, segstats
+
+    # Get fwhm. Note this assumes that lh and rh are the same
+    analysis_info_fname = op.join(subjects_dir, (fsd + '_lh'), 'analysis.info')
+    with open(analysis_info_fname) as analysis_info:
+        for ln in analysis_info:
+            ln_list = ln.split()
+            if ln_list:
+                if ln_list[0] == 'RawFWHM':
+                    fwhm = ln_list[1]
+
+    preproc_cmd = ('preproc-sess -surface fsaverage5c lhrh -s ' +
+                   subject + ' -fwhm ' + fwhm + ' -fsd ' + fsd +
+                   ' -mni305 -per-run')
+    subprocess.call(preproc_cmd, cwd=subjects_dir, shell=True)
+    plottwf_cmd = ('plot-twf-sess -s ' + subject + ' -dat f.nii.gz -mc'
+                                                   ' -fsd ' + fsd + ' && killall display')
+    subprocess.call(plottwf_cmd, cwd=subjects_dir, shell=True)
+    plottwf_cmd = ('plot-twf-sess -s ' + subject + ' -dat f.nii.gz'
+                                                   ' -fsd ' + fsd + ' -meantwf && killall display')
+    subprocess.call(plottwf_cmd, cwd=subjects_dir, shell=True)
+
+    qa_utils.snr(subjects_dir, subject, fsd)
+
+    # registration
+    tkreg_cmd = ('tkregister-sess -s ' + subject + ' -per-run -fsd ' +
+                 fsd + ' -bbr-sum > ' + subject + '/qa/' + fsd +
+                 '/reg_quality.txt')
+    subprocess.call(tkreg_cmd, cwd=subjects_dir, shell=True)
+
+    wm_cfg = (subject + '/wm_' + fsd + '.cfg')
+    fcseed_config_cmd = ('fcseed-config -wm -overwrite -fcname wm.dat'
+                         ' -fsd ' + fsd + ' -cfg ' + wm_cfg)
+    subprocess.call(fcseed_config_cmd, cwd=subjects_dir, shell=True)
+
+    vcsf_cfg = (subject + '/vcsf_' + fsd + '.cfg')
+    fcseed_config_cmd = ('fcseed-config -vcsf -overwrite -fcname '
+                         'vcsf.dat -fsd ' + fsd + ' -mean -cfg ' +
+                         vcsf_cfg)
+    subprocess.call(fcseed_config_cmd, cwd=subjects_dir, shell=True)
+    fcseed_sess_cmd = ('fcseed-sess -s ' + subject + ' -cfg ' + wm_cfg)
+    subprocess.call(fcseed_sess_cmd, cwd=subjects_dir, shell=True)
+    fcseed_sess_cmd = ('fcseed-sess -s ' + subject + ' -cfg ' +
+                       vcsf_cfg)
+    subprocess.call(fcseed_sess_cmd, cwd=subjects_dir, shell=True)
+
+    selxavg_cmd = ('selxavg3-sess -s ' + subject + ' -a ' + fsd +
+                   '_lh -svres -no-con-ok')
+    subprocess.call(selxavg_cmd, cwd=subjects_dir, shell=True)
+    selxavg_cmd = ('selxavg3-sess -s ' + subject + ' -a ' + fsd +
+                   '_rh -svres -no-con-ok')
+    subprocess.call(selxavg_cmd, cwd=subjects_dir, shell=True)
+
+    qa_utils.fcseed(subjects_dir, subject, fsd)
+
+    qa_utils.resting_corr(subjects_dir, subject, fsd)
 
 
 def get_tr(subject, fmri_fname):
