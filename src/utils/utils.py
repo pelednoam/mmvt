@@ -481,16 +481,16 @@ def run_script(cmd, verbose=False, cwd=None):
 # def partial_run_script(vars, more_vars=None):
 #     return partial(lambda cmd,v:run_script(cmd.format(**v)), v=vars)
 
-def partial_run_script(vars, more_vars=None, print_only=False):
-    return partial(_run_script_wrapper, vars=vars, print_only=print_only)
+def partial_run_script(vars, print_only=False, cwd=None):
+    return partial(_run_script_wrapper, vars=vars, cwd=cwd, print_only=print_only)
 
 
-def _run_script_wrapper(cmd, vars, print_only=False, **kwargs):
+def _run_script_wrapper(cmd, vars, cwd=None, print_only=False, **kwargs):
     for k,v in kwargs.items():
         vars[k] = v
     print(cmd.format(**vars))
     if not print_only:
-        run_script(cmd.format(**vars))
+        run_script(cmd.format(**vars), cwd=cwd)
 
 
 def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True, freesurfer_home=''):

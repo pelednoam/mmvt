@@ -338,3 +338,15 @@ def get_tr(fmri_fname):
 
 def mri_convert(org_fname, new_fname):
     utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
+
+
+def nii_gz_to_mgz(fmri_fname):
+    new_fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
+    mri_convert(fmri_fname, new_fmri_fname)
+    return new_fmri_fname
+
+
+def mgz_to_nii_gz(fmri_fname):
+    new_fmri_fname = '{}nii.gz'.format(fmri_fname[:-len('mgz')])
+    mri_convert(fmri_fname, new_fmri_fname)
+    return new_fmri_fname

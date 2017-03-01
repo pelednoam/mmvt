@@ -576,63 +576,66 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
         atlas, measure, '{hemi}')))
 
 
-def clean_resting_state_data(subject, subjects_dir):
-    # preproc-sess, fcseed, segstats
+def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage', fsd='rest',
+                             print_only=False):
 
-    # Get fwhm. Note this assumes that lh and rh are the same
-    analysis_info_fname = op.join(subjects_dir, (fsd + '_lh'), 'analysis.info')
-    with open(analysis_info_fname) as analysis_info:
-        for ln in analysis_info:
-            ln_list = ln.split()
-            if ln_list:
-                if ln_list[0] == 'RawFWHM':
+    def get_fwhm(fsd):
+        # Get fwhm. Note this assumes that lh and rh are the same
+        analysis_info_fname = op.join(FMRI_DIR, (fsd + '_lh'), 'analysis.info')
+        fwhm = 0
+        with open(analysis_info_fname) as analysis_info:
+            for ln in analysis_info:
+                ln_list = ln.split()
+                if ln_list and ln_list[0] == 'RawFWHM':
                     fwhm = ln_list[1]
+        if fwhm == 0:
+            raise Exception("Can't find fwhm in the analysis.info!")
+        return fwhm
 
-    preproc_cmd = ('preproc-sess -surface fsaverage5c lhrh -s ' +
-                   subject + ' -fwhm ' + fwhm + ' -fsd ' + fsd +
-                   ' -mni305 -per-run')
-    subprocess.call(preproc_cmd, cwd=subjects_dir, shell=True)
-    plottwf_cmd = ('plot-twf-sess -s ' + subject + ' -dat f.nii.gz -mc'
-                                                   ' -fsd ' + fsd + ' && killall display')
-    subprocess.call(plottwf_cmd, cwd=subjects_dir, shell=True)
-    plottwf_cmd = ('plot-twf-sess -s ' + subject + ' -dat f.nii.gz'
-                                                   ' -fsd ' + fsd + ' -meantwf && killall display')
-    subprocess.call(plottwf_cmd, cwd=subjects_dir, shell=True)
+    def create_folders_tree(fmri_file_template):
+        # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
+        utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
+        fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+        files = glob.glob(fmri_file_template)
+        if len(files) == 1:
+            fmri_fname = files[0]
+            if utils.file_type(fmri_fname) == 'mgz':
+                fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
+            shutil.copy(fmri_fname, op.join(FMRI_DIR, subject, fsd, '001', 'f.nii.gz'))
+        elif len(files) == 0:
+            raise Exception("Can't find any file in {}!".format(fmri_file_template))
+        elif len(files) > 1:
+            raise Exception("More than one file can be found in {}!".format(fmri_file_template))
 
-    qa_utils.snr(subjects_dir, subject, fsd)
+    fwhm = get_fwhm(fsd)
+    create_folders_tree(fmri_file_template)
+    rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
+
+    # preproc-sess, fcseed, segstats (/home/npeled/fmri/ep011/rest/001/fmcpr.sm6.mni305.2mm.nii.gz)
+    rs('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run')
+    rs('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display')
+    rs('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display')
+
+    # Calc SNR ('/home/npeled/fmri/ep011/qa/rest/rest_001_snr.txt')
+    qa_utils.snr(subject, fsd)
 
     # registration
-    tkreg_cmd = ('tkregister-sess -s ' + subject + ' -per-run -fsd ' +
-                 fsd + ' -bbr-sum > ' + subject + '/qa/' + fsd +
-                 '/reg_quality.txt')
-    subprocess.call(tkreg_cmd, cwd=subjects_dir, shell=True)
+    rs('tkregister-sess -s {subject} -per-run -fsd {fsd} -bbr-sum > {subject}/qa/{fsd}/reg_quality.txt')
 
-    wm_cfg = (subject + '/wm_' + fsd + '.cfg')
-    fcseed_config_cmd = ('fcseed-config -wm -overwrite -fcname wm.dat'
-                         ' -fsd ' + fsd + ' -cfg ' + wm_cfg)
-    subprocess.call(fcseed_config_cmd, cwd=subjects_dir, shell=True)
+    # Computes seeds (regressors) that can be used for functional connectivity analysis or for use as nuisance regressors.
+    rs('fcseed-config -wm -overwrite -fcname wm.dat -fsd {fsd} -cfg {subject}/wm_{fsd}.cfg')
+    rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
+    rs('fcseed-sess -s {subject} -cfg {subject}/wm_{fsd}.cfg') # (/home/npeled/fmri/ep011/rest/001/wm.dat)
+    rs('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg') # (/home/npeled/fmri/ep011/rest/001/vcsf.dat)
 
-    vcsf_cfg = (subject + '/vcsf_' + fsd + '.cfg')
-    fcseed_config_cmd = ('fcseed-config -vcsf -overwrite -fcname '
-                         'vcsf.dat -fsd ' + fsd + ' -mean -cfg ' +
-                         vcsf_cfg)
-    subprocess.call(fcseed_config_cmd, cwd=subjects_dir, shell=True)
-    fcseed_sess_cmd = ('fcseed-sess -s ' + subject + ' -cfg ' + wm_cfg)
-    subprocess.call(fcseed_sess_cmd, cwd=subjects_dir, shell=True)
-    fcseed_sess_cmd = ('fcseed-sess -s ' + subject + ' -cfg ' +
-                       vcsf_cfg)
-    subprocess.call(fcseed_sess_cmd, cwd=subjects_dir, shell=True)
+    # computes the average signal intensity maps
+    for hemi in utils.HEMIS:
+        rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
 
-    selxavg_cmd = ('selxavg3-sess -s ' + subject + ' -a ' + fsd +
-                   '_lh -svres -no-con-ok')
-    subprocess.call(selxavg_cmd, cwd=subjects_dir, shell=True)
-    selxavg_cmd = ('selxavg3-sess -s ' + subject + ' -a ' + fsd +
-                   '_rh -svres -no-con-ok')
-    subprocess.call(selxavg_cmd, cwd=subjects_dir, shell=True)
+    # qa_utils.fcseed(FMRI_DIR, subject, fsd, trg_subjects_dir=SUBJECTS_DIR,
+    #                 trg_subject=trg_subject,  parc=parc, stem_list=stem_list)
 
-    qa_utils.fcseed(subjects_dir, subject, fsd)
-
-    qa_utils.resting_corr(subjects_dir, subject, fsd)
+    qa_utils.resting_corr(FMRI_DIR, subject, fsd, parc=atlas, trg_subject=trg_subject, return_matrix=False)
 
 
 def get_tr(subject, fmri_fname):
@@ -813,9 +816,12 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'analyze_resting_state' in args.function:
         flags['analyze_resting_state'] = analyze_resting_state(
-            subject, args.atlas, args.fmri_file_template, args.resting_state_measure, args.morph_labels_from_subject,
+            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.morph_labels_from_subject,
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
+
+    if 'clean_resting_state_data' in args.function:
+        clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -863,20 +869,24 @@ def read_cmd_args(argv=None):
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
-    parser.add_argument('--resting_state_measure', help='', required=False, default='mean')
+    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean')
     parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
     parser.add_argument('--morph_labels_to_subject', help='', required=False, default='fsaverage')
     parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
+    # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
+    parser.add_argument('--rest_template', help='', required=False, default='fsaverage5')
+
 
     # Misc flags
     parser.add_argument('--fmri_fname', help='', required=False, default='')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label']}
+    args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label'],
+                            'mri': ['brainmask.mgz', 'orig.mgz']}
     if args.is_pet:
         args.fsfast = False
     # print(args)
