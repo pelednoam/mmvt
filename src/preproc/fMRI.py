@@ -579,8 +579,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
 def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
                              fwhm=6, lfp=0.08, nskip=4, print_only=False):
 
-    def create_folders_tree(fmri_file_template):
-        # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
+    def get_fmri_fname(fmri_file_template):
         if fmri_file_template == '':
             fmri_file_template = '*rest*'
         fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
@@ -588,16 +587,21 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         files_num = len(set([utils.namebase(f) for f in files if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']]))
         if files_num == 1:
             fmri_fname = files[0]
-            if utils.file_type(fmri_fname) == 'mgz':
-                fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
-            fol = utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
-            shutil.copy(fmri_fname, op.join(fol, 'f.nii.gz'))
         elif files_num == 0:
             raise Exception("Can't find any file in {}!".format(fmri_file_template))
         elif files_num > 1:
             raise Exception("More than one file can be found in {}! {}".format(fmri_file_template, files))
+        return fmri_fname
+
+    def create_folders_tree(fmri_fname):
+        # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
+        if utils.file_type(fmri_fname) == 'mgz':
+            fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
+        fol = utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
+        shutil.copy(fmri_fname, op.join(fol, 'f.nii.gz'))
         with open(op.join(FMRI_DIR, subject, 'subjectname'), 'w') as sub_file:
             sub_file.write(subject)
+        return fmri_fname
 
     def create_analysis_info_file(fsd, trg_subject, tr, fwhm=6, lfp=0.08, nskip=4):
         rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
@@ -617,7 +621,8 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
     def no_output(*args):
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
-    find_trg_subject(trg_subject)
+    fmri_fname = get_fmri_fname(fmri_file_template)
+    find_trg_subject(fmri_fname)
     create_folders_tree(fmri_file_template)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
     if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
@@ -626,9 +631,6 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         rs('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display')
     if no_output('global.waveform.dat.png'):
         rs('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display')
-
-    # Calc SNR ('/home/npeled/fmri/ep011/qa/rest/rest_001_snr.txt')
-    # qa_utils.snr(subject, fsd)
 
     # registration
     if no_output('reg_quality.txt'):
@@ -646,13 +648,11 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
     tr = get_tr(subject, op.join(FMRI_DIR, subject, fsd, '001', 'f.nii.gz')) / 1000 # To sec
     create_analysis_info_file(fsd, trg_subject, tr, fwhm, lfp, nskip)
     for hemi in utils.HEMIS:
-        rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
+        if no_output('{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz'):
+            rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
 
-    # qa_utils.fcseed(FMRI_DIR, subject, fsd, trg_subjects_dir=SUBJECTS_DIR,
-    #                 trg_subject=trg_subject,  parc=parc, stem_list=stem_list)
-
-    # qa_utils.resting_corr(FMRI_DIR, subject, fsd, parc=atlas, trg_subject=trg_subject, return_matrix=False)
-
+    for hemi in utils.HEMIS:
+        new_fname =
 
 def get_tr(subject, fmri_fname):
     try:
