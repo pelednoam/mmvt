@@ -37,14 +37,15 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         os.environ['SUBJECT'] = subject
         flags = dict()
         try:
-            if utils.should_run(args, 'prepare_subject_folder'):
-                # *) Prepare the local subject's folder
-                flags['prepare_subject_folder'] = prepare_subject_folder(
-                    subject, remote_subject_dir, args)
-                if not flags['prepare_subject_folder'] and not args.ignore_missing:
-                    ans = input('Do you wish to continue (y/n)? ')
-                    if not au.is_true(ans):
-                        continue
+            # if utils.should_run(args, 'prepare_subject_folder'):
+            # I think we always want to run this
+            # *) Prepare the local subject's folder
+            flags['prepare_subject_folder'] = prepare_subject_folder(
+                subject, remote_subject_dir, args)
+            if not flags['prepare_subject_folder'] and not args.ignore_missing:
+                ans = input('Do you wish to continue (y/n)? ')
+                if not au.is_true(ans):
+                    continue
 
             flags = main_func(tup, remote_subject_dir, args, flags)
             subjects_flags[subject] = flags

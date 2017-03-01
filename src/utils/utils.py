@@ -566,11 +566,16 @@ def get_aseg_header(subject_mri_dir):
 
 
 def namebase(fname):
-    return op.splitext(op.basename(fname))[0]
+    nb = fname
+    while '.' in nb:
+        nb = op.splitext(op.basename(nb))[0]
+    return nb
 
 
 def file_type(fname):
-    return op.splitext(op.basename(fname))[1][1:]
+    ret = '.'.join(fname.split(op.sep)[-1].split('.')[1:])
+    return ret
+    # return op.splitext(op.basename(fname))[1][1:]
 
 
 def is_file_type(fname, file_type):

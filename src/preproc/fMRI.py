@@ -17,7 +17,7 @@ from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
-from src.utils import qa_utils
+# from src.utils import qa_utils
 
 try:
     from sklearn.neighbors import BallTree
@@ -576,66 +576,82 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
         atlas, measure, '{hemi}')))
 
 
-def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage', fsd='rest',
-                             print_only=False):
-
-    def get_fwhm(fsd):
-        # Get fwhm. Note this assumes that lh and rh are the same
-        analysis_info_fname = op.join(FMRI_DIR, (fsd + '_lh'), 'analysis.info')
-        fwhm = 0
-        with open(analysis_info_fname) as analysis_info:
-            for ln in analysis_info:
-                ln_list = ln.split()
-                if ln_list and ln_list[0] == 'RawFWHM':
-                    fwhm = ln_list[1]
-        if fwhm == 0:
-            raise Exception("Can't find fwhm in the analysis.info!")
-        return fwhm
+def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
+                             fwhm=6, lfp=0.08, nskip=4, print_only=False):
 
     def create_folders_tree(fmri_file_template):
         # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
-        utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
+        if fmri_file_template == '':
+            fmri_file_template = '*rest*'
         fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
         files = glob.glob(fmri_file_template)
-        if len(files) == 1:
+        files_num = len(set([utils.namebase(f) for f in files if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']]))
+        if files_num == 1:
             fmri_fname = files[0]
             if utils.file_type(fmri_fname) == 'mgz':
                 fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
-            shutil.copy(fmri_fname, op.join(FMRI_DIR, subject, fsd, '001', 'f.nii.gz'))
-        elif len(files) == 0:
+            fol = utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
+            shutil.copy(fmri_fname, op.join(fol, 'f.nii.gz'))
+        elif files_num == 0:
             raise Exception("Can't find any file in {}!".format(fmri_file_template))
-        elif len(files) > 1:
-            raise Exception("More than one file can be found in {}!".format(fmri_file_template))
+        elif files_num > 1:
+            raise Exception("More than one file can be found in {}! {}".format(fmri_file_template, files))
+        with open(op.join(FMRI_DIR, subject, 'subjectname'), 'w') as sub_file:
+            sub_file.write(subject)
 
-    fwhm = get_fwhm(fsd)
+    def create_analysis_info_file(fsd, trg_subject, tr, fwhm=6, lfp=0.08, nskip=4):
+        rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
+        for hemi in utils.HEMIS:
+            rs('mkanalysis-sess -analysis {fsd}_{hemi} -notask -TR {tr} -surface {trg_subject} {hemi} -fsd {fsd}' +
+               ' -per-run -nuisreg global.waveform.dat 1 -nuisreg wm.dat 1 -nuisreg vcsf.dat 1 -lpf {lfp} -mcextreg' +
+               ' -fwhm {fwhm} -nskip {nskip} -stc up -force', hemi=hemi)
+
+    def find_trg_subject(trg_subject):
+        if not op.isdir(op.join(SUBJECTS_DIR, trg_subject)):
+            if op.isdir(op.join(FREESURFER_HOME, 'subjects', trg_subject)):
+                os.symlink(op.join(FREESURFER_HOME, 'subjects', trg_subject),
+                           op.join(SUBJECTS_DIR, trg_subject))
+            else:
+                raise Exception("The target subject {} doesn't exist!".format(trg_subject))
+
+    def no_output(*args):
+        return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
+
+    find_trg_subject(trg_subject)
     create_folders_tree(fmri_file_template)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
-
-    # preproc-sess, fcseed, segstats (/home/npeled/fmri/ep011/rest/001/fmcpr.sm6.mni305.2mm.nii.gz)
-    rs('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run')
-    rs('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display')
-    rs('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display')
+    if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
+        rs('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run') # -> fMRI/{subject}/{fsd}/001/fmcpr.sm6.mni305.2mm.nii.gz
+    if no_output('fmcpr.mcdat.png'):
+        rs('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display')
+    if no_output('global.waveform.dat.png'):
+        rs('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display')
 
     # Calc SNR ('/home/npeled/fmri/ep011/qa/rest/rest_001_snr.txt')
-    qa_utils.snr(subject, fsd)
+    # qa_utils.snr(subject, fsd)
 
     # registration
-    rs('tkregister-sess -s {subject} -per-run -fsd {fsd} -bbr-sum > {subject}/qa/{fsd}/reg_quality.txt')
+    if no_output('reg_quality.txt'):
+        rs('tkregister-sess -s {subject} -per-run -fsd {fsd} -bbr-sum > {subject}/{fsd}/reg_quality.txt')
 
     # Computes seeds (regressors) that can be used for functional connectivity analysis or for use as nuisance regressors.
-    rs('fcseed-config -wm -overwrite -fcname wm.dat -fsd {fsd} -cfg {subject}/wm_{fsd}.cfg')
-    rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
-    rs('fcseed-sess -s {subject} -cfg {subject}/wm_{fsd}.cfg') # (/home/npeled/fmri/ep011/rest/001/wm.dat)
-    rs('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg') # (/home/npeled/fmri/ep011/rest/001/vcsf.dat)
+    if no_output('001', 'wm.dat'):
+        rs('fcseed-config -wm -overwrite -fcname wm.dat -fsd {fsd} -cfg {subject}/wm_{fsd}.cfg')
+        rs('fcseed-sess -s {subject} -cfg {subject}/wm_{fsd}.cfg') # -> /fmri/{subject}/{fsd}/001/wm.dat
+    if no_output('001', 'vcsf.dat'):
+        rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
+        rs('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg') # -> /fmri/{subject}/{fsd}/001/vcsf.dat
 
     # computes the average signal intensity maps
+    tr = get_tr(subject, op.join(FMRI_DIR, subject, fsd, '001', 'f.nii.gz')) / 1000 # To sec
+    create_analysis_info_file(fsd, trg_subject, tr, fwhm, lfp, nskip)
     for hemi in utils.HEMIS:
         rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
 
     # qa_utils.fcseed(FMRI_DIR, subject, fsd, trg_subjects_dir=SUBJECTS_DIR,
     #                 trg_subject=trg_subject,  parc=parc, stem_list=stem_list)
 
-    qa_utils.resting_corr(FMRI_DIR, subject, fsd, parc=atlas, trg_subject=trg_subject, return_matrix=False)
+    # qa_utils.resting_corr(FMRI_DIR, subject, fsd, parc=atlas, trg_subject=trg_subject, return_matrix=False)
 
 
 def get_tr(subject, fmri_fname):
@@ -651,13 +667,13 @@ def get_tr(subject, fmri_fname):
             tr = fu.get_tr(fmri_fname)
             print('fMRI fname: {}'.format(fmri_fname))
             print('tr: {}'.format(tr))
-            return True
+            return tr
         else:
             print('file format not supported!')
-            return False
+            return None
     except:
         print(traceback.format_exc())
-        return False
+        return None
 
 
 def fmri_pipeline(subject, atlas, contrasts, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
@@ -835,7 +851,8 @@ def main(subject, remote_subject_dir, args, flags):
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
     if 'get_tr' in args.function:
-        flags['get_tr'] = get_tr(subject, args.fmri_fname)
+        tr = get_tr(subject, args.fmri_fname)
+        flags['get_tr'] = not tr is None
 
     return flags
 
@@ -886,7 +903,7 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label'],
-                            'mri': ['brainmask.mgz', 'orig.mgz']}
+                            'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz']}
     if args.is_pet:
         args.fsfast = False
     # print(args)
