@@ -336,8 +336,9 @@ def get_tr(fmri_fname):
     return tr
 
 
-def mri_convert(org_fname, new_fname):
-    utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
+def mri_convert(org_fname, new_fname, overwrite=False):
+    if not op.isfile(new_fname) or overwrite:
+        utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
 
 
 def nii_gz_to_mgz(fmri_fname):
