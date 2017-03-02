@@ -171,7 +171,10 @@ def read_srf_file(srf_file):
 
 
 def read_ply_file(ply_file, npz_fname=''):
-    if file_type(ply_file) == 'ply' and npz_fname == '':
+    if file_type(ply_file) == '':
+        ply_file = '{}.ply'.format(ply_file)
+    npz_file = change_fname_extension(ply_file, 'npz')
+    if file_type(ply_file) == 'ply' and not op.isfile(npz_file):
         with open(ply_file, 'r') as f:
             lines = f.readlines()
             verts_num = int(lines[2].split(' ')[-1])
@@ -180,12 +183,12 @@ def read_ply_file(ply_file, npz_fname=''):
             faces_lines = lines[9 + verts_num:]
             verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
             faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
-    elif ply_file.split('.')[-1] == 'npz':
-        d = np.load(ply_file)
+    elif file_type(ply_file) == 'npz' or op.isfile(npz_file):
+        d = np.load(npz_file)
         verts, faces = d['verts'], d['faces']
-    elif npz_fname != '' and op.isfile(npz_fname):
-        d = np.load(npz_fname)
-        verts, faces = d['verts'], d['faces']
+    # elif npz_fname != '' and op.isfile(npz_fname):
+    #     d = np.load(npz_fname)
+    #     verts, faces = d['verts'], d['faces']
     else:
         raise Exception("Can't find ply/npz file!")
     return verts, faces
@@ -591,9 +594,9 @@ def namesbase_with_ext(fname):
 
 
 def change_fname_extension(fname, new_extension):
-    # splits = fname.split('.')
-    # return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
-    return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
+    splits = fname.split('.')
+    return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
+    # return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 
 #todo: Move to labes utils

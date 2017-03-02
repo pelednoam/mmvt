@@ -17,6 +17,7 @@ from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
+from src.utils import args_utils as au
 # from src.utils import qa_utils
 
 try:
@@ -37,6 +38,9 @@ except:
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 SUBJECTS_MEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'meg')
 FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
+
+FSAVG_VERTS = 10242
+FSAVG5_VERTS = 163842
 
 _bbregister = 'bbregister --mov {fsl_input}.nii --bold --s {subject} --init-fsl --lta register.lta'
 _mri_robust_register = 'mri_robust_register --mov {fsl_input}.nii --dst $SUBJECTS_DIR/colin27/mri/orig.mgz' +\
@@ -61,8 +65,19 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
 def calc_fmri_min_max(subject, contrast, hemis_files, norm_percs=(3, 97), norm_by_percentile=True):
     data = None
     for hemi_fname in hemis_files:
+        hemi = 'rh' if '.rh' in hemi_fname else 'lh'
         fmri = nib.load(hemi_fname)
         x = fmri.get_data().ravel()
+        verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        if x.shape[0] != verts.shape[0]:
+            if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
+                temp_barin = 'fsaverage5' if x.shape[0] == FSAVG5_VERTS else 'fsaverage'
+                raise Exception(
+                    "It seems that the fMRI contrast was made on {}, and not on the subject.\n".format(temp_barin) +
+                    "You can run the fMRI preproc on the template barin, or morph the fMRI contrast map to the subject.")
+            else:
+                raise Exception("fMRI contrast map ({}) and the {} pial surface ({}) doesn't have the " +
+                                "same vertices number!".format(len(x), hemi, verts.shape[0]))
         data = x if data is None else np.hstack((x, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
@@ -70,18 +85,17 @@ def calc_fmri_min_max(subject, contrast, hemis_files, norm_percs=(3, 97), norm_b
     if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
         data_max, data_min = data_minmax, -data_minmax
     # todo: the output_fname was changed, check where it's being used!
-    output_fname = op.join(
-        MMVT_DIR, subject, 'fmri','{}_minmax_{}.pkl'.format(
-            '_{}'.format(contrast) if contrast != '' else ''))
+    output_fname = op.join(MMVT_DIR, subject, 'fmri','{}_minmax.pkl'.format(contrast))
     print('Saving {}'.format(output_fname))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     utils.save((data_min, data_max), output_fname)
 
 
 def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_file, surf_name='pial', output_fol=''):
-    if not op.isfile(fmri_file.format(hemi)):
-        print('No such file {}!'.format(fmri_file.format(hemi)))
+    if not op.isfile(fmri_file):
+        print('No such file {}!'.format(fmri_file))
         return
-    fmri = nib.load(fmri_file.format(hemi))
+    fmri = nib.load(fmri_file)
     x = fmri.get_data().ravel()
     if output_fol == '':
         output_fol = op.join(MMVT_DIR, subject, 'fmri')
@@ -92,20 +106,16 @@ def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_file, surf_name='pial
 
 def _save_fmri_hemi_data(subject, hemi, x, output_file='', verts=None, surf_name='pial'):
     if verts is None:
-        # Try to read the hemi ply file to check if the vertices number is correct    
-        ply_file = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name))
-        if op.isfile(ply_file):
-            verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-            if len(x) != verts.shape[0]:
-                raise Exception("fMRI contrast map and the hemi doens't have the same vertices number!")
-        else:
-            print("No ply file, Can't check the vertices number")
+        # Try to read the hemi ply file to check if the vertices number is correct
+        verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name)))
+        if len(x) != verts.shape[0]:
+            raise Exception("fMRI contrast map ({}) and the {} pial surface ({}) doesn't have the same vertices number!".format(len(x), hemi, verts.shape[0]))
 
     # colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
     #     threshold=threshold, default_val=1, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     # colors = np.hstack((x.reshape((len(x), 1)), colors))
-    if output_file != '':
-        op.join(MMVT_DIR, subject, 'fmri_{}.npy'.format(hemi))
+    if output_file == '':
+        output_file = op.join(MMVT_DIR, subject, 'fmri_{}.npy'.format(hemi))
     print('Saving {}'.format(output_file))
     np.save(output_file, x)
 
@@ -693,6 +703,7 @@ def fmri_pipeline(subject, atlas, contrast_file_template, t_val=2, surface_name=
     -------
 
     '''
+    from collections import defaultdict
     fol = op.join(FMRI_DIR, args.task, subject)
     contrasts = set([utils.namebase(f) for f in glob.glob(op.join(fol, 'bold', '*'))])
     # if len(contrast_names) > 1:
@@ -703,11 +714,17 @@ def fmri_pipeline(subject, atlas, contrast_file_template, t_val=2, surface_name=
     # contrast_files = glob.glob(op.join(fol, '**', 'sig.*'), recursive=True)
     for contrast in contrasts:
         contrast_files = glob.glob(op.join(fol, 'bold', '*{}*'.format(contrast), 'sig.*'), recursive=True)
+        contrast_files_dic = defaultdict(list)
         for contrast_file in contrast_files:
-            fu.mri_convert(contrast_file, utils.change_fname_extension(contrast_file, 'mgz'))
+            ft = utils.file_type(contrast_file)
+            contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
+        for contrast_file, fts in contrast_files_dic.items():
+            if 'mgz' not in fts:
+                fu.mri_convert('{}.{}'.format(contrast_file, fts[0]), '{}.mgz'.format(contrast_file))
         # sm = glob.glob(op.join(fol, 'bold', '{}*'.format(contrast)))[0].split('.')[1]
         # volume_type = [f for f in glob.glob(op.join(fol, 'bold', '{}*'.format(contrast)))
         #                if 'lh' not in f and 'rh' not in f][0].split('.')[-1]
+        contrast_files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
         volume_files = [f for f in contrast_files if 'lh' not in f and 'rh' not in f]
         utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
         for volume_fname in volume_files:
