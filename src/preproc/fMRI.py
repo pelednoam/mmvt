@@ -583,7 +583,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
 
 
 def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
-                             fwhm=6, lfp=0.08, nskip=4, overwrite=False, print_only=False, remote_subject_dir=''):
+                             fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
 
     def find_files(fmri_file_template):
         return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
@@ -599,7 +599,7 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         if files_num == 1:
             fmri_fname = files[0]
         elif files_num == 0:
-            files = find_files(op.join(remote_subject_dir, fmri_file_template))
+            files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template))
             files_num = len(set([utils.namebase(f) for f in files]))
             if files_num == 1:
                 fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
@@ -907,7 +907,8 @@ def main(subject, remote_subject_dir, args, flags):
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
     if 'clean_resting_state_data' in args.function:
-        clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template)
+        clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template,
+                                 remote_fmri_dir=args.remote_fmri_dir)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -953,6 +954,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--remote_fmri_dir', help='', required=False, default='')
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
