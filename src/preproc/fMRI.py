@@ -605,6 +605,7 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
             files_num = len(set([utils.namebase(f) for f in files]))
             if files_num == 1:
                 fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
+                utils.make_dir(op.join(FMRI_DIR, subject))
                 shutil.copy(files[0], fmri_fname)
             else:
                 raise Exception("Can't find any file in {}!".format(full_fmri_file_template))
