@@ -962,7 +962,7 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     if 'clean_resting_state_data' in args.function or args.function == 'prepare_subject_folder':
-        args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'],
+        args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness', 'rh.white', 'lh.white'],
                                 'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz']}
         # 'label': ['lh.cortex.label', 'rh.cortex.label']
     if args.is_pet:
