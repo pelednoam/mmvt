@@ -636,6 +636,8 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
+    if os.environ.get('FREESURFER_HOME', '') == '':
+        raise Exception('Source freesurfer and rerun')
     find_trg_subject(trg_subject)
     fmri_fname = get_fmri_fname(fmri_file_template)
     create_folders_tree(fmri_fname)
