@@ -594,9 +594,9 @@ def namesbase_with_ext(fname):
 
 
 def change_fname_extension(fname, new_extension):
-    splits = fname.split('.')
-    return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
-    # return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
+    # splits = fname.split('.')
+    # return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
+    return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 
 #todo: Move to labes utils
@@ -1622,6 +1622,11 @@ def ceil_floor(x):
     import math
     return math.ceil(x) if x > 0 else math.floor(x)
 
+
+def add_str_to_file_name(fname, txt, suf=''):
+    if suf == '':
+        suf = file_type(fname)
+    return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):

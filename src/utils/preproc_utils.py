@@ -19,12 +19,14 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.necessary_files == '':
         args.necessary_files = dict()
+    for sub in args.subject:
+        if '*' in sub:
+            args.subject.remove(sub)
+            args.subject.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
     if 'sftp_password' not in args or args.sftp_password == '':
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
             if args.sftp else ''
-    if '*' in args.subject:
-        args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)

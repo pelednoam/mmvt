@@ -589,8 +589,9 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         if fmri_file_template == '':
             fmri_file_template = '*rest*'
         fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-        files = glob.glob(fmri_file_template)
-        files_num = len(set([utils.namebase(f) for f in files if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']]))
+        files = [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
+                 and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
+        files_num = len(set([utils.namebase(f) for f in files]))
         if files_num == 1:
             fmri_fname = files[0]
         elif files_num == 0:
@@ -601,13 +602,14 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
 
     def create_folders_tree(fmri_fname):
         # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
-        if utils.file_type(fmri_fname) == 'mgz':
-            fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
         fol = utils.make_dir(op.join(FMRI_DIR, subject, fsd, '001'))
-        shutil.copy(fmri_fname, op.join(fol, 'f.nii.gz'))
-        with open(op.join(FMRI_DIR, subject, 'subjectname'), 'w') as sub_file:
-            sub_file.write(subject)
-        return fmri_fname
+        if not op.isfile(op.join(fol, 'f.nii.gz')):
+            if utils.file_type(fmri_fname) == 'mgz':
+                fmri_fname = fu.mgz_to_nii_gz(fmri_fname)
+            shutil.copy(fmri_fname, op.join(fol, 'f.nii.gz'))
+        if not op.isfile(op.join(FMRI_DIR, subject, 'subjectname')):
+            with open(op.join(FMRI_DIR, subject, 'subjectname'), 'w') as sub_file:
+                sub_file.write(subject)
 
     def create_analysis_info_file(fsd, trg_subject, tr, fwhm=6, lfp=0.08, nskip=4):
         rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
@@ -627,9 +629,9 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
     def no_output(*args):
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
+    find_trg_subject(trg_subject)
     fmri_fname = get_fmri_fname(fmri_file_template)
-    find_trg_subject(fmri_fname)
-    create_folders_tree(fmri_file_template)
+    create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
     if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
         rs('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run') # -> fMRI/{subject}/{fsd}/001/fmcpr.sm6.mni305.2mm.nii.gz
@@ -650,19 +652,27 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
         rs('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg') # -> /fmri/{subject}/{fsd}/001/vcsf.dat
 
-    # computes the average signal intensity maps
-    tr = get_tr(subject, op.join(FMRI_DIR, subject, fsd, '001', 'f.nii.gz')) / 1000 # To sec
+    tr = get_tr(subject, fmri_fname) / 1000 # To sec
     create_analysis_info_file(fsd, trg_subject, tr, fwhm, lfp, nskip)
     for hemi in utils.HEMIS:
         if no_output('{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz'):
+            # computes the average signal intensity maps
             rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
 
-    # for hemi in utils.HEMIS:
-    #     new_fname =
+    for hemi in utils.HEMIS:
+        new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
+        if not op.isfile(new_fname):
+            res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
+            fu.nii_gz_to_mgz(res_fname)
+            res_fname = utils.change_fname_extension(res_fname, 'mgz')
+            shutil.copy(res_fname, new_fname)
+
 
 def get_tr(subject, fmri_fname):
     try:
-        fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
+        tr_fname = utils.add_str_to_file_name(fmri_fname, '_tr', 'pkl')
+        if op.isfile(tr_fname):
+            return utils.load(tr_fname)
         if utils.is_file_type(fmri_fname, 'nii.gz'):
             old_fmri_fname = fmri_fname
             fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
@@ -671,8 +681,9 @@ def get_tr(subject, fmri_fname):
         if utils.is_file_type(fmri_fname, 'mgz'):
             fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
             tr = fu.get_tr(fmri_fname)
-            print('fMRI fname: {}'.format(fmri_fname))
+            # print('fMRI fname: {}'.format(fmri_fname))
             print('tr: {}'.format(tr))
+            utils.save(tr, tr_fname)
             return tr
         else:
             print('file format not supported!')
@@ -940,15 +951,19 @@ def read_cmd_args(argv=None):
 
     # Misc flags
     parser.add_argument('--fmri_fname', help='', required=False, default='')
-
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    if 'clean_resting_state_data' in args.function:
-        args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'], 'label': ['lh.cortex.label', 'rh.cortex.label'],
+    if 'clean_resting_state_data' in args.function or args.function == 'prepare_subject_folder':
+        args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness'],
                                 'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz']}
+        # 'label': ['lh.cortex.label', 'rh.cortex.label']
     if args.is_pet:
         args.fsfast = False
     # print(args)
+    for sub in args.subject:
+        if '*' in sub:
+            args.subject.remove(sub)
+            args.subject.extend([fol.split(op.sep)[-1] for fol in glob.glob(op.join(FMRI_DIR, sub))])
     return args
 
 
