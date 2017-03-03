@@ -629,35 +629,41 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
     def no_output(*args):
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
+    def run(cmd, *output_args, **kargs):
+        if no_output(*output_args):
+            rs(cmd, **kargs)
+            if no_output(*output_args):
+                raise Exception('{}\nNo output created in {}!!\n\n'.format(
+                    cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
+
     find_trg_subject(trg_subject)
     fmri_fname = get_fmri_fname(fmri_file_template)
     create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
-    if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
-        rs('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run') # -> fMRI/{subject}/{fsd}/001/fmcpr.sm6.mni305.2mm.nii.gz
-    if no_output('fmcpr.mcdat.png'):
-        rs('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display')
-    if no_output('global.waveform.dat.png'):
-        rs('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display')
+    # if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
+    run('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run',
+        '001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm)))
+    run('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display', 'fmcpr.mcdat.png')
+    run('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display', 'global.waveform.dat.png')
 
     # registration
-    if no_output('reg_quality.txt'):
-        rs('tkregister-sess -s {subject} -per-run -fsd {fsd} -bbr-sum > {subject}/{fsd}/reg_quality.txt')
+    run('tkregister-sess -s {subject} -per-run -fsd {fsd} -bbr-sum > {subject}/{fsd}/reg_quality.txt',
+        'reg_quality.txt')
 
     # Computes seeds (regressors) that can be used for functional connectivity analysis or for use as nuisance regressors.
     if no_output('001', 'wm.dat'):
         rs('fcseed-config -wm -overwrite -fcname wm.dat -fsd {fsd} -cfg {subject}/wm_{fsd}.cfg')
-        rs('fcseed-sess -s {subject} -cfg {subject}/wm_{fsd}.cfg') # -> /fmri/{subject}/{fsd}/001/wm.dat
+        run('fcseed-sess -s {subject} -cfg {subject}/wm_{fsd}.cfg', '001', 'wm.dat')
     if no_output('001', 'vcsf.dat'):
         rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
-        rs('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg') # -> /fmri/{subject}/{fsd}/001/vcsf.dat
+        run('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg', '001', 'vcsf.dat')
 
     tr = get_tr(subject, fmri_fname) / 1000 # To sec
     create_analysis_info_file(fsd, trg_subject, tr, fwhm, lfp, nskip)
     for hemi in utils.HEMIS:
-        if no_output('{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz'):
-            # computes the average signal intensity maps
-            rs('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok', hemi=hemi)
+        # computes the average signal intensity maps
+        run('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok',
+            '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz', hemi=hemi)
 
     for hemi in utils.HEMIS:
         new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
