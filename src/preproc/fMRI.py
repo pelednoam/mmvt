@@ -963,7 +963,8 @@ def read_cmd_args(argv=None):
     args = utils.Bag(au.parse_parser(parser, argv))
     if 'clean_resting_state_data' in args.function or args.function == 'prepare_subject_folder':
         args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness', 'rh.white', 'lh.white', 'lh.sphere.reg', 'rh.sphere.reg'],
-                                'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz']}
+                                'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz'],
+                                'mri:transforms': ['talairach.xfm']}
         # 'label': ['lh.cortex.label', 'rh.cortex.label']
     if args.is_pet:
         args.fsfast = False
