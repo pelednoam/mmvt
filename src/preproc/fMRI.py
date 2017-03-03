@@ -599,7 +599,9 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         if files_num == 1:
             fmri_fname = files[0]
         elif files_num == 0:
+            print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
             files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template))
+            print('files: {}'.format(files))
             files_num = len(set([utils.namebase(f) for f in files]))
             if files_num == 1:
                 fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
