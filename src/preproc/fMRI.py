@@ -583,21 +583,31 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
 
 
 def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
-                             fwhm=6, lfp=0.08, nskip=4, print_only=False):
+                             fwhm=6, lfp=0.08, nskip=4, overwrite=False, print_only=False, remote_subject_dir=''):
+
+    def find_files(fmri_file_template):
+        return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
+                and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
+
 
     def get_fmri_fname(fmri_file_template):
         if fmri_file_template == '':
             fmri_file_template = '*rest*'
-        fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-        files = [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
-                 and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
+        full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+        files = find_files(full_fmri_file_template)
         files_num = len(set([utils.namebase(f) for f in files]))
         if files_num == 1:
             fmri_fname = files[0]
         elif files_num == 0:
-            raise Exception("Can't find any file in {}!".format(fmri_file_template))
+            files = find_files(op.join(remote_subject_dir, fmri_file_template))
+            files_num = len(set([utils.namebase(f) for f in files]))
+            if files_num == 1:
+                fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
+                shutil.copy(files[0], fmri_fname)
+            else:
+                raise Exception("Can't find any file in {}!".format(full_fmri_file_template))
         elif files_num > 1:
-            raise Exception("More than one file can be found in {}! {}".format(fmri_file_template, files))
+            raise Exception("More than one file can be found in {}! {}".format(full_fmri_file_template, files))
         return fmri_fname
 
     def create_folders_tree(fmri_fname):
@@ -630,7 +640,7 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
     def run(cmd, *output_args, **kargs):
-        if no_output(*output_args):
+        if no_output(*output_args) or overwrite:
             rs(cmd, **kargs)
             if no_output(*output_args):
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
