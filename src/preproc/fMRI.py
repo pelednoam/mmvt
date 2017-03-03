@@ -874,6 +874,7 @@ def misc(args):
 def main(subject, remote_subject_dir, args, flags):
     volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
+    remote_subject_dir = utils.build_remote_subject_dir(args.remote_fmri_dir, subject)
     if args.fsfast:
         fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
             contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
@@ -908,7 +909,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'clean_resting_state_data' in args.function:
         clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template,
-                                 remote_fmri_dir=args.remote_fmri_dir)
+                                 remote_fmri_dir=remote_subject_dir)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
