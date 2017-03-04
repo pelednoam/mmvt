@@ -600,7 +600,8 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
             fmri_fname = files[0]
         elif files_num == 0:
             print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
-            files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template))
+            files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
+                    find_files(op.join(remote_fmri_dir, fmri_file_template))
             print('files: {}'.format(files))
             files_num = len(set([utils.namebase(f) for f in files]))
             if files_num == 1:
@@ -649,6 +650,7 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
+
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
     find_trg_subject(trg_subject)
@@ -681,7 +683,8 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
             '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz', hemi=hemi)
 
     for hemi in utils.HEMIS:
-        new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
+        # new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
+        new_fname = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(fsd, int(fwhm), trg_subject, hemi))
         if not op.isfile(new_fname):
             res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
             fu.nii_gz_to_mgz(res_fname)
