@@ -571,7 +571,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
             from_format=input_format)
         x = nib.load(fmri_fname).get_data()
         # labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
-        labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
+        labels = lu.read_labels_parallel(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
         if len(labels) == 0:
             return False
         # print(max([max(label.vertices) for label in labels]))
