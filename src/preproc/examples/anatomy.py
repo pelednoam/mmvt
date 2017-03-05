@@ -84,8 +84,9 @@ def get_subject_files_using_sftp_from_ohad(subject, args):
 
 
 def get_subject_files_from_server(args):
-    args = anat.read_cmd_args(utils.Bag(
+    args = anat.read_cmd_args(dict(
         subject=args.subject,
+        atlas=args.atlas,
         function='prepare_subject_folder',
         sftp=True,
         sftp_username='npeled',
