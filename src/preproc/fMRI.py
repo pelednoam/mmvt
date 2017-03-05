@@ -316,11 +316,12 @@ def mri_convert_hemis(contrast_file_template, contrasts=None, existing_format='n
 #         print('Error running mri_convert!')
 
 
-def convert_fmri_file(volume_fname_template, from_format='nii.gz', to_format='mgz'):
+def convert_fmri_file(input_fname_template, from_format='nii.gz', to_format='mgz'):
     try:
-        output_fname = volume_fname_template.format(format=to_format)
-        intput_fname = volume_fname_template.format(format=from_format)
-        if not op.isfile(output_fname):
+        output_fname = input_fname_template.format(format=to_format)
+        intput_fname = input_fname_template.format(format=from_format)
+        output_files = glob.glob(output_fname)
+        if len(output_files) == 0:
             inputs_files = glob.glob(intput_fname)
             if len(inputs_files) == 1:
                 intput_fname = inputs_files[0]
@@ -333,7 +334,7 @@ def convert_fmri_file(volume_fname_template, from_format='nii.gz', to_format='mg
                 print('Too many input files were found! {}'.format(intput_fname))
                 return ''
         else:
-            return output_fname
+            return output_files[0]
     except:
         print('Error running mri_convert!')
         return ''
@@ -548,7 +549,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', morph_from_subject='',
+def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', rest_template='fsaverage', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     if fmri_file_template == '':
@@ -566,7 +567,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', mo
             print('{} already exist'.format(output_fname))
             return False
         fmri_fname = convert_fmri_file(fmri_file_template.format(
-            subject=subject, morph_to_subject=morph_to_subject, hemi=hemi, format='{format}'),
+            subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'),
             from_format=input_format)
         x = nib.load(fmri_fname).get_data()
         labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
@@ -910,7 +911,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'analyze_resting_state' in args.function:
         flags['analyze_resting_state'] = analyze_resting_state(
-            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.morph_labels_from_subject,
+            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.rest_template, args.morph_labels_from_subject,
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
@@ -968,7 +969,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
     parser.add_argument('--labels_extract_mode', help='', required=False, default='mean')
     parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
-    parser.add_argument('--morph_labels_to_subject', help='', required=False, default='fsaverage')
+    parser.add_argument('--morph_labels_to_subject', help='', required=False, default='')
     parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
@@ -981,6 +982,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmri_fname', help='', required=False, default='')
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
+    args.necessary_files = {'surf': ['lh.sphere.reg', 'rh.sphere.reg']}
     if 'clean_resting_state_data' in args.function or args.function == 'prepare_subject_folder':
         args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness', 'rh.white', 'lh.white', 'lh.sphere.reg', 'rh.sphere.reg'],
                                 'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz'],

@@ -569,16 +569,23 @@ def get_aseg_header(subject_mri_dir):
 
 
 def namebase(fname):
-    nb = fname
-    while '.' in nb:
-        nb = op.splitext(op.basename(nb))[0]
-    return nb
+    if 'nii.gz' not in fname:
+        return op.splitext(op.basename(fname))[0]
+    else:
+        nb = fname
+        while '.' in nb:
+            nb = op.splitext(op.basename(nb))[0]
+        return nb
 
 
 def file_type(fname):
-    ret = '.'.join(fname.split(op.sep)[-1].split('.')[1:])
-    return ret
-    # return op.splitext(op.basename(fname))[1][1:]
+    if 'nii.gz' in fname:
+        return 'nii.gz'
+    else:
+        return op.splitext(op.basename(fname))[1][1:]
+    # ret = '.'.join(fname.split(op.sep)[-1].split('.')[1:])
+    # return ret
+
 
 
 def is_file_type(fname, file_type):

@@ -221,7 +221,7 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
             if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
                     or not op.isfile(surf_new_name):
-                print('{} {}: convert srf to asc'.format(hemi, surf_type))
+                print('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
                 print('{} {}: convert asc to ply'.format(hemi, surf_type))
@@ -242,7 +242,7 @@ def convert_hemis_srf_to_ply(subject, hemi='both', surf_type='pial'):
     for hemi in utils.get_hemis(hemi):
         ply_file = utils.srf2ply(op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.srf'.format(hemi, surf_type)),
                                  op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
-        utils.make_dir(op.join(MMVT_DIR, subject))
+        # utils.make_dir(op.join(MMVT_DIR, subject))
         # shutil.copyfile(ply_file, op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
 
 

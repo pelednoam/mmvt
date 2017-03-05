@@ -328,8 +328,8 @@ def calc_time_series_per_label(x, labels, measure, excludes=(),
 
 
 def morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1):
-    labels_fol = op.join(SUBJECTS_DIR, morph_from_subject, 'label')
-    labels_fname = op.join(labels_fol, '{}.{}.pkl'.format(hemi, atlas))
+    labels_fol = op.join(SUBJECTS_DIR, morph_to_subject, 'label')
+    labels_fname = op.join(labels_fol, '{}.{}.pkl'.format(hemi, atlas,morph_from_subject))
     annot_file = op.join(SUBJECTS_DIR, morph_from_subject, 'label', '{}.{}.annot'.format(hemi, atlas))
     if not op.isfile(annot_file):
         print("Can't find the annot file in {}!".format(annot_file))

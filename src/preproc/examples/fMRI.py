@@ -35,13 +35,14 @@ def pet():
 
 def analyze_resting_state(args):
     '-s subject-name -a atlas-name -f analyze_resting_state --fmri_file_template {subject}*{morph_to_subject}.{hemi}.{format}  --morph_labels_to_subject fsaverage'
-    args = fmri.read_cmd_args(utils.Bag(
+    args = fmri.read_cmd_args(dict(
         subject=args.subject,
-        atlast=args.atlas,
+        atlas=args.atlas,
         function='analyze_resting_state',
-        fmri_file_template='{subject}*{morph_to_subject}.{hemi}*.{format}',
-        morph_labels_to_subject='fsaverage',
-        resting_state_measure='mean'
+        fmri_file_template='*rest*.{hemi}*.{format}',
+        rest_template='fsaverage5',
+        morph_labels_from_subject='fsaverage',
+        labels_extract_mode='mean'
     ))
     pu.run_on_subjects(args, fmri.main)
 
@@ -56,6 +57,4 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-f', '--function', help='function name', required=True)
     args = utils.Bag(au.parse_parser(parser))
-    if not args.mri_subject:
-        args.mri_subject = args.subject
     locals()[args.function](args)
