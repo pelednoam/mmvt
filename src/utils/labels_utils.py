@@ -232,6 +232,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
 def read_labels_parallel(subject, subjects_dir, atlas, hemi='', labels_fol='', n_jobs=1):
     labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
     labels_files = glob.glob(op.join(labels_fol, '*{}.label'.format(hemi)))
+    labels_files += glob.glob(op.join(labels_fol, '{}.*label'.format(hemi)))
     files_chunks = utils.chunks(labels_files, len(labels_files) / n_jobs)
     results = utils.run_parallel(_read_labels_parallel, files_chunks, n_jobs)
     labels = []
