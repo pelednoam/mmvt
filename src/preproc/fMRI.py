@@ -573,6 +573,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
         # labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
         labels = lu.read_labels_parallel(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
         if len(labels) == 0:
+            print('No {} {} labels were found!'.format(morph_from_subject, atlas))
             return False
         # print(max([max(label.vertices) for label in labels]))
         labels_data, labels_names = lu.calc_time_series_per_label(
