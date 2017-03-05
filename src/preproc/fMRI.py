@@ -579,6 +579,7 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
             x, labels, measure, excludes, figures_dir, do_plot, do_plot_all_vertices)
         utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
         np.savez(output_fname, data=labels_data, names=labels_names)
+        print('{} was saved'.format(output_fname))
 
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         atlas, measure, '{hemi}')))
