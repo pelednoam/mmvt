@@ -762,8 +762,8 @@ def read_cmd_args(argv=None):
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
-        'mri:transforms' : ['talairach.xfm'],
-        'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
+        'mri:transforms' : ['talairach.xfm']}
+        # 'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
