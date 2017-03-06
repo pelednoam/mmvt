@@ -565,13 +565,12 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
         output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, measure, hemi))
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
-            return False
+            return True
         fmri_fname = convert_fmri_file(fmri_file_template.format(
             subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'),
             from_format=input_format)
         x = nib.load(fmri_fname).get_data()
-        # labels = lu.morph_labels(morph_from_subject, morph_to_subject, atlas, hemi, n_jobs=1)
-        labels = lu.read_labels_parallel(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
+        labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
         if len(labels) == 0:
             print('No {} {} labels were found!'.format(morph_from_subject, atlas))
             return False

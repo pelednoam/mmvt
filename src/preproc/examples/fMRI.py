@@ -41,7 +41,7 @@ def analyze_resting_state(args):
         function='analyze_resting_state',
         fmri_file_template='*rest*.{hemi}*.{format}',
         rest_template='fsaverage5',
-        morph_labels_from_subject='fsaverage',
+        morph_labels_from_subject='fsaverage5c',
         labels_extract_mode='mean'
     ))
     pu.run_on_subjects(args, fmri.main)
