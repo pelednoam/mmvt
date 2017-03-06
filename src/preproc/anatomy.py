@@ -608,6 +608,7 @@ def transform_coordinates(subject, args):
             points_coords_to_subject = fu.transform_subject_to_subject_coordinates(
                 subject, args.trans_to_subject, points, SUBJECTS_DIR)
             np.save(output_fname, points_coords_to_subject)
+            print('file saved at '+output_fname)
         else:
             print('transform_coordinates expecting coordinates file as input! ({})'.format(input_fname))
     except:
