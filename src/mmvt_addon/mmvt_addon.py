@@ -70,6 +70,7 @@ print("mmvt addon started!")
 # todo: should change that in the code!!!
 # Should be here bpy.types.Scene.maximal_time_steps
 T = 2500
+bpy.types.Scene.maximal_time_steps = T
 
 # LAYERS
 (TARGET_LAYER, LIGHTS_LAYER, EMPTY_LAYER, BRAIN_EMPTY_LAYER, ROIS_LAYER, ACTIVITY_LAYER, INFLATED_ROIS_LAYER,
@@ -271,10 +272,21 @@ def get_max_time_steps():
 
 
 _listener_in_queue, _listener_out_queue = None, None
+
+
 def start_listener():
     cmd = 'python {}'.format(op.join(mmvt_utils.current_path(), 'addon_listener.py'))
     listener_in_queue, listener_out_queue = mmvt_utils.run_command_in_new_thread(cmd)
     return listener_in_queue, listener_out_queue
+
+
+def make_all_fcurve_visible():
+    for obj in bpy.data.objects:
+        try:
+            for cur_fcurve in obj.animation_data.action.fcurves:
+                cur_fcurve.hide = False
+        except:
+            pass
 
 
 def init(addon_prefs):
@@ -283,6 +295,8 @@ def init(addon_prefs):
     bpy.context.window.screen = bpy.data.screens['Neuro']
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
+    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+    make_all_fcurve_visible()
     # set default values
     figures_fol = op.join(mmvt_utils.get_user_fol(), 'figures')
     mmvt_utils.make_dir(figures_fol)
