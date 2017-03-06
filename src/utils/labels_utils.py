@@ -46,7 +46,14 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
                 if not surf_loaded:
                     verts = {}
                     for hemi in HEMIS:
-                        hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
+                        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
+                            hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
+                        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
+                            hemis_verts, _ = utils.read_ply_file(
+                                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+                        else:
+                            print("Can't find {} pial ply/npz files!".format(hemi))
+                            return False
                         verts[hemi] = hemi_verts
                     surf_loaded = True
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]

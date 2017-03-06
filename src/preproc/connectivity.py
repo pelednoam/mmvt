@@ -123,13 +123,13 @@ def calc_lables_connectivity(subject, args):
         args.connectivity_modality, args.connectivity_method[0]))
     output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npy'.format(
         args.connectivity_modality, args.connectivity_method[0]))
-    output_fname_static = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_{}.npz'.format(
-        args.connectivity_modality, args.connectivity_method))
     if 'cv' in args.connectivity_method:
+        static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npz'.format(
+            args.connectivity_modality, args.connectivity_method[0]))
         static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npy'.format(
-            args.connectivity_modality, args.connectivity_method))
+            args.connectivity_modality, args.connectivity_method[0]))
         static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean.npy'.format(
-            args.connectivity_modality, args.connectivity_method))
+            args.connectivity_modality, args.connectivity_method[0]))
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
@@ -250,8 +250,8 @@ def calc_lables_connectivity(subject, args):
     if not static_conn is None:
         static_conn = static_conn[:, :, np.newaxis]
         save_connectivity(subject, static_conn, no_wins_connectivity_method, ROIS_TYPE, labels_names, conditions,
-                          output_fname_static, args, '', d['labels'], d['locations'], d['hemis'])
-        ret = ret and op.isfile(output_fname_static)
+                          static_output_fname, args, '', d['labels'], d['locations'], d['hemis'])
+        ret = ret and op.isfile(static_output_fname)
 
     return ret
 
