@@ -18,8 +18,13 @@ class SearchFilter(bpy.types.Operator):
         for obj in objects:
             SearchFilter.marked_objects_select[obj.name] = obj.select
             obj.select = label_name in obj.name
-            if label_name in obj.name:
-                SearchPanel.marked_objects.append(obj.name)
+            try:
+                import fnmatch
+                if fnmatch.fnmatch(obj.name, label_name):
+                    SearchPanel.marked_objects.append(obj.name)
+            except:
+                if label_name in obj.name:
+                    SearchPanel.marked_objects.append(obj.name)
         SearchPanel.addon.show_rois()
         return {"FINISHED"}
 
@@ -65,13 +70,22 @@ class SearchMark(bpy.types.Operator):
         objects = mu.get_non_functional_objects()
         SearchPanel.marked_objects = []
         for obj in objects:
-            if label_name in obj.name:
+            is_valid = False
+            try:
+                import fnmatch
+                if fnmatch.fnmatch(obj.name, label_name):
+                    is_valid = True
+            except:
+                if label_name in obj.name:
+                    is_valid = True
+            if is_valid:
                 bpy.context.scene.objects.active = bpy.data.objects[obj.name]
                 bpy.data.objects[obj.name].select = True
                 SearchMark.marked_objects_hide[obj.name] = bpy.data.objects[obj.name].hide
                 bpy.data.objects[obj.name].hide = False
                 bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
                 SearchPanel.marked_objects.append(obj.name)
+                # bpy.data.objects['inflated_'+obj.name].select = True
         SearchPanel.addon.show_rois()
         return {"FINISHED"}
 

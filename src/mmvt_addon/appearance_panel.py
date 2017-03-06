@@ -129,11 +129,13 @@ def appearance_show_rois_activity_update(self=None, context=None):
         elif bpy.context.scene.surface_type == 'inflated':
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = is_rois()
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()
-            if is_activity():
-                bpy.context.scene.inflating = 0
-                bpy.context.scene.hemis_inf_distance = -5
-            else:
-                bpy.context.scene.hemis_inf_distance = 0
+            # if is_activity():
+            #     # bpy.context.scene.inflating = 0
+            #     # bpy.context.scene.hemis_inf_distance = -5
+            #     pass
+            # else:
+            #     bpy.context.scene.hemis_inf_distance = 0
+            #     pass
     # print('roi: {}, activity: {}'.format(bpy.context.scene.layers[ROIS_LAYER], bpy.context.scene.layers[ACTIVITY_LAYER]))
     # print('should be {}, {}'.format(is_rois(), is_activity()))
     # if bpy.context.scene.layers[_addon().ROIS_LAYER] != is_rois() or \
@@ -333,8 +335,8 @@ bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
-bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=2.5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_distance_update)
 
 
 class ShowHideMEGSensors(bpy.types.Operator):
@@ -410,18 +412,20 @@ def init(addon):
     bpy.context.scene.subcortical_layer = 'fmri'
     change_to_solid_brain()
     # show_rois()
+    loc_val = 5
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
-            bpy.data.objects['inflated_rh'].location[0] = 5.5
+            bpy.data.objects['inflated_rh'].location[0] = loc_val
         AppearanceMakerPanel.cortex_inflated_lh = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
-            bpy.data.objects['inflated_lh'].location[0] = -5.5
+            bpy.data.objects['inflated_lh'].location[0] = -1*loc_val
     if bpy.data.objects.get('Cortex-rh') and bpy.data.objects.get('lh'):
         AppearanceMakerPanel.cortex_rh = bpy.data.objects['Cortex-rh'].location[0] = \
             bpy.data.objects['rh'].location[0] = 0
         AppearanceMakerPanel.cortex_lh = bpy.data.objects['Cortex-lh'].location[0] = \
             bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
-    bpy.context.scene.hemis_inf_distance = 0
+    bpy.context.scene.hemis_inf_distance = 0 #-5
+    set_inflated_ratio(1)
     appearance_show_rois_activity_update()
     bpy.ops.mmvt.selection_listener()
 
