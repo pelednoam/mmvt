@@ -615,6 +615,9 @@ def fmri_files_update(self, context):
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
         bpy.context.scene.fmri_files))
+    if not op.isfile(fmri_data_maxmin_fname):
+        fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(
+            bpy.context.scene.fmri_files))
     if op.isfile(fmri_data_maxmin_fname):
         data_min, data_max = mu.load(fmri_data_maxmin_fname)
         ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
