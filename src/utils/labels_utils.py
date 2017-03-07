@@ -28,6 +28,8 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     if subject_annot_files_exist:
         labels = read_labels(subject, subjects_dir, aparc_name, n_jobs=n_jobs)
     else:
+        print("The annot files doesn't found ({}), trying to read the lablels files".format(
+            op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
         labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     if len(labels) == 0:
         print('morph_labels_from_fsaverage: No labels files found!')
