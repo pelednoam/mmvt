@@ -1,4 +1,4 @@
 #!/bin/tcsh
-
-source path_to_freesurfer/nmr-dev-env
-path_to_blender/blender
+setenv FREESURFER_HOME /usr/local/freesurfer
+source $FREESURFER_HOME/SetUpFreeSurfer.csh
+/home/ohadfel/blender-2.78-linux-glibc211-x86_64/blender

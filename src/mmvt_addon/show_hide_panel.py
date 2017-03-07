@@ -52,6 +52,96 @@ def show_hide_sub_corticals(do_hide=True):
         show_hide_hierarchy(True, "Subcortical_meg_activity_map")
 
 
+def flip_camera_ortho_view():
+    options = ['ORTHO', 'CAMERA']
+    bpy.types.Scene.in_camera_view = not bpy.types.Scene.in_camera_view
+    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = options[int(bpy.types.Scene.in_camera_view)]
+
+
+class ShowSaggital(bpy.types.Operator):
+    bl_idname = "mmvt.show_saggital"
+    bl_label = "mmvt show_saggital"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.types.Scene.in_camera_view = 0
+        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view!='saggital':
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+            bpy.types.Scene.current_view = 'saggital'
+            bpy.types.Scene.current_view_direction = 0
+        else:
+            if bpy.types.Scene.current_view_direction == 1:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+            else:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, 0.5, 0.5]
+            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+
+        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        # print(bpy.ops.view3d.viewnumpad())
+        return {"FINISHED"}
+
+
+class ShowCoronal(bpy.types.Operator):
+    bl_idname = "mmvt.show_coronal"
+    bl_label = "mmvt show_coronal"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.types.Scene.in_camera_view = 0
+        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
+            bpy.types.Scene.current_view = 'coronal'
+            bpy.types.Scene.current_view_direction = 0
+        else:
+            if bpy.types.Scene.current_view_direction == 1:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
+            else:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 0, 0.7071068286895752, 0.7071068286895752]
+            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        # print(bpy.ops.view3d.viewnumpad())
+        return {"FINISHED"}
+
+
+class ShowAxial(bpy.types.Operator):
+    bl_idname = "mmvt.show_axial"
+    bl_label = "mmvt show_axial"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.types.Scene.in_camera_view = 0
+        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+            bpy.types.Scene.current_view = 'axial'
+            bpy.types.Scene.current_view_direction = 0
+        else:
+            if bpy.types.Scene.current_view_direction == 1:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+            else:
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 1, 0, 0]
+            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        # print(bpy.ops.view3d.viewnumpad())
+        return {"FINISHED"}
+
+
+class FlipCameraView(bpy.types.Operator):
+    bl_idname = "mmvt.flip_camera_view"
+    bl_label = "mmvt flip camera view"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        flip_camera_ortho_view()
+        return {"FINISHED"}
+
+
 class ShowHideLH(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_lh"
     bl_label = "mmvt show_hide_lh"
@@ -133,6 +223,20 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             layout.operator(ShowHideSubCerebellum.bl_idname, text=sub_show_text, icon=sub_icon)
         layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
 
+        row = layout.row(align=True)
+        row.operator(ShowAxial.bl_idname, text='Axial', icon='AXIS_TOP')
+        row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
+        row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
+        views_options = ['Camera', 'Ortho']
+        next_view = views_options[int(bpy.types.Scene.in_camera_view)]
+        icons = ['SCENE', 'MANIPUL']
+        next_icon = icons[int(bpy.types.Scene.in_camera_view)]
+        row = layout.row(align=True)
+        row.operator(FlipCameraView.bl_idname, text='Change to '+next_view+' View', icon=next_icon)
+
+
+
+
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(
     default=True, description="Show left hemisphere")#,update=show_hide_lh)
 bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(
@@ -143,7 +247,10 @@ bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
-
+bpy.types.Scene.current_view = 'free'
+bpy.types.Scene.time_of_view_selection = mu.get_time_obj
+bpy.types.Scene.current_view_direction = 0
+bpy.types.Scene.in_camera_view = 0
 
 
 def init(addon):
@@ -171,6 +278,10 @@ def register():
         bpy.utils.register_class(ShowHideObjectsPanel)
         bpy.utils.register_class(ShowHideLH)
         bpy.utils.register_class(ShowHideRH)
+        bpy.utils.register_class(ShowSaggital)
+        bpy.utils.register_class(ShowCoronal)
+        bpy.utils.register_class(ShowAxial)
+        bpy.utils.register_class(FlipCameraView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideSubCerebellum)
         # print('Show Hide Panel was registered!')
@@ -183,6 +294,10 @@ def unregister():
         bpy.utils.unregister_class(ShowHideObjectsPanel)
         bpy.utils.unregister_class(ShowHideLH)
         bpy.utils.unregister_class(ShowHideRH)
+        bpy.utils.unregister_class(ShowSaggital)
+        bpy.utils.unregister_class(ShowCoronal)
+        bpy.utils.unregister_class(ShowAxial)
+        bpy.utils.unregister_class(FlipCameraView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
     except:
