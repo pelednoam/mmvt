@@ -347,7 +347,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
 
 def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
-        morph_labels_from_fsaverage=True, fs_labels_fol='', n_jobs=6):
+        morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
     if annotations_exist:
@@ -376,9 +376,7 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
             return False
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
-    # Note that using the current mne version this code won't work, because of collissions between hemis
-    # You need to change the mne.write_labels_to_annot code for that.
-    if overwrite_annotation or not annotations_exist:
+    if save_annot_file and (overwrite_annotation or not annotations_exist):
         try:
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
@@ -390,9 +388,11 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         except:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
             print(traceback.format_exc())
-    return utils.both_hemi_files_exist(op.join(
-        SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
-
+    if save_annot_file:
+        return utils.both_hemi_files_exist(op.join(
+            SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
+    else:
+        return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0
 
 def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
     backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
@@ -648,7 +648,7 @@ def main(subject, remote_subject_dir, args, flags):
         # *) Create annotation file from fsaverage
         flags['create_annotation_from_template'] = create_annotation_from_template(
             subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
-            args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.n_jobs)
+            args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.save_annot_file, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
         # *) Calls Matlab 'splitting_cortical.m' script
@@ -755,6 +755,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
+    parser.add_argument('--save_annot_file', help='save_annot_file', required=False, default=1, type=au.is_true)
     parser.add_argument('--freesurfer', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
 
