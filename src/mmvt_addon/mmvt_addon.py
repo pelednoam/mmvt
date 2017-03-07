@@ -235,9 +235,12 @@ vertices_selected = connections_panel.vertices_selected
 get_parent_obj_name = connections_panel.get_parent_obj_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ransparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_brain_transparency = transparency_panel.set_brain_transparency
 set_light_layers_depth = transparency_panel.set_light_layers_depth
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+set_mni_coo = where_am_i_panel.set_mni_coo
+set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
 
 
 def get_max_time_steps():

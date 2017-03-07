@@ -209,7 +209,7 @@ class FreeviewPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "Freeview Panel"
+    bl_label = "Freeview"
     addon = None
     freeview_in_queue = None
     freeview_out_queue = None

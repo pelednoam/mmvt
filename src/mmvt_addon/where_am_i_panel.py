@@ -7,13 +7,31 @@ bpy.types.Scene.where_am_i_str = ''
 
 def where_i_am_draw(self, context):
     layout = self.layout
-    # row = layout.row(align=0)
-    # row.prop(context.scene, "mni_x", text="x")
-    # row.prop(context.scene, "mni_y", text="y")
-    # row.prop(context.scene, "mni_z", text="z")
+    layout.label(text='tkreg RAS coordinates')
+    row = layout.row(align=0)
+    row.prop(context.scene, "tkreg_ras_x", text="x")
+    row.prop(context.scene, "tkreg_ras_y", text="y")
+    row.prop(context.scene, "tkreg_ras_z", text="z")
+    layout.label(text='mni305 coordinates')
+    row = layout.row(align=0)
+    row.prop(context.scene, "mni_x", text="x")
+    row.prop(context.scene, "mni_y", text="y")
+    row.prop(context.scene, "mni_z", text="z")
     layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
     layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
     layout.label(text=bpy.types.Scene.where_am_i_str)
+
+
+def set_tkreg_ras_coo(coo):
+    bpy.context.scene.tkreg_ras_x = coo[0]
+    bpy.context.scene.tkreg_ras_y = coo[1]
+    bpy.context.scene.tkreg_ras_z = coo[2]
+
+
+def set_mni_coo(coo):
+    bpy.context.scene.mni_x = coo[0]
+    bpy.context.scene.mni_y = coo[1]
+    bpy.context.scene.mni_z = coo[2]
 
 
 def find_closest_obj(search_also_for_subcorticals=True):
@@ -131,6 +149,12 @@ class ClearWhereAmI(bpy.types.Operator):
 
 bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
                                                       update=where_i_am_draw)
+bpy.types.Scene.mni_x = bpy.props.FloatProperty()
+bpy.types.Scene.mni_y = bpy.props.FloatProperty()
+bpy.types.Scene.mni_z = bpy.props.FloatProperty()
+bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty()
+bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty()
+bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty()
 
 
 class WhereAmIMakerPanel(bpy.types.Panel):

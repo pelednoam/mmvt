@@ -296,6 +296,7 @@ class SelectionListener(bpy.types.Operator):
             if event.type == 'LEFTMOUSE':
                 if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                     _addon().find_closest_cluster(only_within=True)
+                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
 
         if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())

@@ -22,7 +22,10 @@ def ras_to_tkr_ras(fname):
 
 def read_transform_matrix_from_output(output):
     import re
-    str_mat = output.decode('ascii').split('\n')
+    try:
+        str_mat = output.decode('ascii').split('\n')
+    except:
+        str_mat = output.split('\n')
     for i in range(len(str_mat)):
         str_mat[i] = re.findall(r'[+-]?[0-9.]+', str_mat[i])
     del str_mat[-1]
@@ -46,9 +49,12 @@ def tkras_to_mni(points, subject, subjects_dir):
     tal_xfm = get_talxfm(subject, subjects_dir)
     orig_vox2ras = get_vox2ras(op.join(subjects_dir, subject, 'mri', 'orig.mgz'))
     orig_vox2tkras = get_vox2ras_tkr(op.join(subjects_dir, subject, 'mri', 'orig.mgz'))
-    points = apply_trans(tal_xfm, points)
-    points = apply_trans(orig_vox2ras, points)
-    points = apply_trans(np.linalg.inv(orig_vox2tkras), points)
+    trans = tal_xfm @ orig_vox2ras @ inv(orig_vox2tkras)
+    points = apply_trans(trans, points)
+    # points = apply_trans(tal_xfm, points)
+    # points = apply_trans(orig_vox2ras, points)
+    # points = apply_trans(np.linalg.inv(orig_vox2tkras), points)
+
     return points
 
 

@@ -298,7 +298,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "Selection Panel"
+    bl_label = "Selection"
     addon = None
 
     @staticmethod
