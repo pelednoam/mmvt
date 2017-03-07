@@ -1105,6 +1105,14 @@ def get_time():
     return str(datetime.now())
 
 
+def get_time_obj():
+    return datetime.now()
+
+
+def get_time_from_event(time_obj):
+    return(datetime.now()-time_obj).seconds
+
+
 def change_fcurve(obj_name, fcurve_name, data):
     bpy.data.objects[obj_name].select = True
     parent_obj = bpy.data.objects[obj_name]
