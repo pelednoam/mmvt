@@ -240,7 +240,7 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
         labels = mne.read_labels_from_annot(subject, annot_fname=annot_fname, surf_name='pial')
     else:
         # todo: read only the labels from the current hemi
-        labels = utils.read_labels_parallel(subject, SUBJECTS_DIR, atlas, n_jobs)
+        labels = lu.read_labels_parallel(subject, SUBJECTS_DIR, atlas, hemi, n_jobs=n_jobs)
         labels = [l for l in labels if l.hemi == hemi]
 
     if len(labels) == 0:

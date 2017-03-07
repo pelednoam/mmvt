@@ -207,8 +207,9 @@ def calc_lables_connectivity(subject, args):
                     conn[:, :, w] = np.corrcoef(data[:, :, w])
                 else:
                     conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
-                np.fill_diagonal(conn[:, :, w], 0)
-                connectivity_method = 'Pearson corr'
+            np.fill_diagonal(conn[:, :, w], 0)
+            np.save(output_mat_fname, conn)
+            connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
             conn_data = np.transpose(data, [2, 1, 0])
             chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)

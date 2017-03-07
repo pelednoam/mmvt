@@ -383,11 +383,11 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
             print("Can't write labels to annotation! Trying to solve labels collision")
             print(traceback.format_exc())
             solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
-        try:
-            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
-        except:
-            print("Can't write labels to annotation! Solving the labels collision didn't help...")
-            print(traceback.format_exc())
+            try:
+                utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+            except:
+                print("Can't write labels to annotation! Solving the labels collision didn't help...")
+                print(traceback.format_exc())
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
             SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))

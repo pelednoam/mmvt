@@ -218,12 +218,11 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
                                                     hemi=hemi)
             except:
-                print(traceback.format_exc())
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
                     subject, atlas, surf_name, hemi))
-                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
+                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         else:
-            labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
+            labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
         if rh_then_lh:
             rh_labels = [l for l in labels if l.hemi == 'rh']
@@ -243,17 +242,24 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
         print(traceback.format_exc())
         return []
 
-@utils.tryit
+
 def read_labels_parallel(subject, subjects_dir, atlas, hemi='', labels_fol='', n_jobs=1):
-    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-    labels_files = glob.glob(op.join(labels_fol, '*{}.label'.format(hemi)))
-    labels_files += glob.glob(op.join(labels_fol, '{}.*label'.format(hemi)))
-    files_chunks = utils.chunks(labels_files, len(labels_files) / n_jobs)
-    results = utils.run_parallel(_read_labels_parallel, files_chunks, n_jobs)
-    labels = []
-    for labels_chunk in results:
-        labels.extend(labels_chunk)
-    return labels
+    try:
+        labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
+        if hemi != '':
+            labels_files = glob.glob(op.join(labels_fol, '*{}.label'.format(hemi)))
+            labels_files.extend(glob.glob(op.join(labels_fol, '{}.*label'.format(hemi))))
+        else:
+            labels_files = glob.glob(op.join(labels_fol, '*.label'))
+        files_chunks = utils.chunks(labels_files, len(labels_files) / n_jobs)
+        results = utils.run_parallel(_read_labels_parallel, files_chunks, njobs=n_jobs)
+        labels = []
+        for labels_chunk in results:
+            labels.extend(labels_chunk)
+        return labels
+    except:
+        print(traceback.format_exc())
+        return []
 
 
 def _read_labels_parallel(files_chunk):

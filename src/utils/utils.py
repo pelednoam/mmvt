@@ -1379,34 +1379,33 @@ def get_all_subjects(subjects_dir, prefix, exclude_substr):
     return subjects
 
 
-# todo: move to labels utils
-def read_labels(labels_fol, hemi='both'):
-    hemis = [hemi] if hemi != 'both' else HEMIS
-    labels = []
-    for hemi in hemis:
-        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
-            print('read label from {}'.format(label_file))
-            label = mne.read_label(label_file)
-            labels.append(label)
-    return labels
+# def read_labels(labels_fol, hemi='both'):
+#     hemis = [hemi] if hemi != 'both' else HEMIS
+#     labels = []
+#     for hemi in hemis:
+#         for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
+#             print('read label from {}'.format(label_file))
+#             label = mne.read_label(label_file)
+#             labels.append(label)
+#     return labels
 
 
-def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
-    labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
-    files_chunks = chunks(labels_files, len(labels_files) / n_jobs)
-    results = run_parallel(_read_labels_parallel, files_chunks, n_jobs)
-    labels = []
-    for labels_chunk in results:
-        labels.extend(labels_chunk)
-    return labels
+# def read_labels_parallel(subject, subjects_dir, atlas, n_jobs):
+#     labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+#     files_chunks = chunks(labels_files, len(labels_files) / n_jobs)
+#     results = run_parallel(_read_labels_parallel, files_chunks, n_jobs)
+#     labels = []
+#     for labels_chunk in results:
+#         labels.extend(labels_chunk)
+#     return labels
 
 
-def _read_labels_parallel(files_chunk):
-    labels = []
-    for label_fname in files_chunk:
-        label = mne.read_label(label_fname)
-        labels.append(label)
-    return labels
+# def _read_labels_parallel(files_chunk):
+#     labels = []
+#     for label_fname in files_chunk:
+#         label = mne.read_label(label_fname)
+#         labels.append(label)
+#     return labels
 
 
 def merge_two_dics(dic1, dic2):
