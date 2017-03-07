@@ -218,6 +218,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
                                                     hemi=hemi)
             except:
+                print(traceback.format_exc())
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
                     subject, atlas, surf_name, hemi))
                 labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
