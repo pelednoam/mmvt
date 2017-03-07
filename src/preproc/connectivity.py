@@ -217,32 +217,32 @@ def calc_lables_connectivity(subject, args):
             for chunk in results:
                 for w, con in chunk.items():
                     conn[:, :, w] = con
-            # windows_num = 30
-            # pli_wins = 3
-            # conn = np.zeros((data.shape[0], data.shape[0], windows_num - pli_wins))
-            # conn_data = np.transpose(data, [2, 0, 1])
-            # five_cycle_freq = 5. * args.sfreq / float(conn_data.shape[2])
-            # for w in range(windows_num - pli_wins):
-            #     window_conn_data = conn_data[w:w+pli_wins, :, :]
-                # con, _, _, _, _ = mne.connectivity.spectral_connectivity(
-                #     window_conn_data, 'pli2_unbiased', sfreq=args.sfreq, fmin=args.fmin, fmax=args.fmax,
-                #     n_jobs=args.n_jobs)
-                # con = np.mean(con, 2) # Over freqs
-                # conn[:, :, w] = con + con.T
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
 
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
-        static_conn = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
-        np.fill_diagonal(static_conn, 0)
-        np.save(static_output_mat_fname, static_conn)
-        # static_conn[np.isnan(static_conn)] = 0
-        dFC = np.nanmean(static_conn, 1)
-        np.save(static_mean_output_mat_fname, dFC)
-        lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
-            args.connectivity_modality, args.connectivity_method), norm_percs=(1, 99), norm_by_percentile=True,
-            colors_map='YlOrRd')
+        if not op.isfile(static_output_mat_fname):
+            static_conn = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
+            np.fill_diagonal(static_conn, 0)
+            np.save(static_output_mat_fname, static_conn)
+            # static_conn[np.isnan(static_conn)] = 0
+        else:
+            static_conn = np.load(static_output_mat_fname)
+        static_con_fig_fname = utils.change_fname_extension(static_output_mat_fname, 'png')
+        if not op.isfile(static_con_fig_fname):
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            cax = ax.matshow(static_conn)
+            fig.colorbar(cax)
+            plt.title('{} Cv'.format(connectivity_method))
+            plt.savefig(static_con_fig_fname)
+        if not op.isfile(static_mean_output_mat_fname):
+            dFC = np.nanmean(static_conn, 1)
+            np.save(static_mean_output_mat_fname, dFC)
+            lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
+                args.connectivity_modality, args.connectivity_method), norm_percs=(1, 99), norm_by_percentile=True,
+                colors_map='YlOrRd')
 
     if not args.save_mmvt_connectivity:
         return True
