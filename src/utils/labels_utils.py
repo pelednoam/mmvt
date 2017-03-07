@@ -23,11 +23,13 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    subject_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
+    fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format(
         '{hemi}', aparc_name)))
-    if subject_annot_files_exist:
-        labels = read_labels(subject, subjects_dir, aparc_name, n_jobs=n_jobs)
+    if fsaverage_annot_files_exist:
+        labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     else:
+        print("The annot files doesn't found ({}), trying to read the lablels files".format(
+            op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
         labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     if len(labels) == 0:
         print('morph_labels_from_fsaverage: No labels files found!')
@@ -210,30 +212,36 @@ def get_hemi_from_name(label_name):
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False,
                 hemi='both', surf_name='pial', labels_fol='', n_jobs=1):
-    if try_first_from_annotation:
-        try:
-            labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
-                                                hemi=hemi)
-        except:
+    try:
+        if try_first_from_annotation:
+            try:
+                labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
+                                                    hemi=hemi)
+            except:
+                print(traceback.format_exc())
+                print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
+                    subject, atlas, surf_name, hemi))
+                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
+        else:
             labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
-    else:
-        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs)
-    labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
-    if rh_then_lh:
-        rh_labels = [l for l in labels if l.hemi == 'rh']
-        lh_labels = [l for l in labels if l.hemi == 'lh']
-        labels = rh_labels + lh_labels
-    if sorted_according_to_annot_file:
-        annot_labels = get_atlas_labels_names(subject, atlas, subjects_dir, return_flat_labels_list=True)
-        labels.sort(key=lambda x: annot_labels.index(x.name))
-    if output_fname != '':
-        with open(output_fname, 'w') as output_file:
-            for label in labels:
-                output_file.write('{}\n'.format(label.name))
-    if only_names:
-        labels = [l.name for l in labels]
-    return labels
-
+        labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
+        if rh_then_lh:
+            rh_labels = [l for l in labels if l.hemi == 'rh']
+            lh_labels = [l for l in labels if l.hemi == 'lh']
+            labels = rh_labels + lh_labels
+        if sorted_according_to_annot_file:
+            annot_labels = get_atlas_labels_names(subject, atlas, subjects_dir, return_flat_labels_list=True)
+            labels.sort(key=lambda x: annot_labels.index(x.name))
+        if output_fname != '':
+            with open(output_fname, 'w') as output_file:
+                for label in labels:
+                    output_file.write('{}\n'.format(label.name))
+        if only_names:
+            labels = [l.name for l in labels]
+        return labels
+    except:
+        print(traceback.format_exc())
+        return []
 
 @utils.tryit
 def read_labels_parallel(subject, subjects_dir, atlas, hemi='', labels_fol='', n_jobs=1):

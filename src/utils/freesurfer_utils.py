@@ -221,6 +221,8 @@ def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
     import mne.transforms
     xfm = mne.source_space._read_talxfm(subject, subjects_dir, 'nibabel')
     return mne.transforms.apply_trans(xfm['trans'], coords)
+    # MNI305RAS = TalXFM * Norig * inv(Torig) * [tkrR tkrA tkrS 1]'
+    # TalXFM: subject/orig/transforms/talairach.xfm Norig: mri_info --vox2ras orig.mgz Torig: mri_info --vox2ras-tkr orig.mgz
 
 
 def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir):
