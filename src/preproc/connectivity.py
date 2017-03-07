@@ -243,6 +243,8 @@ def calc_lables_connectivity(subject, args):
             args.connectivity_modality, args.connectivity_method), norm_percs=(1, 99), norm_by_percentile=True,
             colors_map='YlOrRd')
 
+    if not args.save_mmvt_connectivity:
+        return True
     conn = conn[:, :, :, np.newaxis]
     d = save_connectivity(subject, conn, connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
@@ -578,6 +580,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--sfreq', help='', required=False, default=1000, type=float)
     parser.add_argument('--fmin', help='', required=False, default=5, type=float)
     parser.add_argument('--fmax', help='', required=False, default=100, type=float)
+
+    parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
 
     pu.add_common_args(parser)
 
