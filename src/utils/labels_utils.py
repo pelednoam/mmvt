@@ -23,13 +23,13 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    subject_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(
+    fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format(
         '{hemi}', aparc_name)))
-    if subject_annot_files_exist:
-        labels = read_labels(subject, subjects_dir, aparc_name, n_jobs=n_jobs)
+    if fsaverage_annot_files_exist:
+        labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     else:
         print("The annot files doesn't found ({}), trying to read the lablels files".format(
-            op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
+            op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
         labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     if len(labels) == 0:
         print('morph_labels_from_fsaverage: No labels files found!')
