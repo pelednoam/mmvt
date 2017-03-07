@@ -7,6 +7,10 @@ bpy.types.Scene.where_am_i_str = ''
 
 def where_i_am_draw(self, context):
     layout = self.layout
+    # row = layout.row(align=0)
+    # row.prop(context.scene, "mni_x", text="x")
+    # row.prop(context.scene, "mni_y", text="y")
+    # row.prop(context.scene, "mni_z", text="z")
     layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
     layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
     layout.label(text=bpy.types.Scene.where_am_i_str)
