@@ -241,7 +241,8 @@ set_light_layers_depth = transparency_panel.set_light_layers_depth
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_mni_coo = where_am_i_panel.set_mni_coo
 set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 
 def get_max_time_steps():
     # Check if there is animation data in MEG
@@ -309,6 +310,7 @@ def init(addon_prefs):
     mmvt_utils.hide_relationship_lines()
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
+
 
 
 def main(addon_prefs=None):

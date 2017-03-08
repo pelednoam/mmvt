@@ -635,6 +635,19 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
+def save_subject_orig_trans(subject):
+    from src.utils import trans_utils as tu
+    output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
+    if op.isfile(output_fname):
+        return True
+    header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
+    vox2ras_tkr = header.get_vox2ras_tkr()
+    ras_tkr2vox = np.linalg.inv(vox2ras_tkr)
+    vox2ras = header.get_vox2ras()
+    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras=vox2ras)
+    return op.isfile(output_fname)
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaverage_link()
@@ -693,6 +706,9 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
         flags['save_labels_coloring'] = lu.create_atlas_coloring(subject, args.atlas, args.n_jobs)
+
+    if utils.should_run(args, 'save_subject_orig_trans'):
+        flags['save_subject_orig_trans'] = save_subject_orig_trans(subject)
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)

@@ -1,8 +1,14 @@
 import bpy
 import mathutils
 import numpy as np
+import os.path as op
+import mmvt_utils as mu
 
 bpy.types.Scene.where_am_i_str = ''
+
+
+def _addon():
+    return WhereAmIPanel.addon
 
 
 def where_i_am_draw(self, context):
@@ -22,16 +28,38 @@ def where_i_am_draw(self, context):
     layout.label(text=bpy.types.Scene.where_am_i_str)
 
 
+def mni_coo_update(self, context):
+    bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
+    bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
+    bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
+
+
+def tkras_coo_update(self, context):
+    pass
+
+
+
 def set_tkreg_ras_coo(coo):
     bpy.context.scene.tkreg_ras_x = coo[0]
     bpy.context.scene.tkreg_ras_y = coo[1]
     bpy.context.scene.tkreg_ras_z = coo[2]
+
+    if not WhereAmIPanel.subject_orig_trans is None:
+        ras_tkr2vox = WhereAmIPanel.subject_orig_trans['ras_tkr2vox']
+        vox2ras = WhereAmIPanel.subject_orig_trans['vox2ras']
+        vox = apply_trans(ras_tkr2vox, np.array([coo]))
+        ras = apply_trans(vox2ras, vox)
+        set_mni_coo(ras[0])
 
 
 def set_mni_coo(coo):
     bpy.context.scene.mni_x = coo[0]
     bpy.context.scene.mni_y = coo[1]
     bpy.context.scene.mni_z = coo[2]
+
+
+def apply_trans(trans, points):
+    return np.array([np.dot(trans, np.append(p, 1))[:3] for p in points])
 
 
 def find_closest_obj(search_also_for_subcorticals=True):
@@ -95,7 +123,7 @@ class WhereAmI(bpy.types.Operator):
 
     @staticmethod
     def setup_environment(self):
-        WhereAmIMakerPanel.addon.show_rois()
+        WhereAmIPanel.addon.show_rois()
 
     @staticmethod
     def main_func(self):
@@ -146,38 +174,40 @@ class ClearWhereAmI(bpy.types.Operator):
         # where_i_am_draw(self, context)
         return {"FINISHED"}
 
-
 bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
                                                       update=where_i_am_draw)
-bpy.types.Scene.mni_x = bpy.props.FloatProperty()
-bpy.types.Scene.mni_y = bpy.props.FloatProperty()
-bpy.types.Scene.mni_z = bpy.props.FloatProperty()
-bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty()
-bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty()
-bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty()
+bpy.types.Scene.mni_x = bpy.props.FloatProperty(update=mni_coo_update)
+bpy.types.Scene.mni_y = bpy.props.FloatProperty(update=mni_coo_update)
+bpy.types.Scene.mni_z = bpy.props.FloatProperty(update=mni_coo_update)
+bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty(update=tkras_coo_update)
+bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty(update=tkras_coo_update)
+bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update)
 
 
-class WhereAmIMakerPanel(bpy.types.Panel):
+class WhereAmIPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
     bl_label = "Where Am I"
     addon = None
+    subject_orig_trans = None
 
     def draw(self, context):
         where_i_am_draw(self, context)
 
 
 def init(addon):
-    WhereAmIMakerPanel.addon = addon
+    if op.isfile(op.join(mu.get_user_fol(), 'orig_trans.npz')):
+        WhereAmIPanel.subject_orig_trans = np.load(op.join(mu.get_user_fol(), 'orig_trans.npz'))
+    WhereAmIPanel.addon = addon
     register()
 
 
 def register():
     try:
         unregister()
-        bpy.utils.register_class(WhereAmIMakerPanel)
+        bpy.utils.register_class(WhereAmIPanel)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
         # print('Where am I Panel was registered!')
@@ -187,7 +217,7 @@ def register():
 
 def unregister():
     try:
-        bpy.utils.unregister_class(WhereAmIMakerPanel)
+        bpy.utils.unregister_class(WhereAmIPanel)
         bpy.utils.unregister_class(WhereAmI)
         bpy.utils.unregister_class(ClearWhereAmI)
     except:

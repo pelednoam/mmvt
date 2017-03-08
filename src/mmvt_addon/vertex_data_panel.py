@@ -6,6 +6,45 @@ import os.path as op
 import glob
 
 
+def find_vertex_index_and_mesh_closest_to_cursor():
+    # 3d cursor relative to the object data
+    print('cursor at:' + str(bpy.context.scene.cursor_location))
+    # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
+    distances = []
+    names = []
+    vertices_idx = []
+    vertices_co = []
+
+    # base_obj = bpy.data.objects['Functional maps']
+    # meshes = HEMIS
+    #        for obj in base_obj.children:
+    for cur_obj in mu.HEMIS:
+        obj = bpy.data.objects[cur_obj]
+        co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
+        mesh = obj.data
+        size = len(mesh.vertices)
+        kd = mathutils.kdtree.KDTree(size)
+
+        for i, v in enumerate(mesh.vertices):
+            kd.insert(v.co, i)
+
+        kd.balance()
+        print(obj.name)
+        for (co, index, dist) in kd.find_n(co_find, 1):
+            print('cursor at {} ,vertex {}, index {}, dist {}'.format(str(co_find), str(co), str(index), str(dist)))
+            distances.append(dist)
+            names.append(obj.name)
+            vertices_idx.append(index)
+            vertices_co.append(co)
+
+    closest_mesh_name = names[np.argmin(np.array(distances))]
+    print('closest_mesh =' + str(closest_mesh_name))
+    vertex_ind = vertices_idx[np.argmin(np.array(distances))]
+    print('vertex_ind =' + str(vertex_ind))
+    vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
+    return closest_mesh_name, vertex_ind, vertex_co
+
+
 class ClearVertexData(bpy.types.Operator):
     bl_idname = "mmvt.vertex_data_clear"
     bl_label = "vertex data clear"
@@ -26,45 +65,6 @@ class CreateVertexData(bpy.types.Operator):
     bl_idname = "mmvt.vertex_data_create"
     bl_label = "vertex data create"
     bl_options = {"UNDO"}
-
-    @staticmethod
-    def find_vertex_index_and_mesh_closest_to_cursor():
-        # 3d cursor relative to the object data
-        print('cursor at:' + str(bpy.context.scene.cursor_location))
-        # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
-        distances = []
-        names = []
-        vertices_idx = []
-        vertices_co = []
-
-        # base_obj = bpy.data.objects['Functional maps']
-        # meshes = HEMIS
-        #        for obj in base_obj.children:
-        for cur_obj in mu.HEMIS:
-            obj = bpy.data.objects[cur_obj]
-            co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
-            mesh = obj.data
-            size = len(mesh.vertices)
-            kd = mathutils.kdtree.KDTree(size)
-
-            for i, v in enumerate(mesh.vertices):
-                kd.insert(v.co, i)
-
-            kd.balance()
-            print(obj.name)
-            for (co, index, dist) in kd.find_n(co_find, 1):
-                print('cursor at {} ,vertex {}, index {}, dist {}'.format(str(co_find), str(co), str(index),str(dist)))
-                distances.append(dist)
-                names.append(obj.name)
-                vertices_idx.append(index)
-                vertices_co.append(co)
-
-        closest_mesh_name = names[np.argmin(np.array(distances))]
-        print('closest_mesh =' + str(closest_mesh_name))
-        vertex_ind = vertices_idx[np.argmin(np.array(distances))]
-        print('vertex_ind =' + str(vertex_ind))
-        vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
-        return closest_mesh_name, vertex_ind, vertex_co
 
     @staticmethod
     def create_empty_in_vertex_location(vertex_location):
@@ -107,7 +107,7 @@ class CreateVertexData(bpy.types.Operator):
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def invoke(self, context, event=None):
-        closest_mesh_name, vertex_ind, vertex_co = self.find_vertex_index_and_mesh_closest_to_cursor()
+        closest_mesh_name, vertex_ind, vertex_co = find_vertex_index_and_mesh_closest_to_cursor()
         print(vertex_co)
         self.create_empty_in_vertex_location(vertex_co)
         data_path = mu.get_user_fol()
