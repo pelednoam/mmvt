@@ -33,6 +33,7 @@ def where_i_am_draw(self, context):
         row.prop(context.scene, "voxel_x", text="x")
         row.prop(context.scene, "voxel_y", text="y")
         row.prop(context.scene, "voxel_z", text="z")
+        layout.label(text='')
 
     layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
     layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')

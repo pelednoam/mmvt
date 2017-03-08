@@ -145,7 +145,6 @@ if __name__ == '__main__':
     ras = vox_to_ras(vox, h)
     print('ras: {}'.format(ras))
 
-
     import mne
     from mne.source_space import vertex_to_mni, combine_transforms, Transform, apply_trans
 
