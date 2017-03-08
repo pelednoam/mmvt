@@ -36,29 +36,29 @@ def goto_cursor_position():
     bpy.context.scene.cursor_location = tuple(point / 10.0)
 
 
-class FreeviewKeyboardListener(bpy.types.Operator):
-    bl_idname = 'mmvt.freeview_keyboard_listener'
-    bl_label = 'freeview_keyboard_listener'
-    bl_options = {'UNDO'}
-    press_time = time.time()
-
-    def modal(self, context, event):
-        if time.time() - self.press_time > 1 and bpy.context.scene.freeview_listen_to_keyboard and \
-                event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE', 'INBETWEEN_MOUSEMOVE', 'TIMER_REPORT', 'NONE']:
-            self.press_time = time.time()
-            print(event.type)
-            if event.type == 'LEFTMOUSE':
-                save_cursor_position()
-            else:
-                pass
-        return {'PASS_THROUGH'}
-
-    def invoke(self, context, event=None):
-        if not bpy.context.scene.freeview_listener_is_running:
-            context.window_manager.modal_handler_add(self)
-            bpy.context.scene.freeview_listener_is_running = True
-        bpy.context.scene.freeview_listen_to_keyboard = not bpy.context.scene.freeview_listen_to_keyboard
-        return {'RUNNING_MODAL'}
+# class FreeviewKeyboardListener(bpy.types.Operator):
+#     bl_idname = 'mmvt.freeview_keyboard_listener'
+#     bl_label = 'freeview_keyboard_listener'
+#     bl_options = {'UNDO'}
+#     press_time = time.time()
+#
+#     def modal(self, context, event):
+#         if time.time() - self.press_time > 1 and bpy.context.scene.freeview_listen_to_keyboard and \
+#                 event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE', 'INBETWEEN_MOUSEMOVE', 'TIMER_REPORT', 'NONE']:
+#             self.press_time = time.time()
+#             print(event.type)
+#             if event.type == 'LEFTMOUSE':
+#                 save_cursor_position()
+#             else:
+#                 pass
+#         return {'PASS_THROUGH'}
+#
+#     def invoke(self, context, event=None):
+#         if not bpy.context.scene.freeview_listener_is_running:
+#             context.window_manager.modal_handler_add(self)
+#             bpy.context.scene.freeview_listener_is_running = True
+#         bpy.context.scene.freeview_listen_to_keyboard = not bpy.context.scene.freeview_listen_to_keyboard
+#         return {'RUNNING_MODAL'}
 
 
 class FreeviewGotoCursor(bpy.types.Operator):
@@ -259,7 +259,7 @@ def register():
         bpy.utils.register_class(FreeviewOpen)
         bpy.utils.register_class(FreeviewPanel)
         bpy.utils.register_class(SliceViewerOpen)
-        bpy.utils.register_class(FreeviewKeyboardListener)
+        # bpy.utils.register_class(FreeviewKeyboardListener)
         # print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
@@ -272,7 +272,7 @@ def unregister():
         bpy.utils.unregister_class(FreeviewOpen)
         bpy.utils.unregister_class(FreeviewPanel)
         bpy.utils.unregister_class(SliceViewerOpen)
-        bpy.utils.unregister_class(FreeviewKeyboardListener)
+        # bpy.utils.unregister_class(FreeviewKeyboardListener)
     except:
         pass
         # print("Can't unregister Freeview Panel!")

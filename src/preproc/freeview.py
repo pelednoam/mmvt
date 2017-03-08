@@ -4,6 +4,7 @@ import numpy as np
 import shutil
 import time
 import csv
+import nibabel as nib
 from mne.label import _read_annot
 
 from src.utils import utils
@@ -32,8 +33,12 @@ def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=Tr
 # todo: fix duplications!
 def create_lut_file_for_atlas(subject, atlas):
     # Read the subcortical segmentation from the freesurfer lut
+    new_lut_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
+    mmvt_lut_fname = op.join(MMVT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas))
+    # if op.isfile(mmvt_lut_fname) and not args.overwrite_aseg_file:
+    #     return
     lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME, get_colors=True)
-    lut_new = [list(l) for l in lut if l[0] < 1000]
+    lut_new = [[l[0], l[1].astype(str), l[2], l[3], l[4], l[5]] for l in lut if l[0] < 1000]
     for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
         if hemi == 'lh':
             lut_new.append([1000, 'ctx-lh-unknown', 25, 5,  25, 0])
@@ -47,14 +52,15 @@ def create_lut_file_for_atlas(subject, atlas):
     lut_new.sort(key=lambda x:x[0])
     # Add the values above 3000
     for l in [l for l in lut if l[0] >= 3000]:
-        lut_new.append(l)
-    new_lut_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
+        lut_new.append([l[0], l[1].astype(str), l[2], l[3], l[4], l[5]])
     with open(new_lut_fname, 'w') as fp:
         csv_writer = csv.writer(fp, delimiter='\t')
         csv_writer.writerows(lut_new)
     # np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-    shutil.copyfile(new_lut_fname, op.join(MMVT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas)))
+    shutil.copyfile(new_lut_fname, mmvt_lut_fname)
+    x = np.genfromtxt(mmvt_lut_fname, dtype=np.str)
+    np.savez(utils.change_fname_extension(mmvt_lut_fname, 'npz'), names=x[:, 1], ids=x[:, 0].astype(int))
 
 
 def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
@@ -77,7 +83,12 @@ def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=F
         else:
             print('Failed to create {}'.format(mri_file))
         os.chdir(current_dir)
-
+    atlas_mat_fname = utils.change_fname_extension(blender_file, 'npy')
+    if not op.isfile(atlas_mat_fname) or args.overwrite_aseg_file:
+        d = nib.load(blender_file)
+        x = d.get_data()
+        np.save(atlas_mat_fname, x)
+    return op.isfile(blender_file) and op.isfile(atlas_mat_fname)
 
 def check_mgz_values(atlas):
     import nibabel as nib

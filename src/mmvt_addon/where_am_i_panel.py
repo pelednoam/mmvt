@@ -4,8 +4,6 @@ import numpy as np
 import os.path as op
 import mmvt_utils as mu
 
-bpy.types.Scene.where_am_i_str = ''
-
 
 def _addon():
     return WhereAmIPanel.addon
@@ -33,11 +31,12 @@ def where_i_am_draw(self, context):
         row.prop(context.scene, "voxel_x", text="x")
         row.prop(context.scene, "voxel_y", text="y")
         row.prop(context.scene, "voxel_z", text="z")
-        layout.label(text='')
+    if not WhereAmIPanel.vol_atlas is None and not WhereAmIPanel.vol_atlas_lut is None:
+        layout.label(text='Voxel ID: {}'.format(bpy.context.scene.where_am_i_atlas))
 
-    layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
+    layout.operator("mmvt.where_i_am", text="Find closest object", icon='SNAP_SURFACE')
     layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
-    layout.label(text=bpy.types.Scene.where_am_i_str)
+    layout.label(text=bpy.context.scene.where_am_i_str)
 
 
 def tkras_coo_update(self, context):
@@ -67,14 +66,26 @@ def ras_coo_update(self, context):
 
 
 def voxel_coo_update(self, context):
+    vox_x, vox_y, vox_z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
     if not _trans() is None and WhereAmIPanel.update:
-        vox = [bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z]
+        vox = [vox_x, vox_y, vox_z]
         ras = apply_trans(_trans().vox2ras, np.array([vox]))
         ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
         WhereAmIPanel.update = False
         set_tkreg_ras_coo(ras_tkr[0], update_others=False)
         set_ras_coo(ras[0])
         WhereAmIPanel.update = True
+    if not WhereAmIPanel.vol_atlas is None and not WhereAmIPanel.vol_atlas_lut is None:
+        id = WhereAmIPanel.vol_atlas[vox_x, vox_y, vox_z]
+        id_ind = np.where(WhereAmIPanel.vol_atlas_lut['ids'] == id)[0][0]
+        name = WhereAmIPanel.vol_atlas_lut['names'][id_ind]
+        if name == 'Unknown':
+            vals = np.unique(WhereAmIPanel.vol_atlas[vox_x - 1:vox_x + 2, vox_y - 1:vox_y + 2, vox_z - 1:vox_z + 2])
+            vals = list(set(vals) - set([0]))
+            if len(vals) > 0:
+                id_ind = np.where(WhereAmIPanel.vol_atlas_lut['ids'] == vals[0])[0][0]
+                name = WhereAmIPanel.vol_atlas_lut['names'][id_ind]
+        bpy.context.scene.where_am_i_atlas = str(name)
 
 
 def set_tkreg_ras_coo(coo, update_others=True):
@@ -222,6 +233,8 @@ bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update)
 bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
+bpy.types.Scene.where_am_i_str = bpy.props.StringProperty()
+bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
 
 class WhereAmIPanel(bpy.types.Panel):
@@ -232,6 +245,8 @@ class WhereAmIPanel(bpy.types.Panel):
     bl_label = "Where Am I"
     addon = None
     subject_orig_trans = None
+    vol_atlas = None
+    vol_atlas_lut = None
     update = True
 
     def draw(self, context):
@@ -239,8 +254,14 @@ class WhereAmIPanel(bpy.types.Panel):
 
 
 def init(addon):
-    if op.isfile(op.join(mu.get_user_fol(), 'orig_trans.npz')):
-        WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(op.join(mu.get_user_fol(), 'orig_trans.npz')))
+    trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
+    atlas_vol_fname = op.join(mu.get_user_fol(), 'freeview', '{}+aseg.npy'.format(bpy.context.scene.atlas))
+    atlas_vol_lut_fname = op.join(mu.get_user_fol(), 'freeview', '{}ColorLUT.npz'.format(bpy.context.scene.atlas))
+    if op.isfile(trans_fname):
+        WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(trans_fname))
+    if op.isfile(atlas_vol_fname) and op.isfile(atlas_vol_lut_fname):
+        WhereAmIPanel.vol_atlas = np.load(atlas_vol_fname)
+        WhereAmIPanel.vol_atlas_lut = np.load(atlas_vol_lut_fname)
     WhereAmIPanel.addon = addon
     register()
 

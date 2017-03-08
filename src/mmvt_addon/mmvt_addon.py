@@ -243,6 +243,8 @@ set_ras_coo = where_am_i_panel.set_ras_coo
 set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+save_cursor_position = freeview_panel.save_cursor_position
 
 def get_max_time_steps():
     # Check if there is animation data in MEG
