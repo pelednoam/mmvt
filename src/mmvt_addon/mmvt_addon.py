@@ -239,7 +239,7 @@ view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 set_brain_transparency = transparency_panel.set_brain_transparency
 set_light_layers_depth = transparency_panel.set_light_layers_depth
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-set_mni_coo = where_am_i_panel.set_mni_coo
+set_ras_coo = where_am_i_panel.set_ras_coo
 set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
@@ -299,7 +299,7 @@ def init(addon_prefs):
     bpy.context.window.screen = bpy.data.screens['Neuro']
     bpy.context.scene.atlas = mmvt_utils.get_atlas()
     bpy.context.scene.python_cmd = addon_prefs.python_cmd
-    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+    # bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
     make_all_fcurve_visible()
     # set default values
     figures_fol = op.join(mmvt_utils.get_user_fol(), 'figures')

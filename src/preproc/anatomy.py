@@ -638,13 +638,14 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
 def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
     output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
-    if op.isfile(output_fname):
-        return True
+    # if op.isfile(output_fname):
+    #     return True
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
     vox2ras_tkr = header.get_vox2ras_tkr()
     ras_tkr2vox = np.linalg.inv(vox2ras_tkr)
     vox2ras = header.get_vox2ras()
-    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras=vox2ras)
+    ras2vox = np.linalg.inv(vox2ras)
+    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
     return op.isfile(output_fname)
 
 

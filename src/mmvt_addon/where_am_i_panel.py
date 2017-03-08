@@ -11,6 +11,10 @@ def _addon():
     return WhereAmIPanel.addon
 
 
+def _trans():
+    return WhereAmIPanel.subject_orig_trans
+
+
 def where_i_am_draw(self, context):
     layout = self.layout
     layout.label(text='tkreg RAS coordinates')
@@ -18,44 +22,76 @@ def where_i_am_draw(self, context):
     row.prop(context.scene, "tkreg_ras_x", text="x")
     row.prop(context.scene, "tkreg_ras_y", text="y")
     row.prop(context.scene, "tkreg_ras_z", text="z")
-    layout.label(text='mni305 coordinates')
-    row = layout.row(align=0)
-    row.prop(context.scene, "mni_x", text="x")
-    row.prop(context.scene, "mni_y", text="y")
-    row.prop(context.scene, "mni_z", text="z")
+    if not _trans() is None:
+        layout.label(text='mni305 coordinates')
+        row = layout.row(align=0)
+        row.prop(context.scene, "ras_x", text="x")
+        row.prop(context.scene, "ras_y", text="y")
+        row.prop(context.scene, "ras_z", text="z")
+        layout.label(text='T1 voxel indices')
+        row = layout.row(align=0)
+        row.prop(context.scene, "voxel_x", text="x")
+        row.prop(context.scene, "voxel_y", text="y")
+        row.prop(context.scene, "voxel_z", text="z")
+
     layout.operator("mmvt.where_i_am", text="Where Am I?", icon='SNAP_SURFACE')
     layout.operator("mmvt.where_am_i_clear", text="Clear", icon='PANEL_CLOSE')
     layout.label(text=bpy.types.Scene.where_am_i_str)
 
 
-def mni_coo_update(self, context):
+def tkras_coo_update(self, context):
     bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
     bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
     bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
 
+    if not _trans() is None and WhereAmIPanel.update:
+        coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]
+        vox = apply_trans(_trans().ras_tkr2vox, np.array([coo]))
+        ras = apply_trans(_trans().vox2ras, vox)
+        WhereAmIPanel.update = False
+        set_ras_coo(ras[0])
+        set_voxel_coo(vox[0])
+        WhereAmIPanel.update = True
 
-def tkras_coo_update(self, context):
-    pass
+
+def ras_coo_update(self, context):
+    if not _trans() is None and WhereAmIPanel.update:
+        coo = [bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z]
+        vox = apply_trans(_trans().ras2vox, np.array([coo]))
+        ras_tkr = apply_trans(_trans().vox2ras_tkr, vox)
+        WhereAmIPanel.update = False
+        set_tkreg_ras_coo(ras_tkr[0])
+        set_voxel_coo(vox[0])
+        WhereAmIPanel.update = True
 
 
+def voxel_coo_update(self, context):
+    if not _trans() is None and WhereAmIPanel.update:
+        vox = [bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z]
+        ras = apply_trans(_trans().vox2ras, np.array([vox]))
+        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
+        WhereAmIPanel.update = False
+        set_tkreg_ras_coo(ras_tkr[0], update_others=False)
+        set_ras_coo(ras[0])
+        WhereAmIPanel.update = True
 
-def set_tkreg_ras_coo(coo):
+
+def set_tkreg_ras_coo(coo, update_others=True):
     bpy.context.scene.tkreg_ras_x = coo[0]
     bpy.context.scene.tkreg_ras_y = coo[1]
     bpy.context.scene.tkreg_ras_z = coo[2]
 
-    if not WhereAmIPanel.subject_orig_trans is None:
-        ras_tkr2vox = WhereAmIPanel.subject_orig_trans['ras_tkr2vox']
-        vox2ras = WhereAmIPanel.subject_orig_trans['vox2ras']
-        vox = apply_trans(ras_tkr2vox, np.array([coo]))
-        ras = apply_trans(vox2ras, vox)
-        set_mni_coo(ras[0])
+
+def set_ras_coo(coo):
+    bpy.context.scene.ras_x = coo[0]
+    bpy.context.scene.ras_y = coo[1]
+    bpy.context.scene.ras_z = coo[2]
 
 
-def set_mni_coo(coo):
-    bpy.context.scene.mni_x = coo[0]
-    bpy.context.scene.mni_y = coo[1]
-    bpy.context.scene.mni_z = coo[2]
+def set_voxel_coo(coo):
+    bpy.context.scene.voxel_x = int(np.round(coo[0]))
+    bpy.context.scene.voxel_y = int(np.round(coo[1]))
+    bpy.context.scene.voxel_z = int(np.round(coo[2]))
 
 
 def apply_trans(trans, points):
@@ -176,12 +212,15 @@ class ClearWhereAmI(bpy.types.Operator):
 
 bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
                                                       update=where_i_am_draw)
-bpy.types.Scene.mni_x = bpy.props.FloatProperty(update=mni_coo_update)
-bpy.types.Scene.mni_y = bpy.props.FloatProperty(update=mni_coo_update)
-bpy.types.Scene.mni_z = bpy.props.FloatProperty(update=mni_coo_update)
+bpy.types.Scene.ras_x = bpy.props.FloatProperty(update=ras_coo_update)
+bpy.types.Scene.ras_y = bpy.props.FloatProperty(update=ras_coo_update)
+bpy.types.Scene.ras_z = bpy.props.FloatProperty(update=ras_coo_update)
 bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty(update=tkras_coo_update)
 bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty(update=tkras_coo_update)
 bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update)
+bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
+bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
+bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
 
 
 class WhereAmIPanel(bpy.types.Panel):
@@ -192,6 +231,7 @@ class WhereAmIPanel(bpy.types.Panel):
     bl_label = "Where Am I"
     addon = None
     subject_orig_trans = None
+    update = True
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -199,7 +239,7 @@ class WhereAmIPanel(bpy.types.Panel):
 
 def init(addon):
     if op.isfile(op.join(mu.get_user_fol(), 'orig_trans.npz')):
-        WhereAmIPanel.subject_orig_trans = np.load(op.join(mu.get_user_fol(), 'orig_trans.npz'))
+        WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(op.join(mu.get_user_fol(), 'orig_trans.npz')))
     WhereAmIPanel.addon = addon
     register()
 
