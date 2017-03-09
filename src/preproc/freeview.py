@@ -32,6 +32,11 @@ def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=Tr
 
 # todo: fix duplications!
 def create_lut_file_for_atlas(subject, atlas):
+    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+        print('No annot file was found for {}!'.format(atlas))
+        print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
+        return False
+
     # Read the subcortical segmentation from the freesurfer lut
     new_lut_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}ColorLUT.txt'.format(atlas))
     mmvt_lut_fname = op.join(MMVT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas))
@@ -59,21 +64,26 @@ def create_lut_file_for_atlas(subject, atlas):
     # np.savetxt(new_lut_fname, lut_new, delimiter='\t', fmt="%s")
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     shutil.copyfile(new_lut_fname, mmvt_lut_fname)
+    lut_npz_fname = utils.change_fname_extension(mmvt_lut_fname, 'npz')
     x = np.genfromtxt(mmvt_lut_fname, dtype=np.str)
-    np.savez(utils.change_fname_extension(mmvt_lut_fname, 'npz'), names=x[:, 1], ids=x[:, 0].astype(int))
+    np.savez(lut_npz_fname, names=x[:, 1], ids=x[:, 0].astype(int))
+    return op.isfile(mmvt_lut_fname) and op.isfile(lut_npz_fname)
 
 
-def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
+def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
+    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+        print('No annot file was found for {}!'.format(atlas))
+        print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
+        return False
     necessary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
     utils.check_for_necessary_files(necessary_files, op.join(SUBJECTS_DIR, subject))
     # The atlas var need to be in the locals for the APARC2ASEG call
-    atlas = args.atlas
     rs = utils.partial_run_script(locals(), print_only=False)
-    aparc_aseg_file = '{}+aseg.mgz'.format(args.atlas)
+    aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
     mri_file_fol = op.join(SUBJECTS_DIR, subject, 'mri')
     mri_file = op.join(mri_file_fol, aparc_aseg_file)
     blender_file = op.join(MMVT_DIR, subject, 'freeview', aparc_aseg_file)
-    if not op.isfile(blender_file) or args.overwrite_aseg_file:
+    if not op.isfile(blender_file) or overwrite_aseg_file:
         current_dir = op.dirname(op.realpath(__file__))
         os.chdir(mri_file_fol)
         now = time.time()
@@ -84,11 +94,12 @@ def create_aparc_aseg_file(subject, args): #atlas, print_only=False, overwrite=F
             print('Failed to create {}'.format(mri_file))
         os.chdir(current_dir)
     atlas_mat_fname = utils.change_fname_extension(blender_file, 'npy')
-    if not op.isfile(atlas_mat_fname) or args.overwrite_aseg_file:
+    if not op.isfile(atlas_mat_fname) or overwrite_aseg_file:
         d = nib.load(blender_file)
         x = d.get_data()
         np.save(atlas_mat_fname, x)
     return op.isfile(blender_file) and op.isfile(atlas_mat_fname)
+
 
 def check_mgz_values(atlas):
     import nibabel as nib
@@ -188,7 +199,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_electrodes_points'] = create_electrodes_points(subject, args)
 
     if utils.should_run(args, 'create_aparc_aseg_file'):
-        flags['create_aparc_aseg_file'] = create_aparc_aseg_file(subject, args)
+        flags['create_aparc_aseg_file'] = create_aparc_aseg_file(subject, args.atlas, args.overwrite_aseg_file)
 
     if utils.should_run(args, 'create_lut_file_for_atlas'):
         flags['create_lut_file_for_atlas'] = create_lut_file_for_atlas(subject, args.atlas)

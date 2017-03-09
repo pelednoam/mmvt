@@ -1218,3 +1218,7 @@ def to_int(x_str, def_val=0):
         return int(x_str)
     except ValueError:
         return def_val
+
+
+def counter_to_dict(counter):
+    return {k: v for k, v in counter.items()}

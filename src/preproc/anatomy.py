@@ -638,8 +638,6 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
 def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
     output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
-    # if op.isfile(output_fname):
-    #     return True
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
     vox2ras_tkr = header.get_vox2ras_tkr()
     ras_tkr2vox = np.linalg.inv(vox2ras_tkr)
@@ -649,16 +647,23 @@ def save_subject_orig_trans(subject):
     return op.isfile(output_fname)
 
 
+def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
+    from src.preproc import freeview as fr
+    aparc_ret = fr.create_aparc_aseg_file(subject, atlas, overwrite_aseg_file)
+    lut_ret = fr.create_lut_file_for_atlas(subject, atlas)
+    return aparc_ret and lut_ret
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaverage_link()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
-    if utils.should_run(args, 'freesurfer_surface_to_blender_surface'):
+    if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
         flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
 
-    if utils.should_run(args, 'create_annotation_from_template'):
+    if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage
         flags['create_annotation_from_template'] = create_annotation_from_template(
             subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
@@ -710,6 +715,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'save_subject_orig_trans'):
         flags['save_subject_orig_trans'] = save_subject_orig_trans(subject)
+
+    if utils.should_run(args, 'calc_3d_atlas'):
+        flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
@@ -775,6 +783,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--save_annot_file', help='save_annot_file', required=False, default=1, type=au.is_true)
     parser.add_argument('--freesurfer', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
+    parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
