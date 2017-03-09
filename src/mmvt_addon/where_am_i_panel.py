@@ -87,7 +87,7 @@ def voxel_coo_update(self, context):
         ras = apply_trans(_trans().vox2ras, np.array([vox]))
         ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
         WhereAmIPanel.update = False
-        set_tkreg_ras_coo(ras_tkr[0], update_others=False)
+        set_tkreg_ras_coo(ras_tkr[0])
         set_ras_coo(ras[0])
         WhereAmIPanel.update = True
     get_3d_atlas_name()
@@ -122,7 +122,7 @@ def get_3d_atlas_name():
 
 
 def set_tkreg_ras_coo(coo):
-    print('set_tkreg_ras_coo')
+    # print('set_tkreg_ras_coo')
     WhereAmIPanel.call_update = False
     bpy.context.scene.tkreg_ras_x = coo[0]
     bpy.context.scene.tkreg_ras_y = coo[1]
@@ -131,7 +131,7 @@ def set_tkreg_ras_coo(coo):
 
 
 def set_ras_coo(coo):
-    print('set_ras_coo')
+    # print('set_ras_coo')
     WhereAmIPanel.call_update = False
     bpy.context.scene.ras_x = coo[0]
     bpy.context.scene.ras_y = coo[1]
@@ -140,7 +140,7 @@ def set_ras_coo(coo):
 
 
 def set_voxel_coo(coo):
-    print('set_voxel_coo')
+    # print('set_voxel_coo')
     WhereAmIPanel.call_update = False
     bpy.context.scene.voxel_x = int(np.round(coo[0]))
     bpy.context.scene.voxel_y = int(np.round(coo[1]))
