@@ -10,6 +10,9 @@ import re
 
 # MAC_FREEVIEW_CMD = '/Applications/freesurfer/Freeview.app/Contents/MacOS/Freeview'
 
+def _addon():
+    return FreeviewPanel.addon
+
 bpy.types.Scene.freeview_listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=False)
 
@@ -144,6 +147,7 @@ class FreeviewOpen(bpy.types.Operator):
                             point = mu.read_numbers_rx(data_deocded)
                             print(point)
                             bpy.context.scene.cursor_location = tuple(np.array(point, dtype=np.float) / 10)
+                            _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
                     except:
                         print("Can't read the stdout from freeview")
                 except Empty:
