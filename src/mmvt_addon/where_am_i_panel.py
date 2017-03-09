@@ -43,6 +43,10 @@ def where_i_am_draw(self, context):
 
 
 def tkras_coo_update(self, context):
+    if not WhereAmIPanel.call_update:
+        return
+
+    # print('tkras_coo_update')
     bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
     bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
     bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
@@ -58,6 +62,10 @@ def tkras_coo_update(self, context):
 
 
 def ras_coo_update(self, context):
+    if not WhereAmIPanel.call_update:
+        return
+
+    # print('ras_coo_update')
     if not _trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z]
         vox = apply_trans(_trans().ras2vox, np.array([coo]))
@@ -69,6 +77,10 @@ def ras_coo_update(self, context):
 
 
 def voxel_coo_update(self, context):
+    if not WhereAmIPanel.call_update:
+        return
+
+    # print('voxel_coo_update')
     vox_x, vox_y, vox_z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
     if not _trans() is None and WhereAmIPanel.update:
         vox = [vox_x, vox_y, vox_z]
@@ -109,21 +121,30 @@ def get_3d_atlas_name():
         WhereAmIPanel.atlas_ids = names
 
 
-def set_tkreg_ras_coo(coo, update_others=True):
+def set_tkreg_ras_coo(coo):
+    print('set_tkreg_ras_coo')
+    WhereAmIPanel.call_update = False
     bpy.context.scene.tkreg_ras_x = coo[0]
     bpy.context.scene.tkreg_ras_y = coo[1]
+    WhereAmIPanel.call_update = True
     bpy.context.scene.tkreg_ras_z = coo[2]
 
 
 def set_ras_coo(coo):
+    print('set_ras_coo')
+    WhereAmIPanel.call_update = False
     bpy.context.scene.ras_x = coo[0]
     bpy.context.scene.ras_y = coo[1]
+    WhereAmIPanel.call_update = True
     bpy.context.scene.ras_z = coo[2]
 
 
 def set_voxel_coo(coo):
+    print('set_voxel_coo')
+    WhereAmIPanel.call_update = False
     bpy.context.scene.voxel_x = int(np.round(coo[0]))
     bpy.context.scene.voxel_y = int(np.round(coo[1]))
+    WhereAmIPanel.call_update = True
     bpy.context.scene.voxel_z = int(np.round(coo[2]))
 
 
@@ -282,6 +303,7 @@ class WhereAmIPanel(bpy.types.Panel):
     vol_atlas_lut = {}
     atlas_ids = {}
     update = True
+    call_update = True
 
     def draw(self, context):
         where_i_am_draw(self, context)
