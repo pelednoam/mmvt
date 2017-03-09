@@ -100,7 +100,10 @@ def get_3d_atlas_name():
         try:
             vol_atlas = WhereAmIPanel.vol_atlas[atlas]
             vol_atlas_lut = WhereAmIPanel.vol_atlas_lut[atlas]
-            id = vol_atlas[vox_x, vox_y, vox_z]
+            try:
+                id = vol_atlas[vox_x, vox_y, vox_z]
+            except:
+                continue
             id_ind = np.where(vol_atlas_lut['ids'] == id)[0][0]
             names[atlas] = vol_atlas_lut['names'][id_ind]
             if names[atlas] == 'Unknown':
