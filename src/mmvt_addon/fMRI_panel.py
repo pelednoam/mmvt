@@ -158,6 +158,8 @@ def load_fmri_cluster(file_name):
 
 
 def fmri_clusters_labels_files_update(self, context):
+    # if not fMRIPanel.init:
+    #     return
     constrast_name = bpy.context.scene.fmri_clusters_labels_files
     fMRIPanel.constrast = {}
     for hemi in mu.HEMIS:
@@ -179,6 +181,8 @@ def update_clusters(val_threshold=None, size_threshold=None):
     if size_threshold is None:
         size_threshold = bpy.context.scene.fmri_cluster_size_threshold
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    if clusters_labels_file not in fMRIPanel.clusters_labels:
+        return
     if isinstance(fMRIPanel.clusters_labels[clusters_labels_file], dict):
         bpy.context.scene.fmri_clustering_threshold = fMRIPanel.clusters_labels[clusters_labels_file]['threshold']
     else:
@@ -519,7 +523,7 @@ class fMRIPanel(bpy.types.Panel):
         if fMRIPanel.init:
             fMRI_draw(self, context)
 
-
+@mu.tryit
 def init(addon):
     user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))

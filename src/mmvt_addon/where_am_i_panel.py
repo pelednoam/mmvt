@@ -115,6 +115,13 @@ def get_3d_atlas_name():
                         val = mcs[0][0] if val != 0 else mcs[1][0]
                     id_ind = np.where(vol_atlas_lut['ids'] == val)[0][0]
                     names[atlas] = str(vol_atlas_lut['names'][id_ind])
+                    # if atlas == bpy.context.scene.atlas:
+                    #     obj_rh = bpy.data.objects.get('{}-rh'.format(names[atlas]))
+                    #     obj_lh = bpy.data.objects.get('{}-lh'.format(names[atlas]))
+                    #     if not obj_lh is None and not obj_rh is None:
+                    #         obj_rh.select = True
+                    #         obj_lh.select = True
+                    #         print('select {} obj'.format(names[atlas]))
         except:
             print(traceback.format_exc())
             print('Error in trying to get the 3D atlas voxel value!')
