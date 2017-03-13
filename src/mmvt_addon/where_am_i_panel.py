@@ -245,7 +245,13 @@ class WhereAmI(bpy.types.Operator):
         WhereAmI.where_am_I_selected_obj = bpy.data.objects[closest_area]
         WhereAmI.where_am_I_selected_obj_org_hide = bpy.data.objects[closest_area].hide
         bpy.context.scene.objects.active = bpy.data.objects[closest_area]
-        bpy.data.objects[closest_area].select = True
+        closest_area_type = mu.check_obj_type(closest_area)
+        if closest_area_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
+                                 mu.OBJ_TYPE_EEG]:
+
+            _addon().select_roi(closest_area)
+        else:
+            bpy.data.objects[closest_area].select = True
         bpy.data.objects[closest_area].hide = False
         bpy.data.objects[closest_area].active_material = bpy.data.materials['selected_label_Mat']
 

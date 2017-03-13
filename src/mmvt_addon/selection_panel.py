@@ -35,29 +35,57 @@ def deselect_all():
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
+def select_roi(roi_name):
+    roi = bpy.data.objects.get(roi_name)
+    if roi is None:
+        return
+
+    # check if MEG data is loaded and attahced to the obj
+    if mu.count_fcurves(roi) > 0:
+        roi.select
+        mu.change_fcurves_colors(roi)
+    else:
+        # Check if dynamic fMRI data is loaded
+        fmri_parent_obj = bpy.data.objects.get('fMRI')
+        fcurves = mu.get_fcurves(fmri_parent_obj)
+        for fcurve in fcurves:
+            if mu.get_fcurve_name(fcurve) == roi_name:
+                fcurve.hide = False
+                fmri_parent_obj.select = True
+            else:
+                fcurve.hide = True
+
+
 def select_all_rois():
-    bpy.context.scene.filter_curves_type = 'MEG'
-    select_brain_objects('Brain', bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children)
+    fmri_parent = bpy.data.objects.get('fMRI')
+    if mu.count_fcurves(bpy.data.objects['Brain']) > 0:
+        bpy.context.scene.filter_curves_type = 'MEG'
+        select_brain_objects('Brain', bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children)
+    elif not fmri_parent is None:
+        bpy.context.scene.filter_curves_type = 'fMRI'
+        select_brain_objects('fMRI')
+        # fmri_parent.select = True
+        # mu.show_hide_obj_and_fcurves(fmri_parent, True)
 
 
 def select_only_subcorticals():
     bpy.context.scene.filter_curves_type = 'MEG'
-    select_brain_objects('Subcortical_structures', bpy.data.objects['Subcortical_structures'].children)
+    select_brain_objects('Subcortical_structures')
 
 
 def select_all_eeg():
     bpy.context.scene.filter_curves_type = 'EEG'
-    select_brain_objects('EEG_electrodes', bpy.data.objects['EEG_electrodes'].children)
+    select_brain_objects('EEG_electrodes')
 
 
 def select_all_electrodes():
     bpy.context.scene.filter_curves_type = 'Electrodes'
-    select_brain_objects('Deep_electrodes', bpy.data.objects['Deep_electrodes'].children)
+    select_brain_objects('Deep_electrodes')
 
 
 def select_all_connections():
     connection_parent_name = _addon().get_parent_obj_name()
-    select_brain_objects(connection_parent_name, bpy.data.objects[connection_parent_name].children)
+    select_brain_objects(connection_parent_name)
 
 
 def conditions_selection_update(self, context):
@@ -65,17 +93,21 @@ def conditions_selection_update(self, context):
     _addon().clear_and_recolor()
 
 
-def select_brain_objects(parent_obj_name, children):
+def select_brain_objects(parent_obj_name, children=None):
+    if children is None:
+        children = bpy.data.objects[parent_obj_name].children
     parent_obj = bpy.data.objects[parent_obj_name]
-    if bpy.context.scene.selection_type == 'diff':
+    children_have_fcurves = mu.count_fcurves(children) > 0
+    if bpy.context.scene.selection_type == 'diff' or not children_have_fcurves:
         if parent_obj.animation_data is None:
             print('parent_obj.animation_data is None!')
         else:
             mu.show_hide_obj_and_fcurves(children, False)
             parent_obj.select = True
-            for fcurve in parent_obj.animation_data.action.fcurves:
-                fcurve.hide = False
-                fcurve.select = True
+            mu.show_hide_obj_and_fcurves(parent_obj, True)
+            # for fcurve in parent_obj.animation_data.action.fcurves:
+            #     fcurve.hide = False
+            #     fcurve.select = True
     else:
         mu.show_hide_obj_and_fcurves(children, True)
         parent_obj.select = False
@@ -90,6 +122,7 @@ def set_conditions_enum(conditions):
             items=selection_items, description="Condition Selection", update=conditions_selection_update)
     except:
         print("Cant register conditions_selection!")
+
 
 def set_selection_type(selection_type):
     bpy.context.scene.selection_type = selection_type
@@ -304,33 +337,40 @@ class SelectionMakerPanel(bpy.types.Panel):
     @staticmethod
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "selection_type", text="")
         # if bpy.context.scene.selection_type == 'spec_cond':
         #     layout.prop(context.scene, "conditions_selection", text="")
-        layout.operator(SelectAllRois.bl_idname, text="Select all cortical ROIs", icon='BORDER_RECT')
-        layout.operator(SelectAllSubcorticals.bl_idname, text="Select all subcorticals", icon = 'BORDER_RECT' )
+        labels_data = ''
+        fmri_parent = bpy.data.objects.get('fMRI')
+        if mu.count_fcurves(bpy.data.objects['Brain']) > 0:
+            labels_data = 'MEG'
+        elif not fmri_parent is None:
+            labels_data = 'fMRI'
+        layout.prop(context.scene, "selection_type", text="")
+        if labels_data != '':
+            layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(labels_data), icon='BORDER_RECT')
+        layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals", icon = 'BORDER_RECT' )
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
-            layout.operator(SelectAllElectrodes.bl_idname, text="Select all Electrodes", icon='BORDER_RECT')
+            layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_electrodes'):
-            layout.operator(SelectAllEEG.bl_idname, text="Select all EEG", icon='BORDER_RECT')
+            layout.operator(SelectAllEEG.bl_idname, text="EEG", icon='BORDER_RECT')
         if bpy.data.objects.get(_addon().get_parent_obj_name()) and \
                 bpy.data.objects[_addon().get_parent_obj_name()].animation_data:
-            layout.operator(SelectAllConnections.bl_idname, text="Select all Connections", icon='BORDER_RECT')
+            layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
 
-        if not SelectionMakerPanel.dt is None:
-            points_in_sec = int(1 / SelectionMakerPanel.dt)
-            window_from = bpy.context.scene.current_window_selection * points_in_sec / 1000
-            window_to =  window_from + points_in_sec * 2 / 1000
-
-            layout.label(text='From {:.2f}s to {:.2f}s'.format(window_from, window_to))
-            row = layout.row(align=True)
-            # row.operator(Play.bl_idname, text="", icon='PLAY' if not PlayPanel.is_playing else 'PAUSE')
-            row.operator(PrevWindow.bl_idname, text="", icon='PREV_KEYFRAME')
-            row.operator(NextWindow.bl_idname, text="", icon='NEXT_KEYFRAME')
-            row.prop(context.scene, 'current_window_selection', text='window')
-            row.operator(JumpToWindow.bl_idname, text='Jump', icon='DRIVER')
+        # if not SelectionMakerPanel.dt is None:
+        #     points_in_sec = int(1 / SelectionMakerPanel.dt)
+        #     window_from = bpy.context.scene.current_window_selection * points_in_sec / 1000
+        #     window_to =  window_from + points_in_sec * 2 / 1000
+        #
+        #     layout.label(text='From {:.2f}s to {:.2f}s'.format(window_from, window_to))
+        #     row = layout.row(align=True)
+        #     # row.operator(Play.bl_idname, text="", icon='PLAY' if not PlayPanel.is_playing else 'PAUSE')
+        #     row.operator(PrevWindow.bl_idname, text="", icon='PREV_KEYFRAME')
+        #     row.operator(NextWindow.bl_idname, text="", icon='NEXT_KEYFRAME')
+        #     row.prop(context.scene, 'current_window_selection', text='window')
+        #     row.operator(JumpToWindow.bl_idname, text='Jump', icon='DRIVER')
 
 
 def init(addon):

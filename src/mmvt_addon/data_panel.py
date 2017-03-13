@@ -35,6 +35,8 @@ bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
+bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
+
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 
 
@@ -235,13 +237,18 @@ class ImportBrain(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def create_empty_if_doesnt_exists(name, brain_layer, layers_array, parent_obj_name='Brain'):
+def create_empty_if_doesnt_exists(name, brain_layer=None, layers_array=None, parent_obj_name='Brain'):
+    if brain_layer is None:
+        brain_layer = _addon().BRAIN_EMPTY_LAYER
+    if layers_array is None:
+        layers_array = bpy.context.scene.layers
     if bpy.data.objects.get(name) is None:
         layers_array[brain_layer] = True
         bpy.ops.object.empty_add(type='PLAIN_AXES', radius=1, view_align=False, location=(0, 0, 0), layers=layers_array)
         bpy.data.objects['Empty'].name = name
         if name != parent_obj_name:
             bpy.data.objects[name].parent = bpy.data.objects[parent_obj_name]
+    return bpy.data.objects[name]
 
 
 @mu.tryit
@@ -494,31 +501,41 @@ def add_data_to_parent_brain_obj(stat=STAT_DIFF, self=None):
     base_path = mu.get_user_fol()
     brain_obj = bpy.data.objects['Brain']
     labels_data_file = 'labels_data_{hemi}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
-
     brain_sources = [op.join(base_path, labels_data_file.format(hemi=hemi)) for hemi in mu.HEMIS]
     subcorticals_obj = bpy.data.objects['Subcortical_structures']
     subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
 
     if bpy.context.scene.add_meg_labels_data:
-        add_data_to_parent_obj(brain_obj, brain_sources, stat, self)
+        add_data_to_parent_obj(brain_obj, brain_sources, stat)
     if bpy.context.scene.add_meg_subcorticals_data:
-        add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat, self)
+        add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat)
+    mu.view_all_in_graph_editor()
+
+
+def add_fmri_dynamics_to_parent_obj():
+    brain_obj = create_empty_if_doesnt_exists('fMRI')
+    measure = bpy.context.scene.fMRI_dynamic_files.split(' ')[-1]
+    source = [op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
+        bpy.context.scene.atlas, measure, hemi)) for hemi in mu.HEMIS]
+    add_data_to_parent_obj(brain_obj, source, STAT_AVG)
     mu.view_all_in_graph_editor()
 
 
 def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
     sources = {}
     parent_obj.animation_data_clear()
+    if isinstance(source_files, str):
+        source_files = [source_files]
     for input_file in source_files:
         if not op.isfile(input_file):
-            mu.log_err(self, "Can't load file {}!".format(input_file), logging)
+            mu.log_err("Can't load file {}!".format(input_file), logging)
             continue
         print('loading {}'.format(input_file))
         f = np.load(input_file)
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
             # Check if there is only one condition
-            if data.shape[1] == 1:
+            if data.ndim == 1 or data.shape[1] == 1:
                 stat = STAT_AVG
             if bpy.data.objects.get(obj_name) is None:
                 if obj_name.startswith('rh') or obj_name.startswith('lh'):
@@ -527,9 +544,9 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
                     continue
             if not bpy.context.scene.import_unknown and 'unkown' in obj_name:
                 continue
-            if stat == STAT_AVG:
+            if stat == STAT_AVG and data.ndim > 1:
                 data_stat = np.squeeze(np.mean(data, axis=1))
-            elif stat == STAT_DIFF:
+            elif stat == STAT_DIFF and data.ndim > 1:
                 data_stat = np.squeeze(np.diff(data, axis=1))
             else:
                 data_stat = data
@@ -549,13 +566,8 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
 
         # For every time point insert keyframe to the main Brain object
-        # If you want to delete prints make sure no sleep is needed
-        # print('keyframing Brain object {}'.format(obj_name))
         for ind in range(data.shape[0]):
-            # if len(data[ind]) == 2:
-            # print('keyframing Brain object')
             mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
-            # print('keyframed')
 
         # remove the orange keyframe sign in the fcurves window
         fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
@@ -588,6 +600,16 @@ class AddDataNoCondsToBrain(bpy.types.Operator):
         stat = STAT_DIFF if bpy.context.scene.brain_no_conds_stat == 'diff' else STAT_AVG
         add_data_to_parent_brain_obj(stat, self)
         bpy.types.Scene.brain_data_exist = True
+        return {"FINISHED"}
+
+
+class AddfMRIDynamicsToBrain(bpy.types.Operator):
+    bl_idname = "mmvt.add_fmri_dynamics_to_brain"
+    bl_label = "add_fmri_dynamics_to_brain"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        add_fmri_dynamics_to_parent_obj()
         return {"FINISHED"}
 
 
@@ -633,7 +655,7 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
         files_prefix = '{}_'.format(evoked_name)
         base_path = op.join(mu.get_user_fol(), 'meg_evoked_files')
         source_files = get_meg_evoked_source_files(base_path, files_prefix)
-        empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
+        empty_layer = _addon().BRAIN_EMPTY_LAYER
         layers_array = bpy.context.scene.layers
         parent_obj_name = 'External'
         create_empty_if_doesnt_exists(parent_obj_name, empty_layer, layers_array, parent_obj_name)
@@ -643,7 +665,7 @@ class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
             f = np.load(input_file)
             for label_name in f['names']:
                 mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
-                    DataMakerPanel.addon.BRAIN_EMPTY_LAYER, parent_obj_name)
+                    _addon().BRAIN_EMPTY_LAYER, parent_obj_name)
 
         add_data_to_brain(base_path, files_prefix, files_prefix)
         _meg_evoked_files_update()
@@ -700,7 +722,7 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
 
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
-    # T = DataMakerPanel.addon.get_max_time_steps() # len(sources[sources_names[0]]) + 2
+    # T = _addon().get_max_time_steps() # len(sources[sources_names[0]]) + 2
     now = time.time()
     for obj_counter, source_name in enumerate(sources_names):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
@@ -850,7 +872,7 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
             col.prop(context.scene, 'electrodes_positions_files', text="")
             col.prop(context.scene, 'bipolar', text="Bipolar")
-            col.operator("mmvt.electrodes_importing", text="Import Electrodes", icon='COLOR_GREEN')
+            col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
         meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_lh.npz')),
@@ -867,6 +889,9 @@ class DataMakerPanel(bpy.types.Panel):
                 col.prop(context.scene, 'brain_no_conds_stat', text="")
                 col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
                 col.prop(context.scene, 'import_unknown', text="Import unknown")
+        if bpy.context.scene.fMRI_dynamic_files != '':
+            col.prop(context.scene, 'fMRI_dynamic_files', text="")
+            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:
@@ -903,17 +928,27 @@ def init(addon):
     DataMakerPanel.addon = addon
     logging.basicConfig(filename='mmvt_addon.log', level=logging.DEBUG)
     bpy.context.scene.electrodes_radius = 0.15
+    atlas = bpy.context.scene.atlas
     load_meg_evoked()
     _meg_evoked_files_update()
     electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
     if len(electrodes_positions_files) > 0:
         files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
-        positions_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
-            items=positions_items,description="Electrodes positions")
+            items=items,description="Electrodes positions")
         bpy.context.scene.electrodes_positions_files = files_names[0]
     if bpy.data.objects.get('Deep_electrodes'):
         bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
+    fMRI_labels_sources_files = glob.glob(
+        op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_*_rh.npz'.format(bpy.context.scene.atlas)))
+    if len(fMRI_labels_sources_files) > 0:
+        files_names = ['fMRI {}'.format(mu.namebase(fname)[len('labels_data_'):-len('_rh')].replace('_', ' '))
+                       for fname in fMRI_labels_sources_files if atlas in mu.namebase(fname)]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(
+            items=items,description="fMRI_dynamic")
+        bpy.context.scene.fMRI_dynamic_files = files_names[0]
     register()
 
 
@@ -924,6 +959,7 @@ def register():
         bpy.utils.register_class(AddDataToElectrodes)
         bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
+        bpy.utils.register_class(AddfMRIDynamicsToBrain)
         bpy.utils.register_class(AddDataToEEG)
         bpy.utils.register_class(ImportMEGSensors)
         bpy.utils.register_class(ImportElectrodes)
@@ -945,6 +981,7 @@ def unregister():
         bpy.utils.unregister_class(AddDataToElectrodes)
         bpy.utils.unregister_class(AddDataNoCondsToBrain)
         bpy.utils.unregister_class(AddDataToBrain)
+        bpy.utils.unregister_class(AddfMRIDynamicsToBrain)
         bpy.utils.unregister_class(AddDataToEEG)
         bpy.utils.unregister_class(ImportMEGSensors)
         bpy.utils.unregister_class(ImportElectrodes)

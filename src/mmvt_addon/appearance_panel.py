@@ -276,9 +276,7 @@ class SelectionListener(bpy.types.Operator):
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
                                          mu.OBJ_TYPE_EEG]:
-                    obj = bpy.data.objects.get(selected_obj_name)
-                    if obj:
-                        mu.change_fcurves_colors(obj)
+                    _addon().select_roi(selected_obj_name)
                 elif selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)

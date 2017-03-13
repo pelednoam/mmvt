@@ -392,13 +392,15 @@ def time_to_go(now, run, runs_num, runs_num_to_print=10):
 
 
 def show_hide_obj_and_fcurves(objs, val):
+    if not isinstance(objs, Iterable):
+        objs = [objs]
     for obj in objs:
         obj.select = val
         if obj.animation_data:
             for fcurve in obj.animation_data.action.fcurves:
-                if val:
-                    fcurve.hide = not val
-                    fcurve.hide = not val
+                # if val:
+                fcurve.hide = not val
+                    # fcurve.hide = not val
                 fcurve.select = val
         else:
             pass
@@ -998,13 +1000,29 @@ def change_fcurves_colors(objs):
             fcurve.select = True
 
 
-def count_fcurves(objects):
+def count_fcurves(objs):
+    if not isinstance(objs, Iterable):
+        objs = [objs]
     curves_num = 0
-    for obj in objects:
+    for obj in objs:
         if 'unknown' not in obj.name:
             if not obj is None and not obj.animation_data is None:
                 curves_num += len(obj.animation_data.action.fcurves)
     return curves_num
+
+
+def get_fcurves(obj):
+    fcurves = []
+    if not obj is None and not obj.animation_data is None:
+        fcurves = obj.animation_data.action.fcurves
+    return fcurves
+
+
+def get_fcurves_names(obj):
+    fcurves_names = []
+    if not obj is None and not obj.animation_data is None:
+        fcurves_names = [get_fcurve_name(fcurve) for fcurve in obj.animation_data.action.fcurves]
+    return fcurves_names
 
 
 def get_the_graph_editor():
