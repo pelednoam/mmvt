@@ -40,7 +40,8 @@ def copy_resources_files(mmvt_root_dir, only_verbose=False):
     return utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
 
 
-def create_links(links_fol_name='links', gui=True, only_verbose=False, links_file_name='links.csv', overwrite=True):
+def create_links(links_fol_name='links', gui=True, default_folders=False, only_verbose=False,
+                 links_file_name='links.csv', overwrite=True):
     links_fol = utils.get_links_dir(links_fol_name)
     if only_verbose:
         print('making links dir {}'.format(links_fol))
@@ -84,7 +85,7 @@ def create_links(links_fol_name='links', gui=True, only_verbose=False, links_fil
     default_message = "Would you like to set default links to the MMVT's folders?\n" + \
         "You can always change that later by running\n" + \
         "python -m src.setup -f create_links"
-    create_default_folders = mmvt_input(default_message, gui, 4) == 'Yes'
+    create_default_folders = default_folders or mmvt_input(default_message, gui, 4) == 'Yes'
 
     messages = [mmvt_message, subjects_message, eeg_message, meg_message, fmri_message, electrodes_message]
     deafault_fol_names = ['mmvt_blend', 'subjects', 'eeg', 'meg', 'fMRI', 'electrodes']
@@ -232,7 +233,7 @@ def main(args):
 
     # 2) Create links
     if utils.should_run(args, 'create_links'):
-        links_created = create_links(args.links, args.gui, args.only_verbose)
+        links_created = create_links(args.links, args.gui, args.default_folders, args.only_verbose)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
 
@@ -278,6 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--links', help='links folder name', required=False, default='links')
     parser.add_argument('-g', '--gui', help='choose folders using gui', required=False, default='1', type=au.is_true)
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
+    parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     args = utils.Bag(au.parse_parser(parser))
     if 'help' in args.function:
