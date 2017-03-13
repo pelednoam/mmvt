@@ -268,11 +268,23 @@ def main(args):
 
 
 def print_help():
-    str = 'functions: install_reqs, create_links, copy_resources_files, install_addon, create_links_csv and create_csv'
+    str = '''
+    Flags:
+        -l: The links folder name (default: 'links')
+        -g: Use GUI (True) or the command line (False) (default: True)
+        -v: If True, just check the setup without doing anything (default: False)
+        -d: If True, the script will create the default mmvt folders (default: True)
+        -f: Set which function (or functions) you want to run (use commas witout spacing) (deafult: all):
+            install_reqs, create_links, copy_resources_files, install_addon, create_links_csv and create_csv
+    '''
     print(str)
 
 
 if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] in ['h', 'help', '-h', '-help']:
+        print_help()
+        exit()
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT Setup')
@@ -282,7 +294,4 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
     args = utils.Bag(au.parse_parser(parser))
-    if 'help' in args.function:
-        print_help()
-    else:
-        main(args)
+    main(args)
