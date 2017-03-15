@@ -153,16 +153,20 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
             bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
         else:
             if mark == 'mark_green':
-                # bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
-                if not('selected' in bpy.data.objects[closet_object_name].data.vertex_colors):
-                    color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 1.0, 0.0))
-                bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected')
+                if _addon().is_inflated():
+                    if not('selected' in bpy.data.objects[closet_object_name].data.vertex_colors):
+                        color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 1.0, 0.0))
+                    bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected')
+                else:
+                    bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
 
             elif mark == 'mark_blue':
-                # bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
-                if not('selected_blue' in bpy.data.objects[closet_object_name].data.vertex_colors):
-                    color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 0.0, 1.0))
-                bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected_blue')
+                if _addon().is_inflated():
+                    if not('selected_blue' in bpy.data.objects[closet_object_name].data.vertex_colors):
+                        color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 0.0, 1.0))
+                    bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected_blue')
+                else:
+                    bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
 
     bpy.types.Scene.filter_is_on = True
 
