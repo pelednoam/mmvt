@@ -1005,7 +1005,7 @@ def count_fcurves(objs):
         objs = [objs]
     curves_num = 0
     for obj in objs:
-        if 'unknown' not in obj.name:
+        if not obj is None and 'unknown' not in obj.name:
             if not obj is None and not obj.animation_data is None:
                 curves_num += len(obj.animation_data.action.fcurves)
     return curves_num

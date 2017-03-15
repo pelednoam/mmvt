@@ -35,6 +35,22 @@ def deselect_all():
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
+def meg_data_loaded():
+    parent_obj = bpy.data.objects.get('Brain')
+    if parent_obj is None:
+        return False
+    else:
+        parent_data = mu.count_fcurves(parent_obj) > 0
+        labels = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
+        labels_data = mu.count_fcurves(labels) > 0
+        return parent_data or labels_data
+
+
+def fmri_data_loaded():
+    fmri_parent_obj = bpy.data.objects.get('fMRI')
+    return mu.count_fcurves(fmri_parent_obj) > 0
+
+
 def select_roi(roi_name):
     roi = bpy.data.objects.get(roi_name)
     if roi is None:
@@ -314,6 +330,7 @@ bpy.types.Scene.selection_type = bpy.props.EnumProperty(
 bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
                                                               update=conditions_selection_update)
 bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
+bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=[])
 
 
 def get_dt():
@@ -339,15 +356,16 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout = self.layout
         # if bpy.context.scene.selection_type == 'spec_cond':
         #     layout.prop(context.scene, "conditions_selection", text="")
-        labels_data = ''
-        fmri_parent = bpy.data.objects.get('fMRI')
-        if mu.count_fcurves(bpy.data.objects['Brain']) > 0:
-            labels_data = 'MEG'
-        elif not fmri_parent is None:
-            labels_data = 'fMRI'
+        # labels_data = ''
+        # fmri_parent = bpy.data.objects.get('fMRI')
+        # if mu.count_fcurves(bpy.data.objects['Brain']) > 0:
+        #     labels_data = 'MEG'
+        # elif not fmri_parent is None:
+        #     labels_data = 'fMRI'
         layout.prop(context.scene, "selection_type", text="")
-        if labels_data != '':
-            layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(labels_data), icon='BORDER_RECT')
+        layout.prop(context.scene, 'selected_modlity', text='')
+        if meg_data_loaded() or fmri_data_loaded():
+            layout.operator(SelectAllRois.bl_idname, text="Cortical labels", icon='BORDER_RECT')
         layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals", icon = 'BORDER_RECT' )
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
@@ -376,6 +394,12 @@ class SelectionMakerPanel(bpy.types.Panel):
 def init(addon):
     SelectionMakerPanel.addon = addon
     SelectionMakerPanel.dt = get_dt()
+    modalities_itesm = []
+    if meg_data_loaded():
+        modalities_itesm.append(('MEG', 'MEG', '', 0))
+    if fmri_data_loaded():
+        modalities_itesm.append(('fMRI', 'fMRI', '', 1))
+    bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
     register()
 
 

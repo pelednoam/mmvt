@@ -946,7 +946,10 @@ class ColoringMakerPanel(bpy.types.Panel):
         manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
         manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
             '{}_groups.csv'.format(bpy.context.scene.atlas)))
-        connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
+        if _addon() is None:
+            connections_files_exit = False
+        else:
+            connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
         # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
