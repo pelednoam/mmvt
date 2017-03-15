@@ -127,13 +127,15 @@ def de_select_electrode(obj, call_create_and_set_material=True):
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
+    ori_closet_object_name = closet_object_name
     if _addon().is_inflated():
         closet_object_name = 'inflated_{}'.format(closet_object_name)
 
     if bpy.context.scene.selection_type == 'conds':
+        _addon().select_roi(ori_closet_object_name)
         bpy.data.objects[closet_object_name].select = True
 
-    bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
+        bpy.context.scene.objects.active = bpy.data.objects[closet_object_name]
     if bpy.context.scene.mark_filter_items:
         if bpy.data.objects[closet_object_name].active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
             bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']

@@ -58,7 +58,7 @@ def select_roi(roi_name):
 
     # check if MEG data is loaded and attahced to the obj
     if mu.count_fcurves(roi) > 0:
-        roi.select
+        roi.select  = True
         mu.change_fcurves_colors(roi)
     else:
         # Check if dynamic fMRI data is loaded
@@ -350,6 +350,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Selection"
     addon = None
+    modalities_num = 0
 
     @staticmethod
     def draw(self, context):
@@ -363,10 +364,12 @@ class SelectionMakerPanel(bpy.types.Panel):
         # elif not fmri_parent is None:
         #     labels_data = 'fMRI'
         layout.prop(context.scene, "selection_type", text="")
-        layout.prop(context.scene, 'selected_modlity', text='')
+        sm = bpy.context.scene.selected_modlity
+        if SelectionMakerPanel.modalities_num > 1:
+            layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
-            layout.operator(SelectAllRois.bl_idname, text="Cortical labels", icon='BORDER_RECT')
-        layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals", icon = 'BORDER_RECT' )
+            layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
+        layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_electrodes'):
@@ -399,6 +402,7 @@ def init(addon):
         modalities_itesm.append(('MEG', 'MEG', '', 0))
     if fmri_data_loaded():
         modalities_itesm.append(('fMRI', 'fMRI', '', 1))
+    SelectionMakerPanel.modalities_num = len(modalities_itesm)
     bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
     register()
 
