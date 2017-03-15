@@ -65,18 +65,31 @@ class ShowSaggital(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        bpy.types.Scene.in_camera_view = 0
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view!='saggital':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
-            bpy.types.Scene.current_view = 'saggital'
-            bpy.types.Scene.current_view_direction = 0
-        else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+        if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'saggital':
+                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 1.5707963705062866]
+                bpy.types.Scene.current_view = 'saggital'
+                bpy.types.Scene.current_view_direction = 0
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, 0.5, 0.5]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 1.5707963705062866]
+                else:
+                    # print('in ShowSaggital else')
+                    bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, -1.5707963705062866]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+            # bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        else:
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'saggital':
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+                bpy.types.Scene.current_view = 'saggital'
+                bpy.types.Scene.current_view_direction = 0
+            else:
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+                else:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, 0.5, 0.5]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
 
         bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
@@ -90,19 +103,32 @@ class ShowCoronal(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        bpy.types.Scene.in_camera_view = 0
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
-            bpy.types.Scene.current_view = 'coronal'
-            bpy.types.Scene.current_view_direction = 0
-        else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
+        if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
+                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 3.1415927410125732]
+                bpy.types.Scene.current_view = 'coronal'
+                bpy.types.Scene.current_view_direction = 0
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 0, 0.7071068286895752, 0.7071068286895752]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 3.1415927410125732]
+                else:
+                    # print('in ShowCoronal else')
+                    bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 0.0]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+            bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        else:
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
+                bpy.types.Scene.current_view = 'coronal'
+                bpy.types.Scene.current_view_direction = 0
+            else:
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752, 0.7071068286895752, -0.0, -0.0]
+                else:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 0, 0.7071068286895752, 0.7071068286895752]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+            bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
         return {"FINISHED"}
 
@@ -114,19 +140,32 @@ class ShowAxial(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        bpy.types.Scene.in_camera_view = 0
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
-            bpy.types.Scene.current_view = 'axial'
-            bpy.types.Scene.current_view_direction = 0
-        else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+        if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
+                bpy.data.objects["Camera_empty"].rotation_euler = [1.5707963705062866, 0.0, 3.1415927410125732]
+                bpy.types.Scene.current_view = 'axial'
+                bpy.types.Scene.current_view_direction = 0
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 1, 0, 0]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.objects["Camera_empty"].rotation_euler = [1.5707963705062866, 0.0, 3.1415927410125732]
+                else:
+                    # print('in ShowAxial else')
+                    bpy.data.objects["Camera_empty"].rotation_euler = [-1.5707963705062866, 0.0, 3.1415927410125732]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+            bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+        else:
+            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
+            if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
+                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+                bpy.types.Scene.current_view = 'axial'
+                bpy.types.Scene.current_view_direction = 0
+            else:
+                if bpy.types.Scene.current_view_direction == 1:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+                else:
+                    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 1, 0, 0]
+                bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+            bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
         return {"FINISHED"}
 
