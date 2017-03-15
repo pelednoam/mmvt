@@ -89,14 +89,37 @@ def plot_blob(cluster_labels, faces_verts):
 
 # @mu.profileit()
 def find_closest_cluster(only_within=False):
-    cursor = np.array(bpy.context.scene.cursor_location) * 10
+    cursor = np.array(bpy.context.scene.cursor_location)
+    print('cursor {}'.format(cursor))
     if _addon().is_inflated():
+        # cursor[0] += (1 - bpy.context.scene.inflating) * 5
+        # bpy.context.scene.inflating = 1
+        # bpy.context.scene.hemis_inf_distance = -5
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
         print(closest_mesh_name, vertex_ind, vertex_co)
-        cursor = vertex_co * 10
-        bpy.context.scene.cursor_location = cursor / 10
-        closest_area = _addon().find_closest_obj()
-        print(closest_area)
+        print(vertex_co - bpy.context.scene.cursor_location)
+        bpy.context.scene.cursor_location = vertex_co
+
+        pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
+        pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
+        cursor = pial_vert.co / 10
+
+
+        # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+        # x -= (1 - bpy.context.scene.inflating) * 5
+        # bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = \
+        #     AppearanceMakerPanel.cortex_inflated_lh - bpy.context.scene.hemis_inf_distance
+        # cursor[0] -= (1 - bpy.context.scene.inflating) * 5
+        # print(cursor - bpy.context.scene.cursor_location)
+        # closest_area = _addon().find_closest_obj()
+        # print(closest_area)
+    else:
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+        print(closest_mesh_name, vertex_ind, vertex_co)
+        print(vertex_co - bpy.context.scene.cursor_location)
+        bpy.context.scene.cursor_location = vertex_co
+
+    cursor *= 10
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     else:

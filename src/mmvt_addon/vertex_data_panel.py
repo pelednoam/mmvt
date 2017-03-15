@@ -22,9 +22,10 @@ def find_vertex_index_and_mesh_closest_to_cursor():
     # meshes = HEMIS
     #        for obj in base_obj.children:
     hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
+    cursor = bpy.context.scene.cursor_location
     for cur_obj in hemis:
         obj = bpy.data.objects[cur_obj]
-        co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
+        co_find = cursor * obj.matrix_world.inverted()
         mesh = obj.data
         size = len(mesh.vertices)
         kd = mathutils.kdtree.KDTree(size)
