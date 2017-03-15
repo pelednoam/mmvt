@@ -19,6 +19,14 @@ def _addon():
     return FilteringMakerPanel.addon
 
 
+def color_object_uniformly(obj, color, name='selected'):
+    mesh = obj.data
+    vcol_layer = mesh.vertex_colors.new(name=name)
+    for poly in mesh.polygons:
+        for loop_index in poly.loop_indices:
+            loop_vert_index = mesh.loops[loop_index].vertex_index
+            vcol_layer.data[loop_index].color = color
+
 def find_obj_with_val():
     cur_objects = []
     for obj in bpy.data.objects:
@@ -103,8 +111,12 @@ def clear_filtering():
         new_mat = bpy.data.materials['unselected_label_Mat_cortex']
         if subhierarchy.name == 'Subcortical_structures':
             new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-        for obj in subhierarchy.children:
-            obj.active_material = new_mat
+        if subhierarchy.name.startswith('Cortex-inflated'):
+            for obj in subhierarchy.children:
+                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
+        else:
+            for obj in subhierarchy.children:
+                obj.active_material = new_mat
 
     for parent_name in ['Deep_electrodes', 'EEG_electrodes']:
         if bpy.data.objects.get(parent_name):
@@ -141,9 +153,17 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
             bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_subcortical']
         else:
             if mark == 'mark_green':
-                bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
+                # bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat']
+                if not('selected' in bpy.data.objects[closet_object_name].data.vertex_colors):
+                    color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 1.0, 0.0))
+                bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected')
+
             elif mark == 'mark_blue':
-                bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
+                # bpy.data.objects[closet_object_name].active_material = bpy.data.materials['selected_label_Mat_blue']
+                if not('selected_blue' in bpy.data.objects[closet_object_name].data.vertex_colors):
+                    color_object_uniformly(bpy.data.objects[closet_object_name], (0.0, 0.0, 1.0))
+                bpy.data.objects[closet_object_name].data.vertex_colors.active_index = bpy.data.objects[closet_object_name].data.vertex_colors.keys().index('selected_blue')
+
     bpy.types.Scene.filter_is_on = True
 
 
@@ -170,6 +190,8 @@ def deselect_all_objects():
             obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
         elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
             obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+        elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
         elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
                 bpy.data.objects.get('EEG_electrodes', None) and obj.parent == bpy.data.objects['EEG_electrodes']:
             de_select_electrode(obj)
