@@ -90,6 +90,13 @@ def plot_blob(cluster_labels, faces_verts):
 # @mu.profileit()
 def find_closest_cluster(only_within=False):
     cursor = np.array(bpy.context.scene.cursor_location) * 10
+    if _addon().is_inflated():
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+        print(closest_mesh_name, vertex_ind, vertex_co)
+        cursor = vertex_co * 10
+        bpy.context.scene.cursor_location = cursor / 10
+        closest_area = _addon().find_closest_obj()
+        print(closest_area)
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     else:

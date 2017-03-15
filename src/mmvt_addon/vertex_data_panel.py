@@ -5,10 +5,13 @@ import numpy as np
 import os.path as op
 import glob
 
+def _addon():
+    return DataInVertMakerPanel.addon
+
 
 def find_vertex_index_and_mesh_closest_to_cursor():
     # 3d cursor relative to the object data
-    print('cursor at:' + str(bpy.context.scene.cursor_location))
+    # print('cursor at:' + str(bpy.context.scene.cursor_location))
     # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
     distances = []
     names = []
@@ -18,7 +21,8 @@ def find_vertex_index_and_mesh_closest_to_cursor():
     # base_obj = bpy.data.objects['Functional maps']
     # meshes = HEMIS
     #        for obj in base_obj.children:
-    for cur_obj in mu.HEMIS:
+    hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
+    for cur_obj in hemis:
         obj = bpy.data.objects[cur_obj]
         co_find = bpy.context.scene.cursor_location * obj.matrix_world.inverted()
         mesh = obj.data
@@ -29,18 +33,18 @@ def find_vertex_index_and_mesh_closest_to_cursor():
             kd.insert(v.co, i)
 
         kd.balance()
-        print(obj.name)
+        # print(obj.name)
         for (co, index, dist) in kd.find_n(co_find, 1):
-            print('cursor at {} ,vertex {}, index {}, dist {}'.format(str(co_find), str(co), str(index), str(dist)))
+            # print('cursor at {} ,vertex {}, index {}, dist {}'.format(str(co_find), str(co), str(index), str(dist)))
             distances.append(dist)
             names.append(obj.name)
             vertices_idx.append(index)
             vertices_co.append(co)
 
     closest_mesh_name = names[np.argmin(np.array(distances))]
-    print('closest_mesh =' + str(closest_mesh_name))
+    # print('closest_mesh =' + str(closest_mesh_name))
     vertex_ind = vertices_idx[np.argmin(np.array(distances))]
-    print('vertex_ind =' + str(vertex_ind))
+    # print('vertex_ind =' + str(vertex_ind))
     vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
     return closest_mesh_name, vertex_ind, vertex_co
 

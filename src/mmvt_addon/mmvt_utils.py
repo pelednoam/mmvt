@@ -39,6 +39,7 @@ IS_WINDOWS = _platform == "win32"
 print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
+INF_HEMIS = ['inflated_{}'.format(hemi) for hemi in HEMIS]
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
     OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM, OBJ_TYPE_CON_VERTICE) = range(9)
 

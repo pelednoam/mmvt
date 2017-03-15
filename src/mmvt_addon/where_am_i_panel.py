@@ -166,6 +166,8 @@ def find_closest_obj(search_also_for_subcorticals=True):
     distances, names, indices = [], [], []
 
     parent_objects_names = ['Cortex-lh', 'Cortex-rh']
+    if _addon().is_inflated():
+        parent_objects_names = ['Cortex-inflated-lh', 'Cortex-inflated-rh']
     if search_also_for_subcorticals:
         parent_objects_names.append('Subcortical_structures')
     for parent_object_name in parent_objects_names:
@@ -207,9 +209,9 @@ def find_closest_obj(search_also_for_subcorticals=True):
     # print(np.argmin(np.array(distances)))
     min_index = np.argmin(np.array(distances))
     closest_area = names[np.argmin(np.array(distances))]
-    print('closest area is: '+closest_area)
-    print('dist: {}'.format(np.min(np.array(distances))))
-    print('closets vert is {}'.format(bpy.data.objects[closest_area].data.vertices[min_index].co))
+    # print('closest area is: '+closest_area)
+    # print('dist: {}'.format(np.min(np.array(distances))))
+    # print('closets vert is {}'.format(bpy.data.objects[closest_area].data.vertices[min_index].co))
     return closest_area
 
 
