@@ -281,7 +281,8 @@ class SelectionListener(bpy.types.Operator):
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)
                     if not pial_obj is None:
-                        pial_obj.select = True
+                        # pial_obj.select = True
+                        _addon().select_roi(pial_obj_name)
                         mu.change_fcurves_colors(pial_obj)
                 elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:
                     _addon().vertices_selected(selected_obj_name)

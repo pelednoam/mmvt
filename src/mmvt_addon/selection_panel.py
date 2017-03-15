@@ -70,6 +70,7 @@ def select_roi(roi_name):
                 fmri_parent_obj.select = True
             else:
                 fcurve.hide = True
+    mu.view_all_in_graph_editor()
 
 
 def select_all_rois():

@@ -241,7 +241,7 @@ def calc_lables_connectivity(subject, args):
             dFC = np.nanmean(static_conn, 1)
             np.save(static_mean_output_mat_fname, dFC)
             lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
-                args.connectivity_modality, args.connectivity_method), norm_percs=(1, 99), norm_by_percentile=True,
+                args.connectivity_modality, args.connectivity_method[0]), norm_percs=(1, 99), norm_by_percentile=True,
                 colors_map='YlOrRd')
 
     if not args.save_mmvt_connectivity:
