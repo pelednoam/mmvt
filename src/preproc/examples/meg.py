@@ -33,6 +33,7 @@ def calc_msit(args):
         subject=args.subject,
         mri_subject=args.mri_subject,
         task='MSIT',
+        data_per_task=True,
         atlas='laus250',
         contrast='interference',
         cleaning_method='nTSSS',
