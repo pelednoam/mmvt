@@ -1717,7 +1717,7 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
             labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
             labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
             labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
-            np.savez(min_max_output_fname, labels_minmax=[labels_diff_min, labels_diff_max],
+            np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
                      labels_diff_minmax=[labels_diff_min, labels_diff_max] )
         flags['calc_labels_min_max'] = op.isfile(min_max_output_fname)
 

@@ -28,20 +28,22 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     meg.run_on_subjects(args)
 
 
-def calc_msit_evoked(subject, mri_subject):
-    args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
-    args.task = 'MSIT'
-    args.atlas = 'laus250'
-    args.function = 'calc_evoked'
-    args.t_tmin = -0.5
-    args.t_tmax = 2
-    args.calc_epochs_from_raw = True
-    args.read_events_from_file = True
-    args.remote_subject_meg_dir = '/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit/events'
-    args.events_file_name = '{subject}_msit_nTSSS_interference-eve.txt'
-    args.reject = False
-    args.pick_eeg = True
-    meg.run_on_subjects(args)
+def calc_msit(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        atlas='laus250',
+        t_tmin=-0.5,
+        t_tmax=2,
+        calc_epochs_from_raw=True,
+        read_events_from_file=True,
+        remote_subject_meg_dir='/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit/events',
+        events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
+        reject=False,
+        pick_eeg=True
+    ))
+    meg.call_main(args)
 
 
 def crop_stc_no_baseline(subject, mri_subject):
