@@ -27,6 +27,7 @@ def color_object_uniformly(obj, color, name='selected'):
             loop_vert_index = mesh.loops[loop_index].vertex_index
             vcol_layer.data[loop_index].color = color
 
+
 def find_obj_with_val():
     cur_objects = []
     for obj in bpy.data.objects:
@@ -92,7 +93,7 @@ def filter_draw(self, context):
     # if bpy.types.Scene.filter_is_on:
     layout.operator(ClearFiltering.bl_idname, text="Clear Filtering", icon='PANEL_CLOSE')
     col = layout.column(align=0)
-    col.operator("mmvt.curve_close_to_cursor", text="closest curve to cursor", icon='SNAP_SURFACE')
+    col.operator(FindCurveClosestToCursor.bl_idname, text="closest curve to cursor", icon='SNAP_SURFACE')
     if bpy.types.Scene.closest_curve_str != '':
         col.label(text=bpy.types.Scene.closest_curve_str)
     layout.prop(context.scene, 'filter_items_one_by_one', text="Show one by one")

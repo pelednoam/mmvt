@@ -1427,12 +1427,13 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         if positive or moving_average_win_size > 0:
             labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
         print('Saving to {}'.format(labels_output_fname))
-        np.savez(labels_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+        labels_names = [l.name.decode(sys.getfilesystemencoding(), 'ignore') for l in labels]
+        np.savez(labels_output_fname, data=labels_data, names=labels_names, conditions=conditions)
         # Normalize the data
         data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
         max_abs = utils.get_max_abs(data_max, data_min)
         labels_data = labels_data / max_abs
-        np.savez(labels_norm_output_fname, data=labels_data, names=[l.name for l in labels], conditions=conditions)
+        np.savez(labels_norm_output_fname, data=labels_data, names=labels_names, conditions=conditions)
         shutil.copyfile(labels_output_fname, lables_mmvt_fname)
         flag = True
     except:
@@ -1702,10 +1703,24 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
                 stcs=stcs_conds, stcs_num=stcs_num, n_jobs=args.n_jobs)
-            if isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
+            if stcs_conds and isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
                     subject, conditions, inverse_method, args, flags)
+
+    if utils.should_run(args, 'calc_labels_min_max'):
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_min_max.npz')
+        if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('{hemi}')))):
+            labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('rh'))))
+            labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('lh'))))
+            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
+            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
+            labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
+            labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
+            np.savez(min_max_output_fname, labels_minmax=[labels_diff_min, labels_diff_max],
+                     labels_diff_minmax=[labels_diff_min, labels_diff_max] )
+        flags['calc_labels_min_max'] = op.isfile(min_max_output_fname)
+
     return flags
 
 

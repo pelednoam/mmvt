@@ -1241,3 +1241,12 @@ def to_int(x_str, def_val=0):
 
 def counter_to_dict(counter):
     return {k: v for k, v in counter.items()}
+
+
+def to_str(s):
+    if isinstance(s, str):
+        return s
+    elif (isinstance(s, np.bytes_)):
+        return s.decode(sys.getfilesystemencoding(), 'ignore')
+    else:
+        return str(s)

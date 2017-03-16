@@ -208,10 +208,14 @@ def meg_labels_coloring(override_current_mat=True):
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
-    for hemi_ind, hemi in enumerate(hemispheres):
-        labels_data = np.load(op.join(user_fol, 'meg_labels_coloring_{}.npz'.format(hemi)))
+    meg_labels_min, meg_labels_max = np.load(op.join(user_fol, 'meg_labels_min_max.npz'))['labels_diff_minmax']
+    data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
+    meg_labels_min, meg_labels_max = -data_minmax, data_minmax
+    for hemi in hemispheres:
+        labels_data = np.load(op.join(user_fol, 'labels_data_{}.npz'.format(hemi)))
         meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
-                                 hemi, threshold, override_current_mat)
+                                 hemi, threshold, override_current_mat,
+                                 meg_labels_min, meg_labels_max)
 
 
 def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, override_current_mat=True,
@@ -228,13 +232,17 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
     else:
         colors_data = np.ones((vertices_num, 4))
         colors_data[:, 0] = 0
-    for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
+    colors = labels_data['colors'] if 'colors' in labels_data else [None] * len(labels_data['names'])
+    if not colors_min is None and not colors_max is None:
+        colors_ratio = 256 / (colors_max - colors_min)
+        _addon().set_colorbar_max_min(colors_max, colors_min)
+    for label_data, label_colors, label_name in zip(labels_data['data'], colors, labels_data['names']):
+        label_name = mu.to_str(label_name)
         if label_data.ndim == 0:
             label_data = np.array([label_data])
         if not colors_min is None and not colors_max is None:
-            colors_ratio = 256 / (colors_max - colors_min)
+            label_data = np.squeeze(np.diff(label_data))
             label_colors = calc_colors(label_data, colors_min, colors_ratio)
-            _addon().set_colorbar_max_min(colors_max, colors_min)
         else:
             label_colors = np.array(label_colors)
             if 'unknown' in label_name:
@@ -849,7 +857,6 @@ class ColorMegLabels(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        # todo: should send also aparc_name
         meg_labels_coloring()
         return {"FINISHED"}
 
@@ -930,8 +937,11 @@ class ColoringMakerPanel(bpy.types.Panel):
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
-            mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
+        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{hemi}.npz'))
+        meg_labels_data_minmax_exist = op.join(user_fol, 'meg_labels_min_max.npz')
+
+        # meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
+        #     mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))
         # electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}.npz'.format(
         #     'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))) or \
         #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_{}_data.npy'.format(
@@ -953,13 +963,14 @@ class ColoringMakerPanel(bpy.types.Panel):
         # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
         layout.prop(context.scene, 'coloring_threshold', text="Threshold")
         layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
+
         if faces_verts_exist:
             if meg_files_exist and meg_data_maxmin_file_exist:
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                     layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
-            # if meg_labels_files_exist:
-            #     layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
+            if meg_labels_data_exist and meg_labels_data_minmax_exist:
+                layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
                 layout.prop(context.scene, "fmri_files", text="")
                 layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')

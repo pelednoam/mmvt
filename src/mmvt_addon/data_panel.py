@@ -889,9 +889,9 @@ class DataMakerPanel(bpy.types.Panel):
                 col.prop(context.scene, 'brain_no_conds_stat', text="")
                 col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
                 col.prop(context.scene, 'import_unknown', text="Import unknown")
-        if bpy.context.scene.fMRI_dynamic_files != '':
-            col.prop(context.scene, 'fMRI_dynamic_files', text="")
-            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
+        # if bpy.context.scene.fMRI_dynamic_files != '':
+        #     col.prop(context.scene, 'fMRI_dynamic_files', text="")
+        #     col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         if len(DataMakerPanel.evoked_files) > 0:
