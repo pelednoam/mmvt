@@ -33,6 +33,7 @@ def calc_msit(args):
         subject=args.subject,
         mri_subject=args.mri_subject,
         task='MSIT',
+        # function='calc_labels_avg_per_condition',
         data_per_task=True,
         atlas='laus250',
         contrast='interference',

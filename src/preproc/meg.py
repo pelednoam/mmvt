@@ -1424,6 +1424,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 # plt.show()
                 plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
+        labels_data = labels_data.squeeze()
         if positive or moving_average_win_size > 0:
             labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
         print('Saving to {}'.format(labels_output_fname))
