@@ -247,8 +247,9 @@ def main(args):
         mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
         resource_file_exist = copy_resources_files(mmvt_root_dir, args.only_verbose)
         if not resource_file_exist:
-            print('Not all the resources files were copied to the MMVT folder.\n'.format(mmvt_root_dir) +
-                  'Please copy them manually from the mmvt_code/resources folder')
+            input('Not all the resources files were copied to the MMVT folder ({}).\n'.format(mmvt_root_dir) +
+                  'Please copy them manually from the mmvt_code/resources folder.\n' +
+                  'Press any key to continue...')
 
     # 4) Install the addon in Blender (depends on resources and links)
     if utils.should_run(args, 'install_addon'):
