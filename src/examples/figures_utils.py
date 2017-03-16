@@ -33,7 +33,7 @@ def example3():
     cm_big = 'YlOrRd'
     cm_small = 'PuBu'
     data_max, data_min = -5, 5
-    fu.plot_color_bar_from_rwo_color_maps(data_max, data_min, cm_small, cm_big, ax=None, fol='/homes/5/npeled/space1/Pictures')
+    fu.plot_color_bar_from_two_color_maps(data_max, data_min, cm_small, cm_big, ax=None, fol='/homes/5/npeled/space1/Pictures')
 
 
 def example4(subject='colin27', map_name='s32_spmT', figure_name='splitted_lateral_medial_pial_white.png'):

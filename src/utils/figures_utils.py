@@ -11,7 +11,7 @@ from src.utils import color_maps_utils as cmu
 
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
-
+@utils.tryit
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, **kargs):
     import matplotlib as mpl
 
@@ -34,7 +34,7 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
     return cb
 
 
-def plot_color_bar_from_rwo_color_maps(data_max, data_min, fol='', **kargs):
+def plot_color_bar_from_two_color_maps(data_max, data_min, fol='', **kargs):
     import matplotlib.colors as mcolors
 
     colors1 = plt.cm.PuBu(np.linspace(1, 0, 128))
@@ -236,6 +236,6 @@ if __name__ is '__main__':
     #                    '/cluster/neuromind/npeled/Documents/ELA/figs/ela_example2.jpg',comb_dim=PICS_COMB_VERT,
     #                    dpi=100, facecolor='black')
     # example3()
-    # plot_color_bar_from_rwo_color_maps(10, -10, fol='C:\\Users\\2014\\mmvt\\ESZC25\\figures')
+    # plot_color_bar_from_two_color_maps(10, -10, fol='C:\\Users\\2014\\mmvt\\ESZC25\\figures')
     # combine_four_brain_perspectives('/homes/5/npeled/space1/mmvt/colin27/figures/ver3', facecolor='black', crop=True)
     print('finish!')
