@@ -1110,16 +1110,14 @@ def check_stc_with_ply(stc, cond_name):
     for hemi in HEMIS:
         stc_vertices = stc.rh_vertno if hemi=='rh' else stc.lh_vertno
         print('{} {} stc vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
-        ply_vertices, _ = utils.read_ply_file(op.join(MMVT_SUBJECT_FOLDER, '{}.pial.ply'.format(hemi)))
+        ply_vertices, _ = utils.read_ply_file(op.join(MMVT_SUBJECT_FOLDER, 'surf', '{}.pial.ply'.format(hemi)))
         print('{} {} ply vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
         if len(stc_vertices) != ply_vertices.shape[0]:
             raise Exception('check_stc_with_ply: Wrong number of vertices!')
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events, stat, stcs_conds=None, colors_map='YlOrRd', inverse_method='dSPM',
-        norm_by_percentile=True, norm_percs=(1,99), threshold=0,
-        cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=True, flip_cm_small=False):
+def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', norm_by_percentile=False, norm_percs=(1,99)):
     try:
         from src.utils import color_maps_utils as cp
         from src.utils import figures_utils as figu
@@ -1872,7 +1870,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
-    parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--norm_by_percentile', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
