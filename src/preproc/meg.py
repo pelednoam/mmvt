@@ -1427,7 +1427,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         if positive or moving_average_win_size > 0:
             labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
         print('Saving to {}'.format(labels_output_fname))
-        labels_names = [l.name.decode(sys.getfilesystemencoding(), 'ignore') for l in labels]
+        labels_names = [utils.to_str(l.name) for l in labels]
         np.savez(labels_output_fname, data=labels_data, names=labels_names, conditions=conditions)
         # Normalize the data
         data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)

@@ -58,7 +58,7 @@ csv_file_reader = mu.csv_file_reader
 time_to_go = mu.time_to_go
 get_link_dir = su.get_link_dir
 tryit = mu.tryit
-
+to_str = mu.to_str
 
 def get_exisiting_dir(dirs):
     ex_dirs = [d for d in dirs if op.isdir(d)]
