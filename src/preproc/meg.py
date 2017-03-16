@@ -1767,8 +1767,7 @@ def main(tup, remote_subject_dir, args, flags):
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_activity_map'] = save_activity_map(
-            conditions, stat, stcs_conds_smooth, args.colors_map, inverse_method,
-            args.norm_by_percentile, args.norm_percs)
+            conditions, stat, stcs_conds_smooth, inverse_method, args.norm_by_percentile, args.norm_percs)
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
