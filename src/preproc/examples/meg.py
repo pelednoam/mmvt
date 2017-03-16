@@ -33,7 +33,7 @@ def calc_msit(args):
         subject=args.subject,
         mri_subject=args.mri_subject,
         task='MSIT',
-        # function='calc_labels_avg_per_condition',
+        function=args.real_function,
         data_per_task=True,
         atlas='laus250',
         contrast='interference',
@@ -113,6 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='MNE',
                         type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('-r', '--real_function', help='function name', required=False, default='all')
     args = utils.Bag(au.parse_parser(parser))
     if not args.mri_subject:
         args.mri_subject = args.subject
