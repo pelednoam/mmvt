@@ -424,6 +424,10 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
             ans = input("Can't find the source file, recreate it (y/n)? (spacing={}, surface={}) ".format(
                 recreate_src_spacing, recreate_src_surface))
         if recreate_the_source_space or ans == 'y':
+            # oct_name, oct_num = recreate_src_spacing[:3], recreate_src_spacing[-1]
+            # prepare_subject_folder(
+            #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
+            #     {'bem': '{}-{}-{}-src.fif'.format(mri_subject, oct_name, oct_num)}, args)
             src = mne.setup_source_space(MRI_SUBJECT, spacing=recreate_src_spacing, surface=recreate_src_surface,
                                          overwrite=True, n_jobs=n_jobs)
         else:
@@ -1467,17 +1471,21 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     ret = False
     if len(sensors_pos) > 0:
         # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
-        trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
-        trans_files = glob.glob(trans_pat)
-        if len(trans_files) == 1:
-            trans = mne.transforms.read_trans(trans_files[0])
+        trans_file = COR
+        if not op.isfile(trans_file):
+            trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
+            trans_files = glob.glob(trans_pat)
+            if len(trans_files) == 1:
+                trans_file = trans_files[0]
+        if not op.isfile(trans_file):
+            print('No trans files!')
+        else:
+            trans = mne.transforms.read_trans(trans_file)
             head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
             sensors_pos = mne.transforms.apply_trans(head_mri_t, sensors_pos)
             sensors_pos *= 1000
             np.savez(output_fname, pos=sensors_pos, names=sensors_names)
             ret = True
-        else:
-            print('No trans files! {}'.format(trans_pat))
     else:
         print('No sensors found!')
     return ret
