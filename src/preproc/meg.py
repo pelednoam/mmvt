@@ -1140,22 +1140,14 @@ def check_stc_with_ply(stc, cond_name):
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', norm_by_percentile=False, norm_percs=(1,99)):
+def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', norm_by_percentile=False, norm_percs=(1,99),
+                      plot_cb=False):
     try:
-        from src.utils import color_maps_utils as cp
-        from src.utils import figures_utils as figu
-
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
-        data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
-        data_minmax = utils.get_max_abs(data_max, data_min)
-        utils.save((-data_minmax, data_minmax), op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl'))
-        # todo: create colors map according to the parameters
-        colors_map = cp.create_BuPu_YlOrRd_cm()
-        figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
-        figu.plot_color_bar(data_minmax, -data_minmax, colors_map, fol=figures_fol)
-
+        save_activity_map_minmax(stcs, events, stat, stcs_conds, inverse_method, norm_by_percentile,
+                                 norm_percs, plot_cb)
         for hemi in HEMIS:
             verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
@@ -1178,6 +1170,28 @@ def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', norm
         print('Error in save_activity_map')
         flag = False
     return flag
+
+
+def save_activity_map_minmax(stcs=None, events=None, stat=STAT_DIFF, stcs_conds=None, inverse_method='dSPM',
+                             norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
+    from src.utils import color_maps_utils as cp
+    from src.utils import figures_utils as figu
+
+    output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl')
+    if stcs is None:
+        if stat not in [STAT_DIFF, STAT_AVG]:
+            raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
+        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
+    data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
+    data_minmax = utils.get_max_abs(data_max, data_min)
+    print('Saving data minmax, min: {}, max: {} to {}'.format(-data_minmax, data_minmax, output_fname))
+    utils.save((-data_minmax, data_minmax), output_fname)
+    if plot_cb:
+        # todo: create colors map according to the parameters
+        colors_map = cp.create_BuPu_YlOrRd_cm()
+        figures_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'figures')
+        figu.plot_color_bar(data_minmax, -data_minmax, colors_map, fol=figures_fol)
+    return op.isfile(output_fname)
 
 
 def calc_activity_significance(events, inverse_method, stcs_conds=None):
@@ -1825,6 +1839,10 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'calc_activity_significance' in args.function:
         calc_activity_significance(conditions, inverse_method, stcs_conds)
+
+    if 'save_activity_map_minmax' in args.function:
+        flags['save_activity_map_minmax'] = save_activity_map_minmax(
+            None, conditions, stat, stcs_conds_smooth, inverse_method, args.norm_by_percentile, args.norm_percs, False)
 
     return flags
 
