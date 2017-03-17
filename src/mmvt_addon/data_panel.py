@@ -775,7 +775,7 @@ def _meg_evoked_files_update():
         bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=items, description="meg_evoked_types")
 
 
-class AddDataToEEG(bpy.types.Operator):
+class AddDataToEEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.eeg_add_data"
     bl_label = "add data eeg"
     bl_options = {"UNDO"}
@@ -793,6 +793,32 @@ class AddDataToEEG(bpy.types.Operator):
         else:
             data = DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
             meta = DataMakerPanel.eeg_meta = np.load(meta_fname)
+            add_data_to_electrodes(data, meta, window_len=2)
+            add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
+            bpy.types.Scene.eeg_data_exist = True
+        if bpy.data.objects.get(' '):
+            bpy.context.scene.objects.active = bpy.data.objects[' ']
+        return {"FINISHED"}
+
+
+class AddDataToMEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.meg_sensors_add_data"
+    bl_label = "add meg sensors data"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        parnet_name = 'MEG_electrodes'
+        parent_obj = bpy.data.objects.get(parnet_name)
+        if parent_obj is None:
+            layers_array = [False] * 20
+            create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
+        data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+        meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+        if not op.isfile(data_fname) or not op.isfile(meta_fname):
+            mu.log_err('MEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
+        else:
+            data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
+            meta = DataMakerPanel.meg_meta = np.load(meta_fname)
             add_data_to_electrodes(data, meta, window_len=2)
             add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
             bpy.types.Scene.eeg_data_exist = True
@@ -865,6 +891,8 @@ class DataMakerPanel(bpy.types.Panel):
         # if not bpy.types.Scene.electrodes_imported:
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
         meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_positions.npz')
+        meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+        meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
         eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
         eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
@@ -906,12 +934,15 @@ class DataMakerPanel(bpy.types.Panel):
         if op.isfile(meg_sensors_positions_file):
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
+        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz):
+            col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='COLOR_GREEN')
+
         if op.isfile(eeg_sensors_positions_file):
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
         # if op.isfile(eeg_data):
         if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
-            col.operator("mmvt.eeg_add_data", text="Add data to EEG", icon='COLOR_GREEN')
+            col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='COLOR_GREEN')
 
 
 def load_meg_evoked():
@@ -960,7 +991,8 @@ def register():
         bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
         bpy.utils.register_class(AddfMRIDynamicsToBrain)
-        bpy.utils.register_class(AddDataToEEG)
+        bpy.utils.register_class(AddDataToEEGSensors)
+        bpy.utils.register_class(AddDataToMEGSensors)
         bpy.utils.register_class(ImportMEGSensors)
         bpy.utils.register_class(ImportElectrodes)
         bpy.utils.register_class(ImportEEG)
@@ -982,7 +1014,8 @@ def unregister():
         bpy.utils.unregister_class(AddDataNoCondsToBrain)
         bpy.utils.unregister_class(AddDataToBrain)
         bpy.utils.unregister_class(AddfMRIDynamicsToBrain)
-        bpy.utils.unregister_class(AddDataToEEG)
+        bpy.utils.unregister_class(AddDataToEEGSensors)
+        bpy.utils.unregister_class(AddDataToMEGSensors)
         bpy.utils.unregister_class(ImportMEGSensors)
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)

@@ -339,14 +339,20 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
-def calc_evokes(epochs, events):
+def calc_evokes(epochs, events, mri_subject):
     try:
+        events_keys = list(events.keys())
+        if epochs is None:
+            epochs = mne.read_epochs(EPO)
+        evokes = [epochs[event].average() for event in events_keys]
+        save_evokes_to_mmvt(evokes, events_keys, mri_subject)
         if '{cond}' in EVO:
-            evokes = {event: epochs[event].average() for event in events.keys()}
-            for event, evoked in evokes.items():
+            # evokes = {event: epochs[event].average() for event in events_keys}
+            for event, evoked in zip(events_keys, evokes):
                 mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+
         else:
-            evokes = [epochs[event].average() for event in events.keys()]
+            # evokes = [epochs[event].average() for event in events_keys]
             mne.write_evokeds(EVO, evokes)
     except:
         print(traceback.format_exc())
@@ -357,6 +363,19 @@ def calc_evokes(epochs, events):
         else:
             flag = op.isfile(EVO)
     return flag, evokes
+
+
+def save_evokes_to_mmvt(evokes, events_keys, mri_subject):
+    fol = op.join(MMVT_DIR, mri_subject, 'meg')
+    utils.make_dir(fol)
+    meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
+    ch_names = [evokes[0].ch_names[k] for k in meg_indices]
+    dt = np.diff(evokes[0].times[:2])[0]
+    data = np.zeros((len(meg_indices), evokes[0].data.shape[1], len(events_keys)))
+    for event_ind, event in enumerate(events_keys):
+        data[:, :, event_ind] = evokes[event_ind].data[meg_indices]
+    np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
+    np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -1678,15 +1697,15 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     return flags
 
 
-def calc_evoked_wrapper(subject, conditions, args, flags):
+def calc_evoked_wrapper(subject, mri_subject, conditions, args, flags):
     evoked, epochs = None, None
     if utils.should_run(args, 'calc_epochs'):
         necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args)
 
-        if utils.should_run(args, 'calc_evokes'):
-            flags['calc_evokes'], evoked = calc_evokes(epochs, conditions)
+    if utils.should_run(args, 'calc_evokes'):
+        flags['calc_evokes'], evoked = calc_evokes(epochs, conditions, mri_subject)
 
     return flags, evoked, epochs
 
@@ -1756,7 +1775,7 @@ def main(tup, remote_subject_dir, args, flags):
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
     # flags: calc_evoked
-    flags, evoked, epochs = calc_evoked_wrapper(subject, conditions, args, flags)
+    flags, evoked, epochs = calc_evoked_wrapper(subject, mri_subject, conditions, args, flags)
     # flags: make_forward_solution, calc_inverse_operator
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
     # flags: calc_stc_per_condition

@@ -41,9 +41,12 @@ def meg_data_loaded():
         return False
     else:
         parent_data = mu.count_fcurves(parent_obj) > 0
-        labels = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
-        labels_data = mu.count_fcurves(labels) > 0
-        return parent_data or labels_data
+        if bpy.data.objects.get('Cortex-lh') and bpy.data.objects.get('Cortex-rh'):
+            labels = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children
+            labels_data = mu.count_fcurves(labels) > 0
+            return parent_data or labels_data
+        else:
+            return False
 
 
 def fmri_data_loaded():
@@ -365,8 +368,9 @@ class SelectionMakerPanel(bpy.types.Panel):
         # elif not fmri_parent is None:
         #     labels_data = 'fMRI'
         layout.prop(context.scene, "selection_type", text="")
-        sm = bpy.context.scene.selected_modlity
+        sm = ''
         if SelectionMakerPanel.modalities_num > 1:
+            sm = bpy.context.scene.selected_modlity
             layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
