@@ -42,7 +42,7 @@ def calc_msit(args):
         t_max=2,
         calc_epochs_from_raw=True,
         read_events_from_file=True,
-        remote_subject_meg_dir='/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit',
+        # remote_subject_meg_dir='/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit',
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
         reject=False,
         pick_eeg=True
