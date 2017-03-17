@@ -999,6 +999,7 @@ def change_fcurves_colors(objs):
             fcurve.color_mode = 'CUSTOM'
             fcurve.color = tuple(next(colors))
             fcurve.select = True
+            fcurve.hide = False
 
 
 def count_fcurves(objs):
