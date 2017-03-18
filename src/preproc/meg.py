@@ -112,7 +112,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
-    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}.npz') # atlas, hemi
+    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}.npz') # atlas, extract_method, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -1394,10 +1394,10 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             labels_output_fname_template.format(hemi=hemi)
         labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}.npz'.format(atlas, hemi))
         lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, hemi)))
-        if op.isfile(labels_output_fname) and op.isfile(labels_norm_output_fname):
-            if not op.isfile(lables_mmvt_fname):
-                shutil.copyfile(labels_output_fname, lables_mmvt_fname)
-                return True
+        # if op.isfile(labels_output_fname) and op.isfile(labels_norm_output_fname):
+        #     if not op.isfile(lables_mmvt_fname):
+        #         shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+        #         return True
         if stcs is None:
             stcs = {}
             for cond in events.keys():
@@ -1753,7 +1753,7 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_min_max.npz'.format(atlas))
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_minmax.npz'.format(atlas))
         if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))):
             labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'rh'))))
             labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'lh'))))
@@ -1768,6 +1768,14 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
         flags['calc_labels_min_max'] = op.isfile(min_max_output_fname)
 
     return flags
+
+
+# def calc_labels_data_from_activity_map(mri_subject, atlas):
+#     for hemi in utils.HEMIS:
+#         labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
+#         activity_map_fol = op.join(MMVT_DIR, mri_subject, 'activity_map_{}'.format(hemi))
+#         activity_files = glob.glob(op.join(activity_map_fol, 't*.npy'))
+#         labels_data =
 
 
 def init_main(subject, mri_subject, remote_subject_dir, args):

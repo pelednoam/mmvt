@@ -29,6 +29,9 @@ def calc_single_trial_labels_msit(subject, mri_subject):
 
 
 def calc_msit(args):
+    # python -m src.preproc.meg -s ep001 -m mg78 -a laus250 -f calc_epochs,calc_evokes,read_sensors_layout -t MSIT
+    #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
+    #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
     args = meg.read_cmd_args(dict(
         subject=args.subject,
         mri_subject=args.mri_subject,
@@ -45,6 +48,7 @@ def calc_msit(args):
         # remote_subject_meg_dir='/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit',
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
         reject=False,
+        # extract_mode='mean'
     ))
     meg.call_main(args)
 
