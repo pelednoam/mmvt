@@ -7,7 +7,7 @@ import numpy as np
 
 time_point = 1225
 time = [time_point]
-hemi = 'lh'
+hemi = 'rh'
 colormap = 'hot'
 
 subject_id, surface = 'mg78', 'pial'
@@ -18,8 +18,8 @@ plot_labels = True
 
 if (plot_stc):
     root = '/home/npeled/code/links/meg/MSIT/ep001'
-    stc1_fname = op.join(root, 'ep001_msit_nTSSS_interference_neutral_1-15-dSPM-lh.stc')
-    stc2_fname = op.join(root, 'ep001_msit_nTSSS_interference_interference_1-15-dSPM-lh.stc')
+    stc1_fname = op.join(root, 'ep001_msit_nTSSS_interference_neutral_1-15-dSPM-{}.stc'.format(hemi))
+    stc2_fname = op.join(root, 'ep001_msit_nTSSS_interference_interference_1-15-dSPM-{}.stc'.format(hemi))
     stc1 = read_stc(stc1_fname)
     stc2 = read_stc(stc2_fname)
 
@@ -35,9 +35,9 @@ if (plot_stc):
     mlab.show()
 
 if (plot_labels):
-    aparc_file = '/home/npeled/subjects/mg78/label/lh.laus250.annot'
+    aparc_file = '/home/npeled/subjects/mg78/label/{}.laus250.annot'.format(hemi)
     labels, ctab, names = nib.freesurfer.read_annot(aparc_file)
-    d = np.load('/home/npeled/mmvt/mg78/labels_data_laus250_lh.npz')
+    d = np.load('/home/npeled/mmvt/mg78/labels_data_laus250_{}.npz'.format(hemi))
     data = np.diff(d['data'][:, time]).squeeze()
     vtx_data = data[labels]
     brain.add_data(vtx_data, colormap=colormap, alpha=.8)
