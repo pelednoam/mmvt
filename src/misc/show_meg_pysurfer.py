@@ -5,9 +5,9 @@ from mayavi import mlab
 import nibabel as nib
 import numpy as np
 
-time_point = 1225
+time_point = 1279
 time = [time_point]
-hemi = 'rh'
+hemi = 'lh'
 colormap = 'hot'
 
 subject_id, surface = 'mg78', 'pial'

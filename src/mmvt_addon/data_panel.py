@@ -913,8 +913,9 @@ class DataMakerPanel(bpy.types.Panel):
             col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
 
         # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
-        meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_lh.npz')),
-                     op.isfile(op.join(mu.get_user_fol(), 'labels_data_rh.npz')),
+        atlas = bpy.context.scene.atlas
+        meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_{}_lh.npz'.format(atlas))),
+                     op.isfile(op.join(mu.get_user_fol(), 'labels_data_{}_rh.npz'.format(atlas))),
                      op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))]
         if any(meg_files):
             col = self.layout.column(align=True)
