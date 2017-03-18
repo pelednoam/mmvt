@@ -211,8 +211,9 @@ def get_hemi_from_name(label_name):
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False,
-                hemi='both', surf_name='pial', labels_fol='', n_jobs=1):
+                hemi='both', surf_name='pial', labels_fol='', read_only_from_annot=False, n_jobs=1):
     try:
+        labels = []
         if try_first_from_annotation:
             try:
                 labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
@@ -220,9 +221,13 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             except:
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
                     subject, atlas, surf_name, hemi))
-                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+                if not read_only_from_annot:
+                    labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         else:
-            labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+            if not read_only_from_annot:
+                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+        if len(labels) == 0:
+            raise Exception("Can't read the {} labels!".format(atlas))
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
         if rh_then_lh:
             rh_labels = [l for l in labels if l.hemi == 'rh']
@@ -230,7 +235,11 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             labels = rh_labels + lh_labels
         if sorted_according_to_annot_file:
             annot_labels = get_atlas_labels_names(subject, atlas, subjects_dir, return_flat_labels_list=True)
-            labels.sort(key=lambda x: annot_labels.index(x.name))
+            try:
+                labels.sort(key=lambda x: annot_labels.index(x.name))
+            except ValueError:
+                print("Can't sort labels according to the annot file")
+                print(traceback.format_exc())
         if output_fname != '':
             with open(output_fname, 'w') as output_file:
                 for label in labels:

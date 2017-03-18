@@ -456,18 +456,8 @@ def save_matlab_labels_vertices(subject, aparc_name):
 
 def save_labels_vertices(subject, aparc_name):
     try:
-        annot_fname_temp = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
-        if not utils.hemi_files_exists(annot_fname_temp):
-            pass
-        labels_fnames = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))
-        if len(labels_fnames) > 0:
-            labels = []
-            for label_fname in labels_fnames:
-                label = mne.read_label(label_fname)
-                labels.append(label)
-        else:
-            # Read from the annotation file
-            labels = utils.read_labels_from_annot(subject, aparc_name, SUBJECTS_DIR)
+        labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name, sorted_according_to_annot_file=True,
+                                read_only_from_annot=True)
         labels_names, labels_vertices = defaultdict(list), defaultdict(list)
         for label in labels:
             labels_names[label.hemi].append(label.name)

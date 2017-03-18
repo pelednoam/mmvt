@@ -1047,7 +1047,7 @@ def init(addon):
     ColoringMakerPanel.faces_verts = None
     labels_vertices_fname = op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas))
     if not op.isfile(labels_vertices_fname):
-        print("!!! Can't find {}!".format('labels_vertices_{}.pkl'.format(bpy.context.scene.atlas)))
+        print("!!! Can't find {}!".format(labels_vertices_fname))
         return None
     labels_names, labels_vertices = mu.load(labels_vertices_fname)
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
