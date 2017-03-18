@@ -416,11 +416,15 @@ def message(self, message):
         print(message)
 
 
-def show_only_group_objects(context, objects, group_name):
-    space = context.space_data
-    dopesheet = space.dopesheet
+def show_only_group_objects(objects, group_name='new_filter'):
+    ge = get_the_graph_editor()
+    dopesheet = ge.dopesheet
+    # space = context.space_data
+    # dopesheet = space.dopesheet
     selected_group = bpy.data.groups.get(group_name, bpy.data.groups.new(group_name))
     for obj in objects:
+        if isinstance(obj, str):
+            obj = bpy.data.objects[obj]
         selected_group.objects.link(obj)
     dopesheet.filter_group = selected_group
     dopesheet.show_only_group_objects = True
@@ -1067,9 +1071,9 @@ def get_3d_spaces(only_neuro=False):
                         yield space
 
 
-def filter_graph_editor(filter_str):
+def filter_graph_editor(filter):
     ge = get_the_graph_editor()
-    ge.dopesheet.filter_fcurve_name = filter_str
+    ge.dopesheet.filter_fcurve_name = filter
 
 
 def unfilter_graph_editor():
