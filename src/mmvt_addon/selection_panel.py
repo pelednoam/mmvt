@@ -93,6 +93,11 @@ def select_only_subcorticals():
     select_brain_objects('Subcortical_structures')
 
 
+def select_all_meg_sensors():
+    bpy.context.scene.filter_curves_type = 'MEG_sensors'
+    select_brain_objects('MEG_sensors')
+
+
 def select_all_eeg():
     bpy.context.scene.filter_curves_type = 'EEG'
     select_brain_objects('EEG_electrodes')
@@ -177,6 +182,20 @@ class SelectAllSubcorticals(bpy.types.Operator):
             mu.change_fcurves_colors([bpy.data.objects['Subcortical_structures']])
         else:
             mu.change_fcurves_colors(bpy.data.objects['Subcortical_structures'].children)
+        return {"FINISHED"}
+
+
+class SelectAllMEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.meg_sensors_selection"
+    bl_label = "select meg sensors"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        select_all_meg_sensors()
+        mu.unfilter_graph_editor()
+        mu.change_fcurves_colors(bpy.data.objects['MEG_sensors'].children)
+        mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
 
@@ -369,14 +388,17 @@ class SelectionMakerPanel(bpy.types.Panel):
         #     labels_data = 'fMRI'
         layout.prop(context.scene, "selection_type", text="")
         sm = ''
-        if SelectionMakerPanel.modalities_num > 1:
+        if SelectionMakerPanel.modalities_num > 0:
             sm = bpy.context.scene.selected_modlity
+        if SelectionMakerPanel.modalities_num > 1:
             layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
         layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
+        if bpy.data.objects.get('MEG_sensors'):
+            layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_electrodes'):
             layout.operator(SelectAllEEG.bl_idname, text="EEG", icon='BORDER_RECT')
         if bpy.data.objects.get(_addon().get_parent_obj_name()) and \
@@ -421,6 +443,7 @@ def register():
         bpy.utils.register_class(SelectAllConnections)
         bpy.utils.register_class(SelectAllElectrodes)
         bpy.utils.register_class(SelectAllEEG)
+        bpy.utils.register_class(SelectAllMEGSensors)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(NextWindow)
@@ -439,6 +462,7 @@ def unregister():
         bpy.utils.unregister_class(SelectAllConnections)
         bpy.utils.unregister_class(SelectAllElectrodes)
         bpy.utils.unregister_class(SelectAllEEG)
+        bpy.utils.unregister_class(SelectAllMEGSensors)
         bpy.utils.unregister_class(SelectAllSubcorticals)
         bpy.utils.unregister_class(SelectAllRois)
         bpy.utils.unregister_class(NextWindow)

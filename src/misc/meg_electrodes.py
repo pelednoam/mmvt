@@ -116,7 +116,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
             meg_evo_data = {}
             for hemi in utils.HEMIS:
                 meg_evo_data[hemi] = np.load(
-                    op.join(MMVT_DIR, mri_subject, op.basename(meg.LBL.format(hemi))))
+                    op.join(MMVT_DIR, mri_subject, op.basename(meg.LBL.format(atlas, hemi))))
             meg_conds = np.array([cond.decode() if isinstance(cond, np.bytes_) else cond for cond in meg_evo_data['rh']['conditions']])
             meg_labels = {hemi:np.array([name.decode() if isinstance(name, np.bytes_) else name for name in meg_evo_data[hemi]['names']]) for hemi in utils.HEMIS}
             cond_ind = np.where(cond == meg_conds)[0][0]

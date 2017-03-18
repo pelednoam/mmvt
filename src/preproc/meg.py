@@ -112,7 +112,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
-    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}.npz')
+    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}.npz') # atlas, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -339,18 +339,17 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
-def calc_evokes(epochs, events, mri_subject):
+def calc_evokes(epochs, events, mri_subject, norm_by_percentile=False, norm_percs=None):
     try:
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
         evokes = [epochs[event].average() for event in events_keys]
-        save_evokes_to_mmvt(evokes, events_keys, mri_subject)
+        save_evokes_to_mmvt(evokes, events_keys, mri_subject, norm_by_percentile, norm_percs)
         if '{cond}' in EVO:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
                 mne.write_evokeds(get_cond_fname(EVO, event), evoked)
-
         else:
             # evokes = [epochs[event].average() for event in events_keys]
             mne.write_evokeds(EVO, evokes)
@@ -365,7 +364,7 @@ def calc_evokes(epochs, events, mri_subject):
     return flag, evokes
 
 
-def save_evokes_to_mmvt(evokes, events_keys, mri_subject):
+def save_evokes_to_mmvt(evokes, events_keys, mri_subject, norm_by_percentile=False, norm_percs=None):
     fol = op.join(MMVT_DIR, mri_subject, 'meg')
     utils.make_dir(fol)
     meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
@@ -374,6 +373,7 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject):
     data = np.zeros((len(meg_indices), evokes[0].data.shape[1], len(events_keys)))
     for event_ind, event in enumerate(events_keys):
         data[:, :, event_ind] = evokes[event_ind].data[meg_indices]
+    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
     np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
 
@@ -1333,29 +1333,29 @@ def rename_activity_files():
         os.rename(file, op.join(fol, name))
 
 
-def calc_labels_avg(parc, hemi, surf_name, stc=None):
-    if stc is None:
-        stc = mne.read_source_estimate(STC)
-    labels = mne.read_labels_from_annot(SUBJECT, parc, hemi, surf_name)
-    inverse_operator = read_inverse_operator(INV)
-    src = inverse_operator['src']
-
-    plt.close('all')
-    plt.figure()
-
-    for ind, label in enumerate(labels):
-        # stc_label = stc.in_label(label)
-        mean_flip = stc.extract_label_time_course(label, src, mode='mean_flip')
-        mean_flip = np.squeeze(mean_flip)
-        if ind==0:
-            labels_data = np.zeros((len(labels), len(mean_flip)))
-        labels_data[ind, :] = mean_flip
-        plt.plot(mean_flip, label=label.name)
-
-    np.savez(LBL.format('all'), data=labels_data, names=[l.name for l in labels])
-    plt.legend()
-    plt.xlabel('time (ms)')
-    plt.show()
+# def calc_labels_avg(parc, hemi, surf_name, stc=None):
+#     if stc is None:
+#         stc = mne.read_source_estimate(STC)
+#     labels = mne.read_labels_from_annot(SUBJECT, parc, hemi, surf_name)
+#     inverse_operator = read_inverse_operator(INV)
+#     src = inverse_operator['src']
+#
+#     plt.close('all')
+#     plt.figure()
+#
+#     for ind, label in enumerate(labels):
+#         # stc_label = stc.in_label(label)
+#         mean_flip = stc.extract_label_time_course(label, src, mode='mean_flip')
+#         mean_flip = np.squeeze(mean_flip)
+#         if ind==0:
+#             labels_data = np.zeros((len(labels), len(mean_flip)))
+#         labels_data[ind, :] = mean_flip
+#         plt.plot(mean_flip, label=label.name)
+#
+#     np.savez(LBL.format('all'), data=labels_data, names=[l.name for l in labels])
+#     plt.legend()
+#     plt.xlabel('time (ms)')
+#     plt.show()
 
 
 def morph_labels_from_fsaverage(atlas='aparc250', fs_labels_fol='', sub_labels_fol='', n_jobs=6):
@@ -1390,10 +1390,10 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
         do_plot=False, n_jobs=1):
     try:
-        labels_output_fname = LBL.format(hemi) if labels_output_fname_template == '' else \
+        labels_output_fname = LBL.format(atlas, hemi) if labels_output_fname_template == '' else \
             labels_output_fname_template.format(hemi=hemi)
-        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}.npz'.format(hemi))
-        lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(hemi)))
+        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}.npz'.format(atlas, hemi))
+        lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, hemi)))
         if op.isfile(labels_output_fname) and op.isfile(labels_norm_output_fname):
             if not op.isfile(lables_mmvt_fname):
                 shutil.copyfile(labels_output_fname, lables_mmvt_fname)
@@ -1493,11 +1493,11 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     sensors_names = np.array([info['ch_names'][k] for k in picks])
     if 'Event' in sensors_names:
         event_ind = np.where(sensors_names == 'Event')[0]
-        eeg_names = np.delete(sensors_names, event_ind)
-        eeg_pos = np.delete(sensors_pos, event_ind)
+        sensors_names = np.delete(sensors_names, event_ind)
+        sensors_pos = np.delete(sensors_pos, event_ind)
     if pick_meg:
         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
-        output_fname = op.join(MMVT_DIR, mri_subject, 'meg', 'meg_positions.npz')
+        output_fname = op.join(MMVT_DIR, mri_subject, 'meg', 'meg_sensors_positions.npz')
     else:
         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'eeg'))
         output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
@@ -1524,29 +1524,29 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     return ret
 
 
-def plot_labels_data(plot_each_label=False):
-    plt.close('all')
-    for hemi in HEMIS:
-        plt.figure()
-        d = np.load(LBL.format(hemi))
-        for cond_id, cond_name in enumerate(d['conditions']):
-            figures_fol = op.join(SUBJECT_MEG_FOLDER, 'figures', hemi, cond_name)
-            if not op.isdir(figures_fol):
-                os.makedirs(figures_fol)
-            for name, data in zip(d['names'], d['data'][:,:,cond_id]):
-                if plot_each_label:
-                    plt.figure()
-                plt.plot(data, label=name)
-                if plot_each_label:
-                    plt.title('{}: {} {}'.format(cond_name, hemi, name))
-                    plt.xlabel('time (ms)')
-                    plt.savefig(op.join(figures_fol, '{}.jpg'.format(name)))
-                    plt.close()
-            # plt.legend()
-            if not plot_each_label:
-                plt.title('{}: {}'.format(cond_name, hemi))
-                plt.xlabel('time (ms)')
-                plt.show()
+# def plot_labels_data(plot_each_label=False):
+#     plt.close('all')
+#     for hemi in HEMIS:
+#         plt.figure()
+#         d = np.load(LBL.format(hemi))
+#         for cond_id, cond_name in enumerate(d['conditions']):
+#             figures_fol = op.join(SUBJECT_MEG_FOLDER, 'figures', hemi, cond_name)
+#             if not op.isdir(figures_fol):
+#                 os.makedirs(figures_fol)
+#             for name, data in zip(d['names'], d['data'][:,:,cond_id]):
+#                 if plot_each_label:
+#                     plt.figure()
+#                 plt.plot(data, label=name)
+#                 if plot_each_label:
+#                     plt.title('{}: {} {}'.format(cond_name, hemi, name))
+#                     plt.xlabel('time (ms)')
+#                     plt.savefig(op.join(figures_fol, '{}.jpg'.format(name)))
+#                     plt.close()
+#             # plt.legend()
+#             if not plot_each_label:
+#                 plt.title('{}: {}'.format(cond_name, hemi))
+#                 plt.xlabel('time (ms)')
+#                 plt.show()
 
 
 def check_both_hemi_in_stc(events):
@@ -1711,7 +1711,7 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     return flags
 
 
-def calc_evoked_wrapper(subject, mri_subject, conditions, args, flags):
+def calc_evokes_wrapper(subject, mri_subject, conditions, args, flags):
     evoked, epochs = None, None
     if utils.should_run(args, 'calc_epochs'):
         necessary_files = calc_epochs_necessary_files(args)
@@ -1719,7 +1719,8 @@ def calc_evoked_wrapper(subject, mri_subject, conditions, args, flags):
         flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args)
 
     if utils.should_run(args, 'calc_evokes'):
-        flags['calc_evokes'], evoked = calc_evokes(epochs, conditions, mri_subject)
+        flags['calc_evokes'], evoked = calc_evokes(
+            epochs, conditions, mri_subject, args.norm_by_percentile, args.norm_percs)
 
     return flags, evoked, epochs
 
@@ -1734,7 +1735,8 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
     return flags, stcs_conds, stcs_num
 
 
-def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags, stcs_num={}):
+def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_method, stcs_conds, args, flags,
+                                          stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
@@ -1751,10 +1753,10 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, s
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_min_max.npz')
-        if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('{hemi}')))):
-            labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('rh'))))
-            labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format('lh'))))
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_min_max.npz'.format(atlas))
+        if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))):
+            labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'rh'))))
+            labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'lh'))))
             labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
             labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
             labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
@@ -1789,13 +1791,13 @@ def main(tup, remote_subject_dir, args, flags):
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
     # flags: calc_evoked
-    flags, evoked, epochs = calc_evoked_wrapper(subject, mri_subject, conditions, args, flags)
+    flags, evoked, epochs = calc_evokes_wrapper(subject, mri_subject, conditions, args, flags)
     # flags: make_forward_solution, calc_inverse_operator
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
     # flags: calc_stc_per_condition
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
-    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, inverse_method, stcs_conds, args, flags, stcs_num)
+    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
@@ -1873,7 +1875,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--l_freq', help='low freq filter', required=False, default=None, type=float)
     parser.add_argument('--h_freq', help='high freq filter', required=False, default=None, type=float)
     parser.add_argument('--pick_meg', help='pick meg events', required=False, default=1, type=au.is_true)
-    parser.add_argument('--pick_eeg', help='pick eeg events', required=False, default=0, type=au.is_true)
+    parser.add_argument('--pick_eeg', help='pick eeg events', required=False, default=1, type=au.is_true)
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)

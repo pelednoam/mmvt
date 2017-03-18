@@ -14,6 +14,7 @@ def add_arguments(parser, arguments):
 def parse_parser(parser, argv=None):
     if not argv is None and not isinstance(argv, list):
         argv = create_arr_args(argv)
+        print('argv: {}'.format(' '.join(argv)))
     if argv is None:
         in_args = vars(parser.parse_args())
     else:

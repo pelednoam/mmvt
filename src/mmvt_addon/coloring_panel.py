@@ -208,11 +208,12 @@ def meg_labels_coloring(override_current_mat=True):
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
-    meg_labels_min, meg_labels_max = np.load(op.join(user_fol, 'meg_labels_min_max.npz'))['labels_diff_minmax']
+    labels_data_fname = op.join(user_fol, 'meg_labels_{}_min_max.npz'.format(bpy.context.scene.atlas))
+    meg_labels_min, meg_labels_max = np.load(labels_data_fname)['labels_diff_minmax']
     data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
     meg_labels_min, meg_labels_max = -data_minmax, data_minmax
     for hemi in hemispheres:
-        labels_data = np.load(op.join(user_fol, 'labels_data_{}.npz'.format(hemi)))
+        labels_data = np.load(op.join(user_fol, 'labels_data_{}_{}.npz'.format(bpy.context.scene.atlas, hemi)))
         meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
                                  hemi, threshold, override_current_mat,
                                  meg_labels_min, meg_labels_max)
@@ -938,7 +939,8 @@ class ColoringMakerPanel(bpy.types.Panel):
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
         meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{hemi}.npz'))
-        meg_labels_data_minmax_exist = op.join(user_fol, 'meg_labels_min_max.npz')
+        meg_labels_data_minmax_exist = op.isfile(
+            op.join(user_fol, 'meg_labels_{}_min_max.npz'.format(bpy.context.scene.atlas)))
 
         # meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
         #     mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))

@@ -86,6 +86,8 @@ add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_electrodes_data = data_panel.load_electrodes_data
+import_meg_sensors = data_panel.import_meg_sensors
+add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
