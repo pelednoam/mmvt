@@ -1430,7 +1430,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                     src = inverse_operator['src']
             # labels = lu.read_hemi_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
             labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
-                                    labels_fol=labels_fol, n_jobs=n_jobs)
+                                    labels_fol=labels_fol, read_only_from_annot=True, n_jobs=n_jobs)
             if len(labels) == 0:
                 raise Exception('No labels!!!')
 
