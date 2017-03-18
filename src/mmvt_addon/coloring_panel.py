@@ -235,8 +235,12 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
         colors_data[:, 0] = 0
     colors = labels_data['colors'] if 'colors' in labels_data else [None] * len(labels_data['names'])
     if not colors_min is None and not colors_max is None:
-        colors_ratio = 256 / (colors_max - colors_min)
-        _addon().set_colorbar_max_min(colors_max, colors_min)
+        if _addon().colorbar_values_are_locked():
+            colors_max, colors_min = _addon().get_colorbar_max_min()
+            colors_ratio = 256 / (colors_max - colors_min)
+        else:
+            colors_ratio = 256 / (colors_max - colors_min)
+            _addon().set_colorbar_max_min(colors_max, colors_min)
     for label_data, label_colors, label_name in zip(labels_data['data'], colors, labels_data['names']):
         label_name = mu.to_str(label_name)
         if label_data.ndim == 0:
@@ -932,15 +936,15 @@ class ColoringMakerPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         user_fol = mu.get_user_fol()
-        aparc_name = bpy.context.scene.atlas
+        atlas = bpy.context.scene.atlas
         faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
         fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{hemi}.npz'))
+        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
         meg_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg_labels_{}_min_max.npz'.format(bpy.context.scene.atlas)))
+            op.join(user_fol, 'meg_labels_{}_min_max.npz'.format(atlas)))
 
         # meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
         #     mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))

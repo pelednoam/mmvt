@@ -1762,7 +1762,9 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
             labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
             labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
             np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
-                     labels_diff_minmax=[labels_diff_min, labels_diff_max] )
+                     labels_diff_minmax=[labels_diff_min, labels_diff_max])
+        else:
+            print("Can't find {}!".format(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))))
         flags['calc_labels_min_max'] = op.isfile(min_max_output_fname)
 
     return flags
