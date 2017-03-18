@@ -77,6 +77,7 @@ def select_roi(roi_name):
 
 
 def select_all_rois():
+    mu.unfilter_graph_editor()
     fmri_parent = bpy.data.objects.get('fMRI')
     if mu.count_fcurves(bpy.data.objects['Brain']) > 0:
         bpy.context.scene.filter_curves_type = 'MEG'
@@ -89,26 +90,31 @@ def select_all_rois():
 
 
 def select_only_subcorticals():
+    mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'MEG'
     select_brain_objects('Subcortical_structures')
 
 
 def select_all_meg_sensors():
+    mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'MEG_sensors'
     select_brain_objects('MEG_sensors')
 
 
 def select_all_eeg():
+    mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'EEG'
     select_brain_objects('EEG_electrodes')
 
 
 def select_all_electrodes():
+    mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'Electrodes'
     select_brain_objects('Deep_electrodes')
 
 
 def select_all_connections():
+    mu.unfilter_graph_editor()
     connection_parent_name = _addon().get_parent_obj_name()
     select_brain_objects(connection_parent_name)
 

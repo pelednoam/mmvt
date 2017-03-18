@@ -272,6 +272,7 @@ class SelectionListener(bpy.types.Operator):
 
         if self.right_clicked:
             if len(bpy.context.selected_objects):
+                mu.unfilter_graph_editor()
                 selected_obj_name = bpy.context.selected_objects[0].name
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:

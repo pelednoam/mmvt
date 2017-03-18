@@ -148,8 +148,11 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
     if bpy.context.scene.selection_type == 'conds':
         _addon().select_roi(ori_closet_object_name)
         obj.select = True
-
         bpy.context.scene.objects.active = obj
+    elif bpy.context.scene.selection_type == 'diff':
+        if bpy.context.scene.filter_items_one_by_one:
+            bpy.data.objects['Brain'].select = True
+            mu.filter_graph_editor(closet_object_name)
     if bpy.context.scene.mark_filter_items:
         if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
             obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
@@ -328,6 +331,7 @@ class ClearFiltering(bpy.types.Operator):
         bpy.data.scenes['Scene'].frame_preview_start = 1
         bpy.types.Scene.closest_curve_str = ''
         bpy.types.Scene.filter_is_on = False
+        mu.unfilter_graph_editor()
         return {"FINISHED"}
 
 

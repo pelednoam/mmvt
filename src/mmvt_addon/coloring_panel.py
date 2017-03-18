@@ -944,7 +944,7 @@ class ColoringMakerPanel(bpy.types.Panel):
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
         meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
         meg_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg_labels_{}_min_max.npz'.format(atlas)))
+            op.join(user_fol, 'meg_labels_{}_minmax.npz'.format(atlas)))
 
         # meg_labels_files_exist = op.isfile(op.join(user_fol, 'labels_vertices_{}.pkl'.format(aparc_name))) and \
         #     mu.hemi_files_exists(op.join(user_fol, 'meg_labels_coloring_{hemi}.npz'))

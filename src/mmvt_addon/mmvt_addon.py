@@ -355,6 +355,7 @@ def main(addon_prefs=None):
     show_hide_connections(False)
     # show_pial()
     mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
+    mmvt_utils.unfilter_graph_editor()
 
 
 
