@@ -1935,7 +1935,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
-    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
+    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip,mean,pca_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
