@@ -48,6 +48,7 @@ def calc_msit(args):
         # remote_subject_meg_dir='/autofs/space/sophia_002/users/DARPA-MEG/project_orig_msit',
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
         reject=False,
+        extract_mode=['mean_flip', 'mean', 'pca_flip']
     ))
     meg.call_main(args)
 

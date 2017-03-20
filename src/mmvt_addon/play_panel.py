@@ -301,7 +301,7 @@ def get_meg_data(per_condition=True):
 def get_meg_labels_data():
     meg_data, meg_colors = OrderedDict(), OrderedDict()
     for hemi in HEMIS:
-        labels_data = np.load(os.path.join(mu.get_user_fol(), 'meg_labels_coloring_{}.npz'.format(hemi)))
+        labels_data = np.load(os.path.join(mu.get_user_fol(), 'meg', 'meg_labels_coloring_{}.npz'.format(hemi)))
         for label_data, label_colors, label_name in zip(labels_data['data'], labels_data['colors'], labels_data['names']):
             meg_data[label_name] = label_data
             meg_colors[label_name] = label_colors

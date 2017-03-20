@@ -6,6 +6,7 @@ import time
 import mmvt_utils as mu
 import selection_panel
 import logging
+from collections import Iterable
 
 STAT_AVG, STAT_DIFF = range(2)
 
@@ -30,6 +31,7 @@ bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bip
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
+bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=[], description="labels data files")
 bpy.types.Scene.add_meg_labels_data = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
@@ -444,56 +446,46 @@ class CreateEEGMesh(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
-    if base_path == '':
-        base_path = mu.get_user_fol()
-    atlas = bpy.context.scene.atlas
-    source_files = [op.join(base_path, '{}labels_data_{}_lh.npz'.format(files_prefix, atlas)),
-                    op.join(base_path, '{}labels_data_{}_rh.npz'.format(files_prefix, atlas)),
-                    op.join(base_path, '{}subcortical_meg_activity.npz'.format(files_prefix))]
+def add_data_to_brain(source_files):
     print('Adding data to Brain')
-    number_of_maximal_time_steps = -1
     conditions = []
-    for input_file in source_files:
-        if not op.isfile(input_file):
-            mu.log_err('{} does not exist!'.format(input_file), logging)
-            continue
-        if 'labels' in input_file and not bpy.context.scene.add_meg_labels_data:
-            continue
-        if 'subcortical' in input_file and not bpy.context.scene.add_meg_subcorticals_data:
-            continue
-        f = np.load(input_file)
-        print('{} loaded'.format(input_file))
-        number_of_maximal_time_steps = max(number_of_maximal_time_steps, len(f['data'][0]))
+    for f in source_files:
+        T = len(f['data'][0])
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
             cur_obj = bpy.data.objects[obj_name]
-            if not cur_obj.animation_data is None:
-                # print('{} has already fcurves'.format(obj_name))
-                continue
-            print('keyframing {}'.format(obj_name))
-            for cond_ind, cond_str in enumerate(f['conditions']):
-                cond_str = cond_str.astype(str)
-                # Set the values to zeros in the first and last frame for current object(current label)
-                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
+            fcurves_num = mu.count_fcurves(cur_obj)
+            if fcurves_num < len(f['conditions']):
+                print('keyframing {}'.format(obj_name))
+                for cond_ind, cond_str in enumerate(f['conditions']):
+                    cond_str = cond_str.astype(str)
+                    # Set the values to zeros in the first and last frame for current object(current label)
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, len(f['data'][0]) + 2)
+    
+                    # For every time point insert keyframe to current object
+                    for ind, t in enumerate(data[:, cond_ind]):
+                        mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, t, ind + 2)
+    
+                    # remove the orange keyframe sign in the fcurves window
+                    fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
+                    mod = fcurves.modifiers.new(type='LIMITS')
+            else:
+                for fcurve_ind, fcurve in enumerate(cur_obj.animation_data.action.fcurves):
+                    fcurve.keyframe_points[0].co[1] = 0
+                    fcurve.keyframe_points[-1].co[1] = 0
+                    for t in range(T):
+                        fcurve.keyframe_points[t + 1].co[1] = data[t, fcurve_ind]
 
-                # For every time point insert keyframe to current object
-                for ind, timepoint in enumerate(data[:, cond_ind]):
-                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, timepoint, ind + 2)
-
-                # remove the orange keyframe sign in the fcurves window
-                fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
-                mod = fcurves.modifiers.new(type='LIMITS')
         conditions.extend(f['conditions'])
     try:
         bpy.ops.graph.previewrange_set()
     except:
         pass
 
-    bpy.types.Scene.maximal_time_steps = number_of_maximal_time_steps
+    bpy.types.Scene.maximal_time_steps = T
     for obj in bpy.data.objects:
         obj.select = False
     if bpy.data.objects.get(' '):
@@ -502,27 +494,21 @@ def add_data_to_brain(base_path='', files_prefix='', objs_prefix=''):
     print('Finished keyframing!!')
 
 
-def add_data_to_parent_brain_obj(stat=STAT_DIFF, self=None):
-    base_path = mu.get_user_fol()
-    brain_obj = bpy.data.objects['Brain']
-    atlas = bpy.context.scene.atlas
-    labels_data_file = 'labels_data_{}_{}.npz' # if stat else 'labels_data_no_conds_{hemi}.npz'
-    brain_sources = [op.join(base_path, labels_data_file.format(atlas, hemi)) for hemi in mu.HEMIS]
-    subcorticals_obj = bpy.data.objects['Subcortical_structures']
-    subcorticals_sources = [op.join(base_path, 'subcortical_meg_activity.npz')]
-
-    if bpy.context.scene.add_meg_labels_data:
-        add_data_to_parent_obj(brain_obj, brain_sources, stat)
-    if bpy.context.scene.add_meg_subcorticals_data:
-        add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat)
-    mu.view_all_in_graph_editor()
+# def add_data_to_parent_brain_obj(brain_sources, subcorticals_sources, stat=STAT_DIFF):
+#     if bpy.context.scene.add_meg_labels_data:
+#         brain_obj = bpy.data.objects['Brain']
+#         add_data_to_parent_obj(brain_obj, brain_sources, stat)
+#     if bpy.context.scene.add_meg_subcorticals_data:
+#         subcorticals_obj = bpy.data.objects['Subcortical_structures']
+#         add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, stat)
+#     mu.view_all_in_graph_editor()
 
 
 def add_fmri_dynamics_to_parent_obj():
     brain_obj = create_empty_if_doesnt_exists('fMRI')
     measure = bpy.context.scene.fMRI_dynamic_files.split(' ')[-1]
-    source = [op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
-        bpy.context.scene.atlas, measure, hemi)) for hemi in mu.HEMIS]
+    source = [np.load(op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
+        bpy.context.scene.atlas, measure, hemi))) for hemi in mu.HEMIS]
     add_data_to_parent_obj(brain_obj, source, STAT_AVG)
     mu.view_all_in_graph_editor()
 
@@ -547,17 +533,11 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
-def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
+def add_data_to_parent_obj(parent_obj, source_files, stat):
     sources = {}
-    parent_obj.animation_data_clear()
-    if isinstance(source_files, str):
+    if not isinstance(source_files, Iterable):
         source_files = [source_files]
-    for input_file in source_files:
-        if not op.isfile(input_file):
-            mu.log_err("Can't load file {}!".format(input_file), logging)
-            continue
-        print('loading {}'.format(input_file))
-        f = np.load(input_file)
+    for f in source_files:
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
             # Check if there is only one condition
@@ -583,21 +563,32 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
     T = len(sources[sources_names[0]]) + 2
-    now = time.time()
-    for obj_counter, source_name in enumerate(sources_names):
-        mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
-        data = sources[source_name]
-        # Set the values to zeros in the first and last frame for Brain object
-        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
+    fcurves_num = mu.count_fcurves(parent_obj)
+    if fcurves_num < len(sources_names):
+        parent_obj.animation_data_clear()
+        now = time.time()
+        for obj_counter, source_name in enumerate(sources_names):
+            mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
+            data = sources[source_name]
+            # Set the values to zeros in the first and last frame for Brain object
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T)
 
-        # For every time point insert keyframe to the main Brain object
-        for ind in range(data.shape[0]):
-            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+            # For every time point insert keyframe to the main Brain object
+            for ind in range(data.shape[0]):
+                mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
 
-        # remove the orange keyframe sign in the fcurves window
-        fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
-        mod = fcurves.modifiers.new(type='LIMITS')
+            # remove the orange keyframe sign in the fcurves window
+            fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
+            mod = fcurves.modifiers.new(type='LIMITS')
+    else:
+        for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+            fcurve_name = mu.get_fcurve_name(fcurve)
+            fcurve.keyframe_points[0].co[1] = 0
+            fcurve.keyframe_points[-1].co[1] = 0
+            T = min([len(fcurve.keyframe_points) - 1, len(sources[fcurve_name])])
+            for t in range(T):
+                fcurve.keyframe_points[t + 1].co[1] = sources[fcurve_name][t]
 
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -606,25 +597,27 @@ def add_data_to_parent_obj(parent_obj, source_files, stat, self=None):
 
 class AddDataToBrain(bpy.types.Operator):
     bl_idname = "mmvt.brain_add_data"
-    bl_label = "add_data2 brain"
+    bl_label = "add_data brain"
     bl_options = {"UNDO"}
     current_root_path = ''
 
     def invoke(self, context, event=None):
-        # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        add_data_to_brain()
-        bpy.types.Scene.brain_data_exist = True
-        return {"FINISHED"}
+        base_path = mu.get_user_fol()
+        atlas = bpy.context.scene.atlas
+        labels_extract_method = bpy.context.scene.labels_data_files
+        brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))),
+                         np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))]
+        subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
+        add_data_to_brain(brain_sources)
+        if bpy.context.scene.add_meg_labels_data:
+            brain_obj = bpy.data.objects['Brain']
+            add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
+        if bpy.context.scene.add_meg_subcorticals_data:
+            subcorticals_obj = bpy.data.objects['Subcortical_structures']
+            add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
-
-class AddDataNoCondsToBrain(bpy.types.Operator):
-    bl_idname = "mmvt.brain_add_data_no_conds"
-    bl_label = "add_data no conds brain"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        stat = STAT_DIFF if bpy.context.scene.brain_no_conds_stat == 'diff' else STAT_AVG
-        add_data_to_parent_brain_obj(stat, self)
+        _addon().select_all_rois()
+        mu.view_all_in_graph_editor()
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
 
@@ -639,63 +632,63 @@ class AddfMRIDynamicsToBrain(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class SelectExternalMEGEvoked(bpy.types.Operator):
-    bl_idname = "mmvt.select_external_meg_evoked"
-    bl_label = "select_external_meg_evoked"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
-        evoked_obj = bpy.data.objects.get(evoked_name)
-        if not evoked_obj is None:
-            evoked_obj.select = not evoked_obj.select
-        mu.view_all_in_graph_editor(context)
-        selected_objects = mu.get_selected_objects()
-        mu.change_fcurves_colors(selected_objects)
-        return {"FINISHED"}
-
-
-def get_external_meg_evoked_selected():
-    evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
-    evoked_obj = bpy.data.objects.get(evoked_name)
-    if not evoked_obj is None:
-        return evoked_obj.select
-    else:
-        return False
+# class SelectExternalMEGEvoked(bpy.types.Operator):
+#     bl_idname = "mmvt.select_external_meg_evoked"
+#     bl_label = "select_external_meg_evoked"
+#     bl_options = {"UNDO"}
+#
+#     def invoke(self, context, event=None):
+#         evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
+#         evoked_obj = bpy.data.objects.get(evoked_name)
+#         if not evoked_obj is None:
+#             evoked_obj.select = not evoked_obj.select
+#         mu.view_all_in_graph_editor(context)
+#         selected_objects = mu.get_selected_objects()
+#         mu.change_fcurves_colors(selected_objects)
+#         return {"FINISHED"}
 
 
-def get_meg_evoked_source_files(base_path, files_prefix):
-    source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
-                    op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
-                    op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
-    return source_files
+# def get_external_meg_evoked_selected():
+#     evoked_name = '{}_{}'.format(bpy.context.scene.meg_evoked_files, bpy.context.scene.evoked_objects)
+#     evoked_obj = bpy.data.objects.get(evoked_name)
+#     if not evoked_obj is None:
+#         return evoked_obj.select
+#     else:
+#         return False
 
 
-class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
-    bl_idname = "mmvt.other_subject_meg_evoked"
-    bl_label = "other_subject_meg_evoked"
-    bl_options = {"UNDO"}
+# def get_meg_evoked_source_files(base_path, files_prefix):
+#     source_files = [op.join(base_path, '{}labels_data_lh.npz'.format(files_prefix)),
+#                     op.join(base_path, '{}labels_data_rh.npz'.format(files_prefix)),
+#                     op.join(base_path, '{}sub_cortical_activity.npz'.format(files_prefix))]
+#     return source_files
 
-    def invoke(self, context, event=None):
-        evoked_name = bpy.context.scene.meg_evoked_files
-        files_prefix = '{}_'.format(evoked_name)
-        base_path = op.join(mu.get_user_fol(), 'meg_evoked_files')
-        source_files = get_meg_evoked_source_files(base_path, files_prefix)
-        empty_layer = _addon().BRAIN_EMPTY_LAYER
-        layers_array = bpy.context.scene.layers
-        parent_obj_name = 'External'
-        create_empty_if_doesnt_exists(parent_obj_name, empty_layer, layers_array, parent_obj_name)
-        for input_file in source_files:
-            if not op.isfile(input_file):
-                continue
-            f = np.load(input_file)
-            for label_name in f['names']:
-                mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
-                    _addon().BRAIN_EMPTY_LAYER, parent_obj_name)
 
-        add_data_to_brain(base_path, files_prefix, files_prefix)
-        _meg_evoked_files_update()
-        return {"FINISHED"}
+# class AddOtherSubjectMEGEvokedResponse(bpy.types.Operator):
+#     bl_idname = "mmvt.other_subject_meg_evoked"
+#     bl_label = "other_subject_meg_evoked"
+#     bl_options = {"UNDO"}
+#
+#     def invoke(self, context, event=None):
+#         evoked_name = bpy.context.scene.meg_evoked_files
+#         files_prefix = '{}_'.format(evoked_name)
+#         base_path = op.join(mu.get_user_fol(), 'meg_evoked_files')
+#         source_files = get_meg_evoked_source_files(base_path, files_prefix)
+#         empty_layer = _addon().BRAIN_EMPTY_LAYER
+#         layers_array = bpy.context.scene.layers
+#         parent_obj_name = 'External'
+#         create_empty_if_doesnt_exists(parent_obj_name, empty_layer, layers_array, parent_obj_name)
+#         for input_file in source_files:
+#             if not op.isfile(input_file):
+#                 continue
+#             f = np.load(input_file)
+#             for label_name in f['names']:
+#                 mu.create_empty_in_vertex((0, 0, 0), '{}_{}'.format(evoked_name, label_name),
+#                     _addon().BRAIN_EMPTY_LAYER, parent_obj_name)
+#
+#         add_data_to_brain(base_path, files_prefix, files_prefix)
+#         _meg_evoked_files_update()
+#         return {"FINISHED"}
 
 @mu.tryit
 def add_data_to_electrodes(all_data, meta_data, window_len=None):
@@ -721,8 +714,8 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
-                for ind, timepoint in enumerate(data[:T, cond_ind]):
-                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
+                for ind, t in enumerate(data[:T, cond_ind]):
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), t, ind + 2)
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                 mod = fcurves.modifiers.new(type='LIMITS')
@@ -908,6 +901,8 @@ class DataMakerPanel(bpy.types.Panel):
     evoked_files = []
     externals = []
     eeg_data, eeg_meta = None, None
+    meg_labels_data_exist = False
+    subcortical_meg_data_exist = False
 
     def draw(self, context):
         layout = self.layout
@@ -932,36 +927,28 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
 
-        # if bpy.types.Scene.brain_imported and (not bpy.types.Scene.brain_data_exist):
-        atlas = bpy.context.scene.atlas
-        meg_files = [op.isfile(op.join(mu.get_user_fol(), 'labels_data_{}_lh.npz'.format(atlas))),
-                     op.isfile(op.join(mu.get_user_fol(), 'labels_data_{}_rh.npz'.format(atlas))),
-                     op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz'))]
-        if any(meg_files):
+        if DataMakerPanel.meg_labels_data_exist:
             col = self.layout.column(align=True)
+            col.prop(context.scene, 'labels_data_files', text="")
             col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
-            if meg_files[0] and meg_files[1]:
-                col.prop(context.scene, 'add_meg_labels_data', text="labels")
-            if meg_files[2]:
-                col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
-            if meg_files[0] and meg_files[1]:
-                col.prop(context.scene, 'brain_no_conds_stat', text="")
-                col.operator(AddDataNoCondsToBrain.bl_idname, text="Add no conds data to Brain", icon='FCURVE')
-                col.prop(context.scene, 'import_unknown', text="Import unknown")
-        # if bpy.context.scene.fMRI_dynamic_files != '':
-        #     col.prop(context.scene, 'fMRI_dynamic_files', text="")
-        #     col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
+            col.prop(context.scene, 'add_meg_labels_data', text="labels")
+            col.prop(context.scene, 'import_unknown', text="Import unknown")
+        if DataMakerPanel.subcortical_meg_data_exist:
+            col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
+        if bpy.context.scene.fMRI_dynamic_files != '':
+            col.prop(context.scene, 'fMRI_dynamic_files', text="")
+            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
-        if len(DataMakerPanel.evoked_files) > 0:
-            layout.label(text='External MEG evoked files:')
-            layout.prop(context.scene, 'meg_evoked_files', text="")
-            layout.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
-            if len(DataMakerPanel.externals) > 0:
-                layout.prop(context.scene, 'evoked_objects', text="")
-                select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
-                select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
-                layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
+        # if len(DataMakerPanel.evoked_files) > 0:
+        #     layout.label(text='External MEG evoked files:')
+        #     layout.prop(context.scene, 'meg_evoked_files', text="")
+        #     layout.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
+        #     if len(DataMakerPanel.externals) > 0:
+        #         layout.prop(context.scene, 'evoked_objects', text="")
+        #         select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
+        #         select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
+        #         layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
         if op.isfile(meg_sensors_positions_file):
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
@@ -976,14 +963,14 @@ class DataMakerPanel(bpy.types.Panel):
             col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='COLOR_GREEN')
 
 
-def load_meg_evoked():
-    evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
-    if op.isdir(evoked_fol):
-        DataMakerPanel.evoked_files = evoked_files = glob.glob(op.join(evoked_fol, '*_labels_data_rh.npz'))
-        basenames = [mu.namebase(fname).split('_')[0] for fname in evoked_files]
-        files_items = [(name, name, '', ind) for ind, name in enumerate(basenames)]
-        bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(
-            items=files_items, description="meg_evoked_files", update=meg_evoked_files_update)
+# def load_meg_evoked():
+#     evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
+#     if op.isdir(evoked_fol):
+#         DataMakerPanel.evoked_files = evoked_files = glob.glob(op.join(evoked_fol, '*_labels_data_rh.npz'))
+#         basenames = [mu.namebase(fname).split('_')[0] for fname in evoked_files]
+#         files_items = [(name, name, '', ind) for ind, name in enumerate(basenames)]
+#         bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(
+#             items=files_items, description="meg_evoked_files", update=meg_evoked_files_update)
 
 
 def init(addon):
@@ -991,8 +978,18 @@ def init(addon):
     logging.basicConfig(filename='mmvt_addon.log', level=logging.DEBUG)
     bpy.context.scene.electrodes_radius = 0.15
     atlas = bpy.context.scene.atlas
-    load_meg_evoked()
-    _meg_evoked_files_update()
+    # load_meg_evoked()
+    # _meg_evoked_files_update()
+    labels_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', 'labels_data_{}_*_rh.npz'.format(atlas)))
+    if len(labels_data_files) > 0:
+        DataMakerPanel.meg_labels_data_exist = True
+        files_names = [mu.namebase(fname)[len('labels_data_{}_'.format(atlas)):-3] for fname in labels_data_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
+        bpy.context.scene.labels_data_files = files_names[0]
+    if op.isfile(op.join(mu.get_user_fol(), 'meg', 'subcortical_meg_activity.npz')):
+        DataMakerPanel.subcortical_meg_data_exist = True
+
     electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
     if len(electrodes_positions_files) > 0:
         files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
@@ -1019,7 +1016,7 @@ def register():
         unregister()
         bpy.utils.register_class(DataMakerPanel)
         bpy.utils.register_class(AddDataToElectrodes)
-        bpy.utils.register_class(AddDataNoCondsToBrain)
+        # bpy.utils.register_class(AddDataNoCondsToBrain)
         bpy.utils.register_class(AddDataToBrain)
         bpy.utils.register_class(AddfMRIDynamicsToBrain)
         bpy.utils.register_class(AddDataToEEGSensors)
@@ -1031,8 +1028,8 @@ def register():
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(CreateEEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
-        bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
-        bpy.utils.register_class(SelectExternalMEGEvoked)
+        # bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
+        # bpy.utils.register_class(SelectExternalMEGEvoked)
         # print('Data Panel was registered!')
     except:
         print("Can't register Data Panel!")
@@ -1042,7 +1039,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(DataMakerPanel)
         bpy.utils.unregister_class(AddDataToElectrodes)
-        bpy.utils.unregister_class(AddDataNoCondsToBrain)
+        # bpy.utils.unregister_class(AddDataNoCondsToBrain)
         bpy.utils.unregister_class(AddDataToBrain)
         bpy.utils.unregister_class(AddfMRIDynamicsToBrain)
         bpy.utils.unregister_class(AddDataToEEGSensors)
@@ -1054,8 +1051,8 @@ def unregister():
         bpy.utils.unregister_class(ImportBrain)
         bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
-        bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
-        bpy.utils.unregister_class(SelectExternalMEGEvoked)
+        # bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
+        # bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:
         pass
 

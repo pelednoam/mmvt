@@ -112,7 +112,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
-    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}.npz') # atlas, extract_method, hemi
+    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -1366,7 +1366,7 @@ def labels_to_annot(parc_name, labels_fol='', overwrite=True):
     utils.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
 
 
-def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_mode='mean_flip', src=None):
+def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_modes=('mean_flip'), src=None):
     global_inverse_operator = False
     if '{cond}' not in INV:
         global_inverse_operator = True
@@ -1374,30 +1374,23 @@ def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_mode='me
             inverse_operator = read_inverse_operator(INV)
             src = inverse_operator['src']
 
-    for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
-        if not global_inverse_operator:
-            if src is None:
-                inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
-                src = inverse_operator['src']
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
-        labels_ts = mne.extract_label_time_course(stcs[cond_name], labels, src, mode=extract_mode,
-                                                  return_generator=False, allow_empty=True)
-        np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}'.format(cond_name)), np.array(labels_ts))
+    for extract_mode in extract_modes:
+        for (cond_name, cond_id), stc in zip(events.items(), stcs.values()):
+            if not global_inverse_operator:
+                if src is None:
+                    inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
+                    src = inverse_operator['src']
+            labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
+            labels_ts = mne.extract_label_time_course(stcs[cond_name], labels, src, mode=extract_mode,
+                                                      return_generator=False, allow_empty=True)
+            np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}_{}'.format(cond_name, extract_mode)), np.array(labels_ts))
 
 
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
-        extract_mode='mean_flip', inverse_method='dSPM', positive=False, moving_average_win_size=0,
+        extract_modes=['mean_flip'], inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
         do_plot=False, n_jobs=1):
     try:
-        labels_output_fname = LBL.format(atlas, hemi) if labels_output_fname_template == '' else \
-            labels_output_fname_template.format(hemi=hemi)
-        labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}.npz'.format(atlas, hemi))
-        lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, hemi)))
-        # if op.isfile(labels_output_fname) and op.isfile(labels_norm_output_fname):
-        #     if not op.isfile(lables_mmvt_fname):
-        #         shutil.copyfile(labels_output_fname, lables_mmvt_fname)
-        #         return True
         if stcs is None:
             stcs = {}
             for cond in events.keys():
@@ -1418,7 +1411,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
 
         conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
         conditions = []
-        labels_data = None
+        labels_data = {}
 
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
@@ -1440,17 +1433,18 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 stc_cond = [stc_cond]
                 stc_cond_num = 1
             for stc_ind, stc in enumerate(stc_cond):
-                for ind, label in enumerate(labels):
-                    mean_flip = stc.extract_label_time_course(label, src, mode=extract_mode, allow_empty=True)
-                    mean_flip = np.squeeze(mean_flip)
-                    # Set flip to be always positive
-                    # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
-                    if labels_data is None:
-                        T = len(stc.times)
-                        labels_data = np.zeros((len(labels), T, len(stcs), stc_cond_num))
-                    labels_data[ind, :, conds_incdices[cond_id], stc_ind] = mean_flip
-                    if do_plot:
-                        plt.plot(labels_data[ind, :, conds_incdices[cond_id]], label=label.name)
+                for em in extract_modes:
+                    for ind, label in enumerate(labels):
+                        mean_flip = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
+                        mean_flip = np.squeeze(mean_flip)
+                        # Set flip to be always positive
+                        # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
+                        if em not in labels_data:
+                            T = len(stc.times)
+                            labels_data[em] = np.zeros((len(labels), T, len(stcs), stc_cond_num))
+                        labels_data[em][ind, :, conds_incdices[cond_id], stc_ind] = mean_flip
+                        if do_plot:
+                            plt.plot(labels_data[em][ind, :, conds_incdices[cond_id]], label=label.name)
 
             if do_plot:
                 plt.xlabel('time (ms)')
@@ -1459,19 +1453,29 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 # plt.show()
                 plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-        labels_data = labels_data.squeeze()
-        if positive or moving_average_win_size > 0:
-            labels_data = utils.make_evoked_smooth_and_positive(labels_data, positive, moving_average_win_size)
-        print('Saving to {}'.format(labels_output_fname))
         labels_names = [utils.to_str(l.name) for l in labels]
-        np.savez(labels_output_fname, data=labels_data, names=labels_names, conditions=conditions)
-        # Normalize the data
-        data_max, data_min = utils.get_data_max_min(labels_data, norm_by_percentile, norm_percs)
-        max_abs = utils.get_max_abs(data_max, data_min)
-        labels_data = labels_data / max_abs
-        np.savez(labels_norm_output_fname, data=labels_data, names=labels_names, conditions=conditions)
-        shutil.copyfile(labels_output_fname, lables_mmvt_fname)
-        flag = True
+        for em in extract_modes:
+            labels_data[em] = labels_data[em].squeeze()
+            if positive or moving_average_win_size > 0:
+                labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
+
+            labels_output_fname = LBL.format(atlas, em, hemi) if labels_output_fname_template == '' else \
+                labels_output_fname_template.format(hemi=hemi)
+            labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}_{}.npz'.format(
+                atlas, em, hemi))
+            lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi)))
+            print('Saving to {}'.format(labels_output_fname))
+
+            np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
+            # Normalize the data
+            data_max, data_min = utils.get_data_max_min(labels_data[em], norm_by_percentile, norm_percs)
+            max_abs = utils.get_max_abs(data_max, data_min)
+            labels_data[em] = labels_data[em] / max_abs
+            np.savez(labels_norm_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
+            shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+
+        flag = np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi))))
+                       for em in extract_modes])
     except:
         print(traceback.format_exc())
         print('Error in calc_labels_avg_per_condition inv')
@@ -1595,9 +1599,9 @@ def test_labels_coloring(subject, atlas):
             data_no_t[ind] = data[ind, 0]
         colors = utils.mat_to_colors(data)
         colors_no_t = utils.arr_to_colors(data_no_t)[:, :3]
-        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg_labels_coloring_{}.npz'.format(hemi)),
+        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg', 'meg_labels_coloring_{}.npz'.format(hemi)),
             data=data, colors=colors, names=labels_names[hemi])
-        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
+        np.savez(op.join(MMVT_SUBJECT_FOLDER, 'meg', 'meg_labels_coloring_no_t{}.npz'.format(hemi)),
             data=data_no_t, colors=colors_no_t, names=labels_names[hemi])
         # plt.plot(range(T), data.T)
         # plt.show()
@@ -1742,7 +1746,7 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
-                args.atlas, hemi, conditions, extract_mode=args.extract_mode,
+                args.atlas, hemi, conditions, extract_modes=args.extract_mode,
                 inverse_method=inverse_method, positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
@@ -1753,24 +1757,26 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        flags['calc_labels_min_max'] = calc_labels_minmax(atlas)
+        flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode)
     return flags
 
 
-def calc_labels_minmax(atlas):
-    min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_minmax.npz'.format(atlas))
-    if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))):
-        labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'rh'))))
-        labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'lh'))))
-        labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
-        labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
-        labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
-        labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
-        np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
-                 labels_diff_minmax=[labels_diff_min, labels_diff_max])
-    else:
-        print("Can't find {}!".format(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))))
-    return op.isfile(min_max_output_fname)
+def calc_labels_minmax(atlas, extract_modes):
+    for em in extract_modes:
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em))
+        if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))):
+            labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, 'rh'))))
+            labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, 'lh'))))
+            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
+            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
+            labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
+            labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
+            np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
+                     labels_diff_minmax=[labels_diff_min, labels_diff_max])
+        else:
+            print("Can't find {}!".format(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, em, '{hemi}')))))
+    return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
+                   for em in extract_modes])
 
 
 # def calc_labels_data_from_activity_map(mri_subject, atlas):
@@ -1929,7 +1935,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
-    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip')
+    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)

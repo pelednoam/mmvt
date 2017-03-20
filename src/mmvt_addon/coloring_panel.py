@@ -208,7 +208,7 @@ def meg_labels_coloring(override_current_mat=True):
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
-    labels_data_minimax = np.load(op.join(user_fol, 'meg_labels_{}_minmax.npz'.format(bpy.context.scene.atlas)))
+    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(bpy.context.scene.atlas)))
     meg_labels_min, meg_labels_max = labels_data_minimax['labels_diff_minmax'] \
         if bpy.context.scene.meg_labels_coloring_type == 'diff' else labels_data_minimax['labels_minmax']
     data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
@@ -960,9 +960,9 @@ class ColoringMakerPanel(bpy.types.Panel):
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
+        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
         meg_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg_labels_{}_minmax.npz'.format(atlas)))
+            op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
         electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
                                  op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
         electrodes_stim_files_exist = len(glob.glob(op.join(
@@ -1081,7 +1081,7 @@ def init(addon):
     conditions = get_condditions_from_labels_fcurves()
     meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
     meg_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'meg_labels_{}_minmax.npz'.format(atlas)))
+        op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
     if len(conditions) > 0 and meg_labels_data_exist and meg_labels_data_minmax_exist:
         items = [('diff', 'Conditions differece', '', 0)]
         items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
