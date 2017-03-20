@@ -239,7 +239,7 @@ def appearance_draw(self, context):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
     if bpy.data.objects.get('MEG_sensors'):
         show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
-    if bpy.data.objects.get('EEG_electrodes'):
+    if bpy.data.objects.get('EEG_sensors'):
         show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(_addon().get_parent_obj_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')

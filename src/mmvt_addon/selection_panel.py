@@ -104,7 +104,7 @@ def select_all_meg_sensors():
 def select_all_eeg():
     mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'EEG'
-    select_brain_objects('EEG_electrodes')
+    select_brain_objects('EEG_sensors')
 
 
 def select_all_electrodes():
@@ -219,7 +219,7 @@ class SelectAllEEG(bpy.types.Operator):
         # elif bpy.context.scene.selection_type == 'spec_cond':
         #     mu.filter_graph_editor(bpy.context.scene.conditions_selection)
         # else:
-        mu.change_fcurves_colors(bpy.data.objects['EEG_electrodes'].children)
+        mu.change_fcurves_colors(bpy.data.objects['EEG_sensors'].children)
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -325,7 +325,7 @@ def change_window():
     if data_type == 'eeg':
         now = time.time()
         data, meta = _addon().eeg_data_and_meta()
-        obj_name = 'EEG_electrodes'
+        obj_name = 'EEG_sensors'
         ch_names = meta['names']
         points_in_sec = int(1 / meta['dt'])
         window_len = get_window_length(obj_name)
@@ -405,7 +405,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('MEG_sensors'):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
-        if bpy.data.objects.get('EEG_electrodes'):
+        if bpy.data.objects.get('EEG_sensors'):
             layout.operator(SelectAllEEG.bl_idname, text="EEG", icon='BORDER_RECT')
         if bpy.data.objects.get(_addon().get_parent_obj_name()) and \
                 bpy.data.objects[_addon().get_parent_obj_name()].animation_data:

@@ -428,7 +428,7 @@ class ImportEEG(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_electrodes')
+        import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors')
         bpy.types.Scene.eeg_imported = True
         print('EEG sensors importing is Finished ')
         return {"FINISHED"}
@@ -540,8 +540,8 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
     else:
         data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
         meta = DataMakerPanel.meg_meta = np.load(meta_fname)
-        # add_data_to_electrodes(data, meta, window_len=2)
-        add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat, window_len=2)
+        add_data_to_electrodes(data, meta)
+        add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat)
         bpy.types.Scene.eeg_data_exist = True
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -711,19 +711,29 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
             mu.log_err("{} doesn't exist!".format(obj_name), logging)
             continue
         cur_obj = bpy.data.objects[obj_name]
-        for cond_ind, cond_str in enumerate(meta_data['conditions']):
-            cond_str = cond_str.astype(str)
-            # Set the values to zeros in the first and last frame for current object(current label)
-            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
-            mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, T + 2)
+        fcurves_num = mu.count_fcurves(cur_obj)
+        if fcurves_num < len(meta_data['conditions']):
+            for cond_ind, cond_str in enumerate(meta_data['conditions']):
+                cond_str = cond_str.astype(str)
+                # Set the values to zeros in the first and last frame for current object(current label)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, T + 2)
 
-            print('keyframing ' + obj_name + ' object in condition ' + cond_str)
-            # For every time point insert keyframe to current object
-            for ind, timepoint in enumerate(data[:T, cond_ind]):
-                mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
-            # remove the orange keyframe sign in the fcurves window
-            fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
-            mod = fcurves.modifiers.new(type='LIMITS')
+                print('keyframing ' + obj_name + ' object in condition ' + cond_str)
+                # For every time point insert keyframe to current object
+                for ind, timepoint in enumerate(data[:T, cond_ind]):
+                    mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), timepoint, ind + 2)
+                # remove the orange keyframe sign in the fcurves window
+                fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
+                mod = fcurves.modifiers.new(type='LIMITS')
+        else:
+            for fcurve_ind, fcurve in enumerate(cur_obj.animation_data.action.fcurves):
+                fcurve.keyframe_points[0].co[1] = 0
+                fcurve.keyframe_points[-1].co[1] = 0
+                for t in range(T):
+                    fcurve.keyframe_points[t + 1].co[1] = data[t, fcurve_ind]
+
+
     conditions = meta_data['conditions']
     print('Finished keyframing!!')
     return conditions
@@ -732,7 +742,6 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
 @mu.tryit
 def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None):
     # todo: merge with add_data_to_brain_parent_obj, same code
-    parent_obj.animation_data_clear()
     sources = {}
     # for obj_name, data in zip(f['names'], f['data']):
     all_data_stat = meta['stat'] if 'stat' in meta else [None] * len(meta['names'])
@@ -749,19 +758,30 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     sources_names = sorted(list(sources.keys()))
     N = len(sources_names)
     # T = _addon().get_max_time_steps() # len(sources[sources_names[0]]) + 2
-    now = time.time()
-    for obj_counter, source_name in enumerate(sources_names):
-        mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
-        data = sources[source_name]
-        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
+    fcurves_num = mu.count_fcurves(parent_obj)
+    if fcurves_num < len(sources_names):
+        now = time.time()
+        parent_obj.animation_data_clear()
+        for obj_counter, source_name in enumerate(sources_names):
+            mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
+            data = sources[source_name]
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
 
-        for ind in range(T):
-            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+            for ind in range(T):
+                mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
 
-        fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
-        mod = fcurves.modifiers.new(type='LIMITS')
+            fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
+            mod = fcurves.modifiers.new(type='LIMITS')
+    else:
+        for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+            fcurve_name = mu.get_fcurve_name(fcurve)
+            fcurve.keyframe_points[0].co[1] = 0
+            fcurve.keyframe_points[-1].co[1] = 0
+            for t in range(T):
+                fcurve.keyframe_points[t + 1].co[1] = sources[fcurve_name][t]
 
+    mu.view_all_in_graph_editor()
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
@@ -807,7 +827,7 @@ class AddDataToEEGSensors(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        parnet_name = 'EEG_electrodes'
+        parnet_name = 'EEG_sensors'
         parent_obj = bpy.data.objects.get(parnet_name)
         if parent_obj is None:
             layers_array = [False] * 20
@@ -945,7 +965,7 @@ class DataMakerPanel(bpy.types.Panel):
         if op.isfile(meg_sensors_positions_file):
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
-        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz):
+        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz) and bpy.data.objects.get('MEG_sensors'):
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='COLOR_GREEN')
 
         if op.isfile(eeg_sensors_positions_file):

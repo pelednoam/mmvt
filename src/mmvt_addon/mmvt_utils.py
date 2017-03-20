@@ -542,7 +542,7 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_SUBCORTEX
     elif obj.parent.name == 'Deep_electrodes':
         obj_type = OBJ_TYPE_ELECTRODE
-    elif obj.parent.name == 'EEG_electrodes':
+    elif obj.parent.name == 'EEG_sensors':
         obj_type = OBJ_TYPE_EEG
     elif obj.parent.name in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         obj_type = OBJ_TYPE_CEREBELLUM

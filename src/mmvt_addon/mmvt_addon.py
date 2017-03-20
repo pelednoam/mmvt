@@ -95,6 +95,7 @@ select_all_electrodes = selection_panel.select_all_electrodes
 select_all_eeg = selection_panel.select_all_eeg
 select_only_subcorticals = selection_panel.select_only_subcorticals
 select_all_rois = selection_panel.select_all_rois
+select_all_meg_sensors = selection_panel.select_all_meg_sensors
 deselect_all = selection_panel.deselect_all
 set_selection_type = selection_panel.set_selection_type
 conditions_diff = selection_panel.conditions_diff

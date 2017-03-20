@@ -68,7 +68,7 @@ def find_obj_with_val():
     if parent_obj:
         if parent_obj.name == 'Deep_electrodes':
             print('filtering electrodes')
-            filter_electrode_func(closet_object_name)
+            filter_electrode_or_sensor(closet_object_name)
             bpy.context.scene.cursor_location = bpy.data.objects[closet_object_name].location
         elif connections_panel_exist and parent_obj.name == _addon().get_parent_obj_name():
             connections_panel.find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target)
@@ -119,13 +119,13 @@ def clear_filtering():
             for obj in subhierarchy.children:
                 obj.active_material = new_mat
 
-    for parent_name in ['Deep_electrodes', 'EEG_electrodes']:
+    for parent_name in ['Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         if bpy.data.objects.get(parent_name):
             for obj in bpy.data.objects[parent_name].children:
-                de_select_electrode(obj)
+                de_select_electrode_and_sensor(obj)
 
 
-def de_select_electrode(obj, call_create_and_set_material=True):
+def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
     # safety check, if something happened to the electrode's material
     if call_create_and_set_material:
@@ -170,7 +170,7 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
     bpy.types.Scene.filter_is_on = True
 
 
-def filter_electrode_func(elec_name):
+def filter_electrode_or_sensor(elec_name):
     elec_obj = bpy.data.objects[elec_name]
     if bpy.context.scene.mark_filter_items:
         FilteringMakerPanel.electrodes_colors[elec_name] = _addon().get_obj_color(elec_obj)
@@ -196,14 +196,14 @@ def deselect_all_objects():
         elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
             obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
         elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
-                bpy.data.objects.get('EEG_electrodes', None) and obj.parent == bpy.data.objects['EEG_electrodes']:
-            de_select_electrode(obj)
+                bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
+            de_select_electrode_and_sensor(obj)
 
 
 def filter_items_update(self, context):
     deselect_all_objects()
-    if bpy.context.scene.filter_curves_type in ['Electrodes', 'EEG']:
-        filter_electrode_func(bpy.context.scene.filter_items)
+    if bpy.context.scene.filter_curves_type in ['Electrodes', 'EEG', 'MEG_sensors']:
+        filter_electrode_or_sensor(bpy.context.scene.filter_items)
     elif bpy.context.scene.filter_curves_type == 'MEG':
         filter_roi_func(bpy.context.scene.filter_items)
     mu.view_all_in_graph_editor(context)
@@ -323,6 +323,8 @@ class ClearFiltering(bpy.types.Operator):
         if type_of_filter == 'MEG':
             _addon().select_all_rois()
             _addon().clear_cortex()
+        elif type_of_filter == 'MEG_sensors':
+            _addon().select_all_meg_sensors()
         elif type_of_filter == 'Electrodes':
             _addon().select_all_electrodes()
         elif type_of_filter == 'EEG':
@@ -400,8 +402,7 @@ class Filtering(bpy.types.Operator):
         print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
-    def filter_electrodes(self, electrodes_parent_name, data, meta):
-        print('filter_electrodes')
+    def filter_electrodes_or_sensors(self, parent_name, data, meta):
         # source_files = [op.join(self.current_activity_path, current_file_to_upload)]
         objects_indices, names, self.filter_values = self.get_object_to_filter([], data, meta['names'])
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
@@ -409,24 +410,24 @@ class Filtering(bpy.types.Operator):
             return
         for obj in bpy.data.objects:
             obj.select = False
-        electrodes_parent_obj = bpy.data.objects[electrodes_parent_name]
-        for obj in electrodes_parent_obj.children:
+        parent_obj = bpy.data.objects[parent_name]
+        for obj in parent_obj.children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
         if bpy.context.scene.selection_type == 'diff':
             filter_obj_names = [names[ind] for ind in objects_indices]
-            for fcurve in electrodes_parent_obj.animation_data.action.fcurves:
+            for fcurve in parent_obj.animation_data.action.fcurves:
                 con_name = mu.get_fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
-            electrodes_parent_obj.select = True
+            parent_obj.select = True
         else:
-            electrodes_parent_obj.select = False
+            parent_obj.select = False
 
         for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
             if bpy.data.objects.get(names[objects_indices[ind]]):
                 orig_name = bpy.data.objects[names[objects_indices[ind]]].name
-                filter_electrode_func(orig_name)
+                filter_electrode_or_sensor(orig_name)
             else:
                 print("Can't find {}!".format(names[objects_indices[ind]]))
 
@@ -492,6 +493,7 @@ class Filtering(bpy.types.Operator):
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
         files_names = {'MEG': 'labels_data_{}_{}.npz'.format(bpy.context.scene.atlas, '{hemi}'),
+                       'MEG_sensors': op.join('meg', 'meg_sensors_evoked_data.npy'),
                        'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz'),
                        'EEG': op.join('eeg', 'eeg_data.npz')}
         current_file_to_upload = files_names[self.type_of_filter]
@@ -519,13 +521,17 @@ class Filtering(bpy.types.Operator):
                 # todo: should decide which one to pick
                 # current_file_to_upload = current_file_to_upload.format(
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
-            self.filter_electrodes('Deep_electrodes', data, meta)
+            self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
             data = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'))
             meta = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
-            self.filter_electrodes('EEG_electrodes', data, meta)
+            self.filter_electrodes_or_sensors('EEG_sensors', data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
+        elif self.type_of_filter == 'MEG_sensors':
+            data = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy'))
+            meta = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz'))
+            self.filter_electrodes_or_sensors('MEG_sensors', data, meta)
 
         if bpy.context.scene.filter_items_one_by_one:
             update_filter_items(self.topK, self.objects_indices, self.filter_objects)
