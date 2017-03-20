@@ -137,7 +137,11 @@ def create_folder_link(real_fol, link_fol, overwrite=True):
         else:
             if overwrite and op.islink(link_fol):
                 os.remove(link_fol)
-            os.symlink(real_fol, link_fol)
+            try:
+                os.symlink(real_fol, link_fol)
+            except:
+                print('Problem with creating {} link to {}'.format(link_fol, real_fol))
+
 
 
 def message_box(text, title='', style=1):
