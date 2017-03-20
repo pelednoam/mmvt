@@ -907,10 +907,12 @@ def clear_colors():
     ColoringMakerPanel.what_is_colored = set()
 
 
+bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
+    items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('no', 'no', '', 1)], description="fMRI files")
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
@@ -972,6 +974,7 @@ class ColoringMakerPanel(bpy.types.Panel):
 
         if faces_verts_exist:
             if meg_files_exist and meg_data_maxmin_file_exist:
+                layout.prop(context.scene, 'meg_activitiy_type', '')
                 layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                     layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
