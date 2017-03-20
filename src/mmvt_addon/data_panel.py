@@ -937,7 +937,7 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
         if bpy.context.scene.fMRI_dynamic_files != '':
             col.prop(context.scene, 'fMRI_dynamic_files', text="")
-            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='COLOR_GREEN')
+            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         # if len(DataMakerPanel.evoked_files) > 0:
@@ -953,14 +953,14 @@ class DataMakerPanel(bpy.types.Panel):
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
         if op.isfile(meg_data_npy) or op.isfile(meg_data_npz) and bpy.data.objects.get('MEG_sensors'):
-            col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='COLOR_GREEN')
+            col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
         if op.isfile(eeg_sensors_positions_file):
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
         # if op.isfile(eeg_data):
         if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
-            col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='COLOR_GREEN')
+            col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
 
 
 # def load_meg_evoked():
