@@ -1753,21 +1753,24 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_minmax.npz'.format(atlas))
-        if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))):
-            labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'rh'))))
-            labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'lh'))))
-            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
-            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
-            labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
-            labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
-            np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
-                     labels_diff_minmax=[labels_diff_min, labels_diff_max])
-        else:
-            print("Can't find {}!".format(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))))
-        flags['calc_labels_min_max'] = op.isfile(min_max_output_fname)
-
+        flags['calc_labels_min_max'] = calc_labels_minmax(atlas)
     return flags
+
+
+def calc_labels_minmax(atlas):
+    min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_labels_{}_minmax.npz'.format(atlas))
+    if utils.both_hemi_files_exist(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))):
+        labels_data_rh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'rh'))))
+        labels_data_lh = np.load(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, 'lh'))))
+        labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
+        labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
+        labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
+        labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
+        np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
+                 labels_diff_minmax=[labels_diff_min, labels_diff_max])
+    else:
+        print("Can't find {}!".format(op.join(MMVT_DIR, MRI_SUBJECT, op.basename(LBL.format(atlas, '{hemi}')))))
+    return op.isfile(min_max_output_fname)
 
 
 # def calc_labels_data_from_activity_map(mri_subject, atlas):
