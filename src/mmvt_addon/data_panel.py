@@ -533,6 +533,16 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
+def add_meg_data_to_parent_obj():
+    base_path = mu.get_user_fol()
+    atlas = bpy.context.scene.atlas
+    labels_extract_method = bpy.context.scene.labels_data_files
+    brain_obj = bpy.data.objects['Brain']
+    brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_{}.npz'.format(
+        atlas, labels_extract_method, hemi))) for hemi in mu.HEMIS]
+    add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
+
+
 def add_data_to_parent_obj(parent_obj, source_files, stat):
     sources = {}
     if not isinstance(source_files, Iterable):
@@ -903,6 +913,7 @@ class DataMakerPanel(bpy.types.Panel):
     eeg_data, eeg_meta = None, None
     meg_labels_data_exist = False
     subcortical_meg_data_exist = False
+    fMRI_dynamic_exist = False
 
     def draw(self, context):
         layout = self.layout
@@ -935,7 +946,7 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'import_unknown', text="Import unknown")
         if DataMakerPanel.subcortical_meg_data_exist:
             col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
-        if bpy.context.scene.fMRI_dynamic_files != '':
+        if DataMakerPanel.fMRI_dynamic_exist:
             col.prop(context.scene, 'fMRI_dynamic_files', text="")
             col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
@@ -1002,6 +1013,7 @@ def init(addon):
     fMRI_labels_sources_files = glob.glob(
         op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_*_rh.npz'.format(bpy.context.scene.atlas)))
     if len(fMRI_labels_sources_files) > 0:
+        DataMakerPanel.fMRI_dynamic_exist = True
         files_names = ['fMRI {}'.format(mu.namebase(fname)[len('labels_data_'):-len('_rh')].replace('_', ' '))
                        for fname in fMRI_labels_sources_files if atlas in mu.namebase(fname)]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

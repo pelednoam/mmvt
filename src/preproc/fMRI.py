@@ -549,7 +549,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', rest_template='fsaverage', morph_from_subject='',
+def analyze_resting_state(subject, atlas, fmri_file_template, measures=['mean'], rest_template='fsaverage', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     if fmri_file_template == '':
@@ -557,15 +557,12 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
               '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +
               'These files suppose to be located in {}'.format(op.join(FMRI_DIR, subject)))
         return False
+    utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
     morph_from_subject = subject if morph_from_subject == '' else morph_from_subject
     morph_to_subject = subject if morph_to_subject == '' else morph_to_subject
     figures_dir = op.join(FMRI_DIR, subject, 'figures')
     for hemi in utils.HEMIS:
-        output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, measure, hemi))
-        if op.isfile(output_fname) and not overwrite:
-            print('{} already exist'.format(output_fname))
-            return True
         fmri_fname = convert_fmri_file(fmri_file_template.format(
             subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'),
             from_format=input_format)
@@ -575,14 +572,57 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measure='mean', re
             print('No {} {} labels were found!'.format(morph_from_subject, atlas))
             return False
         # print(max([max(label.vertices) for label in labels]))
-        labels_data, labels_names = lu.calc_time_series_per_label(
-            x, labels, measure, excludes, figures_dir, do_plot, do_plot_all_vertices)
-        utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
-        np.savez(output_fname, data=labels_data, names=labels_names)
-        print('{} was saved'.format(output_fname))
+        for em in measures:
+            output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi))
+            if op.isfile(output_fname) and not overwrite:
+                print('{} already exist'.format(output_fname))
+                return True
+            labels_data, labels_names = lu.calc_time_series_per_label(
+                x, labels, em, excludes, figures_dir, do_plot, do_plot_all_vertices)
+            np.savez(output_fname, data=labels_data, names=labels_names)
+            print('{} was saved'.format(output_fname))
 
-    return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
-        atlas, measure, '{hemi}')))
+    return np.all([utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
+        atlas, em, '{hemi}'))) for em in measures])
+
+
+def calc_labels_minmax(subject, atlas, extract_modes):
+    for em in extract_modes:
+        min_max_output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em))
+        template = op.join(MMVT_DIR, subject, 'fmri', op.basename('labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+        if utils.both_hemi_files_exist(template):
+            labels_data_rh = np.load(template.format(hemi='rh'))
+            labels_data_lh = np.load(template.format(hemi='rh'))
+            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
+            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
+            np.save(min_max_output_fname, [labels_min, labels_max])
+        else:
+            print("Can't find {}!".format(template))
+    return np.all([op.isfile(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+                   for em in extract_modes])
+
+#
+# def save_dynamic_activity_map(fmri_fname):
+#     for hemi in HEMIS:
+#         input_fname = fmri_file_template.format(
+#             subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'
+#         x = nib.load(fmri_fname).get_data()
+#
+#
+#         verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
+#         data = stcs[hemi]
+#         if verts.shape[0] != data.shape[0]:
+#             raise Exception('save_activity_map: wrong number of vertices!')
+#         else:
+#             print('Both {}.pial.ply and the stc file have {} vertices'.format(hemi, data.shape[0]))
+#         fol = '{}'.format(ACT.format(hemi))
+#         utils.delete_folder_files(fol)
+#         # data = data / data_max
+#         now = time.time()
+#         T = data.shape[1]
+#         for t in range(T):
+#             utils.time_to_go(now, t, T, runs_num_to_print=10)
+#             np.save(op.join(fol, 't{}'.format(t)), data[:, t])
 
 
 def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
@@ -917,6 +957,9 @@ def main(subject, remote_subject_dir, args, flags):
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
+    if 'calc_labels_minmax' in args.function:
+        flags['calc_labels_minmax'] = calc_labels_minmax(subject, args.atlas, args.labels_extract_mode)
+
     if 'clean_resting_state_data' in args.function:
         clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template,
                                  remote_fmri_dir=remote_fmri_dir)
@@ -969,7 +1012,7 @@ def read_cmd_args(argv=None):
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
-    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean')
+    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
     parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
     parser.add_argument('--morph_labels_to_subject', help='', required=False, default='')
     parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)

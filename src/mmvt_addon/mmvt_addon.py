@@ -81,7 +81,7 @@ bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import_brain = data_panel.import_brain
-add_data_to_parent_brain_obj = data_panel.add_data_to_parent_brain_obj
+add_data_to_parent_obj = data_panel.add_data_to_parent_obj
 add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
@@ -139,9 +139,9 @@ calc_colors = coloring_panel.calc_colors
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
 clear_filtering = filter_panel.clear_filtering
-de_select_electrode = filter_panel.de_select_electrode
+de_select_electrode_and_sensor = filter_panel.de_select_electrode_and_sensor
 filter_roi_func = filter_panel.filter_roi_func
-filter_electrode_func = filter_panel.filter_electrode_func
+filter_electrode_or_sensor = filter_panel.filter_electrode_or_sensor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Rendering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 load_camera = render_panel.load_camera
 grab_camera = render_panel.grab_camera

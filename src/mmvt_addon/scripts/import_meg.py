@@ -28,7 +28,7 @@ def import_meg(subject_fname):
     args = read_args(su.get_python_argv())
     mmvt = su.init_mmvt_addon()
     try:
-        mmvt.add_data_to_parent_brain_obj(args.stat)
+        mmvt.add_data_to_parent_obj(args.stat)
     except:
         logging.error('Error in add_data_to_parent_brain_obj!')
         logging.error(traceback.format_exc())
