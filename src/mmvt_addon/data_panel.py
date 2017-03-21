@@ -41,6 +41,8 @@ bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], descriptio
 
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
 bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
+bpy.types.Scene.fmri_labels_extract_method = bpy.props.StringProperty(default='mean')
+
 
 def _addon():
     return DataMakerPanel.addon

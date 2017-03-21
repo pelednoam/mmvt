@@ -591,11 +591,9 @@ def calc_labels_minmax(subject, atlas, extract_modes):
         min_max_output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em))
         template = op.join(MMVT_DIR, subject, 'fmri', op.basename('labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
-            labels_data_rh = np.load(template.format(hemi='rh'))
-            labels_data_lh = np.load(template.format(hemi='rh'))
-            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
-            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
-            np.save(min_max_output_fname, [labels_min, labels_max])
+            labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
+            np.save(min_max_output_fname, [min([np.min(d['data']) for d in labels_data]),
+                                           max([np.max(d['data']) for d in labels_data])])
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))

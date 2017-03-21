@@ -1766,12 +1766,11 @@ def calc_labels_minmax(atlas, extract_modes):
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em))
         template = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
-            labels_data_rh = np.load(template.format(hemi='rh'))
-            labels_data_lh = np.load(template.format(hemi='lh'))
-            labels_min = min([np.min(labels_data_rh['data']), np.min(labels_data_lh['data'])])
-            labels_max = max([np.max(labels_data_rh['data']), np.max(labels_data_lh['data'])])
-            labels_diff_min = min([np.min(np.diff(labels_data_rh['data'])), np.min(np.diff(labels_data_lh['data']))])
-            labels_diff_max = max([np.max(np.diff(labels_data_rh['data'])), np.max(np.diff(labels_data_lh['data']))])
+            labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
+            labels_min = min([np.min(d['data']) for d in labels_data])
+            labels_max = max([np.max(d['data']) for d in labels_data])
+            labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
+            labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
             np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
                      labels_diff_minmax=[labels_diff_min, labels_diff_max])
         else:

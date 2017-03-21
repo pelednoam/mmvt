@@ -11,8 +11,8 @@ import traceback
 from functools import partial
 
 HEMIS = mu.HEMIS
-(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_CLUSTERS, WIC_ELECTRODES, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM,
-    WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(10)
+(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_ELECTRODES, WIC_ELECTRODES_SOURCES,
+ WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(11)
 
 
 def _addon():
@@ -216,13 +216,31 @@ def meg_labels_coloring(override_current_mat=True):
     meg_labels_min, meg_labels_max = -data_minmax, data_minmax
     for hemi in hemispheres:
         labels_data = np.load(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
-        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
-                                 hemi, threshold, override_current_mat,
-                                 meg_labels_min, meg_labels_max)
+        labels_coloring_hemi(
+            labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, bpy.context.scene.meg_labels_coloring_type,
+            override_current_mat, meg_labels_min, meg_labels_max)
 
 
-def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, override_current_mat=True,
-                             colors_min=None, colors_max=None):
+def fmri_labels_coloring(override_current_mat=True):
+    ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
+    init_activity_map_coloring('FMRI')
+    threshold = bpy.context.scene.coloring_threshold
+    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    user_fol = mu.get_user_fol()
+    atlas, em = bpy.context.scene.atlas, bpy.context.scene.fmri_labels_extract_method
+    labels_min, labels_max = np.load(
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+    data_minmax = max(map(abs, [labels_min, labels_max]))
+    labels_min, labels_max = -data_minmax, data_minmax
+    for hemi in hemispheres:
+        labels_data = np.load(op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
+        labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
+                                 hemi, threshold, 'avg', override_current_mat,
+                                 labels_min, labels_max)
+
+
+def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
+                         override_current_mat=True, colors_min=None, colors_max=None):
     now = time.time()
     colors_ratio = None
     labels_names = ColoringMakerPanel.labels_vertices['labels_names']
@@ -248,11 +266,12 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
         if label_data.ndim == 0:
             label_data = np.array([label_data])
         if not colors_min is None and not colors_max is None:
-            if bpy.context.scene.meg_labels_coloring_type == 'diff':
-                label_data = np.squeeze(np.diff(label_data))
-            else:
-                cond_ind = np.where(labels_data['conditions'] == bpy.context.scene.meg_labels_coloring_type)[0]
-                label_data = np.squeeze(label_data[:, cond_ind])
+            if label_data.ndim > 1:
+                if labels_coloring_type == 'diff':
+                    label_data = np.squeeze(np.diff(label_data))
+                else:
+                    cond_ind = np.where(labels_data['conditions'] == labels_coloring_type)[0]
+                    label_data = np.squeeze(label_data[:, cond_ind])
             label_colors = calc_colors(label_data, colors_min, colors_ratio)
         else:
             label_colors = np.array(label_colors)
@@ -262,13 +281,16 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
         #         cond_inds = np.where(labels_data['conditions'] == bpy.context.scene.conditions_selection)[0]
         #         if len(cond_inds) == 0:
         #             print("!!! Can't find the current condition in the data['conditions'] !!!")
-        #             return {"FINISHED"}
+        #             return
         #         label_colors = label_colors[:, cond_inds[0], :]
         #         label_data = label_data[:, cond_inds[0]]
         label_index = labels_names[hemi].index(label_name)
         label_vertices = np.array(labels_vertices[hemi][label_index])
         if len(label_vertices) > 0:
-            label_data_t, label_colors_t = (label_data, label_colors) if no_t else (label_data[t], label_colors[t])
+            if no_t:
+                label_data_t, label_colors_t = label_data, label_colors
+            else:
+                label_data_t, label_colors_t = (label_data[t], label_colors[t]) if 0 < t < len(label_data) else (0, 0)
             # print('coloring {} with {}'.format(label_name, label_colors_t))
             if not colors_min is None and not colors_max is None:
                 colors_data[label_vertices] = label_data_t
@@ -287,7 +309,7 @@ def meg_labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, overri
             cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
         activity_map_obj_coloring(
             cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
-    print('Finish meg_labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
+    print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
 @mu.timeit
@@ -554,7 +576,7 @@ def color_objects(objects_names, colors, data):
             continue
         labels_data = dict(data=np.array(data[obj_type]), colors=colors[obj_type], names=objects_names[obj_type])
         # print('color hemi {}: {}'.format(hemi, labels_names))
-        meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi)
+        labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts, hemi, labels_coloring_type='avg')
     clear_subcortical_regions()
     if mu.OBJ_TYPE_SUBCORTEX in objects_names:
         for region, color in zip(objects_names[mu.OBJ_TYPE_SUBCORTEX], colors[mu.OBJ_TYPE_SUBCORTEX]):
@@ -673,7 +695,7 @@ def color_electrodes_sources():
         # print('electrodes source: color {} with {}'.format(region, color))
         color_subcortical_region(region, color)
     for hemi in mu.HEMIS:
-        meg_labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
+        labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
 
 
 def color_eeg_helmet():
@@ -882,7 +904,7 @@ class ColorMegLabels(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class ColorFmri(bpy.types.Operator):
+class ColorfMRI(bpy.types.Operator):
     bl_idname = "mmvt.fmri_color"
     bl_label = "mmvt fmri color"
     bl_options = {"UNDO"}
@@ -890,6 +912,17 @@ class ColorFmri(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         activity_map_coloring('FMRI')
+        return {"FINISHED"}
+
+
+class ColorfMRILabels(bpy.types.Operator):
+    bl_idname = "mmvt.fmri_labels_color"
+    bl_label = "mmvt fmri labels_color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        fmri_labels_coloring()
         return {"FINISHED"}
 
 
@@ -921,115 +954,6 @@ def clear_colors():
     for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
         clear_colors_from_parent_childrens(root)
     ColoringMakerPanel.what_is_colored = set()
-
-
-bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
-    items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
-bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
-bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
-bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files")
-bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
-bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
-bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
-bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
-
-
-class ColoringMakerPanel(bpy.types.Panel):
-    bl_space_type = "GRAPH_EDITOR"
-    bl_region_type = "UI"
-    bl_context = "objectmode"
-    bl_category = "mmvt"
-    bl_label = "Activity Maps"
-    addon = None
-    fMRI = {}
-    fMRI_clusters = {}
-    labels_vertices = {}
-    electrodes_sources_labels_data = None
-    electrodes_sources_subcortical_data = None
-    what_is_colored = set()
-    fmri_activity_data_min, fmri_activity_data_max, fmri_activity_colors_ratio = None, None, None
-
-    def draw(self, context):
-        layout = self.layout
-        user_fol = mu.get_user_fol()
-        atlas = bpy.context.scene.atlas
-        faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
-        fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
-        # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
-        meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
-        meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        meg_ext_meth = bpy.context.scene.meg_labels_extract_method
-        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
-            atlas, meg_ext_meth, '{hemi}')))
-        meg_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
-        fmri_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
-        fmri_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-        electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
-                                 op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
-        electrodes_stim_files_exist = len(glob.glob(op.join(
-            mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
-        electrodes_labels_files_exist = len(glob.glob(op.join(
-            mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
-            len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
-        manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
-        manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
-            '{}_groups.csv'.format(bpy.context.scene.atlas)))
-        if _addon() is None:
-            connections_files_exit = False
-        else:
-            connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
-        # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
-        layout.prop(context.scene, 'coloring_threshold', text="Threshold")
-        layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
-
-        if faces_verts_exist:
-            if meg_files_exist and meg_data_maxmin_file_exist:
-                col = layout.box().column()
-                # mu.add_box_line(col, '', 'MEG', 0.4)
-                col.prop(context.scene, 'meg_activitiy_type', '')
-                col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-                if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
-                    col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
-            if meg_labels_data_exist and meg_labels_data_minmax_exist:
-                col = layout.box().column()
-                # col.label('MEG labels')
-                col.prop(context.scene, 'meg_labels_coloring_type', '')
-                col.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
-            if len(fmri_files) > 0:
-                col = layout.box().column()
-                # col.label('fMRI')
-                col.prop(context.scene, "fmri_files", text="")
-                col.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
-            if manually_color_files_exist:
-                col = layout.box().column()
-                # col.label('Manual coloring files')
-                col.prop(context.scene, "coloring_files", text="")
-                col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-            if manually_groups_file_exist:
-                col = layout.box().column()
-                # col.label('Groups')
-                col.prop(context.scene, 'labels_groups', text="")
-                col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
-            # if volumetric_coloring_files_exist:
-            #     layout.prop(context.scene, "vol_coloring_files", text="")
-            #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
-        # if not bpy.data.objects.get('eeg_helmet', None) is None:
-        #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
-        if electrodes_files_exist:
-            layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
-        if electrodes_labels_files_exist:
-            layout.prop(context.scene, "electrodes_sources_files", text="")
-            layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
-        if electrodes_stim_files_exist:
-            layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
-        if connections_files_exit:
-            layout.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
-        layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
 def get_fMRI_activity(hemi, clusters=False):
@@ -1069,6 +993,126 @@ def read_groups_labels(colors):
     return order_groups
 
 
+def draw(self, context):
+    layout = self.layout
+    user_fol = mu.get_user_fol()
+    atlas = bpy.context.scene.atlas
+    faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
+    fmri_files = glob.glob(
+        op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
+    meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
+    meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
+    meg_ext_meth = bpy.context.scene.meg_labels_extract_method
+    meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
+        atlas, meg_ext_meth, '{hemi}')))
+    meg_labels_data_minmax_exist = op.isfile(
+        op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
+    fmri_labels_data_exist = mu.hemi_files_exists(
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
+    fmri_labels_data_minmax_exist = op.isfile(
+        op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
+    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
+                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
+    electrodes_stim_files_exist = len(glob.glob(op.join(
+        mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
+    electrodes_labels_files_exist = len(glob.glob(op.join(
+        mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
+                                    len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
+    manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
+    manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
+                                                   '{}_groups.csv'.format(bpy.context.scene.atlas)))
+    if _addon() is None:
+        connections_files_exit = False
+    else:
+        connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
+    # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
+    layout.prop(context.scene, 'coloring_threshold', text="Threshold")
+    layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
+
+    if faces_verts_exist:
+        if meg_files_exist and meg_data_maxmin_file_exist:
+            col = layout.box().column()
+            # mu.add_box_line(col, '', 'MEG', 0.4)
+            col.prop(context.scene, 'meg_activitiy_type', '')
+            col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+            if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
+                col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
+        if meg_labels_data_exist and meg_labels_data_minmax_exist:
+            col = layout.box().column()
+            # col.label('MEG labels')
+            col.prop(context.scene, 'meg_labels_coloring_type', '')
+            col.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
+        if len(fmri_files) > 0:
+            col = layout.box().column()
+            # col.label('fMRI')
+            col.prop(context.scene, "fmri_files", text="")
+            col.operator(ColorfMRI.bl_idname, text="Plot fMRI", icon='POTATO')
+        if ColoringMakerPanel.fmri_labels_exist:
+            if len(fmri_files) == 0:
+                col = layout.box().column()
+            col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
+        if manually_color_files_exist:
+            col = layout.box().column()
+            # col.label('Manual coloring files')
+            col.prop(context.scene, "coloring_files", text="")
+            col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+        if manually_groups_file_exist:
+            col = layout.box().column()
+            # col.label('Groups')
+            col.prop(context.scene, 'labels_groups', text="")
+            col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
+            # if volumetric_coloring_files_exist:
+            #     layout.prop(context.scene, "vol_coloring_files", text="")
+            #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
+    # if not bpy.data.objects.get('eeg_helmet', None) is None:
+    #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+    if electrodes_files_exist:
+        layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+    if electrodes_labels_files_exist:
+        layout.prop(context.scene, "electrodes_sources_files", text="")
+        layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
+    if electrodes_stim_files_exist:
+        layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
+    if connections_files_exit:
+        layout.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
+    layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+
+
+bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
+    items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
+bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
+bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
+bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
+bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files")
+bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
+bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
+bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
+bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
+
+
+class ColoringMakerPanel(bpy.types.Panel):
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
+    bl_context = "objectmode"
+    bl_category = "mmvt"
+    bl_label = "Activity Maps"
+    addon = None
+    fMRI = {}
+    fMRI_clusters = {}
+    labels_vertices = {}
+    electrodes_sources_labels_data = None
+    electrodes_sources_subcortical_data = None
+    what_is_colored = set()
+    fmri_activity_data_min, fmri_activity_data_max, fmri_activity_colors_ratio = None, None, None
+    fmri_labels_exist = False
+
+    def draw(self, context):
+        draw(self, context)
+
+
 def init(addon):
     ColoringMakerPanel.addon = addon
     user_fol = mu.get_user_fol()
@@ -1084,6 +1128,7 @@ def init(addon):
     init_meg_activity_map()
     init_meg_labels_coloring_type()
     init_fmri_files()
+    init_fmri_labels()
     init_electrodes_sources()
     init_coloring_files()
     init_labels_groups()
@@ -1122,6 +1167,17 @@ def init_meg_labels_coloring_type():
         bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
             items=items, description="meg_labels_coloring_type")
         bpy.context.scene.meg_labels_coloring_type = 'diff'
+
+
+def init_fmri_labels():
+    user_fol = mu.get_user_fol()
+    atlas = bpy.context.scene.atlas
+    em = bpy.context.scene.fmri_labels_extract_method
+    fmri_labels_data_exist = mu.hemi_files_exists(
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+    fmri_labels_data_minmax_exist = op.isfile(
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+    ColoringMakerPanel.fmri_labels_exist = fmri_labels_data_exist and fmri_labels_data_minmax_exist
 
 
 def init_fmri_files():
@@ -1199,7 +1255,8 @@ def register():
         bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
         bpy.utils.register_class(ColorMegLabels)
-        bpy.utils.register_class(ColorFmri)
+        bpy.utils.register_class(ColorfMRI)
+        bpy.utils.register_class(ColorfMRILabels)
         bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ColorEEGHelmet)
         bpy.utils.register_class(ColorConnections)
@@ -1220,7 +1277,8 @@ def unregister():
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)
         bpy.utils.unregister_class(ColorMegLabels)
-        bpy.utils.unregister_class(ColorFmri)
+        bpy.utils.unregister_class(ColorfMRI)
+        bpy.utils.unregister_class(ColorfMRILabels)
         bpy.utils.unregister_class(ColorClustersFmri)
         bpy.utils.unregister_class(ColorEEGHelmet)
         bpy.utils.unregister_class(ColorConnections)
