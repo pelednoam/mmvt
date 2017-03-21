@@ -475,7 +475,7 @@ def load_and_show_npy(subject, npy_file, hemi):
 def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrite_volume_mgz=True):
     if op.isfile(volume_fname_template.format(format='mgh')) and \
             (not op.isfile(volume_fname_template.format(format='mgz')) or overwrite_volume_mgz):
-        mri_convert(volume_fname_template, 'mgh', 'mgz')
+        fu.mri_convert(volume_fname_template, 'mgh', 'mgz')
         format = 'mgz'
     else:
         volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
@@ -537,7 +537,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
     volume_type = 'mni305'
     volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
     if not op.isfile(volume_file.format(format=contrast_format)):
-        mri_convert(volume_file, 'nii.gz', contrast_format)
+        fu.mri_convert(volume_file, 'nii.gz', contrast_format)
     volume_fname = volume_file.format(format=contrast_format)
     subject_volume_fname = op.join(volume_fol, '{}_{}'.format(subject, volume_name))
     if not op.isfile(subject_volume_fname):
@@ -560,7 +560,6 @@ def analyze_resting_state(subject, atlas, fmri_file_template, measures=['mean'],
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
     morph_from_subject = subject if morph_from_subject == '' else morph_from_subject
-    morph_to_subject = subject if morph_to_subject == '' else morph_to_subject
     figures_dir = op.join(FMRI_DIR, subject, 'figures')
     for hemi in utils.HEMIS:
         fmri_fname = convert_fmri_file(fmri_file_template.format(
@@ -599,61 +598,94 @@ def calc_labels_minmax(subject, atlas, extract_modes):
     return np.all([op.isfile(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
                    for em in extract_modes])
 
-#
-# def save_dynamic_activity_map(fmri_fname):
-#     for hemi in HEMIS:
-#         input_fname = fmri_file_template.format(
-#             subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'
-#         x = nib.load(fmri_fname).get_data()
-#
-#
-#         verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
-#         data = stcs[hemi]
-#         if verts.shape[0] != data.shape[0]:
-#             raise Exception('save_activity_map: wrong number of vertices!')
-#         else:
-#             print('Both {}.pial.ply and the stc file have {} vertices'.format(hemi, data.shape[0]))
-#         fol = '{}'.format(ACT.format(hemi))
-#         utils.delete_folder_files(fol)
-#         # data = data / data_max
-#         now = time.time()
-#         T = data.shape[1]
-#         for t in range(T):
-#             utils.time_to_go(now, t, T, runs_num_to_print=10)
-#             np.save(op.join(fol, 't{}'.format(t)), data[:, t])
+
+def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverage', format='mgz', overwrite=False):
+    if fmri_file_template == '':
+        fmri_file_template = '*{hemi}*{format}'
+    input_fname_template = fmri_file_template.format(
+        subject=subject, morph_to_subject=template, hemi='{hemi}', format=format)
+    for hemi in utils.HEMIS:
+        fol = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi))
+        # Check if there is a morphed file
+        fmri_fname = get_fmri_fname(subject, '*morphed*{}*{}*{}'.format(subject, hemi, format),
+                                            raise_exception=False)
+        if not op.isfile(fmri_fname):
+            fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
+        data = nib.load(fmri_fname).get_data().squeeze()
+        T = data.shape[1]
+        if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T:
+            continue
+        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        file_verts_num, subject_verts_num = data.shape[0], verts.shape[0]
+        if file_verts_num != subject_verts_num:
+            if file_verts_num == FSAVG_VERTS:
+                target_subject = 'fsaverage'
+            elif file_verts_num == FSAVG5_VERTS:
+                target_subject = 'fsaverage5'
+            else:
+                raise Exception('save_activity_map: wrong number of vertices!')
+            sp = fmri_fname.split(hemi)
+            sep = '.' if '.' in utils.namebase(fmri_fname) else '_'
+            target_fname = '{}{}{}{}{}'.format(sp[0], 'morphed{}to{}{}'.format(sep, sep, subject), sep, hemi, sp[1])
+            print('Morphing data from {} to {} -> {}'.format(target_subject, subject, target_fname))
+            fu.surf2surf(target_subject, subject, hemi, fmri_fname, target_fname, cwd=None, print_only=False)
+            if op.isfile(target_fname):
+                fmri_fname = target_fname
+            else:
+                raise Exception('surf2surf: Target file was not created!')
+            data = nib.load(fmri_fname).get_data().squeeze()
+        assert (data.shape[0] == subject_verts_num)
+        utils.delete_folder_files(fol)
+        # data = data / data_max
+        now = time.time()
+        T = data.shape[1]
+        for t in range(T):
+            utils.time_to_go(now, t, T, runs_num_to_print=10)
+            np.save(op.join(fol, 't{}'.format(t)), data[:, t])
+
+    return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
+                   for hemi in utils.HEMIS])
+
+def find_files(fmri_file_template):
+    return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
+            and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
+
+
+def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, raise_exception=True):
+    fmri_fname = ''
+    full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+    files = find_files(full_fmri_file_template)
+    files_num = len(set([utils.namebase(f) for f in files]))
+    if files_num == 1:
+        fmri_fname = files[0]
+    elif files_num == 0:
+        if no_files_were_found_func is None:
+            if raise_exception:
+                raise Exception("Can't find any file in {}!".format(fmri_file_template))
+        else:
+            return no_files_were_found_func()
+    elif files_num > 1:
+        if raise_exception:
+            raise Exception("More than one file can be found in {}! {}".format(full_fmri_file_template, files))
+    return fmri_fname
 
 
 def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
                              fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
 
-    def find_files(fmri_file_template):
-        return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
-                and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
-
-
-    def get_fmri_fname(fmri_file_template):
-        if fmri_file_template == '':
-            fmri_file_template = '*rest*'
-        full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-        files = find_files(full_fmri_file_template)
+    def no_files_were_found():
+        print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
+        files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
+                find_files(op.join(remote_fmri_dir, fmri_file_template))
+        print('files: {}'.format(files))
         files_num = len(set([utils.namebase(f) for f in files]))
         if files_num == 1:
-            fmri_fname = files[0]
-        elif files_num == 0:
-            print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
-            files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
-                    find_files(op.join(remote_fmri_dir, fmri_file_template))
-            print('files: {}'.format(files))
-            files_num = len(set([utils.namebase(f) for f in files]))
-            if files_num == 1:
-                fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
-                utils.make_dir(op.join(FMRI_DIR, subject))
-                shutil.copy(files[0], fmri_fname)
-            else:
-                raise Exception("Can't find any file in {}!".format(full_fmri_file_template))
-        elif files_num > 1:
-            raise Exception("More than one file can be found in {}! {}".format(full_fmri_file_template, files))
-        return fmri_fname
+            fmri_fname = op.join(FMRI_DIR, subject, files[0].split(op.sep)[-1])
+            utils.make_dir(op.join(FMRI_DIR, subject))
+            shutil.copy(files[0], fmri_fname)
+        else:
+            raise Exception("Can't find any file in {}!".format(fmri_file_template))
+
 
     def create_folders_tree(fmri_fname):
         # Fisrt it's needed to create the freesurfer folders tree for the preproc-sess
@@ -691,11 +723,12 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
-
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
     find_trg_subject(trg_subject)
-    fmri_fname = get_fmri_fname(fmri_file_template)
+    if fmri_file_template == '':
+        fmri_file_template = '*rest*'
+    fmri_fname = get_fmri_fname(subject, fmri_file_template, no_files_were_found)
     create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
     # if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
@@ -958,6 +991,11 @@ def main(subject, remote_subject_dir, args, flags):
     if 'calc_labels_minmax' in args.function:
         flags['calc_labels_minmax'] = calc_labels_minmax(subject, args.atlas, args.labels_extract_mode)
 
+    if 'save_dynamic_activity_map' in args.function:
+        flags['save_dynamic_activity_map'] = save_dynamic_activity_map(
+            subject, args.fmri_file_template, template='fsaverage', format='mgz',
+            overwrite=args.overwrite_activity_data)
+
     if 'clean_resting_state_data' in args.function:
         clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template,
                                  remote_fmri_dir=remote_fmri_dir)
@@ -1017,6 +1055,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
     parser.add_argument('--rest_template', help='', required=False, default='fsaverage5')
 

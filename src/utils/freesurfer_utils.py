@@ -30,6 +30,8 @@ warp_buckner_atlas_cmd = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mg
                      '--targ {bunker_atlas_fname} --m3z talairach.m3z ' + \
                      '--o {subjects_dir}/{subject}/mri/{wrap_map_name} --nearest --inv-morph'
 
+mri_surf2surf = 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {source_fname} --trgsubject {target_subject} --trgsurfval {target_fname} --hemi {hemi}'
+
 
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
     temp_output = output_fname is None
@@ -355,3 +357,14 @@ def mgz_to_nii_gz(fmri_fname):
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
     return new_fmri_fname
+
+
+def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False):
+    # 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {source_fname} --trgsubject {target_subject} --trgsurfval {target_fname} --hemi {hemi}'
+    rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
+    rs(mri_surf2surf)
+    if not op.isfile(target_fname):
+        print('Target file was not created!')
+        return False
+    else:
+        return True
