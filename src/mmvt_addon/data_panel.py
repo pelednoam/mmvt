@@ -920,39 +920,35 @@ class DataMakerPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         # layout.prop(context.scene, 'conf_path')
-        col = self.layout.column(align=True)
+        # col = self.layout.column(align=True)
+        col = layout.box().column()
         col.prop(context.scene, 'atlas', text="Atlas")
-        # if not bpy.types.Scene.brain_imported:
-        # col.operator("mmvt.anatomy_preproc", text="Run Preporc", icon='BLENDER')
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
-        # if not bpy.types.Scene.electrodes_imported:
+
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
-        meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
-        meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
-        meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
-        eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
-        eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
         if len(electrodes_positions_files) > 0:
+            col = layout.box().column()
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
             col.prop(context.scene, 'electrodes_positions_files', text="")
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
+            col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
 
         if DataMakerPanel.meg_labels_data_exist:
-            col = self.layout.column(align=True)
+            col = layout.box().column()
             col.prop(context.scene, 'labels_data_files', text="")
             col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
             col.prop(context.scene, 'add_meg_labels_data', text="labels")
             col.prop(context.scene, 'import_unknown', text="Import unknown")
         if DataMakerPanel.subcortical_meg_data_exist:
             col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
+
         if DataMakerPanel.fMRI_dynamic_exist:
+            col = layout.box().column()
             col.prop(context.scene, 'fMRI_dynamic_files', text="")
             col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
-        col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
         # if len(DataMakerPanel.evoked_files) > 0:
         #     layout.label(text='External MEG evoked files:')
         #     layout.prop(context.scene, 'meg_evoked_files', text="")
@@ -962,17 +958,24 @@ class DataMakerPanel(bpy.types.Panel):
         #         select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
         #         select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
         #         layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
-        if op.isfile(meg_sensors_positions_file):
+
+        meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
+        meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+        meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+        eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+        eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
+        eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+
+        if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
+            col = layout.box().column()
             col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
-        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz) and bpy.data.objects.get('MEG_sensors'):
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
-        if op.isfile(eeg_sensors_positions_file):
+        if op.isfile(eeg_sensors_positions_file) and (op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz)):
+            col = layout.box().column()
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
-        # if op.isfile(eeg_data):
-        if op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz):
             col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
 
 
