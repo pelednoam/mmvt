@@ -267,12 +267,11 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         views_options = ['Camera', 'Ortho']
-        next_view = views_options[int(bpy.types.Scene.in_camera_view)]
+        next_view = views_options[int(bpy.context.scene.in_camera_view)]
         icons = ['SCENE', 'MANIPUL']
-        next_icon = icons[int(bpy.types.Scene.in_camera_view)]
+        next_icon = icons[int(bpy.context.scene.in_camera_view)]
         row = layout.row(align=True)
-        row.operator(FlipCameraView.bl_idname, text='Change to '+next_view+' View', icon=next_icon)
-
+        row.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
 
 
 
