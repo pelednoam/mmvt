@@ -40,7 +40,7 @@ bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], de
 bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
 
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
-
+bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
 
 def _addon():
     return DataMakerPanel.addon
@@ -626,7 +626,9 @@ class AddDataToBrain(bpy.types.Operator):
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
+        bpy.context.scene.meg_labels_extract_method = labels_extract_method
         _addon().select_all_rois()
+        _addon().init_meg_labels_coloring_type()
         mu.view_all_in_graph_editor()
         bpy.types.Scene.brain_data_exist = True
         return {"FINISHED"}
@@ -997,7 +999,8 @@ def init(addon):
         files_names = [mu.namebase(fname)[len('labels_data_{}_'.format(atlas)):-3] for fname in labels_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
-        bpy.context.scene.labels_data_files = files_names[0]
+        bpy.context.scene.labels_data_files = bpy.context.scene.meg_labels_extract_method \
+                if bpy.context.scene.meg_labels_extract_method in files_names else files_names[0]
     if op.isfile(op.join(mu.get_user_fol(), 'meg', 'subcortical_meg_activity.npz')):
         DataMakerPanel.subcortical_meg_data_exist = True
 

@@ -135,6 +135,7 @@ set_threshold = coloring_panel.set_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
 color_eeg_helmet = coloring_panel.color_eeg_helmet
 calc_colors = coloring_panel.calc_colors
+init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

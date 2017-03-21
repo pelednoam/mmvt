@@ -208,13 +208,14 @@ def meg_labels_coloring(override_current_mat=True):
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
-    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(bpy.context.scene.atlas)))
+    atlas, em = bpy.context.scene.atlas, bpy.context.scene.meg_labels_extract_method
+    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
     meg_labels_min, meg_labels_max = labels_data_minimax['labels_diff_minmax'] \
         if bpy.context.scene.meg_labels_coloring_type == 'diff' else labels_data_minimax['labels_minmax']
     data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
     meg_labels_min, meg_labels_max = -data_minmax, data_minmax
     for hemi in hemispheres:
-        labels_data = np.load(op.join(user_fol, 'labels_data_{}_{}.npz'.format(bpy.context.scene.atlas, hemi)))
+        labels_data = np.load(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
         meg_labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
                                  hemi, threshold, override_current_mat,
                                  meg_labels_min, meg_labels_max)
@@ -960,9 +961,11 @@ class ColoringMakerPanel(bpy.types.Panel):
         # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
         meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
         meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
-        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, '{hemi}')))
+        meg_ext_meth = bpy.context.scene.meg_labels_extract_method
+        meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
+            atlas, meg_ext_meth, '{hemi}')))
         meg_labels_data_minmax_exist = op.isfile(
-            op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas)))
+            op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
         fmri_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
         fmri_labels_data_minmax_exist = op.isfile(
             op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
@@ -986,19 +989,23 @@ class ColoringMakerPanel(bpy.types.Panel):
 
         if faces_verts_exist:
             if meg_files_exist and meg_data_maxmin_file_exist:
-                layout.prop(context.scene, 'meg_activitiy_type', '')
-                layout.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+                col = layout.box().column()
+                col.prop(context.scene, 'meg_activitiy_type', '')
+                col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
-                    layout.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
+                    col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
             if meg_labels_data_exist and meg_labels_data_minmax_exist:
-                layout.prop(context.scene, 'meg_labels_coloring_type', '')
-                layout.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
+                col = layout.box().column()
+                col.prop(context.scene, 'meg_labels_coloring_type', '')
+                col.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
-                layout.prop(context.scene, "fmri_files", text="")
-                layout.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
+                col = layout.box().column()
+                col.prop(context.scene, "fmri_files", text="")
+                col.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
             if manually_color_files_exist:
-                layout.prop(context.scene, "coloring_files", text="")
-                layout.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+                col = layout.box().column()
+                col.prop(context.scene, "coloring_files", text="")
+                col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
             if manually_groups_file_exist:
                 layout.prop(context.scene, 'labels_groups', text="")
                 layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
@@ -1057,7 +1064,6 @@ def read_groups_labels(colors):
 
 
 def init(addon):
-    from random import shuffle
     ColoringMakerPanel.addon = addon
     user_fol = mu.get_user_fol()
     ColoringMakerPanel.faces_verts = None
@@ -1069,6 +1075,20 @@ def init(addon):
     ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
     ColoringMakerPanel.max_labels_vertices_num = {}
 
+    init_meg_activity_map()
+    init_meg_labels_coloring_type()
+    init_fmri_files()
+    init_electrodes_sources()
+    init_coloring_files()
+    init_labels_groups()
+
+    ColoringMakerPanel.faces_verts = load_faces_verts()
+    bpy.context.scene.coloring_meg_subcorticals = False
+    register()
+
+
+def init_meg_activity_map():
+    user_fol = mu.get_user_fol()
     meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
     meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl')
     if meg_files_exist and op.isfile(meg_data_maxmin_fname):
@@ -1080,11 +1100,16 @@ def init(addon):
         _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('MEG')
 
+
+def init_meg_labels_coloring_type():
+    user_fol = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     conditions = get_condditions_from_labels_fcurves()
-    meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
+    em = bpy.context.scene.meg_labels_extract_method
+    meg_labels_data_exist = mu.hemi_files_exists(
+        op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
     meg_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas)))
+        op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
     if len(conditions) > 0 and meg_labels_data_exist and meg_labels_data_minmax_exist:
         items = [('diff', 'Conditions differece', '', 0)]
         items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
@@ -1092,6 +1117,9 @@ def init(addon):
             items=items, description="meg_labels_coloring_type")
         bpy.context.scene.meg_labels_coloring_type = 'diff'
 
+
+def init_fmri_files():
+    user_fol = mu.get_user_fol()
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
     if len(fmri_files) > 0:
         files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
@@ -1109,6 +1137,9 @@ def init(addon):
             ColoringMakerPanel.fmri_activity_data_min = data_min
             ColoringMakerPanel.fmri_activity_data_max = data_max
 
+
+def init_electrodes_sources():
+    user_fol = mu.get_user_fol()
     electrodes_source_files = glob.glob(op.join(user_fol, 'electrodes', '*_labels_*-rh.npz'))
     if len(electrodes_source_files) > 0:
         files_names = [mu.namebase(fname)[:-len('-rh')] for fname in electrodes_source_files]
@@ -1117,6 +1148,9 @@ def init(addon):
             items=items, description="electrodes sources", update=electrodes_sources_files_update)
         bpy.context.scene.electrodes_sources_files = files_names[0]
 
+
+def init_coloring_files():
+    user_fol = mu.get_user_fol()
     mu.make_dir(op.join(user_fol, 'coloring'))
     manually_color_files = glob.glob(op.join(user_fol, 'coloring', '*.csv'))
     if len(manually_color_files) > 0:
@@ -1124,6 +1158,10 @@ def init(addon):
         coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items, description="Coloring files")
         bpy.context.scene.coloring_files = files_names[0]
+
+
+def init_colume_coloring_files():
+    user_fol = mu.get_user_fol()
     vol_color_files = glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv'))
     if len(vol_color_files) > 0:
         files_names = [mu.namebase(fname) for fname in vol_color_files]
@@ -1132,6 +1170,9 @@ def init(addon):
             items=coloring_items, description="Volumetric Coloring files")
         bpy.context.scene.vol_coloring_files = files_names[0]
 
+
+def init_labels_groups():
+    from random import shuffle
     ColoringMakerPanel.colors = list(set(list(cu.NAMES_TO_HEX.keys())) - set(['black']))
     shuffle(ColoringMakerPanel.colors)
     ColoringMakerPanel.labels_groups = read_groups_labels(ColoringMakerPanel.colors)
@@ -1139,11 +1180,6 @@ def init(addon):
         groups_items = [(gr, gr, '', ind) for ind, gr in enumerate(list(ColoringMakerPanel.labels_groups.keys()))]
         bpy.types.Scene.labels_groups = bpy.props.EnumProperty(
             items=groups_items, description="Groups")
-
-    ColoringMakerPanel.faces_verts = load_faces_verts()
-    bpy.context.scene.coloring_meg_subcorticals = False
-    # ColoringMakerPanel.cm = np.load(op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy'))
-    register()
 
 
 def register():
