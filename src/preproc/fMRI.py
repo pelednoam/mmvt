@@ -549,23 +549,39 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_resting_state(subject, atlas, fmri_file_template, measures=['mean'], rest_template='fsaverage', morph_from_subject='',
+def analyze_4d_fmri(subject, atlas, input_fname_template, measures=['mean'], template='fsaverage', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
-    if fmri_file_template == '':
-        print('You should set the fmri_file_template for something like ' +
-              '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +
-              'These files suppose to be located in {}'.format(op.join(FMRI_DIR, subject)))
-        return False
+    # if fmri_file_template == '':
+    #     print('You should set the fmri_file_template for something like ' +
+    #           '{subject}.siemens.sm6.{morph_to_subject}.{hemi}.b0dc.{format}.\n' +
+    #           'These files suppose to be located in {}'.format(op.join(FMRI_DIR, subject)))
+    #     return False
+    if input_fname_template == '':
+        input_fname_template = '*{hemi}*'
+    input_fname_template = input_fname_template.format(
+        subject=subject, morph_to_subject=template, hemi='{hemi}')
+
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
-    fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+    input_fname_template = op.join(FMRI_DIR, subject, input_fname_template)
     morph_from_subject = subject if morph_from_subject == '' else morph_from_subject
     figures_dir = op.join(FMRI_DIR, subject, 'figures')
     for hemi in utils.HEMIS:
-        fmri_fname = convert_fmri_file(fmri_file_template.format(
-            subject=subject, morph_to_subject=rest_template, hemi=hemi, format='{format}'),
-            from_format=input_format)
+        fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
+        fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
         x = nib.load(fmri_fname).get_data()
+        if x.shape[0] == FSAVG_VERTS:
+            morph_from_subject = 'fsaverage'
+        elif x.shape[0] == FSAVG5_VERTS:
+            morph_from_subject = 'fsaverage5'
+        else:
+            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+            if x.shape[0] == verts.shape[0]:
+                morph_from_subject = subject
+            else:
+                verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+                if x.shape[0] != verts.shape[0]:
+                    print('Wrong morph_from_subject argument!')
         labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
         if len(labels) == 0:
             print('No {} {} labels were found!'.format(morph_from_subject, atlas))
@@ -676,8 +692,9 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
     return fmri_fname
 
 
-def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
+def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
                              fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
+    # fsd: functional subdirectory
 
     def no_files_were_found():
         print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
@@ -733,7 +750,7 @@ def clean_resting_state_data(subject, atlas, fmri_file_template, trg_subject='fs
         raise Exception('Source freesurfer and rerun')
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
-        fmri_file_template = '*rest*'
+        fmri_file_template = '*'
     fmri_fname = get_fmri_fname(subject, fmri_file_template, no_files_were_found)
     create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
@@ -988,8 +1005,8 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
 
-    if 'analyze_resting_state' in args.function:
-        flags['analyze_resting_state'] = analyze_resting_state(
+    if 'analyze_4d_fmri' in args.function:
+        flags['analyze_4d_fmri'] = analyze_4d_fmri(
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.rest_template, args.morph_labels_from_subject,
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
@@ -1002,9 +1019,8 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.fmri_file_template, template='fsaverage', format='mgz',
             overwrite=args.overwrite_activity_data)
 
-    if 'clean_resting_state_data' in args.function:
-        clean_resting_state_data(subject, args.atlas, args.fmri_file_template, args.rest_template,
-                                 remote_fmri_dir=remote_fmri_dir)
+    if 'clean_4d_data' in args.function:
+        clean_4d_data(subject, args.atlas, args.fmri_file_template, args.rest_template, remote_fmri_dir=remote_fmri_dir)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -1054,6 +1070,7 @@ def read_cmd_args(argv=None):
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
+    parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
     parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
     parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
     parser.add_argument('--morph_labels_to_subject', help='', required=False, default='')
@@ -1071,10 +1088,11 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['lh.sphere.reg', 'rh.sphere.reg']}
-    if 'clean_resting_state_data' in args.function or args.function == 'prepare_subject_folder':
+    if 'clean_4d_data' in args.function or args.function == 'prepare_subject_folder':
         args.necessary_files = {'surf': ['rh.thickness', 'lh.thickness', 'rh.white', 'lh.white', 'lh.sphere.reg', 'rh.sphere.reg'],
                                 'mri': ['brainmask.mgz', 'orig.mgz', 'aparc+aseg.mgz'],
-                                'mri:transforms': ['talairach.xfm']}
+                                'mri:transforms': ['talairach.xfm'],
+                                'label': ['lh.cortex.label', 'rh.cortex.label']}
         # 'label': ['lh.cortex.label', 'rh.cortex.label']
     if args.is_pet:
         args.fsfast = False

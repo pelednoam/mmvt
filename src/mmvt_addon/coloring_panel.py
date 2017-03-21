@@ -1068,7 +1068,7 @@ def draw(self, context):
             # col.label('fMRI')
             if len(fmri_files) > 0:
                 col.prop(context.scene, "fmri_files", text="")
-                col.operator(ColorfMRI.bl_idname, text="Plot fMRI", icon='POTATO')
+                col.operator(ColorfMRI.bl_idname, text="Plot fMRI contrast", icon='POTATO')
             if ColoringMakerPanel.fmri_activity_map_exist:
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
@@ -1078,11 +1078,11 @@ def draw(self, context):
             # col.label('Manual coloring files')
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-        if manually_groups_file_exist:
-            col = layout.box().column()
+        # if manually_groups_file_exist:
+        #     col = layout.box().column()
             # col.label('Groups')
-            col.prop(context.scene, 'labels_groups', text="")
-            col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
+            # col.prop(context.scene, 'labels_groups', text="")
+            # col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
             # if volumetric_coloring_files_exist:
             #     layout.prop(context.scene, "vol_coloring_files", text="")
             #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
