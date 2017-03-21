@@ -525,7 +525,7 @@ def init(addon):
     ElecsPanel.addon  = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
-        print("!!!! Can't register electrodes panel, no Deep_electrodes object!!!!")
+        print("Can't register electrodes panel, no Deep_electrodes object")
         return
     mu.make_dir(op.join(mu.get_user_fol(), 'electrodes'))
     sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
@@ -534,7 +534,7 @@ def init(addon):
         if op.isfile(op.join(mu.get_user_fol(), 'sorted_groups.pkl')):
             shutil.move(op.join(mu.get_user_fol(), 'sorted_groups.pkl'), sorted_groups_fname)
         else:
-            print("!!!! Can't register electrodes panel, no sorted groups file!!!!")
+            print("Can't register electrodes panel, no sorted groups file")
             return
     # show_hide_electrodes(True)
     ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)

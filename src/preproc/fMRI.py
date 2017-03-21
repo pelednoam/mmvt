@@ -604,6 +604,8 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
         fmri_file_template = '*{hemi}*{format}'
     input_fname_template = fmri_file_template.format(
         subject=subject, morph_to_subject=template, hemi='{hemi}', format=format)
+    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_minmax.npy')
+    data_min, data_max = [], []
     for hemi in utils.HEMIS:
         fol = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi))
         # Check if there is a morphed file
@@ -613,7 +615,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
             fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
         data = nib.load(fmri_fname).get_data().squeeze()
         T = data.shape[1]
-        if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T:
+        if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T and op.isfile(minmax_fname):
             continue
         verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         file_verts_num, subject_verts_num = data.shape[0], verts.shape[0]
@@ -637,6 +639,8 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
                 raise Exception('surf2surf: Target file was not created!')
             data = nib.load(fmri_fname).get_data().squeeze()
         assert (data.shape[0] == subject_verts_num)
+        data_min.append(np.min(data))
+        data_max.append(np.max(data))
         utils.delete_folder_files(fol)
         now = time.time()
         T = data.shape[1]
@@ -644,6 +648,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
             utils.time_to_go(now, t, T, runs_num_to_print=10)
             np.save(op.join(fol, 't{}'.format(t)), data[:, t])
 
+    np.save(minmax_fname, [min(data_min), max(data_max)])
     return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
                    for hemi in utils.HEMIS])
 

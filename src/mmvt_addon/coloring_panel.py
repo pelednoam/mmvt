@@ -11,8 +11,8 @@ import traceback
 from functools import partial
 
 HEMIS = mu.HEMIS
-(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_ELECTRODES, WIC_ELECTRODES_SOURCES,
- WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(11)
+(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_ELECTRODES,
+ WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(12)
 
 
 def _addon():
@@ -190,15 +190,22 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         if bpy.context.scene.coloring_meg_subcorticals:
             meg_sub_activity = load_meg_subcortical_activity()
         ColoringMakerPanel.what_is_colored.add(WIC_MEG)
-        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_FMRI, WIC_FMRI_CLUSTERS])
+        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_FMRI, WIC_FMRI_CLUSTERS, WIC_FMRI_DYNAMICS])
+        plot_subcorticals = bpy.context.scene.coloring_meg_subcorticals
     elif map_type == 'FMRI':
         if not clusters:
             ColoringMakerPanel.what_is_colored.add(WIC_FMRI)
         else:
             ColoringMakerPanel.what_is_colored.add(WIC_FMRI_CLUSTERS)
-        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS])
+        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS, WIC_FMRI_DYNAMICS])
+        plot_subcorticals = False
+    elif map_type == 'FMRI_DYNAMICS':
+        ColoringMakerPanel.what_is_colored.add(WIC_FMRI_DYNAMICS)
+        mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_CLUSTERS])
+        # todo: support in subcorticals
+        plot_subcorticals = False
     plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters,
-                  plot_subcorticals=bpy.context.scene.coloring_meg_subcorticals)
+                  plot_subcorticals=plot_subcorticals)
     # setup_environment_settings()
 
 
@@ -323,32 +330,35 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     f = None
     for hemi in not_hiden_hemis:
         colors_ratio, data_min = None, None
-        if map_type == 'MEG':
-            fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+        if map_type in ['MEG', 'FMRI_DYNAMICS']:
+            if map_type == 'MEG':
+                fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+                colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
+                data_min, data_max = ColoringMakerPanel.meg_activity_data_minmax
+                cb_title = 'MEG'
+            elif map_type == 'FMRI_DYNAMICS':
+                fname =  op.join(current_root_path, 'fmri', 'activity_map_' + hemi, 't' + frame_str + '.npy')
+                colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
+                data_min, data_max = ColoringMakerPanel.fmri_activity_data_minmax
+                cb_title = 'fMRI'
             if op.isfile(fname):
                 f = np.load(fname)
                 if _addon().colorbar_values_are_locked():
                     data_max, data_min = _addon().get_colorbar_max_min()
                     colors_ratio = 256 / (data_max - data_min)
-                else:
-                    colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
-                    data_min = ColoringMakerPanel.meg_activity_data_min
-                    data_max = ColoringMakerPanel.meg_activity_data_max
-                    _addon().set_colorbar_max_min(data_max, data_min)
-                _addon().set_colorbar_title('MEG')
+                _addon().set_colorbar_max_min(data_max, data_min)
+                _addon().set_colorbar_title(cb_title)
             else:
                 print("Can't load {}".format(fname))
                 return False
         elif map_type == 'FMRI':
-            if not ColoringMakerPanel.fmri_activity_data_min is None and \
-                    not ColoringMakerPanel.fmri_activity_data_max is None:
+            if not ColoringMakerPanel.fmri_activity_data_minmax is None:
                 if _addon().colorbar_values_are_locked():
                     data_max, data_min = _addon().get_colorbar_max_min()
                     colors_ratio = 256 / (data_max - data_min)
                 else:
                     colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
-                    data_min = ColoringMakerPanel.fmri_activity_data_min
-                    data_max = ColoringMakerPanel.fmri_activity_data_max
+                    data_min, data_max = ColoringMakerPanel.fmri_activity_data_minmax
                     _addon().set_colorbar_max_min(data_max, data_min)
                 _addon().set_colorbar_title('fMRI')
             if clusters:
@@ -662,8 +672,7 @@ def fmri_files_update(self, context):
     if op.isfile(fmri_data_maxmin_fname):
         data_min, data_max = mu.load(fmri_data_maxmin_fname)
         ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.fmri_activity_data_min = data_min
-        ColoringMakerPanel.fmri_activity_data_max = data_max
+        ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
 
 
 def electrodes_sources_files_update(self, context):
@@ -882,6 +891,17 @@ class ColorGroupsManually(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorfMRIDynamics(bpy.types.Operator):
+    bl_idname = "mmvt.meg_color"
+    bl_label = "mmvt meg color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        activity_map_coloring('FMRI_DYNAMICS')
+        return {"FINISHED"}
+
+
 class ColorMeg(bpy.types.Operator):
     bl_idname = "mmvt.meg_color"
     bl_label = "mmvt meg color"
@@ -1008,10 +1028,10 @@ def draw(self, context):
         atlas, meg_ext_meth, '{hemi}')))
     meg_labels_data_minmax_exist = op.isfile(
         op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
-    fmri_labels_data_exist = mu.hemi_files_exists(
-        op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
-    fmri_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
+    # fmri_labels_data_exist = mu.hemi_files_exists(
+    #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
+    # fmri_labels_data_minmax_exist = op.isfile(
+    #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
     electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
                              op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
     electrodes_stim_files_exist = len(glob.glob(op.join(
@@ -1043,15 +1063,16 @@ def draw(self, context):
             # col.label('MEG labels')
             col.prop(context.scene, 'meg_labels_coloring_type', '')
             col.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
-        if len(fmri_files) > 0:
+        if len(fmri_files) > 0 or ColoringMakerPanel.fmri_activity_map_exist or ColoringMakerPanel.fmri_labels_exist:
             col = layout.box().column()
             # col.label('fMRI')
-            col.prop(context.scene, "fmri_files", text="")
-            col.operator(ColorfMRI.bl_idname, text="Plot fMRI", icon='POTATO')
-        if ColoringMakerPanel.fmri_labels_exist:
-            if len(fmri_files) == 0:
-                col = layout.box().column()
-            col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
+            if len(fmri_files) > 0:
+                col.prop(context.scene, "fmri_files", text="")
+                col.operator(ColorfMRI.bl_idname, text="Plot fMRI", icon='POTATO')
+            if ColoringMakerPanel.fmri_activity_map_exist:
+                col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
+            if ColoringMakerPanel.fmri_labels_exist:
+                col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
         if manually_color_files_exist:
             col = layout.box().column()
             # col.label('Manual coloring files')
@@ -1106,8 +1127,10 @@ class ColoringMakerPanel(bpy.types.Panel):
     electrodes_sources_labels_data = None
     electrodes_sources_subcortical_data = None
     what_is_colored = set()
-    fmri_activity_data_min, fmri_activity_data_max, fmri_activity_colors_ratio = None, None, None
+    fmri_activity_data_minmax, fmri_activity_colors_ratio = None, None
+    meg_activity_data_minmax, meg_activity_colors_ratio = None, None
     fmri_labels_exist = False
+    fmri_activity_map_exist = False
 
     def draw(self, context):
         draw(self, context)
@@ -1126,6 +1149,7 @@ def init(addon):
     ColoringMakerPanel.max_labels_vertices_num = {}
 
     init_meg_activity_map()
+    init_fmri_activity_map()
     init_meg_labels_coloring_type()
     init_fmri_files()
     init_fmri_labels()
@@ -1145,11 +1169,23 @@ def init_meg_activity_map():
     if meg_files_exist and op.isfile(meg_data_maxmin_fname):
         data_min, data_max = mu.load(meg_data_maxmin_fname)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.meg_activity_data_min = data_min
-        ColoringMakerPanel.meg_activity_data_max = data_max
+        ColoringMakerPanel.meg_activity_data_minmax = (data_min, data_max)
         print('data meg: {}-{}'.format(data_min, data_max))
         _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('MEG')
+
+
+def init_fmri_activity_map():
+    user_fol = mu.get_user_fol()
+    fmri_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'activity_map_{hemi}', 't0.npy'))
+    fmri_data_maxmin_fname = op.join(user_fol, 'fmri', 'activity_map_minmax.npy')
+    if fmri_files_exist and op.isfile(fmri_data_maxmin_fname):
+        ColoringMakerPanel.fmri_activity_map_exist = True
+        data_min, data_max = np.load(fmri_data_maxmin_fname)
+        ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
+        ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
+        _addon().set_colorbar_max_min(data_max, data_min, True)
+        _addon().set_colorbar_title('fMRI')
 
 
 def init_meg_labels_coloring_type():
@@ -1196,8 +1232,7 @@ def init_fmri_files():
         if op.isfile(fmri_data_maxmin_fname):
             data_min, data_max = mu.load(fmri_data_maxmin_fname)
             ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
-            ColoringMakerPanel.fmri_activity_data_min = data_min
-            ColoringMakerPanel.fmri_activity_data_max = data_max
+            ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
 
 
 def init_electrodes_sources():
@@ -1257,6 +1292,7 @@ def register():
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorfMRI)
         bpy.utils.register_class(ColorfMRILabels)
+        bpy.utils.register_class(ColorfMRIDynamics)
         bpy.utils.register_class(ColorClustersFmri)
         bpy.utils.register_class(ColorEEGHelmet)
         bpy.utils.register_class(ColorConnections)
@@ -1279,6 +1315,7 @@ def unregister():
         bpy.utils.unregister_class(ColorMegLabels)
         bpy.utils.unregister_class(ColorfMRI)
         bpy.utils.unregister_class(ColorfMRILabels)
+        bpy.utils.unregister_class(ColorfMRIDynamics)
         bpy.utils.unregister_class(ColorClustersFmri)
         bpy.utils.unregister_class(ColorEEGHelmet)
         bpy.utils.unregister_class(ColorConnections)
