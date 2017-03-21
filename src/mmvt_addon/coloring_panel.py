@@ -990,25 +990,31 @@ class ColoringMakerPanel(bpy.types.Panel):
         if faces_verts_exist:
             if meg_files_exist and meg_data_maxmin_file_exist:
                 col = layout.box().column()
+                # mu.add_box_line(col, '', 'MEG', 0.4)
                 col.prop(context.scene, 'meg_activitiy_type', '')
                 col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
                 if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                     col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
             if meg_labels_data_exist and meg_labels_data_minmax_exist:
                 col = layout.box().column()
+                # col.label('MEG labels')
                 col.prop(context.scene, 'meg_labels_coloring_type', '')
                 col.operator(ColorMegLabels.bl_idname, text="Plot MEG Labels ", icon='POTATO')
             if len(fmri_files) > 0:
                 col = layout.box().column()
+                # col.label('fMRI')
                 col.prop(context.scene, "fmri_files", text="")
                 col.operator(ColorFmri.bl_idname, text="Plot fMRI ", icon='POTATO')
             if manually_color_files_exist:
                 col = layout.box().column()
+                # col.label('Manual coloring files')
                 col.prop(context.scene, "coloring_files", text="")
                 col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
             if manually_groups_file_exist:
-                layout.prop(context.scene, 'labels_groups', text="")
-                layout.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
+                col = layout.box().column()
+                # col.label('Groups')
+                col.prop(context.scene, 'labels_groups', text="")
+                col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
             # if volumetric_coloring_files_exist:
             #     layout.prop(context.scene, "vol_coloring_files", text="")
             #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
