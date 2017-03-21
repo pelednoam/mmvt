@@ -624,6 +624,8 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
                 target_subject = 'fsaverage5'
             else:
                 raise Exception('save_activity_map: wrong number of vertices!')
+            if os.environ.get('FREESURFER_HOME', '') == '':
+                raise Exception('Source freesurfer and rerun')
             sp = fmri_fname.split(hemi)
             sep = '.' if '.' in utils.namebase(fmri_fname) else '_'
             target_fname = '{}{}{}{}{}'.format(sp[0], 'morphed{}to{}{}'.format(sep, sep, subject), sep, hemi, sp[1])
@@ -636,7 +638,6 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
             data = nib.load(fmri_fname).get_data().squeeze()
         assert (data.shape[0] == subject_verts_num)
         utils.delete_folder_files(fol)
-        # data = data / data_max
         now = time.time()
         T = data.shape[1]
         for t in range(T):

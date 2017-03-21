@@ -360,7 +360,6 @@ def mgz_to_nii_gz(fmri_fname):
 
 
 def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False):
-    # 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {source_fname} --trgsubject {target_subject} --trgsurfval {target_fname} --hemi {hemi}'
     rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
     rs(mri_surf2surf)
     if not op.isfile(target_fname):
