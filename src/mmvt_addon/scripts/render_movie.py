@@ -39,6 +39,8 @@ def read_args(argv=None):
 
 def render_movie(subject_fname):
     args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     if args.rel_output_path:
         mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
         if args.output_path == '':
@@ -75,6 +77,7 @@ def load_camera(mmvt, mmvt_dir, args):
         if not su.is_true(cont):
             return
     print('The rendering will be using the camera file in {}'.format(camera_fname))
+    mmvt.load_camera(camera_fname)
     input('Press any ket to continue...')
     return camera_fname
 
