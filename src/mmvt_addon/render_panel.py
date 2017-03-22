@@ -111,7 +111,7 @@ def camera_mode():
     print(ret)
 
 
-def grab_camera(self=None, do_save=True):
+def grab_camera(self=None, do_save=True, overwrite=True):
     RenderFigure.update_camera = False
     bpy.context.scene.X_rotation = X_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.x)
     bpy.context.scene.Y_rotation = Y_rotation = math.degrees(bpy.data.objects['Camera'].rotation_euler.y)
@@ -122,8 +122,9 @@ def grab_camera(self=None, do_save=True):
     if do_save:
         if op.isdir(op.join(mu.get_user_fol(), 'camera')):
             camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
-            mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
-            print('Camera location was saved to {}'.format(camera_fname))
+            if not op.isfile(camera_fname) or overwrite:
+                mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
+                print('Camera location was saved to {}'.format(camera_fname))
         else:
             mu.message(self, "Can't find the folder {}".format(mu.get_user_fol(), 'camera'))
     RenderFigure.update_camera = True
@@ -508,7 +509,7 @@ def init(addon):
     bpy.data.objects['Target'].location.y = 0
     bpy.data.objects['Target'].location.z = 0
     mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
-    grab_camera()
+    grab_camera(overwrite=False)
     update_camera_files()
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
