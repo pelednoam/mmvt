@@ -52,11 +52,11 @@ def render_movie(subject_fname):
     mmvt.set_render_quality(args.quality)
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
-    load_camera(mmvt, mmvt_dir, args)
+    camera_fname = load_camera(mmvt, mmvt_dir, args)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
     su.save_blend_file(subject_fname)
-    mmvt.render_movie(args.play_type, args.play_from, args.play_to, args.play_dt)
+    mmvt.render_movie(args.play_type, args.play_from, args.play_to, camera_fname, args.play_dt)
     su.exit_blender()
 
 
@@ -76,6 +76,7 @@ def load_camera(mmvt, mmvt_dir, args):
             return
     print('The rendering will be using the camera file in {}'.format(camera_fname))
     input('Press any ket to continue...')
+    return camera_fname
 
 
 if __name__ == '__main__':

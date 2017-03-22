@@ -376,11 +376,6 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     current_frame = bpy.context.scene.frame_current
     camera_fnames = [camera_fname] if isinstance(camera_fname, str) else camera_fname
     if image_name == '':
-        # images_names = []
-        # for camera_fname in camera_fnames:
-        #     cur_frame = bpy.context.scene.frame_current
-        #     camera_name = mu.namebase(camera_fname)
-        #     images_names.append('{}_{}'.format(camera_name[len('camera') + 1:], cur_frame))
         images_names = ['{}_{}.png'.format(mu.namebase(camera_fname).replace('camera', ''), current_frame)
                         for camera_fname in  camera_fnames]
         images_names = [n[1:] if n.startswith('_') else n for n in images_names]

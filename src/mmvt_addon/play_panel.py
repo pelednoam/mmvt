@@ -103,7 +103,7 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def render_movie(play_type, play_from, play_to, play_dt=1):
+def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1):
     bpy.context.scene.play_type = play_type
     bpy.context.scene.render_movie = True
     print('In play movie!')
@@ -111,13 +111,13 @@ def render_movie(play_type, play_from, play_to, play_dt=1):
         print('limits: {}'.format(limits))
         bpy.context.scene.frame_current = limits
         try:
-            plot_something(None, bpy.context, limits)
+            plot_something(None, bpy.context, limits, camera_fname=camera_fname)
         except:
             print(traceback.format_exc())
             print('Error in plotting at {}!'.format(limits))
 
 
-def plot_something(self, context, cur_frame, uuid=''):
+def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
@@ -170,7 +170,7 @@ def plot_something(self, context, cur_frame, uuid=''):
         _addon().color_eeg_helmet()
     if bpy.context.scene.render_movie:
         if successful_ret:
-            _addon().render_image()
+            _addon().render_image(camera_fname=camera_fname)
         else:
             print("The image wasn't rendered due to an error in the plotting.")
     # plot_graph(context, graph_data, graph_colors, image_fol)
