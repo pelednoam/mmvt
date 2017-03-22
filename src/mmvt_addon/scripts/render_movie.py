@@ -30,7 +30,10 @@ def read_args(argv=None):
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=su.is_true)
+    parser.add_argument('--camera', help='camera file', required=False, default='')
     args = su.parse_args(parser, argv)
+    if args.camera == '':
+        args.camera = op.join(su.get_mmvt_dir(), args.subject, 'camera', 'camera.pkl')
     return args
 
 
@@ -49,19 +52,30 @@ def render_movie(subject_fname):
     mmvt.set_render_quality(args.quality)
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
-    if op.isfile(op.join(args.output_path, 'camera.pkl')):
-        mmvt.load_camera()
-    elif op.isfile(op.join(op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl'))):
-        mmvt.load_camera(op.join(op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')))
-    else:
-        cont = input('No camera file was detected in the output folder, continue?')
-        if not su.is_true(cont):
-            return
+    load_camera(mmvt, mmvt_dir, args)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
     su.save_blend_file(subject_fname)
     mmvt.render_movie(args.play_type, args.play_from, args.play_to, args.play_dt)
     su.exit_blender()
+
+
+def load_camera(mmvt, mmvt_dir, args):
+    if op.isfile(args.camera):
+        camera_fname = args.camera
+        mmvt.load_camera(args.camera)
+    elif op.isfile(op.join(args.output_path, 'camera.pkl')):
+        camera_fname = op.join(args.output_path, 'camera.pkl')
+        mmvt.load_camera(camera_fname)
+    elif op.isfile(op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')):
+        camera_fname = op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')
+        mmvt.load_camera(camera_fname)
+    else:
+        cont = input('No camera file was detected in the output folder, continue?')
+        if not su.is_true(cont):
+            return
+    print('The rendering will be using the camera file in {}'.format(camera_fname))
+    input('Press any ket to continue...')
 
 
 if __name__ == '__main__':
