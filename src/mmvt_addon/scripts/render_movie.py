@@ -80,9 +80,9 @@ def load_camera(mmvt, mmvt_dir, args):
         cont = input('No camera file was detected in the output folder, continue?')
         if not su.is_true(cont):
             return
-    print('The rendering will be using the camera file in {}'.format(camera_fname))
-    mmvt.load_camera(camera_fname)
-    input('Press any ket to continue...')
+    # print('The rendering will be using the camera file in {}'.format(camera_fname))
+    # mmvt.load_camera(camera_fname)
+    # input('Press any ket to continue...')
     return camera_fname
 
 
