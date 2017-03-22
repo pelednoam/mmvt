@@ -74,8 +74,12 @@ def check_connections(stat=STAT_DIFF):
     parent_obj = bpy.data.objects.get(get_parent_obj_name(), None)
     if parent_obj:
         ConnectionsPanel.selected_objects, ConnectionsPanel.selected_indices = get_all_selected_connections(d)
-        bpy.context.scene.connections_min = np.min(d.con_values[ConnectionsPanel.selected_indices])
-        bpy.context.scene.connections_max = np.max(d.con_values[ConnectionsPanel.selected_indices])
+        if len(ConnectionsPanel.selected_objects) > 0:
+            bpy.context.scene.connections_min = np.min(d.con_values[ConnectionsPanel.selected_indices])
+            bpy.context.scene.connections_max = np.max(d.con_values[ConnectionsPanel.selected_indices])
+        else:
+            bpy.context.scene.connections_min = np.min(d.con_values[indices]) if len(indices) > 0 else d['data_min']
+            bpy.context.scene.connections_max = np.max(d.con_values[indices]) if len(indices) > 0 else d['data_max']
     else:
         bpy.context.scene.connections_min = np.min(d.con_values[indices]) if len(indices) > 0 else d['data_min']
         bpy.context.scene.connections_max = np.max(d.con_values[indices]) if len(indices) > 0 else d['data_max']

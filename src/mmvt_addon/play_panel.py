@@ -21,14 +21,20 @@ bpy.types.Scene.meg_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.electrodes_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
-    items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2), ("meg_coh", "MEG Coherence", "", 3),
-           ("elecs", "Electrodes activity", "", 4),
-           ("elecs_coh", "Electrodes coherence", "",5), ("elecs_act_coh", "Electrodes activity & coherence", "", 6),
-           ("stim", "Electrodes stimulation", "", 7), ("stim_sources", "Electrodes stimulation & sources", "", 8),
-           ("meg_elecs", "Meg & Electrodes activity", "", 9),
-           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",10),
-           ("eeg_helmet", "EEG helmet", "",11)],
+    items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2),
+           ('fmri', 'fMRI dynamics', '', 3), ('fmri_labels', 'fMRI labels dynamics', '', 4),
+           ("meg_coh", "MEG Coherence", "", 5),
+           ("elecs", "Electrodes activity", "", 6),
+           ("elecs_coh", "Electrodes coherence", "",7), ("elecs_act_coh", "Electrodes activity & coherence", "", 8),
+           ("stim", "Electrodes stimulation", "", 9), ("stim_sources", "Electrodes stimulation & sources", "", 10),
+           ("meg_elecs", "Meg & Electrodes activity", "", 11),
+           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",12),
+           ("eeg_helmet", "EEG helmet", "",13)],
            description='Type pf data to play')
+
+
+def _addon():
+    return PlayPanel.addon
 
 
 class ModalTimerOperator(bpy.types.Operator):
@@ -132,20 +138,23 @@ def plot_something(self, context, cur_frame, uuid=''):
     successful_ret = True
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         # if PlayPanel.loop_indices:
-        #     PlayPanel.addon.default_coloring(PlayPanel.loop_indices)
+        #     _addon().default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
-        successful_ret = PlayPanel.addon.plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
+        successful_ret = _addon().plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
+    if play_type in ['fmri']:
+        successful_ret = _addon().plot_activity(
+            'FMRI_DYNAMICS', PlayPanel.faces_verts, bpy.context.scene.meg_threshold, None, False)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
-        # PlayPanel.addon.set_appearance_show_electrodes_layer(bpy.context.scene, True)
+        # _addon().set_appearance_show_electrodes_layer(bpy.context.scene, True)
         plot_electrodes(cur_frame, bpy.context.scene.electrodes_threshold)
     if play_type == 'meg_labels':
         # todo: get the aparc_name
-        PlayPanel.addon.meg_labels_coloring(override_current_mat=True)
+        _addon().meg_labels_coloring(override_current_mat=True)
     if play_type == 'meg_coh':
         pass
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
-        p = PlayPanel.addon.connections_panel
+        p = _addon().connections_panel
         d = p.ConnectionsPanel.d
         connections_type = bpy.context.scene.connections_type
         abs_threshold = bpy.context.scene.abs_threshold
@@ -154,14 +163,14 @@ def plot_something(self, context, cur_frame, uuid=''):
                            bpy.context.scene.connectivity_threshold, abs_threshold)
     if play_type in ['stim', 'stim_sources']:
         # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
-        PlayPanel.addon.color_objects_homogeneously(PlayPanel.stim_data)
+        _addon().color_objects_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
-        PlayPanel.addon.color_electrodes_sources()
+        _addon().color_electrodes_sources()
     if play_type in ['eeg_helmet']:
-        PlayPanel.addon.color_eeg_helmet()
+        _addon().color_eeg_helmet()
     if bpy.context.scene.render_movie:
         if successful_ret:
-            PlayPanel.addon.render_image()
+            _addon().render_image()
         else:
             print("The image wasn't rendered due to an error in the plotting.")
     # plot_graph(context, graph_data, graph_colors, image_fol)
@@ -184,7 +193,7 @@ def capture_graph(play_type=None, output_path=None, selection_type=None):
     per_condition = bpy.context.scene.selection_type == 'conds'
 
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
-        graph_data['coherence'], graph_colors['coherence'] = PlayPanel.addon.connections_panel.capture_graph_data(per_condition)
+        graph_data['coherence'], graph_colors['coherence'] = _addon().connections_panel.capture_graph_data(per_condition)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
         graph_data['electrodes'], graph_colors['electrodes'] = get_electrodes_data(per_condition)
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
@@ -199,7 +208,7 @@ def capture_graph(play_type=None, output_path=None, selection_type=None):
     #  xticklabels (--xticklabels '-1,stim_onset,0,end_of_stim')
     #  time_range (--time_range '-1,1.5,0.01')
     #  xtick_dt (--xtick_dt 0.5)
-    T = PlayPanel.addon.get_max_time_steps()
+    T = _addon().get_max_time_steps()
     cmd = "{} -m src.make_movie -f plot_only_graph --data_in_graph {} --time_range {} --xlabel time --images_folder '{}'".format(
         bpy.context.scene.python_cmd, play_type, T, image_fol)
     print('Running {}'.format(cmd))
@@ -230,7 +239,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         import matplotlib.pyplot as plt
 
         # fig = plt.figure()
-        time_range = range(PlayPanel.addon.get_max_time_steps())
+        time_range = range(_addon().get_max_time_steps())
         fig, ax1 = plt.subplots()
         axes = [ax1]
         if len(data.keys()) > 1:
@@ -277,13 +286,13 @@ def plot_electrodes(cur_frame, threshold, stim=False):
         if cur_frame < len(object_colors):
             new_color = object_colors[cur_frame]
             if bpy.data.objects.get(obj_name) is not None:
-                PlayPanel.addon.object_coloring(bpy.data.objects[obj_name], new_color)
+                _addon().object_coloring(bpy.data.objects[obj_name], new_color)
             else:
                 print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_meg_data(per_condition=True):
-    time_range = range(PlayPanel.addon.get_max_time_steps())
+    time_range = range(_addon().get_max_time_steps())
     brain_obj = bpy.data.objects['Brain']
     if per_condition:
         meg_data, meg_colors = OrderedDict(), OrderedDict()
@@ -313,7 +322,7 @@ def get_electrodes_data(per_condition=True):
         print('You must choose the condition first!')
         return None, None
     elecs_data, elecs_colors = OrderedDict(), OrderedDict()
-    time_range = range(PlayPanel.addon.get_max_time_steps())
+    time_range = range(_addon().get_max_time_steps())
     if per_condition:
         for obj_name in PlayPanel.electrodes_names:
             if bpy.data.objects.get(obj_name) is None:
@@ -334,7 +343,7 @@ def get_electrodes_data(per_condition=True):
 
 def get_electrodes_sources_data():
     elecs_sources_data, elecs_sources_colors = OrderedDict(), OrderedDict()
-    labels_data, subcortical_data = PlayPanel.addon.get_elecctrodes_sources()
+    labels_data, subcortical_data = _addon().get_elecctrodes_sources()
     cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
     if len(cond_inds) == 0:
         print("!!! Can't find the current condition in the data['conditions'] !!!")
@@ -373,9 +382,9 @@ def init_plotting():
     if not d is None:
         PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
     # Warning: Not sure why we call this line, it changes the brain to the rendered brain
-    # PlayPanel.addon.init_activity_map_coloring('MEG')
-    PlayPanel.faces_verts = PlayPanel.addon.get_faces_verts()
-    PlayPanel.meg_sub_activity = PlayPanel.addon.load_meg_subcortical_activity()
+    # _addon().init_activity_map_coloring('MEG')
+    PlayPanel.faces_verts = _addon().get_faces_verts()
+    PlayPanel.meg_sub_activity = _addon().load_meg_subcortical_activity()
     # connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
     # if not op.isfile(connections_file):
     #     print('No connections coherence file! {}'.format(connections_file))

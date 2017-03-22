@@ -373,13 +373,19 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         bpy.context.scene.render_background = render_background
     if camera_fname == '':
         camera_fname = op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(bpy.context.scene.camera_files))
+    current_frame = bpy.context.scene.frame_current
     camera_fnames = [camera_fname] if isinstance(camera_fname, str) else camera_fname
-    images_names = [image_name] if isinstance(image_name, str) else image_name
-    for camera_fname in camera_fnames:
-        if image_name == '':
-            cur_frame = bpy.context.scene.frame_current
-            camera_name = mu.namebase(camera_fname)
-            images_names.append('{}_{}'.format(camera_name[len('camera') + 1:], cur_frame))
+    if image_name == '':
+        # images_names = []
+        # for camera_fname in camera_fnames:
+        #     cur_frame = bpy.context.scene.frame_current
+        #     camera_name = mu.namebase(camera_fname)
+        #     images_names.append('{}_{}'.format(camera_name[len('camera') + 1:], cur_frame))
+        images_names = ['{}_{}.png'.format(mu.namebase(camera_fname).replace('camera', ''), current_frame)
+                        for camera_fname in  camera_fnames]
+        images_names = [n[1:] if n.startswith('_') else n for n in images_names]
+    else:
+        images_names = [image_name] if isinstance(image_name, str) else image_name
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
     print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
     print("Rendering...")
