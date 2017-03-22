@@ -24,6 +24,7 @@ def read_args(argv=None):
     parser.add_argument('--play_to', help='until when to play', required=True, type=int)
     parser.add_argument('--play_dt', help='play dt', required=False, default=1, type=int)
     parser.add_argument('--light_layers', help='light_layers', required=False, default=0, type=int)
+    parser.add_argument('--brain_trans', help='brain_transparency', required=False, default=0, type=float)
     parser.add_argument('--output_path', help='output path', required=False, default='')
     parser.add_argument('--rel_output_path', help='relative output path', required=False, default=True, type=su.is_true)
     parser.add_argument('--smooth_figure', help='smooth figure', required=False, default=False, type=su.is_true)
@@ -56,6 +57,7 @@ def render_movie(subject_fname):
     mmvt.set_render_output_path(args.output_path)
     mmvt.set_render_smooth_figure(args.smooth_figure)
     mmvt.set_light_layers_depth(args.light_layers)
+    mmvt.set_brain_transparency(args.brain_trans)
     camera_fname = load_camera(mmvt, mmvt_dir, args)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
