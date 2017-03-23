@@ -69,8 +69,8 @@ importlib.reload(colorbar_panel)
 print("mmvt addon started!")
 # todo: should change that in the code!!!
 # Should be here bpy.types.Scene.maximal_time_steps
-T = 2500
-bpy.types.Scene.maximal_time_steps = T
+# T = 2500
+# bpy.types.Scene.maximal_time_steps = T
 
 # LAYERS
 (TARGET_LAYER, LIGHTS_LAYER, EMPTY_LAYER, BRAIN_EMPTY_LAYER, ROIS_LAYER, ACTIVITY_LAYER, INFLATED_ROIS_LAYER,
@@ -254,28 +254,41 @@ save_cursor_position = freeview_panel.save_cursor_position
 
 def get_max_time_steps():
     # Check if there is animation data in MEG
-    try:
-        return bpy.types.Scene.maximal_time_steps
-    except:
-        print('No preperty maximal_time_steps in bpy.types.Scene')
-
+    # try:
+    #     return bpy.context.scene.maximal_time_steps
+    # except:
+    #     print('No preperty maximal_time_steps in bpy.types.Scene')
+    found = False
     try:
         hemi = bpy.data.objects['Cortex-lh']
         # Takes the first child first condition fcurve
         fcurves = hemi.children[0].animation_data.action.fcurves[0]
         bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 3
+        found = True
     except:
         print('No MEG data')
 
-    try:
-        elec = bpy.data.objects['Deep_electrodes'].children[0]
-        fcurves = elec.animation_data.action.fcurves[0]
-        bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
-    except:
-        print('No deep electrodes data')
+    if not found:
+        try:
+            fcurves = bpy.data.objects['fMRI'].animation_data.action.fcurves[0]
+            bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
+            found = True
+        except:
+            print('No fMRI data')
+
+    if not found:
+        try:
+            elec = bpy.data.objects['Deep_electrodes'].children[0]
+            fcurves = elec.animation_data.action.fcurves[0]
+            bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
+            found = True
+        except:
+            print('No deep electrodes data')
 
     try:
-        return bpy.types.Scene.maximal_time_steps
+        if found:
+            print('max time steps: {}'.format(bpy.types.Scene.maximal_time_steps))
+            return bpy.types.Scene.maximal_time_steps
     except:
         print('No preperty maximal_time_steps in bpy.types.Scene')
 

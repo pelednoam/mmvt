@@ -150,13 +150,33 @@ def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
         cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
 
 
+def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
+    fol = '/home/npeled/mmvt/nmr00698/movies/fmri/'
+    fol2 = ''
+    data_to_show_in_graph = ('fmri')
+    video_fname = 'nmr00698_fmri_4D.mp4'
+    cb_title = 'fMRI'
+    time_range = range(0, 97)
+    xticks = range(0, 100, 20)
+    ylim = ()
+    ylabels = ['Labels mean intensity']
+    xticklabels = []
+    xlabel = ''
+    cb_data_type = 'fmri'
+    fps = 5
+    cb_min_max_eq = True
+    color_map = 'jet'
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
+
+
 if __name__ == '__main__':
     dpi = 100
     bitrate = 5000
     pics_type = 'png'
     show_first_pic = False
-    n_jobs = 4
+    n_jobs = 1
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
     # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    meg(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs)

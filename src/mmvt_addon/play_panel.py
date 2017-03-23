@@ -198,6 +198,8 @@ def capture_graph(play_type=None, output_path=None, selection_type=None):
         graph_data['electrodes'], graph_colors['electrodes'] = get_electrodes_data(per_condition)
     if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
         graph_data['meg'], graph_colors['meg'] = get_meg_data(per_condition)
+    if play_type in ['fmri']:
+        graph_data['fmri'], graph_colors['fmri'] = get_fmri_data()
     if play_type in ['meg_labels']:
         graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
     if play_type in ['stim', 'stim_sources']:
@@ -305,6 +307,13 @@ def get_meg_data(per_condition=True):
     else:
         meg_data, meg_colors = mu.evaluate_fcurves(brain_obj, time_range)
     return meg_data, meg_colors
+
+
+def get_fmri_data():
+    time_range = range(_addon().get_max_time_steps())
+    brain_obj = bpy.data.objects['fMRI']
+    data, colors = mu.evaluate_fcurves(brain_obj, time_range)
+    return data, colors
 
 
 def get_meg_labels_data():

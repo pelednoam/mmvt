@@ -1,3 +1,5 @@
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -9,12 +11,14 @@ import time
 import numbers
 import numpy as np
 import re
+import traceback
 from src.utils import utils
 from src.utils import movies_utils as mu
 
 LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 
+plt.rcParams['animation.ffmpeg_path'] = '/home/npeled/code/links/ffmpeg/ffmpeg'
 
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
@@ -120,11 +124,19 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
 
         current_t = get_t(images, image_index, time_range)
         t_line.set_data([current_t, current_t], [ymin, ymax])
+        print('Reading image {}, current t {}'.format(images[image_index], current_t))
         return [im]
 
-    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=30, blit=True)
-    writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
-    ani.save(op.join(fol, video_fname),writer=writer,dpi=dpi)
+    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=1000, blit=True, repeat=False)
+    # plt.show()
+    # Set up formatting for the movie files
+    Writer = animation.writers['ffmpeg'] #FFMpegWriter #
+    # Writer = animation.AVConvWriter
+    writer = Writer(fps=fps, metadata=dict(artist='Me'), bitrate=1800) #, extra_args=['-vcodec', 'libx264'])
+    ani.save(op.join(fol, video_fname), writer=writer)
+
+    # writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
+    # ani.save(op.join(fol, video_fname), writer=writer, dpi=dpi)
     return ani
 
 
@@ -186,6 +198,8 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
             # ax.plot(time_range[1:-1:4], values, label=k, color=color, alpha=0.9, clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
             if len(time_range) > len(values):
                 time_range = time_range[:len(values)]
+            if len(time_range) < len(values):
+                values = values[:len(time_range)]
             ax.plot(time_range, values, label=k, color=color,
                     alpha=0.9)  # , clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
         ind += 1
@@ -250,7 +264,7 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
     data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylim=(),
     ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
 
-    images1 = get_pics(fol, pics_type)
+    images1 = get_pics(fol, pics_type)[:len(time_range)]
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
     if fol2 != '':
         images2 = get_pics(fol2, pics_type)
@@ -263,9 +277,13 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
                video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate,
                ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run) for \
               run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
-    utils.run_parallel(_create_movie_parallel, params, n_jobs)
-    video_name, video_type = op.splitext(video_fname)
-    mu.combine_movies(fol, video_name, video_type[1:])
+    if n_jobs > 1:
+        utils.run_parallel(_create_movie_parallel, params, n_jobs)
+        video_name, video_type = op.splitext(video_fname)
+        mu.combine_movies(fol, video_name, video_type[1:])
+    else:
+        for p in params:
+            _create_movie_parallel(p)
 
 
 def _create_movie_parallel(params):
