@@ -18,7 +18,7 @@ from src.utils import movies_utils as mu
 LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 
-plt.rcParams['animation.ffmpeg_path'] = '/home/npeled/code/links/ffmpeg/ffmpeg'
+# plt.rcParams['animation.ffmpeg_path'] = '/home/npeled/code/links/ffmpeg/ffmpeg'
 
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
