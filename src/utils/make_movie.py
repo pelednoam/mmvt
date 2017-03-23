@@ -14,6 +14,7 @@ import re
 import traceback
 from src.utils import utils
 from src.utils import movies_utils as mu
+from src.utils import figures_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
@@ -22,7 +23,8 @@ BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
-        ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False):
+        ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False,
+        show_animation=False, overwrite=True):
 
 
     def two_brains_two_graphs():
@@ -124,20 +126,34 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
 
         current_t = get_t(images, image_index, time_range)
         t_line.set_data([current_t, current_t], [ymin, ymax])
-        print('Reading image {}, current t {}'.format(images[image_index], current_t))
+        # print('Reading image {}, current t {}'.format(images[image_index], current_t))
         return [im]
 
-    ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=1000, blit=True, repeat=False)
-    # plt.show()
-    # Set up formatting for the movie files
-    Writer = animation.writers['ffmpeg'] #FFMpegWriter #
-    # Writer = animation.AVConvWriter
-    writer = Writer(fps=fps, metadata=dict(artist='Me'), bitrate=1800) #, extra_args=['-vcodec', 'libx264'])
-    ani.save(op.join(fol, video_fname), writer=writer)
-
-    # writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
-    # ani.save(op.join(fol, video_fname), writer=writer, dpi=dpi)
-    return ani
+    use_animation = False
+    if use_animation:
+        ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=1000, blit=True, repeat=False)
+        plt.show()
+        # Set up formatting for the movie files
+        # Writer = animation.writers['ffmpeg'] #FFMpegWriter #
+        # Writer = animation.AVConvWriter
+        # writer = Writer(fps=fps, bitrate=1800) #, extra_args=['-vcodec', 'libx264'])
+        # ani.save(op.join(fol, video_fname), writer=writer)
+        # writer = animation.writers['ffmpeg'](fps=fps, bitrate=bitrate)
+        # ani.save(op.join(fol, video_fname), writer=writer, dpi=dpi)
+    else:
+        images_fol = utils.get_parent_fol(images[0])
+        new_images_fol = op.join(images_fol, 'movie_images')
+        utils.make_dir(new_images_fol)
+        images_nb = utils.namebase(images_fol)
+        for image_index in range(len(images)):
+            new_image_fname = op.join(new_images_fol, 'mv_{}.png'.format(image_index))
+            if not op.isfile(new_image_fname) or overwrite:
+                update_img(image_index)
+                plt.savefig(new_image_fname)
+        movie_fname = op.join(utils.get_parent_fol(images_fol), images_nb)
+        if op.isfile('{}.mp4'.format(movie_fname)) and overwrite:
+            utils.remove_file('{}.mp4'.format(movie_fname))
+        mu.combine_images(new_images_fol, movie_fname , frame_rate=fps, movie_name_full_path=True)
 
 
 def get_t(images, image_index, time_range):
@@ -206,7 +222,7 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
 
     graph1_ax.set_xlabel(xlabel)
     if not xticklabels is None:
-        x_labels = xticks
+        x_labels = list(xticks)
         for xlable_time, xticklabel in xticklabels:
             if xlable_time in xticks:
                 x_labels[x_labels.index(xlable_time)] = xticklabel
@@ -250,6 +266,7 @@ def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, c
         vmin, vmax = data_min, data_max
     # cmap = color_map # mpl.cm.jet
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    color_map = fu.find_color_map(color_map)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
     cb.set_label(cb_title)
 
@@ -261,8 +278,9 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
 
 
 def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
-    data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylim=(),
-    ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, n_jobs=1):
+     data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylim=(),
+     ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, show_animation=False,
+     overwrite=True, n_jobs=1):
 
     images1 = get_pics(fol, pics_type)[:len(time_range)]
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
@@ -275,7 +293,7 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
         images2_chunks = [''] * int(len(images1) / n_jobs)
     params = [(images1_chunk, images2_chunk, time_range, xticks, dpi, fps,
                video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate,
-               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run) for \
+               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run, show_animation, overwrite) for \
               run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
     if n_jobs > 1:
         utils.run_parallel(_create_movie_parallel, params, n_jobs)
@@ -289,12 +307,12 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
 def _create_movie_parallel(params):
     (images1, images2, time_range, xticks, dpi, fps,
         video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate, ylim, ylabels,
-        xticklabels, xlabel, show_first_pic, fol, fol2, run) = params
+        xticklabels, xlabel, show_first_pic, fol, fol2, run, show_animation, overwrite) = params
     video_name, video_type = op.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
     ani_frame(time_range, xticks, images1, dpi, fps, video_fname, cb_data_type,
         data_to_show_in_graph, fol, fol2, cb_title, cb_min_max_eq, color_map, bitrate, images2, ylim, ylabels,
-        xticklabels, xlabel, show_first_pic)
+        xticklabels, xlabel, show_first_pic, show_animation, overwrite)
 
 
 def sort_pics_key(pic_fname):

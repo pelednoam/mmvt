@@ -91,14 +91,15 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                            images_type='', ffmpeg_cmd='ffmpeg', **kwargs):
+                            images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     # change_frames_names(fol, images_prefix, images_type, images_format_len)
     images_prefix = op.join(fol, images_prefix)
-    movie_name = op.join(fol, movie_name)
+    if not movie_name_full_path:
+        movie_name = op.join(fol, movie_name)
     combine_images_cmd = '{ffmpeg_cmd} -framerate {frame_rate} '
-    if start_number > 1:
+    if start_number != 1:
         # You might want to use a static ffmpeg if your ffmepg version doesn't support the start_number flag, like:
         # ffmpeg_cmd = '~/space1/Downloads/ffmpeg-git-static/ffmpeg'
         combine_images_cmd += '-start_number {start_number} '

@@ -2,6 +2,7 @@ import os.path as op
 import numpy as np
 from src.utils.make_movie import create_movie
 from src.utils import preproc_utils as pu
+from src.utils import color_maps_utils as cmu
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
@@ -157,18 +158,21 @@ def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     data_to_show_in_graph = ('fmri')
     video_fname = 'nmr00698_fmri_4D.mp4'
     cb_title = 'fMRI'
-    time_range = range(0, 97)
-    xticks = range(0, 100, 20)
+    time_range = range(0, 161)
+    xticks = range(0, 161, 20)
     ylim = ()
     ylabels = ['Labels mean intensity']
-    xticklabels = []
-    xlabel = ''
+    xticklabels = [(xt, str(int(xt*3/60))) for xt in xticks][1:]
+    xlabel = 'Time (m)'
     cb_data_type = 'fmri'
     fps = 5
     cb_min_max_eq = True
-    color_map = 'jet'
+    color_map = 'BuPu_YlOrRd'
+    show_animation = False
+    overwrite = True
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
+        show_animation, overwrite, n_jobs)
 
 
 if __name__ == '__main__':

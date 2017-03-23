@@ -16,13 +16,13 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
     import matplotlib as mpl
 
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
-    if color_map_name not in plt.cm.cmap_d:
-        color_map_name = color_map_name.replace('-', '_')
-        if color_map_name in cmu.cms:
-            color_map = cmu.get_cm_obj(color_map_name)
-        else:
-            raise Exception("Can't find colormap {}!".format(color_map_name))
-
+    # if color_map_name not in plt.cm.cmap_d:
+    #     color_map_name = color_map_name.replace('-', '_')
+    #     if color_map_name in cmu.cms:
+    #         color_map = cmu.get_cm_obj(color_map_name)
+    #     else:
+    #         raise Exception("Can't find colormap {}!".format(color_map_name))
+    color_map = find_color_map(color_map)
     if ax is None:
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
@@ -32,6 +32,17 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
     else:
         plt.show()
     return cb
+
+
+def find_color_map(color_map):
+    color_map_name = color_map if isinstance(color_map, str) else color_map.name
+    if color_map_name not in plt.cm.cmap_d:
+        color_map_name = color_map_name.replace('-', '_')
+        if color_map_name in cmu.cms:
+            color_map = cmu.get_cm_obj(color_map_name)
+        else:
+            raise Exception("Can't find colormap {}!".format(color_map_name))
+    return color_map
 
 
 def plot_color_bar_from_two_color_maps(data_max, data_min, fol='', **kargs):
