@@ -550,7 +550,7 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_CON_VERTICE
     else:
         obj_type = None
-        print("Can't find the object type ({})!".format(obj_name))
+        # print("Can't find the object type ({})!".format(obj_name))
     return obj_type
 
 

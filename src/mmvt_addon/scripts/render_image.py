@@ -10,16 +10,20 @@ except:
     sys.path.append(os.path.split(__file__)[0])
     import scripts_utils as su
 
-
+@su.timeit
 def wrap_blender_call():
     args = read_args()
-    su.call_script(__file__, args)
+    render_image(args.subject, args.atlas, args.image_name, args.output_path, args.quality, args.inflated,
+                 args.inflated_ratio, args.background_color, args.lighting, args.smooth_figure, args.hide_lh,
+                 args.hide_rh, args.hide_subs, args.show_elecs, args.bipolar, args.show_only_lead, args.curr_elec,
+                 args.show_connections, args.filter_nodes, args.interactive, args.blender_fol, args.subjects)
+    # su.call_script(__file__, args)
 
 
 def render_image(subject, atlas, image_name, output_path, quality=60, inflated=False, inflated_ratio=1,
                  background_color='black', lighting=1.0, smooth_figure=False, hide_lh=False, hide_rh=False,
                  hide_subs=False, show_elecs=False, bipolar=False, show_only_lead=False, curr_elec='',
-                 show_connections=False, interactive=True, blender_fol='', subjects=''):
+                 show_connections=False, filter_nodes=True, interactive=True, blender_fol='', subjects=''):
     image_name = [image_name] if isinstance(image_name, str) else image_name
     camera = [op.join(su.get_mmvt_dir(), subject, 'camera', 'camera_{}{}.pkl'.format(
         camera_name, '_inf' if inflated else '')) for camera_name in image_name]
@@ -49,6 +53,7 @@ def read_args(argv=None):
     parser.add_argument('--show_only_lead', help='show only current lead', required=False, default=None, type=su.is_true_or_none)
     parser.add_argument('--curr_elec', help='current electrode', required=False, default='')
     parser.add_argument('--show_connections', help='show connections', required=False, default=None, type=su.is_true_or_none)
+    parser.add_argument('--filter_nodes', help='filter nodes', required=False, default=True, type=su.is_true)
     parser.add_argument('--interactive', required=False, default=1, type=su.is_true)
     parser.add_argument('--overwrite', required=False, default=1, type=su.is_true)
     args = su.parse_args(parser, argv)
@@ -57,6 +62,8 @@ def read_args(argv=None):
 
 def render_image_blender(subject_fname):
     args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
     subject = su.get_subject_name(subject_fname)
     if args.output_path == '':
@@ -82,6 +89,7 @@ def render_image_blender(subject_fname):
         mmvt.set_current_electrode(args.curr_elec)
     if not args.show_connections is None:
         mmvt.show_hide_connections(args.show_connections)
+        mmvt.filter_nodes(args.filter_nodes)
     if args.inflated:
         mmvt.show_inflated()
         mmvt.set_inflated_ratio = args.inflated_ratio
@@ -94,14 +102,18 @@ def render_image_blender(subject_fname):
         if op.isfile(camera):
             mmvt.load_camera(camera)
         else:
-            if args.interactive:
-                cont = input('No camera file was detected in the output folder, continue?')
-                if not su.is_true(cont):
-                    continue
-            else:
-                su.stdout_print('No camera file was detected in the output folder!!!')
-                continue
+            camera = op.join(mmvt_dir, subject, 'camera', 'camera.pkl')
+            print('Camera was not found, loading default camera')
+            mmvt.load_camera(camera)
+            # if args.interactive:
+            #     cont = input('No camera file was detected in the output folder, continue?')
+            #     if not su.is_true(cont):
+            #         continue
+            # else:
+            #     su.stdout_print('No camera file was detected in the output folder!!!')
+            #     continue
         # su.save_blend_file(subject_fname)
+        print('Rendering {}->{}'.format(image_name, args.output_path))
         mmvt.render_image(image_name, args.output_path, args.quality, args.smooth_figure, render_background=False,
                           overwrite=args.overwrite)
     su.stdout_print('*** finish rendering! ***')

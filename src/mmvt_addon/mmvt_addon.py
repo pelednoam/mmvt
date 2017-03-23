@@ -207,6 +207,7 @@ set_show_only_lead = electrodes_panel.set_show_only_lead
 is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 create_connections = connections_panel.create_connections
+filter_nodes = connections_panel.filter_nodes
 # set_connection_type = connections_panel.set_connection_type/
 # set_connections_threshold = connections_panel.set_connections_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

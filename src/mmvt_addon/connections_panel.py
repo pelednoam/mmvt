@@ -453,6 +453,33 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
             conn_name = mu.get_fcurve_name(conn_name)
 
 
+def filter_nodes(do_filter, connectivity_file=''):
+    if connectivity_file != '':
+        bpy.context.scene.connectivity_files = connectivity_file
+    parent = get_parent_obj_name()
+    if parent is None:
+        print('{} is None!'.format(parent))
+        return
+    vertices_obj = bpy.data.objects.get('connections_vertices')
+    if vertices_obj is None:
+        print('connections_vertices is None!')
+        return
+    for node in bpy.data.objects.get('connections_vertices').children:
+        if do_filter:
+            conn_found = False
+            label_name = node.name[:-len('_vertice')]
+            for conn in bpy.data.objects[parent].children:
+                if label_name in conn.name:
+                    conn_found = True
+                    break
+            if not conn_found:
+                node.hide = True
+                node.hide_render = True
+        else:
+            node.hide = False
+            node.hide_render = False
+
+
 def filter_electrodes_via_connections(context, do_filter):
     display_conds = bpy.context.scene.selection_type == 'conds'
     for elc_name in ConnectionsPanel.addon.play_panel.PlayPanel.electrodes_names:
@@ -496,7 +523,7 @@ def filter_electrodes_via_connections(context, do_filter):
                 fcurve.hide = False
                 fcurve.select = True
 
-    mu.view_all_in_graph_editor(context)
+    mu.view_all_in_graph_editor()
 
 
 def capture_graph_data(per_condition):
@@ -659,6 +686,21 @@ class FilterGraph(bpy.types.Operator):
 #             ConnectionsPanel.show_connections = not ConnectionsPanel.show_connections
 #         return {"FINISHED"}
 
+class FilterNodes(bpy.types.Operator):
+    bl_idname = "mmvt.filter_nodes"
+    bl_label = "mmvt filter nodes"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        parent_obj_name = get_parent_obj_name()
+        if not bpy.data.objects.get(parent_obj_name):
+            self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
+        else:
+            filter_nodes(ConnectionsPanel.do_filter)
+            ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
+        return {"FINISHED"}
+
 
 class FilterElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.filter_electrodes"
@@ -671,7 +713,7 @@ class FilterElectrodes(bpy.types.Operator):
         if not bpy.data.objects.get(parent_obj_name):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
-            filter_electrodes_via_connections(context, ConnectionsPanel.do_filter)
+            filter_electrodes_via_connections(ConnectionsPanel.do_filter)
             ConnectionsPanel.do_filter = not ConnectionsPanel.do_filter
         return {"FINISHED"}
 
@@ -728,10 +770,13 @@ def connections_draw(self, context):
     layout.prop(context.scene, 'connections_threshold_type', text='threshold type', expand=True)
     filter_text = 'Remove filter' if bpy.context.scene.connections_filter else 'Filter connections'
     layout.operator(FilterGraph.bl_idname, text=filter_text, icon='BORDERMOVE')
-    layout.prop(context.scene, 'connections_filter_vertices', text="Hide non connected vertices")
+    # layout.prop(context.scene, 'connections_filter_vertices', text="Hide non connected vertices")
     if 'electrodes' in bpy.context.scene.connectivity_files:
         filter_text = '{} electrodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterElectrodes.bl_idname, text=filter_text, icon='BORDERMOVE')
+    if 'fmri' in bpy.context.scene.connectivity_files.lower() or 'meg' in bpy.context.scene.connectivity_files.lower():
+        filter_text = '{} nodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
+        layout.operator(FilterNodes.bl_idname, text=filter_text, icon='BORDERMOVE')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
@@ -755,7 +800,7 @@ bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
     description="Threshold type")
 bpy.types.Scene.connections_filter = bpy.props.BoolProperty(name='connections_filter')
 bpy.types.Scene.connections_num = bpy.props.IntProperty(min=0, default=0, description="")
-bpy.types.Scene.connections_filter_vertices = bpy.props.BoolProperty(default=True, description="")
+# bpy.types.Scene.connections_filter_vertices = bpy.props.BoolProperty(default=True, description="")
 
 bpy.types.Scene.connections_min = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.connections_max = bpy.props.FloatProperty(default=0)
@@ -818,6 +863,7 @@ def register():
         bpy.utils.register_class(CreateConnections)
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
+        bpy.utils.register_class(FilterNodes)
         # print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
@@ -830,6 +876,7 @@ def unregister():
         bpy.utils.unregister_class(CreateConnections)
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
+        bpy.utils.unregister_class(FilterNodes)
     except:
         pass
         # print("Can't unregister ConnectionsPanel!")
