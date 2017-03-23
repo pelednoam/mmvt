@@ -115,7 +115,7 @@ def select_all_electrodes():
 
 def select_all_connections():
     mu.unfilter_graph_editor()
-    connection_parent_name = _addon().get_parent_obj_name()
+    connection_parent_name = _addon().get_connections_parent_name()
     select_brain_objects(connection_parent_name)
 
 
@@ -407,8 +407,8 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_sensors'):
             layout.operator(SelectAllEEG.bl_idname, text="EEG", icon='BORDER_RECT')
-        if bpy.data.objects.get(_addon().get_parent_obj_name()) and \
-                bpy.data.objects[_addon().get_parent_obj_name()].animation_data:
+        if bpy.data.objects.get(_addon().get_connections_parent_name()) and \
+                bpy.data.objects[_addon().get_connections_parent_name()].animation_data:
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')

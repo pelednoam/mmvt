@@ -151,10 +151,10 @@ def appearance_show_rois_activity_update(self=None, context=None):
 
 def show_hide_connections(value=True):
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = value
-    if value and bpy.data.objects.get(_addon().get_parent_obj_name()):
-        _addon().show_hide_hierarchy(False, _addon().get_parent_obj_name())
-        # bpy.data.objects.get(_addon().get_parent_obj_name()).hide = False
-        # bpy.data.objects.get(_addon().get_parent_obj_name()).hide_render = False
+    if value and bpy.data.objects.get(_addon().get_connections_parent_name()):
+        _addon().show_hide_hierarchy(False, _addon().get_connections_parent_name())
+        # bpy.data.objects.get(_addon().get_connections_parent_name()).hide = False
+        # bpy.data.objects.get(_addon().get_connections_parent_name()).hide_render = False
 
 
 # def show_connections(value=True):
@@ -162,7 +162,7 @@ def show_hide_connections(value=True):
 
 
 def connections_visible():
-    return bpy.data.objects.get(_addon().get_parent_obj_name()) and bpy.context.scene.layers[_addon().CONNECTIONS_LAYER]
+    return bpy.data.objects.get(_addon().get_connections_parent_name()) and bpy.context.scene.layers[_addon().CONNECTIONS_LAYER]
 
 
 def filter_view_type_update(self, context):
@@ -241,7 +241,7 @@ def appearance_draw(self, context):
         show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
     if bpy.data.objects.get('EEG_sensors'):
         show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
-    if bpy.data.objects.get(_addon().get_parent_obj_name()):
+    if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
 
 

@@ -136,6 +136,7 @@ create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
 color_eeg_helmet = coloring_panel.color_eeg_helmet
 calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
+color_connections = coloring_panel.color_connections
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -205,11 +206,6 @@ set_current_electrode = electrodes_panel.set_current_electrode
 set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
 set_show_only_lead = electrodes_panel.set_show_only_lead
 is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-create_connections = connections_panel.create_connections
-filter_nodes = connections_panel.filter_nodes
-# set_connection_type = connections_panel.set_connection_type/
-# set_connections_threshold = connections_panel.set_connections_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
@@ -238,7 +234,9 @@ connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data
 plot_connections = connections_panel.plot_connections
 vertices_selected = connections_panel.vertices_selected
-get_parent_obj_name = connections_panel.get_parent_obj_name
+create_connections = connections_panel.create_connections
+filter_nodes = connections_panel.filter_nodes
+get_connections_parent_name = connections_panel.get_connections_parent_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

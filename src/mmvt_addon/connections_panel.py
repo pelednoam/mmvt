@@ -22,7 +22,7 @@ def _addon():
     return ConnectionsPanel.addon
 
 
-def get_parent_obj_name():
+def get_connections_parent_name():
     if ConnectionsPanel.connections_files_exist:
         return 'connections_{}'.format(bpy.context.scene.connectivity_files.replace(' ', '_'))
     else:
@@ -38,7 +38,7 @@ def get_first_existing_parent_obj_name():
 
 def connections_exist(parent_name=''):
     if parent_name == '':
-        parent_name = get_parent_obj_name()
+        parent_name = get_connections_parent_name()
     else:
         parent_name = parent_name.replace(' ', '_')
     return not bpy.data.objects.get(parent_name, None) is None
@@ -66,12 +66,12 @@ def check_connections(stat=STAT_DIFF):
             stat_data = d.con_values
         mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
         indices = np.where(mask)[0]
-    parent_obj = bpy.data.objects.get(get_parent_obj_name(), None)
+    parent_obj = bpy.data.objects.get(get_connections_parent_name(), None)
     if parent_obj:
         bpy.context.scene.connections_num = min(len(parent_obj.children) - 1, len(indices))
     else:
         bpy.context.scene.connections_num = len(indices)
-    parent_obj = bpy.data.objects.get(get_parent_obj_name(), None)
+    parent_obj = bpy.data.objects.get(get_connections_parent_name(), None)
     if parent_obj:
         ConnectionsPanel.selected_objects, ConnectionsPanel.selected_indices = get_all_selected_connections(d)
         if len(ConnectionsPanel.selected_objects) > 0:
@@ -91,8 +91,8 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
     layers_rods = [False] * 20
     rods_layer = _addon().CONNECTIONS_LAYER
     layers_rods[rods_layer] = True
-    mu.delete_hierarchy(get_parent_obj_name())
-    mu.create_empty_if_doesnt_exists(get_parent_obj_name(), _addon().BRAIN_EMPTY_LAYER, None, 'Functional maps')
+    mu.delete_hierarchy(get_connections_parent_name())
+    mu.create_empty_if_doesnt_exists(get_connections_parent_name(), _addon().BRAIN_EMPTY_LAYER, None, 'Functional maps')
     if d.con_values.ndim >= 2:
         windows_num = d.con_values.shape[1]
     else:
@@ -107,7 +107,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
         stat_data = d.con_values
     mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
     indices = np.where(mask)[0]
-    parent_obj = bpy.data.objects[get_parent_obj_name()]
+    parent_obj = bpy.data.objects[get_connections_parent_name()]
     parent_obj.animation_data_clear()
     N = len(indices)
     print('{} connections are above the threshold'.format(N))
@@ -138,7 +138,7 @@ def calc_mask(stat_data, threshold, threshold_type, windows_num):
 
 def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num, norm_fac, T, radius):
     N = len(indices)
-    parent_obj = bpy.data.objects[get_parent_obj_name()]
+    parent_obj = bpy.data.objects[get_connections_parent_name()]
     print('Create connections for both conditions')
     con_color = (1, 1, 1, 1)
     now = time.time()
@@ -172,7 +172,7 @@ def create_vertices(d, mask, verts_color='pink'):
     layers[_addon().CONNECTIONS_LAYER] = True
     vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))
     parent_name = 'connections_vertices'
-    parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, get_parent_obj_name())
+    parent_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, get_connections_parent_name())
     for vertice in ConnectionsPanel.vertices:
     # for ind in range(len(d.names[mask])):
     # for indice in indices:
@@ -193,7 +193,7 @@ def vertices_selected(vertice_name):
             if conn_obj and not conn_obj.hide:
                 conn_obj.select = True
     elif _addon().conditions_diff():
-        parent_obj = bpy.context.scene.objects[get_parent_obj_name()]
+        parent_obj = bpy.context.scene.objects[get_connections_parent_name()]
         if parent_obj.animation_data is None:
             return
         parent_obj.select = True
@@ -201,7 +201,7 @@ def vertices_selected(vertice_name):
             con_name = mu.get_fcurve_name(fcurve)
             fcurve.select = con_name in ConnectionsPanel.vertices_lookup[label_name]
             fcurve.hide = not con_name in ConnectionsPanel.vertices_lookup[label_name]
-    mu.change_fcurves_colors(bpy.data.objects[get_parent_obj_name()].children)
+    mu.change_fcurves_colors(bpy.data.objects[get_connections_parent_name()].children)
     _addon().fit_selection()
 
 
@@ -212,7 +212,7 @@ def create_keyframes_for_parent_obj(d, indices, mask, windows_num, norm_fac, T, 
     if stat not in [STAT_DIFF, STAT_AVG]:
         print("Wrong type of stat!")
         return
-    parent_obj = bpy.data.objects[get_parent_obj_name()]
+    parent_obj = bpy.data.objects[get_connections_parent_name()]
     stat_data = calc_stat_data(d.con_values, stat)
     N = len(indices)
     now = time.time()
@@ -281,7 +281,7 @@ def unfilter_graph(context, d, condition):
 
 # d: labels, locations, hemis, con_colors (L, W, 2, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 def filter_graph(context, d, condition, threshold, threshold_type, connections_type, stat=STAT_DIFF):
-    parent_obj_name = get_parent_obj_name()
+    parent_obj_name = get_connections_parent_name()
     mu.show_hide_hierarchy(False, parent_obj_name)
     masked_con_names = calc_masked_con_names(d, threshold, threshold_type, connections_type, condition, stat)
     parent_obj = bpy.data.objects[parent_obj_name]
@@ -360,6 +360,7 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 # def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
 def plot_connections(d, plot_time):
+    _addon().show_hide_connections()
     windows_num = d.con_values.shape[1] if d.con_values.ndim >= 2 else 1
     t = int(plot_time / ConnectionsPanel.T * windows_num) if windows_num > 1 else 0
     print('plotting connections for t:{}'.format(t))
@@ -393,7 +394,7 @@ def plot_connections(d, plot_time):
             con_color = np.concatenate((np.squeeze(color), [0.]))
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
-        parent_obj_name = get_parent_obj_name()
+        parent_obj_name = get_connections_parent_name()
         bpy.data.objects[parent_obj_name].select = True
         ConnectionsPanel.addon.show_hide_connections()
         connectivity_method = d['connectivity_method'] if 'connectivity_method' in d else 'connectivity'
@@ -410,9 +411,9 @@ def plot_connections(d, plot_time):
 
 def get_all_selected_connections(d):
     objs, inds = [], []
-    parent_obj_name = get_parent_obj_name()
+    parent_obj_name = get_connections_parent_name()
     parent_obj = bpy.data.objects[parent_obj_name]
-    con_objs_names = [obj.name for obj in bpy.data.objects[get_parent_obj_name()].children if obj.name != 'connections_vertices']
+    con_objs_names = [obj.name for obj in bpy.data.objects[get_connections_parent_name()].children if obj.name != 'connections_vertices']
     # all_con_set = set(d.con_names.tolist())
     # indices = [np.where(d.con_names == obj_name)[0][0] for obj_name in con_objs_names]
     if bpy.context.scene.selection_type == 'conds' or parent_obj.animation_data is None:
@@ -433,7 +434,7 @@ def get_all_selected_connections(d):
 
 # Called from FilterPanel, FindCurveClosestToCursor
 def find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target):
-    parent_obj_name = get_parent_obj_name()
+    parent_obj_name = get_connections_parent_name()
     parent_obj = bpy.data.objects[parent_obj_name]
     if bpy.context.scene.selection_type == 'conds':
         for cur_obj in parent_obj.children:
@@ -456,7 +457,7 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
 def filter_nodes(do_filter, connectivity_file=''):
     if connectivity_file != '':
         bpy.context.scene.connectivity_files = connectivity_file
-    parent = get_parent_obj_name()
+    parent = get_connections_parent_name()
     if parent is None:
         print('{} is None!'.format(parent))
         return
@@ -527,7 +528,7 @@ def filter_electrodes_via_connections(context, do_filter):
 
 
 def capture_graph_data(per_condition):
-    parent_obj_name = get_parent_obj_name()
+    parent_obj_name = get_connections_parent_name()
     parent_obj = bpy.data.objects.get(parent_obj_name, None)
     if parent_obj:
         time_range = range(0, ConnectionsPanel.addon.get_max_time_steps(), bpy.context.scene.play_dt)
@@ -624,7 +625,7 @@ class FilterGraph(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        parent_obj_name = get_parent_obj_name()
+        parent_obj_name = get_connections_parent_name()
         if not bpy.data.objects.get(parent_obj_name):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
@@ -693,7 +694,7 @@ class FilterNodes(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        parent_obj_name = get_parent_obj_name()
+        parent_obj_name = get_connections_parent_name()
         if not bpy.data.objects.get(parent_obj_name):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
@@ -709,7 +710,7 @@ class FilterElectrodes(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        parent_obj_name = get_parent_obj_name()
+        parent_obj_name = get_connections_parent_name()
         if not bpy.data.objects.get(parent_obj_name):
             self.report({'ERROR'}, 'No parent node was found, you first need to create the connections.')
         else:
@@ -725,7 +726,7 @@ class ClearConnections(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        mu.delete_hierarchy(get_parent_obj_name())
+        mu.delete_hierarchy(get_connections_parent_name())
         return {"FINISHED"}
 
 
@@ -748,7 +749,7 @@ def connectivity_files_update(self, context):
     check_connections()
     for obj in bpy.data.objects['Functional maps'].children:
         if obj.name.startswith('connections'):
-            val = obj.name == get_parent_obj_name()
+            val = obj.name == get_connections_parent_name()
             mu.show_hide_hierarchy(val, obj.name, True, False)
 
 

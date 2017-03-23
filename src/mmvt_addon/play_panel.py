@@ -23,7 +23,7 @@ bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=
 bpy.types.Scene.play_type = bpy.props.EnumProperty(
     items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2),
            ('fmri', 'fMRI dynamics', '', 3), ('fmri_labels', 'fMRI labels dynamics', '', 4),
-           ("meg_coh", "MEG Coherence", "", 5),
+           ("labels_connectivity", "Labels connectivity", "", 5),
            ("elecs", "Electrodes activity", "", 6),
            ("elecs_coh", "Electrodes coherence", "",7), ("elecs_act_coh", "Electrodes activity & coherence", "", 8),
            ("stim", "Electrodes stimulation", "", 9), ("stim_sources", "Electrodes stimulation & sources", "", 10),
@@ -151,8 +151,8 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
     if play_type == 'meg_labels':
         # todo: get the aparc_name
         _addon().meg_labels_coloring(override_current_mat=True)
-    if play_type == 'meg_coh':
-        pass
+    if play_type == 'labels_connectivity':
+        _addon().color_connections()
     if play_type in ['elecs_coh', 'elecs_act_coh', 'meg_elecs_coh']:
         p = _addon().connections_panel
         d = p.ConnectionsPanel.d
@@ -202,6 +202,8 @@ def capture_graph(play_type=None, output_path=None, selection_type=None):
         graph_data['fmri'], graph_colors['fmri'] = get_fmri_data()
     if play_type in ['meg_labels']:
         graph_data['meg_labels'], graph_colors['meg_labels'] = get_meg_labels_data()
+    if play_type in ['labels_connectivity']:
+        graph_data['labels_connectivity'], graph_colors['labels_connectivity'] = get_connectivity_data()
     if play_type in ['stim', 'stim_sources']:
         graph_data['stim'], graph_colors['stim'] = get_electrodes_data(per_condition=True)
     if play_type in ['stim_sources']:
@@ -324,6 +326,16 @@ def get_meg_labels_data():
             meg_data[label_name] = label_data
             meg_colors[label_name] = label_colors
     return meg_data, meg_colors
+
+
+def get_connectivity_data():
+    time_range = range(_addon().get_max_time_steps())
+    parent_name = _addon().get_connections_parent_name()
+    parent_obj = bpy.data.objects.get(parent_name)
+    if not parent_obj is None:
+        return mu.evaluate_fcurves(parent_obj, time_range)
+    else:
+        return None, None
 
 
 def get_electrodes_data(per_condition=True):

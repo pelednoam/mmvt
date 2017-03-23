@@ -70,7 +70,7 @@ def find_obj_with_val():
             print('filtering electrodes')
             filter_electrode_or_sensor(closet_object_name)
             bpy.context.scene.cursor_location = bpy.data.objects[closet_object_name].location
-        elif connections_panel_exist and parent_obj.name == _addon().get_parent_obj_name():
+        elif connections_panel_exist and parent_obj.name == _addon().get_connections_parent_name():
             connections_panel.find_connections_closest_to_target_value(closet_object_name, closest_curve_name, target)
         else:
             filter_roi_func(closet_object_name, closest_curve_name)

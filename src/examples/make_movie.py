@@ -175,6 +175,29 @@ def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
         show_animation, overwrite, n_jobs)
 
 
+def fmri_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
+    fol = op.join(MMVT_DIR, 'nmr00698' ,'movies', 'labels_connectivity')
+    fol2 = ''
+    data_to_show_in_graph = ('labels_connectivity')
+    video_fname = 'nmr00698_fmri_cor.mp4'
+    cb_title = 'fMRI corr'
+    time_range = range(0, 161)
+    xticks = range(0, 161, 20)
+    ylim = ()
+    ylabels = ['Labels corr']
+    xticklabels = [(xt, str(int(xt*3/60))) for xt in xticks][1:]
+    xlabel = 'Time (m)'
+    cb_data_type = 'labels_connectivity'
+    fps = 5
+    cb_min_max_eq = True
+    color_map = 'jet'
+    show_animation = True
+    overwrite = True
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
+        show_animation, overwrite, n_jobs)
+
+
 if __name__ == '__main__':
     dpi = 100
     bitrate = 5000
@@ -184,4 +207,4 @@ if __name__ == '__main__':
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
     # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    fmri_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs)

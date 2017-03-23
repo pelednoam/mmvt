@@ -17,9 +17,9 @@ def wrap_blender_call():
 
 def read_args(argv=None):
     parser = su.add_default_args()
-    parser.add_argument('-t', '--threshold', help='threshold', required=True, type=float)
+    parser.add_argument('-t', '--threshold', help='threshold', required=False, default=2.0, type=float)
     parser.add_argument('-q', '--quality', help='render quality', required=False, default=60, type=int)
-    parser.add_argument('--play_type', help='what to play', required=True)
+    parser.add_argument('-p', '--play_type', help='what to play', required=True)
     parser.add_argument('--play_from', help='from when to play', required=False, default=0, type=int)
     parser.add_argument('--play_to', help='until when to play', required=True, type=int)
     parser.add_argument('--play_dt', help='play dt', required=False, default=1, type=int)
@@ -32,6 +32,7 @@ def read_args(argv=None):
     parser.add_argument('--hide_lh', help='hide left hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_rh', help='hide right hemi', required=False, default=False, type=su.is_true)
     parser.add_argument('--hide_subs', help='hide sub corticals', required=False, default=False, type=su.is_true)
+    parser.add_argument('--filter_nodes', help='filter nodes', required=False, default=True, type=su.is_true)
     parser.add_argument('--camera', help='camera file', required=False, default='')
     args = su.parse_args(parser, argv)
     if args.camera == '':
@@ -58,6 +59,7 @@ def render_movie(subject_fname):
     mmvt.set_render_smooth_figure(args.smooth_figure)
     mmvt.set_light_layers_depth(args.light_layers)
     mmvt.set_brain_transparency(args.brain_trans)
+    mmvt.filter_nodes(args.filter_nodes)
     camera_fname = su.load_camera(mmvt, mmvt_dir, args)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
