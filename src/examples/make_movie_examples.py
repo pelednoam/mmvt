@@ -1,8 +1,9 @@
 import os.path as op
-
 import numpy as np
-
 from src.utils.make_movie import create_movie
+from src.utils import preproc_utils as pu
+
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 def mg78_electrodes_coherence_meg(dpi, bitrate, pics_type, show_first_pic, n_jobs):
@@ -151,7 +152,7 @@ def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = '/home/npeled/mmvt/nmr00698/movies/fmri/'
+    fol = op.join(MMVT_DIR, 'nmr00698' ,'movies', 'fmri')
     fol2 = ''
     data_to_show_in_graph = ('fmri')
     video_fname = 'nmr00698_fmri_4D.mp4'
