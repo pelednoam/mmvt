@@ -334,6 +334,26 @@ def get_subject_name(subject_fname):
     return namebase(subject_fname).split('_')[0]
 
 
+def load_camera(mmvt, mmvt_dir, args):
+    if op.isfile(args.camera):
+        camera_fname = args.camera
+        mmvt.load_camera(args.camera)
+    elif op.isfile(op.join(args.output_path, 'camera.pkl')):
+        camera_fname = op.join(args.output_path, 'camera.pkl')
+        mmvt.load_camera(camera_fname)
+    elif op.isfile(op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')):
+        camera_fname = op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')
+        mmvt.load_camera(camera_fname)
+    else:
+        cont = input('No camera file was detected in the output folder, continue?')
+        if not is_true(cont):
+            return
+    # print('The rendering will be using the camera file in {}'.format(camera_fname))
+    # mmvt.load_camera(camera_fname)
+    # input('Press any ket to continue...')
+    return camera_fname
+
+
 def debug(port=1090):
     pycharm_fol = get_link_dir(get_links_dir(), 'pycharm', throw_exception=True)
     eggpath = op.join(pycharm_fol, 'debug-eggs', 'pycharm-debug-py3k.egg')

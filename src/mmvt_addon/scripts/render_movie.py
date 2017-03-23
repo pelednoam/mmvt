@@ -58,32 +58,12 @@ def render_movie(subject_fname):
     mmvt.set_render_smooth_figure(args.smooth_figure)
     mmvt.set_light_layers_depth(args.light_layers)
     mmvt.set_brain_transparency(args.brain_trans)
-    camera_fname = load_camera(mmvt, mmvt_dir, args)
+    camera_fname = su.load_camera(mmvt, mmvt_dir, args)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
     su.save_blend_file(subject_fname)
     mmvt.render_movie(args.play_type, args.play_from, args.play_to, camera_fname, args.play_dt)
     su.exit_blender()
-
-
-def load_camera(mmvt, mmvt_dir, args):
-    if op.isfile(args.camera):
-        camera_fname = args.camera
-        mmvt.load_camera(args.camera)
-    elif op.isfile(op.join(args.output_path, 'camera.pkl')):
-        camera_fname = op.join(args.output_path, 'camera.pkl')
-        mmvt.load_camera(camera_fname)
-    elif op.isfile(op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')):
-        camera_fname = op.join(mmvt_dir, args.subject, 'camera', 'camera.pkl')
-        mmvt.load_camera(camera_fname)
-    else:
-        cont = input('No camera file was detected in the output folder, continue?')
-        if not su.is_true(cont):
-            return
-    # print('The rendering will be using the camera file in {}'.format(camera_fname))
-    # mmvt.load_camera(camera_fname)
-    # input('Press any ket to continue...')
-    return camera_fname
 
 
 if __name__ == '__main__':
