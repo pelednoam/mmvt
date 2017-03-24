@@ -766,8 +766,9 @@ def color_electrodes_stim():
     _addon().change_to_rendered_brain()
 
 
-def color_connections():
-    _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current)
+def color_connections(threshold=None):
+    clear_connections()
+    _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current, threshold)
 
 
 def clear_and_recolor():
@@ -973,7 +974,16 @@ def clear_colors():
     clear_subcortical_fmri_activity()
     for root in ['Subcortical_meg_activity_map', 'Deep_electrodes']:
         clear_colors_from_parent_childrens(root)
+    clear_connections()
     ColoringMakerPanel.what_is_colored = set()
+
+
+def clear_connections():
+    vertices_obj = bpy.data.objects.get('connections_vertices')
+    if any([obj.hide for obj in vertices_obj.children]):
+        _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current, 0)
+        _addon().filter_nodes(False)
+        _addon().filter_nodes(True)
 
 
 def get_fMRI_activity(hemi, clusters=False):
@@ -1089,17 +1099,22 @@ def draw(self, context):
     # if not bpy.data.objects.get('eeg_helmet', None) is None:
     #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
     if electrodes_files_exist:
-        layout.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
-    if electrodes_labels_files_exist:
-        layout.prop(context.scene, "electrodes_sources_files", text="")
-        layout.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
-    if electrodes_stim_files_exist:
-        layout.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
+        col = layout.box().column()
+        col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        if electrodes_labels_files_exist:
+            col.prop(context.scene, "electrodes_sources_files", text="")
+            col.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
+        if electrodes_stim_files_exist:
+            col.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
     if connections_files_exit:
-        layout.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
+        col = layout.box().column()
+        col.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
+        col.prop(context.scene, 'hide_connection_under_threshold', text='Hide connections under threshold')
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
+bpy.types.Scene.hide_connection_under_threshold = bpy.props.BoolProperty(
+    default=True, description="Hide connections under threshold")
 bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")

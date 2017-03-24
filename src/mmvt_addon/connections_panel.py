@@ -367,7 +367,7 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 # def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
-def plot_connections(d, plot_time):
+def plot_connections(d, plot_time, threshold=None):
     _addon().show_hide_connections()
     windows_num = d.con_values.shape[1] if d.con_values.ndim >= 2 else 1
     t = int(plot_time / ConnectionsPanel.T * windows_num) if windows_num > 1 else 0
@@ -392,13 +392,21 @@ def plot_connections(d, plot_time):
                      for ind in selected_indices]
         colors = _addon().calc_colors(np.array(stat_vals).squeeze(), data_min, colors_ratio)
         colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
+        _addon().show_hide_connections()
+        if threshold is None:
+            threshold = bpy.context.scene.coloring_threshold
         for ind, con_name in enumerate(selected_objects):
             cur_obj = bpy.data.objects.get(con_name)
+            if bpy.context.scene.hide_connection_under_threshold:
+                if abs(stat_vals[ind]) < threshold:
+                    cur_obj.hide = True
+                    cur_obj.hide_render = True
             bpy.context.scene.objects.active = cur_obj
             mu.create_material('{}_mat'.format(con_name), colors[ind], 1, False)
+        if bpy.context.scene.hide_connection_under_threshold:
+            filter_nodes()
         parent_obj_name = get_connections_parent_name()
         bpy.data.objects[parent_obj_name].select = True
-        ConnectionsPanel.addon.show_hide_connections()
         connectivity_method = d['connectivity_method'] if 'connectivity_method' in d else 'connectivity'
         # if 'corr' in connectivity_method:
         #     _addon().set_colorbar_max_min(1, -1)
@@ -456,7 +464,7 @@ def find_connections_closest_to_target_value(closet_object_name, closest_curve_n
             conn_name = mu.get_fcurve_name(conn_name)
 
 
-def filter_nodes(do_filter, connectivity_file=''):
+def filter_nodes(do_filter=True, connectivity_file=''):
     if connectivity_file != '':
         bpy.context.scene.connectivity_files = connectivity_file
     parent = get_connections_parent_name()
@@ -472,7 +480,7 @@ def filter_nodes(do_filter, connectivity_file=''):
             conn_found = False
             label_name = node.name[:-len('_vertice')]
             for conn in bpy.data.objects[parent].children:
-                if label_name in conn.name:
+                if label_name in conn.name and not conn.hide:
                     conn_found = True
                     break
             if not conn_found:
