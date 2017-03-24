@@ -58,6 +58,8 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
         ColorbarPanel.init = init
+    else:
+        print('set_colorbar_max_min: ax_val < min_val!')
 
 
 def get_colorbar_max_min():

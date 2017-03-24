@@ -385,23 +385,17 @@ def plot_connections(d, plot_time):
             data_max = _addon().get_colorbar_max()
         else:
             # Should set the percentile in GUI
-            data_max = np.percentile(d.con_values[selected_indices], 97)
-            data_min = np.percentile(d.con_values[selected_indices], 3)
-            if np.sign(data_max) != np.sign(data_min):
-                data_minmax = max(map(abs, [data_max, data_min]))
-                data_max, data_min = data_minmax, -data_minmax
+            data_min, data_max = ConnectionsPanel.data_minmax
             _addon().set_colorbar_max_min(data_max, data_min)
         colors_ratio = 256 / (data_max - data_min)
-        for ind, con_name in zip(selected_indices, selected_objects):
-            # print(con_name, d.con_values[ind, t, 0], d.con_values[ind, t, 1], np.diff(d.con_values[ind, t, :]))
+        stat_vals = [calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
+                     for ind in selected_indices]
+        colors = _addon().calc_colors(np.array(stat_vals).squeeze(), data_min, colors_ratio)
+        colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
+        for ind, con_name in enumerate(selected_objects):
             cur_obj = bpy.data.objects.get(con_name)
-            # color = d.con_colors[ind, t, :] if d.con_colors.ndim == 3 else d.con_colors[ind, :]
-            # stat_val = np.diff(d.con_values[ind, t, :])[0]
-            stat_val = calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
-            color = _addon().calc_colors([stat_val], data_min, colors_ratio)[0]
-            con_color = np.concatenate((np.squeeze(color), [0.]))
             bpy.context.scene.objects.active = cur_obj
-            mu.create_material('{}_mat'.format(con_name), con_color, 1, False)
+            mu.create_material('{}_mat'.format(con_name), colors[ind], 1, False)
         parent_obj_name = get_connections_parent_name()
         bpy.data.objects[parent_obj_name].select = True
         ConnectionsPanel.addon.show_hide_connections()
@@ -759,6 +753,15 @@ def connectivity_files_update(self, context):
         if obj.name.startswith('connections'):
             val = obj.name == get_connections_parent_name()
             mu.show_hide_hierarchy(val, obj.name, True, False)
+    data = ConnectionsPanel.d.con_values
+    # data_max = np.percentile(data[ConnectionsPanel.selected_indices], 97)
+    # data_min = np.percentile(data[ConnectionsPanel.selected_indices], 3)
+    data_max = np.max(data[ConnectionsPanel.selected_indices])
+    data_min = np.min(data[ConnectionsPanel.selected_indices])
+    if np.sign(data_max) != np.sign(data_min):
+        data_minmax = max(map(abs, [data_max, data_min]))
+        data_max, data_min = data_minmax, -data_minmax
+    ConnectionsPanel.data_minmax = (data_min, data_max)
 
 
 def connections_draw(self, context):
