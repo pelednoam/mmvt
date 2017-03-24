@@ -286,6 +286,8 @@ class SelectionListener(bpy.types.Operator):
                         # pial_obj.select = True
                         _addon().select_roi(pial_obj_name)
                         mu.change_fcurves_colors(pial_obj)
+                elif selected_obj_type == mu.OBJ_TYPE_CON:
+                    _addon().select_connection(selected_obj_name)
                 elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:
                     _addon().vertices_selected(selected_obj_name)
             self.right_clicked = False

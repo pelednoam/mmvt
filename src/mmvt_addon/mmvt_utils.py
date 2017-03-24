@@ -33,6 +33,8 @@ from sys import platform as _platform
 from datetime import datetime
 from queue import Empty
 
+import connections_panel as con_pan
+
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
@@ -41,7 +43,7 @@ print('platform: {}'.format(_platform))
 HEMIS = ['rh', 'lh']
 INF_HEMIS = ['inflated_{}'.format(hemi) for hemi in HEMIS]
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
-    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM, OBJ_TYPE_CON_VERTICE) = range(9)
+    OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM, OBJ_TYPE_CON, OBJ_TYPE_CON_VERTICE) = range(10)
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -546,6 +548,8 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_EEG
     elif obj.parent.name in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         obj_type = OBJ_TYPE_CEREBELLUM
+    elif obj.parent.name == con_pan.get_connections_parent_name():
+        obj_type = OBJ_TYPE_CON
     elif obj.parent.name == 'connections_vertices':
         obj_type = OBJ_TYPE_CON_VERTICE
     else:
@@ -1018,6 +1022,10 @@ def count_fcurves(objs):
 
 
 def get_fcurves(obj):
+    if isinstance(obj, str):
+        obj = bpy.data.objects.get(obj)
+        if obj is None:
+            return None
     fcurves = []
     if not obj is None and not obj.animation_data is None:
         fcurves = obj.animation_data.action.fcurves

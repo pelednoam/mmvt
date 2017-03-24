@@ -48,6 +48,14 @@ def connections_data():
     return ConnectionsPanel.d
 
 
+def select_connection(connection_name):
+    fcurves = mu.get_fcurves(connection_name)
+    for fcurve in fcurves:
+        fcurve.hide = False
+        fcurve.select = True
+    mu.view_all_in_graph_editor()
+
+
 def check_connections(stat=STAT_DIFF):
     # d = load_connections_file()
     d = ConnectionsPanel.d
@@ -848,7 +856,13 @@ def init(addon):
         items=conn_items, description="connectivity files", update=connectivity_files_update)
     if len(conn_names) > 0:
         ConnectionsPanel.conn_names = conn_names
-        bpy.context.scene.connectivity_files = conn_names[0] #get_first_existing_parent_obj_name() #
+        conn_obj_names = ['connections_{}'.format(con_name.replace(' ', '_')) for con_name in conn_names]
+        for parent_obj in bpy.data.objects['Functional maps'].children:
+            if parent_obj.name in conn_obj_names:
+                conn_index = conn_obj_names.index(parent_obj.name)
+                bpy.context.scene.connectivity_files = conn_names[conn_index]  # get_first_existing_parent_obj_name() #
+                break
+
     ConnectionsPanel.T = addon.get_max_time_steps()
     ConnectionsPanel.addon = addon
     bpy.context.scene.connections_threshold = 0

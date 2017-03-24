@@ -237,6 +237,7 @@ vertices_selected = connections_panel.vertices_selected
 create_connections = connections_panel.create_connections
 filter_nodes = connections_panel.filter_nodes
 get_connections_parent_name = connections_panel.get_connections_parent_name
+select_connection = connections_panel.select_connection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
