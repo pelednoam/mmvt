@@ -36,6 +36,8 @@ sensor and source-space analysis of MEG and EEG data).
 ## Videos
 
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation")
+*Resting State fMRI & Cortical labels correlation
+![Example](https://cloud.githubusercontent.com/assets/1643819/24373139/63a21202-12fe-11e7-8acb-1efcb5f78dad.gif)
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341742/03e0af80-58c4-11e6-8587-125cde58e6b8.gif "MEG & Electrodes & Coherence")
 
 ## Tutorials
