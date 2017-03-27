@@ -1,5 +1,5 @@
 <img src="misc/mmvt_logo.jpg" align="right" />
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg)](https://doi.org/10.5281/zenodo.438343)
+<a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
 
 ## Multi-Modality Visualization Tool
