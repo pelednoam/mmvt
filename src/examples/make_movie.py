@@ -190,8 +190,8 @@ def fmri_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     cb_data_type = 'labels_connectivity'
     fps = 5
     cb_min_max_eq = True
-    color_map = 'jet'
-    show_animation = True
+    color_map = 'BuPu_YlOrRd'
+    show_animation = False
     overwrite = True
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
         cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,

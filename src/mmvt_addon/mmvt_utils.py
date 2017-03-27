@@ -33,7 +33,14 @@ from sys import platform as _platform
 from datetime import datetime
 from queue import Empty
 
-import connections_panel as con_pan
+try:
+    import connections_panel as con_pan
+except:
+    try:
+        sys.path.append(op.split(__file__)[0])
+        import connections_panel as con_pan
+    except:
+        print('no bpy')
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"

@@ -12,6 +12,7 @@ import numbers
 import numpy as np
 import re
 import traceback
+
 from src.utils import utils
 from src.utils import movies_utils as mu
 from src.utils import figures_utils as fu
@@ -129,8 +130,7 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         # print('Reading image {}, current t {}'.format(images[image_index], current_t))
         return [im]
 
-    use_animation = False
-    if use_animation:
+    if show_animation:
         ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=1000, blit=True, repeat=False)
         plt.show()
         # Set up formatting for the movie files

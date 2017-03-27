@@ -25,18 +25,6 @@ import multiprocessing
 import getpass
 
 from src.mmvt_addon import mmvt_utils as mu
-from src.mmvt_addon.scripts import scripts_utils as su
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
-import uuid
-
-PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
-STAT_AVG, STAT_DIFF = range(2)
-HEMIS = ['lh', 'rh']
-
 # links to mmvt_utils
 Bag = mu.Bag
 make_dir = mu.make_dir
@@ -56,9 +44,23 @@ get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
 csv_file_reader = mu.csv_file_reader
 time_to_go = mu.time_to_go
-get_link_dir = su.get_link_dir
 tryit = mu.tryit
 to_str = mu.to_str
+
+from src.mmvt_addon.scripts import scripts_utils as su
+get_link_dir = su.get_link_dir
+
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+import uuid
+
+PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
+STAT_AVG, STAT_DIFF = range(2)
+HEMIS = ['lh', 'rh']
+
 
 def get_exisiting_dir(dirs):
     ex_dirs = [d for d in dirs if op.isdir(d)]
