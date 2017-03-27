@@ -23,13 +23,16 @@ BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 # plt.rcParams['animation.ffmpeg_path'] = '/home/npeled/code/links/ffmpeg/ffmpeg'
 
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, images2=(),
+        data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet',
+        cb2_data_type='', cb2_title='', cb2_min_max_eq=True, color_map2='jet', bitrate=5000, images2=(),
         ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False,
         show_animation=False, overwrite=True):
 
-
     def two_brains_two_graphs():
-        brain_ax = plt.subplot(gs[:-g2, :g3])
+        if cb2_data_type == '':
+            brain_ax = plt.subplot(gs[:-g2, :g3])
+        else:
+            brain_ax = plt.subplot(gs[:-g2, 1:g3 + 1])
         brain_ax.set_aspect('equal')
         brain_ax.get_xaxis().set_visible(False)
         brain_ax.get_yaxis().set_visible(False)
@@ -37,7 +40,10 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         image = mpimg.imread(images[0])
         im = brain_ax.imshow(image, animated=True)#, cmap='gray',interpolation='nearest')
 
-        brain_ax2 = plt.subplot(gs[:-g2, g3:-1])
+        if cb2_data_type == '':
+            brain_ax2 = plt.subplot(gs[:-g2, g3:-1])
+        else:
+            brain_ax2 = plt.subplot(gs[:-g2, g3 + 1:-1])
         brain_ax2.set_aspect('equal')
         brain_ax2.get_xaxis().set_visible(False)
         brain_ax2.get_yaxis().set_visible(False)
@@ -51,14 +57,26 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
             ax_cb = plt.subplot(gs[:-g2, -1])
         else:
             ax_cb = None
+        if cb2_data_type != '':
+            ax_cb2 = plt.subplot(gs[:-g2, -1])
+            ax_cb = plt.subplot(gs[:-g2, 0])
+        else:
+            ax_cb2 = None
         plt.tight_layout()
         resize_and_move_ax(brain_ax, dx=0.04)
         resize_and_move_ax(brain_ax2, dx=-0.00)
-        if cb_data_type != '':
+        if cb2_data_type != '':
+            resize_and_move_ax(ax_cb2, ddw=0.5, ddh=0.9, dx=-0.04, dy=0.03)
+            resize_and_move_ax(ax_cb, ddw=0.5, ddh=0.9, dx=0.03, dy=0.03)
+            resize_and_move_ax(brain_ax, dx=-0.03)
+            resize_and_move_ax(brain_ax2, dx=-0.04)
+        elif cb_data_type != '':
             resize_and_move_ax(ax_cb, ddw=0.5, ddh=0.8, dx=-0.01, dy=0.06)
         for graph_ax in [graph1_ax, graph2_ax]:
             resize_and_move_ax(graph_ax, dx=0.04, dy=0.03, ddw=0.89)
-        return ax_cb, im, im2, graph1_ax, graph2_ax
+            # if cb2_data_type != '':
+            #     resize_and_move_ax(graph_ax, ddh=1.2)
+        return ax_cb, im, im2, graph1_ax, graph2_ax, ax_cb2
 
     def one_brain_one_graph(gs, g2, two_graphs=False):
         brain_ax = plt.subplot(gs[:-g2, :-1])
@@ -93,11 +111,13 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     gs = gridspec.GridSpec(g, g)#, height_ratios=[3, 1])
 
     if fol2 != '':
-        ax_cb, im, im2, graph1_ax, graph2_ax = two_brains_two_graphs()
+        if cb2_data_type != '':
+            gs = gridspec.GridSpec(g, g + 1)  # , height_ratios=[3, 1])
+        ax_cb, im, im2, graph1_ax, graph2_ax, ax_cb2 = two_brains_two_graphs()
     else:
         two_graphes = len(data_to_show_in_graph) == 2
         ax_cb, im, graph1_ax, graph2_ax = one_brain_one_graph(gs, g2, two_graphes)
-        im2 = None
+        im2, ax_cb2 = None, None
 
     # gs.update(left=0.05, right=0.48, wspace=0.05)
     # graph_data, graph_colors, t_line, ymin, ymax = plot_graph(
@@ -107,7 +127,12 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2,
         graph2_ax, xlabel, ylabels, xticklabels, ylim, images)
 
-    plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
+    if not ax_cb2 is None and fol2 != '':
+        graph_data2, _ = utils.load(op.join(fol2, 'data.pkl'))
+        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map, 'left')
+        plot_color_bar(ax_cb2, graph_data2, cb2_title, cb2_data_type, cb2_min_max_eq, color_map2)
+    else:
+        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
 
     now = time.time()
     if show_first_pic:
@@ -175,7 +200,9 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
         graph_data2, graph_colors2 = utils.load(op.join(fol2, 'data.pkl'))
         if len(graph_data.keys()) == 1 and len(graph_data2.keys()) == 1:
             graph2_data_item = list(graph_data2.keys())[0]
-            graph_data['{}2'.format(graph2_data_item)] = graph_data2[graph2_data_item]
+            key = graph2_data_item if 'graph2_data_item' not in graph_data2 else '{}2'.format(graph2_data_item)
+            graph_data[key] = graph_data2[graph2_data_item]
+            graph_colors[key] = graph_colors2[graph2_data_item]
     axes = [graph1_ax]
     if graph2_ax:
         axes = [graph1_ax, graph2_ax]
@@ -184,6 +211,8 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
     from src.mmvt_addon import colors_utils as cu
     # colors = cu.get_distinct_colors(6) / 255# ['r', 'b', 'g']
     colors = ['r', 'b', 'g']
+    if isinstance(data_to_show_in_graph, str):
+        data_to_show_in_graph= [data_to_show_in_graph]
     for data_type, data_values in graph_data.items():
         if isinstance(data_values, numbers.Number):
             continue
@@ -253,7 +282,7 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
     return graph_data, graph_colors, t_line, ymin, ymax
 
 
-def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, color_map='jet'):
+def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, color_map='jet', position='right'):
     if data_type == '':
         return
     import matplotlib as mpl
@@ -268,6 +297,9 @@ def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, c
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     color_map = fu.find_color_map(color_map)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
+    if position == 'left':
+        ax.yaxis.set_ticks_position('left')
+        ax.yaxis.set_label_position('left')
     cb.set_label(cb_title)
 
 
@@ -278,9 +310,10 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
 
 
 def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
-     data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='', ylim=(),
-     ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False, show_animation=False,
-     overwrite=True, n_jobs=1):
+                 data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='',
+                 cb2_data_type='', cb2_title='', cb2_min_max_eq=True, color_map2='jet',
+                 ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False,
+                 show_animation=False, overwrite=True, n_jobs=1):
 
     images1 = get_pics(fol, pics_type)[:len(time_range)]
     images1_chunks = utils.chunks(images1, len(images1) / n_jobs)
@@ -293,7 +326,8 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
         images2_chunks = [''] * int(len(images1) / n_jobs)
     params = [(images1_chunk, images2_chunk, time_range, xticks, dpi, fps,
                video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate,
-               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, run, show_animation, overwrite) for \
+               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2,
+               cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, run, show_animation, overwrite) for \
               run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
     if n_jobs > 1:
         utils.run_parallel(_create_movie_parallel, params, n_jobs)
@@ -307,12 +341,13 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
 def _create_movie_parallel(params):
     (images1, images2, time_range, xticks, dpi, fps,
         video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate, ylim, ylabels,
-        xticklabels, xlabel, show_first_pic, fol, fol2, run, show_animation, overwrite) = params
+        xticklabels, xlabel, show_first_pic, fol, fol2, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, run,
+        show_animation, overwrite) = params
     video_name, video_type = op.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
-    ani_frame(time_range, xticks, images1, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title, cb_min_max_eq, color_map, bitrate, images2, ylim, ylabels,
-        xticklabels, xlabel, show_first_pic, show_animation, overwrite)
+    ani_frame(time_range, xticks, images1, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, fol, fol2,
+              cb_title, cb_min_max_eq, color_map, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, bitrate,
+              images2, ylim, ylabels, xticklabels, xlabel, show_first_pic, show_animation, overwrite)
 
 
 def sort_pics_key(pic_fname):
