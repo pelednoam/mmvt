@@ -67,6 +67,8 @@ It's sponsored by:
 - The U.S. Army Research Office and Defense Advanced Research Projects Agency under Cooperative Agreement Number W911NF-14-2-0045. 
 - The NCRR (S10RR014978) and NIH (S10RR031599,R01-NS069696, 5R01-NS060918, U01MH093765)
 
+## Suggested Citation
+O.Felsenstein and N. Peled et al. (2017). MMVT - Multi-Modality Visualization Tool. GitHub Repository. https://github.com/pelednoam/mmvt DOI:10.5281/zenodo.438343
 
 ## Licensing
 
