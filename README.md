@@ -1,7 +1,6 @@
 <img src="misc/mmvt_logo.jpg" align="right" />
 
 ## Multi-Modality Visualization Tool
-<a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
 The visualization and exploration of neuroimaging data is
 important for the analysis of anatomical and functional images and
@@ -31,6 +30,8 @@ FieldTrip (MATLAB software toolbox for neuroimaging analysis) data
 structures for the invasive electrodes. The users can also reprocess raw
 data using a wrappers for FaFast and mne-python (a python package for
 sensor and source-space analysis of MEG and EEG data).
+
+<a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
 ## Videos
 
