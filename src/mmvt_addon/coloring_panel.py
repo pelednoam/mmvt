@@ -893,8 +893,8 @@ class ColorGroupsManually(bpy.types.Operator):
 
 
 class ColorfMRIDynamics(bpy.types.Operator):
-    bl_idname = "mmvt.meg_color"
-    bl_label = "mmvt meg color"
+    bl_idname = "mmvt.fmri_dynamics_color"
+    bl_label = "mmvt fmri dynamics color"
     bl_options = {"UNDO"}
 
     @staticmethod
