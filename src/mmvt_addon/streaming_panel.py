@@ -29,8 +29,8 @@ def electrodes_sep_update(self, context):
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         elc_ind = fcurve_ind
         for t in range(T):
-            fcurve.keyframe_points[t].co[1] = data[elc_ind, t]# + \
-                                             # (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep * data_amp
+            fcurve.keyframe_points[t].co[1] = data[elc_ind, t] + \
+                                             (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
     mu.view_all_in_graph_editor()
 
 
@@ -59,7 +59,7 @@ def change_graph_all_vals(mat):
             t = curr_t + ind
             if t > max_steps:
                 t = ind
-            fcurve.keyframe_points[t].co[1] = mat[elc_ind, ind] # + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            fcurve.keyframe_points[t].co[1] = mat[elc_ind, ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
             _addon().color_objects_homogeneously([mat[elc_ind, ind]], [fcurve_name], None, data_min, colors_ratio)
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
@@ -262,8 +262,10 @@ class StreamButton(bpy.types.Operator):
     _obj = None
     _buffer = []
     _jobs = Queue()
+    _first_time = True
 
     def invoke(self, context, event=None):
+        self._first_time = True
         StreamingPanel.is_streaming = not StreamingPanel.is_streaming
         if StreamingPanel.first_time:
             StreamingPanel.first_time = False
@@ -319,6 +321,9 @@ class StreamButton(bpy.types.Operator):
                 if not data is None:
                     # self._jobs.put(data)
                     change_graph_all_vals(data)
+                    if self._first_time:
+                        self._first_time = False
+                        # _addon().view_all_in_graph_editor()
                     color_electrodes(data)
                     # data = mu.queue_get(StreamingPanel.udp_queue)
 
@@ -366,7 +371,7 @@ bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0) #, update=electrodes_sep_update)
+bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streaming_bad_channels', default='0,3')
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(
