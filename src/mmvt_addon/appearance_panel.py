@@ -107,9 +107,12 @@ def hemis_distance_update(self, context):
 
 
 def inflating_update(self, context):
-    bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
-    bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
-    bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+    try:
+        bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
+        bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
+        bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+    except:
+        print('Error in inflating update!')
 
 
 def set_inflated_ratio(ratio):

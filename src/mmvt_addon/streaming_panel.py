@@ -29,8 +29,8 @@ def electrodes_sep_update(self, context):
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         elc_ind = fcurve_ind
         for t in range(T):
-            fcurve.keyframe_points[t].co[1] = data[elc_ind, t] + \
-                                              (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep * data_amp
+            fcurve.keyframe_points[t].co[1] = data[elc_ind, t]# + \
+                                             # (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep * data_amp
     mu.view_all_in_graph_editor()
 
 
@@ -39,10 +39,19 @@ def change_graph_all_vals(mat):
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
+    good_electrodes = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    elecs_cycle = cycle(good_electrodes)
+    data_min, data_max = np.min(mat[good_electrodes]), np.max(mat[good_electrodes])
+    StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
+    StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
+    colors_ratio = 256 / (data_max - data_min)
+    _addon().set_colorbar_max_min(data_max, data_min)
+    # _addon().view_all_in_graph_editor()
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+        fcurve_name = mu.get_fcurve_name(fcurve)
         if fcurve_ind == 0:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
-        elc_ind = fcurve_ind
+        elc_ind = next(elecs_cycle) #fcurve_ind
         if elc_ind >= mat.shape[0]:
             continue
         curr_t = bpy.context.scene.frame_current
@@ -50,9 +59,12 @@ def change_graph_all_vals(mat):
             t = curr_t + ind
             if t > max_steps:
                 t = ind
-            fcurve.keyframe_points[t].co[1] = mat[elc_ind][ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            fcurve.keyframe_points[t].co[1] = mat[elc_ind, ind] # + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            _addon().color_objects_homogeneously([mat[elc_ind, ind]], [fcurve_name], None, data_min, colors_ratio)
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
+
+
 
     bpy.context.scene.frame_current += mat.shape[1]
     if bpy.context.scene.frame_current > MAX_STEPS - 1:
@@ -221,10 +233,10 @@ def set_electrodes_data():
         mu.make_dir(output_fol)
         np.save(op.join(output_fol, output_fname), data)
 
-    norm_percs = (3, 97) #todo: add to gui
-    StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
-        StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-    StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
+    # norm_percs = (3, 97) #todo: add to gui
+    # StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
+    #     StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+    # StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
 
 
 def get_electrodes_data():
@@ -237,6 +249,7 @@ def get_electrodes_data():
         for t in range(max_steps):
             data[fcurve_ind, t] = fcurve.keyframe_points[t].co[1]
     return data
+
 
 class StreamButton(bpy.types.Operator):
     bl_idname = "mmvt.stream_button"
@@ -353,7 +366,7 @@ bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
+bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0) #, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streaming_bad_channels', default='0,3')
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(
@@ -401,6 +414,7 @@ def init(addon):
     StreamingPanel.is_streaming = False
     StreamingPanel.first_time = True
     StreamingPanel.electrodes_data = None
+    StreamingPanel.data_max, StreamingPanel.data_min = 0, 0
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
@@ -411,12 +425,33 @@ def init(addon):
 
 
 def init_electrodes_fcurves():
-    for fcurve_ind, fcurve in enumerate( bpy.data.objects['Deep_electrodes'].animation_data.action.fcurves):
-        if fcurve_ind == 0:
-            # max_steps = min([len(fcurve.keyframe_points), StreamingPanel.max_steps]) - 1
-            max_steps = len(fcurve.keyframe_points) - 1
-        for t in range(max_steps):
-            fcurve.keyframe_points[t].co[1] = 0
+    parent_obj = bpy.data.objects['Deep_electrodes']
+    if parent_obj.animation_data is None:
+        init_electrodes_animation()
+    else:
+        for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
+            if fcurve_ind == 0:
+                # max_steps = min([len(fcurve.keyframe_points), StreamingPanel.max_steps]) - 1
+                max_steps = len(fcurve.keyframe_points) - 1
+            for t in range(max_steps):
+                fcurve.keyframe_points[t].co[1] = 0
+
+
+def init_electrodes_animation():
+    parent_obj = bpy.data.objects['Deep_electrodes']
+    T = _addon().get_max_time_steps()
+    N = len(parent_obj.children)
+    now = time.time()
+    for obj_counter, source_obj in enumerate(parent_obj.children):
+        mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
+        source_name = source_obj.name
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
+        for ind in range(T):
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, ind + 2)
+        fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
+        mod = fcurves.modifiers.new(type='LIMITS')
+
 
 #
 # def create_electrodes_dic():

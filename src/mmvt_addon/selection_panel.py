@@ -400,7 +400,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
-        layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
+            layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('MEG_sensors'):
