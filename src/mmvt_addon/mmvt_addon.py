@@ -86,6 +86,8 @@ add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_electrodes_data = data_panel.load_electrodes_data
+load_eeg_data = data_panel.load_eeg_data
+load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -173,6 +175,8 @@ show_rois = appearance_panel.show_rois
 show_activity = appearance_panel.show_activity
 show_electrodes = appearance_panel.show_electrodes
 show_hide_electrodes = appearance_panel.show_electrodes
+show_hide_eeg = appearance_panel.show_hide_eeg
+show_hide_meg_sensors = appearance_panel.show_hide_meg_sensors
 show_hide_connections = appearance_panel.show_hide_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
@@ -315,6 +319,7 @@ def make_all_fcurve_visible():
 
 
 def init(addon_prefs):
+    run_faulthandler()
     set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']
@@ -332,6 +337,13 @@ def init(addon_prefs):
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
     os.chdir(code_fol)
 
+
+def run_faulthandler():
+    import faulthandler
+    logs = op.join(mmvt_utils.get_user_fol(), 'logs')
+    mmvt_utils.make_dir(logs)
+    fault_handler = open(op.join(logs, 'faulthandler_{}.txt'.format(mmvt_utils.rand_letters(5))), 'w')
+    faulthandler.enable(fault_handler)
 
 
 def main(addon_prefs=None):

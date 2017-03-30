@@ -792,6 +792,22 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
+def load_eeg_data():
+    data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+    meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
+    data = np.load(data_fname, mmap_mode='r')
+    meta = np.load(meta_fname)
+    return data, meta
+
+
+def load_meg_sensors_data():
+    data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+    meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+    data = np.load(data_fname, mmap_mode='r')
+    meta = np.load(meta_fname)
+    return data, meta
+
+
 def load_electrodes_data(stat='diff'):
     # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
     fol = op.join(mu.get_user_fol(), 'electrodes')
@@ -844,8 +860,8 @@ class AddDataToEEGSensors(bpy.types.Operator):
         if not op.isfile(data_fname) or not op.isfile(meta_fname):
             mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
         else:
-            data = DataMakerPanel.eeg_data = np.load(data_fname, mmap_mode='r')
-            meta = DataMakerPanel.eeg_meta = np.load(meta_fname)
+            DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_data()
+            data, meta = DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
             add_data_to_electrodes(data, meta, window_len=2)
             add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
             bpy.types.Scene.eeg_data_exist = True

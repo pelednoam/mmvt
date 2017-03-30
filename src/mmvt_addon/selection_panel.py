@@ -406,7 +406,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         if bpy.data.objects.get('MEG_sensors'):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_sensors'):
-            layout.operator(SelectAllEEG.bl_idname, text="EEG", icon='BORDER_RECT')
+            layout.operator(SelectAllEEG.bl_idname, text="EEG sensors", icon='BORDER_RECT')
         if bpy.data.objects.get(_addon().get_connections_parent_name()) and \
                 bpy.data.objects[_addon().get_connections_parent_name()].animation_data:
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')

@@ -260,11 +260,11 @@ def plot_labels_probs(elc):
         if len(elc['cortical_rois']) > 0:
             hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
             if not hemi is None:
-                labels_data = dict(data=elc['cortical_probs'], colors=elc['cortical_colors'][:, :3],
-                                   names=elc['cortical_rois'])
+                labels_data = dict(data=elc['cortical_probs'], names=elc['cortical_rois'])
                 _addon().set_colorbar_title('Electrodes probabilities')
                 _addon().set_colormap('YlOrRd')
-                _addon().meg_labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0, True, 0, 1)
+                _addon().labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0,
+                                              colors_min=0, colors_max=1)
             else:
                 print("Can't get the rois hemi!")
         else:
@@ -296,7 +296,7 @@ def plot_labels_probs(elc):
 def unselect_prev_electrode(prev_electrode):
     prev_elc = bpy.data.objects.get(prev_electrode)
     if not prev_elc is None:
-        _addon().de_select_electrode(prev_elc, False)
+        _addon().de_select_electrode_and_sensor(prev_elc, False)
 
 
 def elecs_draw(self, context):

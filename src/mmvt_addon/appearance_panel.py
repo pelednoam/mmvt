@@ -38,11 +38,11 @@ def change_view3d():
             break
 
 
-def show_hide_meg_sensors(do_show):
+def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 
 
-def show_hide_eeg(do_show):
+def show_hide_eeg(do_show=True):
     bpy.context.scene.layers[_addon().EEG_LAYER] = do_show
 
 

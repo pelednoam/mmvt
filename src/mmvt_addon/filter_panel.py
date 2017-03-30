@@ -492,7 +492,9 @@ class Filtering(bpy.types.Operator):
         # self.current_activity_path = bpy.path.abspath(bpy.context.scene.activity_path)
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
-        files_names = {'MEG': 'labels_data_{}_{}.npz'.format(bpy.context.scene.atlas, '{hemi}'),
+        atlas = bpy.context.scene.atlas
+        labels_extract_method = bpy.context.scene.labels_data_files
+        files_names = {'MEG': op.join('meg', 'labels_data_{}_{}_{}.npz'.format(atlas, labels_extract_method, '{hemi}')),
                        'MEG_sensors': op.join('meg', 'meg_sensors_evoked_data.npy'),
                        'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz'),
                        'EEG': op.join('eeg', 'eeg_data.npz')}

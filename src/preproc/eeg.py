@@ -49,13 +49,24 @@ def save_evoked_to_blender(mri_subject, events, args, evoked=None):
         event_ind = np.where(ch_names == 'Event')[0]
         ch_names = np.delete(ch_names, event_ind)
         data = np.delete(data, event_ind, 0)
+    data_max, data_min = utils.get_data_max_min(data, args.norm_by_percentile, args.norm_percs)
+    max_abs = utils.get_max_abs(data_max, data_min)
     if args.normalize_evoked:
-        data_max, data_min = utils.get_data_max_min(data, args.norm_by_percentile, args.norm_percs)
-        max_abs = utils.get_max_abs(data_max, data_min)
         data = data / max_abs
     np.save(op.join(fol, 'eeg_data.npy'), data)
-    np.savez(op.join(fol, 'eeg_data_meta.npz'), names=ch_names, conditions=list(events.keys()), dt=dt)
+    np.savez(op.join(fol, 'eeg_data_meta.npz'), names=ch_names, conditions=list(events.keys()), dt=dt,
+             minmax=(-max_abs, max_abs))
     return True
+
+
+def calc_minmax(mri_subject, args):
+    #todo: merge into save_evoked_to_blender
+    fol = op.join(MMVT_DIR, mri_subject, 'eeg')
+    data = np.load(op.join(fol, 'eeg_data.npy'))
+    data_max, data_min = utils.get_data_max_min(np.diff(data), args.norm_by_percentile, args.norm_percs)
+    max_abs = utils.get_max_abs(data_max, data_min)
+    np.save(op.join(fol, 'eeg_data_minmax.npy'), [-max_abs, max_abs])
+    return op.isfile(op.join(fol, 'eeg_data_minmax.npy'))
 
 
 def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
@@ -89,7 +100,7 @@ def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
 def main(tup, remote_subject_dir, args, flags):
     (subject, mri_subject), inverse_method = tup
     evoked, epochs = None, None
-    fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, args)
+    fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, remote_subject_dir, args)
     meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
                      MMVT_DIR, args)
     meg.MEG_DIR = SUBJECTS_EEG_DIR
@@ -100,13 +111,17 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
 
-    flags, evoked, epochs = meg.calc_evoked_wrapper(subject, mri_subject, conditions, args, flags)
+    flags, evoked, epochs = meg.calc_evokes_wrapper(subject, mri_subject, conditions, args, flags)
 
     if utils.should_run(args, 'create_eeg_mesh'):
         flags['create_eeg_mesh'] = create_eeg_mesh(mri_subject, args.eeg_electrodes_excluded_from_mesh)
 
     if utils.should_run(args, 'save_evoked_to_blender'):
         flags['save_evoked_to_blender'] = save_evoked_to_blender(mri_subject, conditions, args, evoked)
+
+    if utils.should_run(args, 'calc_minmax'):
+        flags['calc_minmax'] = calc_minmax(mri_subject, args)
+
     if not op.isfile(meg.COR):
         eeg_cor = op.join(meg.SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(subject))
         if not op.isfile(eeg_cor):

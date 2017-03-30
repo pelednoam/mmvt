@@ -374,8 +374,11 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, norm_by_percentile=Fal
     for event_ind, event in enumerate(events_keys):
         data[:, :, event_ind] = evokes[event_ind].data[meg_indices]
     data = utils.normalize_data(data, norm_by_percentile, norm_percs)
+    data_max, data_min = utils.get_data_max_min(np.diff(data), norm_by_percentile, norm_percs)
+    max_abs = utils.get_max_abs(data_max, data_min)
     np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
     np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
+    np.save(op.join(fol, 'meg_sensors_evoked_minmax.npy'), [-max_abs, max_abs])
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -1727,6 +1730,7 @@ def calc_evokes_wrapper(subject, mri_subject, conditions, args, flags):
             epochs, conditions, mri_subject, args.norm_by_percentile, args.norm_percs)
 
     return flags, evoked, epochs
+
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):

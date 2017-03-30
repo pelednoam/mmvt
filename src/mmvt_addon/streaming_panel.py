@@ -22,7 +22,7 @@ def change_graph_all_vals_thread(q, while_termination_func, **kargs):
 
 def electrodes_sep_update(self, context):
     data = get_electrodes_data()
-    data_amp = np.max(data) - np.min(data)
+    # data_amp = np.max(data) - np.min(data)
     T = data.shape[1] - 1
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
@@ -42,8 +42,8 @@ def change_graph_all_vals(mat):
     good_electrodes = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     elecs_cycle = cycle(good_electrodes)
     data_min, data_max = np.min(mat[good_electrodes]), np.max(mat[good_electrodes])
-    StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
-    StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
+    # StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
+    # StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_max_min(data_max, data_min)
     # _addon().view_all_in_graph_editor()
@@ -63,7 +63,6 @@ def change_graph_all_vals(mat):
             _addon().color_objects_homogeneously([mat[elc_ind, ind]], [fcurve_name], None, data_min, colors_ratio)
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
-
 
 
     bpy.context.scene.frame_current += mat.shape[1]
@@ -115,12 +114,13 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     offline_data = []
     for log_file in files:
         data = np.load(log_file)
+        if offline_data != [] and offline_data.shape[0] != data.shape[0]:
+            continue
         offline_data = data if offline_data == [] else np.hstack((offline_data, data))
-        break
     offline_data[bad_channels] = 0
     offline_data = cycle(offline_data.T)
     buffer = []
-    while while_termination_func:
+    while while_termination_func():
         next_val = next(offline_data)
         next_val = next_val[..., np.newaxis]
         buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
@@ -226,11 +226,12 @@ def color_electrodes(data):
 
 
 def set_electrodes_data():
-    StreamingPanel.electrodes_data = data = get_electrodes_data()
+    # StreamingPanel.electrodes_data = data = get_electrodes_data()
     if bpy.context.scene.save_streaming:
         output_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
         output_fname = 'streaming_data_{}.npy'.format(datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S'))
         mu.make_dir(output_fol)
+        data = get_electrodes_data()
         np.save(op.join(output_fol, output_fname), data)
 
     # norm_percs = (3, 97) #todo: add to gui
@@ -371,7 +372,7 @@ bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
+bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0)#, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streaming_bad_channels', default='0,3')
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(
