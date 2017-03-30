@@ -1178,7 +1178,7 @@ bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], desc
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[], description="fMRI files")
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")

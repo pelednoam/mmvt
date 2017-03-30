@@ -709,7 +709,7 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
     save_rois_colors_legend(subject, rois_colors_rgbs, bipolar, legend_name)
     utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     if coloring_fname == '':
-        coloring_fname = 'electrodes{}_coloring.csv'.format('_bipolar' if bipolar else '')
+        coloring_fname = 'electrodes{}_{}_coloring.csv'.format('_bipolar' if bipolar else '', atlas)
     coloring_fol = op.join(MMVT_DIR, subject, 'coloring')
     coloring_fname =  op.join(coloring_fol, coloring_fname)
     colors_names_fname = op.join(coloring_fol, 'electrodes{}_colors_names.txt'.format('_bipolar' if bipolar else ''))
