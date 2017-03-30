@@ -282,6 +282,10 @@ class SelectionListener(bpy.types.Operator):
                     _addon().select_roi(selected_obj_name)
                 elif selected_obj_type in [mu.OBJ_TYPE_ELECTRODE, mu.OBJ_TYPE_EEG]:
                     bpy.data.objects[selected_obj_name].select = True
+                    fcurves = mu.get_fcurves(bpy.data.objects[selected_obj_name])
+                    for fcurve in fcurves:
+                        fcurve.hide = False
+                        fcurve.select = True
                 elif selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)

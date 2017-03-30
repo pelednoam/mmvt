@@ -182,6 +182,11 @@ def filter_electrode_or_sensor(elec_name):
     # We don't want it to happen if selection_type == 'conds'...
     if bpy.context.scene.selection_type == 'conds' or bpy.context.scene.filter_items_one_by_one:
         bpy.data.objects[elec_name].select = True
+        fcurves = mu.get_fcurves(bpy.data.objects[elec_name])
+        for fcurve in fcurves:
+            fcurve.hide = False
+            fcurve.select = True
+
     bpy.context.scene.objects.active = bpy.data.objects[elec_name]
     bpy.types.Scene.filter_is_on = True
 
