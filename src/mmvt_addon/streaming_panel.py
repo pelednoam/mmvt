@@ -217,14 +217,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             buffer = []
 
 
-def color_electrodes(data):
-    parent_obj = bpy.data.objects['Deep_electrodes']
-    names = [elec.name for elec in parent_obj.children]
-    # _addon().color_objects_homogeneously(
-    #     np.mean(data, 1), names, StreamingPanel.electrodes_conditions,
-    #     StreamingPanel.data_min, StreamingPanel.electrodes_colors_ratio, threshold=0)
-
-
 def set_electrodes_data():
     # StreamingPanel.electrodes_data = data = get_electrodes_data()
     if bpy.context.scene.save_streaming:
@@ -264,6 +256,7 @@ class StreamButton(bpy.types.Operator):
     _buffer = []
     _jobs = Queue()
     _first_time = True
+    _first_timer = True
 
     def invoke(self, context, event=None):
         self._first_time = True
@@ -279,6 +272,7 @@ class StreamButton(bpy.types.Operator):
         if StreamingPanel.is_streaming:
             init_electrodes_fcurves()
             show_electrodes_fcurves()
+            self._first_timer = True
             _addon().set_colorbar_max_min(StreamingPanel.data_max, StreamingPanel.data_min)
             _addon().set_colorbar_title('Electrodes Streaming Data')
             mu.show_only_render(True)
@@ -300,14 +294,6 @@ class StreamButton(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
-        # if time.time() - self._time > 0.1:
-        #     self._time = time.time()
-        #     job_data = mu.queue_get(self._jobs)
-        #     if not job_data is None:
-        #         # print(str(datetime.now() - StreamingPanel.time))
-        #         # StreamingPanel.time = datetime.now()
-        #         # print(job_data.shape)
-        #         change_graph_all_vals(job_data)
 
         if event.type in {'RIGHTMOUSE', 'ESC'}:
             StreamingPanel.is_streaming = False
@@ -320,13 +306,10 @@ class StreamButton(bpy.types.Operator):
                 self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
-                    # self._jobs.put(data)
                     change_graph_all_vals(data)
-                    if self._first_time:
-                        self._first_time = False
-                        # _addon().view_all_in_graph_editor()
-                    color_electrodes(data)
-                    # data = mu.queue_get(StreamingPanel.udp_queue)
+                    if self._first_timer:
+                        self._first_timer = False
+                        _addon().view_all_in_graph_editor()
 
         return {'PASS_THROUGH'}
 
@@ -372,7 +355,7 @@ bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0)#, update=electrodes_sep_update)
+bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streaming_bad_channels', default='0,3')
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(

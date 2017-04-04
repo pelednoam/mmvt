@@ -52,7 +52,7 @@ end
 
 % Some FS commands are needed now
 fspath = varargin{3}; %'/usr/local/freesurfer/stable5_3_0'; % getenv('FREESURFER_HOME');
-if isempty(fspath),
+if isempty(fspath)
     error('FREESURFER_HOME variable not correctly set');
 else
     addpath(fullfile(fspath,'matlab'));
@@ -74,7 +74,7 @@ names = ctab.struct_names;
 no_indices = zeros(1, ctab.numEntries);
 labels_indices = cell(1, ctab.numEntries);
 labels_names = cell(1, ctab.numEntries);
-for s = 1:ctab.numEntries,
+for s = 1:ctab.numEntries
     indices = lab == ctab.table(s,5);
     if (sum(indices)==0 && ~strcmp(ctab.struct_names(s), 'unknown'))
         fprintf('%s has no vertices!\n', ctab.struct_names{s});

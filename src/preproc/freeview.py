@@ -82,6 +82,7 @@ def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file): #atlas, print_o
     aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
     mri_file_fol = op.join(SUBJECTS_DIR, subject, 'mri')
     mri_file = op.join(mri_file_fol, aparc_aseg_file)
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     blender_file = op.join(MMVT_DIR, subject, 'freeview', aparc_aseg_file)
     if not op.isfile(blender_file) or overwrite_aseg_file:
         current_dir = op.dirname(op.realpath(__file__))

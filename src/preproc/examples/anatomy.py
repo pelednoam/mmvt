@@ -6,10 +6,18 @@ from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
 
-def get_subject_files_using_sftp(subject, args):
-    args = anat.read_cmd_args(['-s', subject, '-a', args.atlas, '--sftp_username', args.sftp_username, '--sftp_domain', args.sftp_domain])
-    args.sftp = True
-    pu.run_on_subjects(args, anat.main)
+def get_subject_files_using_sftp(args):
+    for subject in args.subject:
+        args = anat.read_cmd_args(dict(
+            subject=subject,
+            atlas=args.atlas,
+            sftp_username=args.sftp_username,
+            sftp_domain=args.sftp_domain,
+            sftp=True,
+            remote_subject_dir=args.remote_subject_dir,
+            function='prepare_subject_folder'
+        ))
+        pu.run_on_subjects(args, anat.main)
 
 
 # def get_subject_files_from_server(subject, args):

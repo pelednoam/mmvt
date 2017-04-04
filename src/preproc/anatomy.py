@@ -646,7 +646,7 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
 
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
-    # create_fsaverage_link()
+    # create_fsaveragge_link()
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
 
     if utils.should_run(args, 'create_surfaces'):
