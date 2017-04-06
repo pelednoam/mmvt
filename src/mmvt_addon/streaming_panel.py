@@ -484,7 +484,6 @@ def init_electrodes_animation():
         mod = fcurves.modifiers.new(type='LIMITS')
 
 
-#
 # def create_electrodes_dic():
 #     parent_obj = bpy.data.objects['Deep_electrodes']
 #     objs_names = [l.name for l in parent_obj.children]
