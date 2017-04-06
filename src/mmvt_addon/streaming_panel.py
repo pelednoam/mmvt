@@ -258,8 +258,12 @@ class StimButton(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        mu.run_command_in_new_thread('I:\BioStudio0.39prime\matlab\packetsender -a -u 172.17.146.229 1444 "stim 1"', queues=False, shell=True,
-                                     read_stdin=False, read_stdout=False, read_stderr=False)
+        packetsender_cmd = StreamingPanel.config['packetsender']
+        ip = StreamingPanel.config['ip']
+        port = StreamingPanel.config['port']
+        num = StreamingPanel.config['num']
+        mu.run_command_in_new_thread('{} -a -u {} {} "stim {}"'.format(packetsender_cmd, ip, port, num),
+                                     queues=False, shell=True, read_stdin=False, read_stdout=False, read_stderr=False)
         return {"FINISHED"}
 
 
@@ -306,7 +310,7 @@ class StreamButton(bpy.types.Operator):
                         bad_channels=bpy.context.scene.streaming_bad_channels)
             if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
-                args['good_channels'] = '68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79'
+                # args['good_channels'] = '68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79'
                 StreamingPanel.udp_queue = mu.run_thread(
                     offline_logs_reader, reading_from_udp_while_termination_func, **args)
             else:
@@ -347,7 +351,7 @@ class StreamButton(bpy.types.Operator):
         return {'CANCELLED'}
 
 
-def template_draw(self, context):
+def streaming_draw(self, context):
     layout = self.layout
 
     layout.prop(context.scene, "stream_type", text="")
@@ -369,7 +373,8 @@ def template_draw(self, context):
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
-    layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
+    if StreamingPanel.stim_exist:
+        layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
     layout.prop(context.scene, 'save_streaming', text='save streaming data')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
@@ -410,7 +415,7 @@ class StreamingPanel(bpy.types.Panel):
 
     def draw(self, context):
         if StreamingPanel.init:
-            template_draw(self, context)
+            streaming_draw(self, context)
 
 
 def init(addon):
@@ -427,6 +432,12 @@ def init(addon):
     StreamingPanel.first_time = True
     StreamingPanel.electrodes_data = None
     StreamingPanel.data_max, StreamingPanel.data_min = 0, 0
+
+    # todo: should be in the mmvt_addon
+    settings = mu.read_config_ini()
+    StreamingPanel.stim_exist = 'STIM' in settings.sections()
+    if StreamingPanel.stim_exist:
+        StreamingPanel.config = settings['STIM']
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
