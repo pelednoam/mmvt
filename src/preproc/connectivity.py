@@ -130,6 +130,8 @@ def calc_lables_connectivity(subject, args):
             args.connectivity_modality, args.connectivity_method[0]))
         static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean.npy'.format(
             args.connectivity_modality, args.connectivity_method[0]))
+    labels_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_{}_{}_labels_avg.npz'.format(
+        args.connectivity_modality, args.connectivity_method[0], args.atlas, '{hemi}'))
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
@@ -161,12 +163,15 @@ def calc_lables_connectivity(subject, args):
         names[hemi] = f['names']
     data = np.concatenate((data['lh'], data['rh']))
     labels_names = np.concatenate((names['lh'], names['rh']))
-    labels_indices = np.array([ind for ind,l in enumerate(labels_names) if not np.any([e in l for e in args.labels_exclude])])
+    labels_indices = np.array([ind for ind,l in enumerate(labels_names) if not np.any(
+        [e in l for e in args.labels_exclude])])
     if len(labels_indices) < len(labels_names):
         labels_names = labels_names[labels_indices]
         data = data[labels_indices]
     conditions = f['conditions'] if 'conditions' in f else ['rest']
-
+    labels_hemi_indices = {}
+    for hemi in utils.HEMIS:
+        labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
     # from mne import filter
     # plt.psd(data, Fs=1000)
     # data = filter.filter_data(data, 1000, 8, None)
@@ -219,7 +224,14 @@ def calc_lables_connectivity(subject, args):
                     conn[:, :, w] = con
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
-
+    if 'corr' in args.connectivity_method or 'pli' in args.connectivity_method and \
+            not utils.both_hemi_files_exist(labels_avg_output_fname):
+        avg_per_label = np.mean(conn, 0)
+        abs_minmax = utils.calc_abs_minmax(conn)
+        for hemi in utils.HEMIS:
+            inds = labels_hemi_indices[hemi]
+            np.savez(labels_avg_output_fname.format(hemi=hemi), data=avg_per_label[inds], names=labels_names[inds],
+                     conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(connectivity_method)
         if not op.isfile(static_output_mat_fname):
