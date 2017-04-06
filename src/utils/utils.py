@@ -145,6 +145,11 @@ def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm
     return colors
 
 
+def calc_abs_minmax(x, norm_percs=None):
+    x_min, x_max = calc_min_max(x, norm_percs=norm_percs)
+    return max(map(abs, [x_min, x_max]))
+
+
 def mat_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm_small='PuBu', threshold=0, default_val=0,
         scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False, min_is_abs_max=False,
         norm_percs = None):

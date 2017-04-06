@@ -12,7 +12,8 @@ from functools import partial
 
 HEMIS = mu.HEMIS
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
-WIC_ELECTRODES, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES) = range(14)
+WIC_ELECTRODES, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
+ WIC_CONN_LABELS_AVG) = range(15)
 
 
 def _addon():
@@ -224,6 +225,30 @@ def meg_labels_coloring(override_current_mat=True):
     meg_labels_min, meg_labels_max = -data_minmax, data_minmax
     for hemi in hemispheres:
         labels_data = np.load(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
+        labels_coloring_hemi(
+            labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, bpy.context.scene.meg_labels_coloring_type,
+            override_current_mat, meg_labels_min, meg_labels_max)
+
+
+def color_connections_labels_avg(override_current_mat=True):
+    ColoringMakerPanel.what_is_colored.add(WIC_CONN_LABELS_AVG)
+    init_activity_map_coloring('MEG')
+    threshold = bpy.context.scene.coloring_threshold
+    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    user_fol = mu.get_user_fol()
+    # files_names = [mu.namebase(fname).replace('_', ' ').replace('{} '.format(atlas), '') for fname in
+    #                conn_labels_avg_files]
+    atlas = bpy.context.scene.atlas
+    # labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
+    # meg_labels_min, meg_labels_max = labels_data_minimax['labels_diff_minmax'] \
+    #     if bpy.context.scene.meg_labels_coloring_type == 'diff' else labels_data_minimax['labels_minmax']
+    # data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
+    # meg_labels_min, meg_labels_max = -data_minmax, data_minmax
+
+    file_name = bpy.context.scene.conn_labels_avg_files.replace(' ', '_').replace('_labels_avg.npz', '')
+    file_name = '{}_{}_labels_avg.npz'.format(file_name, atlas)
+    data = np.load(op.join(user_fol, 'connectivity', file_name))
+    for hemi in hemispheres:
         labels_coloring_hemi(
             labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, bpy.context.scene.meg_labels_coloring_type,
             override_current_mat, meg_labels_min, meg_labels_max)
@@ -851,6 +876,17 @@ class ColorConnections(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorConnectionsLabelsAvg(bpy.types.Operator):
+    bl_idname = "mmvt.connections_labels_avg"
+    bl_label = "mmvt connections labels avg"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_connections_labels_avg()
+        return {"FINISHED"}
+
+
 class ColorMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.color_meg_sensors"
     bl_label = "mmvt color_meg_sensors"
@@ -1098,12 +1134,12 @@ def draw(self, context):
         mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
                                     len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
-    manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
-                                                   '{}_groups.csv'.format(bpy.context.scene.atlas)))
+    # manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
+    #                                                '{}_groups.csv'.format(bpy.context.scene.atlas)))
     if _addon() is None:
         connections_files_exit = False
     else:
-        connections_files_exit = _addon().connections_exist() and not _addon().connections_data is None
+        connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
     # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
     layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
@@ -1167,6 +1203,9 @@ def draw(self, context):
         col = layout.box().column()
         col.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
         col.prop(context.scene, 'hide_connection_under_threshold', text='Hide connections under threshold')
+        if ColoringMakerPanel.conn_labels_avg_files_exit:
+            col.prop(context.scene, 'conn_labels_avg_files', text='')
+            col.operator(ColorConnectionsLabelsAvg.bl_idname, text="Plot Connections Labels Avg", icon='POTATO')
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -1184,6 +1223,7 @@ bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="C
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -1208,6 +1248,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fmri_activity_map_exist = False
     eeg_exist = False
     meg_sensors_exist = False
+    conn_labels_avg_files_exit = False
 
     def draw(self, context):
         draw(self, context)
@@ -1228,6 +1269,7 @@ def init(addon):
     init_labels_vertices()
     init_eeg_sensors()
     init_meg_sensors()
+    init_connectivity_labels_avg()
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
@@ -1387,6 +1429,19 @@ def init_labels_groups():
             items=groups_items, description="Groups")
 
 
+def init_connectivity_labels_avg():
+    user_fol = mu.get_user_fol()
+    conn_labels_avg_files = glob.glob(op.join(user_fol, 'connectivity', '*_labels_avg.npz'))
+    atlas = bpy.context.scene.atlas
+    if len(conn_labels_avg_files) > 0:
+        files_names = [mu.namebase(fname).replace('_', ' ').replace('{} '.format(atlas), '') for fname in conn_labels_avg_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(
+            items=items, description="Connectivity labels avg")
+        bpy.context.scene.conn_labels_avg_files = files_names[0]
+        ColoringMakerPanel.conn_labels_avg_files_exit = True
+
+
 def register():
     try:
         unregister()
@@ -1406,6 +1461,7 @@ def register():
         bpy.utils.register_class(ColorEEGSensors)
         bpy.utils.register_class(ColorEEGHelmet)
         bpy.utils.register_class(ColorConnections)
+        bpy.utils.register_class(ColorConnectionsLabelsAvg)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         # print('Freeview Panel was registered!')
@@ -1431,6 +1487,7 @@ def unregister():
         bpy.utils.unregister_class(ColorEEGSensors)
         bpy.utils.unregister_class(ColorEEGHelmet)
         bpy.utils.unregister_class(ColorConnections)
+        bpy.utils.unregister_class(ColorConnectionsLabelsAvg)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
     except:

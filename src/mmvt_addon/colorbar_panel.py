@@ -51,7 +51,7 @@ def get_colorbar_title():
 
 
 def set_colorbar_max_min(max_val, min_val, force_update=False):
-    if max_val > min_val:
+    if max_val >= min_val:
         init = ColorbarPanel.init
         if force_update:
             ColorbarPanel.init = True
