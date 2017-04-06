@@ -40,7 +40,8 @@ def change_graph_all_vals(mat):
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
-    good_electrodes = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    # good_electrodes = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    good_electrodes = range(mat.shape[0])
     elecs_cycle = cycle(good_electrodes)
     data_min, data_max = np.min(mat[good_electrodes]), np.max(mat[good_electrodes])
     StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
@@ -116,8 +117,12 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     buffer_size = kargs.get('buffer_size', 10)
     bad_channels = kargs.get('bad_channels', '')
     bad_channels = list(map(mu.to_int, bad_channels.split(','))) if bad_channels != '' else []
-    bad_channels = np.array(bad_channels)
+    good_channels = kargs.get('good_channels', '')
+    good_channels = list(map(mu.to_int, good_channels.split(','))) if bad_channels != '' else []
+    # good_channels = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     data[bad_channels] = 0
+    if good_channels:
+        data = data[good_channels]
     # offline_data = cycle(data.T)
     buffer = []
     ind = 0
@@ -247,6 +252,17 @@ def get_electrodes_data():
     return data
 
 
+class StimButton(bpy.types.Operator):
+    bl_idname = "mmvt.stim_button"
+    bl_label = "Sim botton"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        mu.run_command_in_new_thread('I:\BioStudio0.39prime\matlab\packetsender -a -u 172.17.146.229 1444 "stim 1"', queues=False, shell=True,
+                                     read_stdin=False, read_stdout=False, read_stderr=False)
+        return {"FINISHED"}
+
+
 class StreamButton(bpy.types.Operator):
     bl_idname = "mmvt.stream_button"
     bl_label = "Stream botton"
@@ -290,6 +306,7 @@ class StreamButton(bpy.types.Operator):
                         bad_channels=bpy.context.scene.streaming_bad_channels)
             if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
+                args['good_channels'] = '68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79'
                 StreamingPanel.udp_queue = mu.run_thread(
                     offline_logs_reader, reading_from_udp_while_termination_func, **args)
             else:
@@ -312,7 +329,7 @@ class StreamButton(bpy.types.Operator):
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
                     change_graph_all_vals(data)
-                    mu.view_all_in_graph_editor()
+                    # mu.view_all_in_graph_editor()
                     # _addon().view_all_in_graph_editor()
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
                     #     print('Setting _first_timer to False! ', bpy.context.scene.frame_current)
@@ -352,7 +369,7 @@ def template_draw(self, context):
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
-
+    layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
     layout.prop(context.scene, 'save_streaming', text='save streaming data')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
@@ -484,6 +501,7 @@ def register():
         unregister()
         bpy.utils.register_class(StreamingPanel)
         bpy.utils.register_class(StreamButton)
+        bpy.utils.register_class(StimButton)
         # bpy.utils.register_class(StreamListenerButton)
     except:
         print("Can't register Stream Panel!")
@@ -493,6 +511,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(StreamingPanel)
         bpy.utils.unregister_class(StreamButton)
+        bpy.utils.unregister_class(StimButton)
         # bpy.utils.unregister_class(StreamListenerButton)
     except:
         pass
