@@ -1270,3 +1270,10 @@ def to_str(s):
         return s.decode(sys.getfilesystemencoding(), 'ignore')
     else:
         return str(s)
+
+
+def read_config_ini():
+    import configparser
+    config = configparser.ConfigParser()
+    config.read(op.join(get_user_fol(), 'config.ini'))
+    return config
