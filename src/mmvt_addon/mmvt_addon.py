@@ -256,6 +256,7 @@ find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_ind
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
 
+
 def get_max_time_steps():
     # Check if there is animation data in MEG
     # try:
