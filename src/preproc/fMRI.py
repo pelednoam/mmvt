@@ -62,10 +62,10 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def calc_fmri_min_max(subject, contrast, hemis_files, norm_percs=(3, 97), norm_by_percentile=True):
+def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs=(3, 97), norm_by_percentile=True):
     data = None
-    for hemi_fname in hemis_files:
-        hemi = 'rh' if '.rh' in hemi_fname else 'lh'
+    for hemi in utils.HEMIS:
+        hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
         fmri = nib.load(hemi_fname)
         x = fmri.get_data().ravel()
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
@@ -443,7 +443,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
         else:
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
         output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi)))
-        if not output_fname or overwrite_surf_data:
+        if not op.isfile(output_fname) or overwrite_surf_data:
             np.save(output_fname, surf_data)
 
 
@@ -478,7 +478,8 @@ def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrit
         fu.mri_convert(volume_fname_template, 'mgh', 'mgz')
         format = 'mgz'
     else:
-        volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
+        # volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
+        volume_files = find_volume_files(volume_fname_template.replace('{format}', '*'))
         if len(volume_files) == 0:
             print('No volume file! Should be in {}'.format(volume_fname_template.replace('{format}', '*')))
             return ''
@@ -506,10 +507,10 @@ def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrit
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
     surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
-        
+
     project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=args.is_pet)
-    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    # utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     # shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
 
 # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
@@ -668,7 +669,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
     return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
                    for hemi in utils.HEMIS])
 
-def find_files(fmri_file_template):
+def find_volume_files(fmri_file_template):
     return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
             and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
 
@@ -676,7 +677,7 @@ def find_files(fmri_file_template):
 def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, raise_exception=True):
     fmri_fname = ''
     full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-    files = find_files(full_fmri_file_template)
+    files = find_volume_files(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
         fmri_fname = files[0]
@@ -698,8 +699,8 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
 
     def no_files_were_found():
         print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
-        files = find_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
-                find_files(op.join(remote_fmri_dir, fmri_file_template))
+        files = find_volume_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
+                find_volume_files(op.join(remote_fmri_dir, fmri_file_template))
         print('files: {}'.format(files))
         files_num = len(set([utils.namebase(f) for f in files]))
         if files_num == 1:
@@ -1049,7 +1050,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
     parser.add_argument('-t', '--task', help='task', required=False, default='')
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
-    parser.add_argument('--fsfast', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--fsfast', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
     parser.add_argument('--input_format', help='input format', required=False, default='nii.gz')

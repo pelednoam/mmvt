@@ -5,6 +5,20 @@ from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
 
+def get_subject_files_using_sftp(args):
+    for subject in args.subject:
+        args = fmri.read_cmd_args(dict(
+            subject=subject,
+            atlas=args.atlas,
+            sftp_username=args.sftp_username,
+            sftp_domain=args.sftp_domain,
+            sftp=True,
+            remote_subject_dir=args.remote_subject_dir,
+            function='prepare_subject_folder'
+        ))
+        pu.run_on_subjects(args, fmri.main)
+
+
 def load_rest_to_colin():
     args = fmri.read_cmd_args(['-s', subject])
     args.task = 'REST'
@@ -13,6 +27,11 @@ def load_rest_to_colin():
     args.volume_name = 'spmT_0001'
     fmri.main(subject, mri_subject, args)
 
+
+def asdf():
+    '-s pp009 -a laus250 -f project_volume_to_surface -t ARC --volume_name pp009_ARC_PPI_highrisk_L_VLPFC --contrast highrisk'
+    '-s pp009 -a laus250 -f calc_fmri_min_max -t ARC --volume_name pp009_ARC_PPI_highrisk_L_VLPFC --contrast highrisk'
+    pass
 
 def fsfast():
     args = fmri.read_cmd_args(['-s', subject])
@@ -55,6 +74,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=False, type=au.str_arr_type, default='colin27')
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
+    parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
+    parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,
+                        default='/space/thibault/1/users/npeled/subjects/{subject}')
     parser.add_argument('-f', '--function', help='function name', required=True)
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](args)
