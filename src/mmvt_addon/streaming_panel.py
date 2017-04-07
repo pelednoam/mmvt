@@ -173,12 +173,10 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     buffer_size = kargs.get('buffer_size', 10)
     server = kargs.get('server', 'localhost')
     port = kargs.get('port', 45454)
-    multicast_group = kargs.get('multicast_group', '239.255.43.21')
-    mat_len = kargs.get('mat_len', 1)
+    multicast_group = kargs.get('multicast_group', '1.1.1.1')
     multicast = kargs.get('multicast', True)
     timeout = kargs.get('timeout', 0.1)
-    max_val = kargs.get('max_val', 50000)
-    print('udp_reader:', server, port, multicast_group, buffer_size, multicast, timeout, mat_len)
+    print('udp_reader:', server, port, multicast_group, buffer_size, multicast, timeout)
     if multicast:
         sock = bind_to_multicast(port, multicast_group)
     else:
@@ -447,11 +445,11 @@ def init(addon):
         StreamingPanel.config = settings['STIM']
     if 'STREAM' in settings.sections():
         stream_con = settings['STREAM']
-        bpy.context.scene.streaming_buffer_size = stream_con.get('buffer_size')
-        bpy.context.scene.streaming_server = stream_con.get('server')
-        bpy.context.scene.multicast_group = stream_con.get('multicast_group')
-        bpy.context.scene.streaming_server_port = stream_con.get('port')
-        bpy.context.scene.timeout = stream_con.get('timeout')
+        bpy.context.scene.streaming_buffer_size = int(stream_con.get('buffer_size', 10))
+        bpy.context.scene.streaming_server = stream_con.get('server', 'localhost')
+        bpy.context.scene.multicast_group = stream_con.get('multicast_group', '1.1.1.1')
+        bpy.context.scene.streaming_server_port = stream_con.get('port', 222)
+        bpy.context.scene.timeout = float(stream_con.get('timeout', 0.1))
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
