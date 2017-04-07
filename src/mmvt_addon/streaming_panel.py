@@ -140,19 +140,12 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     data[bad_channels] = 0
     if good_channels:
         data = data[good_channels]
-    # offline_data = cycle(data.T)
-    buffer = []
     ind = 0
     while while_termination_func():
-        # next_val = next(offline_data)
-        # next_val = next_val[..., np.newaxis]
-        # buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
-        # if buffer.shape[1] >= buffer_size:
-        #     udp_queue.put(buffer)
-        #     buffer = []
         if ind+buffer_size < data.shape[1]:
             udp_queue.put(data[:, ind:ind+buffer_size])
             ind += buffer_size
+
 
 def udp_reader(udp_queue, while_termination_func, **kargs):
     import socket
@@ -217,15 +210,12 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
         else:
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
-            big_values = next_val[next_val > max_val]
-            # print(big_values)
-            # next_val = next_val[next_val < max_val]
             if first_message:
                 mat_len = len(next_val)
                 first_message = False
             else:
                 if len(next_val) != mat_len:
-                    print('Wrong message len! {} ({})'.format(len(next_val), big_values))
+                    print('Wrong message len! {}'.format(len(next_val)))
             # next_val = next_val[:mat_len]
             next_val = next_val[..., np.newaxis]
 
@@ -244,8 +234,9 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
 
 def save_cycle():
     if bpy.context.scene.save_streaming:
-        output_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
-        output_fname = 'streaming_data_{}.npy'.format(datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S'))
+        streaming_fol = datetime.strftime(datetime.now(), '%Y-%m-%d')
+        output_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming', streaming_fol)
+        output_fname = 'streaming_data_{}.npy'.format(datetime.strftime(datetime.now(), '%H-%M-%S'))
         mu.make_dir(output_fol)
         np.save(op.join(output_fol, output_fname), StreamingPanel.cycle_data)
 
@@ -454,6 +445,13 @@ def init(addon):
     StreamingPanel.stim_exist = 'STIM' in settings.sections()
     if StreamingPanel.stim_exist:
         StreamingPanel.config = settings['STIM']
+    if 'STREAM' in settings.sections():
+        stream_con = settings['STREAM']
+        bpy.context.scene.streaming_buffer_size = stream_con.get('buffer_size')
+        bpy.context.scene.streaming_server = stream_con.get('server')
+        bpy.context.scene.multicast_group = stream_con.get('multicast_group')
+        bpy.context.scene.streaming_server_port = stream_con.get('port')
+        bpy.context.scene.timeout = stream_con.get('timeout')
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
