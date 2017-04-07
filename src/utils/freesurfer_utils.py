@@ -343,6 +343,15 @@ def get_tr(fmri_fname):
 def mri_convert(org_fname, new_fname, overwrite=False):
     if not op.isfile(new_fname) or overwrite:
         utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
+    if op.isfile(new_fname):
+        return new_fname
+    else:
+        raise Exception("mri_convert: {} wan't created".format(new_fname))
+
+
+def mri_convert_to(org_fname, new_file_type, overwrite=False):
+    new_fname = '{}.{}'.format(op.splitext(org_fname)[0], new_file_type)
+    return mri_convert(org_fname, new_fname, overwrite)
 
 
 def nii_gz_to_mgz(fmri_fname):
@@ -360,10 +369,8 @@ def mgz_to_nii_gz(fmri_fname):
 
 
 def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False):
-    rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
-    rs(mri_surf2surf)
-    if not op.isfile(target_fname):
-        print('Target file was not created!')
-        return False
-    else:
-        return True
+    if source_subject != target_subject:
+        rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
+        rs(mri_surf2surf)
+        if not op.isfile(target_fname):
+            raise Exception('surf2surf: Target file was not created!')

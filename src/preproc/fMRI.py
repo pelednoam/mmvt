@@ -62,12 +62,21 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs=(3, 97), norm_by_percentile=True):
+def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', norm_percs=(3, 97), norm_by_percentile=True):
     data = None
     for hemi in utils.HEMIS:
-        hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
-        fmri = nib.load(hemi_fname)
-        x = fmri.get_data().ravel()
+        if isinstance(fmri_contrast_file_template, dict):
+            hemi_fname = fmri_contrast_file_template[hemi]
+        elif isinstance(fmri_contrast_file_template, str):
+            hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
+        else:
+            raise Exception('Wrong type of template!')
+        file_type = utils.file_type(hemi_fname)
+        if file_type == 'npy':
+            x = np.load(hemi_fname)
+        else:
+            fmri = nib.load(hemi_fname)
+            x = fmri.get_data().ravel()
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         if x.shape[0] != verts.shape[0]:
             if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -85,43 +94,56 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, norm_percs
     if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
         data_max, data_min = data_minmax, -data_minmax
     # todo: the output_fname was changed, check where it's being used!
-    output_fname = op.join(MMVT_DIR, subject, 'fmri','{}_minmax.pkl'.format(contrast))
+    output_fname = op.join(MMVT_DIR, subject, 'fmri','{}{}_minmax.pkl'.format(
+        '{}_'.format(task) if task != '' else '', contrast))
     print('Saving {}'.format(output_fname))
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     utils.save((data_min, data_max), output_fname)
 
 
-def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_file, surf_name='pial', output_fol=''):
-    if not op.isfile(fmri_file):
-        print('No such file {}!'.format(fmri_file))
+def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_fol=''):
+    if not op.isfile(fmri_fname):
+        print('No such file {}!'.format(fmri_fname))
         return
-    fmri = nib.load(fmri_file)
+    morphed_fmri_fname = '{0}_morphed_to_{2}{1}'.format(*op.splitext(fmri_fname), subject)
+    # if not op.isfile(morphed_fmri_fname):
+    fmri = nib.load(fmri_fname)
     x = fmri.get_data().ravel()
+    morph_from_subject = check_vertices_num(subject, hemi, x)
+    org_subject_fname = ''
+    if subject != morph_from_subject:
+        # Save for data for the morph_from_subject
+        org_subject_fname = 'fmri_{}_{}_{}_{}.npy'.format(subject, task, contrast_name, hemi)
+        _save_fmri_hemi_data(morph_from_subject, hemi, x, contrast_name, task, output_fol, org_subject_fname)
+        if not op.isfile(morphed_fmri_fname):
+            fu.surf2surf(morph_from_subject, subject, hemi, fmri_fname, morphed_fmri_fname, cwd=None, print_only=False)
+            fmri = nib.load(morphed_fmri_fname)
+            x = fmri.get_data().ravel()
+        else:
+            fmri = nib.load(morphed_fmri_fname)
+            x = fmri.get_data().ravel()
+
+    subject_fname =  _save_fmri_hemi_data(subject, hemi, x, contrast_name, task, output_fol)
+    org_subject_fname = op.join(MMVT_DIR, morph_from_subject, 'fmri', org_subject_fname)
+    return subject_fname, org_subject_fname, morph_from_subject
+
+
+def _save_fmri_hemi_data(subject, hemi, x, contrast_name, task, output_fol='', output_name=''):
+    verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+    if len(verts) != x.shape[0]:
+        raise Exception('Wrong number of vertices!')
     if output_fol == '':
         output_fol = op.join(MMVT_DIR, subject, 'fmri')
     utils.make_dir(output_fol)
-    output_name = op.join(output_fol, 'fmri_{}_{}'.format(contrast_name, hemi))
-    _save_fmri_hemi_data(subject, hemi, x, output_name, surf_name=surf_name)
+    if output_name == '':
+        output_name = 'fmri_{}_{}_{}.npy'.format(task, contrast_name, hemi)
+    output_name = op.join(output_fol, output_name)
+    print('Saving {}'.format(output_name))
+    np.save(output_name, x)
+    return output_name
 
 
-def _save_fmri_hemi_data(subject, hemi, x, output_file='', verts=None, surf_name='pial'):
-    if verts is None:
-        # Try to read the hemi ply file to check if the vertices number is correct
-        verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_name)))
-        if len(x) != verts.shape[0]:
-            raise Exception("fMRI contrast map ({}) and the {} pial surface ({}) doesn't have the same vertices number!".format(len(x), hemi, verts.shape[0]))
-
-    # colors = utils.arr_to_colors_two_colors_maps(x, cm_big='YlOrRd', cm_small='PuBu',
-    #     threshold=threshold, default_val=1, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
-    # colors = np.hstack((x.reshape((len(x), 1)), colors))
-    if output_file == '':
-        output_file = op.join(MMVT_DIR, subject, 'fmri_{}.npy'.format(hemi))
-    print('Saving {}'.format(output_file))
-    np.save(output_file, x)
-
-
-def init_clusters(subject, contrast_name, input_fol):
-    input_fname = op.join(input_fol, 'fmri_{}_{}.npy'.format(contrast_name, '{hemi}'))
+def init_clusters(subject, input_fname):
     contrast_per_hemi, verts_per_hemi = {}, {}
     for hemi in utils.HEMIS:
         fmri_fname = input_fname.format(hemi=hemi)
@@ -147,12 +169,13 @@ def init_clusters(subject, contrast_name, input_fol):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, contrast_name, t_val, atlas, volume_name='', input_fol='', load_from_annotation=True, n_jobs=1):
+def find_clusters(subject, contrast_name, t_val, atlas, task, volume_name='', input_fol='', load_from_annotation=True, n_jobs=1):
     contrast_name = contrast_name if volume_name == '' else volume_name
     volume_name = volume_name if volume_name != '' else contrast_name
     if input_fol == '':
         input_fol = op.join(MMVT_DIR, subject, 'fmri')
-    contrast, connectivity, verts = init_clusters(subject, contrast_name, input_fol)
+    input_fname = op.join(input_fol, 'fmri_{}_{}_{}.npy'.format(task, contrast_name, '{hemi}'))
+    contrast, connectivity, verts = init_clusters(subject, input_fname)
     clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
@@ -172,23 +195,23 @@ def find_clusters(subject, contrast_name, t_val, atlas, volume_name='', input_fo
     utils.save(clusters_labels, clusters_labels_output_fname)
 
 
-def find_clusters_tval_hist(subject, contrast_name, output_fol, input_fol='', n_jobs=1):
-    contrast, connectivity, _ = init_clusters(subject, contrast_name, input_fol)
-    clusters = {}
-    tval_values = np.arange(2, 20, 0.1)
-    now = time.time()
-    for ind, tval in enumerate(tval_values):
-        try:
-            # utils.time_to_go(now, ind, len(tval_values), 5)
-            clusters[tval] = {}
-            for hemi in utils.HEMIS:
-                clusters[tval][hemi], _ = mne_clusters._find_clusters(
-                    contrast[hemi], tval, connectivity=connectivity[hemi])
-            print('tval: {:.2f}, len rh: {}, lh: {}'.format(tval, max(map(len, clusters[tval]['rh'])),
-                                                        max(map(len, clusters[tval]['rh']))))
-        except:
-            print('error with tval {}'.format(tval))
-    utils.save(clusters, op.join(output_fol, 'clusters_tval_hist.pkl'))
+# def find_clusters_tval_hist(subject, contrast_name, output_fol, input_fol='', n_jobs=1):
+#     contrast, connectivity, _ = init_clusters(subject, contrast_name, input_fol)
+#     clusters = {}
+#     tval_values = np.arange(2, 20, 0.1)
+#     now = time.time()
+#     for ind, tval in enumerate(tval_values):
+#         try:
+#             # utils.time_to_go(now, ind, len(tval_values), 5)
+#             clusters[tval] = {}
+#             for hemi in utils.HEMIS:
+#                 clusters[tval][hemi], _ = mne_clusters._find_clusters(
+#                     contrast[hemi], tval, connectivity=connectivity[hemi])
+#             print('tval: {:.2f}, len rh: {}, lh: {}'.format(tval, max(map(len, clusters[tval]['rh'])),
+#                                                         max(map(len, clusters[tval]['rh']))))
+#         except:
+#             print('error with tval {}'.format(tval))
+#     utils.save(clusters, op.join(output_fol, 'clusters_tval_hist.pkl'))
 
 
 def load_clusters_tval_hist(input_fol):
@@ -479,7 +502,7 @@ def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrit
         format = 'mgz'
     else:
         # volume_files = glob.glob(op.join(volume_fname_template.replace('{format}', '*')))
-        volume_files = find_volume_files(volume_fname_template.replace('{format}', '*'))
+        volume_files = find_volume_files_from_template(volume_fname_template.replace('{format}', '*'))
         if len(volume_files) == 0:
             print('No volume file! Should be in {}'.format(volume_fname_template.replace('{format}', '*')))
             return ''
@@ -571,18 +594,7 @@ def analyze_4d_fmri(subject, atlas, input_fname_template, measures=['mean'], tem
         fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
         fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
         x = nib.load(fmri_fname).get_data()
-        if x.shape[0] == FSAVG_VERTS:
-            morph_from_subject = 'fsaverage'
-        elif x.shape[0] == FSAVG5_VERTS:
-            morph_from_subject = 'fsaverage5'
-        else:
-            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-            if x.shape[0] == verts.shape[0]:
-                morph_from_subject = subject
-            else:
-                verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
-                if x.shape[0] != verts.shape[0]:
-                    print('Wrong morph_from_subject argument!')
+        morph_from_subject = check_vertices_num(subject, hemi, x, morph_from_subject)
         labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
         if len(labels) == 0:
             print('No {} {} labels were found!'.format(morph_from_subject, atlas))
@@ -600,6 +612,25 @@ def analyze_4d_fmri(subject, atlas, input_fname_template, measures=['mean'], tem
 
     return np.all([utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         atlas, em, '{hemi}'))) for em in measures])
+
+
+def check_vertices_num(subject, hemi, x, morph_from_subject=''):
+    if x.shape[0] == FSAVG_VERTS:
+        morph_from_subject = 'fsaverage'
+    elif x.shape[0] == FSAVG5_VERTS:
+        morph_from_subject = 'fsaverage5'
+    else:
+        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        if x.shape[0] == verts.shape[0]:
+            morph_from_subject = subject
+        else:
+            if morph_from_subject != '':
+                verts, faces = utils.read_pial_npz(morph_from_subject, MMVT_DIR, hemi)
+                if x.shape[0] != verts.shape[0]:
+                    raise Exception("Can't find the subject to morph from!")
+            else:
+                raise Exception("Can't find the subject to morph from!")
+    return morph_from_subject
 
 
 def calc_labels_minmax(subject, atlas, extract_modes):
@@ -669,15 +700,40 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
     return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
                    for hemi in utils.HEMIS])
 
-def find_volume_files(fmri_file_template):
-    return [f for f in glob.glob(fmri_file_template) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz']
-            and '_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)]
+
+def find_template_files(template_fname):
+    return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz', 'nii']]
+
+
+def find_hemi_files_from_template(template_fname):
+    return find_hemi_files(find_template_files(template_fname))
+
+
+def find_hemi_files(files):
+    files = get_unique_files_into_mgz(files)
+    hemis_files = []
+    rh_files = [f for f in files if '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
+    for rh_file in rh_files:
+        lh_file = rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
+        if op.isfile(lh_file):
+            hemis_files.append(rh_file.replace('rh', '{hemi}'))
+    return hemis_files
+
+
+def find_volume_files(files):
+    files = get_unique_files_into_mgz(files)
+    return [f for f in files if ('_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)) and
+            ('.rh' not in utils.namebase(f) and '.lh' not in utils.namebase(f))]
+
+
+def find_volume_files_from_template(template_fname):
+    return find_volume_files(find_template_files(template_fname))
 
 
 def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, raise_exception=True):
     fmri_fname = ''
     full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-    files = find_volume_files(full_fmri_file_template)
+    files = find_volume_files_from_template(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
         fmri_fname = files[0]
@@ -699,8 +755,8 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
 
     def no_files_were_found():
         print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
-        files = find_volume_files(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
-                find_volume_files(op.join(remote_fmri_dir, fmri_file_template))
+        files = find_volume_files_from_template(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
+                find_volume_files_from_template(op.join(remote_fmri_dir, fmri_file_template))
         print('files: {}'.format(files))
         files_num = len(set([utils.namebase(f) for f in files]))
         if files_num == 1:
@@ -815,7 +871,7 @@ def get_tr(subject, fmri_fname):
         return None
 
 
-def fmri_pipeline(subject, atlas, contrast_file_template, t_val=2, surface_name='pial', contrast_format='mgz',
+def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, t_val=2, contrast_format='mgz',
          existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
     '''
 
@@ -836,68 +892,59 @@ def fmri_pipeline(subject, atlas, contrast_file_template, t_val=2, surface_name=
     -------
 
     '''
-    from collections import defaultdict
     fol = op.join(FMRI_DIR, args.task, subject)
-    contrasts = set([utils.namebase(f) for f in glob.glob(op.join(fol, 'bold', '*'))])
-    # if len(contrast_names) > 1:
-    #     raise Exception('More than one contrast found in {}, you should set the contrast_name flag.'.format(fol))
-    # if len(contrast_names) == 0:
-    #     raise Exception('No contrast found in {}!'.format(fol))
-    # contrast_name = contrast_names[0]
-    # contrast_files = glob.glob(op.join(fol, '**', 'sig.*'), recursive=True)
-    for contrast in contrasts:
-        contrast_files = glob.glob(op.join(fol, 'bold', '*{}*'.format(contrast), 'sig.*'), recursive=True)
-        contrast_files_dic = defaultdict(list)
-        for contrast_file in contrast_files:
-            ft = utils.file_type(contrast_file)
-            contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
-        for contrast_file, fts in contrast_files_dic.items():
-            if 'mgz' not in fts:
-                fu.mri_convert('{}.{}'.format(contrast_file, fts[0]), '{}.mgz'.format(contrast_file))
-        # sm = glob.glob(op.join(fol, 'bold', '{}*'.format(contrast)))[0].split('.')[1]
-        # volume_type = [f for f in glob.glob(op.join(fol, 'bold', '{}*'.format(contrast)))
-        #                if 'lh' not in f and 'rh' not in f][0].split('.')[-1]
-        contrast_files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
-        volume_files = [f for f in contrast_files if 'lh' not in f and 'rh' not in f]
-        utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-        for volume_fname in volume_files:
-            shutil.copyfile(volume_fname, op.join(MMVT_DIR, subject, 'freeview', '{}.{}'.format(contrast, format)))
-        hemis_files = [f for f in contrast_files if 'lh' in f or 'rh' in f]
-        calc_fmri_min_max(
-            subject, contrast, hemis_files, norm_percs=args.norm_percs,
-            norm_by_percentile=args.norm_by_percentile)
-        for hemi_fname in hemis_files:
-            hemi = 'rh' if '.rh' in hemi_fname else 'lh'
-            save_fmri_hemi_data(subject, hemi, contrast, hemi_fname, surface_name,
-                             output_fol=fmri_files_fol)
-        find_clusters(subject, contrast, t_val, atlas, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
-    # if contrasts is None and '{contrast}' in contrast_file_template:
-    #     contrasts_fol = op.sep.join(contrast_file_template.split(op.sep)[:-2]).format(hemi='rh')
-    #     contrasts = set([op.sep.join(c.split(op.sep)[-1:]).split('.')[0] for c in glob.glob(op.join(utils.get_parent_fol(contrasts_fol), '*'))])
-    # Check if the contrast is in mgz, and if not convert it to mgz
-    # mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
-    if contrasts is None:
-        contrasts = ['group-avg']
-    # for contrast in contrasts:
-        # if '{contrast}' in contrast_file_template:
-        #     contrast_file = contrast_file_template.format(contrast=contrast, hemi='{hemi}', format=contrast_format)
-        #     volume_file = contrast_file_template.format(contrast=contrast, hemi=volume_type, format='{format}')
-        # else:
-        #     contrast_file = contrast_file_template.format(hemi='{hemi}', format=contrast_format)
-        #     volume_file = contrast_file_template.format(hemi=volume_type, format='{format}')
-        # copy_volume_to_blender(subject, volume_file, contrast, overwrite_volume_mgz=True)
-        # calc_fmri_min_max(
-        #     subject, contrast, contrast_file_template, norm_percs=args.norm_percs,
-        #     norm_by_percentile=args.norm_by_percentile)
-        # for hemi in ['rh', 'lh']:
-        #     save_fmri_hemi_data(subject, hemi, contrast, contrast_file.format(hemi=hemi), surface_name,
-        #                      output_fol=fmri_files_fol)
-        # Find the fMRI blobs (clusters of activation)
-        # find_clusters(subject, contrast, t_val, atlas, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
-        # Create functional rois out of the blobs
-        # create_functional_rois(subject, contrast)
+    contrasts_files = {}
+    if fsfast and op.isdir(op.join(fol, 'bold')):
+        # todo: What to do with group-avg in fsfast?
+        contrasts = set([utils.namebase(f) for f in glob.glob(op.join(fol, 'bold', '*'))])
+        for contrast in contrasts:
+            contrast_files = glob.glob(op.join(fol, 'bold', '*{}*'.format(contrast), 'sig.*'), recursive=True)
+            contrasts_files[contrast] = dict(
+                volume_files=find_volume_files(contrast_files),
+                hemis_files=find_hemi_files(contrast_files))
+    else:
+        contrast = contrast_file_template.replace('*', '').replace('?', '')
+        contrasts_files[contrast] = dict(
+            volume_files=find_volume_files_from_template(op.join(fol, contrast_file_template)),
+            hemis_files=find_hemi_files_from_template(op.join(fol, contrast_file_template)))
+
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    for contrast, contrast_dict in contrasts_files.items():
+        volume_files, hemis_files_templates = contrast_dict['volume_files'], contrast_dict['hemis_files']
+        for volume_file in volume_files:
+            fu.mri_convert_to(volume_file, 'mgz')
+            shutil.copyfile(volume_file, op.join(MMVT_DIR, subject, 'freeview', '{}.{}'.format(contrast, format)))
+        hemis_files_templates = [t for t in hemis_files_templates if not t.endswith('_morphed_to_{}.mgz'.format(subject))]
+        for hemis_files_teamplate in hemis_files_templates:
+            new_hemis_fname, new_hemis_org_subject_fname = {}, {}
+            for hemi in utils.HEMIS:
+                new_hemi_fname = fu.mri_convert_to(hemis_files_teamplate.format(hemi=hemi), 'mgz')
+                new_hemis_fname[hemi], new_hemis_org_subject_fname[hemi], morphed_from_subject = \
+                    save_fmri_hemi_data(subject, hemi, contrast, new_hemi_fname, task, output_fol=fmri_files_fol)
+            calc_fmri_min_max(
+                subject, contrast, new_hemis_fname, task=task, norm_percs=args.norm_percs,
+                norm_by_percentile=args.norm_by_percentile)
+            if morphed_from_subject != subject:
+                calc_fmri_min_max(
+                    morphed_from_subject, contrast, new_hemis_org_subject_fname, task=task, norm_percs=args.norm_percs,
+                    norm_by_percentile=args.norm_by_percentile)
+        # todo: save clusters also for morphed_from_subject
+        find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
     # todo: check what to return
     return True
+
+
+def get_unique_files_into_mgz(files):
+    from collections import defaultdict
+    contrast_files_dic = defaultdict(list)
+    for contrast_file in files:
+        ft = utils.file_type(contrast_file)
+        contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
+    for contrast_file, fts in contrast_files_dic.items():
+        if 'mgz' not in fts:
+            fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
+    files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
+    return files
 
 
 def misc(args):
@@ -980,18 +1027,21 @@ def main(subject, remote_subject_dir, args, flags):
     fol = op.join(FMRI_DIR, args.task, subject)
     remote_fmri_dir = remote_subject_dir if args.remote_fmri_dir == '' else \
         utils.build_remote_subject_dir(args.remote_fmri_dir, subject)
-    if args.fsfast:
-        fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
-            contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
+    if args.contrast_template == '':
+        if args.fsfast:
+            fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
+                contrast_name=args.contrast_name, hemi='{hemi}'), '{contrast}', 'sig.{format}')
+        else:
+            fmri_contrast_file_template = op.join(fol, '{}_{}.mgz'.format(volume_name, '{hemi}'))
     else:
-        fmri_contrast_file_template = op.join(fol, '{}_{}.mgz'.format(volume_name, '{hemi}'))
+        fmri_contrast_file_template = args.contrast_template
 
     # todo: should find automatically the existing_format
     if 'fmri_pipeline' in args.function:
         flags['fmri_pipeline'] = fmri_pipeline(
-            subject, args.atlas, fmri_contrast_file_template, t_val=args.threshold,
+            subject, args.atlas, fmri_contrast_file_template, args.task, args.fsfast, t_val=args.threshold,
             existing_format=args.existing_format, volume_type=args.volume_type, load_labels_from_annotation=True,
-            surface_name=args.surface_name, n_jobs=args.n_jobs)
+            n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'project_volume_to_surface'):
         flags['project_volume_to_surface'] = project_volume_to_surface(
@@ -1000,11 +1050,11 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_fmri_min_max'):
         #todo: won't work, need to find the hemis files first
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
-            subject, volume_name, fmri_contrast_file_template, norm_percs=args.norm_percs,
+            subject, volume_name, fmri_contrast_file_template, task=args.task, norm_percs=args.norm_percs,
             norm_by_percentile=args.norm_by_percentile)
 
     if utils.should_run(args, 'find_clusters'):
-        flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, volume_name)
+        flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
 
     if 'analyze_4d_fmri' in args.function:
         flags['analyze_4d_fmri'] = analyze_4d_fmri(
@@ -1052,6 +1102,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
     parser.add_argument('--fsfast', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--contrast_template', help='', required=False, default='')
     parser.add_argument('--existing_format', help='existing format', required=False, default='mgz')
     parser.add_argument('--input_format', help='input format', required=False, default='nii.gz')
     parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')

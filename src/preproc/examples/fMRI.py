@@ -28,10 +28,19 @@ def load_rest_to_colin():
     fmri.main(subject, mri_subject, args)
 
 
-def asdf():
-    '-s pp009 -a laus250 -f project_volume_to_surface -t ARC --volume_name pp009_ARC_PPI_highrisk_L_VLPFC --contrast highrisk'
-    '-s pp009 -a laus250 -f calc_fmri_min_max -t ARC --volume_name pp009_ARC_PPI_highrisk_L_VLPFC --contrast highrisk'
-    pass
+
+def fmri_msit_pipeline(args):
+    '-s pp009 -a laus250 -f fmri_pipeline -t MSIT --contrast_template "*Interference*"'
+    for subject in args.subject:
+        args = fmri.read_cmd_args(dict(
+            subject=subject,
+            atlas=args.atlas,
+            function='fmri_pipeline',
+            task='MSIT',
+            contrast_template='*Interference*'
+        ))
+        pu.run_on_subjects(args, fmri.main)
+
 
 def fsfast():
     args = fmri.read_cmd_args(['-s', subject])

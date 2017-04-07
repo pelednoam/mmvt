@@ -30,6 +30,12 @@ def create_YlOrRd_cm(n=256):
     return colors_map
 
 
+def create_RdOrYl_cm(n=256):
+    colors = plt.cm.YlOrRd(np.linspace(1, 0, n))
+    colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
+    return colors_map
+
+
 def create_hot_cm(n=256):
     colors = plt.cm.hot(np.linspace(0, 1, n))
     colors_map = mcolors.LinearSegmentedColormap.from_list('hot', colors)
@@ -75,10 +81,11 @@ def create_cm(cm_name):
     figu.plot_color_bar(1, -1, cm, do_save=True, fol=op.join(MMVT_DIR, 'color_maps'))
 
 
-cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'YlOrRd':create_YlOrRd_cm,
+cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm,
        'jet':create_jet_cm, 'hot':create_hot_cm}
 
 if __name__ == '__main__':
     # create_cm('YlOrRd')
+    create_cm('RdOrYl')
     # create_cm('jet')
-    create_cm('hot')
+    # create_cm('hot')
