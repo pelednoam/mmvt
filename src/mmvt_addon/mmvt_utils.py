@@ -1272,8 +1272,10 @@ def to_str(s):
         return str(s)
 
 
-def read_config_ini():
+def read_config_ini(fol='', ini_name='config.ini'):
     import configparser
     config = configparser.ConfigParser()
-    config.read(op.join(get_user_fol(), 'config.ini'))
+    if fol == '':
+        fol = get_user_fol()
+    config.read(op.join(fol, ini_name))
     return config

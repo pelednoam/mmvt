@@ -21,6 +21,23 @@ def change_graph_all_vals_thread(q, while_termination_func, **kargs):
     change_graph_all_vals(buffer)
 
 
+def logs_folders_update(self, context):
+    load_offline_data(bpy.context.scene.logs_folders)
+
+
+def load_offline_data(sub_folder):
+    input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming', sub_folder)
+    files = sorted(glob.glob(op.join(input_fol, 'streaming_data_*.npy')))
+    offline_data = []
+    for log_file in files:
+        data = np.load(log_file)
+        if offline_data != [] and offline_data.shape[0] != data.shape[0]:
+            continue
+        offline_data = data if offline_data == [] else np.hstack((offline_data, data))
+    StreamingPanel.offline_data = offline_data
+    StreamingPanel.cycle_data = []
+
+
 def electrodes_sep_update(self, context):
     data = get_electrodes_data()
     # data_amp = np.max(data) - np.min(data)
@@ -40,7 +57,6 @@ def change_graph_all_vals(mat):
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
-    # good_electrodes = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     good_electrodes = range(mat.shape[0])
     elecs_cycle = cycle(good_electrodes)
     data_min, data_max = np.min(mat[good_electrodes]), np.max(mat[good_electrodes])
@@ -72,18 +88,20 @@ def change_graph_all_vals(mat):
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
+    StreamingPanel.cycle_data = mat if StreamingPanel.cycle_data == [] else np.hstack((StreamingPanel.cycle_data, mat))
     bpy.context.scene.frame_current += mat.shape[1]
     if bpy.context.scene.frame_current > MAX_STEPS - 1:
         bpy.context.scene.frame_current = bpy.context.scene.frame_current - MAX_STEPS
         time_diff = (datetime.now() - StreamingPanel.time)
         time_diff_sec = time_diff.seconds + time_diff.microseconds * 1e-6
         print('cycle! ', str(time_diff), time_diff_sec)
-        set_electrodes_data()
+        save_cycle()
         max_steps_secs = MAX_STEPS / 1000
         if time_diff_sec < max_steps_secs:
             print('sleep for {}'.format(max_steps_secs - time_diff_sec))
             time.sleep(max_steps_secs - time_diff_sec)
         StreamingPanel.time = datetime.now()
+        StreamingPanel.cycle_data = []
 
 
 def show_electrodes_fcurves():
@@ -118,8 +136,7 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     bad_channels = kargs.get('bad_channels', '')
     bad_channels = list(map(mu.to_int, bad_channels.split(','))) if bad_channels != '' else []
     good_channels = kargs.get('good_channels', '')
-    good_channels = list(map(mu.to_int, good_channels.split(','))) if bad_channels != '' else []
-    # good_channels = [68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
     data[bad_channels] = 0
     if good_channels:
         data = data[good_channels]
@@ -225,19 +242,12 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             buffer = []
 
 
-def set_electrodes_data():
-    # StreamingPanel.electrodes_data = data = get_electrodes_data()
+def save_cycle():
     if bpy.context.scene.save_streaming:
         output_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
         output_fname = 'streaming_data_{}.npy'.format(datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S'))
         mu.make_dir(output_fol)
-        data = get_electrodes_data()
-        np.save(op.join(output_fol, output_fname), data)
-
-    # norm_percs = (3, 97) #todo: add to gui
-    # StreamingPanel.data_max, StreamingPanel.data_min = mu.get_data_max_min(
-    #     StreamingPanel.electrodes_data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-    # StreamingPanel.electrodes_colors_ratio = 256 / (StreamingPanel.data_max - StreamingPanel.data_min)
+        np.save(op.join(output_fol, output_fname), StreamingPanel.cycle_data)
 
 
 def get_electrodes_data():
@@ -306,11 +316,14 @@ class StreamButton(bpy.types.Operator):
                         multicast_group=bpy.context.scene.multicast_group,
                         port=bpy.context.scene.streaming_server_port,
                         timeout=bpy.context.scene.timeout,
-                        mat_len=len(bpy.data.objects['Deep_electrodes'].children),
-                        bad_channels=bpy.context.scene.streaming_bad_channels)
+                        mat_len=len(bpy.data.objects['Deep_electrodes'].children))
             if bpy.context.scene.stream_type == 'offline':
+                config = mu.read_config_ini(op.join(
+                    mu.get_user_fol(), 'electrodes', 'streaming', bpy.context.scene.logs_folders))
+                if 'STREAMING' in config.sections():
+                    args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
+                    args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
-                # args['good_channels'] = '68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79'
                 StreamingPanel.udp_queue = mu.run_thread(
                     offline_logs_reader, reading_from_udp_while_termination_func, **args)
             else:
@@ -355,6 +368,8 @@ def streaming_draw(self, context):
     layout = self.layout
 
     layout.prop(context.scene, "stream_type", text="")
+    if bpy.context.scene.stream_type == 'offline':
+        layout.prop(context.scene, 'logs_folders', text='')
     layout.prop(context.scene, "stream_edit", text="Edit settings")
     if bpy.context.scene.stream_edit:
         box = layout.box()
@@ -367,8 +382,8 @@ def streaming_draw(self, context):
                 col.prop(context.scene, "streaming_server", text="server")
             col.prop(context.scene, "streaming_server_port", text="port")
         col.prop(context.scene, "streaming_buffer_size", text="buffer size")
-        if bpy.context.scene.stream_type != 'offline':
-            col.prop(context.scene, 'streaming_bad_channels', text='bad channels')
+        # if bpy.context.scene.stream_type != 'offline':
+        #     col.prop(context.scene, 'streaming_bad_channels', text='bad channels')
         # col.prop(context.scene, "streaming_electrodes_num", text="electrodes num")
     layout.operator(StreamButton.bl_idname,
                     text="Stream data" if not StreamingPanel.is_streaming else 'Stop streaming data',
@@ -391,6 +406,7 @@ bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streamin
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=[('', '', '', 1)], description='Type of stream listener')
 bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -410,7 +426,7 @@ class StreamingPanel(bpy.types.Panel):
     electrodes_file = None
     electrodes_data = None
     time = datetime.now()
-    electrodes_names, electrodes_conditions, offline_data = [], [], []
+    electrodes_names, electrodes_conditions, offline_data, cycle_data = [], [], [], []
     data_max, data_min, electrodes_colors_ratio = 0, 0, 1
 
     def draw(self, context):
@@ -441,18 +457,14 @@ def init(addon):
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
-    files = sorted(glob.glob(op.join(input_fol, 'streaming_data_*.npy')))
-    if len(files) > 0:
-        input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
-        files = sorted(glob.glob(op.join(input_fol, 'streaming_data_*.npy')))
-        offline_data = []
-        for log_file in files:
-            data = np.load(log_file)
-            if offline_data != [] and offline_data.shape[0] != data.shape[0]:
-                continue
-            offline_data = data if offline_data == [] else np.hstack((offline_data, data))
-        StreamingPanel.offline_data = offline_data
+    streaming_files = glob.glob(op.join(input_fol, '**', 'streaming_data_*.npy'), recursive=True)
+    logs_dirs = [logs_dir.split(op.sep)[-1] for logs_dir in glob.glob(op.join(input_fol, '*.*')) if op.isdir(logs_dir) and \
+                 len(glob.glob(op.join(input_fol, logs_dir, 'streaming_data_*.npy'))) > 0]
+    if len(streaming_files) > 0 and len(logs_dirs) > 0:
         streaming_items.append(('offline', 'Offline recordings', '', 2))
+        bpy.types.Scene.logs_folders = bpy.props.EnumProperty(
+            items=[(f, f, '', ind + 1) for ind, f in enumerate(logs_dirs)], update=logs_folders_update)
+        bpy.context.scene.logs_folders = logs_dirs[0]
     bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=streaming_items,
         description='Type of stream listener')
     bpy.context.scene.stream_type = 'udp'
