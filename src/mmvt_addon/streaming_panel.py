@@ -36,6 +36,7 @@ def load_offline_data(sub_folder):
         offline_data = data if offline_data == [] else np.hstack((offline_data, data))
     StreamingPanel.offline_data = offline_data
     StreamingPanel.cycle_data = []
+    StreamingPanel.minmax_vals = []
 
 
 def electrodes_sep_update(self, context):
@@ -52,6 +53,7 @@ def electrodes_sep_update(self, context):
     mu.view_all_in_graph_editor()
 
 
+# @mu.profileit()
 def change_graph_all_vals(mat):
     MAX_STEPS = StreamingPanel.max_steps
     T = min(mat.shape[1], MAX_STEPS)
@@ -63,11 +65,11 @@ def change_graph_all_vals(mat):
     StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
     StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
     data_abs_minmax = max([abs(data_min), abs(data_max)])
-    StreamingPanel.mminmax_vals.append(data_abs_minmax)
-    if len(StreamingPanel.mminmax_vals) > 100:
-        StreamingPanel.mminmax_vals = StreamingPanel.mminmax_vals[-100:]
-    StreamingPanel.data_min = data_min = -np.median(StreamingPanel.mminmax_vals)
-    StreamingPanel.data_max = data_max = np.median(StreamingPanel.mminmax_vals)
+    StreamingPanel.minmax_vals.append(data_abs_minmax)
+    if len(StreamingPanel.minmax_vals) > 100:
+        StreamingPanel.minmax_vals = StreamingPanel.minmax_vals[-100:]
+    StreamingPanel.data_min = data_min = -np.median(StreamingPanel.minmax_vals)
+    StreamingPanel.data_max = data_max = np.median(StreamingPanel.minmax_vals)
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_max_min(data_max, data_min)
     # _addon().view_all_in_graph_editor()
@@ -145,6 +147,8 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
         if ind+buffer_size < data.shape[1]:
             udp_queue.put(data[:, ind:ind+buffer_size])
             ind += buffer_size
+        else:
+            break
 
 
 def udp_reader(udp_queue, while_termination_func, **kargs):
@@ -387,13 +391,12 @@ def streaming_draw(self, context):
 
 bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
 bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=45454)
-bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group', default='239.255.43.21')
+bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group', default='1.1.1.')
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
-bpy.types.Scene.streaming_bad_channels = bpy.props.StringProperty(name='streaming_bad_channels', default='0,3')
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=[('', '', '', 1)], description='Type of stream listener')
 bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
@@ -447,11 +450,11 @@ def init(addon):
         StreamingPanel.config = settings['STIM']
     if 'STREAM' in settings.sections():
         stream_con = settings['STREAM']
-        bpy.context.scene.streaming_buffer_size = stream_con.get('buffer_size')
+        bpy.context.scene.streaming_buffer_size = int(stream_con.get('buffer_size'))
         bpy.context.scene.streaming_server = stream_con.get('server')
         bpy.context.scene.multicast_group = stream_con.get('multicast_group')
-        bpy.context.scene.streaming_server_port = stream_con.get('port')
-        bpy.context.scene.timeout = stream_con.get('timeout')
+        bpy.context.scene.streaming_server_port = int(stream_con.get('port'))
+        bpy.context.scene.timeout = float(stream_con.get('timeout'))
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
@@ -471,7 +474,7 @@ def init(addon):
     # StreamingPanel.fixed_data = fixed_data()
     StreamingPanel.electrodes_objs_names = [l.name for l in bpy.data.objects['Deep_electrodes'].children]
     bpy.context.scene.streaming_electrodes_num = len(StreamingPanel.electrodes_objs_names)
-    StreamingPanel.mminmax_vals = []
+    StreamingPanel.minmax_vals = []
     StreamingPanel.max_steps = _addon().get_max_time_steps()
     StreamingPanel.init = True
 
