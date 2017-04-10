@@ -29,6 +29,25 @@ def can_color_obj(obj):
     return 'RGB' in cur_mat.node_tree.nodes
 
 
+def contours_coloring_update(self, context):
+    user_fol = mu.get_user_fol()
+    d = {}
+    items = []
+    for hemi in mu.HEMIS:
+        d[hemi] = np.load(op.join(user_fol, '{}_contours_{}.npz'.format(
+            bpy.context.scene.contours_coloring, hemi)))
+        ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
+        items.extend([(c, c, '', ind) for ind, c in enumerate(d[hemi]['labels'])])
+    bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=items, update=labels_contures_update)
+    bpy.context.scene.labels_contures = d[hemi]['labels'][0]
+    ColoringMakerPanel.labels_contures = d
+
+
+def labels_contures_update(self, context):
+    hemi = 'rh' if bpy.context.scene.labels_contures in ColoringMakerPanel.labels['rh'] else 'lh'
+    color_contours(bpy.context.scene.labels_contures, hemi)
+
+
 def object_coloring(obj, rgb):
     if not obj:
         print('object_coloring: obj is None!')
@@ -345,6 +364,40 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
+def color_contours(specific_label='', specific_hemi='both'):
+    d = ColoringMakerPanel.labels_contures
+    contour_max = max([d[hemi]['max'] for hemi in mu.HEMIS])
+    _addon().set_colormap('jet')
+    _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
+    _addon().set_colorbar_max_min(contour_max, 1)
+    _addon().set_colorbar_prec(0)
+    for hemi in mu.HEMIS:
+        contours = d[hemi]['contours']
+        if specific_hemi != 'both' and hemi != specific_hemi:
+            contours = np.zeros(contours.shape)
+        elif specific_label != '':
+            label_ind = np.where(d[hemi]['labels'] == specific_hemi)
+            if len(label_ind) > 0:
+                contours[np.where(contours != label_ind[0])] = 0
+        color_hemi_data(hemi, contours, 0.1, 256 / contour_max)
+
+
+def color_hemi_data(hemi, data, data_min, colors_ratio, threshold=0, override_current_mat=True):
+    if bpy.data.objects[hemi].hide:
+        return
+    faces_verts = ColoringMakerPanel.faces_verts[hemi]
+    if bpy.context.scene.coloring_both_pial_and_inflated:
+        for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+            activity_map_obj_coloring(
+                cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+    else:
+        if _addon().is_pial():
+            cur_obj = bpy.data.objects[hemi]
+        elif _addon().is_inflated():
+            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+
+
 @mu.timeit
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
@@ -391,16 +444,18 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
-        if bpy.context.scene.coloring_both_pial_and_inflated:
-            for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-                activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min,
-                                          colors_ratio)
-        else:
-            if _addon().is_pial():
-                cur_obj = bpy.data.objects[hemi]
-            elif _addon().is_inflated():
-                cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-            activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
+
+        color_hemi_data(hemi, f, data_min, colors_ratio, threshold, override_current_mat)
+        # if bpy.context.scene.coloring_both_pial_and_inflated:
+        #     for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+        #         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min,
+        #                                   colors_ratio)
+        # else:
+        #     if _addon().is_pial():
+        #         cur_obj = bpy.data.objects[hemi]
+        #     elif _addon().is_inflated():
+        #         cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        #     activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
     if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
         if map_type == 'MEG' and not bpy.data.objects['Subcortical_meg_activity_map'].hide:
@@ -986,6 +1041,17 @@ class ColorfMRIDynamics(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorContours(bpy.types.Operator):
+    bl_idname = "mmvt.color_contours"
+    bl_label = "mmvt color contours"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_contours()
+        return {"FINISHED"}
+
+
 class ColorMeg(bpy.types.Operator):
     bl_idname = "mmvt.meg_color"
     bl_label = "mmvt meg color"
@@ -1167,6 +1233,11 @@ def draw(self, context):
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
                 col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
+        if ColoringMakerPanel.contours_coloring_exist:
+            col = layout.box().column()
+            col.prop(context.scene, 'contours_coloring', '')
+            col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
+            col.prop(context.scene, 'labels_contures', '')
         if manually_color_files_exist:
             col = layout.box().column()
             # col.label('Manual coloring files')
@@ -1224,6 +1295,8 @@ bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], descriptio
 bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
+bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
+bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=[])
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -1236,6 +1309,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI = {}
     fMRI_clusters = {}
     labels_vertices = {}
+    labels = dict(rh=[], lh=[])
     electrodes_sources_labels_data = None
     electrodes_sources_subcortical_data = None
     what_is_colored = set()
@@ -1249,6 +1323,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_exist = False
     meg_sensors_exist = False
     conn_labels_avg_files_exit = False
+    contours_coloring_exist = False
 
     def draw(self, context):
         draw(self, context)
@@ -1270,6 +1345,7 @@ def init(addon):
     init_eeg_sensors()
     init_meg_sensors()
     init_connectivity_labels_avg()
+    init_contours_coloring()
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
@@ -1338,6 +1414,17 @@ def init_eeg_sensors():
         data_min, data_max = np.load(data_minmax_fname)
         ColoringMakerPanel.eeg_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.eeg_data_minmax = (data_min, data_max)
+
+
+def init_contours_coloring():
+    user_fol = mu.get_user_fol()
+    contours_files = glob.glob(op.join(user_fol, '*contours_lh.npz'))
+    if len(contours_files) > 0:
+        ColoringMakerPanel.contours_coloring_exist = True
+        files_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=items, update=contours_coloring_update)
+        bpy.context.scene.contours_coloring = files_names[0]
 
 
 def init_meg_labels_coloring_type():
@@ -1450,6 +1537,7 @@ def register():
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(ColorElectrodesStim)
         bpy.utils.register_class(ColorElectrodesLabels)
+        bpy.utils.register_class(ColorContours)
         bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ColorVol)
         bpy.utils.register_class(ColorGroupsManually)
@@ -1477,6 +1565,7 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodesStim)
         bpy.utils.unregister_class(ColorElectrodesLabels)
         bpy.utils.unregister_class(ColorManually)
+        bpy.utils.unregister_class(ColorContours)
         bpy.utils.unregister_class(ColorVol)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)

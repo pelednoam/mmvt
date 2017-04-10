@@ -494,6 +494,49 @@ def create_spatial_connectivity(subject):
     return success
 
 
+def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
+    output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    if utils.both_hemi_files_exist(output_fname) and not overwrite:
+        return
+    verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if not utils.both_hemi_files_exist(verts_neighbors_fname):
+        print('calc_labeles_contours: You should first run create_spatial_connectivity')
+        return
+    vertices_labels_lookup = create_vertices_labels_lookup(subject, atlas)
+    for hemi in utils.HEMIS:
+        verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        contours = np.zeros((len(verts)))
+        vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
+        labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        for label_ind, label in enumerate(labels):
+            if verbose:
+                label_nei = np.zeros((len(label.vertices)))
+            for vert_ind, vert in enumerate(label.vertices):
+                nei = set([vertices_labels_lookup[hemi][v] for v in vertices_neighbors[vert]])
+                contours[vert] = label_ind if len(nei) > 1 else 0
+                if verbose:
+                    label_nei[vert_ind] = contours[vert]
+            if verbose:
+                print(label.name, len(np.where(label_nei)[0]) / len(verts))
+        np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
+                 labels=[l.name for l in labels])
+    return utils.both_hemi_files_exist(output_fname)
+
+
+def create_vertices_labels_lookup(subject, atlas):
+    output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_lookup.pkl'.format(atlas))
+    if op.isfile(output_fname):
+        lookup = utils.load(output_fname)
+        return lookup
+    lookup = {}
+    for hemi in utils.HEMIS:
+        lookup[hemi] = {}
+        labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        for label in labels:
+            for vertice in label.vertices:
+                lookup[hemi][vertice] = label.name
+        utils.save(lookup, output_fname)
+    return lookup
 #
 # @utils.timeit
 # def calc_verts_neighbors_lookup(subject):
@@ -716,6 +759,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'transform_coordinates' in args.function:
         flags['transform_coordinates'] = transform_coordinates(subject, args)
 
+    if 'calc_labeles_contours' in args.function:
+        flags['calc_labeles_contours'] = calc_labeles_contours(subject, args.atlas)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))

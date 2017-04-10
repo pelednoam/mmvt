@@ -94,6 +94,14 @@ def get_colorbar_min():
     return bpy.context.scene.colorbar_min
 
 
+def get_colorbar_prec():
+    return bpy.context.scene.colorbar_prec
+
+
+def set_colorbar_prec(val):
+    bpy.context.scene.colorbar_prec = val
+
+
 def _set_colorbar_min_max(field, val, prec):
     if prec is None or prec not in PERC_FORMATS:
         prec = bpy.context.scene.colorbar_prec

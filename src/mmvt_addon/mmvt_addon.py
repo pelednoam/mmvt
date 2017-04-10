@@ -225,6 +225,8 @@ get_colormap_name = colorbar_panel.get_colormap_name
 colorbar_values_are_locked = colorbar_panel.colorbar_values_are_locked
 lock_colorbar_values = colorbar_panel.lock_colorbar_values
 set_colormap = colorbar_panel.set_colormap
+set_colorbar_prec = colorbar_panel.set_colorbar_prec
+get_colorbar_prec = colorbar_panel.get_colorbar_prec
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
