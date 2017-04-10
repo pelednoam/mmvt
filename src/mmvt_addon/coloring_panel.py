@@ -1297,7 +1297,8 @@ def init_meg_activity_map():
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_activity_data_minmax = (data_min, data_max)
         print('data meg: {}-{}'.format(data_min, data_max))
-        _addon().set_colorbar_max_min(data_max, data_min, True)
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('MEG')
 
 
@@ -1310,7 +1311,8 @@ def init_fmri_activity_map():
         data_min, data_max = np.load(fmri_data_maxmin_fname)
         ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
-        _addon().set_colorbar_max_min(data_max, data_min, True)
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('fMRI')
 
 
