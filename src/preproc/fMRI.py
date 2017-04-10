@@ -190,7 +190,7 @@ def find_clusters(subject, contrast_name, t_val, atlas, task, volume_name='', in
             clusters_labels['values'].extend(clusters_labels_hemi)
 
     clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(volume_name))
+        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}.pkl'.format(task, volume_name))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
@@ -893,6 +893,8 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, 
 
     '''
     fol = op.join(FMRI_DIR, args.task, subject)
+    if not op.isdir(fol):
+        raise Exception('You should first put the fMRI contrast files in {}'.format(fol))
     contrasts_files = {}
     if fsfast and op.isdir(op.join(fol, 'bold')):
         # todo: What to do with group-avg in fsfast?
@@ -907,6 +909,9 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, 
         contrasts_files[contrast] = dict(
             volume_files=find_volume_files_from_template(op.join(fol, contrast_file_template)),
             hemis_files=find_hemi_files_from_template(op.join(fol, contrast_file_template)))
+        if not contrasts_files[contrast]['hemis_files']:
+            raise Exception('No contrast maps projected to the hemispheres were found in {}'.format(
+                op.join(fol, contrast_file_template)))
 
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     for contrast, contrast_dict in contrasts_files.items():
