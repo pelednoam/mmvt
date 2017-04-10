@@ -44,6 +44,8 @@ def contours_coloring_update(self, context):
 
 
 def labels_contures_update(self, context):
+    if not ColoringMakerPanel.init:
+        return
     hemi = 'rh' if bpy.context.scene.labels_contures in ColoringMakerPanel.labels['rh'] else 'lh'
     color_contours(bpy.context.scene.labels_contures, hemi)
 
@@ -376,7 +378,7 @@ def color_contours(specific_label='', specific_hemi='both'):
         if specific_hemi != 'both' and hemi != specific_hemi:
             contours = np.zeros(contours.shape)
         elif specific_label != '':
-            label_ind = np.where(d[hemi]['labels'] == specific_hemi)
+            label_ind = np.where(d[hemi]['labels'] == specific_label)
             if len(label_ind) > 0:
                 contours[np.where(contours != label_ind[0])] = 0
         color_hemi_data(hemi, contours, 0.1, 256 / contour_max)
@@ -1052,6 +1054,32 @@ class ColorContours(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PrevLabelConture(bpy.types.Operator):
+    bl_idname = "mmvt.labels_contours_prev"
+    bl_label = "mmvt labels contours prev"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        all_labels = ColoringMakerPanel.labels['rh'] + ColoringMakerPanel.labels['lh']
+        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0]
+        bpy.context.scene.labels_contures = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
+        return {"FINISHED"}
+
+
+class NextLabelConture(bpy.types.Operator):
+    bl_idname = "mmvt.labels_contours_next"
+    bl_label = "mmvt labels contours next"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        all_labels = ColoringMakerPanel.labels['rh'] + ColoringMakerPanel.labels['lh']
+        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0]
+        bpy.context.scene.labels_contures = all_labels[label_ind + 1] if label_ind < len(all_labels) else all_labels[0]
+        return {"FINISHED"}
+
+
 class ColorMeg(bpy.types.Operator):
     bl_idname = "mmvt.meg_color"
     bl_label = "mmvt meg color"
@@ -1237,7 +1265,10 @@ def draw(self, context):
             col = layout.box().column()
             col.prop(context.scene, 'contours_coloring', '')
             col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
-            col.prop(context.scene, 'labels_contures', '')
+            row = col.row(align=True)
+            row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
+            row.prop(context.scene, 'labels_contures', '')
+            row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
         if manually_color_files_exist:
             col = layout.box().column()
             # col.label('Manual coloring files')
@@ -1306,6 +1337,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Activity Maps"
     addon = None
+    init = False
     fMRI = {}
     fMRI_clusters = {}
     labels_vertices = {}
@@ -1349,6 +1381,7 @@ def init(addon):
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
+    ColoringMakerPanel.init = True
     register()
 
 
@@ -1538,6 +1571,8 @@ def register():
         bpy.utils.register_class(ColorElectrodesStim)
         bpy.utils.register_class(ColorElectrodesLabels)
         bpy.utils.register_class(ColorContours)
+        bpy.utils.register_class(NextLabelConture)
+        bpy.utils.register_class(PrevLabelConture)
         bpy.utils.register_class(ColorManually)
         bpy.utils.register_class(ColorVol)
         bpy.utils.register_class(ColorGroupsManually)
@@ -1566,6 +1601,8 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodesLabels)
         bpy.utils.unregister_class(ColorManually)
         bpy.utils.unregister_class(ColorContours)
+        bpy.utils.unregister_class(NextLabelConture)
+        bpy.utils.unregister_class(PrevLabelConture)
         bpy.utils.unregister_class(ColorVol)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)
