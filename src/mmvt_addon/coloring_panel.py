@@ -39,7 +39,7 @@ def contours_coloring_update(self, context):
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
         items.extend([(c, c, '', ind) for ind, c in enumerate(d[hemi]['labels'])])
     bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=items, update=labels_contures_update)
-    bpy.context.scene.labels_contures = d[hemi]['labels'][0]
+    # bpy.context.scene.labels_contures = d[hemi]['labels'][0]
     ColoringMakerPanel.labels_contures = d
 
 
@@ -380,7 +380,7 @@ def color_contours(specific_label='', specific_hemi='both'):
         elif specific_label != '':
             label_ind = np.where(d[hemi]['labels'] == specific_label)
             if len(label_ind) > 0:
-                contours[np.where(contours != label_ind[0])] = 0
+                contours[np.where(contours != label_ind[0] + 1)] = 0
         color_hemi_data(hemi, contours, 0.1, 256 / contour_max)
 
 

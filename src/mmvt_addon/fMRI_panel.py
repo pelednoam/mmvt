@@ -521,7 +521,7 @@ try:
         description='clustering threshold', min=0, max=20)
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
-    bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=True)
+    bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.fmri_blobs_percentile_min = bpy.props.FloatProperty(
         default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
     bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(

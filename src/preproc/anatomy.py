@@ -513,7 +513,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
                 label_nei = np.zeros((len(label.vertices)))
             for vert_ind, vert in enumerate(label.vertices):
                 nei = set([vertices_labels_lookup[hemi][v] for v in vertices_neighbors[vert]])
-                contours[vert] = label_ind if len(nei) > 1 else 0
+                contours[vert] = label_ind + 1 if len(nei) > 1 else 0
                 if verbose:
                     label_nei[vert_ind] = contours[vert]
             if verbose:
