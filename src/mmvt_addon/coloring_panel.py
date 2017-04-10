@@ -1061,8 +1061,8 @@ class PrevLabelConture(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        all_labels = ColoringMakerPanel.labels['rh'] + ColoringMakerPanel.labels['lh']
-        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0]
+        all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
+        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
         bpy.context.scene.labels_contures = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
         return {"FINISHED"}
 
@@ -1074,8 +1074,8 @@ class NextLabelConture(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        all_labels = ColoringMakerPanel.labels['rh'] + ColoringMakerPanel.labels['lh']
-        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0]
+        all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
+        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
         bpy.context.scene.labels_contures = all_labels[label_ind + 1] if label_ind < len(all_labels) else all_labels[0]
         return {"FINISHED"}
 
