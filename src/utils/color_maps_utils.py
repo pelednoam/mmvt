@@ -18,6 +18,14 @@ def create_BuPu_YlOrRd_cm(n=128):
     return colors_map
 
 
+def create_PuBu_RdOrYl_cm(n=128):
+    colors1 = plt.cm.PuBu(np.linspace(0.2, 1, n))
+    colors2 = plt.cm.YlOrRd(np.linspace(1, 0.2, n))
+    colors = np.vstack((colors1, colors2))
+    colors_map = mcolors.LinearSegmentedColormap.from_list('PuBu_RdOrYl', colors)
+    return colors_map
+
+
 def create_jet_cm(n=256):
     colors = plt.cm.jet(np.linspace(0, 1, n))
     colors_map = mcolors.LinearSegmentedColormap.from_list('jet', colors)
@@ -81,11 +89,13 @@ def create_cm(cm_name):
     figu.plot_color_bar(1, -1, cm, do_save=True, fol=op.join(MMVT_DIR, 'color_maps'))
 
 
-cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm,
+cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'PuBu_RdOrYl':create_PuBu_RdOrYl_cm,
+       'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm,
        'jet':create_jet_cm, 'hot':create_hot_cm}
 
 if __name__ == '__main__':
     # create_cm('YlOrRd')
-    create_cm('RdOrYl')
+    # create_cm('RdOrYl')
+    create_cm('PuBu_RdOrYl')
     # create_cm('jet')
     # create_cm('hot')

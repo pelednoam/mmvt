@@ -367,15 +367,17 @@ def fMRI_draw(self, context):
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
     layout.prop(context.scene, 'fmri_clusters_labels_parcs', text='')
     row = layout.row(align=True)
-    row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
-    row.operator(RefinefMRIClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
-    layout.prop(context.scene, 'fmri_cluster_val_threshold', text='clusters t-val threshold')
-    layout.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
-    layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
-    row = layout.row(align=True)
     row.operator(PrevCluster.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, 'fmri_clusters', text="")
     row.operator(NextCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
+    layout.prop(context.scene, 'fmri_show_filtering', text='Refine clusters')
+    if bpy.context.scene.fmri_show_filtering:
+        row = layout.row(align=True)
+        row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+        row.operator(RefinefMRIClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
+        layout.prop(context.scene, 'fmri_cluster_val_threshold', text='clusters t-val threshold')
+        layout.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
+        layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
     layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
@@ -396,15 +398,15 @@ def fMRI_draw(self, context):
         if labels_num_to_show < len(fMRIPanel.cluster_labels['intersects']):
             layout.label(text='Out of {} labels'.format(len(fMRIPanel.cluster_labels['intersects'])))
     # row = layout.row(align=True)
-    layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
-    if bpy.context.scene.fmri_blobs_norm_by_percentile:
-        layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
-        layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
-    layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
+    # layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
     # layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
-    layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
+    # layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
+    # if bpy.context.scene.fmri_blobs_norm_by_percentile:
+    #     layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
+    #     layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
+    # layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -507,7 +509,7 @@ class FilterfMRIBlobs(bpy.types.Operator):
 
 try:
     bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
-        default=False, description="Plot current cluster")
+        default=True, description="Plot current cluster")
     bpy.types.Scene.plot_fmri_cluster_per_click = bpy.props.BoolProperty(
         default=False, description="Plot cluster per left click")
     bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
@@ -532,6 +534,7 @@ try:
         default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
     bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
         default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
+    bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False)
 except:
     pass
 
@@ -593,8 +596,8 @@ def init(addon):
             # fMRIPanel.clusters_labels[key] = support_old_verions(fMRIPanel.clusters_labels[file_name])
             fMRIPanel.lookup[key] = create_lookup_table(fMRIPanel.clusters_labels[key])
 
-    bpy.context.scene.fmri_cluster_val_threshold = 3
-    bpy.context.scene.fmri_cluster_size_threshold = 50
+    bpy.context.scene.fmri_cluster_val_threshold = 2
+    bpy.context.scene.fmri_cluster_size_threshold = 20
     bpy.context.scene.search_closest_cluster_only_in_filtered = True
     bpy.context.scene.fmri_what_to_plot = 'blob'
     bpy.context.scene.fmri_how_to_sort = 'tval'

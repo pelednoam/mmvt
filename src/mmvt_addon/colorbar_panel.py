@@ -39,6 +39,7 @@ def get_colormap_name():
 
 @mu.tryit
 def set_colorbar_title(val):
+    val = '     {}'.format(val)
     init = ColorbarPanel.init
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
     ColorbarPanel.init = False
@@ -123,6 +124,20 @@ def set_colormap(colormap_name):
         print('No such colormap! {}'.format(colormap_name))
 
 
+def hide_cb_center_update(self, context):
+    hide_center(bpy.context.scene.hide_cb_center)
+
+
+def hide_center(do_hide):
+    n = len(bpy.data.objects['cCB'].children)
+    for cb in bpy.data.objects['cCB'].children:
+        if not do_hide:
+            cb.hide = False
+        num = int(cb.name.split('.')[-1])
+        if do_hide and n / 2 - 10 < num < n / 2 + 10:
+            cb.hide = True
+
+
 def colormap_update(self, context):
     if ColorbarPanel.init:
         load_colormap()
@@ -162,6 +177,7 @@ def colorbar_draw(self, context):
     row = layout.row(align=0)
     row.prop(context.scene, "colorbar_min", text="min:")
     row.prop(context.scene, "colorbar_max", text="max:")
+    layout.prop(context.scene, 'hide_cb_center', text='Hide center')
     layout.prop(context.scene, 'colorbar_prec', text='precision')
     layout.prop(context.scene, 'lock_min_max', text='Lock values')
     layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
@@ -189,6 +205,7 @@ bpy.types.Scene.colorbar_title = bpy.props.StringProperty(description="", update
 bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=5, description="", update=colorbar_update)
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)
+bpy.types.Scene.hide_cb_center = bpy.props.BoolProperty(default=False, update=hide_cb_center_update)
 bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
 bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
@@ -235,7 +252,7 @@ def init(addon):
     if not ColorbarPanel.colorbar_updated and not colorbar_values_are_locked():
         bpy.context.scene.colorbar_min = -1
         bpy.context.scene.colorbar_max = 1
-        bpy.context.scene.colorbar_title = 'MEG'
+        bpy.context.scene.colorbar_title = '     MEG'
     bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
     bpy.context.scene.colorbar_y = 0.18
     bpy.context.scene.colorbar_text_y = -1.53
