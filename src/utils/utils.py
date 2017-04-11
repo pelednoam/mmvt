@@ -628,26 +628,26 @@ def read_labels_from_annot(subject, aparc_name, subjects_dir):
     return labels
 
 
-def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True):
+def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=None):
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = op.join(subjects_dir, subject)
     if both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))):
         return True
-    labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
-    labels = []
+    if labels is None:
+        labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
+        labels = []
+        labels_files = glob.glob(op.join(labels_fol, '*.label'))
+        if len(labels_files) == 0:
+            raise Exception('labels_to_annot: No labels files!')
+        for label_file in labels_files:
+            label = mne.read_label(label_file)
+            # print(label.name)
+            labels.append(label)
+        labels.sort(key=lambda l: l.name)
     if overwrite:
         for hemi in HEMIS:
             remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
-    labels_files = glob.glob(op.join(labels_fol, '*.label'))
-    if len(labels_files) == 0:
-        raise Exception('labels_to_annot: No labels files!')
-    for label_file in labels_files:
-        label = mne.read_label(label_file)
-        # print(label.name)
-        labels.append(label)
-
-    labels.sort(key=lambda l: l.name)
     mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
                               subjects_dir=subjects_dir)
 

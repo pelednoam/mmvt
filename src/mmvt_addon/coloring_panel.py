@@ -32,22 +32,25 @@ def can_color_obj(obj):
 def contours_coloring_update(self, context):
     user_fol = mu.get_user_fol()
     d = {}
-    items = []
+    items = [('all labels', 'all labels', '', 0)]
     for hemi in mu.HEMIS:
         d[hemi] = np.load(op.join(user_fol, '{}_contours_{}.npz'.format(
             bpy.context.scene.contours_coloring, hemi)))
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
-        items.extend([(c, c, '', ind) for ind, c in enumerate(d[hemi]['labels'])])
+        items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
     bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=items, update=labels_contures_update)
-    # bpy.context.scene.labels_contures = d[hemi]['labels'][0]
+    bpy.context.scene.labels_contures = 'all labels' #d[hemi]['labels'][0]
     ColoringMakerPanel.labels_contures = d
 
 
 def labels_contures_update(self, context):
     if not ColoringMakerPanel.init:
         return
-    hemi = 'rh' if bpy.context.scene.labels_contures in ColoringMakerPanel.labels['rh'] else 'lh'
-    color_contours(bpy.context.scene.labels_contures, hemi)
+    if bpy.context.scene.labels_contures == 'all labels':
+        color_contours()
+    else:
+        hemi = 'rh' if bpy.context.scene.labels_contures in ColoringMakerPanel.labels['rh'] else 'lh'
+        color_contours(bpy.context.scene.labels_contures, hemi)
 
 
 def object_coloring(obj, rgb):
@@ -373,6 +376,7 @@ def color_contours(specific_label='', specific_hemi='both'):
     _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
     _addon().set_colorbar_max_min(contour_max, 1)
     _addon().set_colorbar_prec(0)
+    _addon().show_activity()
     for hemi in mu.HEMIS:
         contours = d[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
@@ -380,8 +384,8 @@ def color_contours(specific_label='', specific_hemi='both'):
         elif specific_label != '':
             label_ind = np.where(d[hemi]['labels'] == specific_label)
             if len(label_ind) > 0:
-                contours[np.where(contours != label_ind[0] + 1)] = 0
-        color_hemi_data(hemi, contours, 0.1, 256 / contour_max)
+                contours[np.where(contours != label_ind[0][0] + 1)] = 0
+        color_hemi_data(hemi, contours, 0.1, 256 / contour_max, override_current_mat=False)
 
 
 def color_hemi_data(hemi, data, data_min, colors_ratio, threshold=0, override_current_mat=True):
@@ -1062,8 +1066,11 @@ class PrevLabelConture(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
-        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
-        bpy.context.scene.labels_contures = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
+        if bpy.context.scene.labels_contures == 'all labels':
+            bpy.context.scene.labels_contures = all_labels[-1]
+        else:
+            label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
+            bpy.context.scene.labels_contures = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
         return {"FINISHED"}
 
 
@@ -1075,8 +1082,12 @@ class NextLabelConture(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
-        label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
-        bpy.context.scene.labels_contures = all_labels[label_ind + 1] if label_ind < len(all_labels) else all_labels[0]
+        if bpy.context.scene.labels_contures == 'all labels':
+            bpy.context.scene.labels_contures = all_labels[0]
+        else:
+            label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
+            bpy.context.scene.labels_contures = all_labels[label_ind + 1] \
+                if label_ind < len(all_labels) else all_labels[0]
         return {"FINISHED"}
 
 

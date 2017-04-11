@@ -428,6 +428,15 @@ def create_labels_coloring(subject, labels_names, labels_values, coloring_name, 
     return ret
 
 
+def join_labels(new_name, labels):
+    from functools import reduce
+    import operator
+    labels = list(labels)
+    new_label = reduce(operator.add, labels[1:], labels[0])
+    new_label.name = new_name
+    return new_label
+
+
 if __name__ == '__main__':
     # subject = 'mg96'
     # atlas = 'laus250'

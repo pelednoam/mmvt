@@ -687,6 +687,29 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
     return aparc_ret and lut_ret
 
 
+def create_high_level_atlas(subject):
+    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
+        fu.create_annotation_file(
+            subject, 'aparc.DKTatlas40', subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
+    look = create_labels_names_lookup(subject, 'aparc.DKTatlas40')
+    csv_fname = op.join(MMVT_DIR, 'high_level_atlas.csv')
+    labels = []
+    for hemi in utils.HEMIS:
+        for line in utils.csv_file_reader(csv_fname, ','):
+            new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
+            labels.append(new_label)
+    utils.labels_to_annot(subject, SUBJECTS_DIR, 'high.level.atlas', labels=labels, overwrite=True)
+    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.high.level.atlas.annot'))
+
+
+def create_labels_names_lookup(subject, atlas):
+    lookup = {}
+    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
+    for label in labels:
+        lookup[label.name] = label
+    return lookup
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -719,24 +742,19 @@ def main(subject, remote_subject_dir, args, flags):
         # *) Save the labels vertices for meg label plotting
         flags['labels_vertices'] = save_labels_vertices(subject, args.atlas)
 
-    # if utils.should_run(args, 'calc_verts_neighbors_lookup'):
-    #     *) Calc the vertices neighbors lookup
-        # flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
-
     if utils.should_run(args, 'save_hemis_curv'):
         # *) Save the hemis curvs for the inflated brain
         flags['save_hemis_curv'] = save_hemis_curv(subject, args.atlas)
 
-    # if utils.should_run(args, 'calc_verts_neighbors_lookup'):
-    #     flags['calc_verts_neighbors_lookup'] = calc_verts_neighbors_lookup(subject)
+    if utils.should_run(args, 'create_high_level_atlas'):
+        flags['create_high_level_atlas'] = create_high_level_atlas(subject)
 
     if utils.should_run(args, 'create_spatial_connectivity'):
         # *) Create the subject's connectivity
         flags['connectivity'] = create_spatial_connectivity(subject)
 
-    # if utils.should_run(args, 'check_ply_files'):
-    #     # *) Check the pial surfaces
-    #     flags['ply_files'] = check_ply_files(subject)
+    if utils.should_run(args, 'calc_labeles_contours'):
+        flags['calc_labeles_contours'] = calc_labeles_contours(subject, args.atlas)
 
     if utils.should_run(args, 'calc_labels_center_of_mass'):
         # *) Calc the labels center of mass
@@ -758,9 +776,6 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'transform_coordinates' in args.function:
         flags['transform_coordinates'] = transform_coordinates(subject, args)
-
-    if 'calc_labeles_contours' in args.function:
-        flags['calc_labeles_contours'] = calc_labeles_contours(subject, args.atlas)
 
     # for flag_type, val in flags.items():
     #     print('{}: {}'.format(flag_type, val))
