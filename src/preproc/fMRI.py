@@ -190,7 +190,7 @@ def find_clusters(subject, contrast_name, t_val, atlas, task, volume_name='', in
             clusters_labels['values'].extend(clusters_labels_hemi)
 
     clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}.pkl'.format(task, volume_name))
+        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}_{}.pkl'.format(task, volume_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 

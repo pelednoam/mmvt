@@ -22,10 +22,12 @@ def get_clusters_file_names():
 
 
 def get_clusters_files(user_fol=''):
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_{}.pkl'.format(
+        bpy.context.scene.atlas)))
     # old code was saving those files as npy instead of pkl
-    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy')))
-    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_{}.pkl'.format(
+        bpy.context.scene.atlas))))
+    files_names = [mu.namebase(fname)[len('clusters_labels_'):-len(bpy.context.scene.atlas) - 1] for fname in clusters_labels_files]
     return files_names, clusters_labels_files
 
 
@@ -194,7 +196,11 @@ def fmri_clusters_labels_files_update(self, context):
     fMRIPanel.constrast = {}
     for hemi in mu.HEMIS:
         contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(constrast_name, hemi))
-        fMRIPanel.constrast[hemi] = np.load(contrast_fname)
+        if op.isfile(contrast_fname):
+            print('Loading {}'.format(contrast_fname))
+            fMRIPanel.constrast[hemi] = np.load(contrast_fname)
+        else:
+            print("fmri_clusters_labels_files_update: Couldn't find {}!".format(contrast_fname))
     if fMRIPanel.init:
         update_clusters()
 
