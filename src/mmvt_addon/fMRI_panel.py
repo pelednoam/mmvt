@@ -27,7 +27,8 @@ def get_clusters_files(user_fol=''):
     # old code was saving those files as npy instead of pkl
     clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_{}.pkl'.format(
         bpy.context.scene.atlas))))
-    files_names = [mu.namebase(fname)[len('clusters_labels_'):-len(bpy.context.scene.atlas) - 1] for fname in clusters_labels_files]
+    files_names = list(set([mu.namebase(fname)[len('clusters_labels_'):-len(bpy.context.scene.atlas) - 1]
+                            for fname in clusters_labels_files]))
     return files_names, clusters_labels_files
 
 
