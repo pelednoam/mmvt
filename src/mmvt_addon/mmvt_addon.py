@@ -281,7 +281,7 @@ def get_max_time_steps():
             bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
             found = True
         except:
-            print('No fMRI data')
+            print('No dynamic fMRI data')
 
     if not found:
         try:

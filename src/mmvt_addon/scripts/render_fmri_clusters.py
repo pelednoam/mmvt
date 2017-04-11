@@ -26,7 +26,7 @@ def check_if_all_figures_were_rendered(args):
 
     subject_fol = op.join(su.get_mmvt_dir(), args.subject)
     figures_fol = op.join(subject_fol, 'figures')
-    clusters_file_names, _ = fmri.get_clusters_files(subject_fol)
+    clusters_file_names, _, _ = fmri.get_clusters_files(subject_fol)
     clusters_names = [f for f in clusters_file_names if args.clusters_type in f]
     render_figures = False
     all_figures = []
@@ -95,7 +95,7 @@ def post_script(args):
 
     subject_fol = op.join(su.get_mmvt_dir(), args.subject)
     figures_fol = op.join(subject_fol, 'figures')
-    clusters_file_names, _ = fmri.get_clusters_files(subject_fol)
+    clusters_file_names, _, _ = fmri.get_clusters_files(subject_fol)
     clusters_names = [f for f in clusters_file_names if args.clusters_type in f]
     print('clusters_names: {}'.format(clusters_names))
     fmri_files_minmax_fname = op.join(subject_fol, 'fmri', 'fmri_files_minmax_cm.pkl')

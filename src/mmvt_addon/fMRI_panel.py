@@ -22,14 +22,11 @@ def get_clusters_file_names():
 
 
 def get_clusters_files(user_fol=''):
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_{}.pkl'.format(
-        bpy.context.scene.atlas)))
-    # old code was saving those files as npy instead of pkl
-    clusters_labels_files.extend(glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_{}.pkl'.format(
-        bpy.context.scene.atlas))))
-    files_names = list(set([mu.namebase(fname)[len('clusters_labels_'):-len(bpy.context.scene.atlas) - 1]
-                            for fname in clusters_labels_files]))
-    return files_names, clusters_labels_files
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_*.pkl'))
+    files_names = ['_'.join(mu.namebase(fname)[len('clusters_labels_'):].split('_')[:-1])
+                            for fname in clusters_labels_files]
+    parcs = list(set([mu.namebase(fname).split('_')[-1] for fname in clusters_labels_files]))
+    return files_names, clusters_labels_files, parcs
 
 
 def fMRI_clusters_files_exist():
@@ -290,15 +287,10 @@ def calc_colors_ratio(activity):
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         data_max, data_min = get_activity_max_min(activity)
-        # output_fname = op.join(mu.get_user_fol(), 'fmri','fmri_blobs_{}_minmax.pkl'.format(
-        #         bpy.context.scene.fmri_clusters_labels_files))
-        # print('Saving {}'.format(output_fname))
-        # mu.save((data_min, data_max), output_fname)
         if data_max == 0 and data_min == 0:
             print('Both data max and min are zeros!')
             return 0, 0
         _addon().set_colorbar_max_min(data_max, data_min)
-
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('fMRI')
     return data_min, colors_ratio
@@ -369,6 +361,7 @@ def fMRI_draw(self, context):
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
+    layout.prop(context.scene, 'fmri_clusters_labels_parcs', text='')
     row = layout.row(align=True)
     row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
     row.operator(RefinefMRIClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
@@ -528,6 +521,8 @@ try:
         description='clustering threshold', min=0, max=20)
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
+    bpy.types.Scene.fmri_clusters_labels_parcs = bpy.props.EnumProperty(
+        items=[], description="fMRI parcs")
     bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.fmri_blobs_percentile_min = bpy.props.FloatProperty(
         default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
@@ -570,16 +565,21 @@ def init(addon):
     fMRIPanel.addon = addon
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
     fMRIPanel.cluster_labels = {}
-    files_names, clusters_labels_files = get_clusters_files(user_fol)
+    files_names, clusters_labels_files, parcs = get_clusters_files(user_fol)
     fMRIPanel.fMRI_clusters_files_exist = len(files_names) > 0 # and len(fmri_blobs) > 0
     if not fMRIPanel.fMRI_clusters_files_exist:
         return None
     # files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     fMRIPanel.clusters_labels_file_names = files_names
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+    clusters_labels_parcs = [(c, c, '', ind) for ind, c in enumerate(parcs)]
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
+    bpy.types.Scene.fmri_clusters_labels_parcs = bpy.props.EnumProperty(
+        items=clusters_labels_parcs, description="fMRI parcs")
+    bpy.context.scene.fmri_clusters_labels_parcs = parcs[0]
+
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist
         if mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(file_name, '{hemi}'))):
