@@ -451,7 +451,7 @@ def init(addon):
         bpy.context.scene.streaming_buffer_size = int(stream_con.get('buffer_size', 10))
         bpy.context.scene.streaming_server = stream_con.get('server', 'localhost')
         bpy.context.scene.multicast_group = stream_con.get('multicast_group', '1.1.1.1')
-        bpy.context.scene.streaming_server_port = stream_con.get('port', 222)
+        bpy.context.scene.streaming_server_port = int(stream_con.get('port', 222))
         bpy.context.scene.timeout = float(stream_con.get('timeout', 0.1))
 
     streaming_items = [('udp', 'udp multicast', '', 1)]
