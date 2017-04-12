@@ -91,7 +91,10 @@ def change_graph_all_vals(mat):
         fcurve.keyframe_points[max_steps + 1].co[1] = 0
         fcurve.keyframe_points[0].co[1] = 0
 
-    StreamingPanel.cycle_data = mat if StreamingPanel.cycle_data == [] else np.hstack((StreamingPanel.cycle_data, mat))
+    try:
+        StreamingPanel.cycle_data = mat if StreamingPanel.cycle_data == [] else np.hstack((StreamingPanel.cycle_data, mat))
+    except:
+        print('asfd')
     bpy.context.scene.frame_current += mat.shape[1]
     if bpy.context.scene.frame_current > MAX_STEPS - 1:
         bpy.context.scene.frame_current = bpy.context.scene.frame_current - MAX_STEPS
@@ -187,6 +190,13 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     else:
         sock = bind_to_server(server, port)
 
+    #todo:
+    # 1) calc good channels on the fly?
+    # #  np.where(np.std(x, 1) > 0)
+    # 2) remove 60Hz artifact on the fly
+    # 3) show all task at once
+    good_channels = kargs.get('good_channels', '')
+    good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
     buffer = []
     prev_val = None
     mat_len = 0
@@ -231,6 +241,8 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # print('udp_reader: ', datetime.now())
             # zeros_indices = np.where(np.all(buffer == 0, 1))[0]
             # buffer = buffer[zeros_indices]
+            if good_channels:
+                buffer = buffer[good_channels]
             udp_queue.put(buffer)
             buffer = []
 
@@ -314,9 +326,13 @@ class StreamButton(bpy.types.Operator):
             if bpy.context.scene.stream_type == 'offline':
                 config = mu.read_config_ini(op.join(
                     mu.get_user_fol(), 'electrodes', 'streaming', bpy.context.scene.logs_folders))
-                if 'STREAMING' in config.sections():
-                    args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
-                    args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
+            else:
+                config = mu.read_config_ini(op.join(
+                    mu.get_user_fol(), 'electrodes', 'streaming'))
+            if 'STREAMING' in config.sections():
+                args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
+                args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
+            if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
                 StreamingPanel.udp_queue = mu.run_thread(
                     offline_logs_reader, reading_from_udp_while_termination_func, **args)
