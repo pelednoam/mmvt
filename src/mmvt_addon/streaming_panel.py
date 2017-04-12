@@ -71,6 +71,7 @@ def change_graph_all_vals(mat):
     StreamingPanel.data_min = data_min = -np.median(StreamingPanel.minmax_vals)
     StreamingPanel.data_max = data_max = np.median(StreamingPanel.minmax_vals)
     colors_ratio = 256 / (data_max - data_min)
+    # if not _addon().colorbar_values_are_locked():
     _addon().set_colorbar_max_min(data_max, data_min)
     # _addon().view_all_in_graph_editor()
     curr_t = bpy.context.scene.frame_current
