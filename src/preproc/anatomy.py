@@ -209,7 +209,7 @@ def create_labels_lookup(subject, hemi, aparc_name):
     return lookup
 
 
-def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False):
+def create_surfaces(subject, hemi='both', overwrite=False):
     for hemi in utils.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
         for surf_type in ['inflated', 'pial']:
@@ -226,12 +226,17 @@ def freesurfer_surface_to_blender_surface(subject, hemi='both', overwrite=False)
                 os.rename(surf_wavefront_name, surf_new_name)
                 print('{} {}: convert asc to ply'.format(hemi, surf_type))
                 convert_hemis_srf_to_ply(subject, hemi, surf_type)
+                if surf_type == 'inflated':
+                    verts, faces = utils.read_ply_file(hemi_ply_fname)
+                    verts[:, 0] += 55 if hemi == 'rh' else -55
+                    utils.write_ply_file(verts, faces, hemi_ply_fname)
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
-            if not op.isfile(mmvt_hemi_npz_fname):
-                verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
-                np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
+            if op.isfile(mmvt_hemi_npz_fname):
+                os.remove(mmvt_hemi_npz_fname)
+            verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
+            np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.inflated.ply')) and \
@@ -337,7 +342,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
         if surf_type == 'inflated':
             for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
                 verts, faces = utils.read_ply_file(ply_fname)
-                verts_offset = 5.5 if hemi == 'rh' else -5.5
+                verts_offset = 55 if hemi == 'rh' else -55
                 verts[:, 0] = verts[:, 0] + verts_offset
                 utils.write_ply_file(verts, faces, ply_fname)
         utils.rmtree(blender_fol)
@@ -717,7 +722,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-        flags['hemis'] = freesurfer_surface_to_blender_surface(subject, overwrite=args.overwrite_hemis_srf)
+        flags['hemis'] = create_surfaces(subject, overwrite=args.overwrite_hemis_srf)
 
     if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage

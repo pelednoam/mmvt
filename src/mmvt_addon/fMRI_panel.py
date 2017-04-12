@@ -43,6 +43,7 @@ def _clusters_update():
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
     fMRIPanel.cluster_labels = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
+    # bpy.context.scene.cursor_location = np.mean(fMRIPanel.cluster_labels['coordinates'], 0) / 10.0
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
@@ -202,6 +203,7 @@ def fmri_clusters_labels_files_update(self, context):
         else:
             print("fmri_clusters_labels_files_update: Couldn't find {}!".format(contrast_fname))
     if fMRIPanel.init:
+        clear()
         update_clusters()
 
 
@@ -410,6 +412,13 @@ def fMRI_draw(self, context):
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
+def clear():
+    _addon().clear_cortex()
+    _addon().clear_subcortical_fmri_activity()
+    fMRIPanel.blobs_plotted = False
+    fMRIPanel.dont_show_clusters_info = True
+
+
 class FindfMRIFilesMinMax(bpy.types.Operator):
     bl_idname = "mmvt.find_fmri_files_min_max"
     bl_label = "mmvt find_fmri_files_min_max"
@@ -428,10 +437,7 @@ class fmriClearColors(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        _addon().clear_cortex()
-        _addon().clear_subcortical_fmri_activity()
-        fMRIPanel.blobs_plotted = False
-        fMRIPanel.dont_show_clusters_info = True
+        clear()
         return {"FINISHED"}
 
 

@@ -2,6 +2,10 @@ import bpy
 import mmvt_utils as mu
 
 
+def _addon():
+    return ShowHideObjectsPanel.addon
+
+
 def show_only_redner_update(self, context):
     mu.show_only_render(bpy.context.scene.show_only_render)
 
@@ -251,17 +255,16 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             show_icon = show_hide_icon[action]
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
             row.operator(bl_idname, text=show_text, icon=show_icon)
-        sub_vis = not bpy.context.scene.objects_show_hide_sub_cortical
-        sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
-        sub_icon = show_hide_icon['show' if sub_vis else 'hide']
-        layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
-        if bpy.data.objects.get('Cerebellum'):
-            sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
-            sub_show_text = '{} Cerebellum'.format('Hide' if sub_vis else 'Show')
+        if _addon().is_pial():
+            sub_vis = not bpy.context.scene.objects_show_hide_sub_cortical
+            sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
             sub_icon = show_hide_icon['show' if sub_vis else 'hide']
-            layout.operator(ShowHideSubCerebellum.bl_idname, text=sub_show_text, icon=sub_icon)
-        layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
-
+            layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
+        # if bpy.data.objects.get('Cerebellum'):
+        #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
+        #     sub_show_text = '{} Cerebellum'.format('Hide' if sub_vis else 'Show')
+        #     sub_icon = show_hide_icon['show' if sub_vis else 'hide']
+        #     layout.operator(ShowHideSubCerebellum.bl_idname, text=sub_show_text, icon=sub_icon)
         row = layout.row(align=True)
         row.operator(ShowAxial.bl_idname, text='Axial', icon='AXIS_TOP')
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
@@ -270,8 +273,9 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         next_view = views_options[int(bpy.context.scene.in_camera_view)]
         icons = ['SCENE', 'MANIPUL']
         next_icon = icons[int(bpy.context.scene.in_camera_view)]
-        row = layout.row(align=True)
-        row.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
+        # row = layout.row(align=True)
+        # row.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
+        layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
 
 
 

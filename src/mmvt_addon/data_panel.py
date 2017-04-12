@@ -68,13 +68,7 @@ def import_hemis_for_functional_maps(base_path):
     for name in emptys_names:
         create_empty_if_doesnt_exists(name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Functional maps')
 
-    # for ii in range(len(bpy.context.scene.layers)):
-    #     bpy.context.scene.layers[ii] = (ii == brain_layer)
-
     print("importing Hemispheres")
-    # # for cur_val in bpy.context.scene.layers:
-    # #     print(cur_val)
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     now = time.time()
     ply_files = glob.glob(op.join(base_path, 'surf', '*.ply'))
     N = len(ply_files)
@@ -101,14 +95,12 @@ def import_hemis_for_functional_maps(base_path):
                 cur_obj.name = obj_name
                 if surf_name == 'inflated':
                     cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
-                    cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
+                    # cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
                 else:
                     cur_obj.active_material = bpy.data.materials['Activity_map_mat']
                 cur_obj.parent = bpy.data.objects["Functional maps"]
                 cur_obj.hide_select = True
                 cur_obj.data.vertex_colors.new()
-            # else:
-            #     print('{} already exists'.format(ply_fname))
         except:
             mu.log_err('Error in importing {}'.format(ply_fname), logging)
 
@@ -312,9 +304,9 @@ def import_rois(base_path):
                 mu.log_err('import_rois: Error in importing {}'.format(ply_fname), logging)
             # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5
             # time.sleep(0.3)
-    if inflated_imported:
-        bpy.data.objects['Cortex-inflated-rh'].location[0] += 5.5
-        bpy.data.objects['Cortex-inflated-lh'].location[0] -= 5.5
+    # if inflated_imported:
+    #     bpy.data.objects['Cortex-inflated-rh'].location[0] += 5.5
+    #     bpy.data.objects['Cortex-inflated-lh'].location[0] -= 5.5
     bpy.ops.object.select_all(action='DESELECT')
 
 
