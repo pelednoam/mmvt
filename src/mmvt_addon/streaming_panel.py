@@ -339,8 +339,8 @@ class StreamButton(bpy.types.Operator):
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
                     change_graph_all_vals(data)
-                    # mu.view_all_in_graph_editor()
-                    # _addon().view_all_in_graph_editor()
+                    if bpy.context.scene.stream_type == 'offline':
+                        mu.view_all_in_graph_editor()
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
                     #     print('Setting _first_timer to False! ', bpy.context.scene.frame_current)
                     #     self._first_timer = False
