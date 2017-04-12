@@ -110,7 +110,7 @@ def inflating_update(self, context):
     try:
         bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
         bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
-        bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+        # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
     except:
         print('Error in inflating update!')
 
@@ -425,7 +425,7 @@ def init(addon):
     bpy.context.scene.subcortical_layer = 'fmri'
     change_to_solid_brain()
     # show_rois()
-    loc_val = 5
+    loc_val = 0 #5
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
             bpy.data.objects['inflated_rh'].location[0] = loc_val

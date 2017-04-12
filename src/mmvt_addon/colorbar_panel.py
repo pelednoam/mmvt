@@ -39,6 +39,7 @@ def get_colormap_name():
 
 @mu.tryit
 def set_colorbar_title(val):
+    val = val.lstrip()
     val = '     {}'.format(val)
     init = ColorbarPanel.init
     bpy.data.objects['colorbar_title'].data.body = bpy.data.objects['colorbar_title_camera'].data.body = val
@@ -253,9 +254,9 @@ def init(addon):
         bpy.context.scene.colorbar_min = -1
         bpy.context.scene.colorbar_max = 1
         bpy.context.scene.colorbar_title = '     MEG'
-    bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
-    bpy.context.scene.colorbar_y = 0.18
-    bpy.context.scene.colorbar_text_y = -1.53
+        bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
+        bpy.context.scene.colorbar_y = 0.18
+        bpy.context.scene.colorbar_text_y = -1.53
 
 
 def register():

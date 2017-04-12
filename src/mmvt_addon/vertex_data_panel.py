@@ -9,20 +9,21 @@ def _addon():
     return DataInVertMakerPanel.addon
 
 
-def find_vertex_index_and_mesh_closest_to_cursor():
+def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None):
     # 3d cursor relative to the object data
     # print('cursor at:' + str(bpy.context.scene.cursor_location))
     # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
-    distances = []
-    names = []
-    vertices_idx = []
-    vertices_co = []
+    distances, names, vertices_idx, vertices_co = [], [], [], []
 
     # base_obj = bpy.data.objects['Functional maps']
     # meshes = HEMIS
     #        for obj in base_obj.children:
-    hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
-    cursor = bpy.context.scene.cursor_location
+    if hemis is None:
+        hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
+    if cursor is None:
+        cursor = bpy.context.scene.cursor_location
+    else:
+        cursor = mathutils.Vector(cursor)
     for cur_obj in hemis:
         obj = bpy.data.objects[cur_obj]
         co_find = cursor * obj.matrix_world.inverted()

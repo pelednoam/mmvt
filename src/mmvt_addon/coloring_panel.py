@@ -372,10 +372,11 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
 def color_contours(specific_label='', specific_hemi='both'):
     d = ColoringMakerPanel.labels_contures
     contour_max = max([d[hemi]['max'] for hemi in mu.HEMIS])
-    _addon().set_colormap('jet')
-    _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
-    _addon().set_colorbar_max_min(contour_max, 1)
-    _addon().set_colorbar_prec(0)
+    if not _addon().colorbar_values_are_locked():
+        _addon().set_colormap('jet')
+        _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
+        _addon().set_colorbar_max_min(contour_max, 1)
+        _addon().set_colorbar_prec(0)
     _addon().show_activity()
     for hemi in mu.HEMIS:
         contours = d[hemi]['contours']

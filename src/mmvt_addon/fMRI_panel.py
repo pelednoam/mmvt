@@ -43,7 +43,15 @@ def _clusters_update():
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
     fMRIPanel.cluster_labels = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
-    # bpy.context.scene.cursor_location = np.mean(fMRIPanel.cluster_labels['coordinates'], 0) / 10.0
+    cluster_centroid = np.mean(fMRIPanel.cluster_labels['coordinates'], 0) / 10.0
+    if _addon().is_pial():
+        bpy.context.scene.cursor_location = cluster_centroid
+    elif _addon().get_inflated_ratio() == 1:
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(cluster_centroid, mu.HEMIS)
+        inflated_mesh = 'inflated_rh' if closest_mesh_name == 'rh' else 'inflated_lh'
+        pial_vert = bpy.data.objects[inflated_mesh].data.vertices[vertex_ind]
+        bpy.context.scene.cursor_location = pial_vert.co / 10.0
+
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
@@ -94,27 +102,14 @@ def find_closest_cluster(only_within=False):
     cursor = np.array(bpy.context.scene.cursor_location)
     print('cursor {}'.format(cursor))
     if _addon().is_inflated():
-        # cursor[0] += (1 - bpy.context.scene.inflating) * 5
-        # bpy.context.scene.inflating = 1
-        # bpy.context.scene.hemis_inf_distance = -5
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
-        print(closest_mesh_name, vertex_ind, vertex_co)
-        print(vertex_co - bpy.context.scene.cursor_location)
+        # print(closest_mesh_name, vertex_ind, vertex_co)
+        # print(vertex_co - bpy.context.scene.cursor_location)
         bpy.context.scene.cursor_location = vertex_co
 
         pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
         pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
         cursor = pial_vert.co / 10
-
-
-        # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
-        # x -= (1 - bpy.context.scene.inflating) * 5
-        # bpy.data.objects['Cortex-inflated-lh'].location[0] = bpy.data.objects['inflated_lh'].location[0] = \
-        #     AppearanceMakerPanel.cortex_inflated_lh - bpy.context.scene.hemis_inf_distance
-        # cursor[0] -= (1 - bpy.context.scene.inflating) * 5
-        # print(cursor - bpy.context.scene.cursor_location)
-        # closest_area = _addon().find_closest_obj()
-        # print(closest_area)
     else:
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
         print(closest_mesh_name, vertex_ind, vertex_co)
@@ -401,7 +396,8 @@ def fMRI_draw(self, context):
             layout.label(text='Out of {} labels'.format(len(fMRIPanel.cluster_labels['intersects'])))
     # row = layout.row(align=True)
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
-    layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
+    if _addon().is_pial() or _addon().get_inflated_ratio() == 1:
+        layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     # layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
     # layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
     # layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
