@@ -311,7 +311,6 @@ class SelectionListener(bpy.types.Operator):
                 if _addon().is_pial():
                     _addon().save_cursor_position()
 
-
         if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())
             if not rendering_data is None:

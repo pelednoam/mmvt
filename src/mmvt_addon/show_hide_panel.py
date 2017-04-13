@@ -137,6 +137,42 @@ class ShowCoronal(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class SplitView(bpy.types.Operator):
+    bl_idname = "mmvt.split_view"
+    bl_label = "mmvt split view"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        import math
+        if ShowHideObjectsPanel.split_view == 0:
+            # lateral split view
+            # inflated_lh: loc  x:13, rot z: -90
+            # inflated_lr: loc  x:-13, rot z: 90
+            ShowHideObjectsPanel.split_view = 1
+            bpy.data.objects['inflated_lh'].location[0] = 13
+            bpy.data.objects['inflated_lh'].rotation_euler[2] = -math.pi / 2
+            bpy.data.objects['inflated_rh'].location[0] = -13
+            bpy.data.objects['inflated_rh'].rotation_euler[2] = math.pi / 2
+        elif ShowHideObjectsPanel.split_view == 1:
+            # medial split view
+            # inflated_lh: loc  x:13, rot z: 90
+            # inflated_lr: loc  x:-13, rot z: -90
+            ShowHideObjectsPanel.split_view = 2
+            bpy.data.objects['inflated_lh'].location[0] = 13
+            bpy.data.objects['inflated_lh'].rotation_euler[2] = math.pi / 2
+            bpy.data.objects['inflated_rh'].location[0] = -13
+            bpy.data.objects['inflated_rh'].rotation_euler[2] = -math.pi / 2
+        elif ShowHideObjectsPanel.split_view == 2:
+            ShowHideObjectsPanel.split_view = 0
+            bpy.data.objects['inflated_lh'].location[0] = 0
+            bpy.data.objects['inflated_lh'].rotation_euler[2] = 0
+            bpy.data.objects['inflated_rh'].location[0] = 0
+            bpy.data.objects['inflated_rh'].rotation_euler[2] = 0
+        return {"FINISHED"}
+
+
+
 class ShowAxial(bpy.types.Operator):
     bl_idname = "mmvt.show_axial"
     bl_label = "mmvt show_axial"
@@ -243,6 +279,8 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     bl_label = "Show Hide Brain"
     addon = None
     init = False
+    split_view = 0
+    split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
 
     def draw(self, context):
         layout = self.layout
@@ -269,6 +307,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowAxial.bl_idname, text='Axial', icon='AXIS_TOP')
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
+        layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
         views_options = ['Camera', 'Ortho']
         next_view = views_options[int(bpy.context.scene.in_camera_view)]
         icons = ['SCENE', 'MANIPUL']
@@ -323,6 +362,7 @@ def register():
         bpy.utils.register_class(ShowSaggital)
         bpy.utils.register_class(ShowCoronal)
         bpy.utils.register_class(ShowAxial)
+        bpy.utils.register_class(SplitView)
         bpy.utils.register_class(FlipCameraView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideSubCerebellum)
@@ -339,6 +379,7 @@ def unregister():
         bpy.utils.unregister_class(ShowSaggital)
         bpy.utils.unregister_class(ShowCoronal)
         bpy.utils.unregister_class(ShowAxial)
+        bpy.utils.unregister_class(SplitView)
         bpy.utils.unregister_class(FlipCameraView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
