@@ -242,7 +242,10 @@ def init(addon):
     colorbar_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(
         items=colorbar_items, description="colormaps files",update=colormap_update)
-    bpy.context.scene.colorbar_files = files_names[0]
+    if not colorbar_values_are_locked():
+        bpy.context.scene.colorbar_files = files_names[0]
+    else:
+        load_colormap()
     for space in mu.get_3d_spaces():
         if space.lock_object and space.lock_object.name == 'full_colorbar':
             space.show_only_render = True

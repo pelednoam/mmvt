@@ -2,6 +2,7 @@ import bpy
 import mmvt_utils as mu
 import numpy as np
 import os.path as op
+import mathutils
 import time
 import glob
 import sys
@@ -17,16 +18,17 @@ bpy.types.Scene.freeview_listen_to_keyboard = bpy.props.BoolProperty(default=Fal
 bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=False)
 
 
-def save_cursor_position():
+def save_cursor_position(pos=None):
+    pos = mathutils.Vector(pos) if not pos is None else bpy.context.scene.cursor_location
     root = mu.get_user_fol()
-    point = bpy.context.scene.cursor_location * 10.0
+    point = pos * 10.0
     freeview_cmd = 'freeview --ras {} {} {} tkreg\n'.format(point[0], point[1], point[2]) # .encode()
     if FreeviewPanel.freeview_in_queue:
         FreeviewPanel.freeview_in_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
-    cursor_position = np.array(bpy.context.scene.cursor_location) * 10
+    cursor_position = np.array(pos) * 10
     ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
         position=cursor_position)))
     # if not ret:
@@ -175,10 +177,15 @@ class FreeviewOpen(bpy.types.Operator):
         else:
             sig_cmd = ''
         T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
+        if not op.isfile(T1):
+            T1 = op.join(root, 'freeview', 'orig.mgz')
+        if not op.isfile(T1):
+            print('No T1 / orig files in freeview folder!')
+            return {'RUNNING_MODAL'}
         aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
         lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
         electrodes_cmd = self.get_electrodes_command(root)
-        cmd = '{} {} "{}":opacity=0.3 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
+        cmd = '{} {} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
             FreeviewPanel.addon_prefs.freeview_cmd, sig_cmd, T1, aseg, lut, electrodes_cmd,
             ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
             ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
