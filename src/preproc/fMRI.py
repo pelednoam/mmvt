@@ -702,7 +702,14 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
 
 
 def find_template_files(template_fname):
-    return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz', 'nii']]
+    def find_files(template_fname):
+        return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz', 'nii']]
+
+    files = find_files(template_fname)
+    if len(files) == 0:
+        print('Adding * to the end of the template_fname')
+        files = find_files('{}*'.format(template_fname))
+    return files
 
 
 def find_hemi_files_from_template(template_fname):
@@ -871,8 +878,8 @@ def get_tr(subject, fmri_fname):
         return None
 
 
-def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, t_val=2, contrast_format='mgz',
-         existing_format='nii.gz', fmri_files_fol='', load_labels_from_annotation=True, volume_type='mni305', n_jobs=2):
+def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', fsfast=True, t_val=2,
+         fmri_files_fol='', load_labels_from_annotation=True, n_jobs=2):
     '''
 
     Parameters
@@ -905,7 +912,7 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, 
                 volume_files=find_volume_files(contrast_files),
                 hemis_files=find_hemi_files(contrast_files))
     else:
-        contrast = contrast_file_template.replace('*', '').replace('?', '')
+        contrast = contrast if contrast != '' else contrast_file_template.replace('*', '').replace('?', '')
         contrasts_files[contrast] = dict(
             volume_files=find_volume_files_from_template(op.join(fol, contrast_file_template)),
             hemis_files=find_hemi_files_from_template(op.join(fol, contrast_file_template)))
@@ -1090,9 +1097,8 @@ def main(subject, remote_subject_dir, args, flags):
     # todo: should find automatically the existing_format
     if 'fmri_pipeline' in args.function:
         flags['fmri_pipeline'] = fmri_pipeline(
-            subject, args.atlas, fmri_contrast_file_template, args.task, args.fsfast, t_val=args.threshold,
-            existing_format=args.existing_format, volume_type=args.volume_type, load_labels_from_annotation=True,
-            n_jobs=args.n_jobs)
+            subject, args.atlas, fmri_contrast_file_template, args.task, args.contrast, args.fsfast,
+            args.threshold, n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'project_volume_to_surface'):
         flags['project_volume_to_surface'] = project_volume_to_surface(

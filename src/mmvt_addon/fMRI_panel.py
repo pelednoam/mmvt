@@ -114,6 +114,7 @@ def find_closest_cluster(only_within=False):
         pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
         pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
         cursor = pial_vert.co / 10
+        # _addon().save_cursor_position(cursor)
     else:
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
         print(closest_mesh_name, vertex_ind, vertex_co)
