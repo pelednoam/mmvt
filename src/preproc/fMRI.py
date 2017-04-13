@@ -939,6 +939,52 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', fsfast=True, 
     return True
 
 
+def fmri_pipeline_all(subject, atlas, task='*', contrast='*', t_val=2, fmri_files_fol='',
+                      load_labels_from_annotation=True, n_jobs=2):
+
+    def remove_dups(all_names):
+        all_names = list(set(all_names))
+        all_names = [t for t in all_names if not ('-and-' in t and all([tt in all_names for tt in t.split('-and-')]))]
+        return '-and-'.join(sorted(all_names))
+
+    def change_cluster_values_names(cluster, uid):
+        for blob in cluster['values']:
+            blob['name'] = '{}-{}'.format(uid, blob['name'])
+
+    hemi_all_data = {}
+    file_names = [utils.namebase(f) for f in glob.glob(
+        op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_rh.npy'.format(task, contrast)))]
+    all_tasks = remove_dups([f.split('_')[1] for f in file_names])
+    all_contrasts = remove_dups([f.split('_')[2] for f in file_names])
+    for hemi in utils.HEMIS:
+        hemi_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_{}.npy'.format(task, contrast, hemi)))
+        hemi_all_data[hemi] = np.load(hemi_fnames[0])
+        for hemi_fname in hemi_fnames[1:]:
+            hemi_data = np.load(hemi_fname)
+            hemi_all_data[hemi] = [x1 if abs(x1) > abs(x2) else x2 for x1,x2 in zip(hemi_data, hemi_all_data[hemi])]
+        output_name = 'fmri_{}_{}_{}.npy'.format(all_tasks, all_contrasts, hemi)
+        np.save(op.join(MMVT_DIR, subject, 'fmri', output_name), hemi_all_data[hemi])
+    new_hemis_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_{}.npy'.format(all_tasks, all_contrasts, '{hemi}'))
+    calc_fmri_min_max(
+        subject, all_contrasts, new_hemis_fname, task=all_tasks, norm_percs=args.norm_percs,
+        norm_by_percentile=args.norm_by_percentile)
+    all_clusters_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_*_{}.pkl'.format(atlas)))
+    all_clusters_fnames = [f for f in all_clusters_fnames if '-and-' not in utils.namebase(f)]
+    all_clusters_uids = ['-'.join(n.split('_')[:2]) for n in
+                         [utils.namebase(f)[len('clusters_labels_'):] for f in all_clusters_fnames]]
+    all_clusters = utils.load(all_clusters_fnames[0])
+    change_cluster_values_names(all_clusters, all_clusters_uids[0])
+    for cluster_fname, cluster_uid in zip(all_clusters_fnames[1:], all_clusters_uids[1:]):
+        cluster = utils.load(cluster_fname)
+        change_cluster_values_names(cluster, cluster_uid)
+        if all_clusters['threshold'] != cluster['threshold']:
+            print("Not all the cluster have the same threshold, can't join them!")
+            return False
+        all_clusters['values'] += cluster['values']
+    utils.save(all_clusters, op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}_{}.pkl'.format(
+        all_tasks, all_contrasts, atlas)))
+
+
 def get_unique_files_into_mgz(files):
     from collections import defaultdict
     contrast_files_dic = defaultdict(list)
@@ -1060,6 +1106,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
+
+    if 'fmri_pipeline_all' in args.function:
+        flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, t_val=args.threshold, n_jobs=args.n_jobs)
 
     if 'analyze_4d_fmri' in args.function:
         flags['analyze_4d_fmri'] = analyze_4d_fmri(
