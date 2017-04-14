@@ -47,9 +47,10 @@ def tkras_coo_update(self, context):
         return
 
     # print('tkras_coo_update')
-    bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
-    bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
-    bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
+    if WhereAmIPanel.move_cursor:
+        bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
+        bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
+        bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
 
     if not _trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]
@@ -131,13 +132,15 @@ def get_3d_atlas_name():
         WhereAmIPanel.atlas_ids = names
 
 
-def set_tkreg_ras_coo(coo):
+def set_tkreg_ras_coo(coo, move_cursor=True):
     # print('set_tkreg_ras_coo')
     WhereAmIPanel.call_update = False
+    WhereAmIPanel.move_cursor = move_cursor
     bpy.context.scene.tkreg_ras_x = coo[0]
     bpy.context.scene.tkreg_ras_y = coo[1]
     WhereAmIPanel.call_update = True
     bpy.context.scene.tkreg_ras_z = coo[2]
+    WhereAmIPanel.move_cursor = True
 
 
 def set_ras_coo(coo):
@@ -322,6 +325,7 @@ class WhereAmIPanel(bpy.types.Panel):
     atlas_ids = {}
     update = True
     call_update = True
+    move_cursor = True
 
     def draw(self, context):
         where_i_am_draw(self, context)
