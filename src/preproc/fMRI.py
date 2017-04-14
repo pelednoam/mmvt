@@ -62,7 +62,8 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', norm_percs=(3, 97), norm_by_percentile=True):
+def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', norm_percs=(3, 97),
+                      norm_by_percentile=True, symetric_colors=True, new_name=''):
     data = None
     for hemi in utils.HEMIS:
         if isinstance(fmri_contrast_file_template, dict):
@@ -91,11 +92,11 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', n
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
     data_minmax = utils.get_max_abs(data_max, data_min)
-    if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
+    if symetric_colors and np.sign(data_max) != np.sign(data_min):
         data_max, data_min = data_minmax, -data_minmax
     # todo: the output_fname was changed, check where it's being used!
-    output_fname = op.join(MMVT_DIR, subject, 'fmri','{}{}_minmax.pkl'.format(
-        '{}_'.format(task) if task != '' else '', contrast))
+    new_name = new_name if new_name != '' else '{}{}'.format('{}_'.format(task) if task != '' else '', contrast)
+    output_fname = op.join(MMVT_DIR, subject, 'fmri', '{}_minmax.pkl'.format(new_name))
     print('Saving {}'.format(output_fname))
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     utils.save((data_min, data_max), output_fname)
@@ -935,19 +936,19 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', 
                     save_fmri_hemi_data(subject, hemi, contrast, new_hemi_fname, task, output_fol=fmri_files_fol)
             calc_fmri_min_max(
                 subject, contrast, new_hemis_fname, task=task, norm_percs=args.norm_percs,
-                norm_by_percentile=args.norm_by_percentile)
+                norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
             if morphed_from_subject != subject:
                 calc_fmri_min_max(
                     morphed_from_subject, contrast, new_hemis_org_subject_fname, task=task, norm_percs=args.norm_percs,
-                    norm_by_percentile=args.norm_by_percentile)
+                    norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
         # todo: save clusters also for morphed_from_subject
         find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
     # todo: check what to return
     return True
 
 
-def fmri_pipeline_all(subject, atlas, task='*', contrast='*', t_val=2, fmri_files_fol='',
-                      load_labels_from_annotation=True, n_jobs=2):
+def fmri_pipeline_all(subject, atlas, task='*', contrast='*', filter_dic=None, new_name='',
+                      norm_by_percentile=False, norm_percs=None, symetric_colors=True):
 
     def remove_dups(all_names):
         all_names = list(set(all_names))
@@ -963,33 +964,60 @@ def fmri_pipeline_all(subject, atlas, task='*', contrast='*', t_val=2, fmri_file
         op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_rh.npy'.format(task, contrast)))]
     all_tasks = remove_dups([f.split('_')[1] for f in file_names])
     all_contrasts = remove_dups([f.split('_')[2] for f in file_names])
+    new_name = new_name if new_name != '' else '{}_{}'.format(all_tasks, all_contrasts)
     for hemi in utils.HEMIS:
         hemi_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_{}.npy'.format(task, contrast, hemi)))
         hemi_all_data[hemi] = np.load(hemi_fnames[0])
         for hemi_fname in hemi_fnames[1:]:
             hemi_data = np.load(hemi_fname)
             hemi_all_data[hemi] = [x1 if abs(x1) > abs(x2) else x2 for x1,x2 in zip(hemi_data, hemi_all_data[hemi])]
-        output_name = 'fmri_{}_{}_{}.npy'.format(all_tasks, all_contrasts, hemi)
+        output_name = 'fmri_{}_{}.npy'.format(new_name, hemi)
         np.save(op.join(MMVT_DIR, subject, 'fmri', output_name), hemi_all_data[hemi])
-    new_hemis_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}_{}.npy'.format(all_tasks, all_contrasts, '{hemi}'))
+    new_hemis_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(new_name, '{hemi}'))
     calc_fmri_min_max(
-        subject, all_contrasts, new_hemis_fname, task=all_tasks, norm_percs=args.norm_percs,
-        norm_by_percentile=args.norm_by_percentile)
+        subject, all_contrasts, new_hemis_fname, task=all_tasks, norm_percs=norm_percs,
+        norm_by_percentile=norm_by_percentile, symetric_colors=symetric_colors, new_name=new_name)
     all_clusters_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_*_{}.pkl'.format(atlas)))
     all_clusters_fnames = [f for f in all_clusters_fnames if '-and-' not in utils.namebase(f)]
     all_clusters_uids = ['-'.join(n.split('_')[:2]) for n in
                          [utils.namebase(f)[len('clusters_labels_'):] for f in all_clusters_fnames]]
     all_clusters = utils.load(all_clusters_fnames[0])
     change_cluster_values_names(all_clusters, all_clusters_uids[0])
+    all_clusters = filter_clusters(all_clusters, filter_dic)
     for cluster_fname, cluster_uid in zip(all_clusters_fnames[1:], all_clusters_uids[1:]):
         cluster = utils.load(cluster_fname)
         change_cluster_values_names(cluster, cluster_uid)
+        cluster = filter_clusters(cluster, filter_dic)
         if all_clusters['threshold'] != cluster['threshold']:
             print("Not all the cluster have the same threshold, can't join them!")
             return False
         all_clusters['values'] += cluster['values']
-    utils.save(all_clusters, op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}_{}.pkl'.format(
-        all_tasks, all_contrasts, atlas)))
+    utils.save(all_clusters, op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}.pkl'.format(
+        new_name, atlas)))
+
+
+def filter_clusters(clusters, filter_dic):
+    if filter_dic is None:
+        return clusters
+    new_cluster = dict()
+    new_cluster['threshold'] = clusters['threshold']
+    new_cluster['values'] = []
+    uid = '-'.join(clusters['values'][0]['name'].split('-')[:2])
+    for cluster in clusters['values']:
+        if uid not in filter_dic:
+            continue
+        # for roi in ['dACC', 'OFC', 'dmPFC', 'vlPFC']:
+        #     if roi in cluster['name']:
+        #         print(cluster['name'], '{0:.2f}'.format(cluster['max']))
+        for val in filter_dic[uid]:
+            _tval = '{0:.2f}'.format(cluster['max']) == '{0:.2f}'.format(val['tval'])
+            _name = cluster['name'] == '{}-{}-{}'.format(uid, val['name'], val['hemi'])
+            if _tval and _name:
+                print('Cluster found! {}'.format(cluster['name']))
+                if 'new_name' in val:
+                    cluster['name'] = '{}-{}-{}'.format(uid, val['new_name'], val['hemi'])
+                new_cluster['values'].append(cluster)
+    return new_cluster
 
 
 def get_unique_files_into_mgz(files):
@@ -1108,13 +1136,13 @@ def main(subject, remote_subject_dir, args, flags):
         #todo: won't work, need to find the hemis files first
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
             subject, volume_name, fmri_contrast_file_template, task=args.task, norm_percs=args.norm_percs,
-            norm_by_percentile=args.norm_by_percentile)
+            norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
 
     if 'fmri_pipeline_all' in args.function:
-        flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, t_val=args.threshold, n_jobs=args.n_jobs)
+        flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)
 
     if 'analyze_4d_fmri' in args.function:
         flags['analyze_4d_fmri'] = analyze_4d_fmri(
