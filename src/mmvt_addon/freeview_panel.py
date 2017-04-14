@@ -82,7 +82,15 @@ class FreeviewSaveCursor(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        save_cursor_position()
+        if _addon().is_inflated() and _addon().get_inflated_ratio() == 1:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+            bpy.context.scene.cursor_location = vertex_co
+            pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
+            pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
+            cursor = pial_vert.co / 10
+        else:
+            cursor = bpy.context.scene.cursor_location
+        save_cursor_position(cursor)
         return {"FINISHED"}
 
 
