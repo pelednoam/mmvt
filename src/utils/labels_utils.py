@@ -331,7 +331,7 @@ def calc_time_series_per_label(x, labels, measure, excludes=(),
     for ind, label in enumerate(labels):
         if measure == 'mean':
             labels_data[ind, :] = np.mean(x[label.vertices, 0, 0, :], 0)
-        elif measure == 'PCA':
+        elif measure == 'pca':
             print(label)
             _x = x[label.vertices, 0, 0, :].T
             remove_cols = np.where(np.all(_x == np.mean(_x, 0), 0))[0]

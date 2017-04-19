@@ -61,23 +61,33 @@ def pet():
     '-s s02 --threshold 0 --is_pet 1 --symetric_colors 0 --overwrite_surf_data 1 --remote_subject_dir /local_mount/space/thibault/1/users/npeled/artur/recon_tese/{subject}'
 
 
-def analyze_resting_state(args):
-    '-s subject-name -a atlas-name -f analyze_resting_state --fmri_file_template {subject}*{morph_to_subject}.{hemi}.{format}  --morph_labels_to_subject fsaverage'
+def analyze_4d_state(args):
+    '-s subject-name -a atlas-name -f analyze_4d_data --fmri_file_template {subject}*{morph_to_subject}.{hemi}.{format}  --morph_labels_to_subject fsaverage'
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
         atlas=args.atlas,
-        function='analyze_resting_state',
+        function='analyze_4d_data',
         fmri_file_template='*rest*.{hemi}*.{format}',
-        rest_template='fsaverage5',
-        morph_labels_from_subject='fsaverage5c',
+        template_brain='fsaverage5',
         labels_extract_mode='mean'
     ))
     pu.run_on_subjects(args, fmri.main)
 
 
-def clean_resting_state(args):
-    'python -m src.preproc.fMRI -s nmr00474,nmr00502,nmr00515,nmr00603,nmr00609,nmr00626,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710 -a laus125 -f clean_resting_state_data --rest_template fsaverage5 --fmri_file_template "f.nii*" --remote_subject_dir "/space/franklin/1/users/sx424/mem_flex/subjects/{subject}"'
-    pass
+def clean_4d_data(args):
+    '''
+    python -m src.preproc.fMRI -s nmr00474,nmr00502,nmr00515,nmr00603,nmr00609,nmr00626,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710
+        -a laus125 -f clean_resting_state_data --template_brain fsaverage5 --fmri_file_template "f.nii*" --remote_subject_dir "/space/franklin/1/users/sx424/mem_flex/subjects/{subject}"'
+    '''
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='clean_4d_data',
+        fmri_file_template='f.nii*',
+        template_brain='fsaverage5',
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
