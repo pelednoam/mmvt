@@ -311,6 +311,11 @@ class SelectionListener(bpy.types.Operator):
                     _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
                     _addon().save_cursor_position()
 
+        # if time.time() - self.press_time > 0.1:
+        #     if event.type == 'TIMER':
+        #         if bpy.context.scene.rotate_object:
+        #             _addon().rotate_object()
+
         if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())
             if not rendering_data is None:
@@ -330,6 +335,7 @@ class SelectionListener(bpy.types.Operator):
     def execute(self, context):
         if not self.running:
             context.window_manager.modal_handler_add(self)
+            self._timer = context.window_manager.event_timer_add(0.1, context.window)
             self.running = True
         return {'RUNNING_MODAL'}
 

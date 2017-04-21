@@ -165,8 +165,7 @@ init_rendering = render_panel.init_rendering
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
-# show_hide_rh = show_hide_panel.show_hide_rh
-# show_hide_lh = show_hide_panel.show_hide_lh
+rotate_object = show_hide_panel.rotate_object
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers

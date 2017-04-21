@@ -69,6 +69,9 @@ class ModalTimerOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
+                if bpy.context.scene.rotate_object:
+                    _addon().rotate_object()
+
                 bpy.context.scene.frame_current = self.limits
                 # print(self.limits, time.time() - self._time)
                 self._time = time.time()
@@ -170,7 +173,17 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
         _addon().color_eeg_helmet()
     if bpy.context.scene.render_movie:
         if successful_ret:
-            _addon().render_image(camera_fname=camera_fname)
+            mu.show_only_render(True)
+            view3d_context = mu.get_view3d_context()
+            bpy.ops.render.opengl(view3d_context)
+            # mu.view_selected()
+            image_context = mu.get_image_area()
+            image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
+                                 '{}_{}.png'.format(play_type, bpy.context.scene.frame_current))
+            bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
+                                  'INVOKE_DEFAULT',  # invoke the operator
+                                  copy=True,
+                                  filepath=image_name)  # export it to this location
         else:
             print("The image wasn't rendered due to an error in the plotting.")
     # plot_graph(context, graph_data, graph_colors, image_fol)

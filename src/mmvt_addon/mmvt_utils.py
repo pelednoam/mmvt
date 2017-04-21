@@ -1281,3 +1281,50 @@ def read_config_ini(fol='', ini_name='config.ini'):
         fol = get_user_fol()
     config.read(op.join(fol, ini_name))
     return config
+
+
+def get_view3d_context():
+    area = bpy.data.screens['Neuro'].areas[1]
+    for region in area.regions:
+        if region.type == 'WINDOW':
+            override = bpy.context.copy()
+            override['area'] = area
+            override["region"] = region
+            return override
+
+
+def get_image_context():
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type == 'IMAGE_EDITOR':
+                override = bpy.context.copy()
+                override['area'] = area
+                override["screen"] = screen
+                return override
+
+
+def view_selected():
+    area = bpy.data.screens['Neuro'].areas[1]
+    for region in area.regions:
+        if region.type == 'WINDOW':
+            override = bpy.context.copy()
+            override['area'] = area
+            override["region"] = region
+            select_all_brain(True)
+            bpy.ops.view3d.view_selected(override)
+
+
+def select_all_brain(val):
+    bpy.data.objects['lh'].hide_select = not val
+    bpy.data.objects['lh'].select = val
+    bpy.data.objects['rh'].hide_select = not val
+    bpy.data.objects['rh'].select = val
+    if not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
+        select_hierarchy('Subcortical_fmri_activity_map', val)
+        if not val:
+            for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+                child.hide_select = True
+
+
+def get_view3d_region():
+    return bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d

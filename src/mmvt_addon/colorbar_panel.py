@@ -257,9 +257,10 @@ def init(addon):
         bpy.context.scene.colorbar_min = -1
         bpy.context.scene.colorbar_max = 1
         bpy.context.scene.colorbar_title = '     MEG'
-        bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
         bpy.context.scene.colorbar_y = 0.18
         bpy.context.scene.colorbar_text_y = -1.53
+    if not colorbar_values_are_locked():
+        bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
 
 
 def register():

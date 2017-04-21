@@ -107,7 +107,7 @@ def camera_mode():
 
     if view == 'CAMERA':
         area.spaces[0].region_3d.view_perspective = 'ORTHO'
-        select_all_brain(False)
+        mu.select_all_brain(False)
     else:
         bpy.data.objects['Camera'].select = True
         bpy.context.scene.objects.active = bpy.data.objects['Camera']
@@ -118,23 +118,14 @@ def camera_mode():
                 override = bpy.context.copy()
                 override['area'] = area
                 override["region"] = region
-                select_all_brain(True)
+                mu.select_all_brain(True)
                 bpy.ops.view3d.camera_to_view(override)
                 bpy.ops.view3d.camera_to_view_selected(override)
                 grab_camera()
                 break
 
 
-def select_all_brain(val):
-    bpy.data.objects['lh'].hide_select = not val
-    bpy.data.objects['lh'].select = val
-    bpy.data.objects['rh'].hide_select = not val
-    bpy.data.objects['rh'].select = val
-    if not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
-        mu.select_hierarchy('Subcortical_fmri_activity_map', val)
-        if not val:
-            for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
-                child.hide_select = True
+
 
 
 def grab_camera(self=None, do_save=True, overwrite=True):
@@ -468,6 +459,21 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     _, RenderingMakerPanel.render_in_queue = mu.run_command_in_new_thread(
         cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
     # mu.run_command_in_new_thread(cmd, queues=False)
+
+
+def save_view3d_as_image(image_type, view_selected=False):
+    mu.show_only_render(True)
+    view3d_context = mu.get_view3d_context()
+    bpy.ops.render.opengl(view3d_context)
+    if view_selected:
+        mu.view_selected()
+    image_context = mu.get_image_area()
+    image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
+                         '{}_{}.png'.format(image_type, bpy.context.scene.frame_current))
+    bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
+                          'INVOKE_DEFAULT',  # invoke the operator
+                          copy=True,
+                          filepath=image_name)  # export it to this location
 
 
 def queue_len():

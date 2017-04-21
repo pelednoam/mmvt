@@ -1,9 +1,15 @@
 import bpy
 import mmvt_utils as mu
-
+import mathutils
 
 def _addon():
     return ShowHideObjectsPanel.addon
+
+
+def rotate_object():
+    rv3d = mu.get_view3d_region()
+    rv3d.view_rotation.rotate(mathutils.Euler(
+        (bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz)))
 
 
 def show_only_redner_update(self, context):
@@ -211,6 +217,8 @@ class ShowAxial(bpy.types.Operator):
         return {"FINISHED"}
 
 
+
+
 # class FlipCameraView(bpy.types.Operator):
 #     bl_idname = "mmvt.flip_camera_view"
 #     bl_label = "mmvt flip camera view"
@@ -309,6 +317,11 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
+        layout.prop(context.scene, 'rotate_object')
+        row = layout.row(align=True)
+        row.prop(context.scene, 'rotate_dx')
+        row.prop(context.scene, 'rotate_dy')
+        row.prop(context.scene, 'rotate_dz')
         # views_options = ['Camera', 'Ortho']
         # next_view = views_options[int(bpy.context.scene.in_camera_view)]
         # icons = ['SCENE', 'MANIPUL']
@@ -329,10 +342,15 @@ bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
+bpy.types.Scene.rotate_object = bpy.props.BoolProperty(default=False, name='Rotate the brain')
+bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='x')
+bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='y')
+bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='z')
+
 bpy.types.Scene.current_view = 'free'
 bpy.types.Scene.time_of_view_selection = mu.get_time_obj
 bpy.types.Scene.current_view_direction = 0
-bpy.types.Scene.in_camera_view = 0
+# bpy.types.Scene.in_camera_view = 0
 
 
 def init(addon):
@@ -345,7 +363,10 @@ def init(addon):
     bpy.context.scene.show_only_render = False
     for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         show_hide_hierarchy(True, fol)
-
+    bpy.context.scene.rotate_object = False
+    bpy.context.scene.rotate_dz = 0.02
+    bpy.context.scene.rotate_dx = 0.00
+    bpy.context.scene.rotate_dy = 0.00
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')
     # hide_obj(bpy.data.objects[obj_func_name], val)
