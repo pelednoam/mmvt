@@ -17,6 +17,10 @@ bpy.types.Scene.play_dt = bpy.props.IntProperty(default=50, min=1, description="
 bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
                                                   description="How much time (s) to wait between frames")
 bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
+bpy.types.Scene.save_images = bpy.props.BoolProperty(default=False, description="Save images")
+
+bpy.types.Scene.rotate_brain_while_playing = bpy.props.BoolProperty(default=False, description="Render the movie")
+
 bpy.types.Scene.meg_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.electrodes_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=0)
@@ -69,7 +73,7 @@ class ModalTimerOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
-                if bpy.context.scene.rotate_object:
+                if bpy.context.scene.rotate_brain_while_playing:
                     _addon().rotate_object()
 
                 bpy.context.scene.frame_current = self.limits
@@ -171,21 +175,24 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
         _addon().color_electrodes_sources()
     if play_type in ['eeg_helmet']:
         _addon().color_eeg_helmet()
-    if bpy.context.scene.render_movie:
-        if successful_ret:
-            mu.show_only_render(True)
-            view3d_context = mu.get_view3d_context()
-            bpy.ops.render.opengl(view3d_context)
-            # mu.view_selected()
-            image_context = mu.get_image_area()
-            image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
-                                 '{}_{}.png'.format(play_type, bpy.context.scene.frame_current))
-            bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
-                                  'INVOKE_DEFAULT',  # invoke the operator
-                                  copy=True,
-                                  filepath=image_name)  # export it to this location
-        else:
-            print("The image wasn't rendered due to an error in the plotting.")
+    if successful_ret:
+        if bpy.context.scene.save_images:
+            _addon().save_view3d_as_image(play_type)
+        if bpy.context.scene.render_movie:
+            _addon().render_image()
+        # mu.show_only_render(True)
+        # view3d_context = mu.get_view3d_context()
+        # bpy.ops.render.opengl(view3d_context)
+        # # mu.view_selected()
+        # image_context = mu.get_image_area()
+        # image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
+        #                      '{}_{}.png'.format(play_type, bpy.context.scene.frame_current))
+        # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
+        #                       'INVOKE_DEFAULT',  # invoke the operator
+        #                       copy=True,
+        #                       filepath=image_name)  # export it to this location
+    else:
+        print("The image wasn't rendered due to an error in the plotting.")
     # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
@@ -419,6 +426,8 @@ def init_plotting():
     # _addon().init_activity_map_coloring('MEG')
     PlayPanel.faces_verts = _addon().get_faces_verts()
     PlayPanel.meg_sub_activity = _addon().load_meg_subcortical_activity()
+    bpy.context.scene.save_images = False
+    bpy.context.scene.render_movie = False
     # connections_file = op.join(mu.get_user_fol(), 'electrodes_coh.npz')
     # if not op.isfile(connections_file):
     #     print('No connections coherence file! {}'.format(connections_file))
@@ -501,6 +510,8 @@ def play_panel_draw(context, layout):
     row.operator(Play.bl_idname, text="", icon='PLAY')
     row.operator(NextKeyFrame.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'render_movie', text="Render to a movie")
+    layout.prop(context.scene, 'save_images', text="Save images")
+    layout.prop(context.scene, 'rotate_brain_while_playing', text='Rotate the brain while playing')
     layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
 
