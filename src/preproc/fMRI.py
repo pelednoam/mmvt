@@ -574,7 +574,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_4d_fmri(subject, atlas, input_fname_template, measures=['mean'], template='fsaverage', morph_from_subject='',
+def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template='fsaverage', morph_from_subject='',
                           morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     # if fmri_file_template == '':
@@ -1144,9 +1144,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)
 
-    if 'analyze_4d_fmri' in args.function:
-        flags['analyze_4d_fmri'] = analyze_4d_fmri(
-            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.rest_template, args.morph_labels_from_subject,
+    if 'analyze_4d_data' in args.function:
+        flags['analyze_4d_data'] = analyze_4d_data(
+            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain, args.morph_labels_from_subject,
             args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
@@ -1159,7 +1159,8 @@ def main(subject, remote_subject_dir, args, flags):
             overwrite=args.overwrite_activity_data)
 
     if 'clean_4d_data' in args.function:
-        clean_4d_data(subject, args.atlas, args.fmri_file_template, args.rest_template, remote_fmri_dir=remote_fmri_dir)
+        clean_4d_data(subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd,
+                      args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -1186,7 +1187,7 @@ def read_cmd_args(argv=None):
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-c', '--contrast', help='contrast map', required=False, default='')
     parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
-    parser.add_argument('-t', '--task', help='task', required=False, default='')
+    parser.add_argument('-t', '--task', help='task', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
     parser.add_argument('--fsfast', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
@@ -1220,7 +1221,13 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
-    parser.add_argument('--rest_template', help='', required=False, default='fsaverage5')
+    parser.add_argument('--template_brain', help='', required=False, default='')
+    parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
+    parser.add_argument('--fwhm', help='', required=False, default=6, type=float)
+    parser.add_argument('--lfp', help='', required=False, default=0.08, type=float)
+    parser.add_argument('--nskip', help='', required=False, default=4, type=int)
+    parser.add_argument('--print_only', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_4d_preproc', help='', required=False, default=0, type=au.is_true)
 
 
     # Misc flags
