@@ -101,10 +101,8 @@ def load_camera(camera_fname=''):
 
 
 def camera_mode():
-
     area = bpy.data.screens['Neuro'].areas[1]
     view = area.spaces[0].region_3d.view_perspective
-
     if view == 'CAMERA':
         area.spaces[0].region_3d.view_perspective = 'ORTHO'
         mu.select_all_brain(False)
@@ -123,9 +121,6 @@ def camera_mode():
                 bpy.ops.view3d.camera_to_view_selected(override)
                 grab_camera()
                 break
-
-
-
 
 
 def grab_camera(self=None, do_save=True, overwrite=True):
