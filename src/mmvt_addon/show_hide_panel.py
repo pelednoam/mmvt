@@ -56,10 +56,11 @@ def show_hide_sub_corticals(do_hide=True):
         show_hide_hierarchy(True, "Subcortical_meg_activity_map")
 
 
-def flip_camera_ortho_view():
-    options = ['ORTHO', 'CAMERA']
-    bpy.types.Scene.in_camera_view = not bpy.types.Scene.in_camera_view
-    bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = options[int(bpy.types.Scene.in_camera_view)]
+# def flip_camera_ortho_view():
+#     options = ['ORTHO', 'CAMERA']
+#     bpy.types.Scene.in_camera_view = not bpy.types.Scene.in_camera_view
+#     bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = options[
+#         int(bpy.types.Scene.in_camera_view)]
 
 
 class ShowSaggital(bpy.types.Operator):
@@ -210,15 +211,15 @@ class ShowAxial(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class FlipCameraView(bpy.types.Operator):
-    bl_idname = "mmvt.flip_camera_view"
-    bl_label = "mmvt flip camera view"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        flip_camera_ortho_view()
-        return {"FINISHED"}
+# class FlipCameraView(bpy.types.Operator):
+#     bl_idname = "mmvt.flip_camera_view"
+#     bl_label = "mmvt flip camera view"
+#     bl_options = {"UNDO"}
+#
+#     @staticmethod
+#     def invoke(self, context, event=None):
+#         flip_camera_ortho_view()
+#         return {"FINISHED"}
 
 
 class ShowHideLH(bpy.types.Operator):
@@ -308,12 +309,12 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
-        views_options = ['Camera', 'Ortho']
-        next_view = views_options[int(bpy.context.scene.in_camera_view)]
-        icons = ['SCENE', 'MANIPUL']
-        next_icon = icons[int(bpy.context.scene.in_camera_view)]
+        # views_options = ['Camera', 'Ortho']
+        # next_view = views_options[int(bpy.context.scene.in_camera_view)]
+        # icons = ['SCENE', 'MANIPUL']
+        # next_icon = icons[int(bpy.context.scene.in_camera_view)]
         # row = layout.row(align=True)
-        # row.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
+        # layout.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
         layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
 
 
@@ -363,7 +364,7 @@ def register():
         bpy.utils.register_class(ShowCoronal)
         bpy.utils.register_class(ShowAxial)
         bpy.utils.register_class(SplitView)
-        bpy.utils.register_class(FlipCameraView)
+        # bpy.utils.register_class(FlipCameraView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideSubCerebellum)
         # print('Show Hide Panel was registered!')
@@ -380,7 +381,7 @@ def unregister():
         bpy.utils.unregister_class(ShowCoronal)
         bpy.utils.unregister_class(ShowAxial)
         bpy.utils.unregister_class(SplitView)
-        bpy.utils.unregister_class(FlipCameraView)
+        # bpy.utils.unregister_class(FlipCameraView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
     except:

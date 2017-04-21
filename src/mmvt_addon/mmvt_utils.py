@@ -216,6 +216,8 @@ def select_hierarchy(obj, val=True, select_parent=True):
     if bpy.data.objects.get(obj) is not None:
         bpy.data.objects[obj].select = select_parent
         for child in bpy.data.objects[obj].children:
+            if val:
+                child.hide_select = False
             child.select = val
 
 

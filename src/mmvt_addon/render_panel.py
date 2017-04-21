@@ -101,14 +101,40 @@ def load_camera(camera_fname=''):
 
 
 def camera_mode():
-    # for obj in bpy.data.objects:
-    #     obj.select = False
-    # for obj in bpy.context.visible_objects:
-    #     if not (obj.hide or obj.hide_render):
-    #         obj.select = True
-    ret = bpy.ops.view3d.camera_to_view_selected()
-    ret = bpy.ops.view3d.viewnumpad(type='CAMERA')
-    print(ret)
+
+    area = bpy.data.screens['Neuro'].areas[1]
+    view = area.spaces[0].region_3d.view_perspective
+
+    if view == 'CAMERA':
+        area.spaces[0].region_3d.view_perspective = 'ORTHO'
+        select_all_brain(False)
+    else:
+        bpy.data.objects['Camera'].select = True
+        bpy.context.scene.objects.active = bpy.data.objects['Camera']
+        ob = bpy.context.object
+        bpy.context.scene.camera = ob
+        for region in area.regions:
+            if region.type == 'WINDOW':
+                override = bpy.context.copy()
+                override['area'] = area
+                override["region"] = region
+                select_all_brain(True)
+                bpy.ops.view3d.camera_to_view(override)
+                bpy.ops.view3d.camera_to_view_selected(override)
+                grab_camera()
+                break
+
+
+def select_all_brain(val):
+    bpy.data.objects['lh'].hide_select = not val
+    bpy.data.objects['lh'].select = val
+    bpy.data.objects['rh'].hide_select = not val
+    bpy.data.objects['rh'].select = val
+    if not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
+        mu.select_hierarchy('Subcortical_fmri_activity_map', val)
+        if not val:
+            for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+                child.hide_select = True
 
 
 def grab_camera(self=None, do_save=True, overwrite=True):
@@ -132,46 +158,57 @@ def grab_camera(self=None, do_save=True, overwrite=True):
 
 def render_draw(self, context):
     layout = self.layout
-    layout.label(text='Output Path:')
-    layout.prop(context.scene, 'output_path')
-    layout.prop(context.scene, "quality", text='Quality')
 
-    # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
-    # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
-    layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
-    camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl')) + \
-                   glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
-    if len(camera_files) > 1:
-        layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
-    perspectives_files_exist = op.isdir(
-        op.join(mu.get_user_fol(), 'camera')) and \
-        np.all([op.isfile(op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name))) for pers_name in
-        ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
-    if perspectives_files_exist:
-        layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
-        layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='OUTLINER_OB_LATTICE')
-    if RenderingMakerPanel.background_rendering:
-        layout.label(text='Rendering in the background...')
-    layout.prop(context.scene, 'render_background')
-    layout.prop(context.scene, 'smooth_figure')
-    # layout.operator(CameraMode.bl_idname, text="Camera view", icon='CAMERA_DATA')
-    layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
-    if len(bpy.context.scene.camera_files) > 0:
-        layout.prop(context.scene, 'camera_files', text='')
-        layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
-    layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
-    layout.prop(context.scene, "lighting", text='Lighting')
-    layout.prop(context.scene, "background_color", expand=True)
-    layout.prop(context.scene, "show_camera_props", text='Show camera props')
-    if bpy.context.scene.show_camera_props:
-        col = layout.column(align=True)
-        col.prop(context.scene, "X_rotation", text='X rotation')
-        col.prop(context.scene, "Y_rotation", text='Y rotation')
-        col.prop(context.scene, "Z_rotation", text='Z rotation')
-        col = layout.column(align=True)
-        col.prop(context.scene, "X_location", text='X location')
-        col.prop(context.scene, "Y_location", text='Y location')
-        col.prop(context.scene, "Z_location", text='Z location')
+    # views_options = ['Camera', 'Object']
+    # views_options[int(bpy.context.scene.in_camera_view)]
+    # next_icon = icons[int(bpy.context.scene.in_camera_view)]
+    view = bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective
+    icon = 'SCENE' if view == 'ORTHO' else 'MESH_MONKEY'
+    text = 'Camera' if view == 'ORTHO' else 'Object'
+    layout.operator(CameraMode.bl_idname, text='{} view'.format(text), icon=icon)
+
+    if view == 'CAMERA':
+        layout.label(text='Output Path:')
+        layout.prop(context.scene, 'output_path')
+        layout.prop(context.scene, "quality", text='Quality')
+
+        # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
+        # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
+        layout.operator(RenderFigure.bl_idname, text="Render", icon='SCENE')
+        camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl')) + \
+                       glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
+        if len(camera_files) > 1:
+            layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
+        perspectives_files_exist = op.isdir(
+            op.join(mu.get_user_fol(), 'camera')) and \
+            np.all([op.isfile(op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name))) for pers_name in
+            ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
+        if perspectives_files_exist:
+            layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
+            layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='OUTLINER_OB_LATTICE')
+
+        if RenderingMakerPanel.background_rendering:
+            layout.label(text='Rendering in the background...')
+        layout.prop(context.scene, 'render_background')
+        layout.prop(context.scene, 'smooth_figure')
+        # layout.operator(CameraMode.bl_idname, text="Camera view", icon='CAMERA_DATA')
+        layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
+        if len(bpy.context.scene.camera_files) > 0:
+            layout.prop(context.scene, 'camera_files', text='')
+            layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
+        layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
+        layout.prop(context.scene, "lighting", text='Lighting')
+        layout.prop(context.scene, "background_color", expand=True)
+        layout.prop(context.scene, "show_camera_props", text='Show camera props')
+        if bpy.context.scene.show_camera_props:
+            col = layout.column(align=True)
+            col.prop(context.scene, "X_rotation", text='X rotation')
+            col.prop(context.scene, "Y_rotation", text='Y rotation')
+            col.prop(context.scene, "Z_rotation", text='Z rotation')
+            col = layout.column(align=True)
+            col.prop(context.scene, "X_location", text='X location')
+            col.prop(context.scene, "Y_location", text='Y location')
+            col.prop(context.scene, "Z_location", text='Z location')
 
 
 def update_camera(self=None, context=None):
@@ -220,6 +257,7 @@ bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[('default', 'camera
 bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.background_color = bpy.props.EnumProperty(
     items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
+bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -511,6 +549,7 @@ def init(addon):
     mu.make_dir(op.join(mu.get_user_fol(), 'camera'))
     grab_camera(overwrite=False)
     update_camera_files()
+    bpy.context.scene.in_camera_view = False
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
