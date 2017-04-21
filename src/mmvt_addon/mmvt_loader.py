@@ -17,8 +17,10 @@ import importlib as imp
 # How to crate a launcher in mac:
 # http://apple.stackexchange.com/questions/115114/how-to-put-a-custom-launcher-in-the-dock-mavericks
 
+
 def current_dir():
     return os.path.dirname(os.path.realpath(__file__))
+
 
 def mmvt_dir():
     return bpy.path.abspath('//')
