@@ -1095,25 +1095,31 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
 #     cond2tlrc.save(op.join(SUBJECT_FOLDER, '{}_tlrc_{}'.format(method, CONDS[1])))
 
 
-def morph_stc(subject_to, cond='all', grade=None, n_jobs=6, inverse_method='dSPM'):
-    stc = mne.read_source_estimate(STC.format(cond, inverse_method))
-    vertices_to = mne.grade_to_vertices(subject_to, grade=grade)
-    stc_to = mne.morph_data(SUBJECT, subject_to, stc, n_jobs=n_jobs, grade=vertices_to)
-    fol_to = op.join(MEG_DIR, TASK, subject_to)
-    if not op.isdir(fol_to):
-        os.mkdir(fol_to)
-    stc_to.save(STC_MORPH.format(subject_to, cond, inverse_method))
+# def morph_stc(subject_to, cond='all', grade=None, n_jobs=6, inverse_method='dSPM'):
+#     stc = mne.read_source_estimate(STC.format(cond, inverse_method))
+#     vertices_to = mne.grade_to_vertices(subject_to, grade=grade)
+#     stc_to = mne.morph_data(SUBJECT, subject_to, stc, n_jobs=n_jobs, grade=vertices_to)
+#     fol_to = op.join(MEG_DIR, TASK, subject_to)
+#     if not op.isdir(fol_to):
+#         os.mkdir(fol_to)
+#     stc_to.save(STC_MORPH.format(subject_to, cond, inverse_method))
 
 
-def calc_stc_for_all_vertices(stc, n_jobs=6):
-    vertices_to = mne.grade_to_vertices(MRI_SUBJECT, grade=None)
-    return mne.morph_data(MRI_SUBJECT, MRI_SUBJECT, stc, n_jobs=n_jobs, grade=vertices_to)
+def calc_stc_for_all_vertices(stc, morph_to_subject='', n_jobs=6):
+    morph_to_subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
+    grade = None if morph_to_subject != 'fsaverage' else 5
+    vertices_to = mne.grade_to_vertices(morph_to_subject, grade)
+    return mne.morph_data(MRI_SUBJECT, morph_to_subject, stc, n_jobs=n_jobs, grade=vertices_to)
 
-@utils.timeit
-def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, n_jobs=6):
+
+# @utils.timeit
+def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, morph_to_subject='', n_jobs=6):
     try:
         stcs = {}
         for ind, cond in enumerate(events.keys()):
+            output_fname = STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method)
+            if morph_to_subject != '':
+                output_fname = '{}-{}'.format(output_fname, morph_to_subject)
             if stcs_conds is not None:
                 stc = stcs_conds[cond]
             else:
@@ -1123,10 +1129,11 @@ def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, n_jobs=6):
                 from mne import SourceEstimate
                 data = np.concatenate([stc.lh_data[:, t:t+1], stc.rh_data[:, t:t+1]])
                 vertices = [stc.lh_vertno, stc.rh_vertno]
-                stc = SourceEstimate(data, vertices, stc.tmin, stc.tstep, subject=MRI_SUBJECT, verbose=stc.verbose)
-            stc_smooth = calc_stc_for_all_vertices(stc, n_jobs)
-            check_stc_with_ply(stc_smooth, cond)
-            # stc_smooth.save(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
+                stc = SourceEstimate(data, vertices, stc.tmin + t*stc.tstep, stc.tstep, subject=MRI_SUBJECT, verbose=stc.verbose)
+                output_fname = '{}-t{}'.format(output_fname, t)
+            stc_smooth = calc_stc_for_all_vertices(stc, morph_to_subject, n_jobs)
+            check_stc_with_ply(stc_smooth, cond, morph_to_subject)
+            stc_smooth.save(output_fname)
             stcs[cond] = stc_smooth
         flag = True
     except:
@@ -1137,41 +1144,49 @@ def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, n_jobs=6):
     return flag, stcs
 
 
-def check_stc_with_ply(stc, cond_name):
+def check_stc_with_ply(stc, cond_name, subject=''):
+    mmvt_surf_fol = op.join(MMVT_DIR, MRI_SUBJECT if subject == '' else subject, 'surf')
     for hemi in HEMIS:
         stc_vertices = stc.rh_vertno if hemi=='rh' else stc.lh_vertno
         print('{} {} stc vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
-        ply_vertices, _ = utils.read_ply_file(op.join(MMVT_SUBJECT_FOLDER, 'surf', '{}.pial.ply'.format(hemi)))
-        print('{} {} ply vertices: {}'.format(hemi, cond_name, len(stc_vertices)))
+        ply_vertices, _ = utils.read_ply_file(op.join(mmvt_surf_fol, '{}.pial.ply'.format(hemi)))
+        print('{} {} ply vertices: {}'.format(hemi, cond_name, ply_vertices.shape[0]))
         if len(stc_vertices) != ply_vertices.shape[0]:
             raise Exception('check_stc_with_ply: Wrong number of vertices!')
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed_stc=True,
-                      norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
+def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed_stc=True, morph_to_subject='',
+                      stc_t=-1, norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
     try:
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=smoothed_stc)
-        save_activity_map_minmax(stcs, events, stat, stcs_conds, inverse_method, norm_by_percentile,
-                                 norm_percs, plot_cb)
+        stcs = get_stat_stc_over_conditions(
+            events, stat, stcs_conds, inverse_method, smoothed_stc, morph_to_subject, stc_t)
+        if stc_t != -1:
+            save_activity_map_minmax(stcs, events, stat, stcs_conds, inverse_method, norm_by_percentile,
+                                     norm_percs, plot_cb)
+        subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
         for hemi in HEMIS:
-            verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
+            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0] != data.shape[0]:
                 raise Exception('save_activity_map: wrong number of vertices!')
             else:
                 print('Both {}.pial.ply and the stc file have {} vertices'.format(hemi, data.shape[0]))
             fol = '{}'.format(ACT.format(hemi))
-            utils.delete_folder_files(fol)
-            # data = data / data_max
-            now = time.time()
-            T = data.shape[1]
-            for t in range(T):
-                utils.time_to_go(now, t, T, runs_num_to_print=10)
-                np.save(op.join(fol, 't{}'.format(t)), data[:, t])
-
+            if morph_to_subject != '':
+                fol = fol.replace(MRI_SUBJECT, morph_to_subject)
+            if stc_t == -1:
+                utils.delete_folder_files(fol)
+                now = time.time()
+                T = data.shape[1]
+                for t in range(T):
+                    utils.time_to_go(now, t, T, runs_num_to_print=10)
+                    np.save(op.join(fol, 't{}'.format(t)), data[:, t])
+            else:
+                utils.make_dir(fol)
+                np.save(op.join(fol, 't{}'.format(stc_t)), data)
         flag = True
     except:
         print(traceback.format_exc())
@@ -1306,14 +1321,20 @@ def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM
     return flag
 
 
-def get_stat_stc_over_conditions(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed=False):
+def get_stat_stc_over_conditions(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed=False,
+                                 morph_to_subject='', stc_t=-1):
     stcs = {}
     stc_template = STC_HEMI if not smoothed else STC_HEMI_SMOOTH
     for cond_ind, cond in enumerate(events.keys()):
         if stcs_conds is None:
             # Reading only the rh, the lh will be read too
-            print('Reading {}'.format(stc_template.format(cond=cond, method=inverse_method, hemi='lh')))
-            stc = mne.read_source_estimate(stc_template.format(cond=cond, method=inverse_method, hemi='lh'))
+            input_fname = stc_template.format(cond=cond, method=inverse_method, hemi='lh')
+            if morph_to_subject != '':
+                input_fname = '{}-{}-lh.stc'.format(input_fname[:-len('-lh.stc')], morph_to_subject)
+            if stc_t != -1:
+                input_fname = '{}-t{}-lh.stc'.format(input_fname[:-len('-lh.stc')], stc_t)
+            print('Reading {}'.format(input_fname))
+            stc = mne.read_source_estimate(input_fname)
         else:
             stc = stcs_conds[cond]
         for hemi in HEMIS:
@@ -1833,15 +1854,16 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
-        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(conditions, stcs_conds, inverse_method, args.stc_t, args.n_jobs)
+        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(
+            conditions, stcs_conds, inverse_method, args.stc_t, args.morph_to_subject, args.n_jobs)
 
     if utils.should_run(args, 'save_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_activity_map'] = save_activity_map(
-            conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity,
-            args.norm_by_percentile, args.norm_percs)
+            conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity, args.morph_to_subject,
+            args.stc_t, args.norm_by_percentile, args.norm_percs)
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
@@ -1945,6 +1967,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
+    parser.add_argument('--morph_to_subject', help='', required=False, default='')
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip,mean,pca_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
