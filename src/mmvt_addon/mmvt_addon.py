@@ -164,6 +164,7 @@ set_lighting = render_panel.set_lighting
 get_rendering_in_the_background = render_panel.get_rendering_in_the_background
 set_rendering_in_the_background = render_panel.set_rendering_in_the_background
 init_rendering = render_panel.init_rendering
+camera_mode = render_panel.camera_mode
 save_view3d_as_image = render_panel.save_view3d_as_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy

@@ -100,9 +100,12 @@ def load_camera(camera_fname=''):
         print('No camera file was found in {}!'.format(camera_fname))
 
 
-def camera_mode():
+def camera_mode(view=None):
     area = bpy.data.screens['Neuro'].areas[1]
-    view = area.spaces[0].region_3d.view_perspective
+    if view is None:
+        view = area.spaces[0].region_3d.view_perspective
+    else:
+        view = 'ORTHO' if view == 'CAMERA' else 'CAMERA'
     if view == 'CAMERA':
         area.spaces[0].region_3d.view_perspective = 'ORTHO'
         mu.select_all_brain(False)
