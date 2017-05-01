@@ -1196,15 +1196,20 @@ def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoo
 
 
 def save_activity_map_minmax(stcs=None, events=None, stat=STAT_DIFF, stcs_conds=None, inverse_method='dSPM',
-                             norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
+                             morph_to_subject='', norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
     from src.utils import color_maps_utils as cp
     from src.utils import figures_utils as figu
 
-    output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg_activity_map_minmax.pkl')
+    subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
+    output_fname = op.join(MMVT_DIR, subject, 'meg_activity_map_minmax.pkl')
     if stcs is None:
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
+        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, False)
+        if stcs is None and morph_to_subject != '':
+            stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, False, morph_to_subject)
+        if stcs is None:
+            print("Can't find the stc files!")
     data_max, data_min = utils.get_activity_max_min(stcs, norm_by_percentile, norm_percs)
     data_minmax = utils.get_max_abs(data_max, data_min)
     print('Saving data minmax, min: {}, max: {} to {}'.format(-data_minmax, data_minmax, output_fname))
@@ -1333,8 +1338,12 @@ def get_stat_stc_over_conditions(events, stat, stcs_conds=None, inverse_method='
                 input_fname = '{}-{}-lh.stc'.format(input_fname[:-len('-lh.stc')], morph_to_subject)
             if stc_t != -1:
                 input_fname = '{}-t{}-lh.stc'.format(input_fname[:-len('-lh.stc')], stc_t)
-            print('Reading {}'.format(input_fname))
-            stc = mne.read_source_estimate(input_fname)
+            if op.isfile(input_fname):
+                print('Reading {}'.format(input_fname))
+                stc = mne.read_source_estimate(input_fname)
+            else:
+                print('No such file {}!'.format(input_fname))
+                return None
         else:
             stc = stcs_conds[cond]
         for hemi in HEMIS:
@@ -1895,7 +1904,8 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'save_activity_map_minmax' in args.function:
         flags['save_activity_map_minmax'] = save_activity_map_minmax(
-            None, conditions, stat, stcs_conds_smooth, inverse_method, args.norm_by_percentile, args.norm_percs, False)
+            None, conditions, stat, stcs_conds_smooth, inverse_method, args.morph_to_subject,
+            args.norm_by_percentile, args.norm_percs, False)
 
     return flags
 
