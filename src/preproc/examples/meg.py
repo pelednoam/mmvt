@@ -49,8 +49,8 @@ def calc_msit(args):
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
         reject=False,
         # save_smoothed_activity=True,
-        # stc_t=1189,
-        # morph_to_subject = 'fsaverage',
+        stc_t=1189,
+        morph_to_subject = 'fsaverage',
         extract_mode=['mean_flip', 'mean', 'pca_flip']
     ))
     meg.call_main(args)

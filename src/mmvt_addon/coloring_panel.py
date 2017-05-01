@@ -1215,11 +1215,8 @@ def draw(self, context):
     user_fol = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
-    fmri_files = glob.glob(
-        op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
-    meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
-    meg_data_maxmin_file_exist = op.isfile(op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl'))
     meg_ext_meth = bpy.context.scene.meg_labels_extract_method
     meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
         atlas, meg_ext_meth, '{hemi}')))
@@ -1248,7 +1245,9 @@ def draw(self, context):
     layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
 
     if faces_verts_exist:
-        if meg_files_exist and meg_data_maxmin_file_exist:
+        meg_current_activity_data_exist = mu.hemi_files_exists(
+            op.join(user_fol, 'activity_map_{hemi}', 't{}.npy'.format(bpy.context.scene.frame_current)))
+        if ColoringMakerPanel.meg_activity_data_exist and meg_current_activity_data_exist:
             col = layout.box().column()
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_activitiy_type', '')
@@ -1359,6 +1358,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
 
+    meg_activity_data_exist = False
     fmri_labels_exist = False
     fmri_activity_map_exist = False
     eeg_exist = False
@@ -1408,8 +1408,9 @@ def init_labels_vertices():
 
 def init_meg_activity_map():
     user_fol = mu.get_user_fol()
-    meg_files_exist = mu.hemi_files_exists(op.join(user_fol, 'activity_map_{hemi}', 't0.npy'))
     meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl')
+    meg_files_exist = len(glob.glob(op.join(user_fol, 'activity_map_rh', 't*.npy'))) > 0 and \
+                      len(glob.glob(op.join(user_fol, 'activity_map_lh', 't*.npy'))) > 0
     if meg_files_exist and op.isfile(meg_data_maxmin_fname):
         data_min, data_max = mu.load(meg_data_maxmin_fname)
         ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
@@ -1418,6 +1419,7 @@ def init_meg_activity_map():
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('MEG')
+        ColoringMakerPanel.meg_activity_data_exist = True
 
 
 def init_fmri_activity_map():

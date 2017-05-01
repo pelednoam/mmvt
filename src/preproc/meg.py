@@ -1163,7 +1163,7 @@ def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoo
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
         stcs = get_stat_stc_over_conditions(
             events, stat, stcs_conds, inverse_method, smoothed_stc, morph_to_subject, stc_t)
-        if stc_t != -1:
+        if stc_t == -1:
             save_activity_map_minmax(stcs, events, stat, stcs_conds, inverse_method, norm_by_percentile,
                                      norm_percs, plot_cb)
         subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
