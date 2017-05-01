@@ -50,6 +50,15 @@ def example4(subject='colin27', map_name='s32_spmT', figure_name='splitted_later
         w_fac=1.5, h_fac=1, facecolor=background)
 
 
+def example5():
+    figures_fol = '/home/npeled/mmvt/nmr00698/figures/'
+    colors_map = 'BuPu_YlOrRd'
+    data_max, data_min = 1, -1
+
+    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+        fu.combine_brain_with_color_bar(
+            data_max, data_min, fig_name, colors_map, dpi=100)
+
 if __name__ == '__main__':
-    example4()
+    example5()
 

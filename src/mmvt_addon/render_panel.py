@@ -462,7 +462,7 @@ def save_view3d_as_image(image_type, view_selected=False):
     bpy.ops.render.opengl(view3d_context)
     if view_selected:
         mu.view_selected()
-    image_context = mu.get_image_area()
+    image_context = mu.get_image_context()
     image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
                          '{}_{}.png'.format(image_type, bpy.context.scene.frame_current))
     bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor

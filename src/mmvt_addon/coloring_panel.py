@@ -573,14 +573,11 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         valid_verts = np.where(np.abs(values) > threshold)[0]
     colors_picked_from_cm = False
     # cm = _addon().get_cm()
+    if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
+        vert_values = vert_values.squeeze()
     if vert_values.ndim == 1 and not data_min is None:
         verts_colors = calc_colors(vert_values, data_min, colors_ratio)
         colors_picked_from_cm = True
-        # now = time.time()
-        # colors_indices = ((vert_values - data_min) * colors_ratio).astype(int)
-        # colors_indices[colors_indices < 0] = 0
-        # colors_indices[colors_indices > 255] = 255
-        # verts_colors = cm[colors_indices]
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
@@ -604,7 +601,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
                 colors = verts_colors[vert]
             else:
                 colors = vert_values[vert, 1:]
-            d.color = colors # vert_values[vert, 1:]
+            d.color = colors
 
 
 def color_groups_manually():

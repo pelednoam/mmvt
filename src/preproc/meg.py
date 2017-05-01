@@ -1109,8 +1109,8 @@ def calc_stc_for_all_vertices(stc, n_jobs=6):
     vertices_to = mne.grade_to_vertices(MRI_SUBJECT, grade=None)
     return mne.morph_data(MRI_SUBJECT, MRI_SUBJECT, stc, n_jobs=n_jobs, grade=vertices_to)
 
-
-def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
+@utils.timeit
+def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, n_jobs=6):
     try:
         stcs = {}
         for ind, cond in enumerate(events.keys()):
@@ -1119,9 +1119,14 @@ def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', n_jobs=6):
             else:
                 # Can read only for the 'rh', it'll also read the second file for 'lh'. Strange...
                 stc = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'))
+            if t != -1:
+                from mne import SourceEstimate
+                data = np.concatenate([stc.lh_data[:, t:t+1], stc.rh_data[:, t:t+1]])
+                vertices = [stc.lh_vertno, stc.rh_vertno]
+                stc = SourceEstimate(data, vertices, stc.tmin, stc.tstep, subject=MRI_SUBJECT, verbose=stc.verbose)
             stc_smooth = calc_stc_for_all_vertices(stc, n_jobs)
             check_stc_with_ply(stc_smooth, cond)
-            stc_smooth.save(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
+            # stc_smooth.save(STC_HEMI_SMOOTH_SAVE.format(cond=cond, method=inverse_method))
             stcs[cond] = stc_smooth
         flag = True
     except:
@@ -1143,12 +1148,12 @@ def check_stc_with_ply(stc, cond_name):
     print('check_stc_with_ply: ok')
 
 
-def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', norm_by_percentile=False, norm_percs=(1,99),
-                      plot_cb=False):
+def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoothed_stc=True,
+                      norm_by_percentile=False, norm_percs=(1,99), plot_cb=False):
     try:
         if stat not in [STAT_DIFF, STAT_AVG]:
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
-        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
+        stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=smoothed_stc)
         save_activity_map_minmax(stcs, events, stat, stcs_conds, inverse_method, norm_by_percentile,
                                  norm_percs, plot_cb)
         for hemi in HEMIS:
@@ -1828,14 +1833,15 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'smooth_stc'):
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
-        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(conditions, stcs_conds, inverse_method, args.n_jobs)
+        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(conditions, stcs_conds, inverse_method, args.stc_t, args.n_jobs)
 
     if utils.should_run(args, 'save_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_activity_map'] = save_activity_map(
-            conditions, stat, stcs_conds_smooth, inverse_method, args.norm_by_percentile, args.norm_percs)
+            conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity,
+            args.norm_by_percentile, args.norm_percs)
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
@@ -1938,9 +1944,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip,mean,pca_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
+    parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')

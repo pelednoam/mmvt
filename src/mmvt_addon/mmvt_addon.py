@@ -65,6 +65,8 @@ import streaming_panel
 importlib.reload(streaming_panel)
 import colorbar_panel
 importlib.reload(colorbar_panel)
+import load_results_panel
+importlib.reload(load_results_panel)
 
 print("mmvt addon started!")
 # todo: should change that in the code!!!
@@ -162,6 +164,7 @@ set_lighting = render_panel.set_lighting
 get_rendering_in_the_background = render_panel.get_rendering_in_the_background
 set_rendering_in_the_background = render_panel.set_rendering_in_the_background
 init_rendering = render_panel.init_rendering
+save_view3d_as_image = render_panel.save_view3d_as_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -372,6 +375,7 @@ def main(addon_prefs=None):
         dti_panel.init(current_module)
         connections_panel.init(current_module)
         vertex_data_panel.init(current_module)
+        load_results_panel.init(current_module)
 
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(current_module)

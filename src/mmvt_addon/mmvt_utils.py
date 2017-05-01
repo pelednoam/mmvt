@@ -1301,6 +1301,7 @@ def get_image_context():
                 override['area'] = area
                 override["screen"] = screen
                 return override
+    print("Can't find image context!")
 
 
 def view_selected():
