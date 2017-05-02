@@ -377,7 +377,7 @@ def main(addon_prefs=None):
         connections_panel.init(current_module)
         vertex_data_panel.init(current_module)
 
-        # load_results_panel.init(current_module)
+        load_results_panel.init(current_module)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(current_module)
         pass

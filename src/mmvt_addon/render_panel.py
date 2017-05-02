@@ -8,6 +8,7 @@ from functools import partial
 import traceback
 import logging
 import mmvt_utils as mu
+import re
 
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
@@ -148,9 +149,9 @@ def grab_camera(self=None, do_save=True, overwrite=True):
 def render_draw(self, context):
     layout = self.layout
 
-    # views_options = ['Camera', 'Object']
-    # views_options[int(bpy.context.scene.in_camera_view)]
-    # next_icon = icons[int(bpy.context.scene.in_camera_view)]
+    layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
+    layout.prop(context.scene, 'save_selected_view')
+
     view = bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective
     icon = 'SCENE' if view == 'ORTHO' else 'MESH_MONKEY'
     text = 'Camera' if view == 'ORTHO' else 'Object'
@@ -247,6 +248,7 @@ bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.background_color = bpy.props.EnumProperty(
     items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -256,6 +258,16 @@ class MirrorCamera(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         mirror()
+        return {"FINISHED"}
+
+
+class SaveImage(bpy.types.Operator):
+    bl_idname = "mmvt.save_image"
+    bl_label = "Save Image"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        save_view3d_as_image('image', bpy.context.scene.save_selected_view)
         return {"FINISHED"}
 
 
@@ -459,19 +471,26 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_view3d_as_image(image_type, view_selected=False):
+def save_view3d_as_image(image_type, view_selected=False, index=-1):
+    if index == -1:
+        fol = bpy.path.abspath(bpy.context.scene.output_path)
+        files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
+        index = max([int(re.findall('\d+', f)[0]) for f in files]) + 1 if len(files) > 0 else 0
+
+    index = bpy.context.scene.frame_current if index == -1 else index
     mu.show_only_render(True)
+    fol = bpy.path.abspath(bpy.context.scene.output_path)
+    image_name = op.join(fol, '{}_{}.png'.format(image_type, index))
+    bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
-    bpy.ops.render.opengl(view3d_context)
     if view_selected:
         mu.view_selected()
-    image_context = mu.get_image_context()
-    image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
-                         '{}_{}.png'.format(image_type, bpy.context.scene.frame_current))
-    bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
-                          'INVOKE_DEFAULT',  # invoke the operator
-                          copy=True,
-                          filepath=image_name)  # export it to this location
+    bpy.ops.render.opengl(view3d_context, write_still=True)
+    # image_context = mu.get_image_context()
+    # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
+    #                       'INVOKE_DEFAULT',  # invoke the operator
+    #                       copy=True,
+    #                       filepath=image_name)  # export it to this location
 
 
 def queue_len():
@@ -554,6 +573,7 @@ def init(addon):
     grab_camera(overwrite=False)
     update_camera_files()
     bpy.context.scene.in_camera_view = False
+    bpy.context.scene.save_selected_view = True
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
@@ -568,6 +588,7 @@ def register():
         unregister()
         bpy.utils.register_class(RenderingMakerPanel)
         bpy.utils.register_class(RenderAllFigures)
+        bpy.utils.register_class(SaveImage)
         bpy.utils.register_class(CameraMode)
         bpy.utils.register_class(GrabCamera)
         bpy.utils.register_class(LoadCamera)
@@ -584,6 +605,7 @@ def unregister():
     try:
         bpy.utils.unregister_class(RenderingMakerPanel)
         bpy.utils.unregister_class(RenderAllFigures)
+        bpy.utils.unregister_class(SaveImage)
         bpy.utils.unregister_class(CameraMode)
         bpy.utils.unregister_class(GrabCamera)
         bpy.utils.unregister_class(LoadCamera)

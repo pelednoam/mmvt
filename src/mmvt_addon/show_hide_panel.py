@@ -1,6 +1,10 @@
 import bpy
 import mmvt_utils as mu
 import mathutils
+import glob
+import os.path as op
+import re
+
 
 def _addon():
     return ShowHideObjectsPanel.addon
@@ -10,6 +14,8 @@ def rotate_object():
     rv3d = mu.get_view3d_region()
     rv3d.view_rotation.rotate(mathutils.Euler(
         (bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz)))
+    if bpy.context.scene.rotate_and_render:
+        _addon().save_view3d_as_image('rotation', view_selected=bpy.context.scene.save_selected_view)
 
 
 def show_only_redner_update(self, context):
@@ -318,6 +324,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
         layout.prop(context.scene, 'rotate_object')
+        layout.prop(context.scene, 'rotate_and_render')
         row = layout.row(align=True)
         row.prop(context.scene, 'rotate_dx')
         row.prop(context.scene, 'rotate_dy')
@@ -343,6 +350,8 @@ bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
 bpy.types.Scene.rotate_object = bpy.props.BoolProperty(default=False, name='Rotate the brain')
+bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
+
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='x')
 bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='y')
 bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='z')
@@ -364,6 +373,7 @@ def init(addon):
     for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         show_hide_hierarchy(True, fol)
     bpy.context.scene.rotate_object = False
+    bpy.context.scene.rotate_and_render = False
     bpy.context.scene.rotate_dz = 0.02
     bpy.context.scene.rotate_dx = 0.00
     bpy.context.scene.rotate_dy = 0.00
