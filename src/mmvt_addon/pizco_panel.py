@@ -52,7 +52,10 @@ class MMVT_Server(Server):
                 attr = getattr(self.served_object, options['name'])
                 meth = getattr(attr, options['method'])
                 PizcoPanel.q_in.put((options, attr, meth))
-                return PSMessage('return', True)
+                ret = mu.queue_get(PizcoPanel.q_out)
+                while ret is None:
+                    time.sleep(0.1)
+                    ret = mu.queue_get(PizcoPanel.q_out)
 
             elif action == 'getattr':
                 ret = getattr(self.served_object, options['name'])
@@ -114,9 +117,11 @@ class ServerListener(bpy.types.Operator):
         if not func_data is None:
             print('Message in the server queue!')
             options, attr, meth = func_data
-            ret = meth(*options.get('args', ()),
-                       **options.get('kwargs', {}))
-            PSMessage('return', ret)
+            ret = meth(*options.get('args', ()), **options.get('kwargs', {}))
+            print('Putting the ret in pizco out queue')
+            if ret is None:
+                ret = True
+            PizcoPanel.q_out.put(ret)
 
         return {'PASS_THROUGH'}
 
@@ -144,7 +149,7 @@ class PizcoPanel(bpy.types.Panel):
     bl_label = "Pizco"
     addon = None
     init = False
-    q_in = Queue()
+    q_in, q_out = Queue(), Queue()
 
     def draw(self, context):
         if PizcoPanel.init:
