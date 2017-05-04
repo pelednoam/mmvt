@@ -20,6 +20,12 @@ def _addon():
     return ColoringMakerPanel.addon
 
 
+def plot_meg(t=-1):
+    if t != -1:
+        bpy.context.scene.frame_current = t
+    activity_map_coloring('MEG')
+
+
 def set_threshold(val):
     bpy.context.scene.coloring_threshold = val
 

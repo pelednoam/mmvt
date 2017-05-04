@@ -143,6 +143,7 @@ color_eeg_helmet = coloring_panel.color_eeg_helmet
 calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 color_connections = coloring_panel.color_connections
+plot_meg = coloring_panel.plot_meg
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -175,6 +176,10 @@ rotate_brain = show_hide_panel.rotate_brain
 start_rotating = show_hide_panel.start_rotating
 stop_rotating = show_hide_panel.stop_rotating
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
+show_sagital = show_hide_panel.show_sagital
+show_coronal = show_hide_panel.show_coronal
+show_axial = show_hide_panel.show_axial
+split_view = show_hide_panel.split_view
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
