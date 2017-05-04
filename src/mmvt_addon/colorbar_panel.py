@@ -8,6 +8,10 @@ import mmvt_utils as mu
 PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
 
 
+def _addon():
+    return ColorbarPanel.addon
+
+
 def get_cm():
     return ColorbarPanel.cm
 
@@ -59,6 +63,10 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
             ColorbarPanel.init = True
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
+        # mu.set_graph_att('colorbar_max', max_val)
+        # mu.set_graph_att('colorbar_min', min_val)
+        # _addon().s.colorbar_max = max_val
+        # _addon().s.colorbar_min = min_val
         ColorbarPanel.init = init
     else:
         print('set_colorbar_max_min: ax_val < min_val!')

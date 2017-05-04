@@ -169,7 +169,9 @@ save_view3d_as_image = render_panel.save_view3d_as_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
-rotate_object = show_hide_panel.rotate_object
+rotate_brain = show_hide_panel.rotate_brain
+start_rotating = show_hide_panel.start_rotating
+stop_rotating = show_hide_panel.stop_rotating
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
@@ -315,6 +317,16 @@ def start_listener():
     return listener_in_queue, listener_out_queue
 
 
+def init_pizco(mmvt):
+    try:
+        from pizco import Server
+        mmvt.c = mmvt_utils.get_graph_context()
+        mmvt.s = mmvt.c['scene']
+        Server(mmvt, 'tcp://127.0.0.1:8000')
+    except:
+        print('No pizco')
+
+
 def make_all_fcurve_visible():
     for obj in bpy.data.objects:
         try:
@@ -355,31 +367,32 @@ def run_faulthandler():
 def main(addon_prefs=None):
     init(addon_prefs)
     try:
-        current_module = sys.modules[__name__]
-        appearance_panel.init(current_module)
-        show_hide_panel.init(current_module)
-        selection_panel.init(current_module)
-        coloring_panel.init(current_module)
-        electrodes_panel.init(current_module)
-        play_panel.init(current_module)
-        filter_panel.init(current_module)
-        freeview_panel.init(current_module, addon_prefs)
-        render_panel.init(current_module)
-        fMRI_panel.init(current_module)
-        streaming_panel.init(current_module)
-        colorbar_panel.init(current_module)
-        search_panel.init(current_module)
-        transparency_panel.init(current_module)
-        where_am_i_panel.init(current_module)
-        data_panel.init(current_module)
-        stim_panel.init(current_module)
-        dti_panel.init(current_module)
-        connections_panel.init(current_module)
-        vertex_data_panel.init(current_module)
+        mmvt = sys.modules[__name__]
+        appearance_panel.init(mmvt)
+        show_hide_panel.init(mmvt)
+        selection_panel.init(mmvt)
+        coloring_panel.init(mmvt)
+        electrodes_panel.init(mmvt)
+        play_panel.init(mmvt)
+        filter_panel.init(mmvt)
+        freeview_panel.init(mmvt, addon_prefs)
+        render_panel.init(mmvt)
+        fMRI_panel.init(mmvt)
+        streaming_panel.init(mmvt)
+        colorbar_panel.init(mmvt)
+        search_panel.init(mmvt)
+        transparency_panel.init(mmvt)
+        where_am_i_panel.init(mmvt)
+        data_panel.init(mmvt)
+        stim_panel.init(mmvt)
+        dti_panel.init(mmvt)
+        connections_panel.init(mmvt)
+        vertex_data_panel.init(mmvt)
 
-        load_results_panel.init(current_module)
+        init_pizco(mmvt)
+        load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
-        # listener_panel.init(current_module)
+        # listener_panel.init(mmvt)
         pass
     except:
         print('The classes are already registered!')

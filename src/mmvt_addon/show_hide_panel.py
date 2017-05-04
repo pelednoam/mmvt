@@ -10,12 +10,25 @@ def _addon():
     return ShowHideObjectsPanel.addon
 
 
-def rotate_object():
+def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=False):
+    dx = bpy.context.scene.rotate_dx if dx is None else dx
+    dy = bpy.context.scene.rotate_dy if dy is None else dy
+    dz = bpy.context.scene.rotate_dz if dz is None else dz
+    bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz = dx, dy, dz
     rv3d = mu.get_view3d_region()
-    rv3d.view_rotation.rotate(mathutils.Euler(
-        (bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz)))
-    if bpy.context.scene.rotate_and_render:
+    rv3d.view_rotation.rotate(mathutils.Euler((dx, dy, dz)))
+    if bpy.context.scene.rotate_and_render or save_image:
         _addon().save_view3d_as_image('rotation', view_selected=bpy.context.scene.save_selected_view)
+    if keep_rotating:
+        start_rotating()
+
+
+def start_rotating():
+    bpy.context.scene.rotate_brain = True
+
+
+def stop_rotating():
+    bpy.context.scene.rotate_brain = False
 
 
 def show_only_redner_update(self, context):
@@ -323,7 +336,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
-        layout.prop(context.scene, 'rotate_object')
+        layout.prop(context.scene, 'rotate_brain')
         layout.prop(context.scene, 'rotate_and_render')
         row = layout.row(align=True)
         row.prop(context.scene, 'rotate_dx')
@@ -349,7 +362,7 @@ bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
-bpy.types.Scene.rotate_object = bpy.props.BoolProperty(default=False, name='Rotate the brain')
+bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain')
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
 
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='x')
@@ -372,7 +385,7 @@ def init(addon):
     bpy.context.scene.show_only_render = False
     for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         show_hide_hierarchy(True, fol)
-    bpy.context.scene.rotate_object = False
+    bpy.context.scene.rotate_brain = False
     bpy.context.scene.rotate_and_render = False
     bpy.context.scene.rotate_dz = 0.02
     bpy.context.scene.rotate_dx = 0.00

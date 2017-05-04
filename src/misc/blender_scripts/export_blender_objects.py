@@ -13,7 +13,7 @@ bpy.ops.object.select_all(action='DESELECT')
 
 # loop through all the objects in the scene
 scene = bpy.context.scene
-for ob in scene.objects:
+for ob in [bpy.data.objects['rh'], bpy.data.objects['lh']]: # scene.objects:
     ob.hide_select = False
     # make the current object active and select it
     scene.objects.active = ob

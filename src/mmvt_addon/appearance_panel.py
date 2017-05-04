@@ -313,8 +313,8 @@ class SelectionListener(bpy.types.Operator):
 
         if time.time() - self.press_time > 0.1:
             if event.type == 'TIMER':
-                if bpy.context.scene.rotate_object:
-                    _addon().rotate_object()
+                if bpy.context.scene.rotate_brain:
+                    _addon().rotate_brain()
 
         if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())

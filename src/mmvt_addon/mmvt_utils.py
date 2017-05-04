@@ -772,8 +772,18 @@ def dump_args(func):
         args = func_args[len(arg_names):]
         if args: params.append(('args', args))
         if func_kwargs: params.append(('kwargs', func_kwargs))
-        print(func.__name__ + ' (' + ', '.join('%s = %r' % p for p in params) + ' )')
-        return func(*func_args, **func_kwargs)
+        try:
+            return func(*func_args, **func_kwargs)
+        except:
+            print('Error in {}!'.format(func.__name__))
+            print(func.__name__ + ' (' + ', '.join('%s = %r' % p for p in params) + ' )')
+            print(traceback.format_exc())
+            # try:
+            #     print('Current context:')
+            #     get_current_context()
+            # except:
+            #     print('Error finding the context!')
+            #     print(traceback.format_exc())
     return wrapper
 
 
@@ -1283,6 +1293,28 @@ def read_config_ini(fol='', ini_name='config.ini'):
     return config
 
 
+def get_graph_context():
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'GRAPH_EDITOR':
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        override = bpy.context.copy()
+                        override['area'] = area
+                        override["region"] = region
+                        return override
+    print("Couldn't find the graph editor!")
+
+
+def set_graph_att(att, val):
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'GRAPH_EDITOR':
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        bpy.context.scene[att] = val
+
+
 def get_view3d_context():
     area = bpy.data.screens['Neuro'].areas[1]
     for region in area.regions:
@@ -1329,3 +1361,38 @@ def select_all_brain(val):
 
 def get_view3d_region():
     return bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d
+
+
+def get_current_context():
+    # all the area types except 'EMPTY' from blender.org/api/blender_python_api_current/bpy.types.Area.html#bpy.types.Area.type
+    types = {'VIEW_3D', 'TIMELINE', 'GRAPH_EDITOR', 'DOPESHEET_EDITOR', 'NLA_EDITOR', 'IMAGE_EDITOR', 'SEQUENCE_EDITOR',
+             'CLIP_EDITOR', 'TEXT_EDITOR', 'NODE_EDITOR', 'LOGIC_EDITOR', 'PROPERTIES', 'OUTLINER', 'USER_PREFERENCES',
+             'INFO', 'FILE_BROWSER', 'CONSOLE'}
+
+    # save the current area
+    area = bpy.context.area.type
+
+    # try each type
+    for type in types:
+        # set the context
+        bpy.context.area.type = type
+
+        # print out context where operator works (change the ops below to check a different operator)
+        if bpy.ops.sequencer.duplicate.poll():
+            print(type)
+
+    # leave the context where it was
+    bpy.context.area.type = area
+
+
+@dump_args
+def set_context_to_graph_editor(context=None):
+    if context is None:
+        context = bpy.context
+    graph_area = [context.screen.areas[k] for k in range(len(context.screen.areas)) if
+                  context.screen.areas[k].type == 'GRAPH_EDITOR'][0]
+    graph_window_region = [graph_area.regions[k] for k in range(len(graph_area.regions)) if
+                           graph_area.regions[k].type == 'WINDOW'][0]
+    c = context.copy()
+    c['area'] = graph_area
+    c['region'] = graph_window_region

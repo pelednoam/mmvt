@@ -75,7 +75,7 @@ class ModalTimerOperator(bpy.types.Operator):
             if time.time() - self._time > bpy.context.scene.play_time_step:
                 if bpy.context.scene.rotate_brain_while_playing:
                     _addon().camera_mode('ORTHO')
-                    _addon().rotate_object()
+                    _addon().rotate_brain()
                     _addon().camera_mode('CAMERA')
 
                 bpy.context.scene.frame_current = self.limits
