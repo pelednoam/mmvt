@@ -67,6 +67,8 @@ import colorbar_panel
 importlib.reload(colorbar_panel)
 import load_results_panel
 importlib.reload(load_results_panel)
+import pizco_panel
+importlib.reload(pizco_panel)
 
 print("mmvt addon started!")
 # todo: should change that in the code!!!
@@ -165,7 +167,7 @@ get_rendering_in_the_background = render_panel.get_rendering_in_the_background
 set_rendering_in_the_background = render_panel.set_rendering_in_the_background
 init_rendering = render_panel.init_rendering
 camera_mode = render_panel.camera_mode
-save_view3d_as_image = render_panel.save_view3d_as_image
+save_image = render_panel.save_image
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -389,8 +391,9 @@ def main(addon_prefs=None):
         connections_panel.init(mmvt)
         vertex_data_panel.init(mmvt)
 
-        init_pizco(mmvt)
-        load_results_panel.init(mmvt)
+        pizco_panel.init(mmvt)
+        # init_pizco(mmvt)
+        # load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(mmvt)
         pass

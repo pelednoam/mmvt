@@ -18,7 +18,7 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
     rv3d = mu.get_view3d_region()
     rv3d.view_rotation.rotate(mathutils.Euler((dx, dy, dz)))
     if bpy.context.scene.rotate_and_render or save_image:
-        _addon().save_view3d_as_image('rotation', view_selected=bpy.context.scene.save_selected_view)
+        _addon().save_image('rotation', view_selected=bpy.context.scene.save_selected_view)
     if keep_rotating:
         start_rotating()
 

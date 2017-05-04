@@ -267,7 +267,7 @@ class SaveImage(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        save_view3d_as_image('image', bpy.context.scene.save_selected_view)
+        save_image('image', bpy.context.scene.save_selected_view)
         return {"FINISHED"}
 
 
@@ -471,7 +471,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_view3d_as_image(image_type='image', view_selected=False, index=-1):
+def save_image(image_type='image', view_selected=False, index=-1):
     if index == -1:
         fol = bpy.path.abspath(bpy.context.scene.output_path)
         files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
@@ -481,6 +481,7 @@ def save_view3d_as_image(image_type='image', view_selected=False, index=-1):
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
     image_name = op.join(fol, '{}_{}.png'.format(image_type, index))
+    print('Image saved in {}'.format(image_name))
     bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
     if view_selected:

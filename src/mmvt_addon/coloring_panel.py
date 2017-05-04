@@ -207,7 +207,7 @@ def load_meg_subcortical_activity():
     return meg_sub_activity
 
 
-# @mu.dump_args
+@mu.dump_args
 def activity_map_coloring(map_type, clusters=False, threshold=None):
     init_activity_map_coloring(map_type)
     if threshold is None:
@@ -585,11 +585,13 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         mesh.vertex_colors.active_index = 1
     if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-        try:
-            bpy.ops.mesh.vertex_color_remove()
-        except:
-            print("Can't remove vertex color!")
+        c = mu.get_graph_context()
+        bpy.ops.mesh.vertex_color_remove(c)
+        # except:
+        #     print("Can't remove vertex color!")
     vcol_layer = mesh.vertex_colors.new('Col')
+    # vcol_layer = mesh.vertex_colors["Col"]
+
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         mesh.vertex_colors.active_index = 1
         mesh.vertex_colors['Col'].active_render = True

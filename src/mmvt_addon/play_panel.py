@@ -179,7 +179,7 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
         _addon().color_eeg_helmet()
     if successful_ret:
         if bpy.context.scene.save_images:
-            _addon().save_view3d_as_image(play_type, bpy.context.scene.save_selected_view,
+            _addon().save_image(play_type, bpy.context.scene.save_selected_view,
                                           bpy.context.scene.frame_current)
         if bpy.context.scene.render_movie:
             _addon().render_image()
