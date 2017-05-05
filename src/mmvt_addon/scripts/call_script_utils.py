@@ -4,6 +4,7 @@ import os
 import os.path as op
 import subprocess
 from sys import platform as _platform
+import threading
 
 IS_WINDOWS = _platform == "win32"
 
@@ -31,13 +32,29 @@ def get_parent_fol(curr_dir='', levels=1):
     return parent_fol
 
 
-def run_script(cmd, verbose=False):
+def run_script(cmd, verbose=False, stay_alive=False):
+    # if stay_alive:
+    #     output = subprocess.Popen(['nohup', cmd],
+    #                      stdout=open('/dev/null', 'w'),
+    #                      stderr=open('logfile.log', 'a'),
+    #                      preexec_fn=os.setpgrp
+    #                      )
+    # else:
     if verbose:
         print('running: {}'.format(cmd))
-    if IS_WINDOWS:
-        output = subprocess.call(cmd)
+    if stay_alive:
+        run_command_in_new_thread(cmd)
     else:
-        output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
+        if IS_WINDOWS:
+            output = subprocess.call(cmd)
+        else:
+            output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)
 
-    print(output)
-    return output
+        print(output)
+        return output
+
+
+def run_command_in_new_thread(cmd):
+    thread = threading.Thread(target=run_script, args=[cmd])
+    print('start!')
+    thread.start()

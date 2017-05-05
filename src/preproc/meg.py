@@ -1105,11 +1105,21 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
 #     stc_to.save(STC_MORPH.format(subject_to, cond, inverse_method))
 
 
-def calc_stc_for_all_vertices(stc, morph_to_subject='', n_jobs=6):
-    morph_to_subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
+def calc_stc_for_all_vertices(stc, subject='', morph_to_subject='', n_jobs=6):
+    subject = MRI_SUBJECT if subject == '' else MRI_SUBJECT
+    morph_to_subject = subject if morph_to_subject == '' else morph_to_subject
     grade = None if morph_to_subject != 'fsaverage' else 5
     vertices_to = mne.grade_to_vertices(morph_to_subject, grade)
-    return mne.morph_data(MRI_SUBJECT, morph_to_subject, stc, n_jobs=n_jobs, grade=vertices_to)
+    return mne.morph_data(subject, morph_to_subject, stc, n_jobs=n_jobs, grade=vertices_to)
+
+
+def create_stc_t(stc, t, subject=''):
+    from mne import SourceEstimate
+    subject = MRI_SUBJECT if subject == '' else MRI_SUBJECT
+    data = np.concatenate([stc.lh_data[:, t:t + 1], stc.rh_data[:, t:t + 1]])
+    vertices = [stc.lh_vertno, stc.rh_vertno]
+    stc_t = SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject, verbose=stc.verbose)
+    return stc_t
 
 
 # @utils.timeit
@@ -1126,12 +1136,9 @@ def smooth_stc(events, stcs_conds=None, inverse_method='dSPM', t=-1, morph_to_su
                 # Can read only for the 'rh', it'll also read the second file for 'lh'. Strange...
                 stc = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'))
             if t != -1:
-                from mne import SourceEstimate
-                data = np.concatenate([stc.lh_data[:, t:t+1], stc.rh_data[:, t:t+1]])
-                vertices = [stc.lh_vertno, stc.rh_vertno]
-                stc = SourceEstimate(data, vertices, stc.tmin + t*stc.tstep, stc.tstep, subject=MRI_SUBJECT, verbose=stc.verbose)
+                stc = create_stc_t(stc, t)
                 output_fname = '{}-t{}'.format(output_fname, t)
-            stc_smooth = calc_stc_for_all_vertices(stc, morph_to_subject, n_jobs)
+            stc_smooth = calc_stc_for_all_vertices(stc, MRI_SUBJECT, morph_to_subject, n_jobs)
             check_stc_with_ply(stc_smooth, cond, morph_to_subject)
             stc_smooth.save(output_fname)
             stcs[cond] = stc_smooth

@@ -20,10 +20,28 @@ def _addon():
     return ColoringMakerPanel.addon
 
 
-def plot_meg(t=-1):
+def plot_meg(t=-1, save_image=False, view_selected=False):
     if t != -1:
         bpy.context.scene.frame_current = t
     activity_map_coloring('MEG')
+    if save_image:
+        return _addon().save_image('meg', view_selected, t)
+    else:
+        return True
+
+
+@mu.dump_args
+def plot_stc_t(rh_data, lh_data, t, threshold=0, save_image=False, view_selected=False):
+    data_min = min([np.min(rh_data), np.min(lh_data)])
+    data_max = max([np.max(rh_data), np.max(lh_data)])
+    colors_ratio = 256 / (data_max - data_min)
+    for hemi in mu.HEMIS:
+        data = rh_data if hemi == 'rh' else lh_data
+        color_hemi_data(hemi, data, data_min, colors_ratio, threshold)
+    if save_image:
+        return _addon().save_image('stc', view_selected, t)
+    else:
+        return True
 
 
 def set_threshold(val):

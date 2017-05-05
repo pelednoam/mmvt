@@ -144,6 +144,7 @@ calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 color_connections = coloring_panel.color_connections
 plot_meg = coloring_panel.plot_meg
+plot_stc_t = coloring_panel.plot_stc_t
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

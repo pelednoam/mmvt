@@ -487,6 +487,7 @@ def save_image(image_type='image', view_selected=False, index=-1):
     if view_selected:
         mu.view_selected()
     bpy.ops.render.opengl(view3d_context, write_still=True)
+    return image_name
     # image_context = mu.get_image_context()
     # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
     #                       'INVOKE_DEFAULT',  # invoke the operator

@@ -186,7 +186,8 @@ def make_dir(fol):
     return fol
 
 
-def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, only_verbose=False):
+def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
+                only_verbose=False):
     if args.blender_fol == '':
         args.blender_fol = get_blender_dir()
     if not op.isdir(args.blender_fol):
@@ -217,14 +218,15 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if call_args is None:
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
-        cmd = '{blender_exe} {blend_fname} --background --python "{script_fname}" {call_args}'.format( # > {log_fname}
-            blender_exe=op.join(args.blender_fol, 'blender'),
-            blend_fname = blend_fname, script_fname = script_fname, call_args=call_args, log_fname = log_fname)
+        cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" {call_args}'.format( # > {log_fname}
+            blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
+            blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
         mmvt_addon_fol = get_parent_fol(__file__, 2)
         print(cmd)
         if not only_verbose:
             os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd)
+            utils.run_script(cmd, stay_alive=True)
+        print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:
             blend_fname = None
