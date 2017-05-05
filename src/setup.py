@@ -227,15 +227,19 @@ def create_fsaverage_link(links_fol_name='links'):
 
 
 def install_pizco():
-    blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
-    resource_fol = utils.get_resources_fol()
-    # Get pip
-    cmd = '{} {}'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'python3.5m'),
-                         op.join(resource_fol, 'get-pip.py'))
-    utils.run_script(cmd)
-    # install zmq and pizco
-    cmd = '{}  install zmq pizco'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'pip'))
-    utils.run_script(cmd)
+    try:
+        blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
+        resource_fol = utils.get_resources_fol()
+        # Get pip
+        cmd = '{} {}'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'python3.5m'),
+                             op.join(resource_fol, 'get-pip.py'))
+        utils.run_script(cmd)
+        # install zmq and pizco
+        cmd = '{}  install zmq pizco'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'pip'))
+        utils.run_script(cmd)
+    except:
+        print(traceback.format_exc())
+        print("*** Can't install pizco ***")
 
 
 def main(args):
