@@ -226,6 +226,18 @@ def create_fsaverage_link(links_fol_name='links'):
             utils.create_folder_link(fsveareg_fol, fsaverage_link)
 
 
+def install_pizco():
+    blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
+    resource_fol = utils.get_resources_fol()
+    # Get pip
+    cmd = '{} {}'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'python3.5m'),
+                         op.join(resource_fol, 'get-pip.py'))
+    utils.run_script(cmd)
+    # install zmq and pizco
+    cmd = '{}  install zmq pizco'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'pip'))
+    utils.run_script(cmd)
+
+
 def main(args):
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
@@ -255,6 +267,9 @@ def main(args):
     if utils.should_run(args, 'install_addon'):
         from src.mmvt_addon.scripts import install_addon
         install_addon.wrap_blender_call(args.only_verbose)
+
+    if utils.should_run(args, 'install_pizco'):
+        install_pizco()
 
     if 'create_links_csv' in args.function:
         create_empty_links_csv()
