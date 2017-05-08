@@ -65,8 +65,8 @@ import streaming_panel
 importlib.reload(streaming_panel)
 import colorbar_panel
 importlib.reload(colorbar_panel)
-import load_results_panel
-importlib.reload(load_results_panel)
+# import load_results_panel
+# importlib.reload(load_results_panel)
 import pizco_panel
 importlib.reload(pizco_panel)
 
