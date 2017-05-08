@@ -170,13 +170,18 @@ set_rendering_in_the_background = render_panel.set_rendering_in_the_background
 init_rendering = render_panel.init_rendering
 camera_mode = render_panel.camera_mode
 save_image = render_panel.save_image
+set_to_camera_view = render_panel.set_to_camera_view
+exit_from_camera_view = render_panel.exit_from_camera_view
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
 rotate_brain = show_hide_panel.rotate_brain
 start_rotating = show_hide_panel.start_rotating
 stop_rotating = show_hide_panel.stop_rotating
+zoom = show_hide_panel.zoom
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
+hide_subcorticals = show_hide_panel.hide_subcorticals
+show_subcorticals = show_hide_panel.show_subcorticals
 show_sagital = show_hide_panel.show_sagital
 show_coronal = show_hide_panel.show_coronal
 show_axial = show_hide_panel.show_axial
@@ -398,8 +403,7 @@ def main(addon_prefs=None):
         vertex_data_panel.init(mmvt)
 
         pizco_panel.init(mmvt)
-        # init_pizco(mmvt)
-        # load_results_panel.init(mmvt)
+        load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(mmvt)
         pass

@@ -10,6 +10,11 @@ def _addon():
     return ShowHideObjectsPanel.addon
 
 
+def zoom(delta):
+    c = mu.get_view3d_context()
+    bpy.ops.view3d.zoom(c, delta=delta)
+
+
 def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=False):
     dx = bpy.context.scene.rotate_dx if dx is None else dx
     dy = bpy.context.scene.rotate_dy if dy is None else dy
@@ -64,6 +69,14 @@ def hide_obj(obj, val=True):
 
 def show_hide_sub_cortical_update(self, context):
     show_hide_sub_corticals(bpy.context.scene.objects_show_hide_sub_cortical)
+
+
+def hide_subcorticals():
+    show_hide_sub_corticals(True)
+
+
+def show_subcorticals():
+    show_hide_sub_corticals(False)
 
 
 def show_hide_sub_corticals(do_hide=True):

@@ -101,6 +101,24 @@ def load_camera(camera_fname=''):
         print('No camera file was found in {}!'.format(camera_fname))
 
 
+def get_view_mode():
+    area = bpy.data.screens['Neuro'].areas[1]
+    view = area.spaces[0].region_3d.view_perspective
+    return view
+
+
+def is_camera_view():
+    return get_view_mode() == 'CAMERA'
+
+
+def set_to_camera_view():
+    camera_mode('CAMERA')
+
+
+def exit_from_camera_view():
+    camera_mode('ORTHO')
+
+
 def camera_mode(view=None):
     area = bpy.data.screens['Neuro'].areas[1]
     if view is None:
@@ -110,6 +128,7 @@ def camera_mode(view=None):
     if view == 'CAMERA':
         area.spaces[0].region_3d.view_perspective = 'ORTHO'
         mu.select_all_brain(False)
+        bpy.data.cameras['Camera'].lens = 35
     else:
         bpy.data.objects['Camera'].select = True
         bpy.context.scene.objects.active = bpy.data.objects['Camera']
@@ -123,6 +142,7 @@ def camera_mode(view=None):
                 mu.select_all_brain(True)
                 bpy.ops.view3d.camera_to_view(override)
                 bpy.ops.view3d.camera_to_view_selected(override)
+                bpy.data.cameras['Camera'].lens = 32
                 grab_camera()
                 break
 
@@ -408,6 +428,8 @@ def render_lateral_medial_split_brain(data_type='', quality=20, overwrite=True):
 
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
                  camera_fname='', hide_subcorticals=False, overwrite=True):
+    if not is_camera_view():
+        set_to_camera_view()
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
     bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \
         else use_square_samples
@@ -424,12 +446,13 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     else:
         images_names = [image_name] if isinstance(image_name, str) else image_name
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
+    image_fname = op.join(image_fol, images_names[0])
     print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
     print("Rendering...")
     if not bpy.context.scene.render_background:
         for image_name, camera_fname in zip(images_names, camera_fnames):
-            print('file name: {}'.format(op.join(image_fol, image_name)))
-            bpy.context.scene.render.filepath = op.join(image_fol, image_name)
+            print('file name: {}'.format(image_fname))
+            bpy.context.scene.render.filepath = image_fname
             if overwrite or len(glob.glob('{}.*'.format(bpy.context.scene.render.filepath))) == 0:
                 _addon().load_camera(camera_fname)
                 _addon().change_to_rendered_brain()
@@ -437,6 +460,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
                     _addon().show_hide_sub_corticals()
                 bpy.ops.render.render(write_still=True)
         print("Finished")
+        return image_fname
     else:
         camera_fnames = ','.join(camera_fnames)
         images_names = ','.join(images_names)
@@ -471,12 +495,14 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=False, index=-1):
+def save_image(image_type='image', view_selected=True, index=-1):
     if index == -1:
         fol = bpy.path.abspath(bpy.context.scene.output_path)
         files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
         index = max([int(re.findall('\d+', f)[0]) for f in files]) + 1 if len(files) > 0 else 0
 
+    if not _addon().is_solid():
+        _addon().change_to_solid_brain()
     index = bpy.context.scene.frame_current if index == -1 else index
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
@@ -484,9 +510,13 @@ def save_image(image_type='image', view_selected=False, index=-1):
     print('Image saved in {}'.format(image_name))
     bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
-    if view_selected:
-        mu.view_selected()
+    # if view_selected:
+        # mu.select_all_brain(True)
+        # bpy.ops.view3d.camera_to_view_selected(view3d_context)
+        # mu.view_selected()
     bpy.ops.render.opengl(view3d_context, write_still=True)
+    # if view_selected:
+    #     _addon().zoom(1)
     return image_name
     # image_context = mu.get_image_context()
     # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
