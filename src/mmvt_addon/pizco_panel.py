@@ -1,7 +1,10 @@
 import bpy
 import mmvt_utils as mu
 
-from pizco import Server
+try:
+    from pizco import Server
+except:
+    pass
 from concurrent import futures
 import traceback
 import sys
