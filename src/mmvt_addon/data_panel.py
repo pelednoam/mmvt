@@ -449,7 +449,10 @@ def add_data_to_brain(source_files):
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
-            cur_obj = bpy.data.objects[obj_name]
+            cur_obj = bpy.data.objects.get(obj_name)
+            if not cur_obj:
+                print("Can't find {}!.".format(obj_name))
+                continue
             fcurves_num = mu.count_fcurves(cur_obj)
             if fcurves_num < len(f['conditions']):
                 print('keyframing {}'.format(obj_name))
