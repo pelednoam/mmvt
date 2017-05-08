@@ -232,12 +232,12 @@ def install_pizco():
         blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
         # Get pip
+        blender_bin_fol = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.78', 'python', 'bin') if utils.is_osx() else \
+            op.join(blender_fol, '2.78', 'python', 'bin')
         if utils.is_osx():
-            cmd = '{} {}'.format(op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.78', 'python', 'bin', 'python3.5m'),
-                                 op.join(resource_fol, 'get-pip.py'))
+            cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
         elif utils.is_linux():
-            cmd = '{} {}'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'python3.5m'),
-                                 op.join(resource_fol, 'get-pip.py'))
+            cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
         else:
             print('No pizco for windows yet...')
             return
