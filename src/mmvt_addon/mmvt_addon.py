@@ -403,7 +403,7 @@ def main(addon_prefs=None):
         vertex_data_panel.init(mmvt)
 
         pizco_panel.init(mmvt)
-        load_results_panel.init(mmvt)
+        # load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(mmvt)
         pass
