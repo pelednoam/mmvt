@@ -243,7 +243,7 @@ def install_pizco():
             return
         utils.run_script(cmd)
         # install zmq and pizco
-        cmd = '{}  install zmq pizco'.format(op.join(blender_fol, '2.78', 'python', 'bin', 'pip'))
+        cmd = '{}  install zmq pizco'.format(op.join(blender_bin_fol, 'pip'))
         utils.run_script(cmd)
     except:
         print(traceback.format_exc())
