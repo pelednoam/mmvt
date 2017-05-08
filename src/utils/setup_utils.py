@@ -14,6 +14,14 @@ def is_windows():
     return IS_WINDOWS
 
 
+def is_osx():
+    return IS_MAC
+
+
+def is_linux():
+    return IS_LINUX
+
+
 def make_dir(fol):
     if not os.path.isdir(fol):
         os.makedirs(fol)
