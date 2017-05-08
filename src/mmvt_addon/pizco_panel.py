@@ -4,7 +4,9 @@ import mmvt_utils as mu
 try:
     from pizco import Server
 except:
-    pass
+    class Server(object):
+        pass
+
 from concurrent import futures
 import traceback
 import sys
