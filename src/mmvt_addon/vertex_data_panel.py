@@ -138,6 +138,10 @@ class DataInVertMakerPanel(bpy.types.Panel):
 
 def init(addon):
     DataInVertMakerPanel.addon = addon
+    lookup_files = glob.glob(op.join(mu.get_user_fol(), 'activity_map_*_verts_lookup.npy'))
+    if len(lookup_files) == 0:
+        print('No lookup files for vertex_data_panel')
+        return
     register()
 
 

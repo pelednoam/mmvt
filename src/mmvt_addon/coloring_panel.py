@@ -366,6 +366,8 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
         #             return
         #         label_colors = label_colors[:, cond_inds[0], :]
         #         label_data = label_data[:, cond_inds[0]]
+        if label_name not in labels_names[hemi]:
+            continue
         label_index = labels_names[hemi].index(label_name)
         label_vertices = np.array(labels_vertices[hemi][label_index])
         if len(label_vertices) > 0:

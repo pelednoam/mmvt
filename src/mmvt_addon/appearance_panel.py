@@ -42,14 +42,26 @@ def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 
 
+def showing_meg_sensors():
+    return bpy.context.scene.layers[_addon().MEG_LAYER]
+
+
 def show_hide_eeg(do_show=True):
     bpy.context.scene.layers[_addon().EEG_LAYER] = do_show
+
+
+def showing_eeg():
+    return bpy.context.scene.layers[_addon().EEG_LAYER]
 
 
 def show_hide_electrodes(do_show):
     bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = do_show
     if do_show:
         bpy.context.scene.show_only_lead = False
+
+
+def showing_electordes():
+    return bpy.context.scene.layers[_addon().ELECTRODES_LAYER]
 
 
 def show_rois():
@@ -181,6 +193,18 @@ def surface_type_update(self, context):
         elif is_activity():
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
+    if inflated:
+        AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
+        AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
+        AppearanceMakerPanel.showing_electrodes = showing_electordes()
+        show_hide_meg_sensors(False)
+        show_hide_eeg(False)
+        show_hide_electrodes(False)
+    else:
+        show_hide_meg_sensors(AppearanceMakerPanel.showing_meg_sensors)
+        show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
+        show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
+
     _addon().update_camera_files()
 
 
@@ -419,6 +443,9 @@ class AppearanceMakerPanel(bpy.types.Panel):
     cortex_inflated_lh = 0
     cortex_rh = 0
     cortex_lh = 0
+    showing_meg_sensors = False
+    showing_eeg_sensors = False
+    showing_electrodes = False
 
     def draw(self, context):
         if AppearanceMakerPanel.init:
@@ -447,6 +474,9 @@ def init(addon):
     bpy.context.scene.hemis_inf_distance = 0 #-5
     set_inflated_ratio(1)
     appearance_show_rois_activity_update()
+    AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
+    AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
+    AppearanceMakerPanel.showing_electrodes = showing_electordes()
     bpy.ops.mmvt.selection_listener()
 
 

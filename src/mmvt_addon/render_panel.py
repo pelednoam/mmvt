@@ -503,6 +503,7 @@ def save_image(image_type='image', view_selected=True, index=-1):
 
     if not _addon().is_solid():
         _addon().change_to_solid_brain()
+    exit_from_camera_view()
     index = bpy.context.scene.frame_current if index == -1 else index
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
