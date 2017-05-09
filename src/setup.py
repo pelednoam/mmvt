@@ -243,7 +243,7 @@ def install_blender_reqs():
             return
         utils.run_script(cmd)
         # install zmq and pizco
-        cmd = '{}  install zmq pizco mne'.format(op.join(blender_bin_fol, 'pip'))
+        cmd = '{}  install zmq pizco scipy mne'.format(op.join(blender_bin_fol, 'pip'))
         utils.run_script(cmd)
     except:
         print(traceback.format_exc())

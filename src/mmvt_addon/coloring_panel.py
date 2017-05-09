@@ -31,6 +31,23 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 @mu.dump_args
+def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, n_jobs=4):
+    import mne
+    subject = mu.get_user()
+
+    def create_stc_t(stc, t):
+        data = np.concatenate([stc.lh_data[:, t:t + 1], stc.rh_data[:, t:t + 1]])
+        vertices = [stc.lh_vertno, stc.rh_vertno]
+        stc_t = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
+        return stc_t
+
+    stc_t = create_stc_t(stc, t)
+    vertices_to = mne.grade_to_vertices(subject, None)
+    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to)
+    fname =  plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, threshold, save_image, view_selected)
+    return fname, stc_t_smooth
+
+
 def plot_stc_t(rh_data, lh_data, t, threshold=0, save_image=False, view_selected=False):
     data_min = min([np.min(rh_data), np.min(lh_data)])
     data_max = max([np.max(rh_data), np.max(lh_data)])
