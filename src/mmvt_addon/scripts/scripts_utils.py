@@ -65,7 +65,7 @@ except:
     sys.path.append(mmvt_addon_fol)
     import mmvt_utils as mu
 
-timeit = mu.timeit
+# timeit = mu.timeit
 
 
 def get_code_root_dir():
@@ -325,6 +325,7 @@ def get_camera_dir(args):
     camera_dir = op.join(get_mmvt_dir(), args.subject, 'camera')
     make_dir(camera_dir)
     return camera_dir
+
 
 def get_full_atlas_name(atlas):
     return mu.get_real_atlas_name(atlas, get_mmvt_dir())

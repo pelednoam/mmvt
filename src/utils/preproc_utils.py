@@ -109,6 +109,7 @@ def add_common_args(parser):
     parser.add_argument('--sftp_username', help='sftp username', required=False, default='')
     parser.add_argument('--sftp_domain', help='sftp domain', required=False, default='')
     parser.add_argument('--sftp_port', help='sftp port', required=False, default=22, type=int)
+    parser.add_argument('--sftp_password', help='sftp port', required=False, default='')
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
 
 

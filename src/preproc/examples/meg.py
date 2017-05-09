@@ -56,6 +56,20 @@ def calc_msit(args):
     meg.call_main(args)
 
 
+def calc_stcs_diff(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        data_per_task=True,
+        contrast='interference',
+        cleaning_method='nTSSS'))
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    stc_fnames = [meg.STC_HEMI.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
+    output_fname = meg.STC_HEMI.format(cond='diff', method=args.inverse_method[0], hemi='lh')
+    meg.calc_stc_diff(*stc_fnames, output_fname)
+
+
 def crop_stc_no_baseline(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.fname_format = '{subject}_02_f2-35_all_correct_combined'

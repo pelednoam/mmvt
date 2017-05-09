@@ -1,4 +1,3 @@
-import bpy
 import mmvt_utils as mu
 import colors_utils as cu
 import numpy as np
@@ -9,6 +8,17 @@ from collections import defaultdict, OrderedDict
 import glob
 import traceback
 from functools import partial
+
+try:
+    import bpy
+except:
+    bpy = mu.empty_bpy
+
+try:
+    import mne
+    MNE_EXIST = True
+except:
+    MNE_EXIST = False
 
 HEMIS = mu.HEMIS
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
@@ -31,9 +41,9 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 @mu.dump_args
-def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, n_jobs=4):
+def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', n_jobs=4):
     import mne
-    subject = mu.get_user()
+    subject = mu.get_user() if subject == '' else subject
 
     def create_stc_t(stc, t):
         data = np.concatenate([stc.lh_data[:, t:t + 1], stc.rh_data[:, t:t + 1]])
@@ -41,9 +51,12 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, n_jobs=
         stc_t = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         return stc_t
 
+    subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+    if subjects_dir:
+        print('subjects_dir: {}'.format(subjects_dir))
     stc_t = create_stc_t(stc, t)
     vertices_to = mne.grade_to_vertices(subject, None)
-    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to)
+    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
     fname =  plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, threshold, save_image, view_selected)
     return fname, stc_t_smooth
 
@@ -1145,7 +1158,11 @@ class ColorMeg(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        activity_map_coloring('MEG')
+        if ColoringMakerPanel.meg_activity_data_exist:
+            activity_map_coloring('MEG')
+        elif ColoringMakerPanel.stc_file_exist:
+            plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
+                     threshold=bpy.context.scene.coloring_threshold, save_image=False)
         return {"FINISHED"}
 
 
@@ -1296,7 +1313,8 @@ def draw(self, context):
     if faces_verts_exist:
         meg_current_activity_data_exist = mu.hemi_files_exists(
             op.join(user_fol, 'activity_map_{hemi}', 't{}.npy'.format(bpy.context.scene.frame_current)))
-        if ColoringMakerPanel.meg_activity_data_exist and meg_current_activity_data_exist:
+        if ColoringMakerPanel.meg_activity_data_exist and meg_current_activity_data_exist or \
+                ColoringMakerPanel.stc_file_exist:
             col = layout.box().column()
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_activitiy_type', '')
@@ -1407,6 +1425,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
 
+    stc_file_exist = False
     meg_activity_data_exist = False
     fmri_labels_exist = False
     fmri_activity_map_exist = False
@@ -1414,6 +1433,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     meg_sensors_exist = False
     conn_labels_avg_files_exit = False
     contours_coloring_exist = False
+    stc = None
 
     activity_map_coloring = activity_map_coloring
 
@@ -1471,6 +1491,12 @@ def init_meg_activity_map():
             _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('MEG')
         ColoringMakerPanel.meg_activity_data_exist = True
+    elif MNE_EXIST:
+        stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
+        if len(stcs_files) == 2:
+            ColoringMakerPanel.stc_file_exist = True
+            ColoringMakerPanel.stc = mne.read_source_estimate(stcs_files[0])
+
 
 
 def init_fmri_activity_map():
@@ -1683,3 +1709,9 @@ def unregister():
     except:
         pass
         # print("Can't unregister Freeview Panel!")
+
+
+if __name__ == '__main__':
+    import mne
+    stc = mne.read_source_estimate('/homes/5/npeled/space1/mmvt/fsaverage5/meg/ep001_msit_nTSSS_interference_diff_1-15-dSPM-lh.stc')
+    plot_stc(stc, 100, threshold=1, save_image=False, view_selected=False, subject='fsaverage5', n_jobs=4)

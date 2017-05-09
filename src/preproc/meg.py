@@ -1825,6 +1825,17 @@ def calc_labels_minmax(atlas, extract_modes):
                    for em in extract_modes])
 
 
+def calc_stc_diff(stc1_fname, stc2_fname, output_name):
+    stc1 = mne.read_source_estimate(stc1_fname)
+    stc2 = mne.read_source_estimate(stc2_fname)
+    stc_diff = stc1 - stc2
+    stc_diff.save(output_name)
+    for hemi in utils.HEMIS:
+        mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name))
+        mmvt_fname = '{}{}.stc'.format(mmvt_fname[:-2], hemi)
+        shutil.copy(output_name, mmvt_fname)
+
+
 # def calc_labels_data_from_activity_map(mri_subject, atlas):
 #     for hemi in utils.HEMIS:
 #         labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
@@ -1846,13 +1857,21 @@ def init_main(subject, mri_subject, remote_subject_dir, args):
     return fname_format, fname_format_cond, conditions
 
 
+def init(subject, mri_subject, args, remote_subject_dir=''):
+    fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
+    init_globals_args(
+        subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+    return fname_format, fname_format_cond, conditions
+
+
 def main(tup, remote_subject_dir, args, flags):
     (subject, mri_subject), inverse_method = tup
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
-    fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
-    init_globals_args(
-        subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+    fname_format, fname_format_cond, conditions = init(subject, mri_subject, args, remote_subject_dir)
+    # fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
+    # init_globals_args(
+    #     subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
     # flags: calc_evoked

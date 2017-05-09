@@ -33,6 +33,19 @@ from sys import platform as _platform
 from datetime import datetime
 from queue import Empty
 
+class empty_bpy(object):
+    class types(object):
+        class Scene(object): pass
+        class Panel(object): pass
+        Operator = object
+    class props(object):
+        class BoolProperty(object):
+            def __init__(self, **kargs): pass
+        class EnumProperty(object):
+            def __init__(self, **kargs): pass
+        class FloatProperty(object):
+            def __init__(self, **kargs): pass
+
 try:
     import connections_panel as con_pan
 except:
@@ -59,6 +72,9 @@ try:
 except:
     import pickle
 
+from scripts import scripts_utils as su
+get_link_dir = su.get_link_dir
+get_links_dir = su.get_links_dir
 
 floats_const_pattern = r"""
      [-+]?
