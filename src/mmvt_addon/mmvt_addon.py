@@ -179,6 +179,7 @@ rotate_brain = show_hide_panel.rotate_brain
 start_rotating = show_hide_panel.start_rotating
 stop_rotating = show_hide_panel.stop_rotating
 zoom = show_hide_panel.zoom
+view_all= show_hide_panel.view_all
 show_hide_sub_corticals = show_hide_panel.show_hide_sub_corticals
 hide_subcorticals = show_hide_panel.hide_subcorticals
 show_subcorticals = show_hide_panel.show_subcorticals
@@ -416,7 +417,6 @@ def main(addon_prefs=None):
     # show_pial()
     mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
     mmvt_utils.unfilter_graph_editor()
-
 
 
 if __name__ == "__main__":

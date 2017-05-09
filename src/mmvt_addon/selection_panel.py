@@ -380,6 +380,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     bl_label = "Selection"
     addon = None
     modalities_num = 0
+    connection_files_exist = False
 
     @staticmethod
     def draw(self, context):
@@ -407,8 +408,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
         if bpy.data.objects.get('EEG_sensors'):
             layout.operator(SelectAllEEG.bl_idname, text="EEG sensors", icon='BORDER_RECT')
-        if bpy.data.objects.get(_addon().get_connections_parent_name()) and \
-                bpy.data.objects[_addon().get_connections_parent_name()].animation_data:
+        if SelectionMakerPanel.connection_files_exist:
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
@@ -437,6 +437,8 @@ def init(addon):
         modalities_itesm.append(('fMRI', 'fMRI', '', 1))
     SelectionMakerPanel.modalities_num = len(modalities_itesm)
     bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
+    SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
+                bpy.data.objects[_addon().get_connections_parent_name()].animation_data
     register()
 
 

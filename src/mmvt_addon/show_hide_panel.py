@@ -15,6 +15,11 @@ def zoom(delta):
     bpy.ops.view3d.zoom(c, delta=delta)
 
 
+def view_all():
+    c = mu.get_view3d_context()
+    bpy.ops.view3d.view_all(c)
+
+
 def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=False):
     dx = bpy.context.scene.rotate_dx if dx is None else dx
     dy = bpy.context.scene.rotate_dy if dy is None else dy
@@ -128,6 +133,8 @@ def show_sagital():
                 bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, 0.5, 0.5]
             bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
 
+    view_all()
+    zoom(-1)
     bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
 
 
@@ -162,6 +169,8 @@ def show_coronal():
             bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
         bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
+    view_all()
+    zoom(-1)
 
 
 def show_axial():
@@ -191,6 +200,8 @@ def show_axial():
                 bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 1, 0, 0]
             bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
         bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+    view_all()
+    zoom(-1)
 
 
 def split_view():
@@ -423,6 +434,8 @@ def init(addon):
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')
     # hide_obj(bpy.data.objects[obj_func_name], val)
+    # view_all()
+    # zoom(-1)
 
     register()
     ShowHideObjectsPanel.init = True

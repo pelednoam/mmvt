@@ -511,7 +511,8 @@ def save_image(image_type='image', view_selected=True, index=-1):
     print('Image saved in {}'.format(image_name))
     bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
-    # if view_selected:
+    if view_selected:
+        _addon().view_all()
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
