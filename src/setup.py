@@ -226,7 +226,7 @@ def create_fsaverage_link(links_fol_name='links'):
             utils.create_folder_link(fsveareg_fol, fsaverage_link)
 
 
-def install_pizco():
+def install_blender_reqs():
     # http://stackoverflow.com/questions/9956741/how-to-install-multiple-python-packages-at-once-using-pip
     try:
         blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
@@ -243,7 +243,7 @@ def install_pizco():
             return
         utils.run_script(cmd)
         # install zmq and pizco
-        cmd = '{}  install zmq pizco'.format(op.join(blender_bin_fol, 'pip'))
+        cmd = '{}  install zmq pizco mne'.format(op.join(blender_bin_fol, 'pip'))
         utils.run_script(cmd)
     except:
         print(traceback.format_exc())
@@ -280,8 +280,9 @@ def main(args):
         from src.mmvt_addon.scripts import install_addon
         install_addon.wrap_blender_call(args.only_verbose)
 
-    if utils.should_run(args, 'install_pizco'):
-        install_pizco()
+    # 5) Install python packages in Blender
+    if utils.should_run(args, 'install_blender_reqs'):
+        install_blender_reqs()
 
     if 'create_links_csv' in args.function:
         create_empty_links_csv()
@@ -303,7 +304,7 @@ def print_help():
         -v: If True, just check the setup without doing anything (default: False)
         -d: If True, the script will create the default mmvt folders (default: True)
         -f: Set which function (or functions) you want to run (use commas witout spacing) (deafult: all):
-            install_reqs, create_links, copy_resources_files, install_addon, create_links_csv and create_csv
+            install_reqs, create_links, copy_resources_files, install_addon, install_blender_reqs, create_links_csv and create_csv
     '''
     print(str)
 
