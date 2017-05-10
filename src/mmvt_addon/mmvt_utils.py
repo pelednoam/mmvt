@@ -1412,3 +1412,14 @@ def set_context_to_graph_editor(context=None):
     c = context.copy()
     c['area'] = graph_area
     c['region'] = graph_window_region
+
+
+def get_n_jobs(n_jobs):
+    import multiprocessing
+    cpu_num = multiprocessing.cpu_count()
+    n_jobs = int(n_jobs)
+    if n_jobs > cpu_num:
+        n_jobs = cpu_num
+    elif n_jobs < 0:
+        n_jobs = cpu_num + n_jobs
+    return n_jobs

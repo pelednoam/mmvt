@@ -64,10 +64,25 @@ def calc_stcs_diff(args):
         data_per_task=True,
         contrast='interference',
         cleaning_method='nTSSS'))
+    smooth = False
     fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
-    stc_fnames = [meg.STC_HEMI.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
-    output_fname = meg.STC_HEMI.format(cond='diff', method=args.inverse_method[0], hemi='lh')
+    stc_template_name = meg.STC_HEMI_SMOOTH if smooth else meg.STC_HEMI
+    stc_fnames = [stc_template_name.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
+    output_fname = stc_template_name.format(cond='diff', method=args.inverse_method[0], hemi='lh')
     meg.calc_stc_diff(*stc_fnames, output_fname)
+
+
+def morph_stc(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        data_per_task=True,
+        contrast='interference',
+        cleaning_method='nTSSS'))
+    morph_to_subject = 'fsaverage5'
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    meg.morph_stc(conditions, morph_to_subject, args.inverse_method[0], args.n_jobs)
 
 
 def crop_stc_no_baseline(subject, mri_subject):

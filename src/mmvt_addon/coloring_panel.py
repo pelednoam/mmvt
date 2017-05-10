@@ -41,9 +41,10 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 @mu.dump_args
-def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', n_jobs=4):
+def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
+    n_jobs = mu.get_n_jobs(n_jobs)
 
     def create_stc_t(stc, t):
         data = np.concatenate([stc.lh_data[:, t:t + 1], stc.rh_data[:, t:t + 1]])
@@ -54,17 +55,29 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
+
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+        colors_ratio = 256 / (data_max - data_min)
+    else:
+        data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
+        data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
+        data_minmax = max(map(abs, [data_min, data_max]))
+        data_min, data_max = -data_minmax, data_minmax
+        colors_ratio = 256 / (data_max - data_min)
+        _addon().set_colorbar_max_min(data_max, data_min)
     stc_t = create_stc_t(stc, t)
     vertices_to = mne.grade_to_vertices(subject, None)
     stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
-    fname =  plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, threshold, save_image, view_selected)
+    fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
     return fname, stc_t_smooth
 
 
-def plot_stc_t(rh_data, lh_data, t, threshold=0, save_image=False, view_selected=False):
-    data_min = min([np.min(rh_data), np.min(lh_data)])
-    data_max = max([np.max(rh_data), np.max(lh_data)])
-    colors_ratio = 256 / (data_max - data_min)
+def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False, view_selected=False):
+    if data_min is None or colors_ratio is None:
+        data_min = min([np.min(rh_data), np.min(lh_data)])
+        data_max = max([np.max(rh_data), np.max(lh_data)])
+        colors_ratio = 256 / (data_max - data_min)
     for hemi in mu.HEMIS:
         data = rh_data if hemi == 'rh' else lh_data
         color_hemi_data(hemi, data, data_min, colors_ratio, threshold)
