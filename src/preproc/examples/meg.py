@@ -28,6 +28,20 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     meg.run_on_subjects(args)
 
 
+def calc_mne_python_sample_data(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        atlas='laus250',
+        contrast='audvis',
+        conditions=dict(LA=1, RA=2),
+        read_events_from_file=True,
+        t_min=-0.2, t_max=0.5,
+        extract_mode=['mean_flip', 'mean', 'pca_flip']
+    ))
+    meg.call_main(args)
+
+
 def calc_msit(args):
     # python -m src.preproc.meg -s ep001 -m mg78 -a laus250 -t MSIT
     #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
