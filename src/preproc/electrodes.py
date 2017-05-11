@@ -21,6 +21,7 @@ STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 DEPTH, GRID = range(2)
 
+locating_file = None
 
 def montage_to_npy(montage_file, output_file):
     sfp = mne.channels.read_montage(montage_file)
@@ -517,13 +518,14 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     import mne.io
     from mne.filter import notch_filter
 
-    edf_fname = op.join(ELECTRODES_DIR, subject, args.raw_fname)
+    edf_fname, _ = locating_file(args.raw_fname, '*.edf')
+    # edf_fname = op.join(ELECTRODES_DIR, subject, args.raw_fname)
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
     fs = float(edf_raw.info['sfreq'])
-    if args.preload:
-        edf_raw.notch_filter(np.arange(60, 241, 60))
+    if args.preload and args.remove_power_line_noise:
+        edf_raw.notch_filter(np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq))
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
@@ -534,8 +536,11 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
     for cond_id, cond in enumerate(args.conditions):
-        cond_data, times = edf_raw[channels_indices, int(cond['from_t'].seconds*hz):int(cond['to_t'].seconds*hz)]
-        if not args.preload:
+        if 'from_t' in cond:
+            cond_data, times = edf_raw[channels_indices, int(cond['from_t'].seconds*hz):int(cond['to_t'].seconds*hz)]
+        else:
+            cond_data, times = edf_raw[:]
+        if not args.preload and args.remove_power_line_noise:
             notch_filter(cond_data, fs, np.arange(60, 241, 60), copy=False, n_jobs=args.n_jobs)
         C, T = cond_data.shape
         if cond_id == 0:
@@ -571,9 +576,9 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
         #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
         # except:
         meta_fname = op.join(fol, 'electrodes{}_meta_data{}'.format(
-            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+            '_bipolar' if args.bipolar else '', '{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
         data_fname = op.join(fol, 'electrodes{}_data{}'.format(
-            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+            '_bipolar' if args.bipolar else '', '{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
         # np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), colors)
@@ -863,11 +868,14 @@ def set_args(args):
         print(args.conditions)
         # conditions = [dict(name='baseline', from_t=12, to_t=16), dict(name='seizure', from_t=from_t, to_t=20)]
     elif args.task == 'rest':
-        start_time = datetime.strptime(args.start_time, args.time_format)
-        rest_onset_time = datetime.strptime(args.rest_onset_time, args.time_format)
-        args.from_t = [rest_onset_time - start_time]
-        args.to_t = [datetime.strptime(args.end_time, args.time_format) - start_time]
-        args.conditions = [dict(name='rest', from_t=args.from_t[0], to_t=args.to_t[0])]
+        if args.rest_onset_time != '':
+            start_time = datetime.strptime(args.start_time, args.time_format)
+            rest_onset_time = datetime.strptime(args.rest_onset_time, args.time_format)
+            args.from_t = [rest_onset_time - start_time]
+            args.to_t = [datetime.strptime(args.end_time, args.time_format) - start_time]
+            args.conditions = [dict(name='rest', from_t=args.from_t[0], to_t=args.to_t[0])]
+        else:
+            args.conditions = [dict(name='rest')]
     else:
         if isinstance(args.from_t, Iterable) and isinstance(args.to_t, Iterable):
             args.conditions = [dict(name=cond_name, from_t=from_t, to_t=to_t) for (cond_name, from_t, to_t) in
@@ -880,6 +888,9 @@ def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     args = set_args(args)
+
+    global locating_file
+    locating_file = partial(utils.locating_file, parent_fol=op.join(ELECTRODES_DIR, subject))
 
     if utils.should_run(args, 'convert_electrodes_pos'):
         flags['convert_electrodes_pos'] = convert_electrodes_coordinates_file_to_npy(
@@ -953,6 +964,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--seizure_onset_time', help='', required=False, default=0, type=float)
     parser.add_argument('--baseline_delta', help='', required=False, default=0, type=float)
     parser.add_argument('--time_format', help='', required=False, default='%H:%M:%S')
+    parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
+    parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')

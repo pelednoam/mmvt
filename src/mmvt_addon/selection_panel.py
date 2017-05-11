@@ -49,6 +49,16 @@ def meg_data_loaded():
             return False
 
 
+def meg_sub_data_loaded():
+    parent_obj = bpy.data.objects.get('Subcortical_structures')
+    if parent_obj is None:
+        return False
+    else:
+        parent_data = mu.count_fcurves(parent_obj) > 0
+        labels_data = mu.count_fcurves(parent_obj.children) > 0
+        return parent_data or labels_data
+
+
 def fmri_data_loaded():
     fmri_parent_obj = bpy.data.objects.get('fMRI')
     return mu.count_fcurves(fmri_parent_obj) > 0
@@ -401,6 +411,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
+        if meg_sub_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')

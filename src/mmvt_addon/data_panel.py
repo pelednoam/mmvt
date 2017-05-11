@@ -614,12 +614,15 @@ class AddDataToBrain(bpy.types.Operator):
         labels_extract_method = bpy.context.scene.labels_data_files
         brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))),
                          np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))]
-        subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
+        if op.isfile(op.join(base_path, 'meg', 'subcortical_meg_activity.npz')):
+            subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
+        else:
+            subcorticals_sources = None
         add_data_to_brain(brain_sources)
         if bpy.context.scene.add_meg_labels_data:
             brain_obj = bpy.data.objects['Brain']
             add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
-        if bpy.context.scene.add_meg_subcorticals_data:
+        if bpy.context.scene.add_meg_subcorticals_data and not subcorticals_sources is None:
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 

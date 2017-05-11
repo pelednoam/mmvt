@@ -1642,6 +1642,25 @@ def add_str_to_file_name(fname, txt, suf=''):
         suf = file_type(fname)
     return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
+
+def locating_file(default_fname, glob_pattern, parent_fol):
+    fname = default_fname
+    exist = op.isfile(default_fname)
+    if not exist:
+        files = glob.glob(op.join(parent_fol, glob_pattern))
+        exist = len(files) > 0
+        if exist:
+            if len(files) == 1:
+                fname = files[0]
+            else:
+                fname_input = input('There are more than one {} files. Please choose the one you want to use: '.format(
+                    glob_pattern))
+                if op.isfile(op.join(parent_fol, fname_input)):
+                    fname = op.join(parent_fol, fname_input)
+                else:
+                    print("Couldn't find {}!".format(op.join(parent_fol, fname_input)))
+    return fname, exist
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct

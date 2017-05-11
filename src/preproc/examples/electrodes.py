@@ -47,9 +47,10 @@ def load_edf_data_rest(args):
         function='create_raw_data_for_blender',
         task='rest',
         bipolar=False,
-        raw_fname='MG102_d3_Fri.edf',
-        rest_onset_time='6:50:00',
-        end_time='7:05:00',
+        remove_power_line_noise=False,
+        # raw_fname='MG102_d3_Fri.edf',
+        # rest_onset_time='6:50:00',
+        # end_time='7:05:00',
         normalize_data=False,
         preload=False
     ))
