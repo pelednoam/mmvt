@@ -175,7 +175,10 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
 
 def load_raw(bad_channels=[], l_freq=None, h_freq=None):
     # read the data
-    raw = mne.io.read_raw_fif(RAW, preload=True)
+    raw_fname, raw_exist = locating_file(RAW, glob_pattern='*raw.fif')
+    if not raw_exist:
+        return None
+    raw = mne.io.read_raw_fif(raw_fname, preload=True)
     if not op.isfile(INFO):
         utils.save(raw.info, INFO)
     if len(bad_channels) > 0:
@@ -240,10 +243,11 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     if remove_power_line_noise:
         raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
-    if read_events_from_file and events is None and op.isfile(EVE):
+    events_fname, event_fname_exist = locating_file(EVE, glob_pattern='*eve.fif')
+    if read_events_from_file and events is None and event_fname_exist:
         # events_fname = events_fname if events_fname != '' else EVE
-        print('read events from {}'.format(EVE))
-        events = mne.read_events(EVE)
+        print('read events from {}'.format(events_fname))
+        events = mne.read_events(events_fname)
     else:
         if events is None:
             try:
@@ -298,6 +302,23 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.windows_num)
 
 
+def locating_file(default_fname, glob_pattern=''):
+    fname = ''
+    if not op.isfile(default_fname):
+        files = glob.glob(op.join(SUBJECT_MEG_FOLDER, glob_pattern))
+        exist = len(files) > 0
+        if exist:
+            if len(files) == 1:
+                fname = files[0]
+            else:
+                epo_input = input('There are more than one *epo.fif files. Please choose the one you want to use: ')
+                if op.isfile(op.join(SUBJECT_MEG_FOLDER, epo_input)):
+                    epo_fname = op.join(SUBJECT_MEG_FOLDER, epo_input)
+                else:
+                    print("Couldn't find {}!".format(op.join(SUBJECT_MEG_FOLDER, epo_input)))
+    return fname, exist
+
+
 def calc_epochs_wrapper(
         conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
         calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
@@ -306,28 +327,31 @@ def calc_epochs_wrapper(
         windows_num=0):
     # Calc evoked data for averaged data and for each condition
     try:
-        epo_exist = False
+        epo_fname, epo_exist = locating_file(EPO, '*epo.fif')
+        if not epo_exist:
+            calc_epochs_from_raw = True
+            epo_fname = EPO
         if not calc_epochs_from_raw:
-            if '{cond}' in EPO:
+            if '{cond}' in epo_fname:
                 epo_exist = True
                 epochs = {}
                 for cond in conditions.keys():
-                    if op.isfile(get_cond_fname(EPO, cond)):
-                        epochs[cond] = mne.read_epochs(get_cond_fname(EPO, cond))
+                    if op.isfile(get_cond_fname(epo_fname, cond)):
+                        epochs[cond] = mne.read_epochs(get_cond_fname(epo_fname, cond))
                     else:
                         epo_exist = False
                         break
             else:
-                epo_exist = op.isfile(EPO) and not calc_epochs_from_raw
+                epo_exist = op.isfile(epo_fname) and not calc_epochs_from_raw
                 if epo_exist:
-                    epochs = mne.read_epochs(EPO)
+                    epochs = mne.read_epochs(epo_fname)
         if not epo_exist or calc_epochs_from_raw:
             if raw is None:
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  None, task, windows_length, windows_shift, windows_num)
+                                  epo_fname, task, windows_length, windows_shift, windows_num)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -1862,7 +1886,7 @@ def init_main(subject, mri_subject, remote_subject_dir, args):
     args.remote_subject_dir = remote_subject_dir
     args.remote_subject_meg_dir = utils.build_remote_subject_dir(args.remote_subject_meg_dir, subject)
     prepare_subject_folder(mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
-                                  args.mri_necessary_files, args)
+                           args.mri_necessary_files, args)
     fname_format, fname_format_cond, conditions = get_fname_format_args(args)
     return fname_format, fname_format_cond, conditions
 
