@@ -1,9 +1,11 @@
 import os.path as op
+import scipy.io as sio
 import argparse
 from src.preproc import electrodes as elecs
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
+from src.utils import matlab_utils as mu
 
 
 def read_electrodes_coordiantes_from_specific_xlsx_sheet(subject, bipolar):
@@ -76,6 +78,15 @@ def get_electrodes_file_from_server(args):
             ['{}_RAS.{}'.format(subject, file_type) for file_type in ['csv', 'xls', 'xlsx']]
         pu.run_on_subjects(args, elecs.main)
 
+
+def load_electrodes_matlab_file(args):
+    subject = args.subject[0]
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF45_continuous.mat')
+    d = utils.Bag(dict(**sio.loadmat(mat_fname)))
+    labels = mu.matlab_cell_str_to_list(d.Label)
+    fs = d.fs[0][0]
+    data = d.data
+    print('asdf')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
