@@ -526,6 +526,8 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     fs = float(edf_raw.info['sfreq'])
     if args.preload and args.remove_power_line_noise:
         edf_raw.notch_filter(np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq))
+    if not (args.lower_freq_filter is None and args.upper_freq_filter is None):
+        edf_raw.filter(args.lower_freq_filter, args.upper_freq_filter)
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
@@ -535,28 +537,40 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
-    for cond_id, cond in enumerate(args.conditions):
+    conditions = [c['name'] for c in args.conditions]
+    data = None
+    cond_id = 0
+    for cond in args.conditions:
         if 'from_t' in cond:
-            cond_data, times = edf_raw[channels_indices, int(cond['from_t'].seconds*hz):int(cond['to_t'].seconds*hz)]
+            cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         else:
             cond_data, times = edf_raw[:]
         if not args.preload and args.remove_power_line_noise:
             notch_filter(cond_data, fs, np.arange(60, 241, 60), copy=False, n_jobs=args.n_jobs)
-        C, T = cond_data.shape
-        if cond_id == 0:
-            data = np.zeros((C, T, len(args.conditions)))
+        if cond['name'] != 'baseline':
+            C, T = cond_data.shape
+            if data is None:
+                conds_num = len(args.conditions)
+                if 'baseline' in conditions:
+                    conds_num = conds_num -1
+                data = np.zeros((C, T, conds_num))
         if cond['name'] == 'baseline':
             baseline = np.mean(cond_data, 1)
-        data[:, :, cond_id] = cond_data
+        else:
+            # import rdp
+            # t = range(cond_data.shape[1])
+            # x = rdp.rdp(list(zip(t, cond_data[0])), epsilon=0.2)
+            data[:, :, cond_id] = cond_data
+            cond_id = cond_id + 1
 
     # x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
     if args.ref_elec != '':
         ref_ind = labels.index(args.ref_elec)
         data -= np.tile(data[ref_ind], (C, 1, 1))
-    conditions = [c['name'] for c in args.conditions]
     if 'baseline' in conditions:
-        data[:, :, 0] -= np.tile(baseline, (T, 1)).T
-        data[:, :, 1] -= np.tile(baseline, (T, 1)).T
+        for c in range(data.shape[2]):
+            data[:, :, c] -= np.tile(baseline, (T, 1)).T
+        conditions.remove('baseline')
     if args.normalize_data:
         data = utils.normalize_data(data, norm_by_percentile=False)
     stat_data = calc_stat_data(data, STAT_DIFF)
@@ -568,33 +582,24 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     #     flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
     if args.moving_average_win_size > 0:
         stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
-        # colors_mv = calc_colors(stat_data_mv)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
     else:
-        # colors = calc_colors(stat_data)
-        # try:
-        #     np.savez(output_fname, data=data, names=labels, conditions=conditions, colors=colors, times=times)
-        # except:
         meta_fname = op.join(fol, 'electrodes{}_meta_data{}'.format(
-            '_bipolar' if args.bipolar else '', '{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         data_fname = op.join(fol, 'electrodes{}_data{}'.format(
-            '_bipolar' if args.bipolar else '', '{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
+            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
-        # np.save(op.join(fol, 'electrodes{}_data_{}_colors.npy'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat])), colors)
-    # if do_plot:
-    #     figs_fol = op.join(SUBJECTS_DIR, subject, 'electrodes', 'stat_figs')
-    #     utils.make_dir(figs_fol)
-    #     plot_stat_data(data, conds, labels, figs_fol)
 
 
-def calc_seizure_times(start_time, seizure_time, window_length, seizure_onset_time, baseline_delta, time_format='%H:%M:%S'):
+def calc_seizure_times(start_time, seizure_onset, seizure_end, baseline_onset, baseline_end,
+                       time_format='%H:%M:%S'):
     start_time = datetime.strptime(start_time, time_format)
-    seizure_time = datetime.strptime(seizure_time, time_format) - start_time
-    seizure_start_t = seizure_time.seconds - seizure_onset_time
-    seizure_end_t = seizure_start_t + window_length
-    baseline_start_t = seizure_start_t - baseline_delta
-    baseline_end_t = baseline_start_t + window_length
+    seizure_time = datetime.strptime(seizure_onset, time_format) - start_time
+    seizure_start_t = seizure_time.seconds # - seizure_onset_time
+    seizure_end_t = (datetime.strptime(seizure_end, time_format) - start_time).seconds
+    baseline_start_t = (datetime.strptime(baseline_onset, time_format) - start_time).seconds
+    baseline_end_t = (datetime.strptime(baseline_end, time_format) - start_time).seconds
     return seizure_start_t, seizure_end_t, baseline_start_t, baseline_end_t
 
 
@@ -859,8 +864,8 @@ def set_args(args):
     elif args.task == 'seizure':
         if args.start_time != '':
             seizure_start_t, seizure_end_t, baseline_start_t, baseline_end_t = \
-                calc_seizure_times(args.start_time, args.seizure_time, args.window_length, args.seizure_onset_time,
-                                   args.baseline_delta, args.time_format)
+                calc_seizure_times(args.start_time, args.seizure_onset, args.seizure_end,
+                                   args.baseline_onset, args.baseline_end, args.time_format)
             args.from_t = [baseline_start_t, seizure_start_t]
             args.to_t = [baseline_end_t, seizure_end_t]
         args.conditions = [dict(name='baseline', from_t=args.from_t[0], to_t=args.to_t[0]),
@@ -959,13 +964,15 @@ def read_cmd_args(argv=None):
     parser.add_argument('--start_time', help='', required=False, default='0:00:00')
     parser.add_argument('--end_time', help='', required=False, default='')
     parser.add_argument('--rest_onset_time', help='', required=False, default='')
-    parser.add_argument('--seizure_time', help='', required=False, default='')
-    parser.add_argument('--window_length', help='', required=False, default=0, type=float)
-    parser.add_argument('--seizure_onset_time', help='', required=False, default=0, type=float)
-    parser.add_argument('--baseline_delta', help='', required=False, default=0, type=float)
+    parser.add_argument('--seizure_onset', help='', required=False, default='')
+    parser.add_argument('--seizure_end', help='', required=False, default='')
+    parser.add_argument('--baseline_onset', help='', required=False, default='')
+    parser.add_argument('--baseline_end', help='', required=False, default='')
     parser.add_argument('--time_format', help='', required=False, default='%H:%M:%S')
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
+    parser.add_argument('--lower_freq_filter', help='', required=False, default=0, type=float)
+    parser.add_argument('--upper_freq_filter', help='', required=False, default=0, type=float)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
@@ -979,6 +986,10 @@ def read_cmd_args(argv=None):
         if len(args[field]) == 1:
             args[field] = args[field][0]
     args.necessary_files = {'electrodes': ['{subject}_RAS.csv']}
+    if args.lower_freq_filter == 0:
+        args.lower_freq_filter = None
+    if args.upper_freq_filter == 0:
+        args.upper_freq_filter = None
     print(args)
     return args
 

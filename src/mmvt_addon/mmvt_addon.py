@@ -82,6 +82,7 @@ print("mmvt addon started!")
 
 
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
+settings = None
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import_brain = data_panel.import_brain
@@ -129,6 +130,7 @@ activity_map_obj_coloring = coloring_panel.activity_map_obj_coloring
 color_manually = coloring_panel.color_manually
 color_subcortical_region = coloring_panel.color_subcortical_region
 clear_subcortical_regions = coloring_panel.clear_subcortical_regions
+color_electrodes = coloring_panel.color_electrodes
 color_electrodes_sources = coloring_panel.color_electrodes_sources
 get_elecctrodes_sources = coloring_panel.get_elecctrodes_sources
 clear_colors_from_parent_childrens = coloring_panel.clear_colors_from_parent_childrens
@@ -305,9 +307,11 @@ def get_max_time_steps():
 
     if not found:
         try:
-            elec = bpy.data.objects['Deep_electrodes'].children[0]
-            fcurves = elec.animation_data.action.fcurves[0]
-            bpy.types.Scene.maximal_time_steps = len(fcurves.keyframe_points) - 2
+            parent_obj = bpy.data.objects['Deep_electrodes']
+            fcurves = parent_obj.animation_data.action.fcurves
+            if len(fcurves) == 0:
+                fcurves = parent_obj.children[0].fcurves
+            bpy.types.Scene.maximal_time_steps = len(fcurves[0].keyframe_points) - 2
             found = True
         except:
             print('No deep electrodes data')
@@ -352,6 +356,7 @@ def make_all_fcurve_visible():
 
 
 def init(addon_prefs):
+    global settings
     run_faulthandler()
     set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
@@ -368,6 +373,7 @@ def init(addon_prefs):
     mmvt_utils.set_show_textured_solid()
     mmvt_utils.hide_relationship_lines()
     code_fol = mmvt_utils.get_parent_fol(mmvt_utils.get_parent_fol())
+    settings = mmvt_utils.read_config_ini()
     os.chdir(code_fol)
 
 

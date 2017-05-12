@@ -1644,8 +1644,8 @@ def add_str_to_file_name(fname, txt, suf=''):
 
 
 def locating_file(default_fname, glob_pattern, parent_fol):
-    fname = default_fname
-    exist = op.isfile(default_fname)
+    fname = op.join(parent_fol, default_fname)
+    exist = op.isfile(fname)
     if not exist:
         files = glob.glob(op.join(parent_fol, glob_pattern))
         exist = len(files) > 0

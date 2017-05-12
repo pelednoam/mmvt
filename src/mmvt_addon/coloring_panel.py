@@ -222,7 +222,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
                 object_colors = object_colors[:, cond_ind]
                 value = values[t_ind, cond_ind]
         else:
-            value = np.diff(values[t_ind])[0]
+            value = np.diff(values[t_ind])[0] if values.shape[1] > 1 else np.squeeze(values[t_ind])
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
         # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
@@ -629,6 +629,7 @@ def calc_colors(vert_values, data_min, colors_ratio):
     colors_indices[colors_indices > 255] = 255
     verts_colors = cm[colors_indices]
     return verts_colors
+
 
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
@@ -1305,8 +1306,8 @@ def draw(self, context):
     #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
     # fmri_labels_data_minmax_exist = op.isfile(
     #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
-                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
+    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npz')) or \
+                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npy'))
     electrodes_stim_files_exist = len(glob.glob(op.join(
         mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
     electrodes_labels_files_exist = len(glob.glob(op.join(

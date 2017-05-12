@@ -419,17 +419,22 @@ def time_to_go(now, run, runs_num, runs_num_to_print=10):
         print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
 
 
-def show_hide_obj_and_fcurves(objs, val):
+def show_hide_obj_and_fcurves(objs, val, exclude=[]):
     if not isinstance(objs, Iterable):
         objs = [objs]
     for obj in objs:
+        if obj.name in exclude:
+            continue
         obj.select = val
         if obj.animation_data:
             for fcurve in obj.animation_data.action.fcurves:
-                # if val:
-                fcurve.hide = not val
-                    # fcurve.hide = not val
-                fcurve.select = val
+                fcurve_name = get_fcurve_name(fcurve)
+                if fcurve_name in exclude:
+                    fcurve.hide = True
+                    fcurve.select = False
+                else:
+                    fcurve.hide = not val
+                    fcurve.select = val
         else:
             pass
             # print('No animation in {}'.format(obj.name))
@@ -1030,7 +1035,7 @@ def read_ply_file(ply_file):
     return verts, faces
 
 
-def change_fcurves_colors(objs):
+def change_fcurves_colors(objs, exclude=[]):
     if not isinstance(objs, Iterable):
         objs = [objs]
     colors_num = count_fcurves(objs)
@@ -1038,7 +1043,12 @@ def change_fcurves_colors(objs):
     for obj in objs:
         if obj.animation_data is None:
             continue
+        if obj.name in exclude:
+            continue
         for fcurve in obj.animation_data.action.fcurves:
+            fcurve_name = get_fcurve_name(fcurve)
+            if fcurve_name in exclude:
+                continue
             fcurve.color_mode = 'CUSTOM'
             fcurve.color = tuple(next(colors))
             fcurve.select = True
@@ -1423,3 +1433,14 @@ def get_n_jobs(n_jobs):
     elif n_jobs < 0:
         n_jobs = cpu_num + n_jobs
     return n_jobs
+
+
+def get_args_list(val):
+    val = val.replace("'", '')
+    if ',' in val:
+        ret = val.split(',')
+    elif len(val) == 0:
+        ret = []
+    else:
+        ret = [val]
+    return ret

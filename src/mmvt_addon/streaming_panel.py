@@ -458,15 +458,14 @@ def init(addon):
     StreamingPanel.electrodes_data = None
     StreamingPanel.data_max, StreamingPanel.data_min = 0, 0
 
-    # todo: should be in the mmvt_addon
-    settings = mu.read_config_ini()
-    StreamingPanel.stim_exist = 'STIM' in settings.sections()
+    StreamingPanel.stim_exist = 'STIM' in _addon().settings.sections()
     if StreamingPanel.stim_exist:
-        StreamingPanel.config = settings['STIM']
-    if 'STREAM' in settings.sections():
-        stream_con = settings['STREAM']
+        StreamingPanel.config = _addon().settings['STIM']
+    if 'STREAM' in _addon().settings.sections():
+        stream_con = _addon().settings['STREAM']
         bpy.context.scene.streaming_buffer_size = int(stream_con.get('buffer_size', 10))
         bpy.context.scene.streaming_server = stream_con.get('server', 'localhost')
+        bpy.context.scene.multicast_group = stream_con.get('multicast_group', '1.1.1.1')
         bpy.context.scene.multicast_group = stream_con.get('multicast_group', '1.1.1.1')
         bpy.context.scene.streaming_server_port = int(stream_con.get('port', 222))
         bpy.context.scene.timeout = float(stream_con.get('timeout', 0.1))

@@ -118,9 +118,22 @@ def select_all_eeg():
 
 
 def select_all_electrodes():
+    parent_obj = bpy.data.objects['Deep_electrodes']
     mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'Electrodes'
-    select_brain_objects('Deep_electrodes')
+    if 'ELECTRODES' in _addon().settings.sections():
+        config = _addon().settings['ELECTRODES']
+        bad = mu.get_args_list(config.get('bad', ''))
+    else:
+        bad = []
+    select_brain_objects('Deep_electrodes', exclude=bad)
+    mu.unfilter_graph_editor()
+    if bpy.context.scene.selection_type == 'diff':
+        mu.change_fcurves_colors([parent_obj], bad)
+    elif bpy.context.scene.selection_type == 'spec_cond':
+        mu.filter_graph_editor(bpy.context.scene.conditions_selection)
+    else:
+        mu.change_fcurves_colors(parent_obj.children, bad)
 
 
 def select_all_connections():
@@ -134,7 +147,7 @@ def conditions_selection_update(self, context):
     _addon().clear_and_recolor()
 
 
-def select_brain_objects(parent_obj_name, children=None):
+def select_brain_objects(parent_obj_name, children=None, exclude=[]):
     if children is None:
         children = bpy.data.objects[parent_obj_name].children
     parent_obj = bpy.data.objects[parent_obj_name]
@@ -145,12 +158,12 @@ def select_brain_objects(parent_obj_name, children=None):
         else:
             mu.show_hide_obj_and_fcurves(children, False)
             parent_obj.select = True
-            mu.show_hide_obj_and_fcurves(parent_obj, True)
+            mu.show_hide_obj_and_fcurves(parent_obj, True, exclude)
             # for fcurve in parent_obj.animation_data.action.fcurves:
             #     fcurve.hide = False
             #     fcurve.select = True
     else:
-        mu.show_hide_obj_and_fcurves(children, True)
+        mu.show_hide_obj_and_fcurves(children, True, exclude)
         parent_obj.select = False
     mu.view_all_in_graph_editor()
 
@@ -242,13 +255,6 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
-        mu.unfilter_graph_editor()
-        if bpy.context.scene.selection_type == 'diff':
-            mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
-        elif bpy.context.scene.selection_type == 'spec_cond':
-            mu.filter_graph_editor(bpy.context.scene.conditions_selection)
-        else:
-            mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 

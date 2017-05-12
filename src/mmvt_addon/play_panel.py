@@ -308,14 +308,19 @@ def plot_electrodes(cur_frame, threshold, stim=False):
     # if stim:
     #     names, colors = PlayPanel.stim_names, PlayPanel.stim_colors
     # else:
-    names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_colors
-    for obj_name, object_colors in zip(names, colors):
-        if cur_frame < len(object_colors):
-            new_color = object_colors[cur_frame]
-            if bpy.data.objects.get(obj_name) is not None:
-                _addon().object_coloring(bpy.data.objects[obj_name], new_color)
-            else:
-                print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
+    # names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_colors
+    _addon().color_electrodes()
+    # names = PlayPanel.electrodes_names
+    # data = PlayPanel.electrodes_data
+    # colors = _addon().calc_colors(data[:, cur_frame], PlayPanel.electrodes_data_min, PlayPanel.electrodes_colors_ratio).squeeze()
+    # for obj_name, new_color in zip(names, colors):
+    # # for obj_name in names:
+    #     # if cur_frame < len(names):
+    #     # new_color = object_colors[cur_frame]
+    #     if bpy.data.objects.get(obj_name) is not None:
+    #         _addon().object_coloring(bpy.data.objects[obj_name], new_color)
+    #     else:
+    #         print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_meg_data(per_condition=True):
@@ -411,20 +416,30 @@ def get_electrodes_sources_data():
 def init_plotting():
     stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
     fol = op.join(mu.get_user_fol(), 'electrodes')
-    data_fname = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
-    meta_fname = op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat))
+    data_meta_fname = op.join(fol, 'electrodes_data.npz')
+    data_fname = op.join(fol, 'electrodes_data.npy')
+    meta_fname = op.join(fol, 'electrodes_meta_data.npz')
     colors_fname = op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat))
     d = None
-    if op.isfile(data_fname):
-        d = np.load(data_fname)
-        PlayPanel.electrodes_colors = d['colors']
-    elif op.isfile(meta_fname):
+    if op.isfile(data_meta_fname):
+        d = np.load(data_meta_fname)
+        PlayPanel.electrodes_data = d['data']
+        # if 'colors' in d:
+        #     PlayPanel.electrodes_colors = d['colors']
+    elif op.isfile(meta_fname) and op.isfile(data_fname):
         d = np.load(meta_fname)
-        PlayPanel.electrodes_colors = np.load(colors_fname)
+        PlayPanel.electrodes_data = np.load(data_fname)
+    #     PlayPanel.electrodes_colors = np.load(colors_fname)
     else:
         print('No electrodes data file!')
     if not d is None:
         PlayPanel.electrodes_names = [elc.astype(str) for elc in d['names']]
+        data_min = np.mean(PlayPanel.electrodes_data)
+        data_max = np.max(PlayPanel.electrodes_data)
+        data_minmax = max(map(abs, [data_max, data_min]))
+        PlayPanel.electrodes_data_max = data_minmax
+        PlayPanel.electrodes_data_min = -data_minmax
+        PlayPanel.electrodes_colors_ratio = 256 / (2 * data_minmax)
     # Warning: Not sure why we call this line, it changes the brain to the rendered brain
     # _addon().init_activity_map_coloring('MEG')
     PlayPanel.faces_verts = _addon().get_faces_verts()
