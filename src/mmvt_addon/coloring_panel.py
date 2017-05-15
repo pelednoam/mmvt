@@ -222,7 +222,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
                 object_colors = object_colors[:, cond_ind]
                 value = values[t_ind, cond_ind]
         else:
-            value = np.diff(values[t_ind])[0]
+            value = np.diff(values[t_ind])[0] if values.shape[1] > 1 else np.squeeze(values[t_ind])
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
         # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
@@ -630,6 +630,7 @@ def calc_colors(vert_values, data_min, colors_ratio):
     verts_colors = cm[colors_indices]
     return verts_colors
 
+
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
                               colors_ratio=None, bigger_or_equall=False):
@@ -919,10 +920,14 @@ def color_electrodes():
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
     data, names, conditions = _addon().load_electrodes_data()
-    norm_percs = (3, 97) #todo: add to gui
-    data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-    colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_max_min(data_max, data_min)
+    if not _addon().colorbar_values_are_locked():
+        norm_percs = (3, 97)  # todo: add to gui
+        data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+        colors_ratio = 256 / (data_max - data_min)
+        _addon().set_colorbar_max_min(data_max, data_min)
+    else:
+        data_max, data_min = _addon().get_colorbar_max_min()
+        colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('Electordes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
@@ -1305,8 +1310,8 @@ def draw(self, context):
     #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
     # fmri_labels_data_minmax_exist = op.isfile(
     #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff.npz')) or \
-                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_diff_data.npy'))
+    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npz')) or \
+                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npy'))
     electrodes_stim_files_exist = len(glob.glob(op.join(
         mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
     electrodes_labels_files_exist = len(glob.glob(op.join(

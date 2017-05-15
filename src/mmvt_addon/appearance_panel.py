@@ -301,16 +301,34 @@ class SelectionListener(bpy.types.Operator):
             if len(bpy.context.selected_objects):
                 mu.unfilter_graph_editor()
                 mu.view_all_in_graph_editor()
-                selected_obj_name = bpy.context.selected_objects[0].name
+                selected_obj = bpy.context.selected_objects[0]
+                selected_obj_name = selected_obj.name
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:
                     _addon().select_roi(selected_obj_name)
-                elif selected_obj_type in [mu.OBJ_TYPE_ELECTRODE, mu.OBJ_TYPE_EEG]:
-                    bpy.data.objects[selected_obj_name].select = True
-                    fcurves = mu.get_fcurves(bpy.data.objects[selected_obj_name])
-                    for fcurve in fcurves:
-                        fcurve.hide = False
-                        fcurve.select = True
+                # elif selected_obj_type in [mu.OBJ_TYPE_ELECTRODE, mu.OBJ_TYPE_EEG]:
+                #     selected_obj.select = True
+                #     fcurves = mu.get_fcurves(selected_obj)
+                #     if len(fcurves) > 0:
+                #         for fcurve in fcurves:
+                #             fcurve.hide = False
+                #             fcurve.select = True
+                #     else:
+                #         # Check if the parent object has fcurves
+                #         fcurves = mu.get_fcurves(selected_obj.parent)
+                #         selected_obj.parent.select = True
+                #         electrode_found = False
+                #         for fcurve in fcurves:
+                #             if mu.get_fcurve_name(fcurve) == selected_obj_name:
+                #                 fcurve.hide = False
+                #                 fcurve.select = True
+                #                 # electrode_found = True
+                #             else:
+                #                 fcurve.hide = True
+                #                 fcurve.select = False
+                #         if electrode_found:
+                #             selected_obj.parent.select = True
+                #         mu.view_all_in_graph_editor()
                 elif selected_obj_type in [mu.OBJ_TYPE_CORTEX_INFLATED_LH, mu.OBJ_TYPE_CORTEX_INFLATED_RH]:
                     pial_obj_name = selected_obj_name[len('inflated_'):]
                     pial_obj = bpy.data.objects.get(pial_obj_name)

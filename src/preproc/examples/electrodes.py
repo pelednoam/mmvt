@@ -1,9 +1,11 @@
 import os.path as op
+import scipy.io as sio
 import argparse
 from src.preproc import electrodes as elecs
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
+from src.utils import matlab_utils as mu
 
 
 def read_electrodes_coordiantes_from_specific_xlsx_sheet(subject, bipolar):
@@ -29,14 +31,19 @@ def load_edf_data_seizure(args):
         function='create_raw_data_for_blender',
         task='seizure',
         bipolar=False,
-        raw_fname='seizure_1.edf',
-        start_time='17:25:02',
-        seizure_time='17:25:48',
-        window_length=10,
-        baseline_delta=10,
-        seizure_onset_time=5,
-        ref_elec='REF2',
+        raw_fname='Bakhamis_Amal_1.edf',
+        start_time='00:01:34',
+        seizure_onset='00:03:33',
+        seizure_end='00:03:50',
+        baseline_onset='00:01:34',
+        baseline_end='00:03:11',
+        lower_freq_filter=0.5,
+        upper_freq_filter=70,
+        power_line_notch_widths=5,
+        # ref_elec='REF2',
         normalize_data=False,
+        calc_zscore=True,
+        factor=1
     ))
     pu.run_on_subjects(args, elecs.main)
 
@@ -47,9 +54,10 @@ def load_edf_data_rest(args):
         function='create_raw_data_for_blender',
         task='rest',
         bipolar=False,
+        remove_power_line_noise=True,
         raw_fname='MG102_d3_Fri.edf',
-        rest_onset_time='6:50:00',
-        end_time='7:05:00',
+        # rest_onset_time='6:50:00',
+        # end_time='7:05:00',
         normalize_data=False,
         preload=False
     ))
@@ -73,6 +81,15 @@ def get_electrodes_file_from_server(args):
             ['{}_RAS.{}'.format(subject, file_type) for file_type in ['csv', 'xls', 'xlsx']]
         pu.run_on_subjects(args, elecs.main)
 
+
+def load_electrodes_matlab_file(args):
+    subject = args.subject[0]
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF45_continuous.mat')
+    d = utils.Bag(dict(**sio.loadmat(mat_fname)))
+    labels = mu.matlab_cell_str_to_list(d.Label)
+    fs = d.fs[0][0]
+    data = d.data
+    print('asdf')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')

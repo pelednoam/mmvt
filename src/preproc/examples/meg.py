@@ -32,14 +32,33 @@ def calc_mne_python_sample_data(args):
     args = meg.read_cmd_args(dict(
         subject=args.subject,
         mri_subject=args.mri_subject,
-        atlas='laus250',
+        # atlas='laus250',
         contrast='audvis',
-        conditions=dict(LA=1, RA=2),
+        fname_format='{subject}_audvis-{ana_type}.{file_type}',
+        fname_format_cond='{subject}_audvis_{cond}-{ana_type}.{file_type}',
+        conditions=['LA', 'RA'],
         read_events_from_file=True,
         t_min=-0.2, t_max=0.5,
         extract_mode=['mean_flip', 'mean', 'pca_flip']
     ))
     meg.call_main(args)
+
+
+def calc_mne_python_sample_data_stcs_diff(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        contrast = 'audvis',
+        fname_format = '{subject}_audvis-{ana_type}.{file_type}',
+        fname_format_cond = '{subject}_audvis_{cond}-{ana_type}.{file_type}',
+        conditions = ['LA', 'RA']
+    ))
+    smooth = False
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    stc_template_name = meg.STC_HEMI_SMOOTH if smooth else meg.STC_HEMI
+    stc_fnames = [stc_template_name.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
+    output_fname = stc_template_name.format(cond='diff', method=args.inverse_method[0], hemi='lh')
+    meg.calc_stc_diff(*stc_fnames, output_fname)
 
 
 def calc_msit(args):
@@ -70,7 +89,7 @@ def calc_msit(args):
     meg.call_main(args)
 
 
-def calc_stcs_diff(args):
+def calc_msit_stcs_diff(args):
     args = meg.read_cmd_args(dict(
         subject=args.subject,
         mri_subject=args.mri_subject,

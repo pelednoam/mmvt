@@ -49,6 +49,16 @@ def meg_data_loaded():
             return False
 
 
+def meg_sub_data_loaded():
+    parent_obj = bpy.data.objects.get('Subcortical_structures')
+    if parent_obj is None:
+        return False
+    else:
+        parent_data = mu.count_fcurves(parent_obj) > 0
+        labels_data = mu.count_fcurves(parent_obj.children) > 0
+        return parent_data or labels_data
+
+
 def fmri_data_loaded():
     fmri_parent_obj = bpy.data.objects.get('fMRI')
     return mu.count_fcurves(fmri_parent_obj) > 0
@@ -108,9 +118,22 @@ def select_all_eeg():
 
 
 def select_all_electrodes():
+    parent_obj = bpy.data.objects['Deep_electrodes']
     mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'Electrodes'
-    select_brain_objects('Deep_electrodes')
+    if 'ELECTRODES' in _addon().settings.sections():
+        config = _addon().settings['ELECTRODES']
+        bad = mu.get_args_list(config.get('bad', ''))
+    else:
+        bad = []
+    select_brain_objects('Deep_electrodes', exclude=bad)
+    mu.unfilter_graph_editor()
+    if bpy.context.scene.selection_type == 'diff':
+        mu.change_fcurves_colors([parent_obj], bad)
+    elif bpy.context.scene.selection_type == 'spec_cond':
+        mu.filter_graph_editor(bpy.context.scene.conditions_selection)
+    else:
+        mu.change_fcurves_colors(parent_obj.children, bad)
 
 
 def select_all_connections():
@@ -124,23 +147,20 @@ def conditions_selection_update(self, context):
     _addon().clear_and_recolor()
 
 
-def select_brain_objects(parent_obj_name, children=None):
+def select_brain_objects(parent_obj_name, children=None, exclude=[]):
     if children is None:
         children = bpy.data.objects[parent_obj_name].children
     parent_obj = bpy.data.objects[parent_obj_name]
     children_have_fcurves = mu.count_fcurves(children) > 0
-    if bpy.context.scene.selection_type == 'diff' or not children_have_fcurves:
-        if parent_obj.animation_data is None:
-            print('parent_obj.animation_data is None!')
-        else:
-            mu.show_hide_obj_and_fcurves(children, False)
-            parent_obj.select = True
-            mu.show_hide_obj_and_fcurves(parent_obj, True)
-            # for fcurve in parent_obj.animation_data.action.fcurves:
-            #     fcurve.hide = False
-            #     fcurve.select = True
-    else:
-        mu.show_hide_obj_and_fcurves(children, True)
+    parent_have_fcurves = not parent_obj.animation_data is None
+    if parent_have_fcurves and (bpy.context.scene.selection_type == 'diff' or not children_have_fcurves):
+        mu.show_hide_obj_and_fcurves(children, False)
+        parent_obj.select = True
+        mu.show_hide_obj_and_fcurves(parent_obj, True, exclude)
+    elif children_have_fcurves:
+        if bpy.context.scene.selection_type == 'diff':
+            bpy.context.scene.selection_type = 'conds'
+        mu.show_hide_obj_and_fcurves(children, True, exclude)
         parent_obj.select = False
     mu.view_all_in_graph_editor()
 
@@ -232,13 +252,6 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
-        mu.unfilter_graph_editor()
-        if bpy.context.scene.selection_type == 'diff':
-            mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
-        elif bpy.context.scene.selection_type == 'spec_cond':
-            mu.filter_graph_editor(bpy.context.scene.conditions_selection)
-        else:
-            mu.change_fcurves_colors(bpy.data.objects['Deep_electrodes'].children)
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -401,6 +414,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.prop(context.scene, 'selected_modlity', text='')
         if meg_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
+        if meg_sub_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
         if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')

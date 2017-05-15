@@ -302,21 +302,24 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.windows_num)
 
 
-def locating_file(default_fname, glob_pattern=''):
-    fname = ''
-    if not op.isfile(default_fname):
-        files = glob.glob(op.join(SUBJECT_MEG_FOLDER, glob_pattern))
-        exist = len(files) > 0
-        if exist:
-            if len(files) == 1:
-                fname = files[0]
-            else:
-                epo_input = input('There are more than one *epo.fif files. Please choose the one you want to use: ')
-                if op.isfile(op.join(SUBJECT_MEG_FOLDER, epo_input)):
-                    epo_fname = op.join(SUBJECT_MEG_FOLDER, epo_input)
-                else:
-                    print("Couldn't find {}!".format(op.join(SUBJECT_MEG_FOLDER, epo_input)))
-    return fname, exist
+locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
+
+# def locating_file(default_fname, glob_pattern=''):
+#     fname = default_fname
+#     exist = op.isfile(default_fname)
+#     if not exist:
+#         files = glob.glob(op.join(SUBJECT_MEG_FOLDER, glob_pattern))
+#         exist = len(files) > 0
+#         if exist:
+#             if len(files) == 1:
+#                 fname = files[0]
+#             else:
+#                 fname_input = input('There are more than one *epo.fif files. Please choose the one you want to use: ')
+#                 if op.isfile(op.join(SUBJECT_MEG_FOLDER, fname_input)):
+#                     fname = op.join(SUBJECT_MEG_FOLDER, fname_input)
+#                 else:
+#                     print("Couldn't find {}!".format(op.join(SUBJECT_MEG_FOLDER, fname_input)))
+#     return fname, exist
 
 
 def calc_epochs_wrapper(
@@ -778,16 +781,20 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
+    inv_fname, _ = locating_file(INV, '*inv.fif')
+    evo_fname, _ = locating_file(EVO, '*ave.fif')
+    epo_fname, _ = locating_file(EVO, '*epo.fif')
     if '{cond}' not in INV:
-        inverse_operator = read_inverse_operator(INV)
+        inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
     for cond_name in events.keys():
         try:
             if not global_inverse_operator:
                 inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
             if single_trial_stc:
-                epo_cond = get_cond_fname(EPO, cond_name)
+                epo_cond = get_cond_fname(epo_fname, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
+                mne.set_eeg_reference(epochs, ref_channels=None)
                 stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                     pick_ori=pick_ori, return_generator=True)
                 stcs_num[cond_name] = epochs.events.shape[0]
@@ -797,6 +804,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
                 if not stc_t_min is None and not stc_t_max is None:
                     evoked = evoked.crop(stc_t_min, stc_t_max)
+                mne.set_eeg_reference(evoked, ref_channels=None)
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc:
                     stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
@@ -809,9 +817,10 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
 
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
+    evo_fname, _ = locating_file(EVO, '*ave.fif')
     if '{cond}' not in EVO:
         try:
-            evoked = mne.read_evokeds(EVO, condition=cond_name, baseline=baseline)
+            evoked = mne.read_evokeds(evo_fname, condition=cond_name, baseline=baseline)
         except:
             print('No evoked data with the condition {}'.format(cond_name))
             evoked = None
@@ -1482,7 +1491,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         if '{cond}' not in INV:
             global_inverse_operator = True
             if src is None:
-                inverse_operator = read_inverse_operator(INV)
+                inv_fname, _ = locating_file(INV, '*inv.fif')
+                inverse_operator = read_inverse_operator(inv_fname)
                 src = inverse_operator['src']
 
         if do_plot:
@@ -1566,6 +1576,10 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if not op.isfile(INFO):
+        raw_fname, raw_exist = locating_file(RAW, '*raw.fif')
+        if not raw_exist:
+            print('No raw or raw info file!')
+            return False
         raw = mne.io.read_raw_fif(RAW)
         info = raw.info
         utils.save(info, INFO)
@@ -1589,10 +1603,14 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
         # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
         trans_file = COR
         if not op.isfile(trans_file):
-            trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
-            trans_files = glob.glob(trans_pat)
+            trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, '**', '*COR*.fif'), recursive=True)
             if len(trans_files) == 1:
                 trans_file = trans_files[0]
+            else:
+                trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
+                trans_files = glob.glob(trans_pat)
+                if len(trans_files) == 1:
+                    trans_file = trans_files[0]
         if not op.isfile(trans_file):
             print('No trans files!')
         else:
@@ -1763,6 +1781,7 @@ def get_meg_files(subject, necessary_fnames, args, events):
 
 def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
+    inv_fname, _ = locating_file(inv_fname, '*inv.fif')
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution'):
@@ -1812,7 +1831,9 @@ def calc_evokes_wrapper(subject, mri_subject, conditions, args, flags):
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
     stcs_conds, stcs_num = None, {}
     if utils.should_run(args, 'calc_stc_per_condition'):
-        get_meg_files(subject, [INV, EVO], args, conditions)
+        inv_fname, _ = locating_file(INV, '*inv.fif')
+        evo_fname, _ = locating_file(EVO, '*ave.fif')
+        get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
@@ -1863,11 +1884,12 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
     stc1 = mne.read_source_estimate(stc1_fname)
     stc2 = mne.read_source_estimate(stc2_fname)
     stc_diff = stc1 - stc2
+    output_name = output_name[:-len('-lh.stc')]
     stc_diff.save(output_name)
+    mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name))
     for hemi in utils.HEMIS:
-        mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name))
-        mmvt_fname = '{}{}.stc'.format(mmvt_fname[:-2], hemi)
-        shutil.copy(output_name, mmvt_fname)
+        shutil.copy('{}-{}.stc'.format(output_name, hemi),
+                    '{}-{}.stc'.format(mmvt_fname, hemi))
 
 
 # def calc_labels_data_from_activity_map(mri_subject, atlas):
@@ -1920,20 +1942,6 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
 
-    if utils.should_run(args, 'smooth_stc'):
-        stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_files(subject, stc_fnames, args, conditions)
-        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(
-            conditions, stcs_conds, inverse_method, args.stc_t, args.morph_to_subject, args.n_jobs)
-
-    if utils.should_run(args, 'save_activity_map'):
-        stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
-                      for hemi in utils.HEMIS]
-        get_meg_files(subject, stc_fnames, args, conditions)
-        flags['save_activity_map'] = save_activity_map(
-            conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity, args.morph_to_subject,
-            args.stc_t, args.norm_by_percentile, args.norm_percs)
-
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
@@ -1941,6 +1949,20 @@ def main(tup, remote_subject_dir, args, flags):
         flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
 
     # functions that aren't in the main pipeline
+    if 'smooth_stc' in args.function:
+        stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
+        get_meg_files(subject, stc_fnames, args, conditions)
+        flags['smooth_stc'], stcs_conds_smooth = smooth_stc(
+            conditions, stcs_conds, inverse_method, args.stc_t, args.morph_to_subject, args.n_jobs)
+
+    if 'save_activity_map' in args.function:
+        stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
+                      for hemi in utils.HEMIS]
+        get_meg_files(subject, stc_fnames, args, conditions)
+        flags['save_activity_map'] = save_activity_map(
+            conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity, args.morph_to_subject,
+            args.stc_t, args.norm_by_percentile, args.norm_percs)
+
 
     if 'print_files_names' in args.function:
         # also called in init_globals

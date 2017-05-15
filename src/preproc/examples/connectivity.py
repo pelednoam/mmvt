@@ -56,7 +56,7 @@ def calc_fmri_connectivity(args):
         atlas='laus125',
         function='calc_lables_connectivity',
         connectivity_modality='fmri',
-        connectivity_method='corr,cv',
+        connectivity_method='mi,cv',
         windows_length=20,
         windows_shift=3
     ))

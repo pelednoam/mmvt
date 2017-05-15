@@ -614,12 +614,15 @@ class AddDataToBrain(bpy.types.Operator):
         labels_extract_method = bpy.context.scene.labels_data_files
         brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))),
                          np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))]
-        subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
+        if op.isfile(op.join(base_path, 'meg', 'subcortical_meg_activity.npz')):
+            subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
+        else:
+            subcorticals_sources = None
         add_data_to_brain(brain_sources)
         if bpy.context.scene.add_meg_labels_data:
             brain_obj = bpy.data.objects['Brain']
             add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
-        if bpy.context.scene.add_meg_subcorticals_data:
+        if bpy.context.scene.add_meg_subcorticals_data and not subcorticals_sources is None:
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
@@ -735,7 +738,6 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
                 for t in range(T):
                     fcurve.keyframe_points[t + 1].co[1] = data[t, fcurve_ind]
 
-
     conditions = meta_data['conditions']
     print('Finished keyframing!!')
     return conditions
@@ -805,24 +807,29 @@ def load_meg_sensors_data():
 
 def load_electrodes_data(stat='diff'):
     # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
-    fol = op.join(mu.get_user_fol(), 'electrodes')
-    data_file = op.join(fol, 'electrodes_data_{}.npz'.format(stat))
-    if op.isfile(data_file):
-        f = np.load(data_file)
-        data = f['data']
-        names = f['names']
-        conditions = f['conditions']
-    elif op.isfile(op.join(fol, 'electrodes_data_{}.npy'.format(stat))) and op.isfile(
-            op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat))):
-        data_file = op.join(fol, 'electrodes_data_{}.npy'.format(stat))
-        f = np.load(data_file)
-        data = f['data']
-        meta_data = np.load(op.join(fol, 'electrodes_data_{}_meta.npz'.format(stat)))
-        names = meta_data['names']
-        conditions = meta_data['conditions']
+    if DataMakerPanel.electrodes_data is None:
+        fol = op.join(mu.get_user_fol(), 'electrodes')
+        data_file = op.join(fol, 'electrodes_data.npz')
+        if op.isfile(data_file):
+            f = np.load(data_file)
+            data = f['data']
+            names = f['names']
+            conditions = f['conditions']
+        elif op.isfile(op.join(fol, 'electrodes_data.npy')) and op.isfile(
+                op.join(fol, 'electrodes_meta_data.npz')):
+            data_file = op.join(fol, 'electrodes_data.npy')
+            data = np.load(data_file)
+            meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
+            names = meta_data['names']
+            conditions = meta_data['conditions']
+        else:
+            data, names, conditions = None, None, None
+        DataMakerPanel.electrodes_data = data
+        DataMakerPanel.electrodes_names = names
+        DataMakerPanel.electrodes_conditions = conditions
+        return data, names, conditions
     else:
-        data, names, conditions = None, None, None
-    return data, names, conditions
+        return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions
 
 
 def meg_evoked_files_update(self, context):
@@ -893,12 +900,10 @@ class AddDataToElectrodes(bpy.types.Operator):
             meta = np.load(source_file)
             data = meta['data']
         else:
-            source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_data.npy'.format(
-                '_bipolar' if bpy.context.scene.bipolar else '',
-                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-            meta_file = op.join(base_path, 'electrodes', 'electrodes{}_data_{}_meta.npz'.format(
-                '_bipolar' if bpy.context.scene.bipolar else '',
-                'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+            source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npy'.format(
+                '_bipolar' if bpy.context.scene.bipolar else ''))
+            meta_file = op.join(base_path, 'electrodes', 'electrodes{}_meta_data.npz'.format(
+                '_bipolar' if bpy.context.scene.bipolar else ''))
             if op.isfile(source_file) and op.isfile(meta_file):
                 data = np.load(source_file)
                 meta = np.load(meta_file)
@@ -906,9 +911,10 @@ class AddDataToElectrodes(bpy.types.Operator):
                 mu.log_err('No electrodes data file!', logging)
         if not data is None and not meta is None:
             print('Loading electordes data from {}'.format(source_file))
+            if len(meta['conditions']) > 1:
+                add_data_to_electrodes_parent_obj(parent_obj, data, meta)
             conditions = add_data_to_electrodes(data, meta)
             selection_panel.set_conditions_enum(conditions)
-            add_data_to_electrodes_parent_obj(parent_obj, data, meta)
             bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
             bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -929,6 +935,10 @@ class DataMakerPanel(bpy.types.Panel):
     meg_labels_data_exist = False
     subcortical_meg_data_exist = False
     fMRI_dynamic_exist = False
+    electrodes_data = None
+    electrodes_names = None
+    electrodes_conditions = None
+
 
     def draw(self, context):
         layout = self.layout
@@ -946,7 +956,7 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'electrodes_positions_files', text="")
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
-            col.operator("mmvt.electrodes_add_data", text="Add data to Electrodes", icon='FCURVE')
+            col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
 
         if DataMakerPanel.meg_labels_data_exist:
             col = layout.box().column()

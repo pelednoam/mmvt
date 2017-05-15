@@ -118,11 +118,17 @@ def calc_rois_matlab_connectivity(subject, args):
 def calc_lables_connectivity(subject, args):
     # import mne.connectivity
 
+    def get_output_fname(connectivity_method):
+        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npz'.format(
+            args.connectivity_modality, connectivity_method))
+
+    def get_output_mat_fname(connectivity_method):
+        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npy'.format(
+        args.connectivity_modality, connectivity_method))
+
     data, names = {}, {}
-    output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npz'.format(
-        args.connectivity_modality, args.connectivity_method[0]))
-    output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npy'.format(
-        args.connectivity_modality, args.connectivity_method[0]))
+    output_fname = get_output_fname(args.connectivity_method[0])
+    output_mat_fname = get_output_mat_fname(args.connectivity_method[0])
     if 'cv' in args.connectivity_method:
         static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npz'.format(
             args.connectivity_modality, args.connectivity_method[0]))
@@ -203,6 +209,8 @@ def calc_lables_connectivity(subject, args):
             connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
             connectivity_method = 'PLI'
+        elif 'mi' in args.connectivity_method:
+            connectivity_method = 'MI'
     else:
         conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         static_conn = None
@@ -224,6 +232,18 @@ def calc_lables_connectivity(subject, args):
                     conn[:, :, w] = con
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
+        elif 'mi' in args.connectivity_method:
+            corr = np.load(get_output_mat_fname('corr'))
+            nch = corr.shape[0]
+            for w in range(windows_num):
+                for i in range(nch):
+                    for j in range(nch):
+                        if i < j:
+                            conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
+                conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+            np.save(output_mat_fname, conn)
+            connectivity_method = 'MI'
+
     if 'corr' in args.connectivity_method or 'pli' in args.connectivity_method and \
             not utils.both_hemi_files_exist(labels_avg_output_fname):
         avg_per_label = np.mean(conn, 0)
@@ -249,6 +269,7 @@ def calc_lables_connectivity(subject, args):
             fig.colorbar(cax)
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
+            plt.close()
         if not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             np.save(static_mean_output_mat_fname, dFC)
