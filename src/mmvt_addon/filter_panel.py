@@ -509,9 +509,9 @@ class Filtering(bpy.types.Operator):
         # source_files = ["/homes/5/npeled/space3/MMVT/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
             fol = op.join(mu.get_user_fol(), 'electrodes')
-            meta_files = glob.glob(op.join(fol, 'electrodes_data_*meta.npz'))
+            meta_files = glob.glob(op.join(fol, 'electrodes_*meta*.npz'))
             if len(meta_files) > 0:
-                data_files = glob.glob(op.join(fol, 'electrodes_data_*data.npy'))
+                data_files = glob.glob(op.join(fol, 'electrodes_*data.npy'))
                 data = np.load(data_files[0])
                 meta = np.load(meta_files[0])
             else:

@@ -39,8 +39,11 @@ def load_edf_data_seizure(args):
         baseline_end='00:03:11',
         lower_freq_filter=0.5,
         upper_freq_filter=70,
+        power_line_notch_widths=5,
         # ref_elec='REF2',
         normalize_data=False,
+        calc_zscore=True,
+        factor=1
     ))
     pu.run_on_subjects(args, elecs.main)
 

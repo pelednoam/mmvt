@@ -2,7 +2,11 @@ import numpy as np
 
 
 def filter_traces(data, t_range, top_k=0, threshold=0):
-    max_diff = np.max(np.abs(np.squeeze(np.diff(data[:, t_range, :], axis=2))), axis=1)
+    if data.shape[2] == 2:
+        diff_data = np.diff(data[:, t_range, :], axis=2)
+    else:
+        diff_data = data[:, t_range, :]
+    max_diff = np.max(np.abs(np.squeeze(diff_data)), axis=1)
     if top_k == 0:
         top_k = sum(max_diff > 0)
     indices = np.where(max_diff > threshold)[0]

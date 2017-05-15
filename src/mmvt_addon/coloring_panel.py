@@ -920,10 +920,14 @@ def color_electrodes():
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_threshold
     data, names, conditions = _addon().load_electrodes_data()
-    norm_percs = (3, 97) #todo: add to gui
-    data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-    colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_max_min(data_max, data_min)
+    if not _addon().colorbar_values_are_locked():
+        norm_percs = (3, 97)  # todo: add to gui
+        data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+        colors_ratio = 256 / (data_max - data_min)
+        _addon().set_colorbar_max_min(data_max, data_min)
+    else:
+        data_max, data_min = _addon().get_colorbar_max_min()
+        colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('Electordes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()

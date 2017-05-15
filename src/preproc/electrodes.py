@@ -517,7 +517,7 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     #                             flip_cm_small=True, moving_average_win_size=0, stat=STAT_DIFF, do_plot=False):
     import mne.io
     from mne.filter import notch_filter
-
+    fol = op.join(MMVT_DIR, subject, 'electrodes')
     edf_fname, _ = locating_file(args.raw_fname, '*.edf')
     # edf_fname = op.join(ELECTRODES_DIR, subject, args.raw_fname)
     if not op.isfile(edf_fname):
@@ -525,7 +525,8 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
     fs = float(edf_raw.info['sfreq'])
     if args.preload and args.remove_power_line_noise:
-        edf_raw.notch_filter(np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq))
+        edf_raw.notch_filter(np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq),
+                             notch_widths=args.power_line_notch_widths)
     if not (args.lower_freq_filter is None and args.upper_freq_filter is None):
         edf_raw.filter(args.lower_freq_filter, args.upper_freq_filter)
     dt = (edf_raw.times[1] - edf_raw.times[0])
@@ -540,13 +541,15 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     conditions = [c['name'] for c in args.conditions]
     data = None
     cond_id = 0
+    baseline = None
     for cond in args.conditions:
         if 'from_t' in cond:
             cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         else:
             cond_data, times = edf_raw[:]
         if not args.preload and args.remove_power_line_noise:
-            notch_filter(cond_data, fs, np.arange(60, 241, 60), copy=False, n_jobs=args.n_jobs)
+            notch_filter(cond_data, fs, np.arange(60, 241, 60), notch_widths=args.power_line_notch_widths,
+                         copy=False, n_jobs=args.n_jobs)
         if cond['name'] != 'baseline':
             C, T = cond_data.shape
             if data is None:
@@ -555,7 +558,10 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
                     conds_num = conds_num -1
                 data = np.zeros((C, T, conds_num))
         if cond['name'] == 'baseline':
-            baseline = np.mean(cond_data, 1)
+            baseline_fname = op.join(fol, 'electrodes{}_baseline.npy'.format('_bipolar' if args.bipolar else ''))
+            baseline = cond_data
+            np.save(baseline_fname, cond_data)
+            baseline_mean = np.mean(cond_data, 1)
         else:
             # import rdp
             # t = range(cond_data.shape[1])
@@ -564,23 +570,27 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
             cond_id = cond_id + 1
 
     # x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
+    plt.psd(data, Fs=hz)
     if args.ref_elec != '':
         ref_ind = labels.index(args.ref_elec)
         data -= np.tile(data[ref_ind], (C, 1, 1))
     if 'baseline' in conditions:
         for c in range(data.shape[2]):
-            data[:, :, c] -= np.tile(baseline, (T, 1)).T
+            data[:, :, c] -= np.tile(baseline_mean, (T, 1)).T
+            if args.calc_zscore:
+                data[:, :, c] /= np.tile(baseline.std(axis=1), (T, 1)).T
         conditions.remove('baseline')
     if args.normalize_data:
         data = utils.normalize_data(data, norm_by_percentile=False)
+    data *= args.factor
     stat_data = calc_stat_data(data, STAT_DIFF)
-    fol = op.join(MMVT_DIR, subject, 'electrodes')
-    output_fname = op.join(fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
 
     # calc_colors = partial(
     #     utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
     #     flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
     if args.moving_average_win_size > 0:
+        output_fname = op.join(
+            fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
         stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
     else:
@@ -971,8 +981,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--time_format', help='', required=False, default='%H:%M:%S')
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
+    parser.add_argument('--power_line_notch_widths', help='notch_widths', required=False, default=None, type=au.float_or_none)
     parser.add_argument('--lower_freq_filter', help='', required=False, default=0, type=float)
     parser.add_argument('--upper_freq_filter', help='', required=False, default=0, type=float)
+    parser.add_argument('--factor', help='', required=False, default=1, type=float)
+    parser.add_argument('--calc_zscore', help='calc_zscore', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')

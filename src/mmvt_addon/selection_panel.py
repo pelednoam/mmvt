@@ -152,17 +152,14 @@ def select_brain_objects(parent_obj_name, children=None, exclude=[]):
         children = bpy.data.objects[parent_obj_name].children
     parent_obj = bpy.data.objects[parent_obj_name]
     children_have_fcurves = mu.count_fcurves(children) > 0
-    if bpy.context.scene.selection_type == 'diff' or not children_have_fcurves:
-        if parent_obj.animation_data is None:
-            print('parent_obj.animation_data is None!')
-        else:
-            mu.show_hide_obj_and_fcurves(children, False)
-            parent_obj.select = True
-            mu.show_hide_obj_and_fcurves(parent_obj, True, exclude)
-            # for fcurve in parent_obj.animation_data.action.fcurves:
-            #     fcurve.hide = False
-            #     fcurve.select = True
-    else:
+    parent_have_fcurves = not parent_obj.animation_data is None
+    if parent_have_fcurves and (bpy.context.scene.selection_type == 'diff' or not children_have_fcurves):
+        mu.show_hide_obj_and_fcurves(children, False)
+        parent_obj.select = True
+        mu.show_hide_obj_and_fcurves(parent_obj, True, exclude)
+    elif children_have_fcurves:
+        if bpy.context.scene.selection_type == 'diff':
+            bpy.context.scene.selection_type = 'conds'
         mu.show_hide_obj_and_fcurves(children, True, exclude)
         parent_obj.select = False
     mu.view_all_in_graph_editor()

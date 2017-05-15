@@ -308,9 +308,12 @@ def get_max_time_steps():
     if not found:
         try:
             parent_obj = bpy.data.objects['Deep_electrodes']
-            fcurves = parent_obj.animation_data.action.fcurves
-            if len(fcurves) == 0:
-                fcurves = parent_obj.children[0].fcurves
+            if not parent_obj.animation_data is None:
+                fcurves = parent_obj.animation_data.action.fcurves
+            else:
+                fcurves = parent_obj.children[1].animation_data.action.fcurves
+            # else:
+            #     fcurves = parent_obj.children[0].animation_data.action.fcurves[0]
             bpy.types.Scene.maximal_time_steps = len(fcurves[0].keyframe_points) - 2
             found = True
         except:

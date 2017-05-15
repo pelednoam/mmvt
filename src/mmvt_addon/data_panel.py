@@ -824,7 +824,6 @@ def load_electrodes_data(stat='diff'):
             conditions = meta_data['conditions']
         else:
             data, names, conditions = None, None, None
-        data = data * 1000
         DataMakerPanel.electrodes_data = data
         DataMakerPanel.electrodes_names = names
         DataMakerPanel.electrodes_conditions = conditions
@@ -913,9 +912,9 @@ class AddDataToElectrodes(bpy.types.Operator):
         if not data is None and not meta is None:
             print('Loading electordes data from {}'.format(source_file))
             if len(meta['conditions']) > 1:
-                conditions = add_data_to_electrodes(data, meta)
-                selection_panel.set_conditions_enum(conditions)
-            add_data_to_electrodes_parent_obj(parent_obj, data, meta)
+                add_data_to_electrodes_parent_obj(parent_obj, data, meta)
+            conditions = add_data_to_electrodes(data, meta)
+            selection_panel.set_conditions_enum(conditions)
             bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
             bpy.context.scene.objects.active = bpy.data.objects[' ']
