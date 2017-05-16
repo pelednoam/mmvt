@@ -84,7 +84,7 @@ def get_electrodes_file_from_server(args):
         pu.run_on_subjects(args, elecs.main)
 
 
-def load_electrodes_matlab_file(args):
+def load_electrodes_matlab_stim_file(args):
     from src.preproc import stim
     subject = args.subject[0]
     mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF45_continuous.mat')
