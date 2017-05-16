@@ -907,7 +907,7 @@ class AddDataToElectrodes(bpy.types.Operator):
         parent_obj = bpy.data.objects['Deep_electrodes']
         base_path = mu.get_user_fol()
         data, meta = None, None
-        source_file = op.join(base_path, 'electrodes', 'electrodes{}_data_diff.npz'.format(
+        source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
             '_bipolar' if bpy.context.scene.bipolar else ''))
             # 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
         if op.isfile(source_file):
@@ -928,7 +928,7 @@ class AddDataToElectrodes(bpy.types.Operator):
             if len(meta['conditions']) > 1:
                 add_data_to_electrodes_parent_obj(parent_obj, data, meta)
             conditions = add_data_to_electrodes(data, meta)
-            selection_panel.set_conditions_enum(conditions)
+            # selection_panel.set_conditions_enum(conditions)
             bpy.types.Scene.electrodes_data_exist = True
         if bpy.data.objects.get(' '):
             bpy.context.scene.objects.active = bpy.data.objects[' ']

@@ -12,6 +12,21 @@ SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 
+def decode_subjects(subjects):
+    for sub in subjects:
+        if '*' in sub:
+            subjects.remove(sub)
+            subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
+        elif 'file:' in sub:
+            subjects.remove(sub)
+            subject_fname = sub[len('file:'):]
+            with open(subject_fname, 'r') as f:
+                for sub in f.readlines():
+                    if sub.strip() != '':
+                        subjects.append(sub.strip())
+    return subjects
+
+
 def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     if subjects_itr is None:
         subjects_itr = args.subject
@@ -19,10 +34,18 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.necessary_files == '':
         args.necessary_files = dict()
-    for sub in args.subject:
-        if '*' in sub:
-            args.subject.remove(sub)
-            args.subject.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
+    args.subject = decode_subjects(args.subject)
+    # for sub in args.subject:
+    #     if '*' in sub:
+    #         args.subject.remove(sub)
+    #         args.subject.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
+    #     elif 'file:' in sub:
+    #         args.subject.remove(sub)
+    #         subject_fname = sub[len('file:'):]
+    #         with open(subject_fname, 'r') as f:
+    #             for sub in f.readlines():
+    #                 if sub.strip() != '':
+    #                     args.subject.append(sub.strip())
     if 'sftp_password' not in args or args.sftp_password == '':
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \

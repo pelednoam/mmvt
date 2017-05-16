@@ -55,6 +55,9 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
+    stc_t = create_stc_t(stc, t)
+    vertices_to = mne.grade_to_vertices(subject, None)
+    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
 
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
@@ -66,9 +69,6 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
         data_min, data_max = -data_minmax, data_minmax
         colors_ratio = 256 / (data_max - data_min)
         _addon().set_colorbar_max_min(data_max, data_min)
-    stc_t = create_stc_t(stc, t)
-    vertices_to = mne.grade_to_vertices(subject, None)
-    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
     return fname, stc_t_smooth
 
@@ -1769,5 +1769,5 @@ def unregister():
 
 if __name__ == '__main__':
     import mne
-    stc = mne.read_source_estimate('/homes/5/npeled/space1/mmvt/fsaverage5/meg/ep001_msit_nTSSS_interference_diff_1-15-dSPM-lh.stc')
+    stc = mne.read_source_estimate('/homes/5/npeled/space1/mmvt/fsaverage5/meg/fsaverage5_msit_nTSSS_interference_diff_1-15-dSPM-lh.stc')
     plot_stc(stc, 100, threshold=1, save_image=False, view_selected=False, subject='fsaverage5', n_jobs=4)

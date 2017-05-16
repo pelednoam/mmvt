@@ -1,6 +1,7 @@
 import os.path as op
 import scipy.io as sio
 import argparse
+import numpy as np
 from src.preproc import electrodes as elecs
 from src.utils import utils
 from src.utils import args_utils as au
@@ -84,13 +85,27 @@ def get_electrodes_file_from_server(args):
 
 
 def load_electrodes_matlab_file(args):
+    from src.preproc import stim
     subject = args.subject[0]
     mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF45_continuous.mat')
     d = utils.Bag(dict(**sio.loadmat(mat_fname)))
     labels = mu.matlab_cell_str_to_list(d.Label)
     fs = d.fs[0][0]
-    data = d.data
-    print('asdf')
+    # times: 62000 -66000
+    data = d.data[:, 62000:66000]
+    args.stim_channel = 'LVF04-LVF05'
+    bipolar = '-' in args.stim_channel
+    elecs.convert_electrodes_coordinates_file_to_npy(subject, bipolar=False)
+    stim.create_stim_electrodes_positions(subject, args, labels)
+    data_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_data.npy'.format(
+        '_bipolar' if bipolar else ''))
+    meta_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_meta_data.npz'.format(
+        '_bipolar' if bipolar else ''))
+    C, T = data.shape
+    data = data.reshape((C, T, 1))
+    np.save(data_fname, data)
+    np.savez(meta_fname, names=labels, conditions=['rest'])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')

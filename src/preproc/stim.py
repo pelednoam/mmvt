@@ -76,9 +76,13 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
     f = np.load(op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_positions.npz'))
     org_pos, org_labels = f['pos'], f['names']
     if bipolar:
-        pos, dists = [], []
+        pos, dists, new_labels = [], [], []
         for stim_label in stim_labels:
             group, num1, num2 = utils.elec_group_number(stim_label, True)
+            if group == '' or num1 == '' or num2 == '':
+                print("Can't calc {} pos!".format(stim_label))
+                continue
+            new_labels.append(stim_label)
             stim_label1 = '{}{}'.format(group, num1)
             stim_label2 = '{}{}'.format(group, num2)
             label_ind1 = np.where(org_labels == stim_label1)[0]
@@ -92,8 +96,9 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
         pos = [pos for (pos, label) in zip(org_pos, org_labels) if label in stim_labels]
         dists = [np.linalg.norm(p2 - p1) for p1, p2 in zip(pos[:-1], pos[1:])]
 
+    stim_labels = new_labels
     elcs_oris = calc_ori(stim_labels, bipolar, pos)
-    electrodes_types = ep.calc_electrodes_type(stim_labels, dists, bipolar)
+    electrodes_types = ep.calc_electrodes_types(stim_labels, pos)
     np.savez(output_file, pos=pos, names=stim_labels, dists=dists, electrodes_types=electrodes_types,
              electrodes_oris=elcs_oris, bipolar=bipolar)
 

@@ -574,8 +574,8 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template='fsaverage', morph_from_subject='',
-                          morph_to_subject='', overwrite=False, do_plot=False, do_plot_all_vertices=False,
+def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='',
+                          overwrite=False, do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     # if fmri_file_template == '':
     #     print('You should set the fmri_file_template for something like ' +
@@ -585,11 +585,11 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
     if input_fname_template == '':
         input_fname_template = '*{hemi}*'
     input_fname_template = input_fname_template.format(
-        subject=subject, morph_to_subject=template, hemi='{hemi}')
+        subject=subject, morph_to_subject=template_brain, hemi='{hemi}')
 
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     input_fname_template = op.join(FMRI_DIR, subject, input_fname_template)
-    morph_from_subject = subject if morph_from_subject == '' else morph_from_subject
+    morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(FMRI_DIR, subject, 'figures')
     for hemi in utils.HEMIS:
         fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
@@ -813,6 +813,7 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
 
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
+    trg_subject = subject if trg_subject == '' else trg_subject
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
         fmri_file_template = '*'
@@ -1146,8 +1147,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'analyze_4d_data' in args.function:
         flags['analyze_4d_data'] = analyze_4d_data(
-            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain, args.morph_labels_from_subject,
-            args.morph_labels_to_subject, args.overwrite_labels_data, args.resting_state_plot,
+            subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain,
+            args.overwrite_labels_data, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
     if 'calc_labels_minmax' in args.function:
@@ -1222,7 +1223,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
     parser.add_argument('--template_brain', help='', required=False, default='')
-    parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
+    # parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
     parser.add_argument('--fwhm', help='', required=False, default=6, type=float)
     parser.add_argument('--lfp', help='', required=False, default=0.08, type=float)
     parser.add_argument('--nskip', help='', required=False, default=4, type=int)

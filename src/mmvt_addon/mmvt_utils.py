@@ -527,8 +527,9 @@ def elec_group_number(elec_name, bipolar=False):
         elec_name = elec_name.decode('utf-8')
     if bipolar and '-' in elec_name:
         elec_name2, elec_name1 = elec_name.split('-')
-        group, num1 = elec_group_number(elec_name1, False)
-        _, num2 = elec_group_number(elec_name2, False)
+        group1, num1 = elec_group_number(elec_name1, False)
+        group2, num2 = elec_group_number(elec_name2, False)
+        group = group1 if group1 != '' else group2
         return group, num1, num2
     else:
         elec_name = elec_name.strip()
@@ -816,7 +817,7 @@ def tryit(func):
         except:
             print('Error in {}!'.format(func.__name__))
             # if (throw_exception):
-            #     print(traceback.format_exc())
+            print(traceback.format_exc())
             retval = None
         return retval
     return wrapper

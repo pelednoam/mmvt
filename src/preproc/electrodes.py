@@ -90,6 +90,27 @@ def get_names_dists_non_bipolar_electrodes(data):
     return names, pos
 
 
+def calc_electrodes_types(labels, pos):
+    group_type = {}
+    dists = defaultdict(list)
+    electrodes_group_type = [None] * len(pos)
+    for index in range(len(labels) - 1):
+        elc_group1, _ = utils.elec_group_number(labels[index])
+        elc_group2, _ = utils.elec_group_number(labels[index + 1])
+        if elc_group1 == elc_group2:
+            dists[elc_group1].append(np.linalg.norm(pos[index + 1] - pos[index]))
+    for group, group_dists in dists.items():
+        # todo: not sure this is the best way to check it. Strip with 1xN will be mistaken as a depth
+        if np.max(group_dists) > 2 * np.median(group_dists):
+            group_type[group] = GRID
+        else:
+            group_type[group] = DEPTH
+    for index in range(len(labels)):
+        elc_group, _ = utils.elec_group_number(labels[index])
+        electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
+    return np.array(electrodes_group_type)
+
+
 def grid_or_depth(data):
     if data.shape[1] == 5:
         electrodes_group_type = [None] * data.shape[0]
@@ -97,24 +118,24 @@ def grid_or_depth(data):
             electrodes_group_type[ind] = GRID if elc_type in ['grid', 'strip'] else DEPTH
     else:
         pos = data[:, 1:4].astype(float)
-        dists = defaultdict(list)
-        group_type = {}
-        electrodes_group_type = [None] * pos.shape[0]
-        for index in range(data.shape[0] - 1):
-            elc_group1, _ = utils.elec_group_number(data[index, 0])
-            elc_group2, _ = utils.elec_group_number(data[index + 1, 0])
-            if elc_group1 == elc_group2:
-                dists[elc_group1].append(np.linalg.norm(pos[index + 1] - pos[index]))
-        for group, group_dists in dists.items():
-            #todo: not sure this is the best way to check it. Strip with 1xN will be mistaken as a depth
-            if np.max(group_dists) > 2 * np.median(group_dists):
-                group_type[group] = GRID
-            else:
-                group_type[group] = DEPTH
-        for index in range(data.shape[0]):
-            elc_group, _ = utils.elec_group_number(data[index, 0])
-            electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
-    return np.array(electrodes_group_type)
+        return calc_electrodes_types(data[:, 0], pos)
+        # group_type = {}
+        # electrodes_group_type = [None] * pos.shape[0]
+        # for index in range(data.shape[0] - 1):
+        #     elc_group1, _ = utils.elec_group_number(data[index, 0])
+        #     elc_group2, _ = utils.elec_group_number(data[index + 1, 0])
+        #     if elc_group1 == elc_group2:
+        #         dists[elc_group1].append(np.linalg.norm(pos[index + 1] - pos[index]))
+        # for group, group_dists in dists.items():
+        #     #todo: not sure this is the best way to check it. Strip with 1xN will be mistaken as a depth
+        #     if np.max(group_dists) > 2 * np.median(group_dists):
+        #         group_type[group] = GRID
+        #     else:
+        #         group_type[group] = DEPTH
+        # for index in range(data.shape[0]):
+        #     elc_group, _ = utils.elec_group_number(data[index, 0])
+        #     electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
+    # return np.array(electrodes_group_type)
 
 
 def read_electrodes_file(subject, bipolar):
