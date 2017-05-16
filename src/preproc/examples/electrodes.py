@@ -33,17 +33,18 @@ def load_edf_data_seizure(args):
         bipolar=False,
         raw_fname='Bakhamis_Amal_1.edf',
         start_time='00:01:34',
-        seizure_onset='00:03:33',
+        # seizure_onset='00:03:33',
+        seizure_onset='00:03:28',
         seizure_end='00:03:50',
         baseline_onset='00:01:34',
         baseline_end='00:03:11',
         lower_freq_filter=0.5,
         upper_freq_filter=70,
         power_line_notch_widths=5,
-        # ref_elec='REF2',
+        ref_elec='CII',
         normalize_data=False,
-        calc_zscore=True,
-        factor=1
+        calc_zscore=False,
+        factor=1000
     ))
     pu.run_on_subjects(args, elecs.main)
 

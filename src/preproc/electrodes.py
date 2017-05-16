@@ -8,6 +8,8 @@ import scipy
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 from datetime import datetime
+import mne.io
+from mne.filter import notch_filter
 
 from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
@@ -165,6 +167,26 @@ def read_electrodes_data(elecs_data_dic, conditions, montage_file, output_file_n
     avg_data = np.mean(data, 2)
     colors = utils.mat_to_colors(avg_data, np.percentile(avg_data, 10), np.percentile(avg_data, 90), colorsMap='RdBu', flip_cm=True)
     np.savez(output_file_name, data=data, names=sfp.ch_names, conditions=conditions, colors=colors)
+
+
+def calc_dist_mat(subject, bipolar=False, snap=False):
+    from scipy.spatial import distance
+
+    pos_fname = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
+    pos_fname = op.join(MMVT_DIR, subject, 'electrodes', pos_fname)
+    output_fname = 'electrodes{}_{}dists.npy'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', output_fname)
+
+    d = np.load(pos_fname)
+    pos = d['pos']
+    x = np.zeros((len(pos), len(pos)))
+    for i in range(len(pos)):
+        for j in range(len(pos)):
+            x[i,j] = np.linalg.norm(pos[i]- pos[j]) # np.sqrt((pos[i]- pos[j])**2)
+            # assert(x[i,j]==np.linalg.norm(pos[i]- pos[j]))
+    # x = distance.cdist(pos, pos, 'euclidean')
+    np.save(output_fname, x)
+    return op.isfile(output_fname)
 
 
 def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name=''):
@@ -512,14 +534,8 @@ def read_edf(edf_fname, from_t, to_t):
 
 
 def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
-    # edf_name, conds, bipolar=False, norm_by_percentile=True,
-    #                             norm_percs=(3, 97), threshold=0, cm_big='YlOrRd', cm_small='PuBu', flip_cm_big=False,
-    #                             flip_cm_small=True, moving_average_win_size=0, stat=STAT_DIFF, do_plot=False):
-    import mne.io
-    from mne.filter import notch_filter
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     edf_fname, _ = locating_file(args.raw_fname, '*.edf')
-    # edf_fname = op.join(ELECTRODES_DIR, subject, args.raw_fname)
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
@@ -532,13 +548,26 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
-    data_channels, _ = read_electrodes_file(subject, args.bipolar)
+    data_channels, all_pos = read_electrodes_file(subject, bipolar=False)
+    if args.bipolar:
+        data_bipolar_channels, _ = read_electrodes_file(subject, bipolar=True)
     # live_channels = find_live_channels(edf_raw, hz)
     # no_stim_channels = get_data_channels(edf_raw)
     channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
     conditions = [c['name'] for c in args.conditions]
+    pos = all_pos[np.array(channels_indices)]
+
+    from scipy.spatial import distance
+    dists = distance.cdist(pos, pos, 'euclidean')
+    dists_output_fname = 'electrodes{}_dists.npy'.format('_bipolar' if args.bipolar else '')
+    dists_output_fname = op.join(MMVT_DIR, subject, 'electrodes', dists_output_fname)
+    np.save(dists_output_fname, dists)
+
+    if args.ref_elec != '':
+        ref_ind = edf_raw.ch_names.index(args.ref_elec)
+
     data = None
     cond_id = 0
     baseline = None
@@ -547,6 +576,9 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
             cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         else:
             cond_data, times = edf_raw[:]
+        if args.ref_elec != '':
+            ref_data, _ = edf_raw[ref_ind, int(cond['from_t'] * hz):int(cond['to_t'] * hz)]
+            cond_data -= np.tile(ref_data, (cond_data.shape[0], 1))
         if not args.preload and args.remove_power_line_noise:
             notch_filter(cond_data, fs, np.arange(60, 241, 60), notch_widths=args.power_line_notch_widths,
                          copy=False, n_jobs=args.n_jobs)
@@ -569,12 +601,9 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
             data[:, :, cond_id] = cond_data
             cond_id = cond_id + 1
 
-    # x_rdp_2 = rdp.rdp(list(zip(t, x)), epsilon=0.2)
     plt.psd(data, Fs=hz)
-    if args.ref_elec != '':
-        ref_ind = labels.index(args.ref_elec)
-        data -= np.tile(data[ref_ind], (C, 1, 1))
-    if 'baseline' in conditions:
+    plt.show()
+    if 'baseline' in conditions and args.remove_baseline:
         for c in range(data.shape[2]):
             data[:, :, c] -= np.tile(baseline_mean, (T, 1)).T
             if args.calc_zscore:
@@ -585,14 +614,12 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     data *= args.factor
     stat_data = calc_stat_data(data, STAT_DIFF)
 
-    # calc_colors = partial(
-    #     utils.mat_to_colors_two_colors_maps, threshold=threshold, cm_big=cm_big, cm_small=cm_small, default_val=1,
-    #     flip_cm_big=flip_cm_big, flip_cm_small=flip_cm_small, min_is_abs_max=True, norm_percs=norm_percs)
     if args.moving_average_win_size > 0:
         output_fname = op.join(
             fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
         stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
+        return op.isfile(output_fname)
     else:
         meta_fname = op.join(fol, 'electrodes{}_meta_data{}'.format(
             '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
@@ -600,6 +627,7 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
             '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
+        return op.isfile(data_fname) and op.isfile(meta_fname)
 
 
 def calc_seizure_times(start_time, seizure_onset, seizure_end, baseline_onset, baseline_end,
@@ -911,6 +939,9 @@ def main(subject, remote_subject_dir, args, flags):
         flags['convert_electrodes_pos'] = convert_electrodes_coordinates_file_to_npy(
             subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
 
+    if utils.should_run(args, 'calc_dist_mat'):
+        flags['calc_dist_mat'] = calc_dist_mat(subject, bipolar=args.bipolar)
+
     if utils.should_run(args, 'sort_electrodes_groups'):
         flags['sort_electrodes_groups'] = sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
 
@@ -984,6 +1015,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--power_line_notch_widths', help='notch_widths', required=False, default=None, type=au.float_or_none)
     parser.add_argument('--lower_freq_filter', help='', required=False, default=0, type=float)
     parser.add_argument('--upper_freq_filter', help='', required=False, default=0, type=float)
+    parser.add_argument('--remove_baseline', help='remove_baseline', required=False, default=1, type=au.is_true)
     parser.add_argument('--factor', help='', required=False, default=1, type=float)
     parser.add_argument('--calc_zscore', help='calc_zscore', required=False, default=0, type=au.is_true)
 
@@ -1003,6 +1035,8 @@ def read_cmd_args(argv=None):
         args.lower_freq_filter = None
     if args.upper_freq_filter == 0:
         args.upper_freq_filter = None
+    if args.bipolar:
+        args.ref_elec = ''
     print(args)
     return args
 

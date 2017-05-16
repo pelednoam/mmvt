@@ -805,6 +805,20 @@ def load_meg_sensors_data():
     return data, meta
 
 
+def load_electrodes_dists():
+    if DataMakerPanel.electrodes_dists is None:
+        fol = op.join(mu.get_user_fol(), 'electrodes')
+        data_file = op.join(fol, 'electrodes_dists.npy')
+        if op.isfile(data_file):
+            dists = np.load(data_file)
+            DataMakerPanel.electrodes_dists = dists
+        else:
+            dists = None
+    else:
+        dists = DataMakerPanel.electrodes_dists
+    return dists
+
+
 def load_electrodes_data(stat='diff'):
     # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
     if DataMakerPanel.electrodes_data is None:
@@ -936,6 +950,7 @@ class DataMakerPanel(bpy.types.Panel):
     subcortical_meg_data_exist = False
     fMRI_dynamic_exist = False
     electrodes_data = None
+    electrodes_dists = None
     electrodes_names = None
     electrodes_conditions = None
 

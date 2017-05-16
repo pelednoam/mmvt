@@ -14,6 +14,15 @@ def _addon():
     return ElecsPanel.addon
 
 
+def elc_size_update(self, context):
+    try:
+        elc = bpy.context.selected_objects[0]
+        elc.scale[0] = bpy.context.scene.elc_size
+        elc.scale[1] = bpy.context.scene.elc_size
+        elc.scale[2] = bpy.context.scene.elc_size
+    except:
+        pass
+
 def get_leads():
     return ElecsPanel.leads
 
@@ -339,6 +348,9 @@ def elecs_draw(self, context):
             mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
             mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+    # layout.operator(ElectrodesViewOne.bl_idname, text="View1", icon='COLOR_GREEN')
+    # layout.operator(ElectrodesViewTwo.bl_idname, text="View2", icon='COLOR_GREEN')
+    layout.prop(context.scene, "elc_size", text="")
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
     # Color picker:
@@ -348,6 +360,28 @@ def elecs_draw(self, context):
     # row.label(text='             ')
     # row.prop(context.scene, 'electrodes_color', text='')
     # row.label(text='             ')
+
+
+
+class ElectrodesViewOne(bpy.types.Operator):
+    bl_idname = 'mmvt.electrodes_view_onw'
+    bl_label = 'elecetrodes view one'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        for elc in bpy.data.objects['Deep_electrodes'].children:
+            elc.hide =  elc.name not in ['RPI1', 'RPI2', 'RAT6', 'RAT7', 'RAT8', 'RAT8']
+        return {'FINISHED'}
+
+class ElectrodesViewTwo(bpy.types.Operator):
+    bl_idname = 'mmvt.electrodes_view_two'
+    bl_label = 'elecetrodes view two'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        for elc in bpy.data.objects['Deep_electrodes'].children:
+            elc.hide = elc.name[:3] not in ['RPI', 'RAT', 'RAI', 'RMT', 'RPT', 'LAI', 'LPI', 'LAT', 'LMT', 'LPT']
+        return {'FINISHED'}
 
 
 class ClearElectrodes(bpy.types.Operator):
@@ -499,6 +533,10 @@ bpy.types.Scene.electrodes_what_to_color = bpy.props.EnumProperty(
     items=[('probs', 'probabilities', '', 1), ('verts', 'vertices', '', 2)], description="what to color",
     update=what_to_color_update)
 
+bpy.types.Scene.elc_size = bpy.props.FloatProperty(description="", update=elc_size_update)
+
+
+
 
 class ElecsPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -515,6 +553,7 @@ class ElecsPanel(bpy.types.Panel):
     cortical_rois, cortical_probs = [], []
     groups_electrodes, groups, groups_hemi = [], {}, {}
     sorted_groups = {'rh':[], 'lh':[]}
+    bpy.context.scene.elc_size = 1
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -693,6 +732,10 @@ def register():
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
+        bpy.utils.register_class(ElectrodesViewOne)
+        bpy.utils.register_class(ElectrodesViewTwo)
+
+
         # print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
@@ -708,7 +751,11 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
+        bpy.utils.unregister_class(ElectrodesViewOne)
+        bpy.utils.unregister_class(ElectrodesViewTwo)
+
     except:
         pass
         # print("Can't unregister Electrodes Panel!")
+
 

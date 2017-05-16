@@ -22,8 +22,8 @@ except:
 
 HEMIS = mu.HEMIS
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
-WIC_ELECTRODES, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
- WIC_CONN_LABELS_AVG) = range(15)
+WIC_ELECTRODES, WIC_ELECTRODES_DISTS, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
+ WIC_CONN_LABELS_AVG) = range(16)
 
 
 def _addon():
@@ -913,6 +913,28 @@ def color_eeg_sensors():
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
+def color_electrodes_dists():
+    bpy.context.scene.show_hide_electrodes = True
+    _addon().show_hide_electrodes(True)
+    ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES_DISTS)
+    dists = _addon().load_electrodes_dists()
+    _, names, conditions = _addon().load_electrodes_data()
+    selected_objects = bpy.context.selected_objects
+    if not (len(selected_objects) == 1 and selected_objects[0].name in names):
+        return
+
+    selected_elec = selected_objects[0].name
+    selected_elec_ind = np.where(names == selected_elec)[0]
+    data = dists[selected_elec_ind].squeeze()
+    data_max = np.max(dists)
+    colors_ratio = 256 / data_max
+    _addon().set_colorbar_max_min(data_max, 0)
+    _addon().set_colorbar_title('Electordes conditions difference')
+    _addon().set_colormap('hot')
+    color_objects_homogeneously(data, names, conditions, 0, colors_ratio, 0)
+    _addon().show_electrodes()
+
+
 def color_electrodes():
     # mu.set_show_textured_solid(False)
     bpy.context.scene.show_hide_electrodes = True
@@ -1056,6 +1078,17 @@ class ColorElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         color_electrodes()
+        return {"FINISHED"}
+
+
+class ColorElectrodesDists(bpy.types.Operator):
+    bl_idname = "mmvt.electrodes_dists_color"
+    bl_label = "mmvt electrodes dists color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_electrodes_dists()
         return {"FINISHED"}
 
 
@@ -1312,6 +1345,7 @@ def draw(self, context):
     #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
     electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npz')) or \
                              op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npy'))
+    electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
     electrodes_stim_files_exist = len(glob.glob(op.join(
         mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
     electrodes_labels_files_exist = len(glob.glob(op.join(
@@ -1389,6 +1423,8 @@ def draw(self, context):
     if electrodes_files_exist:
         col = layout.box().column()
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        if electrodes_dists_exist:
+            col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
         if electrodes_labels_files_exist:
             col.prop(context.scene, "electrodes_sources_files", text="")
             col.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
@@ -1674,6 +1710,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(ColorElectrodes)
+        bpy.utils.register_class(ColorElectrodesDists)
         bpy.utils.register_class(ColorElectrodesStim)
         bpy.utils.register_class(ColorElectrodesLabels)
         bpy.utils.register_class(ColorContours)
@@ -1703,6 +1740,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(ColorElectrodes)
+        bpy.utils.unregister_class(ColorElectrodesDists)
         bpy.utils.unregister_class(ColorElectrodesStim)
         bpy.utils.unregister_class(ColorElectrodesLabels)
         bpy.utils.unregister_class(ColorManually)

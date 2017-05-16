@@ -91,6 +91,7 @@ add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_electrodes_data = data_panel.load_electrodes_data
+load_electrodes_dists = data_panel.load_electrodes_dists
 load_eeg_data = data_panel.load_eeg_data
 load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
