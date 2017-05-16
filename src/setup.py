@@ -233,18 +233,26 @@ def install_blender_reqs():
         resource_fol = utils.get_resources_fol()
         # Get pip
         blender_bin_fol = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.78', 'python', 'bin') if utils.is_osx() else \
-            op.join(blender_fol, '2.78', 'python', 'bin')
-        if utils.is_osx():
-            cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
-        elif utils.is_linux():
-            cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
+            op.join(blender_fol, '2.78', 'python')
+        python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
+        current_dir = os.getcwd()
+        os.chdir(blender_bin_fol)
+        # if utils.is_osx():
+        cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
+        # elif utils.is_linux():
+        #     cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
+        # else:
+        #     print('No pizco for windows yet...')
+        #     return
+        utils.run_script(cmd)
+        # install blender reqs:
+        if not utils.is_windows():
+            cmd = '{} install zmq pizco scipy mne joblib'.format(op.join('bin', 'pip'))
+            utils.run_script(cmd)
         else:
-            print('No pizco for windows yet...')
-            return
-        utils.run_script(cmd)
-        # install zmq and pizco
-        cmd = '{}  install zmq pizco scipy mne joblib'.format(op.join(blender_bin_fol, 'pip'))
-        utils.run_script(cmd)
+            from src.mmvt_addon.scripts import install_blender_reqs
+            install_blender_reqs.wrap_blender_call(args.only_verbose)
+        os.chdir(current_dir)
     except:
         print(traceback.format_exc())
         print("*** Can't install pizco ***")

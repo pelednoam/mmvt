@@ -415,6 +415,7 @@ bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
 bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=[('', '', '', 1)], description='Type of stream listener')
 bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.good_channels_detector = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
 
 
