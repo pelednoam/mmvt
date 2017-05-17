@@ -21,9 +21,12 @@ def decode_subjects(subjects):
             subjects.remove(sub)
             subject_fname = sub[len('file:'):]
             with open(subject_fname, 'r') as f:
-                for sub in f.readlines():
-                    if sub.strip() != '':
-                        subjects.append(sub.strip())
+                for line in f.readlines():
+                    line = line.strip()
+                    if line.startswith('#'):
+                        continue
+                    if line != '':
+                        subjects.append(line)
     return subjects
 
 

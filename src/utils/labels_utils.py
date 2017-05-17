@@ -293,7 +293,8 @@ def read_hemi_labels(subject, subjects_dir, atlas, hemi, surf_name='pial', label
             label = mne.read_label(label_file)
             labels.append(label)
         if len(labels) == 0:
-            raise Exception('No labels were found in {}!'.format(labels_fol))
+            print('No labels were found in {}!'.format(labels_fol))
+            return []
     return labels
 
 
@@ -320,7 +321,11 @@ def calc_time_series_per_label(x, labels, measure, excludes=(),
 
     _label_is_excluded = partial(label_is_excluded, compiled_excludes=re.compile('|'.join(excludes)))
     labels = [l for l in labels if not _label_is_excluded(l.name)]
-    labels_data = np.zeros((len(labels), x.shape[-1]))
+    if measure.startswith('pca'):
+        comps_num = 1 if '_' not in measure else int(measure.split('_')[1])
+        labels_data = np.zeros((len(labels), x.shape[-1], comps_num))
+    else:
+        labels_data = np.zeros((len(labels), x.shape[-1]))
     labels_names = []
     if do_plot_all_vertices:
         all_vertices_plots_dir = op.join(figures_dir, 'all_vertices')
@@ -331,15 +336,19 @@ def calc_time_series_per_label(x, labels, measure, excludes=(),
     for ind, label in enumerate(labels):
         if measure == 'mean':
             labels_data[ind, :] = np.mean(x[label.vertices, 0, 0, :], 0)
-        elif measure == 'pca':
+        elif measure.startswith('pca'):
             print(label)
             _x = x[label.vertices, 0, 0, :].T
             remove_cols = np.where(np.all(_x == np.mean(_x, 0), 0))[0]
             _x = np.delete(_x, remove_cols, 1)
             _x = (_x - np.mean(_x, 0)) / np.std(_x, 0)
-            pca = deco.PCA(1)
+            comps = 1 if '_' not in measure else int(measure.split('_')[1])
+            pca = deco.PCA(comps)
             x_r = pca.fit(_x).transform(_x)
-            labels_data[ind, :] = x_r.ravel()
+            # if x_r.shape[1] == 1:
+            labels_data[ind, :] = x_r
+            # else:
+            #     labels_data[ind, :] = x_r
         elif measure == 'cv': #''coef_of_variation':
             label_mean = np.mean(x[label.vertices, 0, 0, :], 0)
             label_std = np.std(x[label.vertices, 0, 0, :], 0)

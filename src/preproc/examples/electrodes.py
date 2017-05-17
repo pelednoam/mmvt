@@ -97,13 +97,11 @@ def load_electrodes_matlab_stim_file(args):
     d = mu.load_mat_to_bag(mat_fname)
     labels = mu.matlab_cell_str_to_list(d.Label)
     fs = d.fs[0][0]
-    # times: 62000 -66000
-    data = d.data[:, 62000:66000]
+    data = d.data[:, 62000:66000] # times: 62000 -66000
 
     bad_electrodes = ['ROF04-05', 'ROF05-06', 'LPF14-NT']
     labels, data = elecs.remove_bad_channels(labels, data, bad_electrodes)
-    C, T = data.shape
-    data = data.reshape((C, T, 1))
+    data = data.reshape((*data.shape, 1))
 
     args.stim_channel = 'LVF04-LVF05'
     args.bipolar = '-' in args.stim_channel

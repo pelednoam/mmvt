@@ -591,21 +591,31 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
     input_fname_template = op.join(FMRI_DIR, subject, input_fname_template)
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(FMRI_DIR, subject, 'figures')
+    input_fname_template_files = find_hemi_files_from_template(input_fname_template)
+    if len(input_fname_template_files) > 1:
+        print('More the one file was found! {}'.format(input_fname_template))
+        print(input_fname_template_files)
+        return False
+    elif len(input_fname_template_files) == 0:
+        print("Can't find template files! {}".format(input_fname_template))
+        return False
     for hemi in utils.HEMIS:
-        fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
+        fmri_fname = input_fname_template_files[0].format(hemi=hemi)
         fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
         x = nib.load(fmri_fname).get_data()
         morph_from_subject = check_vertices_num(subject, hemi, x, morph_from_subject)
-        labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
-        if len(labels) == 0:
-            print('No {} {} labels were found!'.format(morph_from_subject, atlas))
-            return False
         # print(max([max(label.vertices) for label in labels]))
+        labels = []
         for em in measures:
             output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi))
             if op.isfile(output_fname) and not overwrite:
                 print('{} already exist'.format(output_fname))
-                return True
+                continue
+            if len(labels) == 0:
+                labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
+                if len(labels) == 0:
+                    print('No {} {} labels were found!'.format(morph_from_subject, atlas))
+                    return False
             labels_data, labels_names = lu.calc_time_series_per_label(
                 x, labels, em, excludes, figures_dir, do_plot, do_plot_all_vertices)
             np.savez(output_fname, data=labels_data, names=labels_names)
@@ -714,7 +724,7 @@ def find_template_files(template_fname):
 
 
 def find_hemi_files_from_template(template_fname):
-    return find_hemi_files(find_template_files(template_fname))
+    return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
 
 
 def find_hemi_files(files):
@@ -744,7 +754,8 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
     files = find_volume_files_from_template(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
-        fmri_fname = files[0]
+        fmri_fname = files[0
+        ]
     elif files_num == 0:
         if no_files_were_found_func is None:
             if raise_exception:
@@ -772,7 +783,9 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
             utils.make_dir(op.join(FMRI_DIR, subject))
             shutil.copy(files[0], fmri_fname)
         else:
-            raise Exception("Can't find any file in {}!".format(fmri_file_template))
+            print("Can't find any file in {}!".format(fmri_file_template))
+            return ''
+            # raise Exception("Can't find any file in {}!".format(fmri_file_template))
 
 
     def create_folders_tree(fmri_fname):
@@ -801,6 +814,19 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
             else:
                 raise Exception("The target subject {} doesn't exist!".format(trg_subject))
 
+    def copy_output_files():
+        new_fname_template = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(
+            fsd, int(fwhm), trg_subject, '{hemi}'))
+        for hemi in utils.HEMIS:
+            new_fname = new_fname_template.format(hemi=hemi)
+            if not op.isfile(new_fname):
+                res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
+                if op.isfile(res_fname):
+                    fu.nii_gz_to_mgz(res_fname)
+                    res_fname = utils.change_fname_extension(res_fname, 'mgz')
+                    shutil.copy(res_fname, new_fname)
+        return utils.both_hemi_files_exist(new_fname_template)
+
     def no_output(*args):
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
@@ -817,7 +843,12 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
         fmri_file_template = '*'
-    fmri_fname = get_fmri_fname(subject, fmri_file_template, no_files_were_found)
+    fmri_fname = get_fmri_fname(subject, fmri_file_template, no_files_were_found, raise_exception=False)
+    if fmri_fname == '':
+        return False
+    output_files_exist = copy_output_files()
+    if output_files_exist:
+        return True
     create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
     # if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
@@ -845,14 +876,16 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
         run('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok',
             '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz', hemi=hemi)
 
-    for hemi in utils.HEMIS:
-        # new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
-        new_fname = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(fsd, int(fwhm), trg_subject, hemi))
-        if not op.isfile(new_fname):
-            res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
-            fu.nii_gz_to_mgz(res_fname)
-            res_fname = utils.change_fname_extension(res_fname, 'mgz')
-            shutil.copy(res_fname, new_fname)
+    return copy_output_files()
+    # for hemi in utils.HEMIS:
+    #     # new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
+    #     new_fname = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(fsd, int(fwhm), trg_subject, hemi))
+    #     if not op.isfile(new_fname):
+    #         res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
+    #         fu.nii_gz_to_mgz(res_fname)
+    #         res_fname = utils.change_fname_extension(res_fname, 'mgz')
+    #         shutil.copy(res_fname, new_fname)
+
 
 
 def get_tr(subject, fmri_fname):
@@ -1160,8 +1193,9 @@ def main(subject, remote_subject_dir, args, flags):
             overwrite=args.overwrite_activity_data)
 
     if 'clean_4d_data' in args.function:
-        clean_4d_data(subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd,
-                      args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
+        flags['clean_4d_data'] = clean_4d_data(
+            subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd,
+            args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject

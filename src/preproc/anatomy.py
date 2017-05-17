@@ -217,6 +217,7 @@ def create_surfaces(subject, hemi='both', overwrite=False):
             surf_wavefront_name = '{}.asc'.format(surf_name)
             surf_new_name = '{}.srf'.format(surf_name)
             hemi_ply_fname = '{}.ply'.format(surf_name)
+            hemi_npz_fname = '{}.ply'.format(hemi_npz_fname)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
             if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
@@ -237,6 +238,9 @@ def create_surfaces(subject, hemi='both', overwrite=False):
                 os.remove(mmvt_hemi_npz_fname)
             verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
             np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
+            if op.isfile(hemi_npz_fname):
+                os.remove(hemi_npz_fname)
+            np.savez(hemi_npz_fname, verts=verts, faces=faces)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.inflated.ply')) and \
@@ -844,7 +848,8 @@ def read_cmd_args(argv=None):
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
-                 'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm'],
+                 'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
+                 'lh.sphere.reg', 'rh.sphere.reg'],
         'mri:transforms' : ['talairach.xfm']}
         # 'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
     if args.overwrite:

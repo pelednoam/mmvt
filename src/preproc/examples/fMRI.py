@@ -64,17 +64,19 @@ def pet():
     '-s s02 --threshold 0 --is_pet 1 --symetric_colors 0 --overwrite_surf_data 1 --remote_subject_dir /local_mount/space/thibault/1/users/npeled/artur/recon_tese/{subject}'
 
 
-def analyze_4d_state(args):
-    '-s subject-name -a atlas-name -f analyze_4d_data --fmri_file_template {subject}*{morph_to_subject}.{hemi}.{format}  --morph_labels_to_subject fsaverage'
+def analyze_4d_data(args):
+    # '-s subject-name -a atlas-name -f analyze_4d_data --fmri_file_template {subject}*{morph_to_subject}.{hemi}.{format}  --morph_labels_to_subject fsaverage'
+    # '-f analyze_4d_data -a laus125 -s "file:/homes/5/npeled/space1/Documents/memory_task/subjects.txt"'
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
         atlas=args.atlas,
         function='analyze_4d_data',
         # fmri_file_template='*rest*.{hemi}*.{format}',
-        fmri_file_template='rest.sm6.fsaverage6.{hemi}.mgz',
+        # fmri_file_template='rest.sm6.fsaverage6.{hemi}.mgz',
+        fmri_file_template='rest_linda.sm6.{subject}.{hemi}.mgz',
         # template_brain='fsaverage5',
-        template_brain='fsaverage6',
-        labels_extract_mode='mean'
+        # template_brain='fsaverage6',
+        labels_extract_mode='pca,pca_2,pca_4,pca_8,pca_16'
     ))
     pu.run_on_subjects(args, fmri.main)
 

@@ -115,20 +115,22 @@ def calc_rois_matlab_connectivity(subject, args):
     return op.isfile(op.join(MMVT_DIR, subject, 'rois_con'))
 
 
-def calc_lables_connectivity(subject, args):
+def calc_lables_connectivity(subject, labels_extract_mode, args):
     # import mne.connectivity
 
-    def get_output_fname(connectivity_method):
-        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npz'.format(
-            args.connectivity_modality, connectivity_method))
+    def get_output_fname(connectivity_method, labels_extract_mode=''):
+        comps_num = '_{}'.format(labels_extract_mode.split('_')[1]) if labels_extract_mode.startswith('pca_') else ''
+        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}.npz'.format(
+            args.connectivity_modality, connectivity_method, comps_num))
 
-    def get_output_mat_fname(connectivity_method):
-        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}.npy'.format(
-        args.connectivity_modality, connectivity_method))
+    def get_output_mat_fname(connectivity_method, labels_extract_mode=''):
+        comps_num = '_{}'.format(labels_extract_mode.split('_')[1]) if labels_extract_mode.startswith('pca_') else ''
+        return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}.npy'.format(
+            args.connectivity_modality, connectivity_method, comps_num))
 
     data, names = {}, {}
-    output_fname = get_output_fname(args.connectivity_method[0])
-    output_mat_fname = get_output_mat_fname(args.connectivity_method[0])
+    output_fname = get_output_fname(args.connectivity_method[0], labels_extract_mode)
+    output_mat_fname = get_output_mat_fname(args.connectivity_method[0], labels_extract_mode)
     if 'cv' in args.connectivity_method:
         static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npz'.format(
             args.connectivity_modality, args.connectivity_method[0]))
@@ -142,7 +144,7 @@ def calc_lables_connectivity(subject, args):
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
-    labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data*.npz'))
+    labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data_{}_{}_?h.npz'.format(args.atlas, labels_extract_mode)))
     if len(labels_data_fnames) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
@@ -178,18 +180,8 @@ def calc_lables_connectivity(subject, args):
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
         labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
-    # from mne import filter
-    # plt.psd(data, Fs=1000)
-    # data = filter.filter_data(data, 1000, 8, None)
-    # plt.figure()
-    # plt.plot(data[:, :, 0].T)
-    # plt.figure()
-    # plt.psd(data, Fs=1000)
-    # plt.figure()
-    # plt.plot(data[:, :500].T)
-    # plt.show()
 
-    if data.ndim == 2:
+    if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
         # No windows yet
         import math
         T = data.shape[1] # If this is fMRI data, the real T is T*tr
@@ -212,14 +204,24 @@ def calc_lables_connectivity(subject, args):
         elif 'mi' in args.connectivity_method:
             connectivity_method = 'MI'
     else:
-        conn = np.zeros((data.shape[0], data.shape[0], windows_num))
+        if labels_extract_mode.startswith('pca_'):
+            comps_num = int(labels_extract_mode.split('_')[1])
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num, comps_num, comps_num))
+        else:
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         static_conn = None
         if 'corr' in args.connectivity_method:
             for w in range(windows_num):
-                if data.ndim == 3:
+                if data.ndim == 3 and not labels_extract_mode.startswith('pca_') or data.ndim == 4:
                     conn[:, :, w] = np.corrcoef(data[:, :, w])
                 else:
-                    conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
+                    if labels_extract_mode.startswith('pca_'):
+                        for i in range(data.shape[0]):
+                            for j in range(data.shape[0]):
+                                np.corrcoef(data[i, windows[w, 0]:windows[w, 1]].T,
+                                            data[j, windows[w, 0]:windows[w, 1]].T)
+                    else:
+                        conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
             np.fill_diagonal(conn[:, :, w], 0)
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
@@ -232,16 +234,31 @@ def calc_lables_connectivity(subject, args):
                     conn[:, :, w] = con
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
-        elif 'mi' in args.connectivity_method:
+        elif 'mi' in args.connectivity_method or 'mi_vec' in args.connectivity_method:
+            corr_fname = get_output_mat_fname('corr', labels_extract_mode)
+            if not op.isfile(corr_fname):
+                new_args = utils.Bag(args.copy())
+                new_args.connectivity_method = ['corr']
+                calc_lables_connectivity(subject, labels_extract_mode, new_args)
             corr = np.load(get_output_mat_fname('corr'))
-            nch = corr.shape[0]
-            for w in range(windows_num):
-                for i in range(nch):
-                    for j in range(nch):
-                        if i < j:
-                            conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
-                conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-            np.save(output_mat_fname, conn)
+            if 'mi' in args.connectivity_method:
+                nch = corr.shape[0]
+                for w in range(windows_num):
+                    for i in range(nch):
+                        for j in range(nch):
+                            if i < j:
+                                conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
+                    conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                np.save(get_output_mat_fname('mi'), conn)
+            if 'mi_vec' in args.connectivity_method:
+                nch = corr.shape[0]
+                for w in range(windows_num):
+                    for i in range(nch):
+                        for j in range(nch):
+                            if i < j:
+                                conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
+                    conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                np.save(get_output_mat_fname('mi_vec'), conn)
             connectivity_method = 'MI'
 
     if 'corr' in args.connectivity_method or 'pli' in args.connectivity_method and \
@@ -578,7 +595,8 @@ def main(subject, remote_subject_dir, args, flags):
         flags['calc_electrodes_coh'] = calc_electrodes_rest_connectivity(subject, args)
 
     if utils.should_run(args, 'calc_lables_connectivity'):
-        flags['calc_lables_connectivity'] = calc_lables_connectivity(subject, args)
+        for labels_extract_mode in args.labels_extract_mode:
+            flags['calc_lables_connectivity'] = calc_lables_connectivity(subject, labels_extract_mode, args)
 
     return flags
 
@@ -595,6 +613,7 @@ def read_cmd_args(argv=None):
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--connectivity_method', help='', required=False, default='corr,cv', type=au.str_arr_type)
+    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
     parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
