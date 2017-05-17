@@ -91,7 +91,7 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                            images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, **kwargs):
+                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     # change_frames_names(fol, images_prefix, images_type, images_format_len)
