@@ -426,6 +426,7 @@ def render_lateral_medial_split_brain(data_type='', quality=20, overwrite=True):
     render_image(image_name, quality=quality, camera_fname=camera, hide_subcorticals=True, overwrite=overwrite)
 
 
+@mu.timeit
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
                  camera_fname='', hide_subcorticals=False, overwrite=True):
     if not is_camera_view():

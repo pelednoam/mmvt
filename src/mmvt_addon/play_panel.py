@@ -416,10 +416,10 @@ def get_electrodes_sources_data():
 def init_plotting():
     stat = 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
     fol = op.join(mu.get_user_fol(), 'electrodes')
-    data_meta_fname = op.join(fol, 'electrodes_data.npz')
-    data_fname = op.join(fol, 'electrodes_data.npy')
-    meta_fname = op.join(fol, 'electrodes_meta_data.npz')
-    colors_fname = op.join(fol, 'electrodes_data_{}_colors.npy'.format(stat))
+    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    data_meta_fname = op.join(fol, 'electrodes_{}data.npz'.format(bip))
+    data_fname = op.join(fol, 'electrodes_{}data.npy'.format(bip))
+    meta_fname = op.join(fol, 'electrodes_{}meta_data.npz'.format(bip))
     d = None
     if op.isfile(data_meta_fname):
         d = np.load(data_meta_fname)
