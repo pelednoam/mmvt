@@ -101,6 +101,7 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
     electrodes_types = ep.calc_electrodes_types(stim_labels, pos)
     np.savez(output_file, pos=pos, names=stim_labels, dists=dists, electrodes_types=electrodes_types,
              electrodes_oris=elcs_oris, bipolar=bipolar)
+    return output_file
 
 
 def calc_ori(stim_labels, bipolar, pos):
@@ -140,17 +141,17 @@ def get_psd_freq_slice(psd, freq_ind, freqs_dim, time_dim):
 
 def set_labels_colors(subject, args, stim_dict=None):
     stim_labels = stim_dict['labels'] if stim_dict else None
-    stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
     if stim_dict is None:
+        stim_labels, bipolar = get_stim_labels(subject, args, stim_labels)
         stim_data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_electrodes_{}{}_{}.npz'.format(
                 args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
         stim_dict = np.load(stim_data_fname)
     stim_data = stim_dict['data']
     electrode_labeling_fname = op.join(MMVT_DIR, subject, 'electrodes',
             '{}_{}_electrodes_cigar_r_{}_l_{}{}_stim_{}.pkl'.format(subject, args.atlas, args.error_radius,
-            args.elec_length, '_bipolar' if bipolar else '', args.stim_channel))
+            args.elec_length, '_bipolar' if args.bipolar else '', args.stim_channel))
     elecs_labeling, electrode_labeling_fname = utils.get_electrodes_labeling(
-        subject, MMVT_DIR, args.atlas, bipolar, args.error_radius, args.elec_length,
+        subject, MMVT_DIR, args.atlas, args.bipolar, args.error_radius, args.elec_length,
         other_fname=electrode_labeling_fname)
     if elecs_labeling is None:
         print('No electrodes labeling file!')
@@ -160,29 +161,29 @@ def set_labels_colors(subject, args, stim_dict=None):
         print("The electrodes labeling isn't calculated for all the stim electrodes!")
         print(set(stim_labels) - set(electrodes))
         return
-    labels_elecs_lookup, subcortical_elecs_lookup = create_labels_electordes_lookup(
-        subject, args.atlas, elecs_labeling, args.n_jobs)
-    labels_data, labels_colors, data_labels_names = {}, {}, {}
+    labels_elecs_lookup, subcortical_elecs_lookup = create_labels_electordes_lookup(elecs_labeling)
+    labels_data, data_labels_names = {}, {}
     for hemi in utils.HEMIS:
-        labels_data[hemi], labels_colors[hemi], data_labels_names[hemi] = \
-            calc_labels_data(labels_elecs_lookup[hemi], stim_data, stim_labels, hemi)
+        labels_data[hemi], data_labels_names[hemi] = \
+            calc_labels_data(labels_elecs_lookup[hemi], stim_data, stim_labels, args, hemi)
         output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_labels_{}{}_{}-{}.npz'.format(
-                args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel, hemi))
+                args.file_frefix, 'bipolar' if args.bipolar else '', args.stim_channel, hemi))
         np.savez(output_fname, data=labels_data[hemi], names=data_labels_names[hemi],
-                 conditions=stim_dict['conditions'], colors=labels_colors[hemi])
+                 conditions=stim_dict['conditions'])
 
-    subcortical_data, subcortical_colors, data_subcortical_names = calc_labels_data(
-        subcortical_elecs_lookup, stim_data, stim_labels)
+    subcortical_data, data_subcortical_names = calc_labels_data(
+        subcortical_elecs_lookup, stim_data, stim_labels, args)
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'stim_subcortical_{}{}_{}.npz'.format(
-            args.file_frefix, 'bipolar' if bipolar else '', args.stim_channel))
+            args.file_frefix, 'bipolar' if args.bipolar else '', args.stim_channel))
     np.savez(output_fname, data=subcortical_data, names=data_subcortical_names,
-             conditions=stim_dict['conditions'], colors=subcortical_colors)
+             conditions=stim_dict['conditions'])
 
 
-def calc_labels_data(elecs_lookup, stim_data, stim_labels, hemi=None):
+def calc_labels_data(elecs_lookup, stim_data, stim_labels, args, hemi=None):
+    stim_labels = np.array(stim_labels)
     labels_names = list(elecs_lookup.keys())
     labels_data = np.zeros((len(labels_names), stim_data.shape[1], stim_data.shape[2]))
-    colors = np.zeros((*labels_data.shape, 3))
+    # colors = np.zeros((*labels_data.shape, 3))
     labels_data_names = []
     label_ind = 0
     for label_name, electordes_data in elecs_lookup.items():
@@ -195,16 +196,18 @@ def calc_labels_data(elecs_lookup, stim_data, stim_labels, hemi=None):
             if len(elec_inds) > 0:
                 elec_data = stim_data[elec_inds[0], :, :] * elec_prob
                 labels_data[label_ind, :, :] += elec_data
+            else:
+                print('calc_labels_data: No data found for {}!'.format(elec_name))
         label_ind += 1
     # Calc colors for each freq
-    for freq_id in range(labels_data.shape[2]):
-        data_min, data_max = utils.calc_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
-        colors[:, :, freq_id] = utils.mat_to_colors(
-            labels_data[:, :, freq_id], data_min, data_max, colorsMap=args.colors_map)
-    return labels_data, colors, labels_data_names
+    # for freq_id in range(labels_data.shape[2]):
+    #     data_min, data_max = utils.calc_min_max(labels_data[:, :, freq_id], norm_percs=args.norm_percs)
+    #     colors[:, :, freq_id] = utils.mat_to_colors(
+    #         labels_data[:, :, freq_id], data_min, data_max, colorsMap=args.colors_map)
+    return labels_data, labels_data_names
 
 
-def create_labels_electordes_lookup(subject, atlas, elecs_labeling, n_jobs):
+def create_labels_electordes_lookup(elecs_labeling):
     # delim, pos = lu.get_hemi_delim_and_pos(elecs_labeling[0]['cortical_rois'][0])
     # atlas_labels = lu.get_atlas_labels_names(subject, atlas, delim, pos, n_jobs)
     labels_elecs_lookup = dict(rh=defaultdict(list), lh=defaultdict(list))
@@ -239,10 +242,7 @@ def main(subject, remote_subject_dir, args, flags):
     return flags
 
 
-def read_cmd_args(argv=None):
-    import argparse
-    from src.utils import args_utils as au
-    parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
+def add_args(parser):
     parser.add_argument('--stim_channel', help='stim channel', required=True)
     parser.add_argument('--colors_map', help='activity colors map', required=False, default='OrRd')
     parser.add_argument('--norm_percs', help='normalization percerntiles', required=False, type=au.int_arr_type, default='1,95')
@@ -250,6 +250,13 @@ def read_cmd_args(argv=None):
     parser.add_argument('--file_frefix', help='file_frefix', required=False, default='psd_')
     parser.add_argument('--error_radius', help='error_radius', required=False, default=3, type=int)
     parser.add_argument('--elec_length', help='elec_length', required=False, default=4, type=int)
+
+
+def read_cmd_args(argv=None):
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT stim preprocessing')
+    add_args(parser)
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser))
     print(args)

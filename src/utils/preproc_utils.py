@@ -115,6 +115,13 @@ def get_subject(tup, subject_func):
     return subject
 
 
+def add_default_args(args, default_args):
+    for def_key, def_val in default_args.items():
+        if def_key not in args:
+            args[def_key] = def_val
+    return args
+
+
 def add_common_args(parser):
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')

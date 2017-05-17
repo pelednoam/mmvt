@@ -821,19 +821,20 @@ def load_electrodes_dists():
 
 def load_electrodes_data(stat='diff'):
     # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
+    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
     if DataMakerPanel.electrodes_data is None:
         fol = op.join(mu.get_user_fol(), 'electrodes')
-        data_file = op.join(fol, 'electrodes_data.npz')
+        data_file = op.join(fol, 'electrodes_{}data.npz'.format(bip))
         if op.isfile(data_file):
             f = np.load(data_file)
             data = f['data']
             names = f['names']
             conditions = f['conditions']
-        elif op.isfile(op.join(fol, 'electrodes_data.npy')) and op.isfile(
-                op.join(fol, 'electrodes_meta_data.npz')):
-            data_file = op.join(fol, 'electrodes_data.npy')
+        elif op.isfile(op.join(fol, 'electrodes_{}data.npy'.format(bip))) and \
+                op.isfile(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip))):
+            data_file = op.join(fol, 'electrodes_{}data.npy'.format(bip))
             data = np.load(data_file)
-            meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
+            meta_data = np.load(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip)))
             names = meta_data['names']
             conditions = meta_data['conditions']
         else:

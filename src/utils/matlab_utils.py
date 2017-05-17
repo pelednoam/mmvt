@@ -2,6 +2,12 @@ import numpy as np
 import scipy.io as sio
 from pprint import pprint
 
+from src.utils import utils
+
+
+def load_mat_to_bag(mat_fname):
+    return utils.Bag(dict(**sio.loadmat(mat_fname)))
+
 
 def matlab_cell_arrays_to_dict(mat_fname):
     res_dict = {}

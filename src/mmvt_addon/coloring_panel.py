@@ -393,7 +393,10 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
         if not colors_min is None and not colors_max is None:
             if label_data.ndim > 1:
                 if labels_coloring_type == 'diff':
-                    label_data = np.squeeze(np.diff(label_data))
+                    if label_data.squeeze().ndim == 1:
+                        labels_data = label_data.squeeze()
+                    else:
+                        label_data = np.squeeze(np.diff(label_data))
                 else:
                     cond_ind = np.where(labels_data['conditions'] == labels_coloring_type)[0]
                     label_data = np.squeeze(label_data[:, cond_ind])
@@ -854,18 +857,38 @@ def get_elecctrodes_sources():
 def color_electrodes_sources():
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES_SOURCES)
     labels_data = ColoringMakerPanel.electrodes_sources_labels_data
-    subcortical_data = ColoringMakerPanel.electrodes_sources_subcortical_data
-    cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
-    if len(cond_inds) == 0:
-        print("!!! Can't find the current condition in the data['conditions'] !!!")
-        return {"FINISHED"}
+    rh_data, lh_data = labels_data['rh']['data'], labels_data['lh']['data']
+    subcorticals = ColoringMakerPanel.electrodes_sources_subcortical_data
+    sub_data = subcorticals['data']
+
+    _max = partial(np.percentile, q=97)
+    _min = partial(np.percentile, q=3)
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+        colors_ratio = 256 / (data_max - data_min)
+    else:
+        data_min = min([_min(sub_data), _min(rh_data), _min(lh_data)])
+        data_max = max([_max(sub_data), _max(rh_data), _max(lh_data)])
+        data_minmax = max(map(abs, [data_min, data_max]))
+        data_min, data_max = -data_minmax, data_minmax
+        colors_ratio = 256 / (data_max - data_min)
+        _addon().set_colorbar_max_min(data_max, data_min)
+    _addon().set_colorbar_title('Electordes-Cortex')
+    curr_sub_data = sub_data[:, bpy.context.scene.frame_current, 0]
+    subs_colors = calc_colors(curr_sub_data, data_min, colors_ratio)
+    # cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
+    # if len(cond_inds) == 0:
+    #     print("!!! Can't find the current condition in the data['conditions'] !!!")
+    #     return {"FINISHED"}
     clear_subcortical_regions()
-    for region, color_mat in zip(subcortical_data['names'], subcortical_data['colors']):
-        color = color_mat[bpy.context.scene.frame_current, cond_inds[0], :]
+    for region, color in zip(subcorticals['names'], subs_colors):
         # print('electrodes source: color {} with {}'.format(region, color))
         color_subcortical_region(region, color)
     for hemi in mu.HEMIS:
-        labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0)
+        if bpy.data.objects[hemi].hide:
+            continue
+        labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0,
+                             colors_min=data_min, colors_max=data_max)
 
 
 def color_eeg_helmet():
@@ -1343,8 +1366,10 @@ def draw(self, context):
     #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
     # fmri_labels_data_minmax_exist = op.isfile(
     #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-    electrodes_files_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npz')) or \
-                             op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data.npy'))
+    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    electrodes_files_exist = \
+        op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
+        op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npy'.format(bip)))
     electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
     electrodes_stim_files_exist = len(glob.glob(op.join(
         mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0

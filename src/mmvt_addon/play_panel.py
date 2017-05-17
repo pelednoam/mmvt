@@ -171,8 +171,8 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
         p.plot_connections(self, context, d, cur_frame, connections_type, condition,
                            bpy.context.scene.connectivity_threshold, abs_threshold)
     if play_type in ['stim', 'stim_sources']:
-        # plot_electrodes(cur_frame, electrodes_threshold, stim=True)
-        _addon().color_objects_homogeneously(PlayPanel.stim_data)
+        plot_electrodes(cur_frame, bpy.context.scene.electrodes_threshold, stim=True)
+        # _addon().color_objects_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         _addon().color_electrodes_sources()
     if play_type in ['eeg_helmet']:

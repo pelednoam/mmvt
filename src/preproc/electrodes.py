@@ -82,7 +82,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         raise Exception('pos dim ({}) != names dim ({})'.format(pos.shape[0], len(names)))
     # print(np.hstack((names.reshape((len(names), 1)), pos)))
     np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
-
+    return pos, names
 
 def get_names_dists_non_bipolar_electrodes(data):
     names = data[:, 0]
@@ -221,14 +221,14 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
         file_found = True
         output_file_name = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
         output_file = op.join(SUBJECTS_DIR, subject, 'electrodes', output_file_name)
-        electrodes_csv_to_npy(csv_file, output_file, bipolar)
+        pos, names = electrodes_csv_to_npy(csv_file, output_file, bipolar)
         if copy_to_blender:
             blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
             shutil.copyfile(output_file, blender_file)
     if not file_found:
         print('No electrodes coordinates file!')
         return False
-    return True
+    return op.isfile(output_file), pos, names
 
 
 def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
@@ -802,6 +802,14 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
             elecs_report_file.write('{},{},{}\n'.format(inv_roi, rois_colors_names[inv_roi], ','.join(electrodes_names)))
 
 
+def remove_bad_channels(labels, data, bad_channels):
+    bad_indices = [labels.index(bad) for bad in bad_channels]
+    for bad_electrode in bad_channels:
+        labels.remove(bad_electrode)
+    data = np.delete(data, bad_indices, axis=0)
+    return labels, data
+
+
 def get_most_probable_rois(elecs_probs, p_threshold, good_channels=None):
     if not good_channels is None:
         elecs_probs = list(filter(lambda e:e['name'] in good_channels, elecs_probs))
@@ -957,7 +965,7 @@ def main(subject, remote_subject_dir, args, flags):
     locating_file = partial(utils.locating_file, parent_fol=op.join(ELECTRODES_DIR, subject))
 
     if utils.should_run(args, 'convert_electrodes_pos'):
-        flags['convert_electrodes_pos'] = convert_electrodes_coordinates_file_to_npy(
+        flags['convert_electrodes_pos'], _, _ = convert_electrodes_coordinates_file_to_npy(
             subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
 
     if utils.should_run(args, 'calc_dist_mat'):
