@@ -248,11 +248,11 @@ def mirror():
 
 
 bpy.types.Scene.X_rotation = bpy.props.FloatProperty(
-    default=0, min=-360, max=360, description="Camera rotation around x axis", update=update_camera)
+    default=0, description="Camera rotation around x axis", update=update_camera) # min=-360, max=360
 bpy.types.Scene.Y_rotation = bpy.props.FloatProperty(
-    default=0, min=-360, max=360, description="Camera rotation around y axis", update=update_camera)
+    default=0, description="Camera rotation around y axis", update=update_camera) # min=-360, max=360,
 bpy.types.Scene.Z_rotation = bpy.props.FloatProperty(
-    default=0, min=-360, max=360, description="Camera rotation around z axis", update=update_camera)
+    default=0, description="Camera rotation around z axis", update=update_camera) # min=-360, max=360,
 bpy.types.Scene.X_location = bpy.props.FloatProperty(description="Camera x location", update=update_camera)
 bpy.types.Scene.Y_location = bpy.props.FloatProperty(description="Camera y lovation", update=update_camera)
 bpy.types.Scene.Z_location = bpy.props.FloatProperty(description="Camera z locationo", update=update_camera)
