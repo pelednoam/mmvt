@@ -56,10 +56,11 @@ def calc_fmri_connectivity(args):
         atlas='laus125',
         function='calc_lables_connectivity',
         connectivity_modality='fmri',
-        connectivity_method='mi_vec,cv',
+        connectivity_method='mi_vec',
         labels_extract_mode='pca_2,pca_4,pca_8,pca_16',
         windows_length=20,
-        windows_shift=3
+        windows_shift=3,
+        n_jobs=args.n_jobs
     ))
     con.call_main(args)
 
@@ -76,6 +77,7 @@ def calc_meg_connectivity(args):
         # sfreq=1000.0,
         # fmin=10,
         # fmax=100
+        n_jobs=args.n_jobs
     ))
     pu.run_on_subjects(args, con.main)
 

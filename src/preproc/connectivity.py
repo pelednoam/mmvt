@@ -195,6 +195,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         print('Wronge number of dims in data! Can be 2 or 3, not {}.'.format(data.ndim))
         return False
 
+    static_conn = None
     if op.isfile(output_mat_fname):
         conn = np.load(output_mat_fname)
         if 'corr' in args.connectivity_method:
@@ -204,25 +205,27 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         elif 'mi' in args.connectivity_method:
             connectivity_method = 'MI'
     else:
-        if labels_extract_mode.startswith('pca_'):
-            comps_num = int(labels_extract_mode.split('_')[1])
-            conn = np.zeros((data.shape[0], data.shape[0], windows_num, comps_num, comps_num))
-        else:
-            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
-        static_conn = None
+        conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         if 'corr' in args.connectivity_method:
-            for w in range(windows_num):
-                if data.ndim == 3 and not labels_extract_mode.startswith('pca_') or data.ndim == 4:
+            if labels_extract_mode.startswith('pca_'):
+                comps_num = int(labels_extract_mode.split('_')[1])
+                dims = (data.shape[0], data.shape[0], windows_num, comps_num * 2, comps_num * 2)
+                conn = np.zeros(dims)
+            if data.ndim == 3 and not labels_extract_mode.startswith('pca_') or data.ndim == 4:
+                for w in range(windows_num):
                     conn[:, :, w] = np.corrcoef(data[:, :, w])
-                else:
-                    if labels_extract_mode.startswith('pca_'):
-                        for i in range(data.shape[0]):
-                            for j in range(data.shape[0]):
-                                np.corrcoef(data[i, windows[w, 0]:windows[w, 1]].T,
-                                            data[j, windows[w, 0]:windows[w, 1]].T)
-                    else:
+            else:
+                if not labels_extract_mode.startswith('pca_'):
+                    for w in range(windows_num):
                         conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
-            np.fill_diagonal(conn[:, :, w], 0)
+                        np.fill_diagonal(conn[:, :, w], 0)
+                else:
+                    params = [(data, w, windows, comps_num) for w in range(windows_num)]
+                    chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
+                    results = utils.run_parallel(_corr_matrix_parallel, chunks, args.n_jobs)
+                    for chunk in results:
+                        for w, con in chunk.items():
+                            conn[:, :, w] = con
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
@@ -240,25 +243,34 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                 new_args = utils.Bag(args.copy())
                 new_args.connectivity_method = ['corr']
                 calc_lables_connectivity(subject, labels_extract_mode, new_args)
-            corr = np.load(get_output_mat_fname('corr'))
+            corr = np.load(get_output_mat_fname('corr', labels_extract_mode))
             if 'mi' in args.connectivity_method:
                 nch = corr.shape[0]
                 for w in range(windows_num):
                     for i in range(nch):
                         for j in range(nch):
                             if i < j:
-                                conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
+                                conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
                     conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-                np.save(get_output_mat_fname('mi'), conn)
+                np.save(get_output_mat_fname('mi', labels_extract_mode), conn)
             if 'mi_vec' in args.connectivity_method:
-                nch = corr.shape[0]
-                for w in range(windows_num):
-                    for i in range(nch):
-                        for j in range(nch):
-                            if i < j:
-                                conn[i, j] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
-                    conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-                np.save(get_output_mat_fname('mi_vec'), conn)
+                params = [(corr, w) for w in range(windows_num)]
+                chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
+                results = utils.run_parallel(_mi_vec_parallel, chunks, args.n_jobs)
+                for chunk in results:
+                    for w, con in chunk.items():
+                        conn[:, :, w] = con
+                #
+                # nch = corr.shape[0]
+                # for w in range(windows_num):
+                #     for i in range(nch):
+                #         for j in range(nch):
+                #             if i < j:
+                #                 conn[i, j, w] = -0.5 * np.log(np.linalg.norm(
+                #                     np.eye(corr.shape[3]) - corr[i, j, w] * corr[i, j, w].T))
+                #     # conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                #     conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                np.save(get_output_mat_fname('mi_vec', labels_extract_mode), conn)
             connectivity_method = 'MI'
 
     if 'corr' in args.connectivity_method or 'pli' in args.connectivity_method and \
@@ -270,7 +282,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             np.savez(labels_avg_output_fname.format(hemi=hemi), data=avg_per_label[inds], names=labels_names[inds],
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
-        no_wins_connectivity_method = '{} CV'.format(connectivity_method)
+        no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
         if not op.isfile(static_output_mat_fname):
             static_conn = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
             np.fill_diagonal(static_conn, 0)
@@ -297,7 +309,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if not args.save_mmvt_connectivity:
         return True
     conn = conn[:, :, :, np.newaxis]
-    d = save_connectivity(subject, conn, connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
+    d = save_connectivity(subject, conn, args.connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
     ret = op.isfile(output_fname)
     if not static_conn is None:
@@ -337,6 +349,51 @@ def _pli_parallel(windows_chunk):
     return res
 
 
+def corr_matrix(data, w, windows, comps_num):
+    corr = np.zeros((data.shape[0], data.shape[0], comps_num * 2, comps_num * 2))
+    w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+    for i in range(data.shape[0]):
+        for j in range(data.shape[0]):
+            if i < j:
+                corr[i, j] = np.corrcoef(data[i, w1:w2].T, data[j, w1:w2].T)
+    for i in range(data.shape[0]):
+        for j in range(data.shape[0]):
+            if i > j:
+                corr[i, j] = corr[j, i]
+    return corr
+
+
+def _corr_matrix_parallel(windows_chunk):
+    res = {}
+    for window_ind, window in windows_chunk:
+        print('_corr_matrix_parallel: window ind {}'.format(window_ind))
+        data, w, windows, comps_num = window
+        res[window_ind] = corr_matrix(data, w, windows, comps_num)
+    return res
+
+
+def mi_vec(corr, w):
+    nch = corr.shape[0]
+    conn = np.zeros((corr.shape[0], corr.shape[0]))
+    for i in range(nch):
+        for j in range(nch):
+            if i < j:
+                conn[i, j] = -0.5 * np.log(np.linalg.norm(
+                    np.eye(corr.shape[3]) - corr[i, j, w] * corr[i, j, w].T))
+    conn = conn + conn.T
+    return conn
+
+
+def _mi_vec_parallel(windows_chunk):
+    res = {}
+    for window_ind, window in windows_chunk:
+        print('_mi_vec_parallel: window ind {}'.format(window_ind))
+        corr, w = window
+        res[window_ind] = mi_vec(corr, w)
+    return res
+
+
+@utils.tryit
 def save_connectivity(subject, conn, connectivity_method, obj_type, labels_names, conditions, output_fname, args,
                       con_vertices_fname='', labels=None, locations=None, hemis=None):
     d = dict()
