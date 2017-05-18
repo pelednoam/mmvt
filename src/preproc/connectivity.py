@@ -132,12 +132,12 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     output_fname = get_output_fname(args.connectivity_method[0], labels_extract_mode)
     output_mat_fname = get_output_mat_fname(args.connectivity_method[0], labels_extract_mode)
     if 'cv' in args.connectivity_method:
-        static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npz'.format(
-            args.connectivity_modality, args.connectivity_method[0]))
-        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv.npy'.format(
-            args.connectivity_modality, args.connectivity_method[0]))
-        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean.npy'.format(
-            args.connectivity_modality, args.connectivity_method[0]))
+        static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npz'.format(
+            args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
+        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npy'.format(
+            args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
+        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean_{}.npy'.format(
+            args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
     labels_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_{}_{}_labels_avg.npz'.format(
         args.connectivity_modality, args.connectivity_method[0], args.atlas, '{hemi}'))
     con_vertices_fname = op.join(
@@ -176,6 +176,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if len(labels_indices) < len(labels_names):
         labels_names = labels_names[labels_indices]
         data = data[labels_indices]
+    np.save(op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy'), labels_names)
     conditions = f['conditions'] if 'conditions' in f else ['rest']
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
@@ -260,24 +261,20 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                                     conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
                         conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
                     np.save(conn_fname, conn)
+                else:
+                    conn = np.load(conn_fname)
             if 'mi_vec' in args.connectivity_method and corr.ndim == 5:
-                params = [(corr[:, :, w]) for w in range(windows_num)]
-                chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
-                results = utils.run_parallel(_mi_vec_parallel, chunks, args.n_jobs)
-                for chunk in results:
-                    for w, con in chunk.items():
-                        conn[:, :, w] = con
-                #
-                # nch = corr.shape[0]
-                # for w in range(windows_num):
-                #     for i in range(nch):
-                #         for j in range(nch):
-                #             if i < j:
-                #                 conn[i, j, w] = -0.5 * np.log(np.linalg.norm(
-                #                     np.eye(corr.shape[3]) - corr[i, j, w] * corr[i, j, w].T))
-                #     # conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-                #     conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-                np.save(get_output_mat_fname('mi_vec', labels_extract_mode), conn)
+                conn_fname = get_output_mat_fname('mi_vec', labels_extract_mode)
+                if not op.isfile(conn_fname):
+                    params = [(corr[:, :, w]) for w in range(windows_num)]
+                    chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
+                    results = utils.run_parallel(_mi_vec_parallel, chunks, args.n_jobs)
+                    for chunk in results:
+                        for w, con in chunk.items():
+                            conn[:, :, w] = con
+                    np.save(conn_fname, conn)
+                else:
+                    conn = np.load(conn_fname)
             connectivity_method = 'MI'
 
     if 'corr' in args.connectivity_method or 'pli' in args.connectivity_method and \
@@ -298,7 +295,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         else:
             static_conn = np.load(static_output_mat_fname)
         static_con_fig_fname = utils.change_fname_extension(static_output_mat_fname, 'png')
-        if not op.isfile(static_con_fig_fname):
+        if not op.isfile(static_con_fig_fname) and args.do_plot_static_conn:
             fig = plt.figure()
             ax = fig.add_subplot(111)
             cax = ax.matshow(static_conn)
@@ -698,6 +695,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmax', help='', required=False, default=100, type=float)
 
     parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
 

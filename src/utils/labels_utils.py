@@ -234,7 +234,9 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             lh_labels = [l for l in labels if l.hemi == 'lh']
             labels = rh_labels + lh_labels
         if sorted_according_to_annot_file:
-            annot_labels = get_atlas_labels_names(subject, atlas, subjects_dir, return_flat_labels_list=True)
+            annot_labels = get_atlas_labels_names(
+                subject, atlas, subjects_dir, return_flat_labels_list=True,
+                include_corpuscallosum=True, include_unknown=True)
             try:
                 labels.sort(key=lambda x: annot_labels.index(x.name))
             except ValueError:
