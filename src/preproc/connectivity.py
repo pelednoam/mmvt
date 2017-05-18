@@ -220,7 +220,12 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                         conn[:, :, w] = np.corrcoef(data[:, windows[w, 0]:windows[w, 1]])
                         np.fill_diagonal(conn[:, :, w], 0)
                 else:
-                    params = [(data, w, windows, comps_num) for w in range(windows_num)]
+                    params = []
+                    for w in range(windows_num):
+                        w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+                        data_w = data[:, w1:w2]
+                        params.append((data_w, comps_num))
+                    # params = [(data, w, windows, comps_num) for w in range(windows_num)]
                     chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
                     results = utils.run_parallel(_corr_matrix_parallel, chunks, args.n_jobs)
                     for chunk in results:
@@ -256,7 +261,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                         conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
                     np.save(conn_fname, conn)
             if 'mi_vec' in args.connectivity_method and corr.ndim == 5:
-                params = [(corr, w) for w in range(windows_num)]
+                params = [(corr[:, :, w]) for w in range(windows_num)]
                 chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
                 results = utils.run_parallel(_mi_vec_parallel, chunks, args.n_jobs)
                 for chunk in results:
@@ -351,13 +356,13 @@ def _pli_parallel(windows_chunk):
     return res
 
 
-def corr_matrix(data, w, windows, comps_num):
+def corr_matrix(data, comps_num):
     corr = np.zeros((data.shape[0], data.shape[0], comps_num * 2, comps_num * 2))
-    w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+    # w1, w2 = int(windows[w, 0]), int(windows[w, 1])
     for i in range(data.shape[0]):
         for j in range(data.shape[0]):
             if i < j:
-                corr[i, j] = np.corrcoef(data[i, w1:w2].T, data[j, w1:w2].T)
+                corr[i, j] = np.corrcoef(data[i].T, data[j].T)
     for i in range(data.shape[0]):
         for j in range(data.shape[0]):
             if i > j:
@@ -369,29 +374,28 @@ def _corr_matrix_parallel(windows_chunk):
     res = {}
     for window_ind, window in windows_chunk:
         print('_corr_matrix_parallel: window ind {}'.format(window_ind))
-        data, w, windows, comps_num = window
-        res[window_ind] = corr_matrix(data, w, windows, comps_num)
+        data_w, comps_num = window
+        res[window_ind] = corr_matrix(data_w, comps_num)
     return res
 
 
-def mi_vec(corr, w):
-    nch = corr.shape[0]
-    conn = np.zeros((corr.shape[0], corr.shape[0]))
+def mi_vec(corr_w):
+    nch = corr_w.shape[0]
+    conn = np.zeros((nch, nch))
     for i in range(nch):
         for j in range(nch):
             if i < j:
                 conn[i, j] = -0.5 * np.log(np.linalg.norm(
-                    np.eye(corr.shape[3]) - corr[i, j, w] * corr[i, j, w].T))
+                    np.eye(corr_w.shape[3]) - corr_w[i, j] * corr_w[i, j].T))
     conn = conn + conn.T
     return conn
 
 
 def _mi_vec_parallel(windows_chunk):
     res = {}
-    for window_ind, window in windows_chunk:
+    for window_ind, corr_w in windows_chunk:
         print('_mi_vec_parallel: window ind {}'.format(window_ind))
-        corr, w = window
-        res[window_ind] = mi_vec(corr, w)
+        res[window_ind] = mi_vec(corr_w)
     return res
 
 
