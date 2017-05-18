@@ -244,16 +244,18 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                 new_args.connectivity_method = ['corr']
                 calc_lables_connectivity(subject, labels_extract_mode, new_args)
             corr = np.load(get_output_mat_fname('corr', labels_extract_mode))
-            if 'mi' in args.connectivity_method:
-                nch = corr.shape[0]
-                for w in range(windows_num):
-                    for i in range(nch):
-                        for j in range(nch):
-                            if i < j:
-                                conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
-                    conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
-                np.save(get_output_mat_fname('mi', labels_extract_mode), conn)
-            if 'mi_vec' in args.connectivity_method:
+            if 'mi' in args.connectivity_method or 'mi_vec' in args.connectivity_method and corr.ndim == 3:
+                conn_fname = get_output_mat_fname('mi', labels_extract_mode)
+                if not op.isfile(conn_fname):
+                    nch = corr.shape[0]
+                    for w in range(windows_num):
+                        for i in range(nch):
+                            for j in range(nch):
+                                if i < j:
+                                    conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
+                        conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                    np.save(conn_fname, conn)
+            if 'mi_vec' in args.connectivity_method and corr.ndim == 5:
                 params = [(corr, w) for w in range(windows_num)]
                 chunks = utils.chunks(list(enumerate(params)), windows_num / args.n_jobs)
                 results = utils.run_parallel(_mi_vec_parallel, chunks, args.n_jobs)
