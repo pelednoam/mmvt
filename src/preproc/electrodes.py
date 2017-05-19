@@ -210,11 +210,12 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
     return op.isfile(output_fname)
 
 
-def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name=''):
+def convert_electrodes_coordinates_file_to_npy(
+        subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name='', snaps=[True, False]):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(SUBJECTS_DIR, subject, 'electrodes')
     file_found = False
-    for snap in [True, False]:
+    for snap in snaps:
         csv_file = op.join(electrodes_folder, '{}{}_RAS.csv'.format(subject, '_snap' if snap else ''))
         if not op.isfile(csv_file):
             continue
@@ -227,7 +228,7 @@ def convert_electrodes_coordinates_file_to_npy(subject, bipolar=False, copy_to_b
             shutil.copyfile(output_file, blender_file)
     if not file_found:
         print('No electrodes coordinates file!')
-        return False
+        return False, None, None
     return op.isfile(output_file), pos, names
 
 
