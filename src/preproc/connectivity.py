@@ -136,7 +136,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
         static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npz'.format(
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
-        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean_{}.npy'.format(
+        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean_{}.npz'.format(
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
     labels_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_{}_{}_labels_avg.npz'.format(
         args.connectivity_modality, args.connectivity_method[0], args.atlas, '{hemi}'))
@@ -294,7 +294,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             np.savez(static_output_mat_fname, static_conn=static_conn, conn_std=conn_std)
             # static_conn[np.isnan(static_conn)] = 0
         else:
-            static_conn = np.load(static_output_mat_fname)
+            d = np.load(static_output_mat_fname)
+            static_conn = d['static_conn']
+            conn_std = d['conn_std']
         static_con_fig_fname = utils.change_fname_extension(static_output_mat_fname, 'png')
         if not op.isfile(static_con_fig_fname) and args.do_plot_static_conn:
             fig = plt.figure()
@@ -306,7 +308,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.close()
         if not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
-            np.save(static_mean_output_mat_fname, dFC)
+            std_mean = np.nanmean(conn_std, 1)
+            stat_conn = np.nanmean(np.abs(conn), 1)
+            np.savez(static_mean_output_mat_fname, dFC=dFC, std_mean=std_mean, stat_conn=stat_conn)
             lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
                 args.connectivity_modality, args.connectivity_method[0]), norm_percs=(1, 99), norm_by_percentile=True,
                 colors_map='YlOrRd')
