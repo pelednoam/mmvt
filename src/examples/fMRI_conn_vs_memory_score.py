@@ -1,6 +1,6 @@
 # import matplotlib
 # matplotlib.use('svg')
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 from scipy.stats import mannwhitneyu
@@ -13,7 +13,9 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 only_left = False #only L TLE patients
 fast_TR = False #include 568 ms TR
-root_path = '/homes/5/npeled/space1/Documents/memory_task'
+root_paths = ['/homes/5/npeled/space1/Documents/memory_task', '/home/npeled/Documents/memory_task/']
+root_path = [p for p in root_paths if op.isdir(p)][0]
+
 
 def get_inds(only_left, TR, fast_TR, to_use, laterality):
     if only_left:
@@ -30,7 +32,7 @@ def get_inds(only_left, TR, fast_TR, to_use, laterality):
 
 
 def read_scoring():
-    scoring_fname = op.join(root_path, 'neuropsych_scores.npy')
+    scoring_fname = op.join(root_path, 'neuropsych_scores.npz')
     if not op.isfile(scoring_fname):
         scoring_xls_fname = '/cluster/neuromind/sx424/subject_info/StufflebeamLabDataba_DATA_LABELS_2017-01-27_1132.xlsx'
         neuropsych_scores = pandas.read_excel(scoring_xls_fname, sheetname='Necessary scores', header=None, skiprows={0})
@@ -134,9 +136,18 @@ def find_sig_results(stat_results, labels):
     sig_inds = []
     for pc in pcs:
         sig_inds.extend(np.where(stat_results[pc] < 0.05)[0])
+    sig_inds = sorted(list(set(sig_inds)))
     for sig_ind in sig_inds:
         print(labels[sig_ind], [(pc, stat_results[pc][sig_ind]) for pc in pcs])
-
+    plt.figure()
+    width = 0.2
+    x = np.arange(len(sig_inds))
+    for ind, pc in enumerate(pcs):
+        plt.bar(x + ind * width, stat_results[pc][sig_inds], width, label=str(pc))
+    plt.plot((0, len(sig_inds)), (0.05, 0.05), 'r--')
+    plt.xticks(x, labels[sig_inds], rotation='vertical')
+    plt.legend()
+    plt.show()
 
 mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
 good_subjects_fname = op.join(root_path, 'good_subjects.npz')

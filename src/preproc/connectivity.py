@@ -134,7 +134,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if 'cv' in args.connectivity_method:
         static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npz'.format(
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
-        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npy'.format(
+        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_{}.npz'.format(
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
         static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_cv_mean_{}.npy'.format(
             args.connectivity_modality, args.connectivity_method[0], labels_extract_mode))
@@ -288,9 +288,10 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
         if not op.isfile(static_output_mat_fname):
-            static_conn = np.nanstd(conn, 2) / np.mean(np.abs(conn), 2)
+            conn_std = np.nanstd(conn, 2)
+            static_conn = conn_std / np.mean(np.abs(conn), 2)
             np.fill_diagonal(static_conn, 0)
-            np.save(static_output_mat_fname, static_conn)
+            np.savez(static_output_mat_fname, static_conn=static_conn, conn_std=conn_std)
             # static_conn[np.isnan(static_conn)] = 0
         else:
             static_conn = np.load(static_output_mat_fname)
