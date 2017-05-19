@@ -162,12 +162,19 @@ def find_sig_results(stat_results, labels):
 
 mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
 good_subjects_fname = op.join(root_path, 'good_subjects.npz')
-if not op.isfile(mann_whitney_results_fname) or not op.isfile(good_subjects_fname):
+ana_results_fname = op.join(root_path, 'ana_results.pkl')
+if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
     laterality, to_use, TR, values, all_subjects = read_scoring()
     good_subjects, good_subjects_inds, labels = find_good_inds(
         all_subjects, only_left, TR, fast_TR, to_use, laterality)
     disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
     dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
+    utils.save((dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels),
+               op.join(root_path, 'ana_results.pkl'))
+else:
+    (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels) = utils.load(
+        ana_results_fname)
+if not op.isfile(mann_whitney_results_fname):
     mann_whitney_results = {}
     for res, res_name in zip([dFC_res, std_mean_res, stat_conn_res], ['dFC_res', 'std_mean_res', 'stat_conn_res']):
         mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
