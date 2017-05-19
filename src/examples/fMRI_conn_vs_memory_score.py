@@ -169,7 +169,7 @@ if not op.isfile(mann_whitney_results_fname) or not op.isfile(good_subjects_fnam
     disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
     dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
     mann_whitney_results = {}
-    for res, res_name in zip([dFC_res, std_mean_res, stat_conn_res], ['dFC_res', 'std_mean_res', 'stat_conn_res'])
+    for res, res_name in zip([dFC_res, std_mean_res, stat_conn_res], ['dFC_res', 'std_mean_res', 'stat_conn_res']):
         mann_whitney_results[res] = stat_test(res, disturbed_inds, preserved_inds)
     utils.save(mann_whitney_results, mann_whitney_results_fname)
     np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
