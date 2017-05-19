@@ -21,9 +21,8 @@ LINKS_DIR = utils.get_links_dir()
 BLENDER_ROOT_FOLDER = op.join(LINKS_DIR, 'mmvt')
 
 # plt.rcParams['animation.ffmpeg_path'] = '/home/npeled/code/links/ffmpeg/ffmpeg'
-
 def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
-        data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, color_map='jet',
+        data_to_show_in_graph, fol, fol2, cb_title='', cb_min_max_eq=True, cb_norm_percs=None, color_map='jet',
         cb2_data_type='', cb2_title='', cb2_min_max_eq=True, color_map2='jet', bitrate=5000, images2=(),
         ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', show_first_pic=False,
         show_animation=False, overwrite=True):
@@ -103,7 +102,7 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
     print('video: width {} height {} dpi {}'.format(img_width, img_height, dpi))
     img_width_fac = 2 if fol2 != '' else 1.1
     w, h = img_width/dpi * img_width_fac, img_height/dpi * 3/2
-    fig = plt.figure(figsize=(w, h), dpi=dpi)
+    fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor='white')
     fig.canvas.draw()
     g = 15
     g2 = int(g / 3)
@@ -129,10 +128,10 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
 
     if not ax_cb2 is None and fol2 != '':
         graph_data2, _ = utils.load(op.join(fol2, 'data.pkl'))
-        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map, 'left')
-        plot_color_bar(ax_cb2, graph_data2, cb2_title, cb2_data_type, cb2_min_max_eq, color_map2)
+        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, cb_norm_percs, color_map, 'left')
+        plot_color_bar(ax_cb2, graph_data2, cb2_title, cb2_data_type, cb2_min_max_eq, cb_norm_percs, color_map2)
     else:
-        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, color_map)
+        plot_color_bar(ax_cb, graph_data, cb_title, cb_data_type, cb_min_max_eq, cb_norm_percs, color_map)
 
     now = time.time()
     if show_first_pic:
@@ -151,9 +150,12 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
             im2.set_data(image2)
 
         current_t = get_t(images, image_index, time_range)
-        t_line.set_data([current_t, current_t], [ymin, ymax])
-        # print('Reading image {}, current t {}'.format(images[image_index], current_t))
-        return [im]
+        if not current_t is None:
+            t_line.set_data([current_t, current_t], [ymin, ymax])
+            # print('Reading image {}, current t {}'.format(images[image_index], current_t))
+            return [im]
+        else:
+            return None
 
     if show_animation:
         ani = animation.FuncAnimation(fig, update_img, len(images), init_func=init_func, interval=1000, blit=True, repeat=False)
@@ -173,8 +175,9 @@ def ani_frame(time_range, xticks, images, dpi, fps, video_fname, cb_data_type,
         for image_index in range(len(images)):
             new_image_fname = op.join(new_images_fol, 'mv_{}.png'.format(image_index))
             if not op.isfile(new_image_fname) or overwrite:
-                update_img(image_index)
-                plt.savefig(new_image_fname)
+                img = update_img(image_index)
+                if not img is None:
+                    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
         movie_fname = op.join(utils.get_parent_fol(images_fol), images_nb)
         if op.isfile('{}.mp4'.format(movie_fname)) and overwrite:
             utils.remove_file('{}.mp4'.format(movie_fname))
@@ -190,11 +193,21 @@ def get_t(images, image_index, time_range):
         # t = time_range[1:-1:4][t]
     else:
         t = int(re.findall('\d+', pic_name)[0])
-    return time_range[t]
+    if t < len(time_range):
+        return time_range[t]
+    else:
+        return None
 
 
 def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='', graph2_ax=None, xlabel='',
                ylabels=(), xticklabels=(), ylim=None, images=None, green_line=True):
+
+    def remove_boarders(graph_ax):
+        graph_ax.spines['right'].set_visible(False)
+        graph_ax.spines['top'].set_visible(False)
+        graph_ax.xaxis.set_ticks_position('bottom')
+        graph_ax.yaxis.set_ticks_position('left')
+
     graph_data, graph_colors = utils.load(op.join(fol, 'data.pkl'))
     if fol2 != '' and op.isfile(op.join(fol2, 'data.pkl')):
         graph_data2, graph_colors2 = utils.load(op.join(fol2, 'data.pkl'))
@@ -212,7 +225,7 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
     # colors = cu.get_distinct_colors(6) / 255# ['r', 'b', 'g']
     colors = ['r', 'b', 'g']
     if isinstance(data_to_show_in_graph, str):
-        data_to_show_in_graph= [data_to_show_in_graph]
+        data_to_show_in_graph = [data_to_show_in_graph]
     for data_type, data_values in graph_data.items():
         if isinstance(data_values, numbers.Number):
             continue
@@ -244,11 +257,13 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
             if len(time_range) > len(values):
                 time_range = time_range[:len(values)]
             if len(time_range) < len(values):
+                print('The video was trimmed! len(time_range) < len(values)')
                 values = values[:len(time_range)]
             ax.plot(time_range, values, label=k, color=color,
                     alpha=0.9)  # , clip_on=False)#, dashes=dash)# color=tuple(graph_colors[data_type][k]))
         ind += 1
 
+    remove_boarders(graph1_ax)
     graph1_ax.set_xlabel(xlabel)
     if not xticklabels is None:
         x_labels = list(xticks)
@@ -259,6 +274,7 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
 
     graph1_ax.set_xlim([time_range[0], time_range[-1]])
     if graph2_ax:
+        remove_boarders(graph2_ax)
         if ylim:
             ymin, ymax = ylim
         else:
@@ -282,12 +298,17 @@ def plot_graph(graph1_ax, data_to_show_in_graph, time_range, xticks, fol, fol2='
     return graph_data, graph_colors, t_line, ymin, ymax
 
 
-def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, color_map='jet', position='right'):
+def plot_color_bar(ax, graph_data, cb_title, data_type='', cb_min_max_eq=True, cb_norm_percs=None, color_map='jet',
+                   position='right'):
     if data_type == '':
         return
     import matplotlib as mpl
-    data_max = max([max(v) for v in graph_data[data_type].values()])
-    data_min = min([min(v) for v in graph_data[data_type].values()])
+    if cb_norm_percs is None:
+        data_max = max([max(v) for v in graph_data[data_type].values()])
+        data_min = min([min(v) for v in graph_data[data_type].values()])
+    else:
+        data_max = max([np.percentile(v, cb_norm_percs[1]) for v in graph_data[data_type].values()])
+        data_min = min([np.percentile(v, cb_norm_percs[0]) for v in graph_data[data_type].values()])
     if cb_min_max_eq:
         data_max_min = utils.get_max_abs(data_max, data_min)
         vmin, vmax = -data_max_min, data_max_min
@@ -310,8 +331,8 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1):
 
 
 def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
-                 data_to_show_in_graph, cb_title='', cb_min_max_eq=True, color_map='jet', bitrate=5000, fol2='',
-                 cb2_data_type='', cb2_title='', cb2_min_max_eq=True, color_map2='jet',
+                 data_to_show_in_graph, cb_title='', cb_min_max_eq=True, cb_norm_percs=None, color_map='jet',
+                 bitrate=5000, fol2='', cb2_data_type='', cb2_title='', cb2_min_max_eq=True, color_map2='jet',
                  ylim=(), ylabels=(), xticklabels=(), xlabel='Time (ms)', pics_type='png', show_first_pic=False,
                  show_animation=False, overwrite=True, n_jobs=1):
 
@@ -325,10 +346,11 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
     else:
         images2_chunks = [''] * int(len(images1) / n_jobs)
     params = [(images1_chunk, images2_chunk, time_range, xticks, dpi, fps,
-               video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate,
-               ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2,
+               video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, cb_norm_percs, color_map,
+               bitrate, ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2,
                cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, run, show_animation, overwrite) for \
               run, (images1_chunk, images2_chunk) in enumerate(zip(images1_chunks, images2_chunks))]
+    n_jobs = utils.get_n_jobs(n_jobs)
     if n_jobs > 1:
         utils.run_parallel(_create_movie_parallel, params, n_jobs)
         video_name, video_type = op.splitext(video_fname)
@@ -340,13 +362,13 @@ def create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type,
 
 def _create_movie_parallel(params):
     (images1, images2, time_range, xticks, dpi, fps,
-        video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, color_map, bitrate, ylim, ylabels,
-        xticklabels, xlabel, show_first_pic, fol, fol2, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, run,
-        show_animation, overwrite) = params
+        video_fname, cb_data_type, data_to_show_in_graph, cb_title, cb_min_max_eq, cb_norm_percs, color_map, bitrate,
+        ylim, ylabels, xticklabels, xlabel, show_first_pic, fol, fol2, cb2_data_type, cb2_title, cb2_min_max_eq,
+        color_map2, run, show_animation, overwrite) = params
     video_name, video_type = op.splitext(video_fname)
     video_fname = '{}_{}{}'.format(video_name, run, video_type)
     ani_frame(time_range, xticks, images1, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, fol, fol2,
-              cb_title, cb_min_max_eq, color_map, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, bitrate,
+              cb_title, cb_min_max_eq, cb_norm_percs, color_map, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2, bitrate,
               images2, ylim, ylabels, xticklabels, xlabel, show_first_pic, show_animation, overwrite)
 
 
@@ -360,7 +382,8 @@ def sort_pics_key(pic_fname):
 def get_pics(fol, pics_type='png'):
     # return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:int(utils.namebase(x)[1:]))
     # return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=lambda x:re.findall('\d+', utils.namebase(x)))
-    return sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=sort_pics_key)
+    images = sorted(glob.glob(op.join(fol, '*.{}'.format(pics_type))), key=sort_pics_key)
+    return images
 
 
 def plot_only_graph(fol, data_to_show_in_graph, time_range_tup, xtick_dt, xlabel='', ylabels=(),
@@ -450,13 +473,13 @@ if __name__ == '__main__':
 
     '''
 
-    if 'all' in args.function:
-        # Call the function with --verbose-debug if you have problems with ffmpeg!
-        create_movie(time_range, xticks, fol, args.dpi, args.fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-            cb_min_max_eq, color_map, args.bitrate, fol2, ylim, ylabels, xticklabels, xlabel, args.pics_type,
-            args.show_first_pic, n_jobs)
-    if 'plot_only_graph' in args.function:
-        plot_only_graph(args.images_folder, args.data_in_graph, args.time_range, args.xtick_dt,
-                        xlabel=args.xlabel, ylabels=args.ylabels, xticklabels=args.xticklabels,
-                        ylim=args.ylim, images=None, fol2='', graph2_ax=None, do_show=args.do_show)
-
+    # if 'all' in args.function:
+    #     # Call the function with --verbose-debug if you have problems with ffmpeg!
+    #     create_movie(time_range, xticks, fol, args.dpi, args.fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+    #         cb_min_max_eq, color_map, args.bitrate, fol2, ylim, ylabels, xticklabels, xlabel, args.pics_type,
+    #         args.show_first_pic, n_jobs)
+    # if 'plot_only_graph' in args.function:
+    #     plot_only_graph(args.images_folder, args.data_in_graph, args.time_range, args.xtick_dt,
+    #                     xlabel=args.xlabel, ylabels=args.ylabels, xticklabels=args.xticklabels,
+    #                     ylim=args.ylim, images=None, fol2='', graph2_ax=None, do_show=args.do_show)
+    #

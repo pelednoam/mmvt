@@ -152,6 +152,30 @@ def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
         cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, n_jobs)
 
 
+def mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
+    fol = 'I:\\mmvt\\mg106\\figures\\lvf4-5_dt5'
+    fol2 = ''
+    data_to_show_in_graph = ['electrodes']#, 'stim_sources']
+    video_fname = 'mg106_LVF4-5.mp4'
+    cb_title = 'Electrodes Activity'
+    cb_norm_percs = (3, 97)
+    ylabels = ['Electrodes Activity']
+    time_range = np.arange(0, 4, 0.001)
+    xticks = np.arange(0, 4.5, 0.5)
+    xticklabels = [(xt, str(int(xt))) for xt in range(0, 5)][1:]
+    ylim = () #(0, 10)
+    xlabel = 'Time(s)'
+    cb_data_type = 'electrodes'
+    cb_min_max_eq = True
+    color_map = 'BuPu_YlOrRd'
+    fps = 10
+    show_animation = False
+    overwrite = True
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+                 cb_min_max_eq, cb_norm_percs, color_map, bitrate, fol2, '', '', '', '',
+                 ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, show_animation, overwrite, n_jobs)
+
+
 def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     fol = op.join(MMVT_DIR, 'nmr00698' ,'movies', 'fmri')
     fol2 = ''
@@ -171,7 +195,7 @@ def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     show_animation = False
     overwrite = True
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
+        cb_min_max_eq, None, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
         show_animation, overwrite, n_jobs)
 
 
@@ -194,7 +218,7 @@ def fmri_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     show_animation = False
     overwrite = True
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-        cb_min_max_eq, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
+        cb_min_max_eq, None, color_map, bitrate, fol2, ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic,
         show_animation, overwrite, n_jobs)
 
 
@@ -206,9 +230,9 @@ def fMRI_4D_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     cb2_title = 'fMRI corr'
     cb_title = 'fMRI'
     time_range = range(0, 161)
-    xticks = range(0, 161, 20)
     ylim = ()
     ylabels = ['Labels corr']
+    xticks = range(0, 161, 20)
     xticklabels = [(xt, str(int(xt*3/60))) for xt in xticks][1:]
     xlabel = 'Time (m)'
     cb2_data_type = 'labels_connectivity'
@@ -221,7 +245,7 @@ def fMRI_4D_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     show_animation = False
     overwrite = True
     create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
-                 cb_min_max_eq, color_map, bitrate, fol2, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2,
+                 cb_min_max_eq, None, color_map, bitrate, fol2, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2,
                  ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, show_animation, overwrite, n_jobs)
 
 
@@ -234,4 +258,4 @@ if __name__ == '__main__':
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
     # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    fMRI_4D_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs)

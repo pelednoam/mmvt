@@ -484,7 +484,8 @@ def run_script(cmd, verbose=False, cwd=None):
         print(traceback.format_exc())
         return ''
 
-    output = output.decode(sys.getfilesystemencoding(), 'ignore')
+    if isinstance(output, str):
+        output = output.decode(sys.getfilesystemencoding(), 'ignore')
     print(output)
     return output
 
