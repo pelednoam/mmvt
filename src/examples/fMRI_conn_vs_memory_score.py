@@ -88,16 +88,28 @@ def find_subjects_with_data(all_subjects):
 
 def get_subjects_dFC(subjects):
     pcs = [1, 2, 4, 8]
-    res = {pc:None for pc in pcs}
+    dFC_res = {pc:None for pc in pcs}
+    std_mean_res = {pc:None for pc in pcs}
+    stat_conn_res = {pc:None for pc in pcs}
     for subject_ind, subject in enumerate(subjects):
         fol = op.join(MMVT_DIR, subject, 'connectivity')
         for pc in pcs:
-            fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npy'.format('' if pc==1 else '_{}'.format(pc)))
-            dFC = np.load(fname)
-            if res[pc] is None:
-                res[pc] = np.zeros((len(subjects), *dFC.shape))
-            res[pc][subject_ind] = dFC
-    return res
+            fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
+            d = np.load(fname)
+            dFC = d['dFC']
+            std_mean = d['std_mean']
+            stat_conn = d['stat_conn']
+            if dFC_res[pc] is None:
+                dFC_res[pc] = np.zeros((len(subjects), *dFC.shape))
+            if std_mean_res[pc] is None:
+                std_mean_res[pc] = np.zeros((len(subjects), *std_mean.shape))
+            if stat_conn_res[pc] is None:
+                stat_conn_res[pc] = np.zeros((len(subjects), *stat_conn.shape))
+            dFC_res[pc][subject_ind] = dFC
+            std_mean_res[pc][subject_ind] = std_mean
+            stat_conn_res[pc][subject_ind] = stat_conn
+
+    return dFC_res, std_mean_res, stat_conn_res
 
 
 def stat_test(res, disturbed_inds, preserved_inds):
@@ -131,7 +143,6 @@ def check_subjects_labels(subjects):
 
 
 def find_sig_results(stat_results, labels):
-    from src.utils import labels_utils as lu
     pcs = sorted(list(stat_results.keys()))
     sig_inds = []
     for pc in pcs:
@@ -156,8 +167,10 @@ if not op.isfile(mann_whitney_results_fname) or not op.isfile(good_subjects_fnam
     good_subjects, good_subjects_inds, labels = find_good_inds(
         all_subjects, only_left, TR, fast_TR, to_use, laterality)
     disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
-    res = get_subjects_dFC(good_subjects)
-    mann_whitney_results = stat_test(res, disturbed_inds, preserved_inds)
+    dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
+    mann_whitney_results = {}
+    for res, res_name in zip([dFC_res, std_mean_res, stat_conn_res], ['dFC_res', 'std_mean_res', 'stat_conn_res'])
+        mann_whitney_results[res] = stat_test(res, disturbed_inds, preserved_inds)
     utils.save(mann_whitney_results, mann_whitney_results_fname)
     np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
 else:
