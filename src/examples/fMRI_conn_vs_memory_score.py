@@ -112,6 +112,17 @@ def get_subjects_dFC(subjects):
     return dFC_res, std_mean_res, stat_conn_res
 
 
+def switch_laterality(res, subjects, subject_lateralities):
+    rois_inds = find_labels_inds(labels)
+    for pc in res.keys():
+        for s in subjects:
+            if subject_lateralities[s] == 'L':
+                res[pc][rois_inds, s] = stat_conn[ROIs_L].T
+            else:
+                res[pc][rois_inds, s] = dFC_unnorm[ROIs_R].T
+
+
+
 def stat_test(res, disturbed_inds, preserved_inds):
     mann_whitney_results = {pc:None for pc in res.keys()}
     for pc, dFCs in res.items():
@@ -142,49 +153,104 @@ def check_subjects_labels(subjects):
     return bad_indices, _labels
 
 
-def find_sig_results(stat_results, labels):
-    pcs = sorted(list(stat_results.keys()))
-    sig_inds = []
-    for pc in pcs:
-        sig_inds.extend(np.where(stat_results[pc] < 0.05)[0])
-    sig_inds = sorted(list(set(sig_inds)))
-    for sig_ind in sig_inds:
-        print(labels[sig_ind], [(pc, stat_results[pc][sig_ind]) for pc in pcs])
-    plt.figure()
-    width = 0.2
-    x = np.arange(len(sig_inds))
-    for ind, pc in enumerate(pcs):
-        plt.bar(x + ind * width, stat_results[pc][sig_inds], width, label=str(pc))
-    plt.plot((0, len(sig_inds)), (0.05, 0.05), 'r--')
-    plt.xticks(x, labels[sig_inds], rotation='vertical')
-    plt.legend()
-    plt.show()
+def get_rois_pvals(all_stat_results, labels, rois_inds):
+    for res_type, stat_results in all_stat_results.items():
+        pcs = sorted(list(stat_results.keys()))
+        pvals = {}
+        for pc in pcs:
+            pvals[pc] = stat_results[pc][rois_inds]
+        print(pvals)
+        plt.figure()
+        width = 0.2
+        x = np.arange(len(rois_inds))
+        for ind, pc in enumerate(pcs):
+            plt.bar(x + ind * width, stat_results[pc][rois_inds], width, label=str(pc))
+        plt.plot((0, len(rois_inds)), (0.05, 0.05), 'r--')
+        plt.xticks(x, labels[rois_inds], rotation='vertical')
+        plt.legend()
+        plt.title(res_type)
+        plt.show()
 
-mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
-good_subjects_fname = op.join(root_path, 'good_subjects.npz')
-ana_results_fname = op.join(root_path, 'ana_results.pkl')
-if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
-    laterality, to_use, TR, values, all_subjects = read_scoring()
-    good_subjects, good_subjects_inds, labels = find_good_inds(
-        all_subjects, only_left, TR, fast_TR, to_use, laterality)
-    disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
-    dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
-    utils.save((dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels),
-               op.join(root_path, 'ana_results.pkl'))
-else:
-    (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels) = utils.load(
-        ana_results_fname)
-if not op.isfile(mann_whitney_results_fname):
-    mann_whitney_results = {}
-    for res, res_name in zip([dFC_res, std_mean_res, stat_conn_res], ['dFC_res', 'std_mean_res', 'stat_conn_res']):
-        mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
-    utils.save(mann_whitney_results, mann_whitney_results_fname)
-    np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
-else:
-    mann_whitney_results = utils.load(mann_whitney_results_fname)
-    d = np.load(good_subjects_fname)
-    good_subjects = d['good_subjects']
-    labels = d['labels']
-# plot_stat_results(mann_whitney_results)
-find_sig_results(mann_whitney_results, labels)
-print('Wooohooo!')
+
+def find_sig_results(all_stat_results, labels):
+    for res_type, stat_results in all_stat_results.items():
+        pcs = sorted(list(stat_results.keys()))
+        sig_inds = []
+        for pc in pcs:
+            sig_inds.extend(np.where(stat_results[pc] < 0.05)[0])
+        sig_inds = sorted(list(set(sig_inds)))
+        for sig_ind in sig_inds:
+            print(labels[sig_ind], [(pc, stat_results[pc][sig_ind]) for pc in pcs])
+        plt.figure()
+        width = 0.2
+        x = np.arange(len(sig_inds))
+        for ind, pc in enumerate(pcs):
+            plt.bar(x + ind * width, stat_results[pc][sig_inds], width, label=str(pc))
+        plt.plot((0, len(sig_inds)), (0.05, 0.05), 'r--')
+        plt.xticks(x, labels[sig_inds], rotation='vertical')
+        plt.legend()
+        plt.title(res_type)
+        plt.show()
+
+
+def check_labels():
+    from src.utils import labels_utils as lu
+
+    labels = np.load(op.join(root_path, 'labels_names.npy'))
+    labels = lu.read_labels('fsaverage', SUBJECTS_DIR, 'laus125', only_names=True, sorted_according_to_annot_file=True)
+    # labels = np.array(labels)
+    print([(ind, l) for ind, l in enumerate(labels) if l.startswith('unk')])
+    print([(ind, l) for ind, l in enumerate(labels) if l.startswith('corp')])
+    remove_ids = np.array([1, 5, 114, 118]) - 1
+    print('asdf')
+
+
+def find_labels_inds(labels):
+    laus125_labels_lh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_lh.txt'))]
+    laus125_labels_rh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_rh.txt'))]
+    laus125_labels_lh = [s + '-lh' for s in laus125_labels_lh]
+    laus125_labels_rh = [s + '-rh' for s in laus125_labels_rh]
+    laus125_labels = np.array(laus125_labels_lh + laus125_labels_rh)
+    rois = laus125_labels[np.array([4, 8, 115, 119])]
+    labels_rois_inds = np.array([np.where(labels==l)[0][0] for l in rois])
+    print(labels[labels_rois_inds])
+    return labels_rois_inds
+
+
+def calc_mann_whitney_results():
+    mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
+    good_subjects_fname = op.join(root_path, 'good_subjects.npz')
+    ana_results_fname = op.join(root_path, 'ana_results.pkl')
+    if True: #not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
+        laterality, to_use, TR, values, all_subjects = read_scoring()
+        good_subjects, good_subjects_inds, labels = find_good_inds(
+            all_subjects, only_left, TR, fast_TR, to_use, laterality)
+        disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
+        dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
+        utils.save((dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels),
+                   op.join(root_path, 'ana_results.pkl'))
+    else:
+        (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality) = \
+            utils.load(ana_results_fname)
+    if True: #not op.isfile(mann_whitney_results_fname):
+        mann_whitney_results = {}
+        for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
+            switch_laterality(res, good_subjects, laterality)
+            mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
+        utils.save(mann_whitney_results, mann_whitney_results_fname)
+        np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
+    else:
+        mann_whitney_results = utils.load(mann_whitney_results_fname)
+        d = np.load(good_subjects_fname)
+        good_subjects = d['good_subjects']
+        labels = d['labels']
+    return mann_whitney_results, good_subjects, labels
+
+
+if __name__ == '__main__':
+    mann_whitney_results, good_subjects, labels = calc_mann_whitney_results()
+    rois_inds = find_labels_inds(labels)
+    get_rois_pvals(mann_whitney_results, labels, rois_inds)
+    # plot_stat_results(mann_whitney_results)
+    # find_sig_results(mann_whitney_results, labels)
+    print('Wooohooo!')
