@@ -93,23 +93,26 @@ def load_electrodes_matlab_stim_file(args):
     args = pu.add_default_args(args, {'error_radius': 3, 'elec_length': 4, 'file_frefix': ''})
 
     subject = args.subject[0]
-    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF45_continuous.mat')
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_LVF56_continuous.mat')
     d = mu.load_mat_to_bag(mat_fname)
     labels = mu.matlab_cell_str_to_list(d.Label)
     fs = d.fs[0][0]
-    data = d.data[:, 62000:66000] # times: 62000 -66000
+    T = d.data.shape[1]
+    # t1, t2 = 62000, 66000
+    t1, t2 = T - 5*fs, T # Take last 5 seconds
+    data = d.data[:, t1:t2]
 
     bad_electrodes = ['ROF04-05', 'ROF05-06', 'LPF14-NT']
     labels, data = elecs.remove_bad_channels(labels, data, bad_electrodes)
     data = data.reshape((*data.shape, 1))
 
-    args.stim_channel = 'LVF04-LVF05'
+    args.stim_channel = 'LVF05-LVF06'
     args.bipolar = '-' in args.stim_channel
     elecs.convert_electrodes_coordinates_file_to_npy(subject, bipolar=False)
     output_file = stim.create_stim_electrodes_positions(subject, args, labels)
     # First you need to run find_rois in electrodes_rois project:
     # python -m src.find_rois -s mg106 -b 1 --pos_fname '$MMVT/mg106/electrodes/electrodes_bipolar_stim_LVF04-LVF05_positions.npz' --output_postfix _stim_LVF04-LVF05
-    stim.set_labels_colors(subject, args, stim_dict=dict(labels=labels, data=data, conditions=['rest']))
+    # stim.set_labels_colors(subject, args, stim_dict=dict(labels=labels, data=data, conditions=['rest']))
     data_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_data.npy'.format(
         '_bipolar' if args.bipolar else ''))
     meta_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_meta_data.npz'.format(

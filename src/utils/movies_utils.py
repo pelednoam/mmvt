@@ -2,7 +2,9 @@ import os.path as op
 import glob
 from src.utils import utils
 
-FFMPEG_DIR = op.join(utils.get_links_dir(), 'ffmpeg')
+
+FFMPEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'ffmpeg')
+FFMPEG_DIR = op.join(FFMPEG_DIR, 'bin') if utils.is_windows() else FFMPEG_DIR
 FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else 'ffmpeg'
 
 # from moviepy.config import change_settings
@@ -13,16 +15,19 @@ FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else 'ffmpeg'
 
 
 def check_movipy():
-    import moviepy.config as conf
-    if conf.try_cmd([conf.FFMPEG_BINARY])[0]:
-        print("MoviePy : ffmpeg successfully found.")
-    else:
-        print("MoviePy : can't find or access ffmpeg.")
+    try:
+        import moviepy.config as conf
+        if conf.try_cmd([conf.FFMPEG_BINARY])[0]:
+            print("MoviePy : ffmpeg successfully found.")
+        else:
+            print("MoviePy : can't find or access ffmpeg.")
 
-    if conf.try_cmd([conf.IMAGEMAGICK_BINARY])[0]:
-        print("MoviePy : ImageMagick successfully found.")
-    else:
-        print("MoviePy : can't find or access ImageMagick.")
+        if conf.try_cmd([conf.IMAGEMAGICK_BINARY])[0]:
+            print("MoviePy : ImageMagick successfully found.")
+        else:
+            print("MoviePy : can't find or access ImageMagick.")
+    except:
+        print("Can't import moviepy")
 
 
 def cut_movie(movie_fol, movie_name, out_movie_name, subclips_times):
@@ -91,10 +96,11 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, **kwargs):
+                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug_mode = True, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
-    # change_frames_names(fol, images_prefix, images_type, images_format_len)
+    if utils.is_windows():
+        fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
     images_prefix = op.join(fol, images_prefix)
     if not movie_name_full_path:
         movie_name = op.join(fol, movie_name)
@@ -103,10 +109,14 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
         # You might want to use a static ffmpeg if your ffmepg version doesn't support the start_number flag, like:
         # ffmpeg_cmd = '~/space1/Downloads/ffmpeg-git-static/ffmpeg'
         combine_images_cmd += '-start_number {start_number} '
+    # Not working in windows:
+    # combine_images_cmd += '-pattern_type glob -i "*.{images_type}" '
     combine_images_cmd += '-i {images_prefix}{images_format}.{images_type} '
     # http://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
     combine_images_cmd += '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" '
     combine_images_cmd += '-c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
+    if debug_mode:
+        combine_images_cmd += ' -loglevel debug'
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
 
@@ -133,17 +143,21 @@ def find_images_props(fol, start_number=-1, images_prefix='', images_format='', 
     return images_type, images_prefix, images_format, len(number), start_number
 
 
-def change_frames_names(fol, images_prefix, images_type, images_format_len):
+def change_frames_names(fol, images_prefix, images_type, images_format_len, new_fol_name='new_images'):
     import shutil
     images = glob.glob(op.join(fol, '{}*.{}'.format(images_prefix, images_type)))
+    images.sort(key=lambda x: int(utils.namebase(x)[len(images_prefix):]))
     images_formats = {1: '{0:0>1}', 2: '{0:0>2}', 3: '{0:0>3}', 4: '{0:0>4}', 5: '{0:0>5}'}
     root = op.join(op.sep.join(images[0].split(op.sep)[:-1]))
-    new_fol = op.join(root, 'new_images')
+    new_fol = op.join(root, new_fol_name)
+    utils.delete_folder_files(new_fol)
     utils.make_dir(new_fol)
     for num, image_fname in enumerate(images):
         num_str = images_formats[images_format_len].format(num + 1)
         new_image_fname = op.join(new_fol, '{}{}.{}'.format(images_prefix, num_str, images_type))
+        print('{} -> {}'.format(image_fname, new_image_fname))
         shutil.copy(image_fname, new_image_fname)
+    return new_fol
 
 if __name__ == '__main__':
     import argparse
