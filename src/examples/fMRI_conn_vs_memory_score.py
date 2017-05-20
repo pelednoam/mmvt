@@ -227,8 +227,9 @@ def calc_mann_whitney_results():
             all_subjects, only_left, TR, fast_TR, to_use, laterality)
         disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
         dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
-        utils.save((dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels),
-                   op.join(root_path, 'ana_results.pkl'))
+        utils.save(
+            (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality),
+            op.join(root_path, 'ana_results.pkl'))
     else:
         (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality) = \
             utils.load(ana_results_fname)
