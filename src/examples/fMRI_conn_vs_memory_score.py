@@ -112,15 +112,19 @@ def get_subjects_dFC(subjects):
     return dFC_res, std_mean_res, stat_conn_res
 
 
-def switch_laterality(res, subjects, subject_lateralities):
+def switch_laterality(res, subjects, labels, subject_lateralities):
     rois_inds = find_labels_inds(labels)
+    ROIs_L = rois_inds
+    ROIs_R = np.concatenate((rois_inds[2:], rois_inds[:2]))
+    rois_res = {}
     for pc in res.keys():
-        for s in subjects:
-            if subject_lateralities[s] == 'L':
-                res[pc][rois_inds, s] = stat_conn[ROIs_L].T
+        rois_res[pc] = np.zeros((len(subjects), len(rois_inds)))
+        for s_ind, s in enumerate(subjects):
+            if subject_lateralities[s_ind] == 'L':
+                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
             else:
-                res[pc][rois_inds, s] = dFC_unnorm[ROIs_R].T
-
+                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
+    return rois_res
 
 
 def stat_test(res, disturbed_inds, preserved_inds):
@@ -221,7 +225,7 @@ def calc_mann_whitney_results():
     mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     ana_results_fname = op.join(root_path, 'ana_results.pkl')
-    if True: #not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
+    if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
         laterality, to_use, TR, values, all_subjects = read_scoring()
         good_subjects, good_subjects_inds, labels = find_good_inds(
             all_subjects, only_left, TR, fast_TR, to_use, laterality)
@@ -233,10 +237,10 @@ def calc_mann_whitney_results():
     else:
         (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality) = \
             utils.load(ana_results_fname)
-    if True: #not op.isfile(mann_whitney_results_fname):
+    if not op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
         for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
-            switch_laterality(res, good_subjects, laterality)
+            res = switch_laterality(res, good_subjects, labels, laterality)
             mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
@@ -251,7 +255,7 @@ def calc_mann_whitney_results():
 if __name__ == '__main__':
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results()
     rois_inds = find_labels_inds(labels)
-    get_rois_pvals(mann_whitney_results, labels, rois_inds)
+    get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
     # find_sig_results(mann_whitney_results, labels)
     print('Wooohooo!')
