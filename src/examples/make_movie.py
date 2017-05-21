@@ -176,6 +176,22 @@ def mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
                  ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, show_animation, overwrite, n_jobs)
 
 
+def mg106_electrodes_activity_add_annotation():
+    from src.utils import movies_utils as mu
+    mu.check_movipy()
+
+    video_fol = '/home/npeled/Documents/darpa_year3_meeting'
+    if not op.isdir(video_fol):
+        video_fol = '/autofs/space/thibault_001/users/npeled/Documents/darpa_year3_meeting'
+    video_name = 'lvf4-5_dt5.mp4'
+    video_new_name = 'lvf4-5_dt5_annot.mp4'
+    subs = [((0, 38), 'Stim Off'),
+            ((39, 50), 'Stim On'),
+            ((51, 79), 'Stim Off')]
+    mu.add_text_to_movie(video_fol, video_name, video_new_name, subs, fontsize=50, txt_color='White',
+                         font='Xolonium-Bold')
+
+
 def fMRI_4D(dpi, bitrate, pics_type, show_first_pic, n_jobs):
     fol = op.join(MMVT_DIR, 'nmr00698' ,'movies', 'fmri')
     fol2 = ''
@@ -258,4 +274,5 @@ if __name__ == '__main__':
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
     # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    # mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    mg106_electrodes_activity_add_annotation()
