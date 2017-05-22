@@ -153,16 +153,17 @@ def mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs):
 
 
 def mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
-    fol = 'I:\\mmvt\\mg106\\figures\\lvf4-5_dt5'
+    fol = 'I:\\mmvt\\mg106\\figures\\lvf5-6_dt5'
     fol2 = ''
     data_to_show_in_graph = ['electrodes']#, 'stim_sources']
-    video_fname = 'mg106_LVF4-5.mp4'
+    video_fname = 'mg106_LVF5-6.mp4'
     cb_title = 'Electrodes Activity'
     cb_norm_percs = (3, 97)
     ylabels = ['Electrodes Activity']
-    time_range = np.arange(0, 4, 0.001)
-    xticks = np.arange(0, 4.5, 0.5)
-    xticklabels = [(xt, str(int(xt))) for xt in range(0, 5)][1:]
+    T = 5
+    time_range = np.arange(0, T, 0.001)
+    xticks = np.arange(0, T + 0.5, 1)
+    xticklabels = [(xt, str(int(xt))) for xt in xticks][1:]
     ylim = () #(0, 10)
     xlabel = 'Time(s)'
     cb_data_type = 'electrodes'
@@ -183,6 +184,8 @@ def mg106_electrodes_activity_add_annotation():
     video_fol = '/home/npeled/Documents/darpa_year3_meeting'
     if not op.isdir(video_fol):
         video_fol = '/autofs/space/thibault_001/users/npeled/Documents/darpa_year3_meeting'
+    if not op.isdir(video_fol):
+        video_fol = 'I:\\mmvt\\mg106\\figures'
     video_name = 'lvf4-5_dt5.mp4'
     video_new_name = 'lvf4-5_dt5_annot.mp4'
     subs = [((0, 38), 'Stim Off'),
@@ -274,5 +277,5 @@ if __name__ == '__main__':
 
     # mg99_stim(dpi, bitrate, pics_type, show_first_pic, n_jobs)
     # mg99_stim_srouces(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    # mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs)
-    mg106_electrodes_activity_add_annotation()
+    mg106_electrodes_activity(dpi, bitrate, pics_type, show_first_pic, n_jobs)
+    # mg106_electrodes_activity_add_annotation()

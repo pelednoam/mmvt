@@ -100,6 +100,10 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
                    images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug_mode = True, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
+    if movie_name == '' and images_prefix != '':
+        movie_name = images_prefix
+    else:
+        movie_name = 'output_video'
     if utils.is_windows():
         fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
     images_prefix = op.join(fol, images_prefix)
@@ -166,7 +170,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('--fol', required=False)
-    parser.add_argument('--movie_name', required=False, default='output')
+    parser.add_argument('--movie_name', required=False, default='')
     parser.add_argument('--out_movie_name', required=False, default='output2')
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
     parser.add_argument('--frame_rate', required=False, default=10)
