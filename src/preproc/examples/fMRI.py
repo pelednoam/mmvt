@@ -76,7 +76,8 @@ def analyze_4d_data(args):
         fmri_file_template='rest_linda.sm6.{subject}.{hemi}.mgz',
         # template_brain='fsaverage5',
         # template_brain='fsaverage6',
-        labels_extract_mode='pca,pca_2,pca_4,pca_8,pca_16'
+        # labels_extract_mode='pca,pca_2,pca_4,pca_8,pca_16'
+        labels_extract_mode='mean'
     ))
     pu.run_on_subjects(args, fmri.main)
 

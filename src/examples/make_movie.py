@@ -267,6 +267,31 @@ def fMRI_4D_cor_connectivity(dpi, bitrate, pics_type, show_first_pic, n_jobs):
                  cb_min_max_eq, None, color_map, bitrate, fol2, cb2_data_type, cb2_title, cb2_min_max_eq, color_map2,
                  ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, show_animation, overwrite, n_jobs)
 
+#
+#
+# def mg106_show_session1(dpi=100, bitrate=5000, pics_type='png', show_first_pic=False, n_jobs=1):
+#     electrodes_activity('/home/npeled/mmvt/mg106/figures/sess1', 'mg106_sess1', )
+
+def electrodes_activity(fol, video_fname, T, cb_norm_percs = (3, 97), cb_min_max = (), cb_min_max_eq=True,
+                        color_map = 'BuPu_YlOrRd', dpi=100, bitrate=5000, pics_type='png', show_first_pic=False, n_jobs=1):
+    fol2 = ''
+    data_to_show_in_graph = ['electrodes']#, 'stim_sources']
+    cb_title = 'Electrodes Activity'
+    ylabels = ['Electrodes Activity']
+    time_range = np.arange(0, T, 0.001)
+    xticks = np.arange(0, T + 0.5, 1)
+    xticklabels = [(xt, str(int(xt))) for xt in xticks][1:]
+    ylim = () #(0, 10)
+    xlabel = 'Time(s)'
+    cb_data_type = 'electrodes'
+    fps = 10
+    show_animation = False
+    overwrite = True
+    create_movie(time_range, xticks, fol, dpi, fps, video_fname, cb_data_type, data_to_show_in_graph, cb_title,
+                 cb_min_max_eq, cb_norm_percs, color_map, bitrate, fol2, '', '', '', '',
+                 ylim, ylabels, xticklabels, xlabel, pics_type, show_first_pic, show_animation, overwrite, n_jobs)
+
+
 
 if __name__ == '__main__':
     dpi = 100

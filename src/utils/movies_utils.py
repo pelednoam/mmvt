@@ -97,14 +97,15 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug_mode = True, **kwargs):
+                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug_mode=True,
+                   copy_files=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     if movie_name == '' and images_prefix != '':
         movie_name = images_prefix
     else:
         movie_name = 'output_video'
-    if utils.is_windows():
+    if utils.is_windows() or copy_files:
         fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
     images_prefix = op.join(fol, images_prefix)
     if not movie_name_full_path:
@@ -174,10 +175,13 @@ if __name__ == '__main__':
     parser.add_argument('--out_movie_name', required=False, default='output2')
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
     parser.add_argument('--frame_rate', required=False, default=10)
+    parser.add_argument('--copy_files', required=False, default=0, type=au.is_true)
+
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](**args)
 
     # combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',
     #                         ffmpeg_cmd='~/space1/Downloads/ffmpeg-git-static/ffmpeg')
+
 

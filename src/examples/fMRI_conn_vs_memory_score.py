@@ -124,7 +124,7 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
             else:
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
-    return rois_res
+    return rois_res, rois_inds
 
 
 def stat_test(res, disturbed_inds, preserved_inds):
@@ -197,6 +197,28 @@ def find_sig_results(all_stat_results, labels):
         plt.show()
 
 
+def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds):
+    x = np.arange(len(res.keys()))
+    from collections import defaultdict
+    x1, x2 = defaultdict(list), defaultdict(list)
+    width = 0.35
+    pcs = [1, 2, 4, 8]
+    for pc in pcs:
+        for label_ind, label in enumerate(labels):
+            x1[label_ind].append(np.mean(res[pc][disturbed_inds, label_ind]))
+            x2[label_ind].append(np.mean(res[pc][preserved_inds, label_ind]))
+    for label_ind, label in enumerate(labels):
+        plt.figure()
+        plt.bar(x, x1[label_ind], width, label='disturbed')
+        plt.bar(x + width, x2[label_ind], width, label='preserved')
+        plt.xticks(x, ['{} PCs'.format(pc) for pc in pcs])
+        plt.legend()
+        plt.title('{} - {}'.format(res_name, label))
+        plt.savefig(op.join(root_path, '{}-{}.png'.format(res_name, label)))
+    # plt.show()
+    print('asdf')
+
+
 def check_labels():
     from src.utils import labels_utils as lu
 
@@ -237,10 +259,11 @@ def calc_mann_whitney_results():
     else:
         (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality) = \
             utils.load(ana_results_fname)
-    if not op.isfile(mann_whitney_results_fname):
+    if True: #not op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
         for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
-            res = switch_laterality(res, good_subjects, labels, laterality)
+            res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
             mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
@@ -254,8 +277,8 @@ def calc_mann_whitney_results():
 
 if __name__ == '__main__':
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results()
-    rois_inds = find_labels_inds(labels)
-    get_rois_pvals(mann_whitney_results, labels, range(4))
+    # rois_inds = find_labels_inds(labels)
+    # get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
     # find_sig_results(mann_whitney_results, labels)
     print('Wooohooo!')

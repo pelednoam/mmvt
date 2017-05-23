@@ -84,6 +84,35 @@ def get_electrodes_file_from_server(args):
         pu.run_on_subjects(args, elecs.main)
 
 
+def load_electrodes_matlab_stim_file2(args):
+    from src.preproc import stim
+    args = elecs.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        bipolar = True
+    ))
+    args = pu.add_default_args(args, {'error_radius': 3, 'elec_length': 4, 'file_frefix': ''})
+
+    subject = args.subject[0]
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_neural_sess1.mat')
+    d = mu.load_mat_to_bag(mat_fname)
+    labels = mu.matlab_cell_str_to_list(d.channels)
+    labels = [l.replace(' ', '-') for l in labels]
+    time = d.time.squeeze()
+    data = d.Data.T
+    data = data.reshape((*data.shape, 1))
+
+    args.stim_channel = 'sess1'
+    args.bipolar = '-' in labels[0]
+    elecs.convert_electrodes_coordinates_file_to_npy(subject, bipolar=False)
+    output_file = stim.create_stim_electrodes_positions(subject, args, labels)
+    data_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_data.npy'.format(
+        '_bipolar' if args.bipolar else ''))
+    meta_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_meta_data.npz'.format(
+        '_bipolar' if args.bipolar else ''))
+    np.save(data_fname, data)
+    np.savez(meta_fname, names=labels, conditions=['rest'])
+
+
 def load_electrodes_matlab_stim_file(args):
     from src.preproc import stim
     args = elecs.read_cmd_args(utils.Bag(

@@ -93,6 +93,7 @@ def create_stim_electrodes_positions(subject, args, stim_labels=None):
             dists.append(dist)
         pos = np.array(pos)
     else:
+        new_labels = stim_labels
         pos = [pos for (pos, label) in zip(org_pos, org_labels) if label in stim_labels]
         dists = [np.linalg.norm(p2 - p1) for p1, p2 in zip(pos[:-1], pos[1:])]
 
