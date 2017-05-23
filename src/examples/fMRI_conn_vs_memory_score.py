@@ -98,6 +98,7 @@ def get_subjects_dFC(subjects):
                 fname = op.join(fol, 'fmri_corr_cv_mean_mean.npz')
             else:
                 fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
+            print('Loading {}'.format(fname))
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
@@ -249,7 +250,7 @@ def find_labels_inds(labels):
 def calc_ana():
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     ana_results_fname = op.join(root_path, 'ana_results.pkl')
-    if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
+    if True: #not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
         laterality, to_use, TR, values, all_subjects = read_scoring()
         good_subjects, good_subjects_inds, labels = find_good_inds(
             all_subjects, only_left, TR, fast_TR, to_use, laterality)
