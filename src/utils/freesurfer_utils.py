@@ -31,6 +31,8 @@ warp_buckner_atlas_cmd = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mg
                      '--o {subjects_dir}/{subject}/mri/{wrap_map_name} --nearest --inv-morph'
 
 mri_surf2surf = 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {source_fname} --trgsubject {target_subject} --trgsurfval {target_fname} --hemi {hemi}'
+mri_vol2vol = 'mri_vol2vol --mov {source_volume_fname} --s {subject} --targ {target_volume_fname} --o {output_volume_fname} --nearest'
+
 
 
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
@@ -374,3 +376,12 @@ def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, 
         rs(mri_surf2surf)
         if not op.isfile(target_fname):
             raise Exception('surf2surf: Target file was not created!')
+
+
+def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fname, cwd=None, print_only=False):
+    if source_volume_fname != target_volume_fname:
+        rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
+        rs(mri_vol2vol)
+        if not op.isfile(output_volume_fname):
+            raise Exception('vol2vol: Target file was not created!')
+

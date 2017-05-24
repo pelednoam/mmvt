@@ -440,17 +440,20 @@ def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_r
 #     return names
 
 
-def get_numeric_index_to_label(label, lut=None, free_surfer_home=''):
+def get_numeric_index_to_label(label, lut=None):
     if lut is None:
-        if free_surfer_home == '':
-            free_surfer_home = os.environ['FREESURFER_HOME']
-        lut = read_freesurfer_lookup_table(free_surfer_home)
+        lut = read_freesurfer_lookup_table()
+    lut_names = np.array([l.decode() for l in lut['name']])
     if type(label) == str:
-        seg_name = label
-        seg_id = lut['id'][lut['name'] == seg_name][0]
+        inds = np.where(lut_names == label)
+        if len(inds[0]) == 0:
+            return None, None
+        else:
+            seg_id = lut['id'][inds[0]][0]
+            seg_name = label
     elif type(label) == int:
         seg_id = label
-        seg_name = lut['name'][lut['id'] == seg_id][0]
+        seg_name = lut_names[lut['id'] == seg_id][0]
     if not isinstance(seg_name, str):
         seg_name = seg_name.astype(str)
     return seg_name, int(seg_id)
@@ -505,15 +508,12 @@ def _run_script_wrapper(cmd, vars, cwd=None, print_only=False, **kwargs):
         run_script(cmd.format(**vars), cwd=cwd)
 
 
-def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True, freesurfer_home=''):
-    if freesurfer_home=='':
-        freesurfer_home = os.environ['FREESURFER_HOME']
-
+def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True):
     # Read the segmentation data using nibabel
     aseg_data = aseg.get_data()
 
     # Read the freesurfer lookup table
-    lut = read_freesurfer_lookup_table(freesurfer_home)
+    lut = read_freesurfer_lookup_table()
 
     # Generate a grid using spacing
     grid = None
@@ -523,6 +523,8 @@ def sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=True, fr
     # Get the indices to the desired labels
     for label in seg_labels:
         seg_name, seg_id = get_numeric_index_to_label(label, lut)
+        if seg_name is None:
+            continue
         pts = calc_label_voxels(seg_id, aseg_data, grid)
         yield pts, seg_name, seg_id
 

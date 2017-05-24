@@ -76,8 +76,19 @@ def analyze_4d_data(args):
         fmri_file_template='rest_linda.sm6.{subject}.{hemi}.mgz',
         # template_brain='fsaverage5',
         # template_brain='fsaverage6',
-        # labels_extract_mode='pca,pca_2,pca_4,pca_8,pca_16'
+        # labels_extract_mode='pca,pca_2,pca_4,pca_8'
         labels_extract_mode='mean'
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+
+def calculate_subcorticals_activity(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        function='calculate_subcorticals_activity',
+        fmri_file_template='rest*',
+        labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
+        overwrite_subs_data=True
     ))
     pu.run_on_subjects(args, fmri.main)
 

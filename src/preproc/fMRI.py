@@ -364,7 +364,7 @@ def convert_fmri_file(input_fname_template, from_format='nii.gz', to_format='mgz
         return ''
 
 
-def calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file='', aseg_stats_file_name='',
+def calculate_subcorticals_surface_activity(subject, volume_file, subcortical_codes_file='', aseg_stats_file_name='',
         method='max', k_points=100, do_plot=False):
     x = nib.load(volume_file)
     x_data = x.get_data()
@@ -413,6 +413,71 @@ def calculate_subcorticals_activity(subject, volume_file, subcortical_codes_file
     if do_plot:
         plt.savefig('/home/noam/subjects/mri/mg78/subcortical_fmri_activity/figures/brain.jpg')
         plt.show()
+
+
+def calculate_subcorticals_activity(subject, fmri_file_template, measures=['mean'], subcortical_codes_fname='', overwrite=False):
+    fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
+    volume_files = find_volume_files_from_template(fmri_file_template)
+    if len(volume_files) == 1:
+        volume_file = volume_files[0]
+    elif len(volume_files) == 0:
+        print("Can't find the volume file! {}".format(fmri_file_template))
+        return False
+    else:
+        print('More than one file was found! {}'.format(fmri_file_template))
+        return False
+
+    x = nib.load(volume_file)
+    x_data = x.get_data()
+
+    if subcortical_codes_fname == '':
+        subcortical_codes_fname = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
+    if not op.isfile(subcortical_codes_fname):
+        print("Can't find the subcortical codes file! {}".format(subcortical_codes_fname))
+    subcortical_codes = np.genfromtxt(subcortical_codes_fname, dtype=str, delimiter=',')
+    seg_labels = list(map(str, subcortical_codes[:, 0]))
+
+    # Find the segmentation file
+    aseg_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
+    aseg = nib.load(aseg_fname)
+    out_folder = op.join(SUBJECTS_DIR, subject, 'fmri')
+    if not op.isdir(out_folder):
+        os.mkdir(out_folder)
+    if np.any(x_data.shape[:3] != aseg.shape):
+        new_aseg_fname = op.join(FMRI_DIR, subject, 'aseg.mgz')
+        if not op.isfile(new_aseg_fname):
+            fu.vol2vol(subject, aseg_fname, volume_file, new_aseg_fname)
+        aseg = nib.load(new_aseg_fname)
+
+    out_fnames = []
+    if isinstance(measures, str):
+        measures = [measures]
+    for measure in measures:
+        labels_data, seg_names = [], []
+        out_fname = op.join(out_folder, 'subcorticals_{}.npz'.format(measure))
+        out_fnames.append(out_fname)
+        if op.isfile(out_fname) and not overwrite:
+            continue
+        sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, use_grid=False)
+        for pts, seg_name, seg_id in sub_cortical_generator:
+            seg_names.append(seg_name)
+            x = np.array([x_data[i, j, k] for i, j, k in pts])
+            if measure == 'mean':
+                labels_data.append(np.mean(x, 0))
+            elif measure.startswith('pca'):
+                import sklearn.decomposition as deco
+                remove_cols = np.where(np.all(x == np.mean(x, 0), 0))[0]
+                x = np.delete(x, remove_cols, 1)
+                x = (x - np.mean(x, 0)) / np.std(x, 0)
+                comps = 1 if '_' not in measure else int(measure.split('_')[1])
+                pca = deco.PCA(comps)
+                x = x.T
+                x_r = pca.fit(x).transform(x)
+                labels_data.append(x_r)
+        labels_data = np.array(labels_data)
+        np.savez(out_fname, data=labels_data, names=seg_names)
+        print('Writing to {}, {}'.format(out_fname, labels_data.shape))
+    return all([op.isfile(o) for o in out_fnames])
 
 
 def calc_vert_vals(verts, pts, vals, method='max', k_points=100):
@@ -1205,6 +1270,10 @@ def main(subject, remote_subject_dir, args, flags):
             flags['calc_meg_activity'] = calc_meg_activity_for_functional_rois(
                 subject, meg_subject, args.atlas, args.task, args.contrast_name, args.contrast, args.inverse_method)
 
+    if 'calculate_subcorticals_activity' in args.function:
+        flags['calculate_subcorticals_activity'] = calculate_subcorticals_activity(
+            subject, args.fmri_file_template, measures=args.labels_extract_mode, overwrite=args.overwrite_subs_data)
+
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
@@ -1238,6 +1307,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_surf_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_colors_file', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_volume', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_subs_data', help='', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)

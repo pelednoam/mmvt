@@ -429,7 +429,7 @@ def render_lateral_medial_split_brain(data_type='', quality=20, overwrite=True):
 
 @mu.timeit
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
-                 camera_fname='', hide_subcorticals=False, overwrite=True, set_to_camera=False):
+                 camera_fname='', hide_subcorticals=False, overwrite=True, set_to_camera=True):
     if not is_camera_view() and set_to_camera:
         set_to_camera_view()
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
