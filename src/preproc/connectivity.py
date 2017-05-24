@@ -116,7 +116,6 @@ def calc_rois_matlab_connectivity(subject, args):
 
 
 def calc_lables_connectivity(subject, labels_extract_mode, args):
-    # import mne.connectivity
 
     def get_output_fname(connectivity_method, labels_extract_mode=''):
         comps_num = '_{}'.format(labels_extract_mode.split('_')[1]) if labels_extract_mode.startswith('pca_') else ''
@@ -169,6 +168,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         f = np.load(labels_input_fname)
         data[hemi] = np.squeeze(f['data'])
         names[hemi] = f['names']
+
     data = np.concatenate((data['lh'], data['rh']))
     labels_names = np.concatenate((names['lh'], names['rh']))
     labels_indices = np.array([ind for ind,l in enumerate(labels_names) if not np.any(
@@ -177,10 +177,25 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         labels_names = labels_names[labels_indices]
         data = data[labels_indices]
     np.save(op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy'), labels_names)
+
     conditions = f['conditions'] if 'conditions' in f else ['rest']
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
         labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
+
+    subs_fname = op.join(
+        MMVT_DIR, subject, 'fmri', 'subcorticals_{}.npz'.format(labels_extract_mode))
+    if args.calc_subs_connectivity and op.isfile(subs_fname):
+        f = np.load(subs_fname)
+        subs_data = np.squeeze(f['data'])
+        subs_names = f['names']
+        labels_subs_indices = np.arange(len(labels_names), len(labels_names) + len(subs_names))
+        data = np.concatenate((data, subs_data))
+        labels_names = np.concatenate((labels_names, subs_names))
+        subs_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}_subs_avg.npz'.format(
+            args.connectivity_modality, args.connectivity_method[0]))
+    else:
+        labels_subs_indices = []
 
     if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
         # No windows yet
@@ -197,7 +212,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         return False
 
     static_conn = None
-    if op.isfile(output_mat_fname):
+    if False: # op.isfile(output_mat_fname):
         conn = np.load(output_mat_fname)
         if 'corr' in args.connectivity_method:
             connectivity_method = 'Pearson corr'
@@ -284,6 +299,10 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         for hemi in utils.HEMIS:
             inds = labels_hemi_indices[hemi]
             np.savez(labels_avg_output_fname.format(hemi=hemi), data=avg_per_label[inds], names=labels_names[inds],
+                     conditions=conditions, minmax=[-abs_minmax, abs_minmax])
+        if len(labels_subs_indices) > 0:
+            inds = labels_subs_indices
+            np.savez(subs_avg_output_fname, data=avg_per_label[inds], names=labels_names[inds],
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
@@ -700,6 +719,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmax', help='', required=False, default=100, type=float)
 
     parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--calc_subs_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)

@@ -59,10 +59,11 @@ def calc_fmri_connectivity(args):
         # connectivity_method='mi_vec,cv',
         connectivity_method='corr,cv',
         # labels_extract_mode='pca,pca_2,pca_4,pca_8',
-        labels_extract_mode='mean',
+        labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
         windows_length=20,
         windows_shift=3,
         save_mmvt_connectivity=False,
+        calc_subs_connectivity=True,
         n_jobs=args.n_jobs
     ))
     con.call_main(args)
