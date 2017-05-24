@@ -93,10 +93,11 @@ def load_electrodes_matlab_stim_file2(args):
     args = pu.add_default_args(args, {'error_radius': 3, 'elec_length': 4, 'file_frefix': ''})
 
     subject = args.subject[0]
-    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_neural_sess1.mat')
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_HGP_sess1.mat')
     d = mu.load_mat_to_bag(mat_fname)
-    labels = mu.matlab_cell_str_to_list(d.channels)
+    labels = mu.matlab_cell_str_to_list(d.Label)
     labels = [l.replace(' ', '-') for l in labels]
+    labels = ['{0}{1}-{0}{2}'.format(*utils.elec_group_number(l, bipolar=True)) for l in labels]
     time = d.time.squeeze()
     data = d.Data.T
     data = data.reshape((*data.shape, 1))

@@ -118,16 +118,17 @@ def get_subjects_dFC(subjects):
 
 def switch_laterality(res, subjects, labels, subject_lateralities):
     rois_inds = find_labels_inds(labels)
-    ROIs_L = rois_inds
-    ROIs_R = np.concatenate((rois_inds[2:], rois_inds[:2]))
+    ROIs_L = [rois_inds[1]] # rois_inds
+    ROIs_R = [rois_inds[3]]# np.concatenate((rois_inds[2:], rois_inds[:2]))
     rois_res = {}
     for pc in res.keys():
-        rois_res[pc] = np.zeros((len(subjects), len(rois_inds)))
+        rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         for s_ind, s in enumerate(subjects):
             if subject_lateralities[s_ind] == 'L':
-                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
-            else:
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
+            else:
+                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
+    rois_inds = [rois_inds[1]]
     return rois_res, rois_inds
 
 
@@ -159,6 +160,24 @@ def check_subjects_labels(subjects):
     if not all_eq:
         print('Not all the subjects labels are equall!!')
     return bad_indices, _labels
+
+
+def take_only_linda_subjects(subjects, disturbed_inds, preserved_inds, laterality):
+    linda_subjects = ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
+        'nmr00629', 'nmr00650', 'nmr00657', 'nmr00669', 'nmr00674', 'nmr00681', 'nmr00683',
+        'nmr00692', 'nmr00698', 'nmr00710']
+    indices, new_disturbed_inds, new_preserved_inds = [], [], []
+    new_ind = -1
+    for s_ind, s in enumerate(subjects):
+        if s in linda_subjects:
+            indices.append(linda_subjects.index(s))
+            new_ind += 1
+            if s_ind in disturbed_inds:
+                new_disturbed_inds.append(new_ind)
+            if s_ind in preserved_inds:
+                new_preserved_inds.append(new_ind)
+    indices = np.array(indices)
+    return subjects[indices], new_disturbed_inds, new_preserved_inds, laterality[indices]
 
 
 def get_rois_pvals(all_stat_results, labels, rois_inds):
@@ -206,21 +225,34 @@ def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds)
     from collections import defaultdict
     x1, x2 = defaultdict(list), defaultdict(list)
     width = 0.35
-    pcs = [1, 2, 4, 8]
+    pcs = ['mean', 1, 2, 4, 8]
     for pc in pcs:
         for label_ind, label in enumerate(labels):
             x1[label_ind].append(np.mean(res[pc][disturbed_inds, label_ind]))
             x2[label_ind].append(np.mean(res[pc][preserved_inds, label_ind]))
     for label_ind, label in enumerate(labels):
-        plt.figure()
-        plt.bar(x, x1[label_ind], width, label='disturbed')
-        plt.bar(x + width, x2[label_ind], width, label='preserved')
-        plt.xticks(x, ['{} PCs'.format(pc) for pc in pcs])
-        plt.legend()
-        plt.title('{} - {}'.format(res_name, label))
-        plt.savefig(op.join(root_path, '{}-{}.png'.format(res_name, label)))
+        f, axs = plt.subplots(1, 5, sharey=True)
+        for ind, (pc, ax) in enumerate(zip(pcs, axs)):
+            ax.scatter(np.ones((len(preserved_inds))) * 0.3, res[pc][preserved_inds, label_ind])
+            ax.scatter(np.ones((len(disturbed_inds))) * 0.7, res[pc][disturbed_inds, label_ind])
+            ax.set_xticks([.3, .7])
+            ax.set_xlim([0, 1])
+            ax.set_xticklabels(['preserved', 'disturbed'], rotation=30)
+            ax.set_title('{}{}'.format(pc, ' PCs' if pc != 'mean' else ''))
+        fig = plt.gcf()
+        # plt.legend(['preserved', 'disturbed'])
+        fig.suptitle('{} - {}'.format(res_name, 'Memory and cPCC flexibility'))
+    plt.show()
+    # plt.savefig(op.join(root_path, '{}-{}.png'.format(res_name, 'Memory and cPCC flexibility')))
+        # plt.figure()
+        # plt.bar(x, x1[label_ind], width, label='disturbed')
+        # plt.bar(x + width, x2[label_ind], width, label='preserved')
+        # plt.xticks(x, ['{}{}'.format(pc, ' PCs' if pc != 'mean' else '') for pc in pcs])
+        # plt.legend()
+        # plt.title('{} - {}'.format(res_name, label))
+        # plt.savefig(op.join(root_path, '{}-{}.png'.format(res_name, label)))
     # plt.show()
-    print('asdf')
+    print('done with plotting!')
 
 
 def check_labels():
@@ -250,7 +282,7 @@ def find_labels_inds(labels):
 def calc_ana():
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     ana_results_fname = op.join(root_path, 'ana_results.pkl')
-    if True: #not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
+    if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname):
         laterality, to_use, TR, values, all_subjects = read_scoring()
         good_subjects, good_subjects_inds, labels = find_good_inds(
             all_subjects, only_left, TR, fast_TR, to_use, laterality)
@@ -265,13 +297,19 @@ def calc_ana():
     return dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality
 
 
-def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality):
+def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects,
+                              labels, laterality, switch=True):
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
-    if not op.isfile(mann_whitney_results_fname):
+    good_subjects, disturbed_inds, preserved_inds, laterality = take_only_linda_subjects(
+        good_subjects, disturbed_inds, preserved_inds, laterality)
+    if True: # op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
         for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
-            res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+            if switch:
+                res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+            else:
+                rois_inds = find_labels_inds(labels)
             plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
             mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
         utils.save(mann_whitney_results, mann_whitney_results_fname)
@@ -286,7 +324,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 if __name__ == '__main__':
     ana_res = calc_ana()
-    # mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*and_res)
+    mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
     # get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
