@@ -88,7 +88,6 @@ def find_subjects_with_data(all_subjects):
 
 def get_subjects_fmri_conn(subjects):
     labels = None
-    subjects = ['nmr00643']
     conn_stds = []
     for subject_ind, subject in enumerate(subjects):
         fol = op.join(MMVT_DIR, subject, 'connectivity')
