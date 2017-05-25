@@ -143,16 +143,16 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
     subs_R = np.where(labels=='Right-Hippocampus')[0][0]
     rois_res = {}
-    new_corr_stds = np.zeros(len(subjects))
+    new_corr_stds = np.zeros((len(subjects), 2, 2))
     for pc in res.keys():
         rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         for s_ind, s in enumerate(subjects):
             if subject_lateralities[s_ind] == 'L':
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
-                new_corr_stds[s_ind] = corr_stds[s_ind, ROIs_R, subs_R]
+                new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]), np.array([subs_R, subs_L])]
             else:
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
-                new_corr_stds[s_ind] = corr_stds[s_ind, ROIs_L, subs_L]
+                new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]) , np.array([subs_R, subs_L])]
     rois_inds = [rois_inds[1]]
     return rois_res, rois_inds, new_corr_stds
 
@@ -245,7 +245,24 @@ def find_sig_results(all_stat_results, labels):
         plt.show()
 
 
-def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds):
+def plot_bar(corr_stds, disturbed_inds, preserved_inds):
+    f, axs = plt.subplots(2, 2, sharey=True, sharex=True)
+    axs = axs.ravel()
+    indices = [[0,0],[0,1],[1,0],[1,1]]
+    for ind, ax in enumerate(axs):
+        i, j = indices[ind]
+        ax.scatter(np.ones((len(preserved_inds))) * 0.3, corr_stds[preserved_inds, i, j])
+        ax.scatter(np.ones((len(disturbed_inds))) * 0.7, corr_stds[disturbed_inds, i, j])
+        ax.set_xticks([.3, .7])
+        ax.set_xlim([0, 1])
+        ax.set_xticklabels(['preserved', 'disturbed'], rotation=30)
+    # plt.set_title('{}{}'.format(pc, ' PCs' if pc != 'mean' else ''))
+    plt.show()
+    print('asfd')
+
+
+def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds, corr_stds):
+    plot_bar(corr_stds, disturbed_inds, preserved_inds)
     x = np.arange(len(res.keys()))
     from collections import defaultdict
     x1, x2 = defaultdict(list), defaultdict(list)
@@ -335,7 +352,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
                 res, rois_inds, corr_stds = switch_laterality(res, good_subjects, labels, laterality)
             else:
                 rois_inds = find_labels_inds(labels)
-            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
+            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, corr_stds)
             mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
@@ -349,8 +366,8 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 if __name__ == '__main__':
     ana_res = calc_ana(False)
-    get_subjects_fmri_conn(ana_res[5])
-    # mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
+    # get_subjects_fmri_conn(ana_res[5])
+    mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
     # get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
