@@ -176,7 +176,6 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if len(labels_indices) < len(labels_names):
         labels_names = labels_names[labels_indices]
         data = data[labels_indices]
-    np.save(op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy'), labels_names)
 
     conditions = f['conditions'] if 'conditions' in f else ['rest']
     labels_hemi_indices = {}
@@ -198,6 +197,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     else:
         labels_subs_indices = []
 
+    np.save(op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy'), labels_names)
     if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
         # No windows yet
         import math
