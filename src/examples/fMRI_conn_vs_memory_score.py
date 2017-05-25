@@ -88,7 +88,7 @@ def find_subjects_with_data(all_subjects):
 
 def get_subjects_fmri_conn(subjects):
     labels = None
-    subjects = ['nmr00643']
+    conn_stds = []
     for subject_ind, subject in enumerate(subjects):
         fol = op.join(MMVT_DIR, subject, 'connectivity')
         if labels is None:
@@ -96,7 +96,10 @@ def get_subjects_fmri_conn(subjects):
             inds = find_labels_inds(labels)
         d = np.load(op.join(fol, 'fmri_corr_cv_mean.npz'))
         conn_std = d['conn_std']
-        print('asdf')
+        conn_stds.append(conn_stds)
+    conn_stds = np.array(conn_stds)
+    np.save(op.join(root_path, 'conn_stds.npy'), conn_stds)
+
 
 def get_subjects_dFC(subjects):
     pcs = ['mean', 1, 2, 4, 8]
