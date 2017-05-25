@@ -323,8 +323,8 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 
 if __name__ == '__main__':
-    ana_res = calc_ana(True)
-    # mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
+    ana_res = calc_ana(False)
+    mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
     # get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
