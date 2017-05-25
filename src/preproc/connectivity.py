@@ -326,7 +326,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
             plt.close()
-        if not op.isfile(static_mean_output_mat_fname):
+        if False: #not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)

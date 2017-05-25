@@ -94,7 +94,8 @@ def get_subjects_fmri_conn(subjects):
         if labels is None:
             labels = np.load(op.join(fol, 'labels_names.npy'))
             inds = find_labels_inds(labels)
-        corr = np.load(op.join(fol, 'fmri_corr.npy'))
+        d = np.load(op.join(fol, 'fmri_corr_cv_mean.npz'))
+        conn_std = d['conn_std']
         print('asdf')
 
 def get_subjects_dFC(subjects):
