@@ -213,7 +213,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         return False
 
     static_conn = None
-    if False: # op.isfile(output_mat_fname):
+    if op.isfile(output_mat_fname):
         conn = np.load(output_mat_fname)
         if 'corr' in args.connectivity_method:
             connectivity_method = 'Pearson corr'

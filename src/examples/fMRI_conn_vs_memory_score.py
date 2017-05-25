@@ -86,6 +86,17 @@ def find_subjects_with_data(all_subjects):
     return subjects, subjects_inds
 
 
+def get_subjects_fmri_conn(subjects):
+    labels = None
+    subjects = ['nmr00643']
+    for subject_ind, subject in enumerate(subjects):
+        fol = op.join(MMVT_DIR, subject, 'connectivity')
+        if labels is None:
+            labels = np.load(op.join(fol, 'labels_names.npy'))
+            inds = find_labels_inds(labels)
+        corr = np.load(op.join(fol, 'fmri_corr.npy'))
+        print('asdf')
+
 def get_subjects_dFC(subjects):
     pcs = ['mean', 1, 2, 4, 8]
     dFC_res = {pc:None for pc in pcs}
@@ -324,7 +335,8 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 if __name__ == '__main__':
     ana_res = calc_ana(False)
-    mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
+    get_subjects_fmri_conn(ana_res[5])
+    # mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
     # get_rois_pvals(mann_whitney_results, labels, range(4))
     # plot_stat_results(mann_whitney_results)
