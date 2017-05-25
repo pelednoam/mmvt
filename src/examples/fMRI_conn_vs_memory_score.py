@@ -98,7 +98,7 @@ def get_subjects_fmri_conn(subjects):
             inds = np.concatenate((labeals_inds, subs_inds))
         d = np.load(op.join(fol, 'fmri_corr_cv_mean.npz'))
         conn_std = d['conn_std']
-        conn_std = conn_std[inds][:, inds]
+        # conn_std = conn_std[inds][:, inds]
         conn_stds.append(conn_std)
     conn_stds = np.array(conn_stds)
     np.save(op.join(root_path, 'conn_stds.npy'), conn_stds)
@@ -135,19 +135,26 @@ def get_subjects_dFC(subjects):
 
 
 def switch_laterality(res, subjects, labels, subject_lateralities):
+    labels = np.load(op.join(root_path, 'labels_names.npy'))
+    corr_stds = np.load(op.join(root_path, 'conn_stds.npy'))
     rois_inds = find_labels_inds(labels)
     ROIs_L = [rois_inds[1]] # rois_inds
-    ROIs_R = [rois_inds[3]]# np.concatenate((rois_inds[2:], rois_inds[:2]))
+    ROIs_R = [rois_inds[3]]# np.concaten
+    subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
+    subs_R = np.where(labels=='Right-Hippocampus')[0][0]
     rois_res = {}
+    new_corr_stds = np.zeros(len(subjects))
     for pc in res.keys():
         rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         for s_ind, s in enumerate(subjects):
             if subject_lateralities[s_ind] == 'L':
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
+                new_corr_stds[s_ind] = corr_stds[s_ind, ROIs_R, subs_R]
             else:
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
+                new_corr_stds[s_ind] = corr_stds[s_ind, ROIs_L, subs_L]
     rois_inds = [rois_inds[1]]
-    return rois_res, rois_inds
+    return rois_res, rois_inds, new_corr_stds
 
 
 def stat_test(res, disturbed_inds, preserved_inds):
@@ -325,7 +332,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
         mann_whitney_results = {}
         for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
             if switch:
-                res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+                res, rois_inds, corr_stds = switch_laterality(res, good_subjects, labels, laterality)
             else:
                 rois_inds = find_labels_inds(labels)
             plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
