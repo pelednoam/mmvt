@@ -99,6 +99,7 @@ def get_subjects_fmri_conn(subjects):
             inds = np.concatenate((labeals_inds, subs_inds))
         d = np.load(op.join(fol, 'fmri_corr_cv_mean.npz'))
         conn_std = d['conn_std']
+        conn_std = conn_std[inds][:, inds]
         conn_stds.append(conn_std)
     conn_stds = np.array(conn_stds)
     np.save(op.join(root_path, 'conn_stds.npy'), conn_stds)
