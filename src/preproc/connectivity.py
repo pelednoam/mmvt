@@ -186,6 +186,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     subs_fname = op.join(
         MMVT_DIR, subject, 'fmri', 'subcorticals_{}.npz'.format(labels_extract_mode))
     if args.calc_subs_connectivity and op.isfile(subs_fname):
+        print('Loading subs data from {}'.format(subs_fname))
         f = np.load(subs_fname)
         subs_data = np.squeeze(f['data'])
         subs_names = f['names']

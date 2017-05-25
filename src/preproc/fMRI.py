@@ -440,7 +440,7 @@ def calculate_subcorticals_activity(subject, fmri_file_template, measures=['mean
     # Find the segmentation file
     aseg_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
-    out_folder = op.join(SUBJECTS_DIR, subject, 'fmri')
+    out_folder = op.join(MMVT_DIR, subject, 'fmri')
     if not op.isdir(out_folder):
         os.mkdir(out_folder)
     if np.any(x_data.shape[:3] != aseg.shape):
