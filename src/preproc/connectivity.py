@@ -307,7 +307,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
-        if not op.isfile(static_output_mat_fname):
+        if True: #not op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             np.fill_diagonal(static_conn, 0)
@@ -326,7 +326,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
             plt.close()
-        if False: #not op.isfile(static_mean_output_mat_fname):
+        if True: #not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)

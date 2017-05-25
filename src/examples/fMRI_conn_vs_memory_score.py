@@ -88,15 +88,18 @@ def find_subjects_with_data(all_subjects):
 
 def get_subjects_fmri_conn(subjects):
     labels = None
+    subjects = ['nmr00643']
     conn_stds = []
     for subject_ind, subject in enumerate(subjects):
         fol = op.join(MMVT_DIR, subject, 'connectivity')
         if labels is None:
             labels = np.load(op.join(fol, 'labels_names.npy'))
-            inds = find_labels_inds(labels)
+            labeals_inds = find_labels_inds(labels)
+            subs_inds = [np.where(labels=='Right-Hippocampus')[0][0], np.where(labels=='Left-Hippocampus')[0][0]]
+            inds = np.concatenate((labeals_inds, subs_inds))
         d = np.load(op.join(fol, 'fmri_corr_cv_mean.npz'))
         conn_std = d['conn_std']
-        conn_stds.append(conn_stds)
+        conn_stds.append(conn_std)
     conn_stds = np.array(conn_stds)
     np.save(op.join(root_path, 'conn_stds.npy'), conn_stds)
 
