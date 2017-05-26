@@ -47,10 +47,10 @@ def arrange_data(subjects, trs):
             if len(fmri_files) == 1:
                 sub_fmri_fol = utils.make_dir(op.join(sub_root_bold_fol, utils.namebase(bold_fol)))
                 target_file = op.join(sub_fmri_fol, '{}_bld{}_rest_reorient.nii.gz'.format(sub, utils.namebase(bold_fol)))
-                # make_link(fmri_files[0], target_file)
-                remove_link(target_file)
-                if not op.isfile(target_file):
-                    shutil.copy(fmri_files[0], target_file)
+                make_link(fmri_files[0], target_file)
+                # remove_link(target_file)
+                # if not op.isfile(target_file):
+                #     shutil.copy(fmri_files[0], target_file)
             elif len(fmri_files) == 0:
                 print('No *_rest_reorient_skip_faln_mc.nii.gz files were found in {}!'.format(bold_fol))
                 continue
