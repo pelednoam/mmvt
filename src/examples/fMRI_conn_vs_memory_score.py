@@ -262,7 +262,7 @@ def plot_bar(corr_stds, disturbed_inds, preserved_inds):
 
 
 def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds, corr_stds):
-    plot_bar(corr_stds, disturbed_inds, preserved_inds)
+    # plot_bar(corr_stds, disturbed_inds, preserved_inds)
     x = np.arange(len(res.keys()))
     from collections import defaultdict
     x1, x2 = defaultdict(list), defaultdict(list)
@@ -365,7 +365,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 
 if __name__ == '__main__':
-    ana_res = calc_ana(True)
+    ana_res = calc_ana(False)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
