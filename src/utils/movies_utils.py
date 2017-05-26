@@ -127,6 +127,9 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     rs(combine_images_cmd)
 
 
+def duplicate_images(images, times):
+    pass
+
 def find_images_props(fol, start_number=-1, images_prefix='', images_format='', images_type=''):
     if images_type == '':
         images_types = set([utils.file_type(image) for image in glob.glob(op.join(fol, '{}*.*'.format(images_prefix)))])

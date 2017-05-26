@@ -1664,6 +1664,16 @@ def locating_file(default_fname, glob_pattern, parent_fol):
                     print("Couldn't find {}!".format(op.join(parent_fol, fname_input)))
     return fname, exist
 
+
+def file_modification_time(fname):
+    from datetime import datetime
+    try:
+        mtime = os.path.getmtime(fname)
+    except OSError:
+        mtime = 0
+    return datetime.fromtimestamp(mtime)
+
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
@@ -1706,3 +1716,7 @@ def locating_file(default_fname, glob_pattern, parent_fol):
 #         target = None
 #
 #     return target
+
+
+if __name__ == '__main__':
+    print(file_modification_time('/home/npeled/code/procfast_indi'))

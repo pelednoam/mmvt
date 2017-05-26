@@ -111,7 +111,7 @@ def load_electrodes_matlab_stim_file2(args):
     meta_fname = op.join(elecs.MMVT_DIR, subject, 'electrodes', 'electrodes{}_meta_data.npz'.format(
         '_bipolar' if args.bipolar else ''))
     np.save(data_fname, data)
-    np.savez(meta_fname, names=labels, conditions=['rest'])
+    np.savez(meta_fname, names=labels, conditions=['rest'], time=time)
 
 
 def load_electrodes_matlab_stim_file(args):

@@ -116,7 +116,7 @@ def get_subjects_dFC(subjects):
                 fname = op.join(fol, 'fmri_corr_cv_mean_mean.npz')
             else:
                 fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
-            print('Loading {}'.format(fname))
+            print('Loading {} ({})'.format(fname, utils.file_modification_time(fname)))
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
