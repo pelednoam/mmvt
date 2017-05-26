@@ -97,7 +97,7 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug_mode=True,
+                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=True,
                    copy_files=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
@@ -121,7 +121,7 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     # http://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
     combine_images_cmd += '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" '
     combine_images_cmd += '-c:v libx264 -r 30 -pix_fmt yuv420p {movie_name}.mp4'
-    if debug_mode:
+    if debug:
         combine_images_cmd += ' -loglevel debug'
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
@@ -176,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
     parser.add_argument('--frame_rate', required=False, default=10)
     parser.add_argument('--copy_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--debug', required=False, default=0, type=au.is_true)
 
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
     args = utils.Bag(au.parse_parser(parser))

@@ -73,10 +73,13 @@ class ModalTimerOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
-                if bpy.context.scene.rotate_brain_while_playing:
+                if bpy.context.scene.rotate_brain_while_playing and (
+                            bpy.context.scene.render_movie or bpy.context.scene.save_images):
                     _addon().camera_mode('ORTHO')
                     _addon().rotate_brain()
                     _addon().camera_mode('CAMERA')
+                elif bpy.context.scene.rotate_brain_while_playing:
+                    _addon().rotate_brain()
 
                 bpy.context.scene.frame_current = self.limits
                 # print(self.limits, time.time() - self._time)

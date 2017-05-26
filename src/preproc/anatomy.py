@@ -217,7 +217,7 @@ def create_surfaces(subject, hemi='both', overwrite=False):
             surf_wavefront_name = '{}.asc'.format(surf_name)
             surf_new_name = '{}.srf'.format(surf_name)
             hemi_ply_fname = '{}.ply'.format(surf_name)
-            hemi_npz_fname = '{}.ply'.format(hemi_npz_fname)
+            hemi_npz_fname = '{}.ply'.format(surf_name)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
             if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
