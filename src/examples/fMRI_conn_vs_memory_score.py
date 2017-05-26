@@ -365,7 +365,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 
 if __name__ == '__main__':
-    ana_res = calc_ana(False)
+    ana_res = calc_ana(True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
