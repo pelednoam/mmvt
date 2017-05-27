@@ -138,10 +138,11 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     labels = np.load(op.join(root_path, 'labels_names.npy'))
     corr_stds = np.load(op.join(root_path, 'conn_stds.npy'))
     rois_inds = find_labels_inds(labels)
-    ROIs_L = [rois_inds[1]] # rois_inds
-    ROIs_R = [rois_inds[3]]# np.concaten
     subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
     subs_R = np.where(labels=='Right-Hippocampus')[0][0]
+    ROIs_L = [rois_inds[1], subs_L, subs_R] # rois_inds
+    ROIs_R = [rois_inds[3], subs_L, subs_R]# np.concaten
+    rois_inds = [rois_inds[0], subs_L, subs_R]
     rois_res = {}
     new_corr_stds = np.zeros((len(subjects), 2, 2))
     for pc in res.keys():
@@ -149,12 +150,12 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
         for s_ind, s in enumerate(subjects):
             if subject_lateralities[s_ind] == 'L':
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
-                new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]), np.array([subs_R, subs_L])]
+                # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]), np.array([subs_R, subs_L])]
             else:
                 rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
-                new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]) , np.array([subs_R, subs_L])]
-    rois_inds = [rois_inds[1]]
-    return rois_res, rois_inds, new_corr_stds
+                # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]) , np.array([subs_R, subs_L])]
+    # rois_inds = [rois_inds[1]]
+    return rois_res, rois_inds
 
 
 def stat_test(res, disturbed_inds, preserved_inds):
@@ -261,7 +262,7 @@ def plot_bar(corr_stds, disturbed_inds, preserved_inds):
     print('asfd')
 
 
-def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds, corr_stds):
+def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds):
     # plot_bar(corr_stds, disturbed_inds, preserved_inds)
     x = np.arange(len(res.keys()))
     from collections import defaultdict
@@ -348,11 +349,12 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
     if True: # op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
         for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
+        # for res, res_name in zip([std_mean_res], ['std_mean_res']):  # stat_conn_res
             if switch:
-                res, rois_inds, corr_stds = switch_laterality(res, good_subjects, labels, laterality)
+                res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
             else:
                 rois_inds = find_labels_inds(labels)
-            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, corr_stds)
+            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
             mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)

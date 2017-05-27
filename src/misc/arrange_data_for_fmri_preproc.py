@@ -8,10 +8,12 @@ from src.examples import fMRI_conn_vs_memory_score
 
 root_paths = ['/homes/5/npeled/space1/Documents/memory_task', '/home/npeled/Documents/memory_task/']
 root_path = [p for p in root_paths if op.isdir(p)][0]
+
 ana_results_fname = op.join(root_path, 'ana_results.pkl')
 
 preproc_fol = '/homes/5/npeled/space1/memory'
-fmri_root_data = op.join(preproc_fol, 'DataProcessed_memory')
+preproc_fol = '/autofs/cluster/scratch/tuesday/noam'
+fmri_root_data = op.join(preproc_fol, 'DataProcessed_Noam')
 subject_fmri_fold = '/cluster/neuromind/douw/scans/adults'
 
 
