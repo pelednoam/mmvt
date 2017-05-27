@@ -91,6 +91,7 @@ if __name__ == '__main__':
     subjects = res[5]
     files_list = arrange_data(subjects, trs)
     list_fol = utils.make_dir(op.join(fmri_root_data, 'Lists'))
+    utils.make_dir(op.join(preproc_fol, 'Lists'))
     with open(op.join(preproc_fol, 'Lists', 'sub_bold_mpr_tr.txt'), 'w') as f:
         for res in files_list:
             f.write('{}\n'.format(res))
