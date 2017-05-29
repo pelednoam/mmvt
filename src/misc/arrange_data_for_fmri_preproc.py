@@ -35,7 +35,7 @@ def arrange_data(subjects, trs):
         anat_files = glob.glob(op.join(anat_fol, '*nii.gz'))
         if len(anat_files) == 1:
             sub_anat_fol = utils.make_dir(op.join(sub_root_anat_fol, utils.namebase(anat_fol)))
-            make_link(anat_files[0], op.join(sub_anat_fol, '{}.nii.gz'.format(utils.namebase(anat_files[0]))))
+            utils.make_link(anat_files[0], op.join(sub_anat_fol, '{}.nii.gz'.format(utils.namebase(anat_files[0]))))
         elif len(anat_files) == 0:
             print('No nii.gz files were found in {}!'.format(anat_fol))
             continue
@@ -49,8 +49,8 @@ def arrange_data(subjects, trs):
             if len(fmri_files) == 1:
                 sub_fmri_fol = utils.make_dir(op.join(sub_root_bold_fol, utils.namebase(bold_fol)))
                 target_file = op.join(sub_fmri_fol, '{}_bld{}_rest_reorient.nii.gz'.format(sub, utils.namebase(bold_fol)))
-                make_link(fmri_files[0], target_file)
-                # remove_link(target_file)
+                utils.make_link(fmri_files[0], target_file)
+                # utils.remove_link(target_file)
                 # if not op.isfile(target_file):
                 #     shutil.copy(fmri_files[0], target_file)
             elif len(fmri_files) == 0:
@@ -61,20 +61,6 @@ def arrange_data(subjects, trs):
                 continue
         files_list.append('{} {} {} {}'.format(sub, bolds_numbers, str(anat_number).zfill(3), trs[sub]))
     return files_list
-
-
-def make_link(source, target):
-    try:
-        os.symlink(source, target)
-    except FileExistsError as e:
-        print('{} already exist'.format(target))
-
-
-def remove_link(source):
-    try:
-        os.unlink(source)
-    except:
-        pass
 
 
 def get_trs():

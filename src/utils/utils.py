@@ -597,8 +597,6 @@ def file_type(fname):
     # ret = '.'.join(fname.split(op.sep)[-1].split('.')[1:])
     # return ret
 
-
-
 def is_file_type(fname, file_type):
     return fname[-len(file_type):] == file_type
 
@@ -1672,6 +1670,20 @@ def file_modification_time(fname):
     except OSError:
         mtime = 0
     return datetime.fromtimestamp(mtime)
+
+
+def make_link(source, target):
+    try:
+        os.symlink(source, target)
+    except FileExistsError as e:
+        print('{} already exist'.format(target))
+
+
+def remove_link(source):
+    try:
+        os.unlink(source)
+    except:
+        pass
 
 
 # From http://stackoverflow.com/a/28952464/1060738
