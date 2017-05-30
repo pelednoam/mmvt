@@ -115,7 +115,7 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1):
+def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=False):
     bpy.context.scene.play_type = play_type
     bpy.context.scene.render_movie = True
     print('In play movie!')
@@ -123,13 +123,13 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1):
         print('limits: {}'.format(limits))
         bpy.context.scene.frame_current = limits
         try:
-            plot_something(None, bpy.context, limits, camera_fname=camera_fname)
+            plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:
             print(traceback.format_exc())
             print('Error in plotting at {}!'.format(limits))
 
 
-def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
+def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_camera_mode=True):
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
@@ -185,7 +185,7 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname=''):
             _addon().save_image(play_type, bpy.context.scene.save_selected_view,
                                           bpy.context.scene.frame_current)
         if bpy.context.scene.render_movie:
-            _addon().render_image()
+            _addon().render_image(set_to_camera_mode=set_to_camera_mode)
         # mu.show_only_render(True)
         # view3d_context = mu.get_view3d_context()
         # bpy.ops.render.opengl(view3d_context)

@@ -97,13 +97,13 @@ def combine_movies(fol, movie_name, movie_type='mp4'):
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=True,
+                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=False,
                    copy_files=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     if movie_name == '' and images_prefix != '':
         movie_name = images_prefix
-    else:
+    elif movie_name == '':
         movie_name = 'output_video'
     if utils.is_windows() or copy_files:
         fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
@@ -125,6 +125,7 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
         combine_images_cmd += ' -loglevel debug'
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
+    return '{}.mp4'.format(movie_name)
 
 
 def find_images_props(fol, start_number=-1, images_prefix='', images_format='', images_type=''):

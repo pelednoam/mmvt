@@ -162,6 +162,7 @@ def grab_camera(self=None, do_save=True, overwrite=True):
             if not op.isfile(camera_fname) or overwrite:
                 mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
                 print('Camera location was saved to {}'.format(camera_fname))
+                print((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location))
         else:
             mu.message(self, "Can't find the folder {}".format(mu.get_user_fol(), 'camera'))
     RenderFigure.update_camera = True
@@ -429,8 +430,8 @@ def render_lateral_medial_split_brain(data_type='', quality=20, overwrite=True):
 
 @mu.timeit
 def render_image(image_name='', image_fol='', quality=0, use_square_samples=None, render_background=None,
-                 camera_fname='', hide_subcorticals=False, overwrite=True, set_to_camera=True):
-    if not is_camera_view() and set_to_camera:
+                 camera_fname='', hide_subcorticals=False, overwrite=True, set_to_camera_mode=True):
+    if not is_camera_view() and set_to_camera_mode:
         set_to_camera_view()
     bpy.context.scene.render.resolution_percentage = bpy.context.scene.quality if quality == 0 else quality
     bpy.context.scene.cycles.use_square_samples = bpy.context.scene.smooth_figure if use_square_samples is None \
