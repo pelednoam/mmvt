@@ -65,7 +65,7 @@ def render_movie(subject_fname):
     mmvt.filter_nodes(args.filter_nodes)
     camera_fname = su.load_camera(mmvt, mmvt_dir, args)
     for elc_name in args.mark_electrodes:
-        mmvt.filter_electrode_or_sensor(elc_name)
+        mmvt.filter_electrode_or_sensor(elc_name, 0.1)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         try:
             mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)

@@ -170,13 +170,13 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
     bpy.types.Scene.filter_is_on = True
 
 
-def filter_electrode_or_sensor(elec_name):
+def filter_electrode_or_sensor(elec_name, val=0.3):
     elec_obj = bpy.data.objects[elec_name]
     if bpy.context.scene.mark_filter_items:
         FilteringMakerPanel.electrodes_colors[elec_name] = _addon().get_obj_color(elec_obj)
         _addon().object_coloring(elec_obj, cu.name_to_rgb('green'))
     else:
-        elec_obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 0.3
+        elec_obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = val
 
     # todo: selecting the electrode will show both of their conditions time series
     # We don't want it to happen if selection_type == 'conds'...
