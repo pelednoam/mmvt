@@ -419,7 +419,7 @@ class Filtering(bpy.types.Operator):
         for obj in parent_obj.children:
             obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
-        if bpy.context.scene.selection_type == 'diff':
+        if bpy.context.scene.selection_type == 'diff' and not parent_obj.animation_data is None:
             filter_obj_names = [names[ind] for ind in objects_indices]
             for fcurve in parent_obj.animation_data.action.fcurves:
                 con_name = mu.get_fcurve_name(fcurve)

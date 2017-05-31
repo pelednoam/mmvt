@@ -35,6 +35,7 @@ def read_args(argv=None):
     parser.add_argument('--filter_nodes', help='filter nodes', required=False, default=True, type=su.is_true)
     parser.add_argument('--camera', help='camera file', required=False, default='')
     parser.add_argument('--set_to_camera_mode', help='', required=False, default=False, type=su.is_true)
+    parser.add_argument('--mark_electrodes', help='', required=False, default='', type=su.str_arr_type)
 
     args = su.parse_args(parser, argv)
     if args.camera == '':
@@ -63,6 +64,8 @@ def render_movie(subject_fname):
     mmvt.set_brain_transparency(args.brain_trans)
     mmvt.filter_nodes(args.filter_nodes)
     camera_fname = su.load_camera(mmvt, mmvt_dir, args)
+    for elc_name in args.mark_electrodes:
+        mmvt.filter_electrode_or_sensor(elc_name)
     if not op.isfile(op.join(args.output_path, 'data.pkl')):
         try:
             mmvt.capture_graph(args.play_type, args.output_path, args.selection_type)
