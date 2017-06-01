@@ -6,10 +6,13 @@ from collections import defaultdict, OrderedDict, Counter
 import itertools
 import time
 import re
-import matplotlib.pyplot as plt
-import matplotlib
-import matplotlib.image as mpimg
-import matplotlib.cm as cmx
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import matplotlib.image as mpimg
+    import matplotlib.cm as cmx
+except:
+    print('No matplotlib')
 import subprocess
 from functools import partial
 import glob
@@ -1685,6 +1688,17 @@ def remove_link(source):
     except:
         pass
 
+
+def read_list_from_file(fname):
+    arr = []
+    with open(fname, 'r') as f:
+        for line in f.readlines():
+            line = line.strip()
+            if line.startswith('#'):
+                continue
+            if line != '':
+                arr.append(line)
+    return arr
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):

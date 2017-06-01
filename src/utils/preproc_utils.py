@@ -19,14 +19,7 @@ def decode_subjects(subjects):
             subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
         elif 'file:' in sub:
             subjects.remove(sub)
-            subject_fname = sub[len('file:'):]
-            with open(subject_fname, 'r') as f:
-                for line in f.readlines():
-                    line = line.strip()
-                    if line.startswith('#'):
-                        continue
-                    if line != '':
-                        subjects.append(line)
+            subjects.extend(utils.read_list_from_file(sub[len('file:'):]))
     return subjects
 
 

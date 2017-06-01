@@ -14,6 +14,12 @@ def _addon():
     return ElecsPanel.addon
 
 
+def get_electrodes_names():
+    parent = bpy.data.objects.get('Deep_electrodes')
+    electrodes_names = [o.name for o in parent.children] if parent is not None else []
+    return electrodes_names
+
+
 def elc_size_update(self, context):
     try:
         elc = bpy.context.selected_objects[0]
@@ -22,6 +28,7 @@ def elc_size_update(self, context):
         elc.scale[2] = bpy.context.scene.elc_size
     except:
         pass
+
 
 def get_leads():
     return ElecsPanel.leads

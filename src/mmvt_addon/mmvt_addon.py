@@ -233,6 +233,7 @@ set_current_electrode = electrodes_panel.set_current_electrode
 set_electrodes_labeling_file = electrodes_panel.set_electrodes_labeling_file
 set_show_only_lead = electrodes_panel.set_show_only_lead
 is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
+get_electrodes_names = electrodes_panel.get_electrodes_names
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min

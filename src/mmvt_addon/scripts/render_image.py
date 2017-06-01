@@ -64,7 +64,7 @@ def render_image_blender(subject_fname):
     args = read_args(su.get_python_argv())
     if args.debug:
         su.debug()
-    mmvt_dir = op.join(su.get_links_dir(), 'mmvt')
+    mmvt_dir = su.get_link_dir(su.get_links_dir(), 'mmvt')
     subject = su.get_subject_name(subject_fname)
     if args.output_path == '':
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')

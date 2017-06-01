@@ -291,8 +291,16 @@ def get_python_argv():
     return sys.argv[5:]
 
 
+class ParserWithHelp(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
 def add_default_args():
-    parser = argparse.ArgumentParser(description='MMVT')
+    # parser = argparse.ArgumentParser(description='MMVT')
+    parser = ParserWithHelp(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
     parser.add_argument('--subjects', help='subjects names', required=False, default='', type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='dkt')
@@ -307,6 +315,7 @@ def parse_args(parser, argv):
     args = Bag(au.parse_parser(parser, argv))
     args.real_atlas = get_full_atlas_name(args.atlas)
     if (len(args.subjects) == 0 and args.subject == '') or (len(args.subjects) > 0 and args.subject != ''):
+        print(args)
         raise Exception('You need to set --subject or --subjects!')
     return args
 
@@ -372,6 +381,20 @@ def stdout_print(str):
     sys.stdout.write(str)
     sys.stdout.write('\n')
     sys.stdout.flush()
+
+
+def read_list_from_file(fname):
+    arr = []
+    if not op.isfile(fname):
+        return []
+    with open(fname, 'r') as f:
+        for line in f.readlines():
+            line = line.strip()
+            if line.startswith('#'):
+                continue
+            if line != '':
+                arr.append(line)
+    return arr
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ def appearance_update(self=None, context=None):
 
 
 def set_brain_transparency(val):
-    if 0 >= val <= 1:
+    if 0 <= val <= 1:
         bpy.context.scene.appearance_solid_slider = 1 - val
         appearance_update()
     else:
