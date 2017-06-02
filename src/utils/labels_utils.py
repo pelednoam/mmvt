@@ -189,11 +189,16 @@ def get_hemi_delim_and_pos(label_name):
         if label_name.endswith('.{}'.format(hemi)):
             delim, pos, label = '.', 'end', label_name[:-3]
             break
-    return delim, pos, label
+    return delim, pos, label, hemi
+
+
+def get_label_hemi(label_name):
+    _, _, _, hemi = get_hemi_delim_and_pos(label_name)
+    return hemi
 
 
 def get_label_hemi_invariant_name(label_name):
-    _, _, label_inv_name = get_hemi_delim_and_pos(label_name)
+    _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
     return label_inv_name
 
 
@@ -210,7 +215,7 @@ def get_hemi_from_name(label_name):
 
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
-                output_fname='', exclude=[], rh_then_lh=False, sorted_according_to_annot_file=False,
+                output_fname='', exclude=[], rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
                 hemi='both', surf_name='pial', labels_fol='', read_only_from_annot=False, n_jobs=1):
     try:
         labels = []
@@ -229,10 +234,10 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
         if len(labels) == 0:
             raise Exception("Can't read the {} labels!".format(atlas))
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
-        if rh_then_lh:
+        if rh_then_lh or lh_then_rh:
             rh_labels = [l for l in labels if l.hemi == 'rh']
             lh_labels = [l for l in labels if l.hemi == 'lh']
-            labels = rh_labels + lh_labels
+            labels = rh_labels + lh_labels if rh_then_lh else lh_labels + rh_labels
         if sorted_according_to_annot_file:
             annot_labels = get_atlas_labels_names(
                 subject, atlas, subjects_dir, return_flat_labels_list=True,
@@ -314,15 +319,27 @@ def label_is_excluded(label_name, compiled_excludes):
     return not compiled_excludes.search(label_name) is None
 
 
+def label_name(l):
+    return l if isinstance(l, str) else l.name
+
+
+def remove_exclude_labels(labels, excludes=()):
+    from functools import partial
+    import re
+
+    _label_is_excluded = partial(label_is_excluded, compiled_excludes=re.compile('|'.join(excludes)))
+    labels_tup = [(l, ind) for ind, l in enumerate(labels) if not _label_is_excluded(label_name(l))]
+    labels = [t[0] for t in labels_tup]
+    indices = [t[1] for t in labels_tup]
+    return labels, indices
+
+
 def calc_time_series_per_label(x, labels, measure, excludes=(),
                                figures_dir='', do_plot=False, do_plot_all_vertices=False):
     import sklearn.decomposition as deco
-    from functools import partial
-    import re
     import matplotlib.pyplot as plt
 
-    _label_is_excluded = partial(label_is_excluded, compiled_excludes=re.compile('|'.join(excludes)))
-    labels = [l for l in labels if not _label_is_excluded(l.name)]
+    labels, _ = remove_exclude_labels(labels, excludes)
     if measure.startswith('pca'):
         comps_num = 1 if '_' not in measure else int(measure.split('_')[1])
         labels_data = np.zeros((len(labels), x.shape[-1], comps_num))
@@ -446,6 +463,16 @@ def join_labels(new_name, labels):
     new_label = reduce(operator.add, labels[1:], labels[0])
     new_label.name = new_name
     return new_label
+
+
+def get_lh_rh_indices(labels):
+    get_hemi_delim_and_pos(labels[0])
+    indices = {hemi:[ind for ind, l in enumerate(labels) if get_label_hemi(label_name(l))==hemi] for hemi in utils.HEMIS}
+    labels_arr = np.array(labels)
+    if sum([len(labels_arr[indices[hemi]]) for hemi in utils.HEMIS]) != len(labels):
+        raise Exception('len(rh_labels) ({}) + len(lh_labels) ({}) != len(labels) ({})'.format(
+            len(labels_arr[indices['rh']]), len(labels_arr[indices['lh']]), len(labels)))
+    return indices
 
 
 if __name__ == '__main__':

@@ -54,6 +54,10 @@ from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
 
 
+from src.utils import args_utils as au
+is_int = au.is_int
+
+
 try:
     import cPickle as pickle
 except:
@@ -1699,6 +1703,33 @@ def read_list_from_file(fname):
             if line != '':
                 arr.append(line)
     return arr
+
+
+def write_list_to_file(list, fname):
+    with open(fname, 'w') as f:
+        for val in list:
+            f.write('{}\n'.format(val))
+
+
+def look_for_one_file(template, files_desc):
+    files = glob.glob(template)
+    if len(files) == 0:
+        print('No {} files were found in {}!'.format(files_desc, template))
+        return None
+    elif len(files) > 1:
+        print('Too many {} fiels were found in {}!'.format(files_desc, template))
+        for ind, fname in enumerate(files):
+            print('{}) {}'.format(ind + 1, fname))
+        file_num = input('Which on do you want to load (1, 2, ...)? ')
+        while not is_int(file_num):
+            print('Please enter a valid integer')
+            file_num = input('Which on do you want to load (1, 2, ...)? ')
+        file_num = int(file_num) - 1
+        fname = files[file_num]
+    else:
+        fname = files[0]
+    return fname
+
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):

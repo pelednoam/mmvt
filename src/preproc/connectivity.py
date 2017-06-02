@@ -213,18 +213,17 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         return False
 
     static_conn = None
-    recalc_conn = False
-    if op.isfile(output_mat_fname):
+    if op.isfile(output_mat_fname) and not args.recalc_connectivity:
         conn = np.load(output_mat_fname)
         if conn.shape[0] != data.shape[0]:
-            recalc_conn = True
+            args.recalc_connectivity = True
         if 'corr' in args.connectivity_method:
             connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
             connectivity_method = 'PLI'
         elif 'mi' in args.connectivity_method:
             connectivity_method = 'MI'
-    if not op.isfile(output_mat_fname) or recalc_conn:
+    if not op.isfile(output_mat_fname) or args.recalc_connectivity:
         conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         if 'corr' in args.connectivity_method:
             if labels_extract_mode.startswith('pca_'):
@@ -759,6 +758,7 @@ def read_cmd_args(argv=None):
 
     parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--calc_subs_connectivity', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)

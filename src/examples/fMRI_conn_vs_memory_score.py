@@ -310,12 +310,18 @@ def check_labels():
     print('asdf')
 
 
-def find_labels_inds(labels):
+def get_labels_order():
     laus125_labels_lh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_lh.txt'))]
     laus125_labels_rh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_rh.txt'))]
     laus125_labels_lh = [s + '-lh' for s in laus125_labels_lh]
     laus125_labels_rh = [s + '-rh' for s in laus125_labels_rh]
     laus125_labels = np.array(laus125_labels_lh + laus125_labels_rh)
+    utils.write_list_to_file(laus125_labels, op.join(root_path, 'linda_laus125_order.txt'))
+    return laus125_labels
+
+
+def find_labels_inds(labels):
+    laus125_labels= get_labels_order()
     rois = laus125_labels[np.array([4, 8, 115, 119])]
     labels_rois_inds = np.array([np.where(labels==l)[0][0] for l in rois])
     print(labels[labels_rois_inds])
@@ -367,6 +373,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
 
 
 if __name__ == '__main__':
+    get_labels_order()
     ana_res = calc_ana(False)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)

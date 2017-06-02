@@ -3,6 +3,7 @@ import os.path as op
 from collections import defaultdict
 import glob
 import traceback
+import shutil
 
 from src.utils import utils
 from src.utils import args_utils as au
@@ -164,3 +165,25 @@ def tryit_ret_bool(func):
         return retval
 
     return wrapper
+
+
+def backup_folder(subject, folder_name, backup_suffix='_backup'):
+    '''
+    :param folder_name: one of the modalities undert MMVT_DIR/subject:
+     fmri / meg / eeg / electrodes / connectivity
+    :return: 
+    '''
+    folder_names = ['fmri','meg','eeg','electrodes', 'connectivity']
+    if folder_name not in folder_names:
+        print('folder name should be on of: {}'.format(folder_names))
+        return
+    source_dir = op.join(MMVT_DIR, subject, folder_name)
+    if not op.isdir(source_dir):
+        print('{} does not exist!'.format(source_dir))
+        return
+    target_dir = op.join(MMVT_DIR, subject, '{}{}'.format(folder_name, backup_suffix))
+    if op.isdir(target_dir):
+        print('{} already exist!'.format(target_dir))
+        return
+    print('backup {} to {}'.format(source_dir, target_dir))
+    shutil.copytree(source_dir, target_dir)

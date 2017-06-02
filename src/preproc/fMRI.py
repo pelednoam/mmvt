@@ -690,6 +690,45 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
         atlas, em, '{hemi}'))) for em in measures])
 
 
+def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', excludes=('corpuscallosum', 'unknown'),
+                   indices_to_remove_from_data=(0,4,113,117)):
+    if isinstance(extract_measure, list):
+        if len(extract_measure) == 1:
+            extract_measure = extract_measure[0]
+        elif len(extract_measure) == 0:
+            print('extract_measure is an empty list!')
+            return False
+        elif len(extract_measure) > 1:
+            print('The load_labels_ts can get only one extract_measure!')
+            return False
+    st_template = op.join(FMRI_DIR, subject, '{}*.txt'.format(atlas))
+    st_file = utils.look_for_one_file(st_template, 'st')
+    if st_file is None:
+        return False
+    labels_data = np.genfromtxt(st_file).T
+    labels_data = np.delete(labels_data, indices_to_remove_from_data, 0)
+    labels = utils.read_list_from_file(labels_order_fname)
+    labels, indices = lu.remove_exclude_labels(labels, excludes)
+    remove_indices = list(set(range(len(labels))) - set(indices))
+    labels_data = np.delete(labels_data, remove_indices, 0)
+    if len(labels) != labels_data.shape[0]:
+        print('len(labels_order) ({}) != fmri_data.shape[0] {}!'.format(len(labels), labels_data.shape[0]))
+        return False
+    else:
+        print('len(labels_order) = fmri_data.shape[0] = {}'.format(len(labels)))
+    indices = lu.get_lh_rh_indices(labels)
+    labels = np.array(labels)
+    output_fname_hemi = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
+        atlas, extract_measure, '{hemi}'))
+    for hemi in utils.HEMIS:
+        output_fname = output_fname_hemi.format(hemi=hemi)
+        labels_data_hemi = labels_data[indices[hemi]]
+        labels_names_hemi = labels[indices[hemi]]
+        np.savez(output_fname, data=labels_data_hemi, names=labels_names_hemi)
+        print('{} was saved ({} labels)'.format(output_fname, len(labels_names_hemi)))
+    return utils.both_hemi_files_exist(output_fname_hemi)
+
+
 def check_vertices_num(subject, hemi, x, morph_from_subject=''):
     if x.shape[0] == FSAVG_VERTS:
         morph_from_subject = 'fsaverage'
@@ -1281,6 +1320,10 @@ def main(subject, remote_subject_dir, args, flags):
         tr = get_tr(subject, args.fmri_fname)
         flags['get_tr'] = not tr is None
 
+    if 'load_labels_ts' in args.function:
+        flags['load_labels_ts'] = load_labels_ts(
+            subject, args.atlas, args.labels_order_fname, args.labels_extract_mode, args.excluded_labels)
+
     return flags
 
 
@@ -1334,9 +1377,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--print_only', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_4d_preproc', help='', required=False, default=0, type=au.is_true)
 
-
     # Misc flags
     parser.add_argument('--fmri_fname', help='', required=False, default='')
+    parser.add_argument('--labels_order_fname', help='', required=False, default='')
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['lh.sphere.reg', 'rh.sphere.reg']}
@@ -1360,6 +1403,3 @@ if __name__ == '__main__':
     args = read_cmd_args()
     pu.run_on_subjects(args, main)
     print('finish!')
-
-
-
