@@ -1,5 +1,7 @@
 import os.path as op
+import glob
 from src.utils import movies_utils as mu
+from src.utils import utils
 
 
 def edit_movie_example():
@@ -63,5 +65,57 @@ def edit_movie_example4():
     mu.cut_movie(movie_fol, movie_name, out_movie_name, subclips_times)
 
 
+def ski_movie():
+    do_merge_images = False
+    do_cut = False
+    do_crop = True
+    do_merge = True
+
+    images_fol = '/home/npeled/mmvt/mg78/figures/meg_white'
+    frames = glob.glob(op.join(images_fol, '*.png'))
+    frames = sorted(frames, key=utils.natural_keys)
+    fps = 1
+    frames_output_fname = op.join(images_fol, 'meg_trans.mp4')
+    if do_merge_images:
+        mu.images_to_video(frames, fps, frames_output_fname)
+
+    movie_fol1 = '/home/npeled/Documents/darpa_year3_meeting'
+    movie_name1 = 'Skiing.mp4'
+    out_movie_name1 = 'skiing_cut.mp4'
+    subclips_times = [(35, 50)]
+    if do_cut:
+        mu.cut_movie(movie_fol1, movie_name1, out_movie_name1, subclips_times)
+
+    movie_fol2 = '/home/npeled/mmvt/mg78/figures/meg_white'
+    movie_name2 = 'meg_white.mp4'
+    out_movie_name2 = 'meg_white_crop.mp4'
+    if do_crop:
+        mu.crop_movie(movie_fol2, movie_name2, out_movie_name2, crop_xs=(100, 670))
+
+    movie1_fname = op.join(movie_fol1, out_movie_name1)
+    movie2_fname = op.join(movie_fol2, 'meg_trans.mp4')
+    output_fname = op.join(movie_fol1, 'ski_brain.mp4')
+    if do_merge:
+        mu.movie_in_movie(movie1_fname, movie2_fname, output_fname, pos=('right', 'top'), margin=1)
+        # mu.movie_in_movie(movie1_fname, movie2_fname, output_fname, pos=('right', 'top'), margin=0)
+
+
+def image_in_image():
+    from src.utils import figures_utils as fu
+    from PIL import Image
+    ski_frames = sorted(glob.glob('/home/npeled/Documents/darpa_year3_meeting/ski_frames/*.png'), key=utils.natural_keys)
+    meg_frames = sorted(glob.glob('/home/npeled/mmvt/mg78/figures/meg_white/*.png'), key=utils.natural_keys)
+    output_fol = '/home/npeled/Documents/darpa_year3_meeting/ski_meg'
+    meg_ind = 0
+    for ski_ind, ski_frame in enumerate(ski_frames):
+        output_frame_fname = op.join(output_fol, 'ski_meg_{}.png'.format(str(ski_ind).zfill(3)))
+        print('Writing {}/{}'.format(ski_ind, len(ski_frames)))
+        fu.merge_with_alpha(ski_frame, meg_frames[meg_ind], output_frame_fname)
+        if ski_ind % 10 == 0:
+            meg_ind += 1
+
+
 if __name__ == '__main__':
-    edit_movie_example3()
+    image_in_image()
+    # ski_movie()
+    # edit_movie_example3()

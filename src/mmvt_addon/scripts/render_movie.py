@@ -77,8 +77,6 @@ def render_movie(subject_fname):
         except:
             print("Graph couldn't be captured!")
     su.save_blend_file(subject_fname)
-    for elc_name in args.mark_electrodes:
-        mmvt.filter_electrode_or_sensor(elc_name, 0.1)
     mmvt.render_movie(args.play_type, args.play_from, args.play_to, camera_fname, args.play_dt, args.set_to_camera_mode)
     su.exit_blender()
 
@@ -94,11 +92,13 @@ def mark_electrodes(mmvt, args):
         args.mark_electrodes = su.read_list_from_file(electrodes_fname)
     if not args.mark_other_electrodes:
         for elc_name in args.mark_electrodes:
+            print('Marking electrode {}'.format(elc_name))
             mmvt.filter_electrode_or_sensor(elc_name, args.mark_electrodes_value)
     else:
         electrodes_names = mmvt.get_electrodes_names()
         for elc_name in electrodes_names:
             if elc_name not in args.mark_electrodes:
+                print('Marking electrode {}'.format(elc_name))
                 mmvt.filter_electrode_or_sensor(elc_name, args.mark_electrodes_value)
 
 

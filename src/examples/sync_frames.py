@@ -13,7 +13,7 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
 
 
-def load_times(subject, fname, bipolar=True, times_field='time'):
+def load_times(subject, fname, times_field='time'):
     # meta_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}_meta_data.npz'.format(
     #     '_bipolar' if bipolar else ''))
     # d = np.load(meta_fname)
@@ -21,6 +21,7 @@ def load_times(subject, fname, bipolar=True, times_field='time'):
     mat_fname = op.join(ELECTRODES_DIR, subject, fname)
     d = mu.load_mat_to_bag(mat_fname)
     times = d[times_field].squeeze()
+    print('times diff median: {}'.format(np.median(np.diff(times))))
     return times
 
 
@@ -49,8 +50,11 @@ def duplicate_frames(frames, times, times_per_frame, last_frame_len, max_frames_
             frame_ind += 1
             times_ind += 1
             frame_time = 0
-    if len(np.unique(new_frames)) != max_frames_num:
-        new_frames.extend([frames[-1]] * last_frame_len * int(1 / times_per_frame))
+    if len(np.unique(new_frames)) == max_frames_num - 1:
+        new_frames.extend([frames[-1]] * int(last_frame_len * int(1 / times_per_frame)))
+    else:
+        raise Exception('Wrong number of unique frames! {} (max frames num: {})'.format(
+            len(np.unique(new_frames)), max_frames_num))
     return new_frames
 
 
@@ -65,19 +69,21 @@ def create_dup_frames_links(subject, dup_frames, fol):
 
 if __name__ == '__main__':
     subject = 'mg106'
-    file_name = 'MG106_HGP_sess1'
+    frames_fol = 'MG106_HGP_sess2_4'
+    fname = 'MG106_HGP_sess2_2'
     times_per_frame = 0.1
     cut_in_break = False
-    last_frame_len = 5 * 60
+    # last_frame_len = 5 * 60
+    times_field = 'time2'
 
-    times = load_times(subject, '{}.mat'.format(file_name))
-    frames = load_frames(subject, frames_fol_name=file_name)
+    times = load_times(subject, '{}.mat'.format(fname), times_field)
+    last_frame_len = np.diff(times)[0]
+    frames = load_frames(subject, frames_fol_name=frames_fol)
     break_ind = get_breakind(times) if cut_in_break else len(times)
-    last_frame_len = last_frame_len
     print('max time: {} minutes'.format(times[break_ind if cut_in_break else len(times) - 1] / 60))
     new_frames = duplicate_frames(frames, times, times_per_frame, last_frame_len,  max_frames_num=break_ind)
-    dup_fol = create_dup_frames_links(subject, new_frames, '{}_dup'.format(file_name))
-    movie_fname = movu.combine_images(dup_fol, file_name, frame_rate=int(1 / times_per_frame))
+    dup_fol = create_dup_frames_links(subject, new_frames, '{}_dup'.format(frames_fol))
+    movie_fname = movu.combine_images(dup_fol, frames_fol, frame_rate=int(1 / times_per_frame))
     new_movie_fname = op.join(MMVT_DIR, subject, 'figures', utils.namesbase_with_ext(movie_fname))
     utils.remove_file(new_movie_fname)
     shutil.move(movie_fname, new_movie_fname)

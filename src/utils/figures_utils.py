@@ -207,6 +207,25 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1, *
     ax.set_position(ax_pos_new) # set a new position
 
 
+def merge_with_alpha(background_fname, foreground_fname, output_fname, fg_ratio=(1/2, 1/2)):
+    from PIL import Image
+
+    background = Image.open(background_fname)
+    foreground = Image.open(foreground_fname)
+    w, h = foreground.size
+    foreground = foreground.crop((100, 0, 670, h))
+    w, h = foreground.size
+    foreground = foreground.resize((int(w * fg_ratio[0]), int(h * fg_ratio[1])))
+    background.paste(foreground, (0, 0), foreground)
+    background.save(output_fname)
+
+
+def get_image_w_h(image_fname):
+    image = Image.open(image_fname)
+    w, h = image.size
+    return w, h
+
+
 if __name__ is '__main__':
     import argparse
     from src.utils.utils import Bag
