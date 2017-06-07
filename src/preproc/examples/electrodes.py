@@ -88,12 +88,12 @@ def load_electrodes_matlab_stim_file2(args):
     from src.preproc import stim
     args = elecs.read_cmd_args(utils.Bag(
         subject=args.subject,
-        bipolar = True
+        bipolar=True
     ))
     args = pu.add_default_args(args, {'error_radius': 3, 'elec_length': 4, 'file_frefix': ''})
 
     subject = args.subject[0]
-    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_HGP_sess2.mat')
+    mat_fname = op.join(elecs.ELECTRODES_DIR, subject, 'MG106_HGP_sess2_3.mat')
     d = mu.load_mat_to_bag(mat_fname)
     labels = mu.matlab_cell_str_to_list(d.Label)
     labels = [l.replace(' ', '-') for l in labels]
@@ -112,6 +112,7 @@ def load_electrodes_matlab_stim_file2(args):
         '_bipolar' if args.bipolar else ''))
     np.save(data_fname, data)
     np.savez(meta_fname, names=labels, conditions=['rest'], time=time)
+    print('Saving data in {} and {}'.format(data_fname, meta_fname))
 
 
 def load_electrodes_matlab_stim_file(args):

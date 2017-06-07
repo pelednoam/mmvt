@@ -9,13 +9,20 @@ import os.path as op
 from src.utils import preproc_utils as pu
 from src.utils import utils
 
-SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
-
 only_left = False #only L TLE patients
 fast_TR = False #include 568 ms TR
 root_paths = ['/homes/5/npeled/space1/Documents/memory_task', '/home/npeled/Documents/memory_task/']
 root_path = [p for p in root_paths if op.isdir(p)][0]
 
+
+def get_links():
+    links_dir = utils.get_links_dir()
+    subjects_dir = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
+    freesurfer_home = utils.get_link_dir(links_dir, 'freesurfer', 'FREESURFER_HOME')
+    mmvt_dir = utils.get_link_dir(links_dir, 'mmvt')
+    return subjects_dir, mmvt_dir, freesurfer_home
+
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = get_links()
 
 def get_inds(only_left, TR, fast_TR, to_use, laterality):
     if only_left:
@@ -49,11 +56,17 @@ def read_scoring():
         return d['laterality'], d['to_use'], d['TR'], d['values'], d['subjects_master']
 
 
+def find_good_subjects_indices(all_subjects):
+    good_subjects = utils.read_list_from_file(op.join(root_path, 'good_subjects.txt'))
+    return [ind for ind in range(len(all_subjects)) if all_subjects[ind] in good_subjects]
+
+
 def find_good_inds(all_subjects, only_left, TR, fast_TR, to_use, laterality):
     scoring_inds = get_inds(only_left, TR, fast_TR, to_use, laterality)
     _, subjects_inds = find_subjects_with_data(all_subjects)
     bad_indices, labels = check_subjects_labels(all_subjects)
-    inds = list(set(scoring_inds) & set(subjects_inds) - set(bad_indices))
+    good_subjects_inds = find_good_subjects_indices(all_subjects)
+    inds = list(set(scoring_inds) & set(subjects_inds) & set(good_subjects_inds) - set(bad_indices))
     print('{}/{} good subjects'.format(len(inds), len(all_subjects)))
     return all_subjects[inds], inds, labels
 
@@ -140,11 +153,11 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     rois_inds = find_labels_inds(labels)
     subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
     subs_R = np.where(labels=='Right-Hippocampus')[0][0]
-    ROIs_L = [rois_inds[1], subs_L, subs_R] # rois_inds
-    ROIs_R = [rois_inds[3], subs_L, subs_R]# np.concaten
-    rois_inds = [rois_inds[0], subs_L, subs_R]
+    ROIs_L = rois_inds[0:2] #, subs_L, subs_R] # rois_inds
+    ROIs_R = rois_inds[2:4] # , subs_L, subs_R]# np.concaten
+    # rois_inds = [rois_inds[0], subs_L, subs_R]
     rois_res = {}
-    new_corr_stds = np.zeros((len(subjects), 2, 2))
+    # new_corr_stds = np.zeros((len(subjects), 2, 2))
     for pc in res.keys():
         rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         for s_ind, s in enumerate(subjects):
@@ -158,11 +171,11 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     return rois_res, rois_inds
 
 
-def stat_test(res, disturbed_inds, preserved_inds):
+def run_stat(res, disturbed_inds, preserved_inds):
     mann_whitney_results = {pc:None for pc in res.keys()}
+    labels_num = res[list(res.keys())[0]].shape[1]
     for pc, dFCs in res.items():
-        subjects_num, labels_num = dFCs.shape
-        for label_ind in range(labels_num):
+        for label_ind in range(res[pc].shape[1]):
             test_res = mannwhitneyu(dFCs[disturbed_inds, label_ind], dFCs[preserved_inds, label_ind])
             if mann_whitney_results[pc] is None:
                 mann_whitney_results[pc] = np.zeros(labels_num)
@@ -262,29 +275,31 @@ def plot_bar(corr_stds, disturbed_inds, preserved_inds):
     print('asfd')
 
 
-def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds):
+def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds, mann_whitney_res):
     # plot_bar(corr_stds, disturbed_inds, preserved_inds)
     x = np.arange(len(res.keys()))
     from collections import defaultdict
     x1, x2 = defaultdict(list), defaultdict(list)
     width = 0.35
     pcs = ['mean', 1, 2, 4, 8]
-    for pc in pcs:
-        for label_ind, label in enumerate(labels):
-            x1[label_ind].append(np.mean(res[pc][disturbed_inds, label_ind]))
-            x2[label_ind].append(np.mean(res[pc][preserved_inds, label_ind]))
-    for label_ind, label in enumerate(labels):
-        f, axs = plt.subplots(1, 5, sharey=True)
+    # for pc in pcs:
+    #     x1 = (np.mean(res[pc][disturbed_inds, :], 0))
+    #     x2.extend(np.mean(res[pc][preserved_inds, :], 0))
+    #     # for label_ind, label in enumerate(labels):
+    #     #     x1[label_ind].append(np.mean(res[pc][disturbed_inds, label_ind]))
+    #     #     x2[label_ind].append(np.mean(res[pc][preserved_inds, label_ind]))
+    for label_ind in range(res[pcs[0]].shape[1]):
+        f, axs = plt.subplots(1, len(pcs), sharey=True)
         for ind, (pc, ax) in enumerate(zip(pcs, axs)):
             ax.scatter(np.ones((len(preserved_inds))) * 0.3, res[pc][preserved_inds, label_ind])
             ax.scatter(np.ones((len(disturbed_inds))) * 0.7, res[pc][disturbed_inds, label_ind])
             ax.set_xticks([.3, .7])
             ax.set_xlim([0, 1])
             ax.set_xticklabels(['preserved', 'disturbed'], rotation=30)
-            ax.set_title('{}{}'.format(pc, ' PCs' if pc != 'mean' else ''))
+            ax.set_title('{}{} ({:.2f})'.format(pc, ' PCs' if pc != 'mean' else '', mann_whitney_res[pc][label_ind]))
         fig = plt.gcf()
         # plt.legend(['preserved', 'disturbed'])
-        fig.suptitle('{} - {}'.format(res_name, 'Memory and cPCC flexibility'))
+        fig.suptitle('{} - {}'.format(res_name, '{} Memory and cPCC flexibility'.format(labels[label_ind])))
     plt.show()
     # plt.savefig(op.join(root_path, '{}-{}.png'.format(res_name, 'Memory and cPCC flexibility')))
         # plt.figure()
@@ -354,14 +369,15 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
         good_subjects, disturbed_inds, preserved_inds, laterality)
     if True: # op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
-        for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
+        res, res_name = std_mean_res, 'std_mean_res'
+        # for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
         # for res, res_name in zip([std_mean_res], ['std_mean_res']):  # stat_conn_res
-            if switch:
-                res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
-            else:
-                rois_inds = find_labels_inds(labels)
-            plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds)
-            mann_whitney_results[res_name] = stat_test(res, disturbed_inds, preserved_inds)
+        if switch:
+            res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+        else:
+            rois_inds = find_labels_inds(labels)
+        mann_whitney_results[res_name] = run_stat(res, disturbed_inds, preserved_inds)
+        plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, mann_whitney_results[res_name])
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
     else:
@@ -372,8 +388,35 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
     return mann_whitney_results, good_subjects, labels
 
 
+def run_sandya_code():
+    import scipy as spy
+    san_path = '/home/npeled/Documents/memory_task/code/'
+    ROI_values_dyn = np.load(op.join(san_path, 'ROI_values_dyn102.npy'))
+    subject_groups = np.load(op.join(san_path, 'subject_groups.npy'))
+
+    # disturbed = 1, preserved = 0
+    disturbed_inds = np.array(np.where(subject_groups == 1))
+    preserved_inds = np.array(np.where(subject_groups == 0))
+
+    # left is 0, right is 1
+    laterality = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    # Separate by contralateral and ipsilateral - ipsi is left, contra is right
+    # Mann-Whitney tests between groups - p<0.0125 - bonferroni correction for 4 ROIs
+    # spy.mannwhitneyu(x,y)
+    ROI_values_dyn_disturbed = np.squeeze(ROI_values_dyn[:, disturbed_inds])
+    ROI_values_dyn_preserved = np.squeeze(ROI_values_dyn[:, preserved_inds])
+    mann_whitney_results_dyn = np.zeros((ROI_values_dyn.shape[0], 2), 'float')
+
+    for i in range(ROI_values_dyn.shape[0]):
+        mann_whitney_results_dyn[i, :] = spy.stats.mannwhitneyu(ROI_values_dyn_disturbed[i, :],
+                                                                ROI_values_dyn_preserved[i, :]).pvalue
+
+    print(mann_whitney_results_dyn)
+
 if __name__ == '__main__':
-    get_labels_order()
+    # get_labels_order()
+    # run_sandya_code()
     ana_res = calc_ana(False)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)

@@ -42,11 +42,60 @@ def cut_movie(movie_fol, movie_name, out_movie_name, subclips_times):
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def crop_movie(fol, movie_name, out_movie_name, crop_ys=(60, 1170), **kwargs):
+def crop_movie(fol, movie_name, out_movie_name, crop_ys=(), crop_xs=(), **kwargs):
+    # crop_ys = (60, 1170)
     from moviepy import editor
-    video = editor.VideoFileClip(op.join(fol, '{}.mp4'.format(movie_name)))
-    crop_video = video.crop(y1=crop_ys[0], y2=crop_ys[1])
-    crop_video.write_videofile(op.join(fol, '{}.mp4'.format(out_movie_name)))
+    video = editor.VideoFileClip(op.join(fol, movie_name))
+    if len(crop_xs) > 0:
+        crop_video = video.crop(x1=crop_xs[0], x2=crop_xs[1])
+    if len(crop_ys) > 0:
+        crop_video = video.crop(y1=crop_ys[0], y2=crop_ys[1])
+    crop_video.write_videofile(op.join(fol, out_movie_name))
+
+
+def movie_in_movie(movie1_fname, movie2_fname, output_fname, pos=('right', 'bottom'), movie2_ratio=(1/3, 1/3),
+                   margin=6, margin_color=(255, 255, 255), audio=False, fps=24, codec='libx264'):
+    from moviepy import editor
+    movie1 = editor.VideoFileClip(movie1_fname, audio=audio)
+    w, h = movie1.size
+
+    # THE PIANO FOOTAGE IS DOWNSIZED, HAS A WHITE MARGIN, IS
+    # IN THE BOTTOM RIGHT CORNER
+    movie2 = (editor.VideoFileClip(movie2_fname, audio=False).
+             resize((w * movie2_ratio[0], h * movie2_ratio[1])).  # one third of the total screen
+             margin(margin, color=margin_color).  # white margin
+             margin(bottom=20, right=20, top=20, opacity=0).  # transparent
+             set_pos(pos))
+
+    final = editor.CompositeVideoClip([movie1, movie2])
+    final.write_videofile(output_fname, fps=fps, codec=codec)
+
+
+def images_to_video(frames_list, fps, output_fname):
+    from moviepy import editor
+
+    clip = editor.ImageSequenceClip(frames_list, fps=fps)
+    clip.write_videofile(output_fname)
+
+
+def add_text_example(movie):
+    from moviepy import editor
+    # A CLIP WITH A TEXT AND A BLACK SEMI-OPAQUE BACKGROUND
+    txt = editor.TextClip("V. Zulkoninov - Ukulele Sonata", font='Amiri-regular',
+                   color='white', fontsize=24)
+
+    txt_col = txt.on_color(size=(movie.w + txt.w, txt.h - 10),
+                           color=(0, 0, 0), pos=(6, 'center'), col_opacity=0.6)
+
+    # THE TEXT CLIP IS ANIMATED.
+    # I am *NOT* explaining the formula, understands who can/want.
+    w, h = movie.size
+    txt_mov = txt_col.set_pos(lambda t: (max(w / 30, int(w - 0.5 * w * t)),
+                                         max(5 * h / 6, int(100 * t))))
+
+    # FINAL ASSEMBLY
+    final = editor.CompositeVideoClip([ukulele, txt_mov, piano])
+    final.subclip(0, 5).write_videofile("../../ukulele.avi", fps=24, codec='libx264')
 
 
 def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold'):
@@ -126,6 +175,11 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
     return '{}.mp4'.format(movie_name)
+
+
+def video_to_frames():
+    'ffmpeg -i skiing_cut.mp4 -r 10 -f image2 %3d.png '
+    pass
 
 
 def find_images_props(fol, start_number=-1, images_prefix='', images_format='', images_type=''):
