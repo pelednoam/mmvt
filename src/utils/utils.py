@@ -496,7 +496,8 @@ def run_script(cmd, verbose=False, cwd=None):
 
     if isinstance(output, str):
         output = output.decode(sys.getfilesystemencoding(), 'ignore')
-    print(output)
+    if verbose:
+        print(output)
     return output
 
 
@@ -1711,24 +1712,33 @@ def write_list_to_file(list, fname):
             f.write('{}\n'.format(val))
 
 
-def look_for_one_file(template, files_desc):
+def look_for_one_file(template, files_desc, pick_the_first_one=False):
     files = glob.glob(template)
     if len(files) == 0:
         print('No {} files were found in {}!'.format(files_desc, template))
         return None
     elif len(files) > 1:
-        print('Too many {} fiels were found in {}!'.format(files_desc, template))
-        for ind, fname in enumerate(files):
-            print('{}) {}'.format(ind + 1, fname))
-        file_num = input('Which on do you want to load (1, 2, ...)? ')
-        while not is_int(file_num):
-            print('Please enter a valid integer')
+        if pick_the_first_one:
+            fname = files[0]
+        else:
+            print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
+            for ind, fname in enumerate(files):
+                print('{}) {}'.format(ind + 1, fname))
             file_num = input('Which on do you want to load (1, 2, ...)? ')
-        file_num = int(file_num) - 1
-        fname = files[file_num]
+            while not is_int(file_num):
+                print('Please enter a valid integer')
+                file_num = input('Which on do you want to load (1, 2, ...)? ')
+            file_num = int(file_num) - 1
+            fname = files[file_num]
     else:
         fname = files[0]
     return fname
+
+
+def get_logs_fol():
+    logs_fol = op.join(get_parent_fol(__file__, 3), 'logs')
+    make_dir(logs_fol)
+    return logs_fol
 
 
 # From http://stackoverflow.com/a/28952464/1060738

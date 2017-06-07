@@ -691,7 +691,7 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
 
 
 def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', excludes=('corpuscallosum', 'unknown'),
-                   indices_to_remove_from_data=(0,4,113,117)):
+                   indices_to_remove_from_data=(0,4,113,117), backup_existing_files=True, pick_the_first_one=False):
     if isinstance(extract_measure, list):
         if len(extract_measure) == 1:
             extract_measure = extract_measure[0]
@@ -701,8 +701,8 @@ def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', e
         elif len(extract_measure) > 1:
             print('The load_labels_ts can get only one extract_measure!')
             return False
-    st_template = op.join(FMRI_DIR, subject, '{}*.txt'.format(atlas))
-    st_file = utils.look_for_one_file(st_template, 'st')
+    st_template = op.join(FMRI_DIR, subject, '*{}*.txt'.format(atlas))
+    st_file = utils.look_for_one_file(st_template, 'st', pick_the_first_one)
     if st_file is None:
         return False
     labels_data = np.genfromtxt(st_file).T
@@ -722,6 +722,9 @@ def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', e
         atlas, extract_measure, '{hemi}'))
     for hemi in utils.HEMIS:
         output_fname = output_fname_hemi.format(hemi=hemi)
+        if backup_existing_files and op.isfile(output_fname):
+            backup_fname = utils.add_str_to_file_name(output_fname, '_backup')
+            shutil.copy(output_fname, backup_fname.format(hemi=hemi))
         labels_data_hemi = labels_data[indices[hemi]]
         labels_names_hemi = labels[indices[hemi]]
         np.savez(output_fname, data=labels_data_hemi, names=labels_names_hemi)
@@ -1322,7 +1325,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'load_labels_ts' in args.function:
         flags['load_labels_ts'] = load_labels_ts(
-            subject, args.atlas, args.labels_order_fname, args.labels_extract_mode, args.excluded_labels)
+            subject, args.atlas, args.labels_order_fname, args.labels_extract_mode, args.excluded_labels,
+            args.labels_indices_to_remove_from_data, args.backup_existing_files, args.pick_the_first_one)
 
     return flags
 
@@ -1376,10 +1380,13 @@ def read_cmd_args(argv=None):
     parser.add_argument('--nskip', help='', required=False, default=4, type=int)
     parser.add_argument('--print_only', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_4d_preproc', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--pick_the_first_one', help='', required=False, default=0, type=au.is_true)
 
     # Misc flags
     parser.add_argument('--fmri_fname', help='', required=False, default='')
     parser.add_argument('--labels_order_fname', help='', required=False, default='')
+    parser.add_argument('--labels_indices_to_remove_from_data', help='', required=False, default='', type=au.int_arr_type)
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['lh.sphere.reg', 'rh.sphere.reg']}

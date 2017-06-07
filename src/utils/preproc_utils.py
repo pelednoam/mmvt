@@ -32,17 +32,6 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     if args.necessary_files == '':
         args.necessary_files = dict()
     args.subject = decode_subjects(args.subject)
-    # for sub in args.subject:
-    #     if '*' in sub:
-    #         args.subject.remove(sub)
-    #         args.subject.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
-    #     elif 'file:' in sub:
-    #         args.subject.remove(sub)
-    #         subject_fname = sub[len('file:'):]
-    #         with open(subject_fname, 'r') as f:
-    #             for sub in f.readlines():
-    #                 if sub.strip() != '':
-    #                     args.subject.append(sub.strip())
     if 'sftp_password' not in args or args.sftp_password == '':
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
@@ -78,6 +67,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
 
     errors = defaultdict(list)
     ret = True
+    good_subjects, bad_subjects = [], []
     for subject, flags in subjects_flags.items():
         print('subject {}:'.format(subject))
         for flag_type, val in flags.items():
@@ -89,6 +79,15 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         print('Errors:')
         for subject, error in errors.items():
             print('{}: {}'.format(subject, error))
+    for subject in subjects_flags.keys():
+        if len(errors[subject]) == 0:
+            good_subjects.append(subject)
+        else:
+            bad_subjects.append(subject)
+    print('Good subjects:\n {}'.format(good_subjects))
+    print('Bad subjects:\n {}'.format(bad_subjects))
+    utils.write_list_to_file(good_subjects, op.join(utils.get_logs_fol(), 'good_subjects.txt'))
+    utils.write_list_to_file(bad_subjects, op.join(utils.get_logs_fol(), 'bad_subjects.txt'))
     return ret
 
 

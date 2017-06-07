@@ -186,6 +186,12 @@ def make_dir(fol):
     return fol
 
 
+def get_logs_fol():
+    logs_fol = op.join(get_parent_fol(__file__, 4), 'logs')
+    make_dir(logs_fol)
+    return logs_fol
+
+
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
                 only_verbose=False):
     if args.blender_fol == '':
@@ -195,11 +201,9 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         return
     blend_fname_is_None = True if blend_fname is None else False
     call_args_is_None = True if call_args is None else False
-    logs_fol = op.join(get_parent_fol(__file__, 4), 'logs')
+    logs_fol = get_logs_fol()
     if only_verbose:
         print('Creating logs fol: {}'.format(logs_fol))
-    else:
-        make_dir(logs_fol)
     if log_name == '':
         log_name = namebase(script_fname)
         if only_verbose:

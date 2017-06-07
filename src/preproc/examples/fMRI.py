@@ -82,6 +82,21 @@ def analyze_4d_data(args):
     pu.run_on_subjects(args, fmri.main)
 
 
+def load_labels_ts(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='load_labels_ts',
+        labels_order_fname=op.join(fmri.MMVT_DIR, 'labels_order', 'linda_laus125_order.txt'),
+        labels_extract_mode='mean',
+        excluded_labels='corpuscallosum,unknown',
+        labels_indices_to_remove_from_data='0,4,113,117',
+        backup_existing_files=False,
+        pick_the_first_one=True
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+
 def calculate_subcorticals_activity(args):
     args = fmri.read_cmd_args(dict(
         subject=args.subject,

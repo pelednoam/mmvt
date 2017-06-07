@@ -4,6 +4,7 @@ import scipy.io as sio
 import mne.connectivity
 import glob
 import traceback
+import shutil
 import matplotlib.pyplot as plt
 
 from src.utils import utils
@@ -126,6 +127,11 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         comps_num = '_{}'.format(labels_extract_mode.split('_')[1]) if labels_extract_mode.startswith('pca_') else ''
         return op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}.npy'.format(
             args.connectivity_modality, connectivity_method, comps_num))
+
+    def backup(fname):
+        if args.backup_existing_files and op.isfile(fname):
+            backup_fname = utils.add_str_to_file_name(fname, '_backup')
+            shutil.copy(fname, backup_fname)
 
     data, names = {}, {}
     output_fname = get_output_fname(args.connectivity_method[0], labels_extract_mode)
@@ -250,6 +256,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                     for chunk in results:
                         for w, con in chunk.items():
                             conn[:, :, w] = con
+            backup(output_mat_fname)
             print('Saving {}, {}'.format(output_mat_fname, conn.shape))
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
@@ -260,6 +267,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             for chunk in results:
                 for w, con in chunk.items():
                     conn[:, :, w] = con
+            backup(output_mat_fname)
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
         elif 'mi' in args.connectivity_method or 'mi_vec' in args.connectivity_method:
@@ -291,6 +299,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                     #             if i < j:
                     #                 conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
                     #     conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
+                    backup(conn_fname)
                     np.save(conn_fname, conn)
             if 'mi_vec' in args.connectivity_method and corr.ndim == 5:
                 conn_fname = get_output_mat_fname('mi_vec', labels_extract_mode)
@@ -306,6 +315,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                     for chunk in results:
                         for w, con in chunk.items():
                             conn[:, :, w] = con
+                    backup(conn_fname)
                     np.save(conn_fname, conn)
             connectivity_method = 'MI'
 
@@ -315,10 +325,12 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         abs_minmax = utils.calc_abs_minmax(conn)
         for hemi in utils.HEMIS:
             inds = labels_hemi_indices[hemi]
+            backup(labels_avg_output_fname.format(hemi=hemi))
             np.savez(labels_avg_output_fname.format(hemi=hemi), data=avg_per_label[inds], names=labels_names[inds],
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
         if len(labels_subs_indices) > 0:
             inds = labels_subs_indices
+            backup(subs_avg_output_fname)
             np.savez(subs_avg_output_fname, data=avg_per_label[inds], names=labels_names[inds],
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
@@ -327,6 +339,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             np.fill_diagonal(static_conn, 0)
+            backup(static_output_mat_fname)
             print('Saving {}, {}'.format(static_output_mat_fname, static_conn.shape))
             np.savez(static_output_mat_fname, static_conn=static_conn, conn_std=conn_std)
             # static_conn[np.isnan(static_conn)] = 0
@@ -347,6 +360,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)
+            backup(static_mean_output_mat_fname)
             print('Saving {}, {}'.format(static_mean_output_mat_fname, std_mean.shape))
             np.savez(static_mean_output_mat_fname, dFC=dFC, std_mean=std_mean, stat_conn=stat_conn)
             lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
@@ -760,6 +774,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_subs_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
 
     pu.add_common_args(parser)
 

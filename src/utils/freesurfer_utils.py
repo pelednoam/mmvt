@@ -336,10 +336,20 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname
 
 
 def get_tr(fmri_fname):
-    img = nib.load(fmri_fname)
-    hdr = img.get_header()
-    tr = float(hdr._header_data.tolist()[-1][0])
-    return tr
+    try:
+        img = nib.load(fmri_fname)
+        hdr = img.get_header()
+        tr = float(hdr._header_data.tolist()[-1][0])
+        return tr
+    except:
+        output = utils.run_script('mri_info --tr {}'.format(fmri_fname))
+        try:
+            output = output.decode('ascii')
+        except:
+            pass
+        output = output.replace('\n', '')
+        tr = float(output) / 1000
+        return tr
 
 
 def mri_convert(org_fname, new_fname, overwrite=False):
