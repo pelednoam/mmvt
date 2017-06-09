@@ -113,7 +113,7 @@ def morph_stc(args):
         data_per_task=True,
         contrast='interference',
         cleaning_method='nTSSS'))
-    morph_to_subject = 'fsaverage5'
+    morph_to_subject = 'ab' # 'fsaverage5'
     fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
     meg.morph_stc(conditions, morph_to_subject, args.inverse_method[0], args.n_jobs)
 
