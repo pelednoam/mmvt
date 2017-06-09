@@ -259,6 +259,7 @@ get_clusters_file_names = fMRI_panel.get_clusters_file_names
 get_clusters_files = fMRI_panel.get_clusters_files
 plot_all_blobs = fMRI_panel.plot_all_blobs
 load_fmri_cluster = fMRI_panel.load_fmri_cluster
+get_closest_vertex_and_mesh_to_cursor = fMRI_panel.get_closest_vertex_and_mesh_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data

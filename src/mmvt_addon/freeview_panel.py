@@ -41,6 +41,59 @@ def goto_cursor_position():
     bpy.context.scene.cursor_location = tuple(point / 10.0)
 
 
+def freeview_save_cursor():
+    if _addon().is_inflated():  # and _addon().get_inflated_ratio() == 1:
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+            use_shape_keys=True)
+        bpy.context.scene.cursor_location = vertex_co
+        pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
+        pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
+        cursor = pial_vert.co / 10
+    else:
+        cursor = bpy.context.scene.cursor_location
+    save_cursor_position(cursor)
+
+
+def open_freeview():
+    root = mu.get_user_fol()
+    if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
+        sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files))) + \
+                     glob.glob(op.join(root, 'freeview', '*{}*.nii'.format(bpy.context.scene.fmri_files)))
+        if len(sig_fnames) > 0:
+            sig_fname = sig_fnames[0]
+            sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
+        else:
+            sig_cmd = ''
+    else:
+        sig_cmd = ''
+    T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
+    if not op.isfile(T1):
+        T1 = op.join(root, 'freeview', 'orig.mgz')
+    if not op.isfile(T1):
+        print('No T1 / orig files in freeview folder!')
+        return {'RUNNING_MODAL'}
+    aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
+    lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
+    electrodes_cmd = get_electrodes_command(root)
+    cmd = '{} {} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
+        FreeviewPanel.addon_prefs.freeview_cmd, sig_cmd, T1, aseg, lut, electrodes_cmd,
+        ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
+        ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
+    print(cmd)
+    FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(cmd)
+
+
+def get_electrodes_command(root):
+    if bpy.data.objects.get('Deep_electrodes'):
+        cmd = ' -c '
+        groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar) for obj in bpy.data.objects['Deep_electrodes'].children])
+        for group in groups:
+            cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
+    else:
+        cmd = ''
+    return cmd
+
+
 # class FreeviewKeyboardListener(bpy.types.Operator):
 #     bl_idname = 'mmvt.freeview_keyboard_listener'
 #     bl_label = 'freeview_keyboard_listener'
@@ -82,15 +135,7 @@ class FreeviewSaveCursor(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        if _addon().is_inflated() and _addon().get_inflated_ratio() == 1:
-            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
-            bpy.context.scene.cursor_location = vertex_co
-            pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
-            pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
-            cursor = pial_vert.co / 10
-        else:
-            cursor = bpy.context.scene.cursor_location
-        save_cursor_position(cursor)
+        freeview_save_cursor()
         return {"FINISHED"}
 
 
@@ -173,48 +218,13 @@ class FreeviewOpen(bpy.types.Operator):
         return {'CANCELLED'}
 
     def invoke(self, context, event=None):
-        root = mu.get_user_fol()
-        if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
-            sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files))) + \
-                         glob.glob(op.join(root, 'freeview', '*{}*.nii'.format(bpy.context.scene.fmri_files)))
-            if len(sig_fnames) > 0:
-                sig_fname = sig_fnames[0]
-                sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
-            else:
-                sig_cmd = ''
-        else:
-            sig_cmd = ''
-        T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
-        if not op.isfile(T1):
-            T1 = op.join(root, 'freeview', 'orig.mgz')
-        if not op.isfile(T1):
-            print('No T1 / orig files in freeview folder!')
-            return {'RUNNING_MODAL'}
-        aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
-        lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
-        electrodes_cmd = self.get_electrodes_command(root)
-        cmd = '{} {} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
-            FreeviewPanel.addon_prefs.freeview_cmd, sig_cmd, T1, aseg, lut, electrodes_cmd,
-            ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
-            ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
-        print(cmd)
-        FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(cmd)
+        open_freeview()
+        freeview_save_cursor()
         context.window_manager.modal_handler_add(self)
         self._updating = False
         self._timer = context.window_manager.event_timer_add(0.1, context.window)
         return {'RUNNING_MODAL'}
         # return {"FINISHED"}
-
-
-    def get_electrodes_command(self, root):
-        if bpy.data.objects.get('Deep_electrodes'):
-            cmd = ' -c '
-            groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar) for obj in bpy.data.objects['Deep_electrodes'].children])
-            for group in groups:
-                cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
-        else:
-            cmd = ''
-        return cmd
 
 
 bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)

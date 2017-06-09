@@ -5,11 +5,12 @@ import numpy as np
 import os.path as op
 import glob
 
+
 def _addon():
     return DataInVertMakerPanel.addon
 
 
-def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None):
+def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_shape_keys=False):
     # 3d cursor relative to the object data
     # print('cursor at:' + str(bpy.context.scene.cursor_location))
     # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
@@ -24,15 +25,21 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None):
         cursor = bpy.context.scene.cursor_location
     else:
         cursor = mathutils.Vector(cursor)
-    for cur_obj in hemis:
-        obj = bpy.data.objects[cur_obj]
+    for obj_name in hemis:
+        obj = bpy.data.objects[obj_name]
         co_find = cursor * obj.matrix_world.inverted()
         mesh = obj.data
         size = len(mesh.vertices)
         kd = mathutils.kdtree.KDTree(size)
 
-        for i, v in enumerate(mesh.vertices):
-            kd.insert(v.co, i)
+        if use_shape_keys:
+            me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+            for i, v in enumerate(mesh.vertices):
+                kd.insert(me.vertices[i].co, i)
+            bpy.data.meshes.remove(me)
+        else:
+            for i, v in enumerate(mesh.vertices):
+                kd.insert(v.co, i)
 
         kd.balance()
         # print(obj.name)
@@ -46,8 +53,11 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None):
     closest_mesh_name = names[np.argmin(np.array(distances))]
     # print('closest_mesh =' + str(closest_mesh_name))
     vertex_ind = vertices_idx[np.argmin(np.array(distances))]
-    # print('vertex_ind =' + str(vertex_ind))
+    # print('vertex_ind = ' + str(vertex_ind))
     vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
+    # print('vertex_co', vertex_co)
+    # print(closest_mesh_name, bpy.data.objects[closest_mesh_name].data.vertices[vertex_ind].co)
+    # print(closest_mesh_name.replace('inflated_', ''), bpy.data.objects[closest_mesh_name.replace('inflated_', '')].data.vertices[vertex_ind].co)
     return closest_mesh_name, vertex_ind, vertex_co
 
 

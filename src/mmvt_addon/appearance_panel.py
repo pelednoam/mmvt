@@ -1,9 +1,9 @@
 import bpy
-import connections_panel
 import electrodes_panel
 import mmvt_utils as mu
 import time
 import sys
+import traceback
 
 
 def _addon():
@@ -123,8 +123,18 @@ def inflating_update(self, context):
         bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
         bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+        vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+        if obj_name != '':
+            if 'inflated' not in obj_name:
+                obj_name = 'inflated_{}'.format(obj_name)
+            ob = bpy.data.objects[obj_name]
+            scene = bpy.context.scene
+            me = ob.to_mesh(scene, True, 'PREVIEW')
+            bpy.context.scene.cursor_location = me.vertices[vert].co / 10
+            bpy.data.meshes.remove(me)
     except:
         print('Error in inflating update!')
+        print(traceback.format_exc())
 
 
 def set_inflated_ratio(ratio):
