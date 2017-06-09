@@ -207,16 +207,37 @@ def resize_and_move_ax(ax, dx=0, dy=0, dw=0, dh=0, ddx=1, ddy=1, ddw=1, ddh=1, *
     ax.set_position(ax_pos_new) # set a new position
 
 
-def merge_with_alpha(background_fname, foreground_fname, output_fname, fg_ratio=(1/2, 1/2)):
+def merge_with_alpha(background, foreground, output_fname, pos=(0,0), fg_ratio=(1/2, 1/2),
+                     margin=0, delta=(0,0)):
     from PIL import Image
 
-    background = Image.open(background_fname)
-    foreground = Image.open(foreground_fname)
-    w, h = foreground.size
-    foreground = foreground.crop((100, 0, 670, h))
-    w, h = foreground.size
-    foreground = foreground.resize((int(w * fg_ratio[0]), int(h * fg_ratio[1])))
-    background.paste(foreground, (0, 0), foreground)
+    if isinstance(background, str):
+        background = Image.open(background)
+    elif not isinstance(background, object):
+        raise Exception('background: Can be file name or Image object')
+    if isinstance(background, str):
+        foreground = Image.open(foreground)
+    elif not isinstance(foreground, object):
+        raise Exception('background: Can be file name or Image object')
+    # w, h = foreground.size
+    # foreground = foreground.crop((100, 0, 670, h))
+    fw, fh = foreground.size
+    bw, bh = background.size
+    foreground = foreground.resize((int(fw * fg_ratio[0]), int(fh * fg_ratio[1])))
+    pos = list(pos)
+    if pos[0] == 'left':
+        pos[0] = margin + delta[0]
+    elif pos[0] == 'right':
+        pos[0] = bw - fw - margin + delta[0]
+    elif pos[0] < 0:
+        pos[0] = bw + pos[0]
+    if pos[1] == 'top':
+        pos[1] = margin + delta[1]
+    elif pos[1] == 'bottom':
+        pos[1] = bh - fh - margin + delta[1]
+    elif pos[1] < 0:
+        pos[1] = bh + pos[1] + delta[1]
+    background.paste(foreground, pos, foreground)
     background.save(output_fname)
 
 

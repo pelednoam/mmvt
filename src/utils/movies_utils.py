@@ -123,10 +123,13 @@ def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=10):
     video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)
 
 
-def combine_movies(fol, movie_name, movie_type='mp4'):
+def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
     # First convert the part to avi, because mp4 cannot be concat
     cmd = 'ffmpeg -i concat:"'
-    parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
+    if len(parts) == 0:
+        parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
+    else:
+        parts = [op.join(fol, p) for p in parts]
     for part_fname in parts:
         part_name, _ = op.splitext(part_fname)
         cmd = '{}{}.avi|'.format(cmd, op.join(fol, part_name))
