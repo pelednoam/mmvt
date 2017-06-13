@@ -73,7 +73,7 @@ class SearchMark(bpy.types.Operator):
             is_valid = False
             try:
                 import fnmatch
-                if fnmatch.fnmatch(obj.name, label_name):
+                if fnmatch.fnmatch(obj.name, '*{}*'.format(label_name)):
                     is_valid = True
             except:
                 if label_name in obj.name:

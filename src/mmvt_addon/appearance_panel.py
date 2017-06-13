@@ -220,7 +220,12 @@ def surface_type_update(self, context):
         vertex_ind, closest_mesh_name = get_closest_vertex_and_mesh_to_cursor()
         mesh_name = 'inflated_{}'.format(closest_mesh_name) if 'inflated' not in closest_mesh_name else \
             closest_mesh_name.replace('inflated_', '')
-        vert = bpy.data.objects[mesh_name].data.vertices[vertex_ind]
+        if 'inflated' in mesh_name:
+            me = bpy.data.objects[mesh_name].to_mesh(bpy.context.scene, True, 'PREVIEW')
+            vert = me.vertices[vertex_ind]
+            bpy.data.meshes.remove(me)
+        else:
+            vert = bpy.data.objects[mesh_name].data.vertices[vertex_ind]
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, mesh_name)
         bpy.context.scene.cursor_location = vert.co / 10.0
 
@@ -441,10 +446,10 @@ bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
-    update = filter_view_type_update)
+    update=filter_view_type_update)
 bpy.types.Scene.surface_type = bpy.props.EnumProperty(
     items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
-    update = surface_type_update)
+    update=surface_type_update)
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)

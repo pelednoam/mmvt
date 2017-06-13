@@ -52,6 +52,9 @@ def _clusters_update():
     _addon().clear_closet_vertex_and_mesh_to_cursor()
     if _addon().is_pial():
         bpy.context.scene.cursor_location = cluster_centroid
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+            cluster_centroid, mu.HEMIS, False)
+        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
     # elif _addon().get_inflated_ratio() == 1:
     #     closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
     #         cluster_centroid, mu.HEMIS)
@@ -70,7 +73,11 @@ def _clusters_update():
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
-            plot_blob(fMRIPanel.cluster_labels, faces_verts)
+            if bpy.context.scene.coloring_both_pial_and_inflated:
+                for is_inflated in [True, False]:
+                    plot_blob(fMRIPanel.cluster_labels, faces_verts, is_inflated)
+            else:
+                plot_blob(fMRIPanel.cluster_labels, faces_verts)
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -83,13 +90,14 @@ def fmri_blobs_percentile_max_update(self, context):
         bpy.context.scene.fmri_blobs_percentile_max = bpy.context.scene.fmri_blobs_percentile_min
 
 
-def plot_blob(cluster_labels, faces_verts):
+def plot_blob(cluster_labels, faces_verts, is_inflated=None):
+    is_inflated = _addon().is_inflated() if is_inflated is None else is_inflated
     fMRIPanel.dont_show_clusters_info = False
     _addon().init_activity_map_coloring('FMRI', subcorticals=False)
     blob_vertices = cluster_labels['vertices']
     hemi = cluster_labels['hemi']
     real_hemi = hemi
-    if _addon().is_inflated():
+    if is_inflated:
         hemi = 'inflated_{}'.format(hemi)
     # fMRIPanel.blobs_plotted = True
     fMRIPanel.colors_in_hemis[hemi] = True
