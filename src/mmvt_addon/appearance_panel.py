@@ -123,7 +123,7 @@ def inflating_update(self, context):
         bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
         bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
-        vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+        vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
         if obj_name != '':
             if 'inflated' not in obj_name:
                 obj_name = 'inflated_{}'.format(obj_name)
@@ -196,6 +196,7 @@ def filter_view_type_update(self, context):
 
 def surface_type_update(self, context):
     inflated = bpy.context.scene.surface_type == 'inflated'
+    # todo: why we need the for loop here?!?
     for _ in range(2):
         if is_rois():
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = inflated
@@ -214,6 +215,14 @@ def surface_type_update(self, context):
         show_hide_meg_sensors(AppearanceMakerPanel.showing_meg_sensors)
         show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
         show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
+
+    if bpy.context.scene.cursor_is_snapped:
+        vertex_ind, closest_mesh_name = get_closest_vertex_and_mesh_to_cursor()
+        mesh_name = 'inflated_{}'.format(closest_mesh_name) if 'inflated' not in closest_mesh_name else \
+            closest_mesh_name.replace('inflated_', '')
+        vert = bpy.data.objects[mesh_name].data.vertices[vertex_ind]
+        set_closest_vertex_and_mesh_to_cursor(vertex_ind, mesh_name)
+        bpy.context.scene.cursor_location = vert.co / 10.0
 
     _addon().update_camera_files()
 
@@ -268,9 +277,9 @@ def appearance_draw(self, context):
         layout.prop(context.scene, 'inflating')
     if bpy.context.scene.surface_type == 'pial':
         layout.prop(context.scene, 'hemis_distance', text='hemis dist')
-    else:
-        if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
-            layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
+    # else:
+    #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
+    #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
     if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
@@ -280,6 +289,11 @@ def appearance_draw(self, context):
         show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
+    # if is_inflated():
+    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
+    # if bpy.context.scene.cursor_is_snapped:
+    #     layout.operator(
+    #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
@@ -357,6 +371,8 @@ class SelectionListener(bpy.types.Operator):
                 self.press_time = time.time()
                 self.right_clicked = True
             if event.type == 'LEFTMOUSE':
+                if bpy.context.scene.cursor_is_snapped:
+                    snap_cursor(True)
                 if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                     _addon().find_closest_cluster(only_within=True)
                 if _addon().is_pial():
@@ -392,6 +408,33 @@ class SelectionListener(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
+def snap_cursor(flag=None):
+    flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
+    if flag:
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+            use_shape_keys=True)
+        bpy.context.scene.cursor_location = vertex_co
+        set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+    else:
+        clear_closet_vertex_and_mesh_to_cursor()
+
+
+def set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name):
+    AppearanceMakerPanel.closest_vertex_to_cursor = vertex_ind
+    AppearanceMakerPanel.closest_mesh_to_cursor = closest_mesh_name
+    bpy.context.scene.cursor_is_snapped = True
+
+
+def get_closest_vertex_and_mesh_to_cursor():
+    return AppearanceMakerPanel.closest_vertex_to_cursor, AppearanceMakerPanel.closest_mesh_to_cursor
+
+
+def clear_closet_vertex_and_mesh_to_cursor():
+    AppearanceMakerPanel.closest_vertex_to_cursor = -1
+    AppearanceMakerPanel.closest_mesh_to_cursor = ''
+    bpy.context.scene.cursor_is_snapped = False
+
+
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
     items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
     update=appearance_show_rois_activity_update)
@@ -402,13 +445,25 @@ bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
 bpy.types.Scene.surface_type = bpy.props.EnumProperty(
     items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
     update = surface_type_update)
+bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+
+
+class SnapCursor(bpy.types.Operator):
+    bl_idname = "mmvt.snap_cursor"
+    bl_label = "mmvt snap_cursor"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        snap_cursor()
+        return {"FINISHED"}
 
 
 class ShowHideMEGSensors(bpy.types.Operator):
@@ -474,6 +529,8 @@ class AppearanceMakerPanel(bpy.types.Panel):
     showing_meg_sensors = False
     showing_eeg_sensors = False
     showing_electrodes = False
+    closest_vertex_to_cursor = -1
+    closest_mesh_to_cursor = ''
 
     def draw(self, context):
         if AppearanceMakerPanel.init:
@@ -500,6 +557,7 @@ def init(addon):
             bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0 #-5
+    bpy.context.scene.cursor_is_snapped = False
     set_inflated_ratio(1)
     appearance_show_rois_activity_update()
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
@@ -517,6 +575,7 @@ def register():
         bpy.utils.register_class(ShowHideEEG)
         bpy.utils.register_class(ShowHideConnections)
         bpy.utils.register_class(SelectionListener)
+        bpy.utils.register_class(SnapCursor)
     except:
         print("Can't register Appearance Panel!")
 
@@ -529,6 +588,7 @@ def unregister():
         bpy.utils.unregister_class(ShowHideEEG)
         bpy.utils.unregister_class(ShowHideConnections)
         bpy.utils.unregister_class(SelectionListener)
+        bpy.utils.unregister_class(SnapCursor)
     except:
         pass
 

@@ -218,6 +218,9 @@ is_activity = appearance_panel.is_activity
 is_rois = appearance_panel.is_rois
 is_solid = appearance_panel.is_solid
 is_rendered = appearance_panel.is_rendered
+set_closest_vertex_and_mesh_to_cursor = appearance_panel.set_closest_vertex_and_mesh_to_cursor
+get_closest_vertex_and_mesh_to_cursor = appearance_panel.get_closest_vertex_and_mesh_to_cursor
+clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_and_mesh_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
@@ -259,7 +262,6 @@ get_clusters_file_names = fMRI_panel.get_clusters_file_names
 get_clusters_files = fMRI_panel.get_clusters_files
 plot_all_blobs = fMRI_panel.plot_all_blobs
 load_fmri_cluster = fMRI_panel.load_fmri_cluster
-get_closest_vertex_and_mesh_to_cursor = fMRI_panel.get_closest_vertex_and_mesh_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data

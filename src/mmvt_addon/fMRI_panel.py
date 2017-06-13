@@ -37,10 +37,6 @@ def fMRI_clusters_files_exist():
     return fMRIPanel.fMRI_clusters_files_exist
 
 
-def get_closest_vertex_and_mesh_to_cursor():
-    return fMRIPanel.closest_vertex_to_cursor, fMRIPanel.closest_mesh_to_cursor
-
-
 def clusters_update(self, context):
     _clusters_update()
 
@@ -53,8 +49,7 @@ def _clusters_update():
     fMRIPanel.cluster_labels = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
     cluster_centroid = np.mean(fMRIPanel.cluster_labels['coordinates'], 0) / 10.0
     _addon().save_cursor_position(cluster_centroid)
-    fMRIPanel.closest_vertex_to_cursor = -1
-    fMRIPanel.closest_mesh_to_cursor = ''
+    _addon().clear_closet_vertex_and_mesh_to_cursor()
     if _addon().is_pial():
         bpy.context.scene.cursor_location = cluster_centroid
     # elif _addon().get_inflated_ratio() == 1:
@@ -70,8 +65,7 @@ def _clusters_update():
         me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
         bpy.context.scene.cursor_location = me.vertices[vertex_ind].co / 10.0
         bpy.data.meshes.remove(me)
-        fMRIPanel.closest_vertex_to_cursor = vertex_ind
-        fMRIPanel.closest_mesh_to_cursor = closest_mesh_name
+        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
 
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
@@ -113,7 +107,7 @@ def plot_blob(cluster_labels, faces_verts):
         data_min=data_min, colors_ratio=colors_ratio)
     other_real_hemi = mu.other_hemi(real_hemi)
     other_hemi = mu.other_hemi(hemi)
-    if fMRIPanel.colors_in_hemis[other_hemi]:
+    if other_hemi in fMRIPanel.colors_in_hemis and fMRIPanel.colors_in_hemis[other_hemi]:
         _addon().clear_cortex([other_real_hemi])
         fMRIPanel.colors_in_hemis[other_hemi] = False
 
@@ -128,6 +122,7 @@ def find_closest_cluster(only_within=False):
         # print(closest_mesh_name, vertex_ind, vertex_co)
         # print(vertex_co - bpy.context.scene.cursor_location)
         bpy.context.scene.cursor_location = vertex_co
+        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
         pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
         pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
         # cursor = pial_vert.co / 10
@@ -599,8 +594,6 @@ class fMRIPanel(bpy.types.Panel):
     fMRI_clusters_files_exist = False
     constrast = {'rh':None, 'lh':None}
     clusters_labels_file_names = []
-    closest_vertex_to_cursor = -1
-    closest_mesh_to_cursor = ''
 
     def draw(self, context):
         if fMRIPanel.init:
