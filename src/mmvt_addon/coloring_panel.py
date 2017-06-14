@@ -917,9 +917,12 @@ def color_meg_sensors():
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
     threshold = bpy.context.scene.coloring_threshold
     data, meta = _addon().load_meg_sensors_data()
-    data_min, data_max = ColoringMakerPanel.meg_sensors_data_minmax
-    colors_ratio= ColoringMakerPanel.meg_sensors_colors_ratio
-    _addon().set_colorbar_max_min(data_max, data_min)
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_min, data_max = ColoringMakerPanel.meg_sensors_data_minmax
+        _addon().set_colorbar_max_min(data_max, data_min)
+    colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('EEG conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
@@ -929,9 +932,12 @@ def color_eeg_sensors():
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
     threshold = bpy.context.scene.coloring_threshold
     data, meta = _addon().load_eeg_data()
-    data_min, data_max = ColoringMakerPanel.eeg_data_minmax
-    colors_ratio= ColoringMakerPanel.eeg_colors_ratio
-    _addon().set_colorbar_max_min(data_max, data_min)
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_min, data_max = ColoringMakerPanel.eeg_data_minmax
+        _addon().set_colorbar_max_min(data_max, data_min)
+    colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('EEG conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
