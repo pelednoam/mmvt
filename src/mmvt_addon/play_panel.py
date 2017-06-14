@@ -41,6 +41,14 @@ def _addon():
     return PlayPanel.addon
 
 
+def get_current_t():
+    return bpy.context.scene.frame_current
+
+
+def set_current_t(t):
+    bpy.context.scene.frame_current = t
+
+
 class ModalTimerOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
     bl_idname = "wm.modal_timer_operator"

@@ -228,6 +228,8 @@ set_play_to = play_panel.set_play_to
 set_play_dt = play_panel.set_play_dt
 capture_graph = play_panel.capture_graph
 render_movie = play_panel.render_movie
+get_current_t = play_panel.get_current_t
+set_current_t = play_panel.set_current_t
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ electrodes links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 color_the_relevant_lables = electrodes_panel.color_the_relevant_lables
 get_leads = electrodes_panel.get_leads
