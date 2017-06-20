@@ -154,16 +154,16 @@ def get_subjects_dFC(subjects):
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
-            stat_conn = d['stat_conn']
+            # stat_conn = d['stat_conn']
             if dFC_res[pc] is None:
                 dFC_res[pc] = np.zeros((len(subjects), *dFC.shape))
             if std_mean_res[pc] is None:
                 std_mean_res[pc] = np.zeros((len(subjects), *std_mean.shape))
-            if stat_conn_res[pc] is None:
-                stat_conn_res[pc] = np.zeros((len(subjects), *stat_conn.shape))
+            # if stat_conn_res[pc] is None:
+            #     stat_conn_res[pc] = np.zeros((len(subjects), *stat_conn.shape))
             dFC_res[pc][subject_ind] = dFC
             std_mean_res[pc][subject_ind] = std_mean
-            stat_conn_res[pc][subject_ind] = stat_conn
+            # stat_conn_res[pc][subject_ind] = stat_conn
 
     return dFC_res, std_mean_res, stat_conn_res
 
