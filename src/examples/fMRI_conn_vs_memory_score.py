@@ -6,14 +6,8 @@ import pandas
 from scipy.stats import mannwhitneyu
 import os.path as op
 
-from src.utils import preproc_utils as pu
 from src.utils import utils
 
-only_left = False #only L TLE patients
-fast_TR = False #include 568 ms TR
-root_paths = ['/homes/5/npeled/space1/Documents/memory_task', '/home/npeled/Documents/memory_task/']
-root_path = [p for p in root_paths if op.isdir(p)][0]
-scoring_xls_fname = '/cluster/neuromind/sx424/subject_info/StufflebeamLabDataba_DATA_LABELS_2017-01-27_1132.xlsx'
 
 def get_links():
     links_dir = utils.get_links_dir()
@@ -22,7 +16,12 @@ def get_links():
     mmvt_dir = utils.get_link_dir(links_dir, 'mmvt')
     return subjects_dir, mmvt_dir, freesurfer_home
 
-SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = get_links()
+
+only_left = False #only L TLE patients
+fast_TR = False #include 568 ms TR
+root_paths = ['/homes/5/npeled/space1/Documents/memory_task', '/home/npeled/Documents/memory_task/']
+root_path = [p for p in root_paths if op.isdir(p)][0]
 
 
 def get_inds(only_left, TR, fast_TR, to_use, laterality):
@@ -39,15 +38,28 @@ def get_inds(only_left, TR, fast_TR, to_use, laterality):
     return inds
 
 
+def get_linda_subjects():
+    return ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
+        'nmr00629', 'nmr00650', 'nmr00657', 'nmr00669', 'nmr00674', 'nmr00681', 'nmr00683',
+        'nmr00692', 'nmr00698', 'nmr00710']
+
+
 def read_scoring():
     scoring_fname = op.join(root_path, 'neuropsych_scores.npz')
     if not op.isfile(scoring_fname):
+        scoring_xls_fname = '/cluster/neuromind/sx424/subject_info/StufflebeamLabDataba_DATA_LABELS_2017-01-27_1132.xlsx'
         neuropsych_scores = pandas.read_excel(scoring_xls_fname, sheetname='Necessary scores', header=None, skiprows={0})
         subjects_master = np.array(neuropsych_scores.loc[:,0].astype(str))
         laterality = np.array(neuropsych_scores.loc[:, 1].astype(str))
         to_use = np.array(neuropsych_scores.loc[:, 2].astype(str))
         TR = np.array(neuropsych_scores.loc[:, 3].astype(float))
         values = np.array(neuropsych_scores.loc[:,4:].astype(float))
+        # if only_linda:
+        #     subject_list = get_linda_subjects()
+        #     inds = np.where(np.in1d(subjects_master, subject_list))[0]
+        #     subject_list = subjects_master[inds]
+        #     master_grouping = (np.sum((values <= 5).astype(int), axis=1) > 0).astype(int)
+        #     subject_groups = master_grouping[inds]
         np.savez(op.join(root_path, 'neuropsych_scores.npy'), laterality=laterality, to_use=to_use, TR=TR, values=values,
                  subjects_master=subjects_master)
         return laterality, to_use, TR, values, subjects_master
@@ -61,13 +73,18 @@ def find_good_subjects_indices(all_subjects):
     return [ind for ind in range(len(all_subjects)) if all_subjects[ind] in good_subjects]
 
 
+def find_linda_subjects_indices(all_subjects):
+    linda_subjects = get_linda_subjects()
+    return [np.where(sub==all_subjects)[0][0] for sub in linda_subjects]
+
+
 def find_good_inds(all_subjects, only_left, TR, fast_TR, to_use, laterality):
     scoring_inds = get_inds(only_left, TR, fast_TR, to_use, laterality)
     _, subjects_inds = find_subjects_with_data(all_subjects)
-    good_subjects_inds = find_good_subjects_indices(all_subjects)
     bad_indices, labels = check_subjects_labels(all_subjects)
     good_subjects_inds = find_good_subjects_indices(all_subjects)
-    inds = list(set(scoring_inds) & set(subjects_inds) & set(good_subjects_inds) - set(bad_indices))
+    linda_subjects_inds = find_linda_subjects_indices(all_subjects)
+    inds = list(set(scoring_inds) & set(subjects_inds) & set(good_subjects_inds) & set(linda_subjects_inds) - set(bad_indices))
     print('{}/{} good subjects'.format(len(inds), len(all_subjects)))
     return all_subjects[inds], inds, labels
 
@@ -131,6 +148,9 @@ def get_subjects_dFC(subjects):
             else:
                 fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
             print('Loading {} ({})'.format(fname, utils.file_modification_time(fname)))
+            if not op.isfile(fname):
+                print('{} not exist!'.format(fname))
+                continue
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
@@ -160,6 +180,9 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     rois_res = {}
     # new_corr_stds = np.zeros((len(subjects), 2, 2))
     for pc in res.keys():
+        if res[pc] is None:
+            print('res[{}] is None!'.format(pc))
+            continue
         rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         for s_ind, s in enumerate(subjects):
             if subject_lateralities[s_ind] == 'L':
@@ -174,9 +197,9 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
 
 def run_stat(res, disturbed_inds, preserved_inds):
     mann_whitney_results = {pc:None for pc in res.keys()}
-    labels_num = res[list(res.keys())[0]].shape[1]
     for pc, dFCs in res.items():
-        for label_ind in range(res[pc].shape[1]):
+        subjects_num, labels_num = dFCs.shape
+        for label_ind in range(labels_num):
             test_res = mannwhitneyu(dFCs[disturbed_inds, label_ind], dFCs[preserved_inds, label_ind])
             if mann_whitney_results[pc] is None:
                 mann_whitney_results[pc] = np.zeros(labels_num)
@@ -184,8 +207,15 @@ def run_stat(res, disturbed_inds, preserved_inds):
     return mann_whitney_results
 
 
-def check_subjects_labels(subjects):
-    _labels = np.load(op.join(MMVT_DIR, subjects[0], 'connectivity', 'labels_names.npy'))
+def check_subjects_labels(subjects, check_labels_indices=True):
+    for subject in subjects:
+        labels_fname = op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy')
+        if op.isfile(labels_fname):
+            _labels = np.load(labels_fname)
+            break
+    # _labels = np.load(op.join(MMVT_DIR, subjects[0], 'connectivity', 'labels_names.npy'))
+    if not check_labels_indices:
+        return [], _labels
     bad_indices = []
     for sub_ind, subject in enumerate(subjects):
         labels_fname = op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy')
@@ -292,6 +322,8 @@ def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds,
     for label_ind in range(res[pcs[0]].shape[1]):
         f, axs = plt.subplots(1, len(pcs), sharey=True)
         for ind, (pc, ax) in enumerate(zip(pcs, axs)):
+            if not pc in res:
+                continue
             ax.scatter(np.ones((len(preserved_inds))) * 0.3, res[pc][preserved_inds, label_ind])
             ax.scatter(np.ones((len(disturbed_inds))) * 0.7, res[pc][disturbed_inds, label_ind])
             ax.set_xticks([.3, .7])
@@ -344,14 +376,25 @@ def find_labels_inds(labels):
     return labels_rois_inds
 
 
-def calc_ana(overwrite=False):
+def calc_ana(overwrite=False, only_linda=False):
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     ana_results_fname = op.join(root_path, 'ana_results.pkl')
     if not op.isfile(ana_results_fname) or not op.isfile(good_subjects_fname) or overwrite:
         laterality, to_use, TR, values, all_subjects = read_scoring()
-        good_subjects, good_subjects_inds, labels = find_good_inds(
-            all_subjects, only_left, TR, fast_TR, to_use, laterality)
-        disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
+        if only_linda:
+            subject_list = get_linda_subjects()
+            inds = np.where(np.in1d(all_subjects, subject_list))[0]
+            good_subjects = all_subjects[inds]
+            master_grouping = (np.sum((values <= 5).astype(int), axis=1) > 0).astype(int)
+            subject_groups = master_grouping[inds]
+            disturbed_inds = np.array(np.where(subject_groups == 1)[0])
+            preserved_inds = np.array(np.where(subject_groups == 0)[0])
+            laterality = ['L'] * len(good_subjects)
+            bad_indices, labels = check_subjects_labels(good_subjects, check_labels_indices=False)
+        else:
+            good_subjects, good_subjects_inds, labels = find_good_inds(
+                all_subjects, only_left, TR, fast_TR, to_use, laterality)
+            disturbed_inds, preserved_inds = calc_disturbed_preserved_inds(good_subjects_inds, values)
         dFC_res, std_mean_res, stat_conn_res = get_subjects_dFC(good_subjects)
         utils.save(
             (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality),
@@ -366,8 +409,8 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
                               labels, laterality, switch=True):
     good_subjects_fname = op.join(root_path, 'good_subjects.npz')
     mann_whitney_results_fname = op.join(root_path, 'mann_whitney_results.pkl')
-    good_subjects, disturbed_inds, preserved_inds, laterality = take_only_linda_subjects(
-        good_subjects, disturbed_inds, preserved_inds, laterality)
+    # good_subjects, disturbed_inds, preserved_inds, laterality = take_only_linda_subjects(
+    #     good_subjects, disturbed_inds, preserved_inds, laterality)
     if True: # op.isfile(mann_whitney_results_fname):
         mann_whitney_results = {}
         res, res_name = std_mean_res, 'std_mean_res'
@@ -378,6 +421,7 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
         else:
             rois_inds = find_labels_inds(labels)
         mann_whitney_results[res_name] = run_stat(res, disturbed_inds, preserved_inds)
+        print(mann_whitney_results[res_name])
         plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, mann_whitney_results[res_name])
         utils.save(mann_whitney_results, mann_whitney_results_fname)
         np.savez(good_subjects_fname, good_subjects=good_subjects, labels=labels)
@@ -418,7 +462,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(False)
+    ana_res = calc_ana(True, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
