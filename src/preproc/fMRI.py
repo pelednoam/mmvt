@@ -837,12 +837,14 @@ def find_hemi_files_from_template(template_fname):
 
 def find_hemi_files(files):
     files = get_unique_files_into_mgz(files)
+    print('get_unique_files_into_mgz: {}'.format(files))
     hemis_files = []
     rh_files = [f for f in files if '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
     for rh_file in rh_files:
         lh_file = rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
         if op.isfile(lh_file):
             hemis_files.append(rh_file.replace('rh', '{hemi}'))
+    print('find_hemi_files returns {}'.format(hemis_files))
     return hemis_files
 
 
