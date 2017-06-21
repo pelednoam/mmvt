@@ -416,10 +416,11 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
         res, res_name = std_mean_res, 'std_mean_res'
         # for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
         # for res, res_name in zip([std_mean_res], ['std_mean_res']):  # stat_conn_res
-        if switch:
-            res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
-        else:
-            rois_inds = find_labels_inds(labels)
+        # if switch:
+        #     res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+        # else:
+        #     rois_inds = find_labels_inds(labels)
+        rois_inds = np.array([4, 8, 115, 119])
         mann_whitney_results[res_name] = run_stat(res, disturbed_inds, preserved_inds)
         print(mann_whitney_results[res_name])
         plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, mann_whitney_results[res_name])
