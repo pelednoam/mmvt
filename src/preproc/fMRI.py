@@ -840,8 +840,10 @@ def find_hemi_files(files):
     print('get_unique_files_into_mgz: {}'.format(files))
     hemis_files = []
     rh_files = [f for f in files if '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
+    print('rh_files: {}'.format(rh_files))
     for rh_file in rh_files:
         lh_file = rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
+        print('lh_file: {}'.format(lh_file))
         if op.isfile(lh_file):
             hemis_files.append(rh_file.replace('rh', '{hemi}'))
     print('find_hemi_files returns {}'.format(hemis_files))
