@@ -17,8 +17,6 @@ from src.utils import freesurfer_utils as fu
 from src.preproc import meg as meg
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
-from src.utils import args_utils as au
-# from src.utils import qa_utils
 
 try:
     from sklearn.neighbors import BallTree
@@ -840,7 +838,7 @@ def find_hemi_files(files):
     print('get_unique_files_into_mgz: {}'.format(files))
     hemis_files = []
     print('namebase: {}'.format([utils.namebase(f) for f in files]))
-    rh_files = [f for f in files if '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
+    rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
     print('rh_files: {}'.format(rh_files))
     for rh_file in rh_files:
         lh_file = rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
