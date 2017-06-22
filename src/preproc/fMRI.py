@@ -1254,6 +1254,8 @@ def misc(args):
 
 
 def main(subject, remote_subject_dir, args, flags):
+    global FMRI_DIR
+    FMRI_DIR = args.remote_fmri_dir if args.remote_fmri_dir != '' else FMRI_DIR
     volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
     remote_fmri_dir = remote_subject_dir if args.remote_fmri_dir == '' else \
@@ -1354,6 +1356,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--surface_name', help='surface_name', required=False, default='pial')
     parser.add_argument('--meg_subject', help='meg_subject', required=False, default='')
     parser.add_argument('--inverse_method', help='inverse method', required=False, default='dSPM')
+    parser.add_argument('--remote_fmri_dir', help='remote fMRI folder', required=False, default='')
 
     parser.add_argument('--overwrite_surf_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_colors_file', help='', required=False, default=0, type=au.is_true)
