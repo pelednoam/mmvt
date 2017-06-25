@@ -652,7 +652,9 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
 
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     remote_fmri_dir = FMRI_DIR if remote_fmri_dir == '' else remote_fmri_dir
-    input_fname_template = op.join(FMRI_DIR, subject, input_fname_template)
+    input_fname_template = op.join(remote_fmri_dir, subject, input_fname_template)
+    if not op.isdir(input_fname_template):
+        input_fname_template = op.join(remote_fmri_dir, input_fname_template)
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(remote_fmri_dir, subject, 'figures')
     input_fname_template_files = find_hemi_files_from_template(input_fname_template)
@@ -1262,6 +1264,7 @@ def main(subject, remote_subject_dir, args, flags):
     fol = op.join(FMRI_DIR, args.task, subject)
     remote_fmri_dir = remote_subject_dir if args.remote_fmri_dir == '' else \
         utils.build_remote_subject_dir(args.remote_fmri_dir, subject)
+    print('remote_fmri_dir: {}'.format(remote_fmri_dir))
     if args.contrast_template == '':
         if args.fsfast:
             fmri_contrast_file_template = op.join(fol, 'bold', '{contrast_name}.sm05.{hemi}'.format(
