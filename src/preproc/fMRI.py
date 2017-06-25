@@ -638,7 +638,7 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
 
 
 def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='',
-                          overwrite=False, do_plot=False, do_plot_all_vertices=False,
+                          overwrite=False, remote_fmri_dir='', do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     # if fmri_file_template == '':
     #     print('You should set the fmri_file_template for something like ' +
@@ -651,9 +651,10 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
         subject=subject, morph_to_subject=template_brain, hemi='{hemi}')
 
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
+    remote_fmri_dir = FMRI_DIR if remote_fmri_dir == '' else remote_fmri_dir
     input_fname_template = op.join(FMRI_DIR, subject, input_fname_template)
     morph_from_subject = subject if template_brain == '' else template_brain
-    figures_dir = op.join(FMRI_DIR, subject, 'figures')
+    figures_dir = op.join(remote_fmri_dir, subject, 'figures')
     input_fname_template_files = find_hemi_files_from_template(input_fname_template)
     if len(input_fname_template_files) > 1:
         print('More the one file was found! {}'.format(input_fname_template))
@@ -1254,9 +1255,9 @@ def misc(args):
 
 
 def main(subject, remote_subject_dir, args, flags):
-    global FMRI_DIR
-    FMRI_DIR = args.remote_fmri_dir if args.remote_fmri_dir != '' else FMRI_DIR
-    FMRI_DIR = utils.build_remote_subject_dir(FMRI_DIR, subject)
+    # global FMRI_DIR
+    # FMRI_DIR = args.remote_fmri_dir if args.remote_fmri_dir != '' else FMRI_DIR
+    # FMRI_DIR = utils.build_remote_subject_dir(FMRI_DIR, subject)
     volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
     remote_fmri_dir = remote_subject_dir if args.remote_fmri_dir == '' else \
@@ -1295,7 +1296,7 @@ def main(subject, remote_subject_dir, args, flags):
     if 'analyze_4d_data' in args.function:
         flags['analyze_4d_data'] = analyze_4d_data(
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain,
-            args.overwrite_labels_data, args.resting_state_plot,
+            args.overwrite_labels_data, remote_fmri_dir, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
     if 'calc_labels_minmax' in args.function:
@@ -1367,7 +1368,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--remote_fmri_dir', help='', required=False, default='')
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
