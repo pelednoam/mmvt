@@ -1256,6 +1256,7 @@ def misc(args):
 def main(subject, remote_subject_dir, args, flags):
     global FMRI_DIR
     FMRI_DIR = args.remote_fmri_dir if args.remote_fmri_dir != '' else FMRI_DIR
+    FMRI_DIR = utils.build_remote_subject_dir(FMRI_DIR, subject)
     volume_name = args.volume_name if args.volume_name != '' else subject
     fol = op.join(FMRI_DIR, args.task, subject)
     remote_fmri_dir = remote_subject_dir if args.remote_fmri_dir == '' else \
