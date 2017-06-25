@@ -652,18 +652,18 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
 
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     remote_fmri_dir = FMRI_DIR if remote_fmri_dir == '' else remote_fmri_dir
-    input_fname_template = op.join(remote_fmri_dir, subject, input_fname_template)
-    if not op.isdir(input_fname_template):
-        input_fname_template = op.join(remote_fmri_dir, input_fname_template)
+    full_input_fname_template = op.join(remote_fmri_dir, subject, input_fname_template)
+    if not op.isdir(full_input_fname_template):
+        full_input_fname_template = op.join(remote_fmri_dir, input_fname_template)
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(remote_fmri_dir, subject, 'figures')
-    input_fname_template_files = find_hemi_files_from_template(input_fname_template)
+    input_fname_template_files = find_hemi_files_from_template(full_input_fname_template)
     if len(input_fname_template_files) > 1:
-        print('More the one file was found! {}'.format(input_fname_template))
+        print('More the one file was found! {}'.format(full_input_fname_template))
         print(input_fname_template_files)
         return False
     elif len(input_fname_template_files) == 0:
-        print("Can't find template files! {}".format(input_fname_template))
+        print("Can't find template files! {}".format(full_input_fname_template))
         return False
     for hemi in utils.HEMIS:
         fmri_fname = input_fname_template_files[0].format(hemi=hemi)
