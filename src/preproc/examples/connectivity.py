@@ -64,7 +64,7 @@ def calc_fmri_connectivity(args):
         windows_shift=4, #3,
         save_mmvt_connectivity=False,
         calc_subs_connectivity=False,
-        recalc_connectivity = True,
+        recalc_connectivity=True,
         n_jobs=args.n_jobs
     ))
     con.call_main(args)

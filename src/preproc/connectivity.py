@@ -177,6 +177,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
 
     data = np.concatenate((data['lh'], data['rh']))
     labels_names = np.concatenate((names['lh'], names['rh']))
+    labels_fname = op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy')
+    np.save(labels_fname, labels_names)
     labels_indices = np.array([ind for ind,l in enumerate(labels_names) if not np.any(
         [e in l for e in args.labels_exclude])])
     if len(labels_indices) < len(labels_names):
