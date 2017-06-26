@@ -202,6 +202,16 @@ def get_label_hemi_invariant_name(label_name):
     return label_inv_name
 
 
+def change_hemi(label_name):
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+    other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    if pos == 'end':
+        res_label_name = '{}{}{}'.format(label, delim, other_hemi)
+    else:
+        res_label_name = '{}{}{}'.format(other_hemi, delim, label)
+    return res_label_name
+
+
 def get_hemi_from_name(label_name):
     label_hemi = ''
     for hemi in ['rh', 'lh']:
