@@ -891,11 +891,15 @@ def find_template_files(template_fname):
 
 
 def find_hemi_files_from_template(template_fname):
-    return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
+    try:
+        return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
+    except:
+        raise Exception('Error in find_hemi_files_from_template: {}'.format(template_fname))
 
 
 def find_hemi_files(files):
     if len(files) < 2:
+        print(files)
         raise Exception('len(files) should be >= 2!')
     files = get_unique_files_into_mgz(files)
     hemis_files = []
