@@ -39,9 +39,12 @@ def get_inds(only_left, TR, fast_TR, to_use, laterality):
 
 
 def get_linda_subjects():
-    return ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
-        'nmr00629', 'nmr00650', 'nmr00657', 'nmr00669', 'nmr00674', 'nmr00681', 'nmr00683',
-        'nmr00692', 'nmr00698', 'nmr00710']
+    # return ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
+    #     'nmr00629', 'nmr00650', 'nmr00657', 'nmr00669', 'nmr00674', 'nmr00681', 'nmr00683',
+    #     'nmr00692', 'nmr00698', 'nmr00710']
+    return ['nmr00506', 'nmr00599', 'nmr00515', 'nmr00692', 'nmr00657', 'nmr00609', 'nmr00468', 'nmr00629', 'nmr00681',
+            'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
+            'nmr00634', 'nmr00502', 'nmr00698']
 
 
 def read_scoring():
@@ -149,11 +152,21 @@ def get_subjects_dFC(subjects):
                 fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
             print('Loading {} ({})'.format(fname, utils.file_modification_time(fname)))
             if not op.isfile(fname):
-                print('{} not exist!'.format(fname))
+                # print('{} not exist!'.format(fname))
                 continue
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
+            if pc == 'mean':
+                sandya_fname = '/space/franklin/1/users/sx424/mem_flex/from_Linda_data/{}/dFC_unnorm102.npy'.format(subject)
+                if not op.isfile(sandya_fname):
+                    print('{} does not have dFC ts file'.format(subject))
+                else:
+                    sandaya_data = np.load(sandya_fname)
+                    allclose = np.allclose(sandaya_data, std_mean)
+                    if not allclose:
+                        print('Not close!')
+                        # raise Exception('Not close!')
             # stat_conn = d['stat_conn']
             if dFC_res[pc] is None:
                 dFC_res[pc] = np.zeros((len(subjects), *dFC.shape))
@@ -170,10 +183,14 @@ def get_subjects_dFC(subjects):
 
 def switch_laterality(res, subjects, labels, subject_lateralities):
     labels = np.load(op.join(root_path, 'labels_names.npy'))
-    corr_stds = np.load(op.join(root_path, 'conn_stds.npy'))
+    # labels = get_laus125_ts_labels()
+    # corr_stds = np.load(op.join(root_path, 'conn_stds.npy'))
     rois_inds = find_labels_inds(labels)
-    subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
-    subs_R = np.where(labels=='Right-Hippocampus')[0][0]
+    # labels = get_labels_order()
+    # rois_inds = np.array([4, 8, 115, 119])
+    print(labels[rois_inds])
+    # subs_L = np.where(labels == 'Left-Hippocampus')[0][0]
+    # subs_R = np.where(labels=='Right-Hippocampus')[0][0]
     ROIs_L = rois_inds[0:2] #, subs_L, subs_R] # rois_inds
     ROIs_R = rois_inds[2:4] # , subs_L, subs_R]# np.concaten
     # rois_inds = [rois_inds[0], subs_L, subs_R]
@@ -183,13 +200,15 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
         if res[pc] is None:
             print('res[{}] is None!'.format(pc))
             continue
-        rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
+        # rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
+        rois_res[pc] = np.zeros((len(subjects), len(rois_inds)))
         for s_ind, s in enumerate(subjects):
+            # rois_res[pc][s_ind] = res[pc][s_ind, rois_inds]
             if subject_lateralities[s_ind] == 'L':
-                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_R]
+                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((ROIs_R, ROIs_L))]
                 # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]), np.array([subs_R, subs_L])]
             else:
-                rois_res[pc][s_ind] = res[pc][s_ind, ROIs_L]
+                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((ROIs_L, ROIs_R))]
                 # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]) , np.array([subs_R, subs_L])]
     # rois_inds = [rois_inds[1]]
     return rois_res, rois_inds
@@ -358,7 +377,7 @@ def check_labels():
     print('asdf')
 
 
-def get_labels_order():
+def get_laus125_ts_labels():
     laus125_labels_lh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_lh.txt'))]
     laus125_labels_rh = [line.rstrip() for line in open(op.join(root_path, 'fmri_laus125_rh.txt'))]
     laus125_labels_lh = [s + '-lh' for s in laus125_labels_lh]
@@ -369,10 +388,10 @@ def get_labels_order():
 
 
 def find_labels_inds(labels):
-    laus125_labels= get_labels_order()
+    laus125_labels = get_laus125_ts_labels()
     rois = laus125_labels[np.array([4, 8, 115, 119])]
     labels_rois_inds = np.array([np.where(labels==l)[0][0] for l in rois])
-    print(labels[labels_rois_inds])
+    print(labels[labels_rois_inds], labels_rois_inds)
     return labels_rois_inds
 
 
@@ -384,6 +403,7 @@ def calc_ana(overwrite=False, only_linda=False):
         if only_linda:
             subject_list = get_linda_subjects()
             inds = np.where(np.in1d(all_subjects, subject_list))[0]
+            print(inds)
             good_subjects = all_subjects[inds]
             master_grouping = (np.sum((values <= 5).astype(int), axis=1) > 0).astype(int)
             subject_groups = master_grouping[inds]
@@ -416,11 +436,10 @@ def calc_mann_whitney_results(dFC_res, std_mean_res, stat_conn_res, disturbed_in
         res, res_name = std_mean_res, 'std_mean_res'
         # for res, res_name in zip([dFC_res, std_mean_res], ['dFC_res', 'std_mean_res']): # stat_conn_res
         # for res, res_name in zip([std_mean_res], ['std_mean_res']):  # stat_conn_res
-        # if switch:
-        #     res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
-        # else:
-        #     rois_inds = find_labels_inds(labels)
-        rois_inds = np.array([4, 8, 115, 119])
+        if switch:
+            res, rois_inds = switch_laterality(res, good_subjects, labels, laterality)
+        else:
+            rois_inds = find_labels_inds(labels)
         mann_whitney_results[res_name] = run_stat(res, disturbed_inds, preserved_inds)
         print(mann_whitney_results[res_name])
         plot_comparisson_bars(res, res_name, labels[rois_inds], disturbed_inds, preserved_inds, mann_whitney_results[res_name])
@@ -463,7 +482,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(True, only_linda=True)
+    ana_res = calc_ana(False, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)

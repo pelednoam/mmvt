@@ -33,6 +33,7 @@ warp_buckner_atlas_cmd = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/norm.mg
 mri_surf2surf = 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {source_fname} --trgsubject {target_subject} --trgsurfval {target_fname} --hemi {hemi}'
 mri_vol2vol = 'mri_vol2vol --mov {source_volume_fname} --s {subject} --targ {target_volume_fname} --o {output_volume_fname} --nearest'
 
+mri_segstats = 'mri_segstats --i {fmri_fname} --avgwf {output_txt_fname} --annot {target_subject} {hemi} {atlas} --sum {output_sum_fname}'
 
 
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
@@ -395,3 +396,28 @@ def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fna
         if not op.isfile(output_volume_fname):
             raise Exception('vol2vol: Target file was not created!')
 
+
+def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overwrite=True, output_txt_fname='',
+                    output_sum_fname='', ret_files_name=False):
+    def get_labels_names(line):
+        label_name = line.split()[4]
+        label_num = utils.find_num_in_str(label_name)
+        if label_num != '':
+            name_len = label_name.find('_{}'.format(label_num)) + len(str(label_num)) + 1
+            label_name = label_name[:name_len]
+        return label_name
+
+    if output_txt_fname == '':
+        output_txt_fname = op.join(res_dir, '{}_{}_{}.txt'.format(utils.namebase(fmri_fname), atlas, hemi))
+    if output_sum_fname == '':
+        output_sum_fname = op.join(res_dir, '{}_{}_{}.sum'.format(utils.namebase(fmri_fname), atlas, hemi))
+    if not op.isfile(output_txt_fname) or not op.isfile(output_sum_fname) or overwrite:
+        utils.partial_run_script(locals(), cwd=cwd)(mri_segstats)
+    if not op.isfile(output_txt_fname):
+        raise Exception('The output file was not created!')
+    labels_data = np.genfromtxt(output_txt_fname).T
+    labels_names = utils.read_list_from_file(output_sum_fname, get_labels_names, 'rb')
+    if ret_files_name:
+        return labels_data, labels_names, output_txt_fname, output_sum_fname
+    else:
+        return labels_data, labels_names

@@ -1694,14 +1694,21 @@ def remove_link(source):
         pass
 
 
-def read_list_from_file(fname):
+def read_list_from_file(fname, line_func=None, input_format='r'):
+    import string
+    printable = set(string.printable)
     arr = []
-    with open(fname, 'r') as f:
+    with open(fname, input_format) as f:
         for line in f.readlines():
             line = line.strip()
+            if not isinstance(line, str):
+                line = line.decode(sys.getfilesystemencoding(), 'ignore')
+                line = ''.join(list(filter(lambda x: x in printable, line)))
             if line.startswith('#'):
                 continue
             if line != '':
+                if line_func is not None:
+                    line = line_func(line)
                 arr.append(line)
     return arr
 
@@ -1712,8 +1719,8 @@ def write_list_to_file(list, fname):
             f.write('{}\n'.format(val))
 
 
-def look_for_one_file(template, files_desc, pick_the_first_one=False):
-    files = glob.glob(template)
+def look_for_one_file(template, files_desc, pick_the_first_one=False, search_func=None):
+    files = search_func(template) if search_func is not None else glob.glob(template)
     if len(files) == 0:
         print('No {} files were found in {}!'.format(files_desc, template))
         return None
@@ -1739,6 +1746,17 @@ def get_logs_fol():
     logs_fol = op.join(get_parent_fol(__file__, 3), 'logs')
     make_dir(logs_fol)
     return logs_fol
+
+
+def merge_text_files(input_files, output_fname):
+    with open(output_fname, 'w') as outfile:
+        for fname in input_files:
+            with open(fname) as infile:
+                outfile.write(infile.read())
+
+
+def find_num_in_str(string):
+    return re.sub('\D', ',', string).replace(',', '')
 
 
 # From http://stackoverflow.com/a/28952464/1060738

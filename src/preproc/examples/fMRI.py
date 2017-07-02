@@ -98,6 +98,22 @@ def load_labels_ts(args):
     pu.run_on_subjects(args, fmri.main)
 
 
+def calc_labels_mean_freesurfer(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='calc_labels_mean_freesurfer',
+        fmri_file_template='{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz',
+        excluded_labels='corpuscallosum,unknown',
+        overwrite_labels_data=True,
+        sftp_username=args.sftp_username,
+        sftp_domain=args.sftp_domain,
+        sftp=True,
+        remote_subject_dir=args.remote_subject_dir,
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+
 def calculate_subcorticals_activity(args):
     args = fmri.read_cmd_args(dict(
         subject=args.subject,

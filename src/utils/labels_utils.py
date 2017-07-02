@@ -344,6 +344,21 @@ def remove_exclude_labels(labels, excludes=()):
     return labels, indices
 
 
+def remove_exclude_labels_and_data(labels_names, labels_data, excludes=()):
+    if len(excludes) > 0:
+        org_labels_names = labels_names
+        labels_names, indices = remove_exclude_labels(labels_names, excludes)
+        remove_indices = list(set(range(len(org_labels_names))) - set(indices))
+        if len(remove_indices) != len(excludes):
+            raise Exception('Error in removing excludes')
+        labels_data = np.delete(labels_data, remove_indices, 0)
+    if len(labels_names) != labels_data.shape[0]:
+        raise Exception(
+            'Error in remove_exclude_labels_and_data! len(labels_names) {} != labels_data.shape {}'.format(
+                labels_names, labels_data.shape[0]))
+    return labels_names, labels_data
+
+
 def calc_time_series_per_label(x, labels, measure, excludes=(),
                                figures_dir='', do_plot=False, do_plot_all_vertices=False):
     import sklearn.decomposition as deco
