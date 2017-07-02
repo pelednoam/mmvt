@@ -99,11 +99,14 @@ def load_labels_ts(args):
 
 
 def calc_labels_mean_freesurfer(args):
+    '''
+    python -m src.preproc.fMRI --a laus125 -f calc_labels_mean_freesurfer --fmri_file_template "{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz" --excluded_labels corpuscallosum,unknown --overwrite_labels_data 1 --remote_fmri_dir "/autofs/cluster/scratch/tuesday/noam/DataProcessed_memory/{subject}/surf" -s 'nmr00506','nmr00599','nmr00515','nmr00692','nmr00657','nmr00609','nmr00468','nmr00629','nmr00681','nmr00643','nmr00448','nmr00650','nmr00674','nmr00669','nmr00603','nmr00710','nmr00683','nmr00640','nmr00634','nmr00502','nmr00698'
+    '''
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
         atlas=args.atlas,
         function='calc_labels_mean_freesurfer',
-        fmri_file_template='{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz',
+        fmri_file_template='{hemi}.{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz',
         excluded_labels='corpuscallosum,unknown',
         overwrite_labels_data=True,
         sftp_username=args.sftp_username,

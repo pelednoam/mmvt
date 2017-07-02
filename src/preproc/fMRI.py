@@ -895,6 +895,8 @@ def find_hemi_files_from_template(template_fname):
 
 
 def find_hemi_files(files):
+    if len(files) < 2:
+        raise Exception('len(files) should be >= 2!')
     files = get_unique_files_into_mgz(files)
     hemis_files = []
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
