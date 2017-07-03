@@ -1239,6 +1239,7 @@ def get_unique_files_into_mgz(files):
     for contrast_file in files:
         ft = utils.file_type(contrast_file)
         contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
+    print('get_unique_files_into_mgz: {}'.format(contrast_files_dic))
     for contrast_file, fts in contrast_files_dic.items():
         if 'mgz' not in fts:
             fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
