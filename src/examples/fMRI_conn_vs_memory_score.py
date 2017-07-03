@@ -150,10 +150,10 @@ def get_subjects_dFC(subjects):
                 fname = op.join(fol, 'fmri_corr_cv_mean_mean.npz')
             else:
                 fname = op.join(fol, 'fmri_mi_vec_cv_mean_pca{}.npz'.format('' if pc == 1 else '_{}'.format(pc)))
-            print('Loading {} ({})'.format(fname, utils.file_modification_time(fname)))
             if not op.isfile(fname):
-                # print('{} not exist!'.format(fname))
+                print('{} not exist!'.format(fname))
                 continue
+            print('Loading {} ({})'.format(fname, utils.file_modification_time(fname)))
             d = np.load(fname)
             dFC = d['dFC']
             std_mean = d['std_mean']
@@ -167,6 +167,8 @@ def get_subjects_dFC(subjects):
                     if not allclose:
                         print('Not close!')
                         # raise Exception('Not close!')
+                    else:
+                        print('All close!')
             # stat_conn = d['stat_conn']
             if dFC_res[pc] is None:
                 dFC_res[pc] = np.zeros((len(subjects), *dFC.shape))
@@ -182,8 +184,8 @@ def get_subjects_dFC(subjects):
 
 
 def switch_laterality(res, subjects, labels, subject_lateralities):
-    labels = np.load(op.join(root_path, 'labels_names.npy'))
-    # labels = get_laus125_ts_labels()
+    # labels = np.load(op.join(root_path, 'labels_names.npy'))
+    labels = get_laus125_ts_labels()
     # corr_stds = np.load(op.join(root_path, 'conn_stds.npy'))
     rois_inds = find_labels_inds(labels)
     # labels = get_labels_order()
@@ -196,19 +198,28 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     # rois_inds = [rois_inds[0], subs_L, subs_R]
     rois_res = {}
     # new_corr_stds = np.zeros((len(subjects), 2, 2))
+    subjects_rois = {}
+    for s_ind, subject in enumerate(subjects):
+        subjects_rois[subject] = {}
+        fname = '/autofs/space/thibault_001/users/npeled/mmvt/{}/fmri/labels_data_laus125_mean_{}.npz'.format(subject, '{hemi}')
+        labels_names_rh = np.load(fname.format(hemi='rh'))['names']
+        labels_names_lh = np.load(fname.format(hemi='lh'))['names']
+        subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1', 'isthmuscingulate_1']]
+        subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1','isthmuscingulate_1']]
+        print(subject, subjects_rois[subject]['ROIs_L'], subjects_rois[subject]['ROIs_R'], subject_lateralities[s_ind])
     for pc in res.keys():
         if res[pc] is None:
             print('res[{}] is None!'.format(pc))
             continue
         # rois_res[pc] = np.zeros((len(subjects), len(ROIs_L)))
         rois_res[pc] = np.zeros((len(subjects), len(rois_inds)))
-        for s_ind, s in enumerate(subjects):
+        for s_ind, subject in enumerate(subjects):
             # rois_res[pc][s_ind] = res[pc][s_ind, rois_inds]
             if subject_lateralities[s_ind] == 'L':
-                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((ROIs_R, ROIs_L))]
+                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((subjects_rois[subject]['ROIs_R'], subjects_rois[subject]['ROIs_L']))]
                 # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]), np.array([subs_R, subs_L])]
             else:
-                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((ROIs_L, ROIs_R))]
+                rois_res[pc][s_ind] = res[pc][s_ind, np.concatenate((subjects_rois[subject]['ROIs_L'], subjects_rois[subject]['ROIs_R']))]
                 # new_corr_stds[s_ind] = corr_stds[s_ind, np.array([ROIs_R, ROIs_L]) , np.array([subs_R, subs_L])]
     # rois_inds = [rois_inds[1]]
     return rois_res, rois_inds
@@ -409,7 +420,7 @@ def calc_ana(overwrite=False, only_linda=False):
             subject_groups = master_grouping[inds]
             disturbed_inds = np.array(np.where(subject_groups == 1)[0])
             preserved_inds = np.array(np.where(subject_groups == 0)[0])
-            laterality = ['L'] * len(good_subjects)
+            # laterality = ['L'] * len(good_subjects)
             bad_indices, labels = check_subjects_labels(good_subjects, check_labels_indices=False)
         else:
             good_subjects, good_subjects_inds, labels = find_good_inds(
@@ -482,7 +493,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(False, only_linda=True)
+    ana_res = calc_ana(True, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
