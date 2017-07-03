@@ -683,10 +683,11 @@ def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_f
     if len(input_fname_template_files) > 1:
         print('More the one file was found! {}'.format(full_input_fname_template))
         print(input_fname_template_files)
-        return False
+        return ''
     elif len(input_fname_template_files) == 0:
         print("Can't find template files! {}".format(full_input_fname_template))
-        return False
+        print(subject, input_fname_template, template_brain, remote_fmri_dir)
+        return ''
     return input_fname_template_files[0]
 
 
