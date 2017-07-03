@@ -108,6 +108,7 @@ def calc_labels_mean_freesurfer(args):
         function='calc_labels_mean_freesurfer',
         fmri_file_template='{hemi}.{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz',
         excluded_labels='corpuscallosum,unknown',
+        remote_fmri_dir='/autofs/cluster/neuromind/douw/scans/adults/{subject}/surf',
         overwrite_labels_data=True,
         sftp_username=args.sftp_username,
         sftp_domain=args.sftp_domain,

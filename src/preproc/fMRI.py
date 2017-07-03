@@ -910,6 +910,7 @@ def find_hemi_files(files):
         lh_file = op.join(parent_fol, lh_file)
         if op.isfile(lh_file):
             hemis_files.append(rh_file.replace('rh', '{hemi}'))
+    print('hemis files were found! {}'.format(hemis_files))
     return hemis_files
 
 
