@@ -1242,7 +1242,7 @@ def get_unique_files_into_mgz(files):
     for contrast_file, fts in contrast_files_dic.items():
         if 'mgz' not in fts and 'nii.gz' in fts:
             # fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
-            fu.nii_gz_to_mgz(contrast_file)
+            fu.nii_gz_to_mgz('{}.nii.gz'.format(contrast_file))
     files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
     return files
 
