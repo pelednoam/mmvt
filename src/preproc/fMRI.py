@@ -601,6 +601,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
     full_input_fname_template = op.join(remote_fmri_dir, volume_fname_template)
     full_input_fname_template = full_input_fname_template.replace('{format}', '*')
+    full_input_fname_template = full_input_fname_template.format(subject=subject)
     print('input_fname_template: {}'.format(full_input_fname_template))
     volume_fname = utils.look_for_one_file(full_input_fname_template, 'fMRI volume files', pick_the_first_one=False,
                                            search_func=find_volume_files_from_template)
@@ -1260,7 +1261,7 @@ def get_unique_files_into_mgz(files):
             # fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
             fu.nii_gz_to_mgz('{}.nii.gz'.format(contrast_file))
     files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
-    print('get_unique_files_into_mgz: {}'.format(get_unique_files_into_mgz))
+    print('get_unique_files_into_mgz: {}'.format(files))
     return files
 
 
