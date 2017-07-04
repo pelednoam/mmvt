@@ -605,6 +605,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     print('input_fname_template: {}'.format(full_input_fname_template))
     volume_fname = utils.look_for_one_file(full_input_fname_template, 'fMRI volume files', pick_the_first_one=False,
                                            search_func=find_volume_files_from_template)
+    utils.make_dir(op.join(FMRI_DIR, subject))
     local_fname = op.join(FMRI_DIR, subject, utils.namesbase_with_ext(volume_fname))
     if not op.isfile(local_fname):
         shutil.copy(volume_fname, local_fname)
