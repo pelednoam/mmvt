@@ -511,7 +511,7 @@ def plot_points(subject, verts, pts=None, colors=None, fig_name='', ax=None):
         plt.close()
 
 
-def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fname,
+def project_on_surface(subject, volume_file, surf_output_fname,
                        target_subject=None, overwrite_surf_data=False, is_pet=False):
     if target_subject is None:
         target_subject = subject
@@ -529,7 +529,7 @@ def project_on_surface(subject, volume_file, colors_output_fname, surf_output_fn
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
         else:
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
-        output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(colors_output_fname.format(hemi=hemi)))
+        output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(surf_output_fname.format(hemi=hemi)))
         if not op.isfile(output_fname) or overwrite_surf_data:
             np.save(output_fname, surf_data)
 
@@ -582,23 +582,39 @@ def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrit
     return volume_fname
 
 
-def project_volume_to_surface(subject, data_fol, volume_name, contrast, overwrite_surf_data=True,
-                              overwrite_volume=True, target_subject=''):
+def project_volume_to_surface_get_files(subject, remote_subject_dir, args):
+    necessary_files = {'mri': ['orig.mgz'],
+                       'surf': ['lh.pial', 'rh.pial', 'lh.thickness', 'rh.thickness']}
+    return utils.prepare_subject_folder(
+        necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
+        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
+        args.overwrite_fs_files, args.print_traceback, args.sftp_port)
+
+
+# mri/orig.mgz
+def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_data=True,
+                              target_subject='', remote_fmri_dir='', is_pet=False):
     if os.environ.get('FREESURFER_HOME', '') == '':
         raise Exception('Source freesurfer and rerun')
     if target_subject == '':
         target_subject = subject
-    volume_fname_template = op.join(data_fol, '{}.{}'.format(volume_name, '{format}'))
-    # mri_convert_hemis(contrast_file_template, contrasts, existing_format=existing_format)
-    volume_fname = copy_volume_to_blender(subject, volume_fname_template, contrast, overwrite_volume)
-    target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
-    colors_output_fname = op.join(data_fol, 'fmri_{}{}_{}.npy'.format(volume_name, target_subject_prefix, '{hemi}'))
-    surf_output_fname = op.join(data_fol, '{}{}_{}.mgz'.format(volume_name, target_subject_prefix, '{hemi}'))
+    remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
+    full_input_fname_template = op.join(remote_fmri_dir, volume_fname_template)
+    full_input_fname_template = full_input_fname_template.replace('{format}', '*')
+    print('input_fname_template: {}'.format(full_input_fname_template))
+    volume_fname = utils.look_for_one_file(full_input_fname_template, 'fMRI volume files', pick_the_first_one=False,
+                                           search_func=find_volume_files_from_template)
 
-    project_on_surface(subject, volume_fname, colors_output_fname, surf_output_fname,
-                       target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=args.is_pet)
-    # utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-    # shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
+    # volume_fname = copy_volume_to_blender(subject, volume_fname_template, contrast, overwrite_volume)
+    target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
+    surf_output_fname = op.join(utils.get_parent_fol(volume_fname), '{}{}_{}.mgz'.format(
+        utils.namebase(volume_fname), target_subject_prefix, '{hemi}'))
+
+    project_on_surface(subject, volume_fname, surf_output_fname,
+                       target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
+    return utils.both_hemi_files_exist(surf_output_fname)
 
 # fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
     # load_images_file(surf_output_fname)
@@ -691,7 +707,7 @@ def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_f
     return input_fname_template_files[0]
 
 
-def calculates_avg_waveforms_freesurfer_get_files(
+def calc_labels_mean_freesurfer_get_files(
         args, remote_subject_dir, subject, atlas, input_fname_template, template_brain='', target_subject='',
         remote_fmri_dir=''):
     input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
@@ -933,8 +949,7 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
     files = find_volume_files_from_template(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
-        fmri_fname = files[0
-        ]
+        fmri_fname = files[0]
     elif files_num == 0:
         if no_files_were_found_func is None:
             if raise_exception:
@@ -1344,8 +1359,13 @@ def main(subject, remote_subject_dir, args, flags):
             args.threshold, n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'project_volume_to_surface'):
-        flags['project_volume_to_surface'] = project_volume_to_surface(
-            subject, fol, volume_name, args.contrast, args.overwrite_surf_data, args.overwrite_volume)
+        ret = project_volume_to_surface_get_files(subject, remote_subject_dir, args)
+        if not ret:
+            flags['project_volume_to_surface'] = False
+        else:
+            flags['project_volume_to_surface'] = project_volume_to_surface(
+                subject, args.fmri_file_template, args.overwrite_surf_data, args.target_subject, remote_fmri_dir,
+                args.is_pet)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         #todo: won't work, need to find the hemis files first
@@ -1403,7 +1423,7 @@ def main(subject, remote_subject_dir, args, flags):
             args.labels_indices_to_remove_from_data, args.backup_existing_files, args.pick_the_first_one)
 
     if 'calc_labels_mean_freesurfer' in args.function:
-        ret = calculates_avg_waveforms_freesurfer_get_files(
+        ret = calc_labels_mean_freesurfer_get_files(
             args, remote_subject_dir, subject, args.atlas, args.fmri_file_template, args.template_brain,
             args.target_subject, remote_fmri_dir)
         if not ret:

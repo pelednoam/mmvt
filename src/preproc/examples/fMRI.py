@@ -83,6 +83,19 @@ def analyze_4d_data(args):
     pu.run_on_subjects(args, fmri.main)
 
 
+def project_volume_to_surface(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        function='project_volume_to_surface',
+        fmri_file_template='f*.gz',
+        sftp_username=args.sftp_username,
+        sftp_domain=args.sftp_domain,
+        sftp=True,
+        remote_subject_dir=args.remote_subject_dir,
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+
 def load_labels_ts(args):
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
