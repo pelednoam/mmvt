@@ -904,6 +904,7 @@ def find_template_files(template_fname):
     if len(files) == 0:
         print('Adding * to the end of the template_fname')
         files = find_files('{}*'.format(template_fname))
+    print('find_template_files: {}'.format(files))
     return files
 
 
@@ -1259,6 +1260,7 @@ def get_unique_files_into_mgz(files):
             # fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
             fu.nii_gz_to_mgz('{}.nii.gz'.format(contrast_file))
     files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
+    print('get_unique_files_into_mgz: {}'.format(get_unique_files_into_mgz))
     return files
 
 
