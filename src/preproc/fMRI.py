@@ -720,7 +720,6 @@ def calc_labels_mean_freesurfer_get_files(
     input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
     fmri_fname = input_fname_template_file.format(hemi='rh')
     if not op.isfile(fmri_fname):
-        print("Can't find fmri file ({}), abort!".format(fmri_fname))
         target_subject = subject
     if target_subject == '':
         x = nib.load(fmri_fname)
@@ -941,15 +940,11 @@ def find_hemi_files(files):
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
     parent_fol = utils.get_parent_fol(rh_files[0])
     for rh_file in rh_files:
-        lh_file = lu.change_hemi(utils.namesbase_with_ext(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
-        lh_file = op.join(parent_fol, lh_file)
+        lh_file = lu.change_hemi(utils.namebase(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
+        lh_file = op.join(parent_fol, '{}.{}'.format(lh_file, utils.file_type(rh_file)))
         if op.isfile(lh_file):
             hemis_files.append(rh_file.replace('rh', '{hemi}'))
-    if len(hemis_files) != 2:
-        print('hemis files were not found! {}'.format(hemis_files))
-        print('files: {}'.format(files))
-    else:
-        print('find_hemi_files return {}'.format(hemis_files))
+    print('find_hemi_files return {}'.format(hemis_files))
     return hemis_files
 
 
