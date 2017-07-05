@@ -719,6 +719,9 @@ def calc_labels_mean_freesurfer_get_files(
         remote_fmri_dir=''):
     input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
     fmri_fname = input_fname_template_file.format(hemi='rh')
+    if not op.isfile(fmri_fname):
+        print("Can't find fmri file ({}), abort!".format(fmri_fname))
+        target_subject = subject
     if target_subject == '':
         x = nib.load(fmri_fname)
         if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -743,6 +746,9 @@ def calc_labels_mean_freesurfer(
         remote_fmri_dir='', overwrite=True, excludes=('corpuscallosum', 'unknown')):
     input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
     fmri_fname = input_fname_template_file.format(hemi='rh')
+    if not op.isfile(fmri_fname):
+        print("Can't find fmri file ({}), abort!".format(fmri_fname))
+        return False
     if target_subject == '':
         x = nib.load(fmri_fname)
         if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -921,6 +927,7 @@ def find_hemi_files_from_template(template_fname):
         return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
     except:
         print('Error in find_hemi_files_from_template: {}'.format(template_fname))
+        print(traceback.format_exc())
         return []
 
 

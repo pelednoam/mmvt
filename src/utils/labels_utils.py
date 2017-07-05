@@ -176,15 +176,22 @@ def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
 
 
 def get_hemi_delim_and_pos(label_name):
+    delim, pos, label = '', '', ''
     for hemi in ['rh', 'lh']:
         if label_name.startswith('{}-'.format(hemi)):
             delim, pos, label = '-', 'start', label_name[3:]
+            break
+        if label_name.startswith('{}_'.format(hemi)):
+            delim, pos, label = '_', 'start', label_name[3:]
             break
         if label_name.startswith('{}.'.format(hemi)):
             delim, pos, label = '.', 'start', label_name[3:]
             break
         if label_name.endswith('-{}'.format(hemi)):
             delim, pos, label = '-', 'end', label_name[:-3]
+            break
+        if label_name.endswith('_{}'.format(hemi)):
+            delim, pos, label = '_', 'end', label_name[:-3]
             break
         if label_name.endswith('.{}'.format(hemi)):
             delim, pos, label = '.', 'end', label_name[:-3]
@@ -213,15 +220,17 @@ def change_hemi(label_name):
 
 
 def get_hemi_from_name(label_name):
-    label_hemi = ''
-    for hemi in ['rh', 'lh']:
-        if label_name.startswith('{}-'.format(hemi)) or label_name.startswith('{}.'.format(hemi)) or \
-                label_name.endswith('-{}'.format(hemi)) or label_name.endswith('.{}'.format(hemi)):
-            label_hemi = hemi
-            break
-    if label_hemi == '':
-        raise Exception("Can't find hemi in {}".format(label_name))
-    return label_hemi
+    _, _, _, hemi = get_hemi_delim_and_pos(label_name)
+    return hemi
+    # label_hemi = ''
+    # for hemi in ['rh', 'lh']:
+    #     if label_name.startswith('{}-'.format(hemi)) or label_name.startswith('{}.'.format(hemi)) or \
+    #             label_name.endswith('-{}'.format(hemi)) or label_name.endswith('.{}'.format(hemi)):
+    #         label_hemi = hemi
+    #         break
+    # if label_hemi == '':
+    #     raise Exception("Can't find hemi in {}".format(label_name))
+    # return label_hemi
 
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
