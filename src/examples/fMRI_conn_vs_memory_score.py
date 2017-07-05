@@ -39,13 +39,14 @@ def get_inds(only_left, TR, fast_TR, to_use, laterality):
 
 
 def get_linda_subjects():
-    return ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
+    linda = ['nmr00474', 'nmr00502', 'nmr00515', 'nmr00603', 'nmr00609', 'nmr00626',
         'nmr00629', 'nmr00650', 'nmr00657', 'nmr00669', 'nmr00674', 'nmr00681', 'nmr00683',
         'nmr00692', 'nmr00698', 'nmr00710']
-    # return ['nmr00506', 'nmr00599', 'nmr00515', 'nmr00692', 'nmr00657', 'nmr00609', 'nmr00468', 'nmr00629', 'nmr00681',
-    #         'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
-    #         'nmr00634', 'nmr00502', 'nmr00698']
-
+    others = ['nmr00506', 'nmr00599', 'nmr00515', 'nmr00692', 'nmr00657', 'nmr00609', 'nmr00468', 'nmr00629', 'nmr00681',
+            'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
+            'nmr00634', 'nmr00502', 'nmr00698']
+    # return linda
+    return list(set(linda) + set(others))
 
 def read_scoring():
     scoring_fname = op.join(root_path, 'neuropsych_scores.npz')
