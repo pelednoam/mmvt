@@ -736,6 +736,7 @@ def calc_labels_mean_freesurfer_get_files(
     return utils.both_hemi_files_exist(annot_template_fname)
 
 
+@utils.tryit(False)
 def calc_labels_mean_freesurfer(
         subject, atlas, input_fname_template, template_brain='', target_subject='',
         remote_fmri_dir='', overwrite=True, excludes=('corpuscallosum', 'unknown')):

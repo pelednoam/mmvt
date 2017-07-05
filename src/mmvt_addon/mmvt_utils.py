@@ -810,18 +810,19 @@ def dump_args(func):
 
 
 # def tryit(throw_exception=True):
-def tryit(func):
-    def wrapper(*args, **kwargs):
-        try:
-            retval = func(*args, **kwargs)
-        except:
-            print('Error in {}!'.format(func.__name__))
-            # if (throw_exception):
-            print(traceback.format_exc())
-            retval = None
-        return retval
-    return wrapper
-# return _tryit
+def tryit(except_retval=None, throw_exception=False):
+    def real_tryit(func):
+        def wrapper(*args, **kwargs):
+            try:
+                retval = func(*args, **kwargs)
+            except:
+                print('Error in {}!'.format(func.__name__))
+                if (throw_exception):
+                    raise Exception(traceback.format_exc())
+                print(traceback.format_exc())
+                retval = except_retval
+            return retval
+        return wrapper
 
 
 def get_all_children(parents):
