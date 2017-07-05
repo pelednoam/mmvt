@@ -941,6 +941,8 @@ def find_hemi_files(files):
     if len(hemis_files) != 2:
         print('hemis files were not found! {}'.format(hemis_files))
         print('files: {}'.format(files))
+    else:
+        print('find_hemi_files return {}'.format(hemis_files))
     return hemis_files
 
 
