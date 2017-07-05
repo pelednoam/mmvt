@@ -823,6 +823,7 @@ def tryit(except_retval=None, throw_exception=False):
                 retval = except_retval
             return retval
         return wrapper
+    return real_tryit
 
 
 def get_all_children(parents):
