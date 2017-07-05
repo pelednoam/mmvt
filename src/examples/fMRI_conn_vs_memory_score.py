@@ -46,7 +46,8 @@ def get_linda_subjects():
             'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
             'nmr00634', 'nmr00502', 'nmr00698']
     # return linda
-    return list(set(linda) | set(others))
+    return others
+    # return list(set(linda) | set(others))
 
 
 def read_scoring():
@@ -206,8 +207,12 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
         fname = '/autofs/space/thibault_001/users/npeled/mmvt/{}/fmri/labels_data_laus125_mean_{}.npz'.format(subject, '{hemi}')
         labels_names_rh = np.load(fname.format(hemi='rh'))['names']
         labels_names_lh = np.load(fname.format(hemi='lh'))['names']
-        subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1-lh', 'isthmuscingulate_1-lh']]
-        subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1-rh','isthmuscingulate_1-rh']]
+        try:
+            subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1-lh', 'isthmuscingulate_1-lh']]
+            subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1-rh','isthmuscingulate_1-rh']]
+        except:
+            subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1', 'isthmuscingulate_1']]
+            subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1','isthmuscingulate_1']]
         print(subject, subjects_rois[subject]['ROIs_L'], subjects_rois[subject]['ROIs_R'], subject_lateralities[s_ind])
     for pc in res.keys():
         if res[pc] is None:
