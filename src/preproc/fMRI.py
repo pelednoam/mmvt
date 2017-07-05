@@ -912,7 +912,7 @@ def find_template_files(template_fname):
     if len(files) == 0:
         print('Adding * to the end of the template_fname')
         files = find_files('{}*'.format(template_fname))
-    print('find_template_files: {}'.format(files))
+    print('find_template_files: {}, template: {}'.format(files, template_fname))
     return files
 
 
