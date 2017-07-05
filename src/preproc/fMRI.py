@@ -919,13 +919,15 @@ def find_hemi_files_from_template(template_fname):
     try:
         return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
     except:
-        raise Exception('Error in find_hemi_files_from_template: {}'.format(template_fname))
+        print('Error in find_hemi_files_from_template: {}'.format(template_fname))
+        return []
 
 
 def find_hemi_files(files):
     if len(files) < 2:
+        print('len(files) should be >= 2!')
         print(files)
-        raise Exception('len(files) should be >= 2!')
+        return []
     files = get_unique_files_into_mgz(files)
     hemis_files = []
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
