@@ -78,8 +78,9 @@ def analyze_4d_data(args):
         fmri_file_template='{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_{hemi}.mgz',
         # template_brain='fsaverage5',
         # template_brain='fsaverage6',
-        labels_extract_mode='mean,pca,pca_2,pca_4,pca_8'
+        labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
         # labels_extract_mode='mean'
+        overwrite_labels_data=True
     ))
     pu.run_on_subjects(args, fmri.main)
 
