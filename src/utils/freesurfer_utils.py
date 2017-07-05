@@ -405,7 +405,7 @@ def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overw
         label_num = utils.find_num_in_str(label_name)
         if label_num != '':
             name_len = label_name.find('_{}'.format(label_num)) + len(str(label_num)) + 1
-            label_name = label_name[:name_len]
+            label_name = '{}-{}'.format(label_name[:name_len], hemi)
         return label_name
 
     if output_txt_fname == '':
