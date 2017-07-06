@@ -58,7 +58,7 @@ def calc_fmri_connectivity(args):
         connectivity_modality='fmri',
         # connectivity_method='mi_vec,cv',
         connectivity_method='corr,cv',
-        labels_extract_mode='pca,pca_2,pca_4,pca_8',
+        labels_extract_mode='pca_2,pca_4,pca_8', #mean,pca,
         # labels_extract_mode='mean',
         windows_length=34, #20,
         windows_shift=4, #3,

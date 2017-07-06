@@ -5,6 +5,7 @@ import mne.connectivity
 import glob
 import traceback
 import shutil
+import itertools
 import matplotlib.pyplot as plt
 
 from src.utils import utils
@@ -340,7 +341,12 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         if True: # op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
-            np.fill_diagonal(static_conn, 0)
+            if np.ndim(static_conn) == 2:
+                np.fill_diagonal(static_conn, 0)
+            elif np.ndim(static_conn) == 4:
+                L, M = static_conn.shape[2:]
+                for i, j in itertools.product(range(), range(4)):
+                    np.fill_diagonal(static_conn[:, :, i, j], 0)
             backup(static_output_mat_fname)
             print('Saving {}, {}'.format(static_output_mat_fname, static_conn.shape))
             np.savez(static_output_mat_fname, static_conn=static_conn, conn_std=conn_std)
