@@ -155,8 +155,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
         labels_data_fnames = [f for f in glob.glob(op.join(conn_fol, '*labels_data*.npz')) if 'norm' not in utils.namebase(f)]
     if len(labels_data_fnames) == 0:
-        print("You don't have any connectivity data in {}, create it using the {} preproc".format(
-            conn_fol, args.connectivity_modality))
+        print("You don't have any connectivity data ({}) in {}, create it using the {} preproc".format(
+            '*labels_data_{}_{}_?h.npz'.format(args.atlas, labels_extract_mode), conn_fol, args.connectivity_modality))
         return False
     if len(labels_data_fnames) != 2:
         print("You have more than one type of {} connectivity data in {}, please pick one".format(

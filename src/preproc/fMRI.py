@@ -531,6 +531,7 @@ def project_on_surface(subject, volume_file, surf_output_fname,
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
         output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(surf_output_fname.format(hemi=hemi)))
         if not op.isfile(output_fname) or overwrite_surf_data:
+            print('Saving surf data in {}'.format(output_fname))
             np.save(output_fname, surf_data)
 
 
