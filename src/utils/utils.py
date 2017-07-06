@@ -1759,6 +1759,9 @@ def find_num_in_str(string):
     return re.sub('\D', ',', string).replace(',', '')
 
 
+def file_modification_time(fname):
+    return time.strftime('%H:%M:%S %m/%d/%Y', time.gmtime(op.getmtime(fname)))
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct

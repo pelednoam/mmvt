@@ -413,7 +413,7 @@ def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overw
     if output_sum_fname == '':
         output_sum_fname = op.join(res_dir, '{}_{}_{}.sum'.format(utils.namebase(fmri_fname), atlas, hemi))
     if not op.isfile(output_txt_fname) or not op.isfile(output_sum_fname) or overwrite:
-        print('Running mri_segstats on {} ({})'.format(fmri_fname, op.getmtime(fmri_fname)))
+        print('Running mri_segstats on {} ({})'.format(fmri_fname, utils.file_modification_time(fmri_fname)))
         utils.partial_run_script(locals(), cwd=cwd)(mri_segstats)
     if not op.isfile(output_txt_fname):
         raise Exception('The output file was not created!')
