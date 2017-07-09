@@ -46,7 +46,7 @@ def get_linda_subjects():
             'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
             'nmr00634', 'nmr00502', 'nmr00698']
     # return linda
-    return others
+    return linda
     # return list(set(linda) | set(others))
 
 
