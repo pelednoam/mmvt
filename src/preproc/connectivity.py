@@ -173,6 +173,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     for hemi in utils.HEMIS:
         labels_input_fname = labels_data_fname_template.format(hemi=hemi)
         f = np.load(labels_input_fname)
+        print('Loading {} ({})'.format(labels_input_fname, utils.file_modification_time(labels_input_fname)))
         data[hemi] = np.squeeze(f['data'])
         names[hemi] = f['names']
 
