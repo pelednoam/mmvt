@@ -46,8 +46,8 @@ def get_linda_subjects():
             'nmr00643', 'nmr00448', 'nmr00650', 'nmr00674', 'nmr00669', 'nmr00603', 'nmr00710', 'nmr00683', 'nmr00640',
             'nmr00634', 'nmr00502', 'nmr00698']
     # return linda
-    return linda
-    # return list(set(linda) | set(others))
+    # return linda
+    return list(set(linda) | set(others))
 
 
 def read_scoring():
@@ -444,6 +444,8 @@ def calc_ana(overwrite=False, only_linda=False):
     else:
         (dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality) = \
             utils.load(ana_results_fname)
+    print('disturbed_inds: {}'.format(disturbed_inds))
+    print('preserved_inds: {}'.format(preserved_inds))
     return dFC_res, std_mean_res, stat_conn_res, disturbed_inds, preserved_inds, good_subjects, labels, laterality
 
 
