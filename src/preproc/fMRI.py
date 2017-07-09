@@ -1438,8 +1438,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'load_labels_ts' in args.function:
         flags['load_labels_ts'] = load_labels_ts(
-            subject, args.atlas, args.labels_order_fname, args.labels_extract_mode, args.excluded_labels,
-            args.labels_indices_to_remove_from_data, args.backup_existing_files, args.pick_the_first_one)
+            subject, args.atlas, args.labels_order_fname, args.st_template, args.labels_extract_mode,
+            args.excluded_labels, args.labels_indices_to_remove_from_data, args.backup_existing_files,
+            args.pick_the_first_one)
 
     if 'calc_labels_mean_freesurfer' in args.function:
         ret = calc_labels_mean_freesurfer_get_files(
