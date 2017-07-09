@@ -670,7 +670,7 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
     for hemi in utils.HEMIS:
         fmri_fname = input_fname_template_file.format(hemi=hemi)
         fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
-        print('loading {} ({})'.format(fmri_fname), utils.file_modification_time(fmri_fname))
+        print('loading {} ({})'.format(fmri_fname, utils.file_modification_time(fmri_fname)))
         x = nib.load(fmri_fname).get_data()
         morph_from_subject = check_vertices_num(subject, hemi, x, morph_from_subject)
         # print(max([max(label.vertices) for label in labels]))
