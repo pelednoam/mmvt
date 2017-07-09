@@ -205,15 +205,19 @@ def switch_laterality(res, subjects, labels, subject_lateralities):
     for s_ind, subject in enumerate(subjects):
         subjects_rois[subject] = {}
         fname = '/autofs/space/thibault_001/users/npeled/mmvt/{}/fmri/labels_data_laus125_mean_{}.npz'.format(subject, '{hemi}')
-        labels_names_rh = np.load(fname.format(hemi='rh'))['names']
-        labels_names_lh = np.load(fname.format(hemi='lh'))['names']
-        try:
-            subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1-lh', 'isthmuscingulate_1-lh']]
-            subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1-rh','isthmuscingulate_1-rh']]
-        except:
-            subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1', 'isthmuscingulate_1']]
-            subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1','isthmuscingulate_1']]
-        print(subject, subjects_rois[subject]['ROIs_L'], subjects_rois[subject]['ROIs_R'], subject_lateralities[s_ind])
+        if not op.isfile(fname.format(hemi='rh')):
+            subjects_rois[subject]['ROIs_L'] = [7, 26]
+            subjects_rois[subject]['ROIs_R'] = [118, 137]
+        else:
+            labels_names_rh = np.load(fname.format(hemi='rh'))['names']
+            labels_names_lh = np.load(fname.format(hemi='lh'))['names']
+            try:
+                subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1-lh', 'isthmuscingulate_1-lh']]
+                subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1-rh','isthmuscingulate_1-rh']]
+            except:
+                subjects_rois[subject]['ROIs_L'] = [np.where(labels_names_lh == l)[0][0] for l in ['entorhinal_1', 'isthmuscingulate_1']]
+                subjects_rois[subject]['ROIs_R'] = [np.where(labels_names_rh == l)[0][0] + len(labels_names_lh) for l in ['entorhinal_1','isthmuscingulate_1']]
+            print(subject, subjects_rois[subject]['ROIs_L'], subjects_rois[subject]['ROIs_R'], subject_lateralities[s_ind])
     for pc in res.keys():
         if res[pc] is None:
             print('res[{}] is None!'.format(pc))
@@ -500,7 +504,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(True, only_linda=True)
+    ana_res = calc_ana(False, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
