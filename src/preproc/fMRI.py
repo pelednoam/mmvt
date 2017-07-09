@@ -771,8 +771,9 @@ def calc_labels_mean_freesurfer(
     return utils.both_hemi_files_exist(output_fname_hemi)
 
 
-def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', excludes=('corpuscallosum', 'unknown'),
-                   indices_to_remove_from_data=(0,4,113,117), backup_existing_files=True, pick_the_first_one=False):
+def load_labels_ts(subject, atlas, labels_order_fname, st_template='*{atlas}*.txt', extract_measure='mean',
+                   excludes=('corpuscallosum', 'unknown'), indices_to_remove_from_data=(0,4,113,117),
+                   backup_existing_files=True, pick_the_first_one=False):
     if isinstance(extract_measure, list):
         if len(extract_measure) == 1:
             extract_measure = extract_measure[0]
@@ -782,7 +783,7 @@ def load_labels_ts(subject, atlas, labels_order_fname, extract_measure='mean', e
         elif len(extract_measure) > 1:
             print('The load_labels_ts can get only one extract_measure!')
             return False
-    st_template = op.join(FMRI_DIR, subject, '*{}*.txt'.format(atlas))
+    st_template = op.join(FMRI_DIR, subject, st_template.format(atlas=atlas, subject=subject))
     st_file = utils.look_for_one_file(st_template, 'st', pick_the_first_one)
     if st_file is None:
         return False
@@ -1493,6 +1494,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
+    parser.add_argument('--st_template', help='', required=False, default='*{atlas}*.txt')
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)

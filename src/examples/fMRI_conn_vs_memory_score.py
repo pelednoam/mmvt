@@ -370,7 +370,7 @@ def plot_comparisson_bars(res, res_name, labels, disturbed_inds, preserved_inds,
             ax.set_xticks([.3, .7])
             ax.set_xlim([0, 1])
             ax.set_xticklabels(['preserved', 'disturbed'], rotation=30)
-            ax.set_title('{}{} ({:.2f})'.format(pc, ' PCs' if pc != 'mean' else '', mann_whitney_res[pc][label_ind]))
+            ax.set_title('{}{} ({:.3f})'.format(pc, ' PCs' if pc != 'mean' else '', mann_whitney_res[pc][label_ind]))
         fig = plt.gcf()
         # plt.legend(['preserved', 'disturbed'])
         fig.suptitle('{} - {}'.format(res_name, '{} Memory and cPCC flexibility'.format(labels[label_ind])))
@@ -506,7 +506,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(True, only_linda=True)
+    ana_res = calc_ana(False, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
