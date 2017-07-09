@@ -504,7 +504,7 @@ def run_sandya_code():
 if __name__ == '__main__':
     # get_labels_order()
     # run_sandya_code()
-    ana_res = calc_ana(False, only_linda=True)
+    ana_res = calc_ana(True, only_linda=True)
     # get_subjects_fmri_conn(ana_res[5])
     mann_whitney_results, good_subjects, labels = calc_mann_whitney_results(*ana_res)
     # rois_inds = find_labels_inds(labels)
