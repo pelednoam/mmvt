@@ -107,6 +107,7 @@ def load_labels_ts(args):
         labels_extract_mode='mean',
         excluded_labels='corpuscallosum,unknown',
         labels_indices_to_remove_from_data='0,4,113,117',
+        st_template='{subject}_{atlas}_mri.txt',
         backup_existing_files=False,
         pick_the_first_one=True
     ))

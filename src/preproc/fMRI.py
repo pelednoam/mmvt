@@ -1495,7 +1495,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--resting_state_plot', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--resting_state_plot_all_vertices', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--excluded_labels', help='', required=False, default='corpuscallosum,unknown', type=au.str_arr_type)
-    parser.add_argument('--st_template', help='', required=False, default='*{atlas}*.txt')
+    parser.add_argument('--st_template', help='', required=False, default='*{subject}_{atlas}*.txt')
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
