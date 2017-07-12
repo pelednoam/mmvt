@@ -240,10 +240,13 @@ class ColorbarPanel(bpy.types.Panel):
 
 def init(addon):
     if not bpy.data.objects.get('full_colorbar', None):
+        print("No full_colorbar object, Can't load the colorbar panel")
         return
     ColorbarPanel.addon = addon
-    colorbar_files = glob.glob(op.join(mu.file_fol(), 'color_maps', '*.npy'))
+    colorbar_files_template = op.join(mu.file_fol(), 'color_maps', '*.npy')
+    colorbar_files = glob.glob(colorbar_files_template)
     if len(colorbar_files) == 0:
+        print("No colorbar files ({}), Can't load the colorbar panel".format(colorbar_files_template))
         return None
     files_names = [mu.namebase(fname).replace('_', '-') for fname in colorbar_files]
     ColorbarPanel.maps_names = files_names
