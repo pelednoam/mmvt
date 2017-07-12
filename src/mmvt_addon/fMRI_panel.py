@@ -607,7 +607,7 @@ class fMRIPanel(bpy.types.Panel):
         if fMRIPanel.init:
             fMRI_draw(self, context)
 
-@mu.tryit
+#@mu.tryit
 def init(addon):
     user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))

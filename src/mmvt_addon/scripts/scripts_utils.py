@@ -57,13 +57,13 @@ def chdir_to_mmvt_addon():
     else:
         print("Not in scripts dir! Can't change the current dir to mmvt addon")
 
-
-try:
-    from src.mmvt_addon import mmvt_utils as mu
-except:
-    mmvt_addon_fol = get_parent_fol()
-    sys.path.append(mmvt_addon_fol)
-    import mmvt_utils as mu
+#
+# try:
+#     from src.mmvt_addon import mmvt_utils as mu
+# except:
+#     mmvt_addon_fol = get_parent_fol()
+#     sys.path.append(mmvt_addon_fol)
+#     import mmvt_utils as mu
 
 # timeit = mu.timeit
 
@@ -340,8 +340,33 @@ def get_camera_dir(args):
     return camera_dir
 
 
-def get_full_atlas_name(atlas):
-    return mu.get_real_atlas_name(atlas, get_mmvt_dir())
+# def get_full_atlas_name(atlas):
+#     return mu.get_real_atlas_name(atlas, get_mmvt_dir())
+
+# def get_mmvt_root():
+#     return get_parent_fol(get_user_fol())
+
+
+def get_real_atlas_name(atlas, csv_fol=''):
+    if csv_fol == '':
+        csv_fol = get_mmvt_dir()
+    csv_fname = op.join(csv_fol, 'atlas.csv')
+    real_atlas_name = ''
+    if op.isfile(csv_fname):
+        for line in csv_file_reader(csv_fname, ',', 1):
+            if len(line) < 2:
+                continue
+            if atlas in [line[0], line[1]]:
+                real_atlas_name = line[1]
+                break
+        if real_atlas_name == '':
+            print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))
+            return atlas
+        return real_atlas_name
+    else:
+        print('No atlas file was found! Please create a atlas file (csv) in {}, where '.format(csv_fname) +
+                        'the columns are name in blend file, annot name, description')
+        return ''
 
 
 def namebase(fname):
