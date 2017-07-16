@@ -72,7 +72,11 @@ try:
 except:
     import pickle
 
-from scripts import scripts_utils as su
+try:
+    from scripts import scripts_utils as su
+except:
+    from src.mmvt_addon.scripts import scripts_utils as su
+
 get_link_dir = su.get_link_dir
 get_links_dir = su.get_links_dir
 
