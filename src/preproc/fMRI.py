@@ -714,7 +714,7 @@ def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_f
     return input_fname_template_files[0]
 
 
-@utils.tryit(False)
+@utils.tryit()
 def calc_labels_mean_freesurfer_get_files(
         args, remote_subject_dir, subject, atlas, input_fname_template, template_brain='', target_subject='',
         remote_fmri_dir=''):
@@ -740,7 +740,7 @@ def calc_labels_mean_freesurfer_get_files(
     return utils.both_hemi_files_exist(annot_template_fname)
 
 
-@utils.tryit(False)
+@utils.tryit()
 def calc_labels_mean_freesurfer(
         subject, atlas, input_fname_template, template_brain='', target_subject='',
         remote_fmri_dir='', overwrite=True, excludes=('corpuscallosum', 'unknown')):

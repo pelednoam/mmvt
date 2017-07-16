@@ -864,7 +864,7 @@ def get_rois_colors(subject, atlas, rois):
     return rois_colors_rgbs, rois_colors_names
 
 
-@utils.tryit
+@utils.tryit()
 def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     from matplotlib import pylab
     if legend_name == '':

@@ -481,7 +481,7 @@ def _mi_vec_parallel(windows_chunk):
     return res
 
 
-@utils.tryit
+@utils.tryit()
 def save_connectivity(subject, conn, connectivity_method, obj_type, labels_names, conditions, output_fname, args,
                       con_vertices_fname='', labels=None, locations=None, hemis=None):
     d = dict()

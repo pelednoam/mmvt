@@ -60,7 +60,7 @@ def eeg_data_and_meta():
     return DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
 
 
-@mu.tryit
+@mu.tryit()
 def import_hemis_for_functional_maps(base_path):
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     layers_array = bpy.context.scene.layers
@@ -113,7 +113,7 @@ def create_subcortical_activity_mat(name):
     cur_mat.name = name + '_Mat'
 
 
-@mu.tryit
+@mu.tryit()
 def import_subcorticals(base_path, parent_name='Subcortical'):
     empty_layer = DataMakerPanel.addon.BRAIN_EMPTY_LAYER
     brain_layer = DataMakerPanel.addon.ACTIVITY_LAYER
@@ -247,7 +247,7 @@ def create_empty_if_doesnt_exists(name, brain_layer=None, layers_array=None, par
     return bpy.data.objects[name]
 
 
-@mu.tryit
+@mu.tryit()
 def import_rois(base_path):
     anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
                       'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
@@ -377,7 +377,7 @@ def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_s
             mu.create_and_set_material(cur_obj)
 
 
-@mu.tryit
+@mu.tryit(None, False)
 def create_inflating_morphing():
     print('Creating inflation morphing')
     for hemi in mu.HEMIS:
@@ -702,7 +702,7 @@ class AddfMRIDynamicsToBrain(bpy.types.Operator):
 #         _meg_evoked_files_update()
 #         return {"FINISHED"}
 
-@mu.tryit
+@mu.tryit()
 def add_data_to_electrodes(all_data, meta_data, window_len=None):
     print('Adding data to Electrodes')
     now = time.time()
@@ -743,7 +743,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
     return conditions
 
 
-@mu.tryit
+@mu.tryit()
 def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None):
     # todo: merge with add_data_to_brain_parent_obj, same code
     sources = {}

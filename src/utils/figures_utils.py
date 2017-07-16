@@ -11,7 +11,8 @@ from src.utils import color_maps_utils as cmu
 
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
-@utils.tryit
+
+@utils.tryit()
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, **kargs):
     import matplotlib as mpl
 

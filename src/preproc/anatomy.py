@@ -503,7 +503,7 @@ def create_spatial_connectivity(subject):
     return success
 
 
-# @utils.tryit
+@utils.tryit(False, False)
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
