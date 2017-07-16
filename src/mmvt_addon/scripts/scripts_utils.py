@@ -94,7 +94,10 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     link = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
     if op.isfile('{}.lnk'.format(link)):
-        from src.mmvt_addon.scripts import windows_utils as wu
+        try:
+            from src.mmvt_addon.scripts import windows_utils as wu
+        except:
+            from scripts import windows_utils as wu
         sc = wu.MSShortcut('{}.lnk'.format(link))
         return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
