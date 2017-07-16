@@ -503,7 +503,7 @@ def create_spatial_connectivity(subject):
     return success
 
 
-@utils.tryit
+# @utils.tryit
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
@@ -703,6 +703,9 @@ def create_high_level_atlas(subject):
             subject, 'aparc.DKTatlas40', subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
     look = create_labels_names_lookup(subject, 'aparc.DKTatlas40')
     csv_fname = op.join(MMVT_DIR, 'high_level_atlas.csv')
+    if not op.isfile(csv_fname):
+        print('No high_level_atlas.csv in MMVT_DIR!')
+        return False
     labels = []
     for hemi in utils.HEMIS:
         for line in utils.csv_file_reader(csv_fname, ','):
