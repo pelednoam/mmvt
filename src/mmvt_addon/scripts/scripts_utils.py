@@ -97,7 +97,7 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
         try:
             from src.mmvt_addon.scripts import windows_utils as wu
         except:
-            from scripts import windows_utils as wu
+            import windows_utils as wu
         sc = wu.MSShortcut('{}.lnk'.format(link))
         return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
