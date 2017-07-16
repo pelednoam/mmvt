@@ -844,6 +844,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--freesurfer', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
+    parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
@@ -872,7 +873,7 @@ if __name__ == '__main__':
     # run main, you need to source freesurfer.
     # ******************************************************************
     args = read_cmd_args()
-    if os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
+    if not args.no_fs or os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
         print('Source freesurfer and rerun')
     else:
         pu.run_on_subjects(args, main)
