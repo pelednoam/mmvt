@@ -873,7 +873,7 @@ if __name__ == '__main__':
     # run main, you need to source freesurfer.
     # ******************************************************************
     args = read_cmd_args()
-    if not args.no_fs or os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
+    if not args.no_fs and os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
         print('Source freesurfer and rerun')
     else:
         pu.run_on_subjects(args, main)
