@@ -105,6 +105,9 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
                                 "same vertices number!".format(len(x), hemi, verts.shape[0]))
         data = x if data is None else np.hstack((x, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+    if data_min == 0 and data_max == 0:
+        print('Both min and max values are 0!!!')
+        return False
     print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
     data_minmax = utils.get_max_abs(data_max, data_min)
     if symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0:
@@ -123,6 +126,7 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
     print('Saving {}'.format(output_fname))
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     utils.save((data_min, data_max), output_fname)
+    return op.isfile(output_fname)
 
 
 def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_fol=''):
@@ -554,10 +558,11 @@ def project_on_surface(subject, volume_file, surf_output_fname,
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
         else:
             surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
-        output_fname = op.join(MMVT_DIR, subject, 'fmri', op.basename(surf_output_fname.format(hemi=hemi)))
-        if not op.isfile(output_fname) or overwrite_surf_data:
-            print('Saving surf data in {}'.format(output_fname))
-            np.save(output_fname, surf_data)
+        output_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(surf_output_fname.format(hemi=hemi))))
+        npy_output_fname = op.splitext(output_fname)[0]
+        if not op.isfile('{}.npy'.format(npy_output_fname)) or overwrite_surf_data:
+            print('Saving surf data in {}.npy'.format(npy_output_fname))
+            np.save(npy_output_fname, surf_data)
 
 
 def load_images_file(image_fname):
@@ -631,6 +636,9 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     print('input_fname_template: {}'.format(full_input_fname_template))
     volume_fname = utils.look_for_one_file(full_input_fname_template, 'fMRI volume files', pick_the_first_one=False,
                                            search_func=find_volume_files_from_template)
+    if volume_fname is None:
+        return False
+
     utils.make_dir(op.join(FMRI_DIR, subject))
     local_fname = op.join(FMRI_DIR, subject, utils.namesbase_with_ext(volume_fname))
     if not op.isfile(local_fname):
@@ -937,7 +945,7 @@ def find_template_files(template_fname):
     files = find_files(template_fname)
     if len(files) == 0:
         print('Adding * to the end of the template_fname')
-        files = find_files('*{}*'.format(template_fname))
+        files = find_files('{}*'.format(template_fname))
     print('find_template_files: {}, template: {}'.format(files, template_fname))
     return files
 
@@ -972,8 +980,17 @@ def find_hemi_files(files):
 def find_volume_files(files):
     # if convert_to_mgz:
     #     files = get_unique_files_into_mgz(files)
-    return [f for f in files if ('_rh' not in utils.namebase(f) and '_lh' not in utils.namebase(f)) and
-            ('.rh' not in utils.namebase(f) and '.lh' not in utils.namebase(f))]
+    def hemi_in_fname(fname):
+        return ('_rh' in fname or '_lh' in fname or
+                '.rh' in fname or '.lh' in fname or
+                '-rh' in fname or '-lh' in fname or
+                'rh_' in fname or 'lh_' in fname or
+                'rh.' in fname or 'lh.' in fname or
+                'rh-' in fname or 'lh-' in fname)
+    volume_files = [f for f in files if not hemi_in_fname(utils.namebase(f))]
+    if len(files) > 0 and len(volume_files) == 0:
+        print('find_volume_files: No volume files were found! hemi was found in all the given files! {}'.format(files))
+    return volume_files
 
 
 def find_volume_files_from_template(template_fname):
@@ -1407,7 +1424,7 @@ def main(subject, remote_subject_dir, args, flags):
                 args.is_pet)
         if flags['project_volume_to_surface'] and 'calc_fmri_min_max' not in args.function:
             fmri_contrast_file_template = args.fmri_file_template
-            args.function.append(calc_fmri_min_max)
+            args.function.append('calc_fmri_min_max')
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(

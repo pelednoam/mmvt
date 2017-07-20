@@ -124,9 +124,13 @@ def calc_min_max(x, x_min=None, x_max=None, norm_percs=None, norm_by_percentile=
     if not norm_by_percentile:
         norm_percs = None
     if x_min is None:
-        x_min = np.min(x) if norm_percs is None else np.percentile(x, norm_percs[0])
+        x_min = np.nanmin(x) if norm_percs is None else np.percentile(x, norm_percs[0])
     if x_max is None:
-        x_max = np.max(x) if norm_percs is None else np.percentile(x, norm_percs[1])
+        x_max = np.nanmax(x) if norm_percs is None else np.percentile(x, norm_percs[1])
+    if x_min == 0 and x_max == 0 and norm_percs is not None:
+        x_min, x_max = calc_min_max(x)
+    if x_min == 0 and x_max == 0:
+        print('calc_min_max: min and max are 0!!!')
     return x_min, x_max
 
 

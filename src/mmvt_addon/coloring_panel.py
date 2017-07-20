@@ -846,8 +846,12 @@ def fmri_files_update(self, context):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
     for hemi in mu.HEMIS:
-        fname = op.join(user_fol, 'fmri', '{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
-        ColoringMakerPanel.fMRI[hemi] = np.load(fname)
+        fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
+        if op.isfile(fname):
+            ColoringMakerPanel.fMRI[hemi] = np.load(fname)
+        else:
+            print('fmri_files_update: {} does not exist!'.format(fname))
+            ColoringMakerPanel.fMRI[hemi] = None
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
         bpy.context.scene.fmri_files))
     if not op.isfile(fmri_data_maxmin_fname):
@@ -857,7 +861,11 @@ def fmri_files_update(self, context):
         data_min, data_max = mu.load(fmri_data_maxmin_fname)
         ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
-
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_max_min(data_max, data_min)
+            _addon().set_colorbar_title('fMRI')
+    else:
+        print("fmri_files_update: Can't find the minmax ({}) for the selected fMRI file".format(fmri_data_maxmin_fname))
 
 def electrodes_sources_files_update(self, context):
     ColoringMakerPanel.electrodes_sources_labels_data, ColoringMakerPanel.electrodes_sources_subcortical_data = \
@@ -1381,7 +1389,7 @@ def draw(self, context):
     user_fol = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
     meg_ext_meth = bpy.context.scene.meg_labels_extract_method
     meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
@@ -1683,9 +1691,9 @@ def init_fmri_labels():
 
 def init_fmri_files():
     user_fol = mu.get_user_fol()
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
     if len(fmri_files) > 0:
-        files_names = [mu.namebase(fname)[:-3] for fname in fmri_files]
+        files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
