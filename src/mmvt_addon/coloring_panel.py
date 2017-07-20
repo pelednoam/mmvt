@@ -481,11 +481,12 @@ def color_hemi_data(hemi, data, data_min, colors_ratio, threshold=0, override_cu
 @mu.timeit
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
+
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     frame_str = str(bpy.context.scene.frame_current)
 
-    loop_indices = {}
+    data_min, data_max = 0, 0
     f = None
     for hemi in not_hiden_hemis:
         colors_ratio, data_min = None, None
@@ -524,6 +525,13 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
+
+        # todo: should read default values from ini file
+        if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+            if data_min == 0:
+                _addon().set_colormap('YlOrRd')
+            else:
+                _addon().set_colormap('BuPu-YlOrRd')
 
         color_hemi_data(hemi, f, data_min, colors_ratio, threshold, override_current_mat)
         # if bpy.context.scene.coloring_both_pial_and_inflated:
@@ -671,16 +679,28 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # else:
     # vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
+    if colors_picked_from_cm:
+        verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert])
+    else:
+        verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:])
+
+    # for vert in valid_verts:
+    #     x = lookup[vert]
+    #     for loop_ind in x[x > -1]:
+    #         d = vcol_layer.data[loop_ind]
+    #         if vert_values.ndim == 1:  # colors_picked_from_cm:
+    #             colors = verts_colors[vert]
+    #         else:
+    #             colors = vert_values[vert, 1:]
+    #         d.color = colors
+
+
+def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func):
     for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x > -1]:
             d = vcol_layer.data[loop_ind]
-            if colors_picked_from_cm:
-                # colors = ColoringMakerPanel.cm[int(vert_values[vert] * colors_ratio)]
-                colors = verts_colors[vert]
-            else:
-                colors = vert_values[vert, 1:]
-            d.color = colors
+            d.color = colors_func(vert)
 
 
 def color_groups_manually():
@@ -826,7 +846,7 @@ def fmri_files_update(self, context):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
     for hemi in mu.HEMIS:
-        fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
+        fname = op.join(user_fol, 'fmri', '{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
         bpy.context.scene.fmri_files))
@@ -1663,21 +1683,15 @@ def init_fmri_labels():
 
 def init_fmri_files():
     user_fol = mu.get_user_fol()
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', '*_lh.npy'))
     if len(fmri_files) > 0:
-        files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
+        files_names = [mu.namebase(fname)[:-3] for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
         bpy.context.scene.fmri_files = files_names[0]
-        for hemi in mu.HEMIS:
-            ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
-        # Check separately for each contrast
-        fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax.pkl')
-        if op.isfile(fmri_data_maxmin_fname):
-            data_min, data_max = mu.load(fmri_data_maxmin_fname)
-            ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
-            ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
+        # for hemi in mu.HEMIS:
+        #     ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
 
 
 def init_electrodes_sources():

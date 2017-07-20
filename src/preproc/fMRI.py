@@ -60,14 +60,31 @@ def get_hemi_data(subject, hemi, source, surf_name='pial', name=None, sign="abs"
     return old, brain
 
 
-def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', norm_percs=(3, 97),
-                      norm_by_percentile=True, symetric_colors=True, new_name=''):
+def build_fmri_contrast_file_template(subject, fmri_contrast_file_template='', template_brain='', remote_fmri_dir=''):
+    remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
+    if fmri_contrast_file_template == '':
+        fmri_contrast_file_template = '*{hemi}*'
+    if '{hemi}' not in fmri_contrast_file_template:
+        print('build_fmri_contrast_file_template: no {hemi} in fmri_contrast_file_template!')
+        fmri_contrast_file_template = '{}*{}*'.format(fmri_contrast_file_template, '{hemi}')
+    fmri_contrast_file_template = fmri_contrast_file_template.format(
+        subject=subject, morph_to_subject=template_brain, hemi='{hemi}')
+    full_fmri_contrast_file_template = op.join(remote_fmri_dir, fmri_contrast_file_template)
+    fmri_contrast_file_template = find_hemi_files_from_template(full_fmri_contrast_file_template)
+    return fmri_contrast_file_template, full_fmri_contrast_file_template
+
+
+def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=(3, 97),
+                      norm_by_percentile=True, symetric_colors=True, contrast_name='', new_name='', remote_fmri_dir='', template_brain=''):
     data = None
     for hemi in utils.HEMIS:
         if isinstance(fmri_contrast_file_template, dict):
             hemi_fname = fmri_contrast_file_template[hemi]
         elif isinstance(fmri_contrast_file_template, str):
-            hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
+            fmri_contrast_template_files, _ = build_fmri_contrast_file_template(
+                subject, fmri_contrast_file_template, template_brain, remote_fmri_dir)
+            hemi_fname = fmri_contrast_template_files[0].format(hemi=hemi)
+            # hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
         else:
             raise Exception('Wrong type of template!')
         file_type = utils.file_type(hemi_fname)
@@ -90,10 +107,18 @@ def calc_fmri_min_max(subject, contrast, fmri_contrast_file_template, task='', n
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
     data_minmax = utils.get_max_abs(data_max, data_min)
-    if symetric_colors and np.sign(data_max) != np.sign(data_min):
+    if symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_max, data_min = data_minmax, -data_minmax
     # todo: the output_fname was changed, check where it's being used!
-    new_name = new_name if new_name != '' else '{}{}'.format('{}_'.format(task) if task != '' else '', contrast)
+    if new_name != '':
+        new_name = new_name
+    else:
+        if task != '' or contrast_name != '':
+            new_name = '{}{}'.format('{}_'.format(task) if task != '' else '', contrast_name)
+        else:
+            new_name = utils.namebase(fmri_contrast_template_files[0]).replace('{hemi}', '')
+            if new_name[-1] in ['_', '-', '.']:
+                new_name = new_name[:-1]
     output_fname = op.join(MMVT_DIR, subject, 'fmri', '{}_minmax.pkl'.format(new_name))
     print('Saving {}'.format(output_fname))
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
@@ -695,14 +720,8 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
 
 
 def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_fmri_dir=''):
-    remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
-    if input_fname_template == '':
-        input_fname_template = '*{hemi}*'
-    input_fname_template = input_fname_template.format(
-        subject=subject, morph_to_subject=template_brain, hemi='{hemi}')
-    full_input_fname_template = op.join(remote_fmri_dir, input_fname_template)
-
-    input_fname_template_files = find_hemi_files_from_template(full_input_fname_template)
+    input_fname_template_files, full_input_fname_template = build_fmri_contrast_file_template(
+        subject, input_fname_template, template_brain, remote_fmri_dir)
     if len(input_fname_template_files) > 1:
         print('More the one file was found! {}'.format(full_input_fname_template))
         print(input_fname_template_files)
@@ -918,7 +937,7 @@ def find_template_files(template_fname):
     files = find_files(template_fname)
     if len(files) == 0:
         print('Adding * to the end of the template_fname')
-        files = find_files('{}*'.format(template_fname))
+        files = find_files('*{}*'.format(template_fname))
     print('find_template_files: {}, template: {}'.format(files, template_fname))
     return files
 
@@ -1181,12 +1200,13 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', 
                 new_hemis_fname[hemi], new_hemis_org_subject_fname[hemi], morphed_from_subject = \
                     save_fmri_hemi_data(subject, hemi, contrast, new_hemi_fname, task, output_fol=fmri_files_fol)
             calc_fmri_min_max(
-                subject, contrast, new_hemis_fname, task=task, norm_percs=args.norm_percs,
+                subject, new_hemis_fname, task=task, norm_percs=args.norm_percs, contrast_name=contrast,
                 norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
             if morphed_from_subject != subject:
                 calc_fmri_min_max(
-                    morphed_from_subject, contrast, new_hemis_org_subject_fname, task=task, norm_percs=args.norm_percs,
-                    norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
+                    morphed_from_subject, new_hemis_org_subject_fname, task=task, norm_percs=args.norm_percs,
+                    norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors,
+                    contrast_name=contrast)
         # todo: save clusters also for morphed_from_subject
         find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
     # todo: check what to return
@@ -1221,7 +1241,7 @@ def fmri_pipeline_all(subject, atlas, task='*', contrast='*', filter_dic=None, n
         np.save(op.join(MMVT_DIR, subject, 'fmri', output_name), hemi_all_data[hemi])
     new_hemis_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(new_name, '{hemi}'))
     calc_fmri_min_max(
-        subject, all_contrasts, new_hemis_fname, task=all_tasks, norm_percs=norm_percs,
+        subject, new_hemis_fname, task=all_tasks, norm_percs=norm_percs, contrast_name=all_contrasts,
         norm_by_percentile=norm_by_percentile, symetric_colors=symetric_colors, new_name=new_name)
     all_clusters_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_*_{}.pkl'.format(atlas)))
     all_clusters_fnames = [f for f in all_clusters_fnames if '-and-' not in utils.namebase(f)]
@@ -1385,15 +1405,19 @@ def main(subject, remote_subject_dir, args, flags):
             flags['project_volume_to_surface'] = project_volume_to_surface(
                 subject, args.fmri_file_template, args.overwrite_surf_data, args.target_subject, remote_fmri_dir,
                 args.is_pet)
+        if flags['project_volume_to_surface'] and 'calc_fmri_min_max' not in args.function:
+            fmri_contrast_file_template = args.fmri_file_template
+            args.function.append(calc_fmri_min_max)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
-        #todo: won't work, need to find the hemis files first
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
-            subject, volume_name, fmri_contrast_file_template, task=args.task, norm_percs=args.norm_percs,
-            norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
+            subject, fmri_contrast_file_template, task=args.task, norm_percs=args.norm_percs,
+            norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors,
+            contrast_name=args.contrast_name, remote_fmri_dir=remote_fmri_dir, template_brain=args.target_subject)
 
     if utils.should_run(args, 'find_clusters'):
-        flags['find_clusters'] = find_clusters(subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
+        flags['find_clusters'] = find_clusters(
+            subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
 
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)

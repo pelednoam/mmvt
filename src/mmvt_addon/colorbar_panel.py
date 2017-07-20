@@ -41,7 +41,7 @@ def get_colormap_name():
     return bpy.context.scene.colorbar_files
 
 
-@mu.tryit
+@mu.tryit()
 def set_colorbar_title(val):
     val = val.lstrip()
     val = '     {}'.format(val)
