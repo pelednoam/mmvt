@@ -123,6 +123,14 @@ def namebase(file_name):
     return op.splitext(op.basename(file_name))[0]
 
 
+def namesbase_with_ext(fname):
+    return fname.split(op.sep)[-1]
+
+
+def get_fname_folder(fname):
+    return op.sep.join(fname.split(op.sep)[:-1])
+
+
 def file_type(fname):
     return op.splitext(op.basename(fname))[1][1:]
 
@@ -1451,3 +1459,38 @@ def get_args_list(val):
     else:
         ret = [val]
     return ret
+
+
+def get_hemi_delim_and_pos(label_name):
+    delim, pos, label = '', '', ''
+    for hemi in ['rh', 'lh']:
+        if label_name.startswith('{}-'.format(hemi)):
+            delim, pos, label = '-', 'start', label_name[3:]
+            break
+        if label_name.startswith('{}_'.format(hemi)):
+            delim, pos, label = '_', 'start', label_name[3:]
+            break
+        if label_name.startswith('{}.'.format(hemi)):
+            delim, pos, label = '.', 'start', label_name[3:]
+            break
+        if label_name.endswith('-{}'.format(hemi)):
+            delim, pos, label = '-', 'end', label_name[:-3]
+            break
+        if label_name.endswith('_{}'.format(hemi)):
+            delim, pos, label = '_', 'end', label_name[:-3]
+            break
+        if label_name.endswith('.{}'.format(hemi)):
+            delim, pos, label = '.', 'end', label_name[:-3]
+            break
+    return delim, pos, label, hemi
+
+
+def change_hemi(label_name):
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+    other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    if pos == 'end':
+        res_label_name = '{}{}{}'.format(label, delim, other_hemi)
+    else:
+        res_label_name = '{}{}{}'.format(other_hemi, delim, label)
+    return res_label_name
+

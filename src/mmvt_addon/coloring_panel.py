@@ -61,14 +61,10 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
 
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
-        colors_ratio = 256 / (data_max - data_min)
     else:
-        data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
-        data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
-        data_minmax = max(map(abs, [data_min, data_max]))
-        data_min, data_max = -data_minmax, data_minmax
-        colors_ratio = 256 / (data_max - data_min)
+        data_min, data_max = bpy.context.scene.meg_data_min, bpy.context.scene.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
+    colors_ratio = 256 / (data_max - data_min)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
     return fname, stc_t_smooth
 
@@ -842,6 +838,31 @@ def default_coloring(loop_indices):
             vcol_layer.data[loop_ind].color = [1, 1, 1]
 
 
+def meg_files_update(self, context):
+    full_stc_fname = ''
+    template = op.join(mu.get_user_fol(), 'meg', '*.stc')
+    stcs_files = glob.glob(template)
+    for stc_file in stcs_files:
+        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
+        if label == bpy.context.scene.meg_files:
+            full_stc_fname = stc_file
+            break
+
+    if full_stc_fname == '':
+        print("Can't find the stc file in {}".format(template))
+    else:
+        ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
+        T = ColoringMakerPanel.stc.data.shape[1] - 1
+        bpy.data.scenes['Scene'].frame_preview_start = 0
+        bpy.data.scenes['Scene'].frame_preview_end = T
+        if context.scene.frame_current > T:
+            context.scene.frame_current = T
+        data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
+        data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
+        data_minmax = max(map(abs, [data_min, data_max]))
+        bpy.context.scene.meg_data_min, bpy.context.scene.meg_data_max = -data_minmax, data_minmax
+
+
 def fmri_files_update(self, context):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
@@ -866,6 +887,7 @@ def fmri_files_update(self, context):
             _addon().set_colorbar_title('fMRI')
     else:
         print("fmri_files_update: Can't find the minmax ({}) for the selected fMRI file".format(fmri_data_maxmin_fname))
+
 
 def electrodes_sources_files_update(self, context):
     ColoringMakerPanel.electrodes_sources_labels_data, ColoringMakerPanel.electrodes_sources_subcortical_data = \
@@ -1428,7 +1450,7 @@ def draw(self, context):
                 ColoringMakerPanel.stc_file_exist:
             col = layout.box().column()
             # mu.add_box_line(col, '', 'MEG', 0.4)
-            col.prop(context.scene, 'meg_activitiy_type', '')
+            col.prop(context.scene, 'meg_files', '')
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
@@ -1471,11 +1493,11 @@ def draw(self, context):
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
-        col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensots", icon='POTATO')
+        col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
 
     if ColoringMakerPanel.eeg_exist:
         col = layout.box().column()
-        col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensots", icon='POTATO')
+        col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
         # if not bpy.data.objects.get('eeg_helmet', None) is None:
         #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
@@ -1508,6 +1530,7 @@ bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
+bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
@@ -1538,6 +1561,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
 
+    stc = None
     stc_file_exist = False
     meg_activity_data_exist = False
     fmri_labels_exist = False
@@ -1605,11 +1629,23 @@ def init_meg_activity_map():
         _addon().set_colorbar_title('MEG')
         ColoringMakerPanel.meg_activity_data_exist = True
     elif MNE_EXIST:
-        stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
-        if len(stcs_files) == 2:
-            ColoringMakerPanel.stc_file_exist = True
-            ColoringMakerPanel.stc = mne.read_source_estimate(stcs_files[0])
+        create_stc_files_list()
 
+
+def create_stc_files_list():
+    user_fol = mu.get_user_fol()
+    stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
+    stc_files_dic = defaultdict(list)
+    for stc_file in stcs_files:
+        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
+        stc_files_dic[label].append(hemi)
+    stc_names = [label for label, hemis in stc_files_dic.items() if len(hemis) == 2]
+    if len(stc_names) > 0:
+        ColoringMakerPanel.stc_file_exist = True
+        items = [(c, c, '', ind) for ind, c in enumerate(stc_names)]
+        bpy.types.Scene.meg_files = bpy.props.EnumProperty(
+            items=items, description="MEG files", update=meg_files_update)
+        bpy.context.scene.meg_files = stc_names[0]
 
 
 def init_fmri_activity_map():

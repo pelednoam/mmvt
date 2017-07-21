@@ -160,8 +160,9 @@ def get_utils_dir():
 
 
 def add_utils_to_import_path():
-    sys.path.append(get_utils_dir())
-
+    utils_dir = get_utils_dir()
+    if utils_dir not in sys.path:
+        sys.path.append()
 
 try:
     from src.utils import args_utils as au

@@ -609,6 +609,7 @@ def file_type(fname):
     # ret = '.'.join(fname.split(op.sep)[-1].split('.')[1:])
     # return ret
 
+
 def is_file_type(fname, file_type):
     return fname[-len(file_type):] == file_type
 

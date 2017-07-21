@@ -69,6 +69,8 @@ importlib.reload(colorbar_panel)
 # importlib.reload(load_results_panel)
 import pizco_panel
 importlib.reload(pizco_panel)
+import load_results_panel
+importlib.reload(load_results_panel)
 
 print("mmvt addon started!")
 # todo: should change that in the code!!!
@@ -149,6 +151,7 @@ color_connections = coloring_panel.color_connections
 plot_meg = coloring_panel.plot_meg
 plot_stc_t = coloring_panel.plot_stc_t
 plot_stc = coloring_panel.plot_stc
+create_stc_files_list = coloring_panel.create_stc_files_list
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -346,14 +349,14 @@ def start_listener():
     return listener_in_queue, listener_out_queue
 
 
-def init_pizco(mmvt):
-    try:
-        from pizco import Server
-        mmvt.c = mmvt_utils.get_graph_context()
-        mmvt.s = mmvt.c['scene']
-        Server(mmvt, 'tcp://127.0.0.1:8000')
-    except:
-        print('No pizco')
+# def init_pizco(mmvt):
+#     try:
+#         from pizco import Server
+#         mmvt.c = mmvt_utils.get_graph_context()
+#         mmvt.s = mmvt.c['scene']
+#         Server(mmvt, 'tcp://127.0.0.1:8000')
+#     except:
+#         print('No pizco')
 
 
 def make_all_fcurve_visible():
@@ -419,7 +422,7 @@ def main(addon_prefs=None):
         dti_panel.init(mmvt)
         connections_panel.init(mmvt)
         vertex_data_panel.init(mmvt)
-
+        load_results_panel.init(mmvt)
         pizco_panel.init(mmvt)
         # load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()

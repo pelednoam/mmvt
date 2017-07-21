@@ -4,6 +4,10 @@ import glob
 import mmvt_utils as mu
 
 
+def _addon():
+    return TemplatePanel.addon
+
+
 def update_something():
     pass
 
@@ -13,7 +17,7 @@ def do_somthing():
 
 
 def template_files_update(self, context):
-    if TempaltePanel.init:
+    if TemplatePanel.init:
         update_something()
 
 
@@ -35,7 +39,7 @@ class TemplateButton(bpy.types.Operator):
 bpy.types.Scene.template_files = bpy.props.EnumProperty(items=[], description="tempalte files")
 
 
-class TempaltePanel(bpy.types.Panel):
+class TemplatePanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
@@ -45,12 +49,12 @@ class TempaltePanel(bpy.types.Panel):
     init = False
 
     def draw(self, context):
-        if TempaltePanel.init:
+        if TemplatePanel.init:
             template_draw(self, context)
 
 
 def init(addon):
-    TempaltePanel.addon = addon
+    TemplatePanel.addon = addon
     user_fol = mu.get_user_fol()
     template_files = glob.glob(op.join(user_fol, 'template', 'template*.npz'))
     if len(template_files) == 0:
@@ -61,13 +65,13 @@ def init(addon):
         items=template_items, description="tempalte files",update=template_files_update)
     bpy.context.scene.template_files = files_names[0]
     register()
-    TempaltePanel.init = True
+    TemplatePanel.init = True
 
 
 def register():
     try:
         unregister()
-        bpy.utils.register_class(TempaltePanel)
+        bpy.utils.register_class(TemplatePanel)
         bpy.utils.register_class(TemplateButton)
     except:
         print("Can't register Template Panel!")
@@ -75,7 +79,7 @@ def register():
 
 def unregister():
     try:
-        bpy.utils.unregister_class(TempaltePanel)
+        bpy.utils.unregister_class(TemplatePanel)
         bpy.utils.unregister_class(TemplateButton)
     except:
         pass

@@ -8,11 +8,14 @@ import shutil
 import glob
 import traceback
 
-from src.utils import utils
-from src.utils import preproc_utils as pu
-from src.mmvt_addon import colors_utils as cu
+try:
+    from src.utils import utils
+    from src.utils import preproc_utils as pu
+    from src.mmvt_addon import colors_utils as cu
+    SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+except:
+    print("Sorry, no src libs...")
 
-SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 HEMIS = ['rh', 'lh']
 
 
