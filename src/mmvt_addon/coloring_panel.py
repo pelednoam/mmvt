@@ -62,9 +62,15 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
-        data_min, data_max = bpy.context.scene.meg_data_min, bpy.context.scene.meg_data_max
+        data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
+    # todo: should read default values from ini file
+    if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+        if data_min == 0:
+            _addon().set_colormap('YlOrRd')
+        else:
+            _addon().set_colormap('BuPu-YlOrRd')
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
     return fname, stc_t_smooth
 
@@ -851,16 +857,28 @@ def meg_files_update(self, context):
     if full_stc_fname == '':
         print("Can't find the stc file in {}".format(template))
     else:
-        ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
+        ColoringMakerPanel.stc = stc = mne.read_source_estimate(full_stc_fname)
         T = ColoringMakerPanel.stc.data.shape[1] - 1
         bpy.data.scenes['Scene'].frame_preview_start = 0
         bpy.data.scenes['Scene'].frame_preview_end = T
         if context.scene.frame_current > T:
             context.scene.frame_current = T
-        data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
-        data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
+        calc_stc_minmax(ColoringMakerPanel.stc)
+        bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
+
+
+def calc_stc_minmax(stc):
+    data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
+    data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
+    if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
-        bpy.context.scene.meg_data_min, bpy.context.scene.meg_data_max = -data_minmax, data_minmax
+        ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax
+    else:
+        if data_min >= 0 and data_max >= 0:
+            ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = 0, data_max
+        else:
+            ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = data_min, 0
+    return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
 
 
 def fmri_files_update(self, context):
@@ -1451,6 +1469,7 @@ def draw(self, context):
             col = layout.box().column()
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_files', '')
+            col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
@@ -1531,6 +1550,7 @@ bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, desc
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
+bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
@@ -1558,6 +1578,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     what_is_colored = set()
     fmri_activity_data_minmax, fmri_activity_colors_ratio = None, None
     meg_activity_data_minmax, meg_activity_colors_ratio = None, None
+    meg_data_min, meg_data_max = 0, 0
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
 
