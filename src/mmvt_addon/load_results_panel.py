@@ -19,7 +19,6 @@ class LoadSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.choose_stc_file" 
     bl_label = "Choose STC file"
 
-    filename_ext = ".stc"
     filter_glob = bpy.props.StringProperty(default='*.stc', options={'HIDDEN'}, maxlen=255)
 
     def execute(self, context):
@@ -39,7 +38,8 @@ class LoadSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 def template_draw(self, context):
     layout = self.layout
     if MNE_EXIST:
-        layout.operator(LoadSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY')
+        layout.operator(LoadSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY').filepath=op.join(
+            mu.get_user_fol(), 'meg', '*.stcs')
 
 
 class LoadResultsPanel(bpy.types.Panel):
@@ -47,7 +47,7 @@ class LoadResultsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "LoadResults"
+    bl_label = "Load Results"
     addon = None
     init = False
 
@@ -58,7 +58,7 @@ class LoadResultsPanel(bpy.types.Panel):
 
 def init(addon):
     LoadResultsPanel.addon = addon
-    user_fol = mu.get_user_fol()
+    mu.make_dir(op.join(mu.get_user_fol(), 'meg'))
     register()
     LoadResultsPanel.init = True
 
