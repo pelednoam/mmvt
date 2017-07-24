@@ -494,7 +494,10 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         colors_ratio, data_min = None, None
         if map_type in ['MEG', 'FMRI_DYNAMICS']:
             if map_type == 'MEG':
-                fname = op.join(current_root_path, 'activity_map_' + hemi, 't' + frame_str + '.npy')
+                activity_type = bpy.context.scene.meg_files
+                activity_type = '' if activity_type == 'conditions diff' else '{}_'.format(activity_type)
+                fname = op.join(current_root_path, 'activity_map_{}{}'.format(
+                    activity_type, hemi), 't' + frame_str + '.npy')
                 colors_ratio = ColoringMakerPanel.meg_activity_colors_ratio
                 data_min, data_max = ColoringMakerPanel.meg_activity_data_minmax
                 cb_title = 'MEG'
@@ -845,26 +848,45 @@ def default_coloring(loop_indices):
 
 
 def meg_files_update(self, context):
-    full_stc_fname = ''
-    template = op.join(mu.get_user_fol(), 'meg', '*.stc')
-    stcs_files = glob.glob(template)
-    for stc_file in stcs_files:
-        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
-        if label == bpy.context.scene.meg_files:
-            full_stc_fname = stc_file
+    user_fol = mu.get_user_fol()
+    ColoringMakerPanel.activity_map_chosen = False
+    ColoringMakerPanel.stc_file_chosen = False
+    activity_types = [mu.namebase(f)[len('activity_map_'):-2] for f in glob.glob(op.join(user_fol, 'activity_map_*rh'))]
+    for activity_type in activity_types:
+        if activity_type != '':
+            activity_type = activity_types[:-1]
+        if bpy.context.scene.meg_files == activity_type or activity_type == '' and \
+                        bpy.context.scene.meg_files == 'conditions diff':
+            ColoringMakerPanel.activity_map_chosen = True
+            meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_{}minmax.pkl'.format(activity_type))
+            data_min, data_max = mu.load(meg_data_maxmin_fname)
+            ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
+            ColoringMakerPanel.meg_activity_data_minmax = (data_min, data_max)
+            if not _addon().colorbar_values_are_locked():
+                _addon().set_colorbar_max_min(data_max, data_min, True)
             break
-
-    if full_stc_fname == '':
-        print("Can't find the stc file in {}".format(template))
     else:
-        ColoringMakerPanel.stc = stc = mne.read_source_estimate(full_stc_fname)
-        T = ColoringMakerPanel.stc.data.shape[1] - 1
-        bpy.data.scenes['Scene'].frame_preview_start = 0
-        bpy.data.scenes['Scene'].frame_preview_end = T
-        if context.scene.frame_current > T:
-            context.scene.frame_current = T
-        calc_stc_minmax(ColoringMakerPanel.stc)
-        bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
+        full_stc_fname = ''
+        template = op.join(user_fol, 'meg', '*.stc')
+        stcs_files = glob.glob(template)
+        for stc_file in stcs_files:
+            _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
+            if label == bpy.context.scene.meg_files:
+                full_stc_fname = stc_file
+                ColoringMakerPanel.stc_file_chosen = True
+                break
+
+        if full_stc_fname == '':
+            print("Can't find the stc file in {}".format(template))
+        else:
+            ColoringMakerPanel.stc = stc = mne.read_source_estimate(full_stc_fname)
+            T = ColoringMakerPanel.stc.data.shape[1] - 1
+            bpy.data.scenes['Scene'].frame_preview_start = 0
+            bpy.data.scenes['Scene'].frame_preview_end = T
+            if context.scene.frame_current > T:
+                context.scene.frame_current = T
+            calc_stc_minmax(ColoringMakerPanel.stc)
+            bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
 
 
 def calc_stc_minmax(stc):
@@ -1306,11 +1328,12 @@ class ColorMeg(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        if ColoringMakerPanel.meg_activity_data_exist:
-            activity_map_coloring('MEG')
-        elif ColoringMakerPanel.stc_file_exist:
+        if ColoringMakerPanel.stc_file_chosen:
             plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
                      threshold=bpy.context.scene.coloring_threshold, save_image=False)
+        elif ColoringMakerPanel.activity_map_chosen:
+            activity_map_coloring('MEG')
+        print('ColorMeg: Both stc_file_chosen and activity_map_chosen are False!')
         return {"FINISHED"}
 
 
@@ -1469,7 +1492,7 @@ def draw(self, context):
             col = layout.box().column()
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_files', '')
-            col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
+            # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
@@ -1583,6 +1606,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
 
     stc = None
+    stc_file_chosen = False
+    activity_map_chosen = False
     stc_file_exist = False
     meg_activity_data_exist = False
     fmri_labels_exist = False
@@ -1637,23 +1662,34 @@ def init_labels_vertices():
 
 def init_meg_activity_map():
     user_fol = mu.get_user_fol()
-    meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_minmax.pkl')
-    meg_files_exist = len(glob.glob(op.join(user_fol, 'activity_map_rh', 't*.npy'))) > 0 and \
-                      len(glob.glob(op.join(user_fol, 'activity_map_lh', 't*.npy'))) > 0
-    if meg_files_exist and op.isfile(meg_data_maxmin_fname):
-        data_min, data_max = mu.load(meg_data_maxmin_fname)
-        ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.meg_activity_data_minmax = (data_min, data_max)
-        print('data meg: {}-{}'.format(data_min, data_max))
-        if not _addon().colorbar_values_are_locked():
-            _addon().set_colorbar_max_min(data_max, data_min, True)
-        _addon().set_colorbar_title('MEG')
-        ColoringMakerPanel.meg_activity_data_exist = True
-    elif MNE_EXIST:
-        create_stc_files_list()
+    list_items = []
+    activity_types = [mu.namebase(f)[len('activity_map_'):-2] for f in glob.glob(op.join(user_fol, 'activity_map_*rh'))]
+    for activity_type in activity_types:
+        if activity_type != '':
+            activity_type = activity_type[:-1]
+        meg_files_exist = len(glob.glob(op.join(user_fol, 'activity_map_{}rh'.format(activity_type), 't*.npy'))) > 0 and \
+                          len(glob.glob(op.join(user_fol, 'activity_map_{}lh'.format(activity_type), 't*.npy'))) > 0
+        meg_data_maxmin_fname = op.join(mu.get_user_fol(), 'meg_activity_map_{}minmax.pkl'.format(activity_type))
+        if meg_files_exist and op.isfile(meg_data_maxmin_fname):
+            data_min, data_max = mu.load(meg_data_maxmin_fname)
+            ColoringMakerPanel.meg_activity_colors_ratio = 256 / (data_max - data_min)
+            ColoringMakerPanel.meg_activity_data_minmax = (data_min, data_max)
+            print('data meg: {}-{}'.format(data_min, data_max))
+            if not _addon().colorbar_values_are_locked():
+                _addon().set_colorbar_max_min(data_max, data_min, True)
+            _addon().set_colorbar_title('MEG')
+            ColoringMakerPanel.meg_activity_data_exist = True
+            if activity_type == '':
+                activity_type = 'conditions diff'
+            list_items.append((activity_type, activity_type, '', len(list_items)))
+    if MNE_EXIST:
+        list_items = create_stc_files_list(list_items)
+    bpy.types.Scene.meg_files = bpy.props.EnumProperty(
+        items=list_items, description="MEG files", update=meg_files_update)
+    bpy.context.scene.meg_files = list_items[0][0]
 
 
-def create_stc_files_list():
+def create_stc_files_list(list_items=[]):
     user_fol = mu.get_user_fol()
     stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
     stc_files_dic = defaultdict(list)
@@ -1663,10 +1699,8 @@ def create_stc_files_list():
     stc_names = [label for label, hemis in stc_files_dic.items() if len(hemis) == 2]
     if len(stc_names) > 0:
         ColoringMakerPanel.stc_file_exist = True
-        items = [(c, c, '', ind) for ind, c in enumerate(stc_names)]
-        bpy.types.Scene.meg_files = bpy.props.EnumProperty(
-            items=items, description="MEG files", update=meg_files_update)
-        bpy.context.scene.meg_files = stc_names[0]
+        list_items.extend([(c, c, '', ind + len(list_items)) for ind, c in enumerate(stc_names)])
+    return list_items
 
 
 def init_fmri_activity_map():
