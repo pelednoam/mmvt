@@ -398,6 +398,13 @@ def run_faulthandler():
     faulthandler.enable(fault_handler)
 
 
+def fix_scale():
+    for hemi in mmvt_utils.HEMIS:
+        hemi_obj = bpy.data.objects[hemi]
+        for i in range(3):
+            hemi_obj.scale[i] = 0.1
+
+
 def main(addon_prefs=None):
     init(addon_prefs)
     try:
@@ -424,7 +431,6 @@ def main(addon_prefs=None):
         vertex_data_panel.init(mmvt)
         load_results_panel.init(mmvt)
         pizco_panel.init(mmvt)
-        # load_results_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(mmvt)
         pass
@@ -432,6 +438,7 @@ def main(addon_prefs=None):
         print('The classes are already registered!')
         print(traceback.format_exc())
 
+    fix_scale()
     show_electrodes(False)
     show_hide_connections(False)
     # show_pial()
