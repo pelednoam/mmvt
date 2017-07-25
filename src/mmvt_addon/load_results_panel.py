@@ -15,7 +15,7 @@ def _addon():
     return LoadResultsPanel.addon
 
 
-class LoadSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+class ChooseSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.choose_stc_file" 
     bl_label = "Choose STC file"
 
@@ -36,10 +36,30 @@ class LoadSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         return {'FINISHED'}
 
 
+class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.choose_niftii_file"
+    bl_label = "Choose niftii file"
+
+    filename_ext = '.nii'
+    filter_glob = bpy.props.StringProperty(default='*.nii', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        stc_fname = self.filepath
+        user_fol = mu.get_user_fol()
+        stc_fol = mu.get_fname_folder(stc_fname)
+        if stc_fol != op.join(user_fol, 'fmri'):
+            shutil.copy(stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(stc_fname)))
+            shutil.copy(other_hemi_stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(other_hemi_stc_fname)))
+            _addon().init_meg_activity_map()
+        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_fname))
+        bpy.context.scene.meg_files = label
+        return {'FINISHED'}
+
+
 def template_draw(self, context):
     layout = self.layout
     if MNE_EXIST:
-        layout.operator(LoadSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY').filepath=op.join(
+        layout.operator(ChooseSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY').filepath=op.join(
             mu.get_user_fol(), 'meg', '*.stc')
 
 
@@ -68,7 +88,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(LoadResultsPanel)
-        bpy.utils.register_class(LoadSTCFile)
+        bpy.utils.register_class(ChooseSTCFile)
     except:
         print("Can't register LoadResults Panel!")
 
@@ -76,6 +96,6 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(LoadResultsPanel)
-        bpy.utils.unregister_class(LoadSTCFile)
+        bpy.utils.unregister_class(ChooseSTCFile)
     except:
         pass

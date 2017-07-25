@@ -1684,9 +1684,10 @@ def init_meg_activity_map():
             list_items.append((activity_type, activity_type, '', len(list_items)))
     if MNE_EXIST:
         list_items = create_stc_files_list(list_items)
-    bpy.types.Scene.meg_files = bpy.props.EnumProperty(
-        items=list_items, description="MEG files", update=meg_files_update)
-    bpy.context.scene.meg_files = list_items[0][0]
+    if len(list_items) > 0:
+        bpy.types.Scene.meg_files = bpy.props.EnumProperty(
+            items=list_items, description="MEG files", update=meg_files_update)
+        bpy.context.scene.meg_files = list_items[0][0]
 
 
 def create_stc_files_list(list_items=[]):
