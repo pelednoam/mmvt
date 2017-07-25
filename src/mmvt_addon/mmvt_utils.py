@@ -1494,3 +1494,24 @@ def change_hemi(label_name):
         res_label_name = '{}{}{}'.format(other_hemi, delim, label)
     return res_label_name
 
+
+def min_stc_hemi(stc, hemi):
+    if hemi == 'rh':
+        return np.min(stc.rh_data) if stc.rh_data.shape[0] > 0 else 0
+    else:
+        return np.min(stc.lh_data) if stc.lh_data.shape[0] > 0 else 0
+
+
+def min_stc(stc):
+    return min([min_stc_hemi(stc, hemi) for hemi in HEMIS])
+
+
+def max_stc_hemi(stc, hemi):
+    if hemi == 'rh':
+        return np.max(stc.rh_data) if stc.rh_data.shape[0] > 0 else 0
+    else:
+        return np.max(stc.lh_data) if stc.lh_data.shape[0] > 0 else 0
+
+
+def max_stc(stc):
+    return max([max_stc_hemi(stc, hemi) for hemi in HEMIS])

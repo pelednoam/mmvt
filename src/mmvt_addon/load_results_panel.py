@@ -44,12 +44,11 @@ class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     filter_glob = bpy.props.StringProperty(default='*.nii', options={'HIDDEN'}, maxlen=255)
 
     def execute(self, context):
-        stc_fname = self.filepath
+        nii_fname = self.filepath
         user_fol = mu.get_user_fol()
-        stc_fol = mu.get_fname_folder(stc_fname)
-        if stc_fol != op.join(user_fol, 'fmri'):
-            shutil.copy(stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(stc_fname)))
-            shutil.copy(other_hemi_stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(other_hemi_stc_fname)))
+        nii_fol = mu.get_fname_folder(nii_fname)
+        if nii_fol != op.join(user_fol, 'fmri'):
+            shutil.copy(nii_fname, op.join(user_fol, 'fmri', mu.namesbase_with_ext(nii_fname)))
             _addon().init_meg_activity_map()
         _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_fname))
         bpy.context.scene.meg_files = label

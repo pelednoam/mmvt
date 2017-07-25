@@ -398,6 +398,7 @@ def run_faulthandler():
     faulthandler.enable(fault_handler)
 
 
+@mmvt_utils.tryit()
 def fix_scale():
     for hemi in mmvt_utils.HEMIS:
         hemi_obj = bpy.data.objects[hemi]

@@ -47,8 +47,14 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     n_jobs = mu.get_n_jobs(n_jobs)
 
     def create_stc_t(stc, t):
-        data = np.concatenate([stc.lh_data[:, t:t + 1], stc.rh_data[:, t:t + 1]])
-        vertices = [stc.lh_vertno, stc.rh_vertno]
+        C = max([stc.rh_data.shape[0], stc.lh_data.shape[0]])
+        stc_lh_data = stc.lh_data[:, t:t + 1] if stc.lh_data.shape[0] > 0 else np.zeros((C, 1))
+        stc_rh_data = stc.rh_data[:, t:t + 1] if stc.rh_data.shape[0] > 0 else np.zeros((C, 1))
+        data = np.concatenate([stc_lh_data, stc_rh_data])
+        vertno = max([len(stc.lh_vertno), len(stc.rh_vertno)])
+        lh_vertno = stc.lh_vertno if len(stc.lh_vertno) > 0 else np.arange(0, vertno)
+        rh_vertno = stc.rh_vertno if len(stc.rh_vertno) > 0 else np.arange(0, vertno) + max(lh_vertno) + 1
+        vertices = [lh_vertno, rh_vertno]
         stc_t = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         return stc_t
 
@@ -56,7 +62,7 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
     stc_t = create_stc_t(stc, t)
-    vertices_to = mne.grade_to_vertices(subject, None)
+    vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
     stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
 
     if _addon().colorbar_values_are_locked():
@@ -886,12 +892,15 @@ def meg_files_update(self, context):
             if context.scene.frame_current > T:
                 context.scene.frame_current = T
             calc_stc_minmax(ColoringMakerPanel.stc)
-            bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
+            try:
+                bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
+            except:
+                bpy.context.scene.meg_max_t = 0
 
 
 def calc_stc_minmax(stc):
-    data_min = min([np.min(stc.rh_data), np.min(stc.lh_data)])
-    data_max = max([np.max(stc.rh_data), np.max(stc.lh_data)])
+    data_min = mu.min_stc(stc)
+    data_max = mu.max_stc(stc)
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
         ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax
@@ -1333,7 +1342,8 @@ class ColorMeg(bpy.types.Operator):
                      threshold=bpy.context.scene.coloring_threshold, save_image=False)
         elif ColoringMakerPanel.activity_map_chosen:
             activity_map_coloring('MEG')
-        print('ColorMeg: Both stc_file_chosen and activity_map_chosen are False!')
+        else:
+            print('ColorMeg: Both stc_file_chosen and activity_map_chosen are False!')
         return {"FINISHED"}
 
 
