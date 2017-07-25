@@ -16,9 +16,10 @@ function varargout = dpxread(filename)
 % http://brainder.org
 
 % Count the number of lines. This won't work on MS-Windows, but who cares...
-fprintf('wc -l %s', filename);
-[~,result] = system(sprintf('wc -l %s', filename));
-nL = str2double(strtok(result,' '));
+%fprintf('wc -l %s', filename);
+%[~,result] = system(sprintf('wc -l %s', filename));
+%nL = str2double(strtok(result,' '));
+nL = lines_count(filename);
 
 % Open and read the whole file
 fid = fopen(filename,'r');
