@@ -179,7 +179,7 @@ def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
 
 
 def get_hemi_delim_and_pos(label_name):
-    delim, pos, label = '', '', ''
+    delim, pos, label = '', '', label_name
     for hemi in ['rh', 'lh']:
         if label_name.startswith('{}-'.format(hemi)):
             delim, pos, label = '-', 'start', label_name[3:]
@@ -209,17 +209,37 @@ def get_label_hemi(label_name):
 
 def get_label_hemi_invariant_name(label_name):
     _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
+    while label_inv_name != label_name:
+        label_name = label_inv_name
+        _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
     return label_inv_name
+
+
+def remove_duplicate_hemis(label_name):
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+    while label != label_name:
+        label_name = label
+        _, _, label, _ = get_hemi_delim_and_pos(label_name)
+    res = build_label_name(delim, pos, label, hemi)
+    return res
 
 
 def change_hemi(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
-    if pos == 'end':
-        res_label_name = '{}{}{}'.format(label, delim, other_hemi)
-    else:
-        res_label_name = '{}{}{}'.format(other_hemi, delim, label)
+    res_label_name = build_label_name(delim, pos, label, other_hemi)
+    # if pos == 'end':
+    #     res_label_name = '{}{}{}'.format(label, delim, other_hemi)
+    # else:
+    #     res_label_name = '{}{}{}'.format(other_hemi, delim, label)
     return res_label_name
+
+
+def build_label_name(delim, pos, label, hemi):
+    if pos == 'end':
+        return '{}{}{}'.format(label, delim, hemi)
+    else:
+        return '{}{}{}'.format(hemi, delim, label)
 
 
 def get_hemi_from_name(label_name):

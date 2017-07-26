@@ -644,6 +644,7 @@ def read_labels_from_annot(subject, aparc_name, subjects_dir):
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=None):
+    from src.utils import labels_utils as lu
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = op.join(subjects_dir, subject)
@@ -658,6 +659,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
         for label_file in labels_files:
             label = mne.read_label(label_file)
             # print(label.name)
+            label.name = lu.get_label_hemi_invariant_name(label.name)
             labels.append(label)
         labels.sort(key=lambda l: l.name)
     if overwrite:

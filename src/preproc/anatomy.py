@@ -152,7 +152,6 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
     return flag_ok
 
 
-
 def load_subcortical_lookup_table(fname='sub_cortical_codes.txt'):
     codes_file = op.join(MMVT_DIR, fname)
     lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
@@ -418,8 +417,8 @@ def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
     lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
 
 
-def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False,
-                     fsaverage='fsaverage', overwrite_annotation=False, n_jobs=6, minimum_labels_num=50,):
+def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, fsaverage='fsaverage',
+                     overwrite_annotation=False, matlab_cmd='matlab', n_jobs=6, minimum_labels_num=50):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
     labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
@@ -442,7 +441,8 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
                     mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
                            'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREESURFER_HOME,
                            'surface_type': surface_type})
-                cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
+                cmd = '{} -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
+                # cmd = '{} -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
                 script_ret = utils.run_script(cmd)
                 if script_ret == '':
                     return False
@@ -758,7 +758,7 @@ def main(subject, remote_subject_dir, args, flags):
         # *) Calls Matlab 'splitting_cortical.m' script
         flags['parcelate_cortex'] = parcelate_cortex(
             subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files,
-            args.template_subject, args.overwrite_annotation, args.n_jobs)
+            args.template_subject, args.overwrite_annotation, args.matlab_cmd, args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
@@ -865,6 +865,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
+    parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
+
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
