@@ -301,7 +301,8 @@ def calc_ply_faces_verts(verts, faces, out_file, overwrite=False, ply_name='', e
             lookup[k, n] = v
             n = 0 if ind < len(diff) and diff[ind] > 0 else n+1
         np.save(out_file, lookup.astype(np.int))
-        print('{} max lookup val: {}'.format(ply_name, int(np.max(lookup))))
+        if verbose:
+            print('{} max lookup val: {}'.format(ply_name, int(np.max(lookup))))
         if len(_faces) != int(np.max(lookup)) + 1:
             errors[ply_name] = 'Wrong values in lookup table! ' + \
                 'faces ravel: {}, max looup val: {}'.format(len(_faces), int(np.max(lookup)))

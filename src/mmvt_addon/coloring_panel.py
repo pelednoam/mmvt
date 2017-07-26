@@ -735,6 +735,7 @@ def color_manually():
     subject_fol = mu.get_user_fol()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     values = []
+    rand_colors = cu.get_distinct_colors(30)
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', '{}.csv'.format(bpy.context.scene.coloring_files))):
         obj_name, color_name = line[0], line[1:4]
         if len(line) == 5:
@@ -753,6 +754,8 @@ def color_manually():
             # Check if the color is already in RBG
             elif len(color_name) == 3:
                 color_rgb = color_name
+            elif len(color_name) == 0:
+                color_rgb = next(rand_colors)
             else:
                 print('Unrecognize color! ({})'.format(color_name))
                 continue
