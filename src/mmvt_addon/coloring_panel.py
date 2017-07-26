@@ -736,6 +736,7 @@ def color_manually():
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     values = []
     rand_colors = cu.get_distinct_colors(30)
+    labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', '{}.csv'.format(bpy.context.scene.coloring_files))):
         obj_name, color_name = line[0], line[1:4]
         if len(line) == 5:
@@ -745,6 +746,11 @@ def color_manually():
         if isinstance(color_name, list) and len(color_name) == 1:
             color_name = color_name[0]
         obj_type = mu.check_obj_type(obj_name)
+        if obj_type is None:
+            delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
+            if delim != '' and pos != '' and hemi != '' and label != obj_name:
+                obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
+                obj_type = mu.check_obj_type(obj_name)
         if isinstance(color_name, str) and color_name.startswith('mark'):
             import filter_panel
             filter_panel.filter_roi_func(obj_name, mark=color_name)

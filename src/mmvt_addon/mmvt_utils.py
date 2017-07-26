@@ -1488,11 +1488,14 @@ def get_hemi_delim_and_pos(label_name):
 def change_hemi(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    return build_label_name(delim, pos, label, other_hemi)
+
+
+def build_label_name(delim, pos, label, hemi):
     if pos == 'end':
-        res_label_name = '{}{}{}'.format(label, delim, other_hemi)
+        return '{}{}{}'.format(label, delim, hemi)
     else:
-        res_label_name = '{}{}{}'.format(other_hemi, delim, label)
-    return res_label_name
+        return '{}{}{}'.format(hemi, delim, label)
 
 
 def min_stc_hemi(stc, hemi):
