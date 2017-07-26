@@ -254,7 +254,8 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             if not read_only_from_annot:
                 labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
-            raise Exception("Can't read the {} labels!".format(atlas))
+            print("Can't read the {} labels!".format(atlas))
+            return []
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
         if rh_then_lh or lh_then_rh:
             rh_labels = [l for l in labels if l.hemi == 'rh']

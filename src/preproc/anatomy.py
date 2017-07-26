@@ -362,6 +362,10 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
     if annotations_exist:
         return True
     else:
+        if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
+            if save_annot_file:
+                labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
+            return True
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
             hemi, aparc_name))) for hemi in HEMIS])
@@ -386,22 +390,27 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        try:
-            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
-        except:
-            print("Can't write labels to annotation! Trying to solve labels collision")
-            print(traceback.format_exc())
-            solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
-            try:
-                utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
-            except:
-                print("Can't write labels to annotation! Solving the labels collision didn't help...")
-                print(traceback.format_exc())
+        labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
             SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
     else:
         return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0
+
+
+def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annotation=False, n_jobs=6):
+    try:
+        utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+    except:
+        print("Can't write labels to annotation! Trying to solve labels collision")
+        print(traceback.format_exc())
+        solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
+        try:
+            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        except:
+            print("Can't write labels to annotation! Solving the labels collision didn't help...")
+            print(traceback.format_exc())
+
 
 def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
     backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
@@ -409,9 +418,11 @@ def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
     lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
 
 
-def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, minimum_labels_num=50):
+def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False,
+                     fsaverage='fsaverage', overwrite_annotation=False, n_jobs=6, minimum_labels_num=50,):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
+    labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
     utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
@@ -422,16 +433,19 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         # if surface_type == 'inflated':
         if overwrite or not files_exist:
             dont_do_anything = False
-            matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
-            matlab_command = "'{}'".format(matlab_command)
-            sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
-                mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
-                       'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREESURFER_HOME,
-                       'surface_type': surface_type})
-            cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
-            script_ret = utils.run_script(cmd)
-            if script_ret == '':
-                return False
+            matlab_output_files = glob.glob(op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(
+                aparc_name, surface_type, hemi), '*.srf'))
+            if len(matlab_output_files) == 0 or overwrite:
+                matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
+                matlab_command = "'{}'".format(matlab_command)
+                sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
+                    mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR,
+                           'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREESURFER_HOME,
+                           'surface_type': surface_type})
+                cmd = 'matlab -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_command)
+                script_ret = utils.run_script(cmd)
+                if script_ret == '':
+                    return False
             # convert the  obj files to ply
             lookup = convert_perecelated_cortex(subject, aparc_name, surface_type, overwrite_ply_files)
             matlab_labels_vertices = True
@@ -467,6 +481,8 @@ def save_labels_vertices(subject, aparc_name):
     try:
         labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name, sorted_according_to_annot_file=True,
                                 read_only_from_annot=True)
+        if len(labels) == 0:
+            labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name)
         labels_names, labels_vertices = defaultdict(list), defaultdict(list)
         for label in labels:
             labels_names[label.hemi].append(label.name)
@@ -741,7 +757,8 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'parcelate_cortex'):
         # *) Calls Matlab 'splitting_cortical.m' script
         flags['parcelate_cortex'] = parcelate_cortex(
-            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files)
+            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files,
+            args.template_subject, args.overwrite_annotation, args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
