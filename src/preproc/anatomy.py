@@ -561,7 +561,7 @@ def create_vertices_labels_lookup(subject, atlas):
         for label in labels:
             for vertice in label.vertices:
                 lookup[hemi][vertice] = label.name
-        utils.save(lookup, output_fname)
+    utils.save(lookup, output_fname)
     return lookup
 #
 # @utils.timeit
