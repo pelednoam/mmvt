@@ -77,13 +77,16 @@ def build_fmri_contrast_file_template(subject, fmri_contrast_file_template='', t
 def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=(3, 97),
                       norm_by_percentile=True, symetric_colors=True, contrast_name='', new_name='', remote_fmri_dir='', template_brain=''):
     data = None
+    fmri_contrast_template_files = []
     for hemi in utils.HEMIS:
         if isinstance(fmri_contrast_file_template, dict):
             hemi_fname = fmri_contrast_file_template[hemi]
         elif isinstance(fmri_contrast_file_template, str):
-            fmri_contrast_template_files, _ = build_fmri_contrast_file_template(
-                subject, fmri_contrast_file_template, template_brain, remote_fmri_dir)
-            hemi_fname = fmri_contrast_template_files[0].format(hemi=hemi)
+            hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
+            if not op.isfile(hemi_fname):
+                fmri_contrast_template_files, _ = build_fmri_contrast_file_template(
+                    subject, fmri_contrast_file_template, template_brain, remote_fmri_dir)
+                hemi_fname = fmri_contrast_template_files[0].format(hemi=hemi)
             # hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
         else:
             raise Exception('Wrong type of template!')
@@ -92,7 +95,7 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
             x = np.load(hemi_fname)
         else:
             fmri = nib.load(hemi_fname)
-            x = fmri.get_data().ravel()
+            x = fmri.get_data().squeeze()
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         if x.shape[0] != verts.shape[0]:
             if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -103,7 +106,8 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
             else:
                 raise Exception("fMRI contrast map ({}) and the {} pial surface ({}) doesn't have the " +
                                 "same vertices number!".format(len(x), hemi, verts.shape[0]))
-        data = x if data is None else np.hstack((x, data))
+        x_ravel = x.ravel()
+        data = x_ravel if data is None else np.hstack((x_ravel, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
     if data_min == 0 and data_max == 0:
         print('Both min and max values are 0!!!')
@@ -113,21 +117,28 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
     if symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_max, data_min = data_minmax, -data_minmax
     # todo: the output_fname was changed, check where it's being used!
-    if new_name != '':
-        new_name = new_name
-    else:
-        if task != '' or contrast_name != '':
-            new_name = '{}{}'.format('{}_'.format(task) if task != '' else '', contrast_name)
-        else:
-            new_name = utils.namebase(fmri_contrast_template_files[0]).replace('{hemi}', '')
-            if new_name[-1] in ['_', '-', '.']:
-                new_name = new_name[:-1]
+    new_name = calc_new_name(new_name, task, contrast_name, fmri_contrast_template_files, fmri_contrast_file_template)
     output_fname = op.join(MMVT_DIR, subject, 'fmri', '{}_minmax.pkl'.format(new_name))
     print('Saving {}'.format(output_fname))
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     utils.save((data_min, data_max), output_fname)
     return op.isfile(output_fname)
 
+
+def calc_new_name(new_name, task, contrast_name, fmri_contrast_template_files, fmri_contrast_file_template):
+    if new_name != '':
+        new_name = new_name
+    else:
+        if task != '' or contrast_name != '':
+            new_name = '{}{}'.format('{}_'.format(task) if task != '' else '', contrast_name)
+        else:
+            if len(fmri_contrast_template_files) > 0:
+                new_name = utils.namebase(fmri_contrast_template_files[0]).replace('{hemi}', '')
+            else:
+                new_name = utils.namebase(fmri_contrast_file_template).replace('{hemi}', '')
+            if new_name[-1] in ['_', '-', '.']:
+                new_name = new_name[:-1]
+    return new_name
 
 def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_fol=''):
     if not op.isfile(fmri_fname):
@@ -563,6 +574,30 @@ def project_on_surface(subject, volume_file, surf_output_fname,
         if not op.isfile('{}.npy'.format(npy_output_fname)) or overwrite_surf_data:
             print('Saving surf data in {}.npy'.format(npy_output_fname))
             np.save(npy_output_fname, surf_data)
+
+
+def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
+    surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname)
+    surf_full_output_fname = find_hemi_files_from_template(surf_full_output_fname)[0]
+    output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
+        surf_full_output_fname)))
+    npy_output_fname_template = '{}.npy'.format(op.splitext(output_fname_template)[0])
+    both_files_exist = True
+    for hemi in utils.HEMIS:
+        fmri_fname = surf_full_output_fname.format(hemi=hemi)
+        x = np.squeeze(nib.load(fmri_fname).get_data())
+        morph_from_subject = check_vertices_num(subject, hemi, x)
+        if subject != morph_from_subject:
+            morphed_fmri_fname = '{0}_morphed_to_{2}{1}'.format(*op.splitext(fmri_fname), subject)
+            if not op.isfile(morphed_fmri_fname):
+                fu.surf2surf(morph_from_subject, subject, hemi, fmri_fname, morphed_fmri_fname)
+            x = np.squeeze(nib.load(morphed_fmri_fname).get_data())
+        npy_output_fname = npy_output_fname_template.format(hemi=hemi)
+        if not op.isfile(npy_output_fname) or overwrite_surf_data:
+            print('Saving surf data in {}'.format(npy_output_fname))
+            np.save(op.splitext(output_fname_template)[0], x)
+        both_files_exist = both_files_exist and op.isfile(npy_output_fname)
+    return both_files_exist, npy_output_fname_template
 
 
 def load_images_file(image_fname):
@@ -1392,6 +1427,11 @@ def misc(args):
     #     show_fMRI_using_pysurfer(subject, input_file=contrast_masked_file, hemi='rh')
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
+def calc_also_minmax(ret_flag, fmri_contrast_file_template, args):
+    if ret_flag and 'calc_fmri_min_max' not in args.function:
+        args.function.append('calc_fmri_min_max')
+    return fmri_contrast_file_template, args
+
 
 def main(subject, remote_subject_dir, args, flags):
     volume_name = args.volume_name if args.volume_name != '' else subject
@@ -1422,9 +1462,13 @@ def main(subject, remote_subject_dir, args, flags):
             flags['project_volume_to_surface'] = project_volume_to_surface(
                 subject, args.fmri_file_template, args.overwrite_surf_data, args.target_subject, remote_fmri_dir,
                 args.is_pet)
-        if flags['project_volume_to_surface'] and 'calc_fmri_min_max' not in args.function:
-            fmri_contrast_file_template = args.fmri_file_template
-            args.function.append('calc_fmri_min_max')
+            fmri_contrast_file_template, args = calc_also_minmax(
+                flags['project_volume_to_surface'], args.fmri_file_template, args)
+
+    if utils.should_run(args, 'load_surf_files'):
+        flags['load_surf_files'], output_fname_template = load_surf_files(
+            subject, args.fmri_file_template, args.overwrite_surf_data)
+        fmri_contrast_file_template, args = calc_also_minmax(flags['load_surf_files'], output_fname_template, args)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(

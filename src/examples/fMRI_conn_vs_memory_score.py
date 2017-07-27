@@ -53,7 +53,7 @@ def get_linda_subjects():
 def read_scoring():
     scoring_fname = op.join(root_path, 'neuropsych_scores.npz')
     if not op.isfile(scoring_fname):
-        scoring_xls_fname = '/cluster/neuromind/sx424/subject_info/StufflebeamLabDataba_DATA_LABELS_2017-01-27_1132.xlsx'
+        scoring_xls_fname = op.join(root_path, 'StufflebeamLabDataba_DATA_LABELS_2017-01-27_1132.xlsx')
         neuropsych_scores = pandas.read_excel(scoring_xls_fname, sheetname='Necessary scores', header=None, skiprows={0})
         subjects_master = np.array(neuropsych_scores.loc[:,0].astype(str))
         laterality = np.array(neuropsych_scores.loc[:, 1].astype(str))

@@ -49,6 +49,7 @@ csv_file_reader = mu.csv_file_reader
 time_to_go = mu.time_to_go
 tryit = mu.tryit
 to_str = mu.to_str
+read_config_ini = mu.read_config_ini
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
