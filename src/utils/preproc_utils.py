@@ -36,6 +36,9 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
             if args.sftp else ''
+    settings = utils.read_config_ini(MMVT_DIR)
+    if settings is not None:
+        print(settings)
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)

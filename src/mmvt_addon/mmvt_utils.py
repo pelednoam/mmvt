@@ -1327,10 +1327,12 @@ def to_str(s):
 
 def read_config_ini(fol='', ini_name='config.ini'):
     import configparser
-    config = configparser.ConfigParser()
     if fol == '':
         fol = get_user_fol()
-    config.read(op.join(fol, ini_name))
+    config = None
+    if op.isfile(op.join(fol, ini_name)):
+        config = configparser.ConfigParser()
+        config.read(op.join(fol, ini_name))
     return config
 
 
