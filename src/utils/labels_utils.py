@@ -66,9 +66,9 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     return True
 
 
-def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, n_jobs=1):
+def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
     now = time.time()
-    print('Read labels')
+    # print('Read labels')
     # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
     labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
@@ -80,7 +80,7 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, n_jobs=1)
     hemis_verts, labels_hemi, pia_verts = {}, {}, {}
     print('Read surface ({:.2f}s)'.format(time.time() - now))
     for hemi in HEMIS:
-        surf_fname = op.join(subjects_dir, subject, 'surf', '{}.pial'.format(hemi))
+        surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
         hemis_verts[hemi], _ = mne.surface.read_surface(surf_fname)
         labels_hemi[hemi] = [l for l in labels if l.hemi == hemi]
     print('Calc centroids ({:.2f}s)'.format(time.time() - now))

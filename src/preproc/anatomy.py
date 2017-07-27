@@ -355,7 +355,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
 
 def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
-        morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, n_jobs=6):
+        morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
     if annotations_exist:
@@ -363,7 +363,7 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
     else:
         if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
             if save_annot_file:
-                labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
+                labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
             return True
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
@@ -387,9 +387,9 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         if not ret:
             return False
     if do_solve_labels_collisions:
-        solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
+        solve_labels_collisions(subject, aparc_name, fsaverage, surf_type, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
+        labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
             SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
@@ -397,13 +397,14 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0
 
 
-def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annotation=False, n_jobs=6):
+def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annotation=False, surf_type='inflated',
+                    n_jobs=6):
     try:
         utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
     except:
         print("Can't write labels to annotation! Trying to solve labels collision")
         print(traceback.format_exc())
-        solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs)
+        solve_labels_collisions(subject, aparc_name, fsaverage, surf_type, n_jobs)
         try:
             utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
@@ -411,17 +412,18 @@ def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annota
             print(traceback.format_exc())
 
 
-def solve_labels_collisions(subject, aparc_name, fsaverage, n_jobs):
+def solve_labels_collisions(subject, aparc_name, fsaverage, surf_type='inflated', n_jobs=6):
     backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
-    lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, n_jobs)
+    lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
 
 
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False, fsaverage='fsaverage',
-                     overwrite_annotation=False, matlab_cmd='matlab', n_jobs=6, minimum_labels_num=50):
+                     overwrite_annotation=False, matlab_cmd='matlab', surf_type='inflated', n_jobs=6,
+                     minimum_labels_num=50):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
-    labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, n_jobs)
+    labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
     utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
@@ -751,14 +753,16 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage
         flags['create_annotation_from_template'] = create_annotation_from_template(
-            subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation, args.overwrite_morphing_labels,
-            args.solve_labels_collisions, args.morph_labels_from_fsaverage, args.fs_labels_fol, args.save_annot_file, args.n_jobs)
+            subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation,
+            args.overwrite_morphing_labels, args.solve_labels_collisions, args.morph_labels_from_fsaverage,
+            args.fs_labels_fol, args.save_annot_file, args.solve_labels_collision_surf_type, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
         # *) Calls Matlab 'splitting_cortical.m' script
         flags['parcelate_cortex'] = parcelate_cortex(
             subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files,
-            args.template_subject, args.overwrite_annotation, args.matlab_cmd, args.n_jobs)
+            args.template_subject, args.overwrite_annotation, args.matlab_cmd, args.solve_labels_collision_surf_type,
+            args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
@@ -866,6 +870,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
     parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
+    parser.add_argument('--solve_labels_collision_surf_type', help='', required=False, default='inflated')
+
 
 
     pu.add_common_args(parser)
