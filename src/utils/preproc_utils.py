@@ -36,9 +36,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
             if args.sftp else ''
-    settings = utils.read_config_ini(MMVT_DIR)
-    if settings is not None:
-        print(settings)
+    set_default_args(args)
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)
@@ -92,6 +90,23 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     utils.write_list_to_file(good_subjects, op.join(utils.get_logs_fol(), 'good_subjects.txt'))
     utils.write_list_to_file(bad_subjects, op.join(utils.get_logs_fol(), 'bad_subjects.txt'))
     return ret
+
+
+def set_default_args(args, ini_name='default_args.ini'):
+    settings = utils.read_config_ini(MMVT_DIR, ini_name)
+    if settings is not None:
+        import inspect
+        module_name = ''
+        for frm in inspect.stack():
+            if 'src/preproc' in frm.filename:
+                module_name = utils.namebase(frm.filename)
+                break
+        if module_name != '' and module_name in settings.sections():
+            for args_key in args.keys():
+                settings_val = settings[module_name].get(args_key, '')
+                if settings_val != '':
+                    print('{}: setting {} to {}'.format(ini_name, args_key, settings_val))
+                    args[args_key] = settings_val
 
 
 def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=None):
