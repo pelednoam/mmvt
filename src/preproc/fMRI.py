@@ -138,6 +138,8 @@ def calc_new_name(new_name, task, contrast_name, fmri_contrast_template_files, f
                 new_name = utils.namebase(fmri_contrast_file_template).replace('{hemi}', '')
             if new_name[-1] in ['_', '-', '.']:
                 new_name = new_name[:-1]
+    if new_name.startswith('fmri_'):
+        new_name = new_name[len('fmri_'):]
     return new_name
 
 def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_fol=''):
@@ -600,6 +602,36 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
     return both_files_exist, npy_output_fname_template
 
 
+def calc_files_diff(subject, surf_template_fname, overwrite_surf_data=False):
+    surf_template_fnames = surf_template_fname.split(',')
+    if len(surf_template_fnames) != 2:
+        print('calc_files_diff: surf_template_fname should be 2 names seperated with a comma.')
+        return False, ''
+    both_files_exist = True
+    for hemi in utils.HEMIS:
+        surfs_data = []
+        for ind, fname_template in enumerate(surf_template_fnames):
+            surf_full_output_fname = op.join(MMVT_DIR, subject, 'fmri', fname_template)
+            surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname, 'npy')
+            if len(surf_full_output_fnames) == 0:
+                print("Cant find {}!".format(surf_full_output_fname))
+                return False, ''
+            surf_full_output_fname = surf_full_output_fnames[0]
+            x = np.load(surf_full_output_fname.format(hemi=hemi))
+            surfs_data.append(x)
+        if surfs_data[0].shape != surfs_data[1].shape:
+            print('calc_files_diff: Files have different shapes! {}, {}'.format(
+                surfs_data[0].shape, surfs_data[1].shape))
+            return False, ''
+        surfs_diff = surfs_data[0] - surfs_data[1]
+        npy_output_fname = '{}_minus_{}'.format(*surf_template_fnames)
+        npy_output_fname_template = npy_output_fname.relace(hemi, '{hemi}')
+        if not op.isfile(npy_output_fname) or overwrite_surf_data:
+            print('Saving surf data in {}'.format(npy_output_fname))
+            np.save(npy_output_fname, surfs_diff)
+        both_files_exist = both_files_exist and op.isfile(npy_output_fname)
+    return both_files_exist, npy_output_fname_template
+
 def load_images_file(image_fname):
     for hemi in ['rh', 'lh']:
         x = nib.load(image_fname.format(hemi=hemi))
@@ -973,9 +1005,9 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
                    for hemi in utils.HEMIS])
 
 
-def find_template_files(template_fname):
+def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
     def find_files(template_fname):
-        return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in ['mgz', 'nii.gz', 'nii']]
+        return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in file_types]
 
     files = find_files(template_fname)
     if len(files) == 0:
@@ -985,9 +1017,12 @@ def find_template_files(template_fname):
     return files
 
 
-def find_hemi_files_from_template(template_fname):
+def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
     try:
-        return find_hemi_files(find_template_files(template_fname.replace('{hemi}', '*')))
+        if isinstance(file_types, str):
+            file_types = [file_types]
+        template_files = find_template_files(template_fname.replace('{hemi}', '?h'), file_types)
+        return find_hemi_files(template_files)
     except:
         print('Error in find_hemi_files_from_template: {}'.format(template_fname))
         print(traceback.format_exc())
@@ -999,7 +1034,9 @@ def find_hemi_files(files):
         print('len(files) should be >= 2!')
         print(files)
         return []
-    files = get_unique_files_into_mgz(files)
+    file_types = set([utils.file_type(f) for f in files])
+    if len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0:
+        files = get_unique_files_into_mgz(files)
     hemis_files = []
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
     parent_fol = utils.get_parent_fol(rh_files[0])
@@ -1430,8 +1467,6 @@ def misc(args):
 def calc_also_minmax(ret_flag, fmri_contrast_file_template, args):
     if ret_flag and 'calc_fmri_min_max' not in args.function:
         args.function.append('calc_fmri_min_max')
-    if fmri_contrast_file_template.startswith('fmri_'):
-        fmri_contrast_file_template = fmri_contrast_file_template[len('fmri_'):]
     return fmri_contrast_file_template, args
 
 
@@ -1471,6 +1506,10 @@ def main(subject, remote_subject_dir, args, flags):
         flags['load_surf_files'], output_fname_template = load_surf_files(
             subject, args.fmri_file_template, args.overwrite_surf_data)
         fmri_contrast_file_template, args = calc_also_minmax(flags['load_surf_files'], output_fname_template, args)
+
+    if 'calc_files_diff' in args.function:
+        flags['calc_files_diff'], output_fname_template = calc_files_diff(subject, args.fmri_file_template, args.overwrite_surf_data)
+        fmri_contrast_file_template, args = calc_also_minmax(flags['calc_files_diff'], output_fname_template, args)
 
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
@@ -1540,6 +1579,7 @@ def main(subject, remote_subject_dir, args, flags):
             flags['calc_labels_mean_freesurfer'] = calc_labels_mean_freesurfer(
                 subject, args.atlas, args.fmri_file_template, args.template_brain,
                 args.target_subject, remote_fmri_dir, args.overwrite_labels_data, args.excluded_labels)
+
     return flags
 
 

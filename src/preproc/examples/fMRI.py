@@ -185,6 +185,59 @@ def get_subjects_files(args):
         else:
             print("Couldn't find the files for {}!".format(subject))
 
+def compare_linda_and_hesheng_files(args):
+    for subject in args.subject:
+        _compare_linda_and_hesheng_files(subject)
+
+
+def _compare_linda_and_hesheng_files(subject):
+    from src.utils import labels_utils as lu
+    from src.utils import freesurfer_utils as fu
+    import os
+    # nmr00502,nmr00515,nmr00603,nmr00609,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710
+    hesheng_fol = '/autofs/cluster/scratch/tuesday/noam/DataProcessed_memory/{}/surf/'.format(subject)
+    linda_fol = '/autofs/cluster/neuromind/douw/scans/adults/{}/bold/*/'.format(subject)
+    subject_fol = op.join(fmri.MMVT_DIR, subject, 'fmri')
+    if not (utils.both_hemi_files_exist(op.join(subject_fol, 'fmri_hesheng_{hemi}.npy')) and
+            op.isfile(op.join(subject_fol, 'hesheng_minmax.pkl'))):
+        # Copy and rename Hesheng's files
+        hesheng_fnames = glob.glob(op.join(hesheng_fol,
+            '?h.{}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5.nii.gz'.format(subject)))
+        for fname in hesheng_fnames:
+            hemi = lu.get_label_hemi_invariant_name(utils.namebase(fname))
+            target_file = op.join(fmri.FMRI_DIR, subject, 'hesheng_{}.nii.gz'.format(hemi))
+            mgz_target_file = utils.change_fname_extension(target_file, 'mgz')
+            if not op.isfile(mgz_target_file):
+                shutil.copy(fname, target_file)
+                fu.nii_gz_to_mgz(target_file)
+                os.remove(target_file)
+        # Load Hesheng's files
+        args = fmri.read_cmd_args(dict(
+            subject=subject, atlas='laus125', function='load_surf_files', overwrite_surf_data=True,
+            fmri_file_template='hesheng_{hemi}.mgz'))
+        pu.run_on_subjects(args, fmri.main)
+    # Find Linda's files
+    linda_volume_fnames = glob.glob(op.join(linda_fol,
+        '{}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid.nii.gz'.format(subject)))
+    linda_volume_folder = utils.get_parent_fol(linda_volume_fnames[0])
+    # project linda files on the surface
+    args = fmri.read_cmd_args(dict(
+        subject=subject, function='project_volume_to_surface', remote_fmri_dir=linda_volume_folder,
+        fmri_file_template='{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid.nii.gz'))
+    pu.run_on_subjects(args, fmri.main)
+    # rename Linda's files
+    linda_fnames = glob.glob(op.join(fmri.FMRI_DIR, subject, 'fmri',
+        '{}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid*'.format(subject)))
+    for fname in linda_fnames:
+        hemi = lu.get_label_hemi_invariant_name(utils.namebase(fname))
+        target_file = op.join(fmri.FMRI_DIR, subject, 'linda_{}.npy'.format(hemi))
+        if not op.isfile(target_file):
+            shutil.copy(fname, target_file)
+    # Calc diff
+    args = fmri.read_cmd_args(dict(
+        subject=subject, function='calc_files_diff', fmri_file_template='*linda_{hemi}*,*hesheng_{hemi}'))
+    pu.run_on_subjects(args, fmri.main)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
