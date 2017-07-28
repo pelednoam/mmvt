@@ -492,8 +492,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
 
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
-    frame_str = str(bpy.context.scene.frame_current)
-
+    t = bpy.context.scene.frame_current
+    frame_str = str(t)
     data_min, data_max = 0, 0
     f = None
     for hemi in not_hiden_hemis:
@@ -536,6 +536,13 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
+
+        if f.ndim == 2:
+            if t >= f.shape[1]:
+                bpy.context.scene.frame_current = t = f.shape[1] - 1
+                bpy.data.scenes['Scene'].frame_preview_start = 0
+                bpy.data.scenes['Scene'].frame_preview_end = t
+            f = f[:, t]
 
         # todo: should read default values from ini file
         if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():

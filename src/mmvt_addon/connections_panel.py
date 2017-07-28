@@ -60,20 +60,19 @@ def check_connections(stat=STAT_DIFF):
     # d = load_connections_file()
     d = ConnectionsPanel.d
     if d is None:
-        indices = []
+        return None
+    threshold = bpy.context.scene.connections_threshold
+    threshold_type = bpy.context.scene.connections_threshold_type
+    if d.con_values.ndim >= 2:
+        windows_num = d.con_values.shape[1]
     else:
-        threshold = bpy.context.scene.connections_threshold
-        threshold_type = bpy.context.scene.connections_threshold_type
-        if d.con_values.ndim >= 2:
-            windows_num = d.con_values.shape[1]
-        else:
-            windows_num = 1
-        if d.con_values.ndim > 2 and d.con_values.shape[2] > 1:
-            stat_data = calc_stat_data(d.con_values, stat)
-        else:
-            stat_data = d.con_values
-        mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
-        indices = np.where(mask)[0]
+        windows_num = 1
+    if d.con_values.ndim > 2 and d.con_values.shape[2] > 1:
+        stat_data = calc_stat_data(d.con_values, stat)
+    else:
+        stat_data = d.con_values
+    mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
+    indices = np.where(mask)[0]
     parent_obj = bpy.data.objects.get(get_connections_parent_name(), None)
     if parent_obj:
         bpy.context.scene.connections_num = min(len(parent_obj.children) - 1, len(indices))

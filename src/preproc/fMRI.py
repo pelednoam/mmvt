@@ -595,7 +595,7 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
         npy_output_fname = npy_output_fname_template.format(hemi=hemi)
         if not op.isfile(npy_output_fname) or overwrite_surf_data:
             print('Saving surf data in {}'.format(npy_output_fname))
-            np.save(op.splitext(output_fname_template)[0], x)
+            np.save(npy_output_fname, x)
         both_files_exist = both_files_exist and op.isfile(npy_output_fname)
     return both_files_exist, npy_output_fname_template
 
@@ -1430,6 +1430,8 @@ def misc(args):
 def calc_also_minmax(ret_flag, fmri_contrast_file_template, args):
     if ret_flag and 'calc_fmri_min_max' not in args.function:
         args.function.append('calc_fmri_min_max')
+    if fmri_contrast_file_template.startswith('fmri_'):
+        fmri_contrast_file_template = fmri_contrast_file_template[len('fmri_'):]
     return fmri_contrast_file_template, args
 
 
