@@ -306,7 +306,7 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_CLUSTERS])
         # todo: support in subcorticals
         plot_subcorticals = False
-    plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters,
+    return plot_activity(map_type, ColoringMakerPanel.faces_verts, threshold, meg_sub_activity, clusters=clusters,
                   plot_subcorticals=plot_subcorticals)
     # setup_environment_settings()
 

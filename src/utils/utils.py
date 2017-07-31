@@ -1771,6 +1771,40 @@ def find_num_in_str(string):
 def file_modification_time(fname):
     return time.strftime('%H:%M:%S %m/%d/%Y', time.gmtime(op.getmtime(fname)))
 
+
+def check_for_freesurfer(func):
+    def wrapper(*args, **kwargs):
+        if os.environ.get('FREESURFER_HOME', '') == '':
+            raise Exception('Source freesurfer and rerun')
+        retval = func(*args, **kwargs)
+        return retval
+    return wrapper
+
+
+def files_needed(necessary_files):
+    def real_files_needed(func):
+        def wrapper(*args, **kwargs):
+            subjects_dir = get_link_dir(get_links_dir(), 'subjects', 'SUBJECTS_DIR')
+            subject = kwargs.get('subject', args[0])
+            remote_subject_dir = kwargs.get('remote_subject_dir', '')
+            default_mmvt_args = dict(sftp=False, sftp_username='', sftp_domain='', sftp_password='',
+                                overwrite_fs_files=False, print_traceback=False, sftp_port=22)
+            mmvt_args = kwargs.get('mmvt_args', default_mmvt_args)
+            ret = prepare_subject_folder(
+                necessary_files, subject, remote_subject_dir, subjects_dir,
+                mmvt_args.sftp, mmvt_args.sftp_username, mmvt_args.sftp_domain, mmvt_args.sftp_password,
+                mmvt_args.overwrite_fs_files, mmvt_args.print_traceback, mmvt_args.sftp_port)
+            if ret:
+                if 'mmvt_args' in kwargs:
+                    del kwargs['mmvt_args']
+                retval = func(*args, **kwargs)
+                return retval
+            else:
+                return False
+        return wrapper
+    return real_files_needed
+
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct

@@ -70,6 +70,7 @@ def create_lut_file_for_atlas(subject, atlas):
     return op.isfile(mmvt_lut_fname) and op.isfile(lut_npz_fname)
 
 
+@utils.check_for_freesurfer
 def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
         print('No annot file was found for {}!'.format(atlas))
@@ -226,6 +227,5 @@ def read_cmd_args(argv):
 
 if __name__ == '__main__':
     args = read_cmd_args(None)
-    pu.check_freesurfer()
     pu.run_on_subjects(args, main)
     print('finish!')

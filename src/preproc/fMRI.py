@@ -559,8 +559,8 @@ def project_on_surface(subject, volume_file, surf_output_fname,
         target_subject = subject
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     for hemi in utils.HEMIS:
-        print('project {} to {}'.format(volume_file, hemi))
         if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
+            print('project {} to {}'.format(volume_file, hemi))
             if not is_pet:
                 surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
                     target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
@@ -608,6 +608,8 @@ def calc_files_diff(subject, surf_template_fname, overwrite_surf_data=False):
         print('calc_files_diff: surf_template_fname should be 2 names seperated with a comma.')
         return False, ''
     both_files_exist = True
+    npy_output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}minus_{}'.format(
+        *[tmp.replace('*', '').replace('{hemi}', '') for tmp in surf_template_fnames]) + '{hemi}.npy')
     for hemi in utils.HEMIS:
         surfs_data = []
         for ind, fname_template in enumerate(surf_template_fnames):
@@ -619,18 +621,25 @@ def calc_files_diff(subject, surf_template_fname, overwrite_surf_data=False):
             surf_full_output_fname = surf_full_output_fnames[0]
             x = np.load(surf_full_output_fname.format(hemi=hemi))
             surfs_data.append(x)
-        if surfs_data[0].shape != surfs_data[1].shape:
-            print('calc_files_diff: Files have different shapes! {}, {}'.format(
-                surfs_data[0].shape, surfs_data[1].shape))
-            return False, ''
+        shapes = [surfs_data[0].shape, surfs_data[1].shape]
+        if shapes[0] != shapes[1]:
+            print('calc_files_diff: Files have different shapes! {}'.format(shapes))
+            if shapes[0][0] == shapes[1][0] and shapes[0][1] != shapes[1][1]:
+                argmax = 0 if shapes[0][1] > shapes[1][1] else 1
+                argmin = 1 - argmax
+                nskip = shapes[argmax][1] - shapes[argmin][1]
+                print('Skipping {} first frames in {}'.format(nskip, surf_template_fnames[argmax]))
+                surfs_data[argmax] = surfs_data[argmax][:, nskip:]
+            else:
+                return False, ''
         surfs_diff = surfs_data[0] - surfs_data[1]
-        npy_output_fname = '{}_minus_{}'.format(*surf_template_fnames)
-        npy_output_fname_template = npy_output_fname.relace(hemi, '{hemi}')
+        npy_output_fname = npy_output_fname_template.format(hemi=hemi)
         if not op.isfile(npy_output_fname) or overwrite_surf_data:
             print('Saving surf data in {}'.format(npy_output_fname))
             np.save(npy_output_fname, surfs_diff)
         both_files_exist = both_files_exist and op.isfile(npy_output_fname)
     return both_files_exist, npy_output_fname_template
+
 
 def load_images_file(image_fname):
     for hemi in ['rh', 'lh']:
@@ -680,22 +689,34 @@ def copy_volume_to_blender(subject, volume_fname_template, contrast='', overwrit
     return volume_fname
 
 
-def project_volume_to_surface_get_files(subject, remote_subject_dir, args):
-    necessary_files = {'mri': ['orig.mgz'],
-                       'surf': ['lh.pial', 'rh.pial', 'lh.thickness', 'rh.thickness']}
-    return utils.prepare_subject_folder(
-        necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
-        args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
-        args.overwrite_fs_files, args.print_traceback, args.sftp_port)
+# def project_volume_to_surface_get_files(subject, remote_subject_dir, args):
+#     necessary_files = {'mri': ['orig.mgz'],
+#                        'surf': ['lh.pial', 'rh.pial', 'lh.thickness', 'rh.thickness']}
+#     return utils.prepare_subject_folder(
+#         necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
+#         args.sftp, args.sftp_username, args.sftp_domain, args.sftp_password,
+#         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
-# mri/orig.mgz
+@utils.check_for_freesurfer
+@utils.files_needed({'mri': ['orig.mgz'], 'surf': ['lh.pial', 'rh.pial', 'lh.thickness', 'rh.thickness']})
 def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_data=True,
                               target_subject='', remote_fmri_dir='', is_pet=False):
-    if os.environ.get('FREESURFER_HOME', '') == '':
-        raise Exception('Source freesurfer and rerun')
     if target_subject == '':
         target_subject = subject
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    volume_fname, surf_output_fname, npy_surf_fname = get_volume_and_surf_fnames(
+        subject, volume_fname_template, target_subject, remote_fmri_dir)
+    if not utils.both_hemi_files_exist(npy_surf_fname):
+        project_on_surface(subject, volume_fname, surf_output_fname,
+                       target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
+    freeview_volume_fname = op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname))
+    if not op.isfile(freeview_volume_fname):
+        shutil.copy(volume_fname, freeview_volume_fname)
+    return utils.both_hemi_files_exist(npy_surf_fname) and op.isfile(freeview_volume_fname), npy_surf_fname
+
+
+def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject='', remote_fmri_dir=''):
     remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
     full_input_fname_template = op.join(remote_fmri_dir, volume_fname_template)
     full_input_fname_template = full_input_fname_template.replace('{format}', '*')
@@ -712,19 +733,12 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
         shutil.copy(volume_fname, local_fname)
     volume_fname = local_fname
 
-    # volume_fname = copy_volume_to_blender(subject, volume_fname_template, contrast, overwrite_volume)
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     surf_output_fname = op.join(utils.get_parent_fol(volume_fname), '{}{}_{}.mgz'.format(
         utils.namebase(volume_fname), target_subject_prefix, '{hemi}'))
-
-    project_on_surface(subject, volume_fname, surf_output_fname,
-                       target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
-    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-    shutil.copy(volume_fname, op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname)))
-    return utils.both_hemi_files_exist(surf_output_fname)
-
-# fu.transform_mni_to_subject('colin27', data_fol, volume_fname, '{}_{}'.format(target_subject, volume_fname))
-    # load_images_file(surf_output_fname)
+    npy_surf_fname = op.join(MMVT_DIR, subject, 'fmri',
+                             'fmri_{}.npy'.format(utils.namebase(surf_output_fname.format(hemi='{hemi}'))))
+    return volume_fname, surf_output_fname, npy_surf_fname
 
 
 def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method):
@@ -978,8 +992,6 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
                 target_subject = 'fsaverage5'
             else:
                 raise Exception('save_activity_map: wrong number of vertices!')
-            if os.environ.get('FREESURFER_HOME', '') == '':
-                raise Exception('Source freesurfer and rerun')
             sp = fmri_fname.split(hemi)
             sep = '.' if '.' in utils.namebase(fmri_fname) else '_'
             target_fname = '{}{}{}{}{}'.format(sp[0], 'morphed{}to{}{}'.format(sep, sep, subject), sep, hemi, sp[1])
@@ -1088,6 +1100,7 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
     return fmri_fname
 
 
+@utils.check_for_freesurfer
 def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
                              fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
     # fsd: functional subdirectory
@@ -1157,8 +1170,6 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
-    if os.environ.get('FREESURFER_HOME', '') == '':
-        raise Exception('Source freesurfer and rerun')
     trg_subject = subject if trg_subject == '' else trg_subject
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
@@ -1464,6 +1475,7 @@ def misc(args):
     #     show_fMRI_using_pysurfer(subject, input_file=contrast_masked_file, hemi='rh')
     # brain = Brain('fsaverage', 'both', "pial", curv=False, offscreen=False)
 
+
 def calc_also_minmax(ret_flag, fmri_contrast_file_template, args):
     if ret_flag and 'calc_fmri_min_max' not in args.function:
         args.function.append('calc_fmri_min_max')
@@ -1492,15 +1504,15 @@ def main(subject, remote_subject_dir, args, flags):
             args.threshold, n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'project_volume_to_surface'):
-        ret = project_volume_to_surface_get_files(subject, remote_subject_dir, args)
-        if not ret:
-            flags['project_volume_to_surface'] = False
-        else:
-            flags['project_volume_to_surface'] = project_volume_to_surface(
-                subject, args.fmri_file_template, args.overwrite_surf_data, args.target_subject, remote_fmri_dir,
-                args.is_pet)
-            fmri_contrast_file_template, args = calc_also_minmax(
-                flags['project_volume_to_surface'], args.fmri_file_template, args)
+        # ret = project_volume_to_surface_get_files(subject, remote_subject_dir, args)
+        # if not ret:
+        #     flags['project_volume_to_surface'] = False
+        # else:
+        flags['project_volume_to_surface'], surf_output_fname = project_volume_to_surface(
+            subject, args.fmri_file_template, overwrite_surf_data=args.overwrite_surf_data, target_subject=args.target_subject,
+            is_pet= args.is_pet, remote_fmri_dir=remote_fmri_dir, mmvt_args=args)
+        fmri_contrast_file_template, args = calc_also_minmax(
+            flags['project_volume_to_surface'], surf_output_fname, args)
 
     if utils.should_run(args, 'load_surf_files'):
         flags['load_surf_files'], output_fname_template = load_surf_files(
@@ -1641,6 +1653,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmri_fname', help='', required=False, default='')
     parser.add_argument('--labels_order_fname', help='', required=False, default='')
     parser.add_argument('--labels_indices_to_remove_from_data', help='', required=False, default='', type=au.int_arr_type)
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'surf': ['lh.sphere.reg', 'rh.sphere.reg']}

@@ -36,6 +36,7 @@ mri_vol2vol = 'mri_vol2vol --mov {source_volume_fname} --s {subject} --targ {tar
 mri_segstats = 'mri_segstats --i {fmri_fname} --avgwf {output_txt_fname} --annot {target_subject} {hemi} {atlas} --sum {output_sum_fname}'
 
 
+@utils.check_for_freesurfer
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
     temp_output = output_fname is None
     if output_fname is None:
@@ -49,6 +50,7 @@ def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, proj
 
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
+@utils.check_for_freesurfer
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
                         projmeth="frac", projsum="avg", projarg=[0, 1, .1],
                         surf="white", smooth_fwhm=3, mask_label=None,
@@ -209,7 +211,6 @@ def read_scalar_data(filepath):
     return scalar_data
 
 
-
 def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig.mgz',
         subject_contrast_file_name='sig_subject.mgz', print_only=False):
     mni305_sig_file = os.path.join(volue_fol, volume_fname)
@@ -285,6 +286,7 @@ def check_env_var(var_name, var_val):
             raise Exception('No {}!'.format(var_name))
 
 
+@utils.check_for_freesurfer
 def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_fname,
                 overwrite_subcortical_objs=False):
     ret = True
@@ -318,6 +320,7 @@ def warp_buckner_atlas_output_fname(subject, subjects_dir, subregions_num=7, cer
         subregions_num, cerebellum_segmentation))
 
 
+@utils.check_for_freesurfer
 def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname, print_only=False):
     norm_fname = op.join(subjects_dir, subject, 'mri', 'norm.mgz')
     if not op.isfile(norm_fname):
@@ -354,6 +357,7 @@ def get_tr(fmri_fname):
         return tr
 
 
+@utils.check_for_freesurfer
 def mri_convert(org_fname, new_fname, overwrite=False):
     if not op.isfile(new_fname) or overwrite:
         utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
@@ -382,6 +386,7 @@ def mgz_to_nii_gz(fmri_fname):
     return new_fmri_fname
 
 
+@utils.check_for_freesurfer
 def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False):
     if source_subject != target_subject:
         rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
@@ -390,12 +395,14 @@ def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, 
             raise Exception('surf2surf: Target file was not created!')
 
 
+@utils.check_for_freesurfer
 def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fname, cwd=None, print_only=False):
     if source_volume_fname != target_volume_fname:
         rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
         rs(mri_vol2vol)
         if not op.isfile(output_volume_fname):
             raise Exception('vol2vol: Target file was not created!')
+
 
 
 def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overwrite=True, output_txt_fname='',

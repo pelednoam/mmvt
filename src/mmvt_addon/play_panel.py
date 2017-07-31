@@ -24,18 +24,18 @@ bpy.types.Scene.rotate_brain_while_playing = bpy.props.BoolProperty(default=Fals
 bpy.types.Scene.meg_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.electrodes_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=0)
-bpy.types.Scene.play_type = bpy.props.EnumProperty(
-    items=[("meg", "MEG activity", "", 1), ("meg_labels", 'MEG Labels', '', 2),
-           ('fmri', 'fMRI dynamics', '', 3), ('fmri_labels', 'fMRI labels dynamics', '', 4),
-           ("labels_connectivity", "Labels connectivity", "", 5),
-           ("elecs", "Electrodes activity", "", 6),
-           ("elecs_coh", "Electrodes coherence", "",7), ("elecs_act_coh", "Electrodes activity & coherence", "", 8),
-           ("stim", "Electrodes stimulation", "", 9), ("stim_sources", "Electrodes stimulation & sources", "", 10),
-           ("meg_elecs", "Meg & Electrodes activity", "", 11),
-           ("meg_elecs_coh", "Meg & Electrodes activity & coherence", "",12),
-           ("eeg_helmet", "EEG helmet", "",13)],
-           description='Type pf data to play')
-
+items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
+       ('fmri', 'fMRI'), ('fmri_dynamics', 'fMRI dynamics'),
+       ('fmri_labels', 'fMRI labels dynamics'),
+       ("labels_connectivity", "Labels connectivity"),
+       ("elecs", "Electrodes activity"),
+       ("elecs_coh", "Electrodes coherence"), ("elecs_act_coh", "Electrodes activity & coherence"),
+       ("stim", "Electrodes stimulation"), ("stim_sources", "Electrodes stimulation & sources"),
+       ("meg_elecs", "Meg & Electrodes activity"),
+       ("meg_elecs_coh", "Meg & Electrodes activity & coherence"),
+       ("eeg_helmet", "EEG helmet")]
+items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
+bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Type pf data to play')
 
 def _addon():
     return PlayPanel.addon
@@ -163,6 +163,8 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
         successful_ret = _addon().plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
             PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['fmri']:
+        successful_ret = _addon().activity_map_coloring('FMRI')
+    if play_type in ['fmri_dynamics']:
         successful_ret = _addon().plot_activity(
             'FMRI_DYNAMICS', PlayPanel.faces_verts, bpy.context.scene.meg_threshold, None, False)
     if play_type in ['elecs', 'meg_elecs', 'elecs_act_coh', 'meg_elecs_coh']:
