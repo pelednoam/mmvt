@@ -27,7 +27,7 @@ def create_new_subject_file(args):
         empty_subject_fname = op.join(su.get_mmvt_dir(), 'empty_subject.blend')
         if not op.isfile(empty_subject_fname):
             shutil.copy(op.join(su.get_resources_dir(), 'empty_subject.blend'), empty_subject_fname)
-        if op.isfile(new_fname):
+        if op.isfile(new_fname) and not args.overwrite_blend:
             overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
             if su.is_true(overwrite):
                os.remove(new_fname)
@@ -38,6 +38,7 @@ def create_new_subject_file(args):
 
 def read_args(argv=None):
     parser = su.add_default_args()
+    parser.add_argument('--overwrite_blend', help='', required=False, default='0')
     return su.parse_args(parser, argv)
 
 
