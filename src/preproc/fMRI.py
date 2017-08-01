@@ -581,7 +581,11 @@ def project_on_surface(subject, volume_file, surf_output_fname,
 
 def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
     surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname)
-    surf_full_output_fname = find_hemi_files_from_template(surf_full_output_fname)[0]
+    surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
+    if len(surf_full_output_fnames) == 0:
+        print('No hemi files were found from the template {}'.format(surf_full_output_fname))
+        return False, ''
+    surf_full_output_fname = surf_full_output_fnames[0]
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
         surf_full_output_fname)))
     npy_output_fname_template = '{}.npy'.format(op.splitext(output_fname_template)[0])
@@ -1109,7 +1113,6 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
 def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
                              fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
     # fsd: functional subdirectory
-
     def no_files_were_found():
         print('Trying to find remote files in {}'.format(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)))
         files = find_volume_files_from_template(op.join(remote_fmri_dir, fsd, '001', fmri_file_template)) + \
@@ -1176,6 +1179,11 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
     trg_subject = subject if trg_subject == '' else trg_subject
+    new_fname_template = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(
+        fsd, int(fwhm), trg_subject, '{hemi}'))
+    if utils.both_hemi_files_exist(new_fname_template) and not overwrite:
+        return True
+
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
         fmri_file_template = '*'
@@ -1213,15 +1221,6 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
             '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz', hemi=hemi)
 
     return copy_output_files()
-    # for hemi in utils.HEMIS:
-    #     # new_fname = utils.add_str_to_file_name(fmri_fname, '_{}'.format(hemi))
-    #     new_fname = op.join(FMRI_DIR, subject, '{}.sm{}.{}.{}.mgz'.format(fsd, int(fwhm), trg_subject, hemi))
-    #     if not op.isfile(new_fname):
-    #         res_fname = op.join(FMRI_DIR, subject, fsd, '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz')
-    #         fu.nii_gz_to_mgz(res_fname)
-    #         res_fname = utils.change_fname_extension(res_fname, 'mgz')
-    #         shutil.copy(res_fname, new_fname)
-
 
 
 def get_tr(subject, fmri_fname):

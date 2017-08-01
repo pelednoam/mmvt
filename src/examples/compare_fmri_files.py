@@ -18,12 +18,14 @@ hesheng_surf_fol = op.join(hesheng_root, 'surf')
 hesheng_vol_fol = op.join(hesheng_root, 'bold', '*')
 hesheng_vol_template = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid.nii.gz'
 hesheng_template = '?h.{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5.nii.gz'
+
 linda_fol = '/autofs/cluster/neuromind/douw/scans/adults/{subject}/bold/*/'
 linda_surf_fol = op.join(fmri.FMRI_DIR, '{subject}')
 linda_vol_template = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid.nii.gz'
 linda_hemi_template = '{}_{}.mgz'.format(linda_vol_template[:-len('.nii.gz')], '{hemi}')
 linda_template_npy = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid*.npy'
 
+fs_surf_teamplte = 'rest_linda.sm6.{subject}.{hemi}.mgz'
 
 def check_original_files_dim(subject):
     hesheng_vol_fnames = glob.glob(op.join(
@@ -42,8 +44,7 @@ def check_original_files_dim(subject):
         print(fname, nib.load(fname).get_data().shape)
 
 
-def compare_linda_and_hesheng_files(subject):
-    # nmr00502,nmr00515,nmr00603,nmr00609,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710
+def calc_hesheng_surf(subject, atlas):
     subject_fol = op.join(fmri.MMVT_DIR, subject, 'fmri')
     if not (utils.both_hemi_files_exist(op.join(subject_fol, 'fmri_hesheng_{hemi}.npy')) and
             op.isfile(op.join(subject_fol, 'hesheng_minmax.pkl'))):
@@ -60,9 +61,12 @@ def compare_linda_and_hesheng_files(subject):
                 os.remove(target_file)
         # Load Hesheng's files
         args = fmri.read_cmd_args(dict(
-            subject=subject, atlas='laus125', function='load_surf_files', overwrite_surf_data=True,
+            subject=subject, atlas=atlas, function='load_surf_files', overwrite_surf_data=True,
             fmri_file_template='hesheng_{hemi}.mgz'))
         pu.run_on_subjects(args, fmri.main)
+
+
+def calc_linda_surf(subject, atlas):
     # Check for Linda's output fname
     if not utils.both_hemi_files_exist(op.join(fmri.MMVT_DIR, subject, 'fmri', 'fmri_linda_{}.npy'.format('{hemi}'))) \
             and not op.isfile(op.join(fmri.MMVT_DIR, subject, 'fmri', 'linda_minmax.pkl')):
@@ -94,6 +98,23 @@ def compare_linda_and_hesheng_files(subject):
             utils.namebase(linda_vol_template.format(subject=subject)))))
         for mgz_file in mgz_files:
             os.remove(mgz_file)
+
+
+def calc_freesurfer_surf(subject, atlas):
+    # Clean
+    args = fmri.read_cmd_args(dict(
+        subject=subject, atlas=atlas, function='clean_4d_data', fmri_file_template='rest.nii*', fsd='rest_linda',
+        overwrite_4d_preproc=False))
+    pu.run_on_subjects(args, fmri.main)
+    # save the surf files
+    for hemi in utils.HEMIS:
+        args = fmri.read_cmd_args(dict(
+            subject=subject, atlas=atlas, function='load_surf_files', overwrite_surf_data=True,
+            fmri_file_template=fs_surf_teamplte.format(subject=subject, hemi='{hemi}')))
+        pu.run_on_subjects(args, fmri.main)
+
+
+def calc_diff(subject):
     # Calc diff
     args = fmri.read_cmd_args(dict(
         subject=subject, function='calc_files_diff', fmri_file_template='*linda_{hemi}*,*hesheng_{hemi}'))
@@ -135,6 +156,11 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas', required=False, default='laus125')
     parser.add_argument('--n_jobs', help='n_jobs', required=False, default=6, type=int)
     args = utils.Bag(au.parse_parser(parser))
+
+    # nmr00502,nmr00515,nmr00603,nmr00609,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710
     # check_original_files_dim(args.subject)
-    # compare_linda_and_hesheng_files(args.subject)
-    compare_connectivity(args.subject, args.atlas, args.n_jobs)
+    # calc_hesheng_surf(args.subject, args.atlas)
+    # calc_linda_surf(args.subject, args.atlas)
+    calc_freesurfer_surf(args.subject, args.atlas)
+    # calc_diff(args.subject)
+    # compare_connectivity(args.subject, args.atlas, args.n_jobs)

@@ -931,8 +931,9 @@ def calc_stc_minmax(stc):
 def fmri_files_update(self, context):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
+    fname_template = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, '{hemi}'))
     for hemi in mu.HEMIS:
-        fname = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, hemi))
+        fname = fname_template.format(hemi=hemi)
         if op.isfile(fname):
             ColoringMakerPanel.fMRI[hemi] = np.load(fname)
         else:
@@ -943,15 +944,32 @@ def fmri_files_update(self, context):
     if not op.isfile(fmri_data_maxmin_fname):
         fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(
             bpy.context.scene.fmri_files))
-    if op.isfile(fmri_data_maxmin_fname):
-        data_min, data_max = mu.load(fmri_data_maxmin_fname)
-        ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
-        if not _addon().colorbar_values_are_locked():
-            _addon().set_colorbar_max_min(data_max, data_min)
-            _addon().set_colorbar_title('fMRI')
-    else:
-        print("fmri_files_update: Can't find the minmax ({}) for the selected fMRI file".format(fmri_data_maxmin_fname))
+    if not op.isfile(fmri_data_maxmin_fname):
+        calc_fmri_min_max(fmri_data_maxmin_fname, fname_template)
+    data_min, data_max = mu.load(fmri_data_maxmin_fname)
+    ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
+    ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
+    if not _addon().colorbar_values_are_locked():
+        _addon().set_colorbar_max_min(data_max, data_min)
+        _addon().set_colorbar_title('fMRI')
+
+
+def calc_fmri_min_max(fmri_data_maxmin_fname, fname_template):
+    # Remove the RGB columns
+    for hemi in mu.HEMIS:
+        fname = fname_template.format(hemi=hemi)
+        x = np.load(fname)
+        if x.ndim > 1 and x.shape[1] == 4:
+            x = x[:, 0]
+            np.save(fname, x)
+        ColoringMakerPanel.fMRI[hemi] = x
+    data = np.hstack((ColoringMakerPanel.fMRI[hemi] for hemi in mu.HEMIS))
+    data_min, data_max = np.nanmin(data), np.nanmax(data)
+    print('fmri_files_update: min: {}, max: {}'.format(data_min, data_max))
+    data_minmax = mu.get_max_abs(data_max, data_min)
+    if np.sign(data_max) != np.sign(data_min) and data_min != 0:
+        data_max, data_min = data_minmax, -data_minmax
+    mu.save((data_min, data_max), fmri_data_maxmin_fname)
 
 
 def electrodes_sources_files_update(self, context):
