@@ -179,7 +179,7 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
     with open(op.join(org_fol, 'combine_images_cmd.txt'), 'w') as f:
-        f.write(combine_images_cmd)
+        f.write(combine_images_cmd.format(**locals()))
     return '{}.mp4'.format(movie_name)
 
 
