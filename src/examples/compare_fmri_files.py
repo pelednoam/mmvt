@@ -25,7 +25,8 @@ linda_vol_template = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bp
 linda_hemi_template = '{}_{}.mgz'.format(linda_vol_template[:-len('.nii.gz')], '{hemi}')
 linda_template_npy = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid*.npy'
 
-fs_surf_teamplte = 'rest_linda.sm6.{subject}.{hemi}.mgz'
+fs_surf_fol = linda_surf_fol
+fs_surf_template = 'rest_linda.sm6.{subject}.{hemi}.mgz'
 
 def check_original_files_dim(subject):
     hesheng_vol_fnames = glob.glob(op.join(
@@ -109,7 +110,7 @@ def calc_freesurfer_surf(subject, atlas):
     # save the surf files
     args = fmri.read_cmd_args(dict(
         subject=subject, atlas=atlas, function='load_surf_files', overwrite_surf_data=True,
-        fmri_file_template=fs_surf_teamplte.format(subject=subject, hemi='{hemi}')))
+        fmri_file_template=fs_surf_template.format(subject=subject, hemi='{hemi}')))
     pu.run_on_subjects(args, fmri.main)
     # Renaming the files
     root_fol = op.join(fmri.MMVT_DIR, subject, 'fmri')
@@ -120,16 +121,17 @@ def calc_freesurfer_surf(subject, atlas):
               op.join(root_fol, 'freesurfer_minmax.pkl'))
 
 
-def calc_diff(subject):
+def calc_diff(subject, fmri_file_template='*linda_{hemi}*,*hesheng_{hemi}'):
     # Calc diff
     args = fmri.read_cmd_args(dict(
-        subject=subject, function='calc_files_diff', fmri_file_template='*linda_{hemi}*,*hesheng_{hemi}'))
+        subject=subject, function='calc_files_diff', fmri_file_template=fmri_file_template))
     pu.run_on_subjects(args, fmri.main)
 
 
 def compare_connectivity(subject, atlas, n_jobs=6):
-    for name, fol, template in zip(['hesheng', 'linda'], [hesheng_surf_fol, linda_surf_fol],
-                                   [hesheng_template, linda_hemi_template]):
+    for name, fol, template in zip(['hesheng', 'linda', 'freesurfer'],
+                                   [hesheng_surf_fol, linda_surf_fol, fs_surf_fol],
+                                   [hesheng_template, linda_hemi_template, fs_surf_template]):
         output_fname_template = op.join(
             fmri.MMVT_DIR, subject, 'fmri', '{}_labels_data_laus125_mean_{}.npz'.format(name, '{hemi}'))
         if not utils.both_hemi_files_exist(output_fname_template):
@@ -167,6 +169,7 @@ if __name__ == '__main__':
     # check_original_files_dim(args.subject)
     # calc_hesheng_surf(args.subject, args.atlas)
     # calc_linda_surf(args.subject, args.atlas)
-    calc_freesurfer_surf(args.subject, args.atlas)
+    # calc_freesurfer_surf(args.subject, args.atlas)
     # calc_diff(args.subject)
-    # compare_connectivity(args.subject, args.atlas, args.n_jobs)
+    # calc_diff(args.subject, fmri_file_template='*fmri_freesurfer_{hemi}*,*fmri_hesheng_{hemi}')
+    compare_connectivity(args.subject, args.atlas, args.n_jobs)
