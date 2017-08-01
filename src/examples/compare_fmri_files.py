@@ -107,11 +107,17 @@ def calc_freesurfer_surf(subject, atlas):
         overwrite_4d_preproc=False))
     pu.run_on_subjects(args, fmri.main)
     # save the surf files
+    args = fmri.read_cmd_args(dict(
+        subject=subject, atlas=atlas, function='load_surf_files', overwrite_surf_data=True,
+        fmri_file_template=fs_surf_teamplte.format(subject=subject, hemi='{hemi}')))
+    pu.run_on_subjects(args, fmri.main)
+    # Renaming the files
+    root_fol = op.join(fmri.MMVT_DIR, subject, 'fmri')
     for hemi in utils.HEMIS:
-        args = fmri.read_cmd_args(dict(
-            subject=subject, atlas=atlas, function='load_surf_files', overwrite_surf_data=True,
-            fmri_file_template=fs_surf_teamplte.format(subject=subject, hemi='{hemi}')))
-        pu.run_on_subjects(args, fmri.main)
+        os.rename(op.join(root_fol, 'fmri_rest_linda.sm6.{}.{}.npy'.format(subject, hemi)),
+                  op.join(root_fol, 'fmri_freesurfer_{}.npy'.format(hemi)))
+    os.rename(op.join(root_fol, 'rest_linda.sm6.{}_minmax.pkl'.format(subject)),
+              op.join(root_fol, 'freesurfer_minmax.pkl'))
 
 
 def calc_diff(subject):

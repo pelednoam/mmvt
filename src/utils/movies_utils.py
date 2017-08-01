@@ -157,6 +157,7 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
         movie_name = images_prefix
     elif movie_name == '':
         movie_name = 'output_video'
+    org_fol = fol
     if utils.is_windows() or copy_files:
         fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
     images_prefix = op.join(fol, images_prefix)
@@ -177,6 +178,8 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
         combine_images_cmd += ' -loglevel debug'
     rs = utils.partial_run_script(locals())
     rs(combine_images_cmd)
+    with open(op.join(org_fol, 'combine_images_cmd.txt'), 'w') as f:
+        f.write(combine_images_cmd)
     return '{}.mp4'.format(movie_name)
 
 

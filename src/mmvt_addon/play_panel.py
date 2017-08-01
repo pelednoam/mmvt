@@ -7,6 +7,9 @@ import time
 import os
 import pprint as pp # pretty printing: pp.pprint(something)
 from collections import OrderedDict
+import glob
+import re
+import shutil
 
 HEMIS = mu.HEMIS
 
@@ -36,6 +39,7 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("eeg_helmet", "EEG helmet")]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Type pf data to play')
+bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description="frames num")
 
 def _addon():
     return PlayPanel.addon
@@ -259,6 +263,16 @@ def capture_graph(play_type=None, output_path=None, selection_type=None):
     #     return
 
     save_graph_data(graph_data, graph_colors, image_fol)
+
+
+def create_movie():
+    output_file = op.join(bpy.context.scene.output_path, 'combine_images_cmd.txt')
+    if op.isfile(output_file):
+        os.remove(output_file)
+    cmd = '{} -m src.utils.movies_utils --fol {} --copy_files 1 --frame_rate {}'.format(
+        bpy.context.scene.python_cmd, bpy.context.scene.output_path, bpy.context.scene.frames_num)
+    print('Running {}'.format(cmd))
+    mu.run_command_in_new_thread(cmd, False)
 
 
 def save_graph_data(data, graph_colors, image_fol):
@@ -545,6 +559,16 @@ def play_panel_draw(context, layout):
     layout.prop(context.scene, 'rotate_brain_while_playing', text='Rotate the brain while playing')
     layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
+    files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
+                              glob.glob(op.join(bpy.context.scene.output_path, '*.png'))])
+    if files_with_numbers > 0:
+        if not CreateMovie.running:
+            layout.operator(CreateMovie.bl_idname, text="Create Movie", icon='RENDER_ANIMATION')
+            layout.label(text='From images in {}'.format(mu.namebase(bpy.context.scene.output_path)))
+            layout.prop(context.scene, 'frames_num', text="frames per second")
+        else:
+            layout.label(text='Rendering the movie...')
+
 
 class Play(bpy.types.Operator):
     bl_idname = "mmvt.play"
@@ -641,9 +665,40 @@ class ExportGraph(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        # image_fol = op.join(mu.get_user_fol(), 'images', ExportGraph.uuid)
         capture_graph()
         return {"FINISHED"}
+
+
+class CreateMovie(bpy.types.Operator):
+    bl_idname = "mmvt.create_movie"
+    bl_label = "mmvt create_movie"
+    bl_options = {"UNDO"}
+    running = False
+
+    def cancel(self, context):
+        context.window_manager.event_timer_remove(self._timer)
+        self._timer = None
+        CreateMovie.running = False
+        return {'CANCELLED'}
+
+    def invoke(self, context, event=None):
+        CreateMovie.running = True
+        create_movie()
+        context.window_manager.modal_handler_add(self)
+        self._timer = context.window_manager.event_timer_add(0.1, context.window)
+        return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        if event.type == 'TIMER':
+            output_file = op.join(bpy.context.scene.output_path, 'combine_images_cmd.txt')
+            if op.isfile(output_file):
+                movies = glob.glob(op.join(bpy.context.scene.output_path, '**', '*.mp4'), recursive=True)
+                if len(movies) > 0:
+                    os.rename(movies[0], op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
+                        mu.namebase(bpy.context.scene.output_path))))
+                    shutil.rmtree(op.join(bpy.context.scene.output_path, 'new_images'))
+                    self.cancel(context)
+        return {'PASS_THROUGH'}
 
 
 def init(addon):
@@ -666,6 +721,7 @@ def register():
         bpy.utils.register_class(Pause)
         bpy.utils.register_class(ModalTimerOperator)
         bpy.utils.register_class(ExportGraph)
+        bpy.utils.register_class(CreateMovie)
         # print('PlayPanel was registered!')
     except:
         print("Can't register PlayPanel!")
@@ -684,6 +740,7 @@ def unregister():
         bpy.utils.unregister_class(Pause)
         bpy.utils.unregister_class(ModalTimerOperator)
         bpy.utils.unregister_class(ExportGraph)
+        bpy.utils.unregister_class(CreateMovie)
     except:
         pass
         # print("Can't unregister PlayPanel!")

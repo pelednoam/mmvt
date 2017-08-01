@@ -589,7 +589,8 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
         surf_full_output_fname)))
     npy_output_fname_template = '{}.npy'.format(op.splitext(output_fname_template)[0])
-    both_files_exist = True
+    if utils.both_hemi_files_exist(npy_output_fname_template) and not overwrite_surf_data:
+        return True, npy_output_fname_template
     for hemi in utils.HEMIS:
         fmri_fname = surf_full_output_fname.format(hemi=hemi)
         x = np.squeeze(nib.load(fmri_fname).get_data())
@@ -603,8 +604,7 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
         if not op.isfile(npy_output_fname) or overwrite_surf_data:
             print('Saving surf data in {}'.format(npy_output_fname))
             np.save(npy_output_fname, x)
-        both_files_exist = both_files_exist and op.isfile(npy_output_fname)
-    return both_files_exist, npy_output_fname_template
+    return utils.both_hemi_files_exist(npy_output_fname_template), npy_output_fname_template
 
 
 def calc_files_diff(subject, surf_template_fname, overwrite_surf_data=False):

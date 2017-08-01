@@ -120,6 +120,8 @@ def is_linux():
 
 
 def namebase(file_name):
+    if file_name[-1] == op.sep:
+        file_name = file_name[:-1]
     return op.splitext(op.basename(file_name))[0]
 
 

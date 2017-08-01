@@ -173,6 +173,7 @@ def render_draw(self, context):
 
     layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
     layout.prop(context.scene, 'save_selected_view')
+    layout.prop(context.scene, 'output_path')
 
     view = bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective
     icon = 'SCENE' if view == 'ORTHO' else 'MESH_MONKEY'
@@ -181,7 +182,6 @@ def render_draw(self, context):
 
     if view == 'CAMERA':
         layout.label(text='Output Path:')
-        layout.prop(context.scene, 'output_path')
         layout.prop(context.scene, "quality", text='Quality')
 
         # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
