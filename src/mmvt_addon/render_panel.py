@@ -502,7 +502,11 @@ def save_image(image_type='image', view_selected=True, index=-1):
     if index == -1:
         fol = bpy.path.abspath(bpy.context.scene.output_path)
         files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
-        index = max([int(re.findall('\d+', f)[0]) for f in files]) + 1 if len(files) > 0 else 0
+        files_with_numbers = sum([len(re.findall('\d+', f)) for f in files])
+        if files_with_numbers > 0:
+            index = max([int(re.findall('\d+', f)[0]) for f in files]) + 1 if len(files) > 0 else 0
+        else:
+            index = 0
 
     if not _addon().is_solid():
         _addon().change_to_solid_brain()

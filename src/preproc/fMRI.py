@@ -64,6 +64,8 @@ def build_fmri_contrast_file_template(subject, fmri_contrast_file_template='', t
     remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
     if fmri_contrast_file_template == '':
         fmri_contrast_file_template = '*{hemi}*'
+    if '?h' in fmri_contrast_file_template:
+        fmri_contrast_file_template = fmri_contrast_file_template.replace('?h', '{hemi}')
     if '{hemi}' not in fmri_contrast_file_template:
         print('build_fmri_contrast_file_template: no {hemi} in fmri_contrast_file_template!')
         fmri_contrast_file_template = '{}*{}*'.format(fmri_contrast_file_template, '{hemi}')
@@ -104,8 +106,8 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
                     "It seems that the fMRI contrast was made on {}, and not on the subject.\n".format(temp_barin) +
                     "You can run the fMRI preproc on the template barin, or morph the fMRI contrast map to the subject.")
             else:
-                raise Exception("fMRI contrast map ({}) and the {} pial surface ({}) doesn't have the " +
-                                "same vertices number!".format(len(x), hemi, verts.shape[0]))
+                raise Exception("fMRI contrast map ({}) and the {} pial surface ".format(len(x), hemi) +
+                                "({}) doesn't have the same vertices number!".format(verts.shape[0]))
         x_ravel = x.ravel()
         data = x_ravel if data is None else np.hstack((x_ravel, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
@@ -569,8 +571,7 @@ def project_on_surface(subject, volume_file, surf_output_fname,
             nans = np.sum(np.isnan(surf_data))
             if nans > 0:
                 print('there are {} nans in {} surf data!'.format(nans, hemi))
-        else:
-            surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
+        surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
         output_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(surf_output_fname.format(hemi=hemi))))
         npy_output_fname = op.splitext(output_fname)[0]
         if not op.isfile('{}.npy'.format(npy_output_fname)) or overwrite_surf_data:
@@ -707,7 +708,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     volume_fname, surf_output_fname, npy_surf_fname = get_volume_and_surf_fnames(
         subject, volume_fname_template, target_subject, remote_fmri_dir)
-    if not utils.both_hemi_files_exist(npy_surf_fname):
+    if not utils.both_hemi_files_exist(npy_surf_fname) or overwrite_surf_data:
         project_on_surface(subject, volume_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
     freeview_volume_fname = op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname))
@@ -777,6 +778,10 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
 def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='',
                           overwrite=False, remote_fmri_dir='', do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
+    files_exist = np.all([utils.both_hemi_files_exist(op.join(
+        MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}'))) for em in measures])
+    if files_exist and not overwrite:
+        return True
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(remote_fmri_dir, subject, 'figures')

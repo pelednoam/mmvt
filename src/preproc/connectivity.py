@@ -150,7 +150,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
-    labels_data_fnames = glob.glob(op.join(conn_fol, '*labels_data_{}_{}_?h.npz'.format(args.atlas, labels_extract_mode)))
+    labels_data_fnames = glob.glob(op.join(
+        conn_fol, '{}_labels_data_{}_{}_?h.npz'.format(args.labels_name, args.atlas, labels_extract_mode)))
     if len(labels_data_fnames) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
@@ -216,6 +217,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         windows = np.zeros((windows_num, 2))
         for win_ind in range(windows_num):
             windows[win_ind] = [win_ind * args.windows_shift, win_ind * args.windows_shift + args.windows_length]
+        windows = windows.astype(np.int)
     elif data.ndim == 3:
         windows_num = data.shape[2]
     else:
@@ -295,14 +297,6 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                     for chunk in results:
                         for w, con in chunk.items():
                             conn[:, :, w] = con
-                    # conn = np.zeros(corr.shape)
-                    # nch = corr.shape[0]
-                    # for w in range(windows_num):
-                    #     for i in range(nch):
-                    #         for j in range(nch):
-                    #             if i < j:
-                    #                 conn[i, j, w] = -0.5 * np.log(1 - corr[i, j, w] ** 2)
-                    #     conn[:, :, w] = conn[:, :, w] + conn[:, :, w].T
                     backup(conn_fname)
                     np.save(conn_fname, conn)
             if 'mi_vec' in args.connectivity_method and corr.ndim == 5:
@@ -784,6 +778,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--labels_name', help='', required=False, default='*')
+
 
     pu.add_common_args(parser)
 

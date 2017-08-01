@@ -372,8 +372,12 @@ def mri_convert_to(org_fname, new_file_type, overwrite=False):
     return mri_convert(org_fname, new_fname, overwrite)
 
 
+def nii_gz_to_mgz_name(fmri_fname):
+    return '{}mgz'.format(fmri_fname[:-len('nii.gz')])
+
+
 def nii_gz_to_mgz(fmri_fname):
-    new_fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
+    new_fmri_fname = nii_gz_to_mgz_name(fmri_fname)
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
     return new_fmri_fname
