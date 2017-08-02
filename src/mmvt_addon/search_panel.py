@@ -20,7 +20,7 @@ class SearchFilter(bpy.types.Operator):
             obj.select = label_name in obj.name
             try:
                 import fnmatch
-                if fnmatch.fnmatch(obj.name, label_name):
+                if fnmatch.fnmatch(obj.name, '*{}*'.format(label_name)):
                     SearchPanel.marked_objects.append(obj.name)
             except:
                 if label_name in obj.name:
@@ -116,7 +116,7 @@ class SearchPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "labels_regex", text="Object name")
+        layout.prop(context.scene, "labels_regex", text="regex")
         row = layout.row(align=0)
         row.operator(SearchFilter.bl_idname, text="Search", icon = 'BORDERMOVE')
         row.operator(SearchMark.bl_idname, text="Mark", icon = 'GREASEPENCIL')
