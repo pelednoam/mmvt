@@ -426,11 +426,14 @@ def get_fcurve_values(parent_name, fcurve_name):
     return xs, ys
 
 
-def time_to_go(now, run, runs_num, runs_num_to_print=10):
+def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
     if run % runs_num_to_print == 0 and run != 0:
         time_took = time.time() - now
         more_time = time_took / run * (runs_num - run)
-        print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+        if thread > 0:
+            print('{}: {}/{}, {:.2f}s, {:.2f}s to go!'.format(thread, run, runs_num, time_took, more_time))
+        else:
+            print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
 
 
 def show_hide_obj_and_fcurves(objs, val, exclude=[]):
@@ -1495,7 +1498,7 @@ def get_hemi_delim_and_pos(label_name):
     return delim, pos, label, hemi
 
 
-def change_hemi(label_name):
+def get_other_hemi_label_name(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
     return build_label_name(delim, pos, label, other_hemi)

@@ -1223,11 +1223,16 @@ def chunks(l, n):
     n = max(1, int(n))
     return [l[i:i + n] for i in range(0, len(l), n)]
 
+
 def powerset(iterable):
     from itertools import chain, combinations
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+
+def flat_list(lst):
+    return list(itertools.chain.from_iterable(lst))
 
 
 def subsets(s):

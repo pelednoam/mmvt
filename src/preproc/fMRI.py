@@ -1062,7 +1062,7 @@ def find_hemi_files(files):
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
     parent_fol = utils.get_parent_fol(rh_files[0])
     for rh_file in rh_files:
-        lh_file = lu.change_hemi(utils.namebase(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
+        lh_file = lu.get_other_hemi_label_name(utils.namebase(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
         lh_file = op.join(parent_fol, '{}.{}'.format(lh_file, utils.file_type(rh_file)))
         if op.isfile(lh_file):
             hemis_files.append(rh_file.replace('rh', '{hemi}'))

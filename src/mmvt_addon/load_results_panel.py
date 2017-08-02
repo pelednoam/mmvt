@@ -27,7 +27,7 @@ class ChooseSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         user_fol = mu.get_user_fol()
         stc_fol = mu.get_fname_folder(stc_fname)
         if stc_fol != op.join(user_fol, 'meg'):
-            other_hemi_stc_fname = op.join(stc_fol, '{}.stc'.format(mu.change_hemi(mu.namebase(stc_fname))))
+            other_hemi_stc_fname = op.join(stc_fol, '{}.stc'.format(mu.get_other_hemi_label_name(mu.namebase(stc_fname))))
             shutil.copy(stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(stc_fname)))
             shutil.copy(other_hemi_stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(other_hemi_stc_fname)))
             _addon().init_meg_activity_map()

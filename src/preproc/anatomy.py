@@ -583,7 +583,7 @@ def create_vertices_labels_lookup(subject, atlas):
 #     return utils.both_hemi_files_exist(out_file)
 
 
-def calc_labels_center_of_mass(subject, atlas, read_from_annotation=True, surf_name='pial', labels_fol='', labels=None):
+def calc_labels_center_of_mass(subject, atlas):
     import csv
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
     if len(labels) > 0:
@@ -792,7 +792,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'calc_labels_center_of_mass'):
         # *) Calc the labels center of mass
-        flags['center_of_mass'] = calc_labels_center_of_mass(subject, args.atlas, args.surf_name)
+        flags['center_of_mass'] = calc_labels_center_of_mass(subject, args.atlas)
 
     if utils.should_run(args, 'save_labels_coloring'):
         # *) Save a coloring file for the atlas's labels
