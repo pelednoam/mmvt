@@ -54,13 +54,10 @@ def load_fmri_data(fmri_surf_fname):
     return x
 
 
-def get_fmri_data(subject, fmri_surf_fname):
+def get_fmri_data(subject, fmri_surf_name, hemi):
 
-    def get_fmri_data(fmri_surf_fname):
-        if not op.isfile(fmri_surf_fname):
-            fmri_surf_fname = op.join(MMVT_DIR, subject, 'fmri', fmri_surf_fname)
-        if not op.isfile(fmri_surf_fname):
-            fmri_surf_fname = op.join(FMRI_DIR, subject, fmri_surf_fname)
+    def get_fmri_data(fmri_surf_name):
+        fmri_surf_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(fmri_surf_name, hemi))
         if not op.isfile(fmri_surf_fname):
             raise Exception('fMRI does not exist! {}'.format(fmri_surf_fname))
         x = load_fmri_data(fmri_surf_fname)
@@ -75,17 +72,17 @@ def get_fmri_data(subject, fmri_surf_fname):
             raise Exception("Can't find {}!".format(fmri_other_hemi_surf_fname))
         return load_fmri_data(fmri_other_hemi_surf_fname)
 
-    hemi = lu.get_label_hemi(utils.namebase(fmri_surf_fname))
     other_hemi = 'lh' if hemi == 'rh' else 'rh'
     x = {}
-    fmri_surf_fname, x[hemi] = get_fmri_data(fmri_surf_fname)
+    fmri_surf_fname, x[hemi] = get_fmri_data(fmri_surf_name)
     x[other_hemi] = get_fmri_other_hemi_data(fmri_surf_fname)
     return x
 
 
-def calc_label_corr(subject, x, label, hemi, label_name, overwrite=False, n_jobs=6):
-    output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_seed_{}_{}.npy'.format(label_name, '{hemi}'))
-    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_minmax.pkl'.format(label_name))
+def calc_label_corr(subject, x, label, hemi, label_name, fmri_surf_name, overwrite=False, n_jobs=6):
+    output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_seed_{}_{}_{}.npy'.format(
+        fmri_surf_name, label_name, '{hemi}'))
+    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_{}_minmax.pkl'.format(fmri_surf_name, label_name))
     if utils.both_hemi_files_exist(output_fname_template) and op.isfile(minmax_fname) and not overwrite:
         return True
     label_ts = np.mean(x[hemi][label.vertices, :], 0)
@@ -128,12 +125,12 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--regex', help='labels regex', required=False, default='post*cingulate*rh')
     parser.add_argument('-l', '--new_label_name', help='', required=False, default='posterior_cingulate_rh')
     parser.add_argument('--new_label_r', help='', required=False, default=5, type=int)
-    parser.add_argument('--fmri_surf_fname', help='', required=False, default='fmri_hesheng_rh.npy')
+    parser.add_argument('--fmri_surf_name', help='', required=False, default='freesurfer')
     parser.add_argument('--overwrite', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--n_jobs', help='n_jobs', required=False, default=6, type=int)
     args = utils.Bag(au.parse_parser(parser))
 
     new_label, hemi = get_new_label(
         args.subject, args.atlas, args.regex, args.new_label_name, args.new_label_r,args.overwrite, args.n_jobs)
-    x = get_fmri_data(args.subject, args.fmri_surf_fname)
-    calc_label_corr(args.subject, x, new_label, hemi, args.new_label_name, args.overwrite, args.n_jobs)
+    x = get_fmri_data(args.subject, args.fmri_surf_name, hemi)
+    calc_label_corr(args.subject, x, new_label, hemi, args.new_label_name, args.fmri_surf_name, args.overwrite, args.n_jobs)

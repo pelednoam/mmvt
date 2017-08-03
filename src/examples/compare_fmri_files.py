@@ -3,6 +3,7 @@ import os.path as op
 import glob
 import shutil
 import nibabel as nib
+import numpy as np
 
 from src.utils import utils
 from src.utils import labels_utils as lu
@@ -27,6 +28,7 @@ linda_template_npy = '{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bp
 
 fs_surf_fol = linda_surf_fol
 fs_surf_template = 'rest_linda.sm6.{subject}.{hemi}.mgz'
+
 
 def check_original_files_dim(subject):
     hesheng_vol_fnames = glob.glob(op.join(
@@ -121,6 +123,21 @@ def calc_freesurfer_surf(subject, atlas):
               op.join(root_fol, 'freesurfer_minmax.pkl'))
 
 
+def clip_surf_files(subject, names):
+    x = {}
+    for name in names:
+        x[name] = {}
+        for hemi in utils.HEMIS:
+            surf_fname = op.join(fmri.MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(name, hemi))
+            x[name][hemi] = np.load(surf_fname)
+    min_t = min([x[name]['rh'].shape[1] for name in names])
+    for name in names:
+        for hemi in utils.HEMIS:
+            surf_fname = op.join(fmri.MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(name, hemi))
+            nframes = x[name][hemi].shape[1] - min_t
+            np.save(surf_fname, x[name][hemi][:, nframes:])
+
+
 def calc_diff(subject, fmri_file_template='*linda_{hemi}*,*hesheng_{hemi}'):
     # Calc diff
     args = fmri.read_cmd_args(dict(
@@ -166,10 +183,13 @@ if __name__ == '__main__':
     args = utils.Bag(au.parse_parser(parser))
 
     # nmr00502,nmr00515,nmr00603,nmr00609,nmr00629,nmr00650,nmr00657,nmr00669,nmr00674,nmr00681,nmr00683,nmr00692,nmr00698,nmr00710
+    names = ['freesurfer', 'linda', 'hesheng']
+
     # check_original_files_dim(args.subject)
     # calc_hesheng_surf(args.subject, args.atlas)
     # calc_linda_surf(args.subject, args.atlas)
     # calc_freesurfer_surf(args.subject, args.atlas)
+    clip_surf_files(args.subject, names)
     # calc_diff(args.subject)
     # calc_diff(args.subject, fmri_file_template='*fmri_freesurfer_{hemi}*,*fmri_hesheng_{hemi}')
-    compare_connectivity(args.subject, args.atlas, args.n_jobs)
+    # compare_connectivity(args.subject, args.atlas, args.n_jobs)

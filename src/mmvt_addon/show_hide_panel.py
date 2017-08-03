@@ -204,45 +204,20 @@ def show_axial():
     # zoom(-1)
 
 
-def split_view():
+def _split_view():
+    ShowHideObjectsPanel.split_view += 1
+    if ShowHideObjectsPanel.split_view == 3:
+        ShowHideObjectsPanel.split_view = 0
+    split_view(ShowHideObjectsPanel.split_view)
+
+
+def split_view(view):
     import math
     _addon().hide_subcorticals()
     pial_shift = 10
     inflated_shift = 13
-    if ShowHideObjectsPanel.split_view == 0:
+    if view == 0: # Normal
         _addon().show_coronal()
-        # lateral split view
-        # inflated_lh: loc  x:13, rot z: -90
-        # inflated_lr: loc  x:-13, rot z: 90
-        ShowHideObjectsPanel.split_view = 1
-        if _addon().is_inflated():
-            bpy.data.objects['inflated_lh'].location[0] = inflated_shift
-            bpy.data.objects['inflated_lh'].rotation_euler[2] = -math.pi / 2
-            bpy.data.objects['inflated_rh'].location[0] = -inflated_shift
-            bpy.data.objects['inflated_rh'].rotation_euler[2] = math.pi / 2
-        else:
-            bpy.data.objects['lh'].location[0] = pial_shift
-            bpy.data.objects['lh'].rotation_euler[2] = -math.pi / 2
-            bpy.data.objects['rh'].location[0] = -pial_shift
-            bpy.data.objects['rh'].rotation_euler[2] = math.pi / 2
-    elif ShowHideObjectsPanel.split_view == 1:
-        # medial split view
-        # inflated_lh: loc  x:13, rot z: 90
-        # inflated_lr: loc  x:-13, rot z: -90
-        ShowHideObjectsPanel.split_view = 2
-        if _addon().is_inflated():
-            bpy.data.objects['inflated_lh'].location[0] = inflated_shift
-            bpy.data.objects['inflated_lh'].rotation_euler[2] = math.pi / 2
-            bpy.data.objects['inflated_rh'].location[0] = -inflated_shift
-            bpy.data.objects['inflated_rh'].rotation_euler[2] = -math.pi / 2
-        else:
-            bpy.data.objects['lh'].location[0] = pial_shift - 2
-            bpy.data.objects['lh'].rotation_euler[2] = math.pi / 2
-            bpy.data.objects['rh'].location[0] = -(pial_shift - 2)
-            bpy.data.objects['rh'].rotation_euler[2] = -math.pi / 2
-    elif ShowHideObjectsPanel.split_view == 2:
-        _addon().show_coronal()
-        ShowHideObjectsPanel.split_view = 0
         if _addon().is_inflated():
             bpy.data.objects['inflated_lh'].location[0] = 0
             bpy.data.objects['inflated_lh'].rotation_euler[2] = 0
@@ -253,6 +228,35 @@ def split_view():
             bpy.data.objects['lh'].rotation_euler[2] = 0
             bpy.data.objects['rh'].location[0] = 0
             bpy.data.objects['rh'].rotation_euler[2] = 0
+    elif view == 1: # Split lateral
+        _addon().show_coronal()
+        # lateral split view
+        # inflated_lh: loc  x:13, rot z: -90
+        # inflated_lr: loc  x:-13, rot z: 90
+        if _addon().is_inflated():
+            bpy.data.objects['inflated_lh'].location[0] = inflated_shift
+            bpy.data.objects['inflated_lh'].rotation_euler[2] = -math.pi / 2
+            bpy.data.objects['inflated_rh'].location[0] = -inflated_shift
+            bpy.data.objects['inflated_rh'].rotation_euler[2] = math.pi / 2
+        else:
+            bpy.data.objects['lh'].location[0] = pial_shift
+            bpy.data.objects['lh'].rotation_euler[2] = -math.pi / 2
+            bpy.data.objects['rh'].location[0] = -pial_shift
+            bpy.data.objects['rh'].rotation_euler[2] = math.pi / 2
+    elif view == 2:
+        # medial split medial
+        # inflated_lh: loc  x:13, rot z: 90
+        # inflated_lr: loc  x:-13, rot z: -90
+        if _addon().is_inflated():
+            bpy.data.objects['inflated_lh'].location[0] = inflated_shift
+            bpy.data.objects['inflated_lh'].rotation_euler[2] = math.pi / 2
+            bpy.data.objects['inflated_rh'].location[0] = -inflated_shift
+            bpy.data.objects['inflated_rh'].rotation_euler[2] = -math.pi / 2
+        else:
+            bpy.data.objects['lh'].location[0] = pial_shift - 2
+            bpy.data.objects['lh'].rotation_euler[2] = math.pi / 2
+            bpy.data.objects['rh'].location[0] = -(pial_shift - 2)
+            bpy.data.objects['rh'].rotation_euler[2] = -math.pi / 2
 
 
 class ShowSaggital(bpy.types.Operator):
@@ -284,7 +288,7 @@ class SplitView(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        split_view()
+        _split_view()
         return {"FINISHED"}
 
 
@@ -372,7 +376,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     addon = None
     init = False
     split_view = 0
-    split_view_text = {0:'Split Medial', 1:'Split Lateral', 2:'Normal view'}
+    split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
 
     def draw(self, context):
         layout = self.layout

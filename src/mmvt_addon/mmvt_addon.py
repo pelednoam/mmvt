@@ -442,6 +442,7 @@ def main(addon_prefs=None):
         print(traceback.format_exc())
 
     fix_scale()
+    split_view(0)
     show_electrodes(False)
     show_hide_connections(False)
     # show_pial()
