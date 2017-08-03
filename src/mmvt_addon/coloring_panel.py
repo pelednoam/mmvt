@@ -1447,20 +1447,24 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     def execute(self, context):
         label_fname = self.filepath
-        label = mu.read_label_file(label_fname)
-        hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
-        label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
-        bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
-        print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
-        ColoringMakerPanel.labels_plotted.append((label, list(bpy.context.scene.labels_color)))
-        hemi_verts_num = {hemi:ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
-        data = {hemi:np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
-        for label, color in ColoringMakerPanel.labels_plotted:
-            data[label.hemi][label.vertices] = [1, *color]
-        for hemi in mu.HEMIS:
-            color_hemi_data(hemi, data[hemi], threshold=0.5)
-        _addon().show_activity()
+        plot_label(label_fname)
         return {'FINISHED'}
+
+
+def plot_label(label_fname):
+    label = mu.read_label_file(label_fname)
+    hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
+    label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
+    bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
+    print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
+    ColoringMakerPanel.labels_plotted.append((label, list(bpy.context.scene.labels_color)))
+    hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+    for label, color in ColoringMakerPanel.labels_plotted:
+        data[label.hemi][label.vertices] = [1, *color]
+    for hemi in mu.HEMIS:
+        color_hemi_data(hemi, data[hemi], threshold=0.5)
+    _addon().show_activity()
 
 
 def clear_colors():
