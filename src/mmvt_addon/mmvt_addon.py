@@ -71,6 +71,9 @@ import pizco_panel
 importlib.reload(pizco_panel)
 import load_results_panel
 importlib.reload(load_results_panel)
+import list_panel
+importlib.reload(list_panel)
+
 
 print("mmvt addon started!")
 # todo: should change that in the code!!!
@@ -430,6 +433,7 @@ def main(addon_prefs=None):
         vertex_data_panel.init(mmvt)
         load_results_panel.init(mmvt)
         pizco_panel.init(mmvt)
+        # list_panel.init(mmvt)
         # _listener_in_queue, _listener__out_queue = start_listener()
         # listener_panel.init(mmvt)
         pass

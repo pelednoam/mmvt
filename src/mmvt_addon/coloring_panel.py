@@ -1448,11 +1448,13 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     def execute(self, context):
         label_fname = self.filepath
         label = mu.read_label_file(label_fname)
-        hemi = label.hemi
-        hemi_verts_num = ColoringMakerPanel.faces_verts[hemi].shape[0]
-        data = np.zeros((hemi_verts_num, 4))
-        data[label.vertices] = [1, *list(bpy.context.scene.labels_color)]
-        color_hemi_data(label.hemi, data, threshold=0.5)
+        ColoringMakerPanel.labels_plotted.append((label, list(bpy.context.scene.labels_color)))
+        hemi_verts_num = {hemi:ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+        data = {hemi:np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+        for label, color in ColoringMakerPanel.labels_plotted:
+            data[label.hemi][label.vertices] = [1, *color]
+        for hemi in mu.HEMIS:
+            color_hemi_data(hemi, data[hemi], threshold=0.5)
         return {'FINISHED'}
 
 
@@ -1463,6 +1465,7 @@ def clear_colors():
         clear_colors_from_parent_childrens(root)
     clear_connections()
     ColoringMakerPanel.what_is_colored = set()
+    ColoringMakerPanel.labels_plotted = []
 
 
 def clear_connections():
@@ -1589,10 +1592,16 @@ def draw(self, context):
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
         row = layout.row(align=True)
-        row.operator(ChooseLabelFile.bl_idname, text="plot label", icon='GAME').filepath = op.join(
+        row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
             mu.get_user_fol(), '*.label')
-        row.prop(context.scene, 'labels_color', text='')
-        # if manually_groups_file_exist:
+        if len(ColoringMakerPanel.labels_plotted) > 0:
+            row.prop(context.scene, 'labels_color', text='')
+            box = layout.box()
+            col = box.column()
+            for label, color in ColoringMakerPanel.labels_plotted:
+                mu.add_box_line(col, label.name, percentage=1)
+
+            # if manually_groups_file_exist:
         #     col = layout.box().column()
             # col.label('Groups')
             # col.prop(context.scene, 'labels_groups', text="")
@@ -1674,6 +1683,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     meg_data_min, meg_data_max = 0, 0
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
+    labels_plotted = []
 
     stc = None
     stc_file_chosen = False
