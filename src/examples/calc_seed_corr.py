@@ -31,7 +31,7 @@ def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrit
     selected_hemi = list(hemis)[0]
     # centers_of_mass = lu.calc_center_of_mass(selected_labels)
     selected_labels_pos = np.array(utils.flat_list([l.pos for l in selected_labels]))
-    center_of_mass = np.mean(selected_labels_pos, 0)
+    center_of_mass = np.mean(selected_labels_pos, 0) * 1000
     hemi_verts = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(selected_hemi)))['verts']
     dists = cdist(hemi_verts, [center_of_mass])
     vertice_indice = np.argmin(dists)
@@ -133,6 +133,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_jobs', help='n_jobs', required=False, default=6, type=int)
     args = utils.Bag(au.parse_parser(parser))
 
-    new_label, hemi = get_new_label(args.subject, args.atlas, args.regex, args.new_label_name, args.overwrite, args.n_jobs)
+    new_label, hemi = get_new_label(
+        args.subject, args.atlas, args.regex, args.new_label_name, args.new_label_r,args.overwrite, args.n_jobs)
     x = get_fmri_data(args.subject, args.fmri_surf_fname)
     calc_label_corr(args.subject, x, new_label, hemi, args.new_label_name, args.overwrite, args.n_jobs)
