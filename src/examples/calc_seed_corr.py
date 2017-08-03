@@ -82,29 +82,39 @@ def get_fmri_data(subject, fmri_surf_fname):
     return x
 
 
-def calc_label_corr(x, label, hemi, n_jobs):
+def calc_label_corr(subject, x, label, hemi, label_name, n_jobs):
     label_ts = np.mean(x[hemi][label.vertices, :], 0)
-    corr_vals = {hemi:{} for hemi in utils.HEMIS}
+    output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_seed_{}_{}.npy'.format(label_name, '{hemi}'))
+    corr_min, corr_max = 0 , 0
     for hemi in utils.HEMIS:
         verts_num = x[hemi].shape[0]
+        corr_vals = np.zeros((verts_num))
         indices = np.array_split(np.arange(verts_num), n_jobs)
         chunks = [(x[hemi][indices_chunk], indices_chunk, label_ts, thread) for thread, indices_chunk in enumerate(indices)]
         results = utils.run_parallel(_calc_label_corr, chunks, n_jobs)
-        for results_chunk in results:
-            corr_vals[hemi].update(results_chunk)
-    return
+        for hemi_corr_chunk, indices_chunk in results:
+            corr_vals[indices_chunk] = hemi_corr_chunk
+        corr_vals[np.isnan(corr_vals)] = 0
+        np.save(output_fname_template.format(hemi=hemi), corr_vals)
+        corr_min = min(corr_min, np.min(corr_vals))
+        corr_max = max(corr_max, np.max(corr_vals))
+    corr_minmax = utils.get_max_abs(corr_max, corr_min)
+    corr_min, corr_max = -corr_minmax, corr_minmax
+    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_minmax.pkl'.format(label_name))
+    utils.save((corr_min, corr_max), minmax_fname)
+    return utils.both_hemi_files_exist(output_fname_template) and op.isfile(minmax_fname)
 
 
 def _calc_label_corr(p):
     import time
     hemi_data, indices_chunk, label_ts, thread = p
-    hemi_corr = {v:0 for v in indices_chunk}
+    hemi_corr = np.zeros((len(indices_chunk)))
     now = time.time()
     N = len(indices_chunk)
-    for run, (v, v_ts) in enumerate(zip(indices_chunk, hemi_data)):
-        utils.time_to_go(now, run, N, runs_num_to_print=1000, thread=thread)
-        hemi_corr[v] = np.corrcoef(label_ts, v_ts)[0, 1]
-    return hemi_corr
+    for ind, v_ts in enumerate(hemi_data):
+        utils.time_to_go(now, ind, N, runs_num_to_print=1000, thread=thread)
+        hemi_corr[ind] = np.corrcoef(label_ts, v_ts)[0, 1]
+    return hemi_corr, indices_chunk
 
 
 if __name__ == '__main__':
@@ -121,4 +131,4 @@ if __name__ == '__main__':
 
     new_label, hemi = get_new_label(args.subject, args.atlas, args.regex, args.new_label_name, args.n_jobs)
     x = get_fmri_data(args.subject, args.fmri_surf_fname)
-    calc_label_corr(x, new_label, hemi, args.n_jobs)
+    calc_label_corr(args.subject, x, new_label, hemi, args.new_label_name, args.n_jobs)

@@ -46,6 +46,11 @@ class empty_bpy(object):
         class FloatProperty(object):
             def __init__(self, **kargs): pass
 
+
+class empty_bpy_extras(object):
+    class io_utils(object):
+        class ExportHelper(object): pass
+
 try:
     import connections_panel as con_pan
 except:
@@ -1531,3 +1536,55 @@ def max_stc_hemi(stc, hemi):
 
 def max_stc(stc):
     return max([max_stc_hemi(stc, hemi) for hemi in HEMIS])
+
+
+class Label(object):
+    vertices = []
+    pos = []
+    values = []
+    comment = ''
+    hemi = ''
+    name = ''
+
+    def __init__(self, name, hemi, vertices, pos, values, comment=''):
+        self.name = name
+        self.hemi = hemi
+        self.vertices = vertices
+        self.pos = pos
+        self.values = values
+        self.comment = comment
+
+
+def read_label_file(label_fname):
+    """Read FreeSurfer Label file.
+
+    Parameters
+    ----------
+    filename : string
+        Path to label file.
+
+    Returns
+    -------
+    - ``vertices``: vertex indices (0 based, column 1)
+    - ``pos``: locations in meters (columns 2 - 4 divided by 1000)
+    - ``values``: values at the vertices (column 5)
+    """
+    # read the file
+    with open(label_fname, 'r') as fid:
+        comment = fid.readline().replace('\n', '')[1:]
+        nv = int(fid.readline())
+        data = np.empty((5, nv))
+        for i, line in enumerate(fid):
+            data[:, i] = line.split()
+
+    # let's make sure everything is ordered correctly
+    vertices = np.array(data[0], dtype=np.int32)
+    pos = 1e-3 * data[1:4].T
+    values = data[4]
+    order = np.argsort(vertices)
+    vertices = vertices[order]
+    pos = pos[order]
+    values = values[order]
+    _, _, label, hemi = get_hemi_delim_and_pos(namebase(label_fname))
+    name = '{}-{}'.format(label, hemi)
+    return Label(name, hemi, vertices, pos, values, comment)

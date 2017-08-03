@@ -11,8 +11,10 @@ from functools import partial
 
 try:
     import bpy
+    import bpy_extras
 except:
     bpy = mu.empty_bpy
+    bpy_extras = mu.empty_bpy_extras
 
 try:
     import mne
@@ -470,7 +472,7 @@ def color_contours(specific_label='', specific_hemi='both'):
         color_hemi_data(hemi, contours, 0.1, 256 / contour_max, override_current_mat=False)
 
 
-def color_hemi_data(hemi, data, data_min, colors_ratio, threshold=0, override_current_mat=True):
+def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True):
     if bpy.data.objects[hemi].hide:
         return
     faces_verts = ColoringMakerPanel.faces_verts[hemi]
@@ -1436,6 +1438,24 @@ class ClearColors(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.plot_label_file"
+    bl_label = "Plot label file"
+
+    filename_ext = '.label'
+    filter_glob = bpy.props.StringProperty(default='*.label', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        label_fname = self.filepath
+        label = mu.read_label_file(label_fname)
+        hemi = label.hemi
+        hemi_verts_num = ColoringMakerPanel.faces_verts[hemi].shape[0]
+        data = np.zeros((hemi_verts_num, 4))
+        data[label.vertices] = [1, *list(bpy.context.scene.labels_color)]
+        color_hemi_data(label.hemi, data, threshold=0.5)
+        return {'FINISHED'}
+
+
 def clear_colors():
     clear_cortex()
     clear_subcortical_fmri_activity()
@@ -1568,6 +1588,10 @@ def draw(self, context):
             # col.label('Manual coloring files')
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+        row = layout.row(align=True)
+        row.operator(ChooseLabelFile.bl_idname, text="plot label", icon='GAME').filepath = op.join(
+            mu.get_user_fol(), '*.label')
+        row.prop(context.scene, 'labels_color', text='')
         # if manually_groups_file_exist:
         #     col = layout.box().column()
             # col.label('Groups')
@@ -1626,6 +1650,8 @@ bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
 bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
+    name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -1921,6 +1947,7 @@ def register():
         bpy.utils.register_class(ColorConnectionsLabelsAvg)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
+        bpy.utils.register_class(ChooseLabelFile)
         # print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
@@ -1951,6 +1978,7 @@ def unregister():
         bpy.utils.unregister_class(ColorConnectionsLabelsAvg)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
+        bpy.utils.unregister_class(ChooseLabelFile)
     except:
         pass
         # print("Can't unregister Freeview Panel!")
