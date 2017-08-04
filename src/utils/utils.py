@@ -15,6 +15,8 @@ except:
     print('No matplotlib')
 import subprocess
 from functools import partial
+import warnings
+from decorator import decorator
 import glob
 import mne
 import colorsys
@@ -1775,6 +1777,14 @@ def find_num_in_str(string):
 
 def file_modification_time(fname):
     return time.strftime('%H:%M:%S %m/%d/%Y', time.gmtime(op.getmtime(fname)))
+
+
+@decorator
+def ignore_warnings(f, *args, **kw):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        retval = f(*args, **kw)
+    return retval
 
 
 def check_for_freesurfer(func):

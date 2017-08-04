@@ -9,6 +9,7 @@ import itertools
 from scipy.spatial.distance import cdist
 import fnmatch
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -731,13 +732,13 @@ def calc_electrodes_rest_connectivity(subject, args):
     return ret
 
 
-def calc_fmri_seed_corr(subject, atlas, fmri_surf_name, labels_regex, new_label_name, new_label_r=5, overwrite=False,
+def calc_fmri_seed_corr(subject, atlas, identifier, labels_regex, new_label_name, new_label_r=5, overwrite=False,
                         n_jobs=6):
     from src.preproc import fMRI as fmri
     new_label, hemi = get_new_label(
         subject, atlas, labels_regex, new_label_name, new_label_r, overwrite, n_jobs)
-    x = fmri.load_fmri_data_for_both_hemis(subject, fmri_surf_name)
-    return calc_label_corr(subject, x, new_label, hemi, new_label_name, fmri_surf_name, overwrite, n_jobs)
+    x = fmri.load_fmri_data_for_both_hemis(subject, identifier)
+    return calc_label_corr(subject, x, new_label, hemi, new_label_name, identifier, overwrite, n_jobs)
 
 
 def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrite=False, n_jobs=6):
@@ -766,11 +767,12 @@ def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrit
     return new_label, selected_hemi
 
 
-def calc_label_corr(subject, x, label, hemi, label_name, fmri_surf_name, overwrite=False, n_jobs=6):
+def calc_label_corr(subject, x, label, hemi, label_name, identifier, overwrite=False, n_jobs=6):
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_seed_{}_{}_{}.npy'.format(
-        fmri_surf_name, label_name, '{hemi}'))
-    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_{}_minmax.pkl'.format(fmri_surf_name, label_name))
+        identifier, label_name, '{hemi}'))
+    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_{}_minmax.pkl'.format(identifier, label_name))
     if utils.both_hemi_files_exist(output_fname_template) and op.isfile(minmax_fname) and not overwrite:
+        print('All files already exist ({}, {})'.format(output_fname_template, minmax_fname))
         return True
     label_ts = np.mean(x[hemi][label.vertices, :], 0)
     corr_min, corr_max = 0 , 0
@@ -779,8 +781,7 @@ def calc_label_corr(subject, x, label, hemi, label_name, fmri_surf_name, overwri
         corr_vals = np.zeros((verts_num))
         indices = np.array_split(np.arange(verts_num), n_jobs)
         chunks = [(x[hemi][indices_chunk], indices_chunk, label_ts, thread) for thread, indices_chunk in enumerate(indices)]
-        results = utils.run_parallel(_calc_label_corr, chunks, n_jobs)
-        for hemi_corr_chunk, indices_chunk in results:
+        for hemi_corr_chunk, indices_chunk in utils.run_parallel(_calc_label_corr, chunks, n_jobs):
             corr_vals[indices_chunk] = hemi_corr_chunk
         corr_vals[np.isnan(corr_vals)] = 0
         np.save(output_fname_template.format(hemi=hemi), corr_vals)
@@ -792,14 +793,11 @@ def calc_label_corr(subject, x, label, hemi, label_name, fmri_surf_name, overwri
     return utils.both_hemi_files_exist(output_fname_template) and op.isfile(minmax_fname)
 
 
+@utils.ignore_warnings
 def _calc_label_corr(p):
-    import time
     hemi_data, indices_chunk, label_ts, thread = p
     hemi_corr = np.zeros((len(indices_chunk)))
-    now = time.time()
-    N = len(indices_chunk)
-    for ind, v_ts in enumerate(hemi_data):
-        utils.time_to_go(now, ind, N, runs_num_to_print=1000, thread=thread)
+    for ind, v_ts in tqdm(enumerate(hemi_data), total=len(indices_chunk)):
         hemi_corr[ind] = np.corrcoef(label_ts, v_ts)[0, 1]
     return hemi_corr, indices_chunk
 
@@ -842,7 +840,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'calc_fmri_seed_corr'):
         flags['calc_fmri_seed_corr'] = calc_fmri_seed_corr(
-            subject, args.atlas, args.fmri_surf_name, args.labels_regex, args.seed_label_name, args.seed_label_r,
+            subject, args.atlas, args.identifier, args.labels_regex, args.seed_label_name, args.seed_label_r,
             args.overwrite_seed_data, args.n_jobs)
 
     if utils.should_run(args, 'calc_fmri_corr_degree'):
@@ -897,7 +895,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--labels_regex', help='labels regex', required=False, default='post*cingulate*rh')
     parser.add_argument('--seed_label_name', help='', required=False, default='posterior_cingulate_rh')
     parser.add_argument('--seed_label_r', help='', required=False, default=5, type=int)
-    parser.add_argument('--fmri_surf_name', help='', required=False)
     parser.add_argument('--overwrite_seed_data', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
