@@ -131,6 +131,7 @@ def labels_contures_update(self, context):
 
 
 def object_coloring(obj, rgb):
+    print('ploting {} with {}'.format(obj.name, rgb))
     if not obj:
         print('object_coloring: obj is None!')
         return False
@@ -142,9 +143,9 @@ def object_coloring(obj, rgb):
     cur_mat.diffuse_color = new_color[:3]
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
-    else:
-        print("Can't color {}".format(obj.name))
-        return False
+    # else:
+    #     print("Can't color {}".format(obj.name))
+    #     return False
     # new_color = get_obj_color(obj)
     # print('{} new color: {}'.format(obj.name, new_color))
     if _addon().is_solid():
@@ -241,9 +242,10 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         obj = bpy.data.objects.get(obj_name+postfix_str)
         # if obj and not obj.hide:
         #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
+        # obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
         ret = object_coloring(obj, new_color)
-        if not ret:
-            print('color_objects_homogeneously: Error in coloring the object {}!'.format(obj_name))
+        # if not ret:
+        #     print('color_objects_homogeneously: Error in coloring the object {}!'.format(obj_name))
             # print(obj_name, value, new_color)
         # else:
         #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
@@ -354,6 +356,39 @@ def color_connections_labels_avg(override_current_mat=True):
         labels_coloring_hemi(
             labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, bpy.context.scene.meg_labels_coloring_type,
             override_current_mat, meg_labels_min, meg_labels_max)
+
+
+def color_connectivity_degree():
+    corr = ColoringMakerPanel.static_conn
+    threshold = bpy.context.scene.connectivity_degree_threshold
+    labels = ColoringMakerPanel.connectivity_labels
+    degree_mat = np.sum(corr >= threshold, 0) # abs?
+    data_max = max(degree_mat)
+    colors_ratio = 256 / (data_max)
+    _addon().set_colorbar_max_min(data_max, 0)
+    _addon().set_colormap('YlOrRd')
+
+    for label_name in labels:
+        obj = bpy.data.objects[label_name]
+        if obj.name + '_Mat' in bpy.data.materials:
+            cur_mat = bpy.data.materials[obj.name + '_Mat']
+        else:
+            cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
+            cur_mat.name = obj.name + '_Mat'
+        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+        obj.active_material = cur_mat
+
+    color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
+    # _addon().save_image()
+
+
+def static_conn_files_update(self, context):
+    ColoringMakerPanel.static_conn = np.load(op.join(mu.get_user_fol(), 'connectivity', '{}.npy'.format(
+        bpy.context.scene.static_conn_files)))
+
+
+def update_connectivity_degree_threshold(self, context):
+    color_connectivity_degree()
 
 
 def fmri_labels_coloring(override_current_mat=True):
@@ -1201,6 +1236,17 @@ class ColorConnections(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorStaticConnectionsDegree(bpy.types.Operator):
+    bl_idname = "mmvt.connectivity_degree"
+    bl_label = "mmvt connectivity_degree"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_connectivity_degree()
+        return {"FINISHED"}
+
+
 class ColorConnectionsLabelsAvg(bpy.types.Operator):
     bl_idname = "mmvt.connections_labels_avg"
     bl_label = "mmvt connections labels avg"
@@ -1550,6 +1596,7 @@ def draw(self, context):
         mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
                                     len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
+    static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*_static_*.npy'))) > 0
     # manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
     #                                                '{}_groups.csv'.format(bpy.context.scene.atlas)))
     if _addon() is None:
@@ -1646,6 +1693,12 @@ def draw(self, context):
         if ColoringMakerPanel.conn_labels_avg_files_exit:
             col.prop(context.scene, 'conn_labels_avg_files', text='')
             col.operator(ColorConnectionsLabelsAvg.bl_idname, text="Plot Connections Labels Avg", icon='POTATO')
+    if static_connectivity_exist:
+        col = layout.box().column()
+        col.prop(context.scene, 'static_conn_files', text='')
+        col.prop(context.scene, 'connectivity_degree_threshold', text="Threshold")
+        col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
+
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -1670,6 +1723,9 @@ bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description
 bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
     name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
+bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
+    default=0.7, min=0, max=1, description="", update=update_connectivity_degree_threshold)
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -1693,6 +1749,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
     labels_plotted = []
+    static_conn = None
+    connectivity_labels = []
 
     stc = None
     stc_file_chosen = False
@@ -1730,6 +1788,7 @@ def init(addon):
     init_meg_sensors()
     init_connectivity_labels_avg()
     init_contours_coloring()
+    init_static_conn()
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
@@ -1879,8 +1938,21 @@ def init_fmri_files():
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
         bpy.context.scene.fmri_files = files_names[0]
-        # for hemi in mu.HEMIS:
-        #     ColoringMakerPanel.fMRI[hemi] = np.load('{}_{}.npy'.format(fmri_files[0][:-7], hemi))
+
+
+def init_static_conn():
+    user_fol = mu.get_user_fol()
+    conn_labels_names_fname = op.join(mu.get_user_fol(), 'connectivity', 'labels_names.npy')
+    if op.isfile(conn_labels_names_fname):
+        ColoringMakerPanel.connectivity_labels = np.load(conn_labels_names_fname)
+    static_conn_files = glob.glob(op.join(user_fol, 'connectivity', '*_static_*.npy'))
+    if len(static_conn_files) > 0:
+        files_names = [mu.namebase(fname) for fname in static_conn_files]
+        files_names = [name for name in files_names if 'backup' not in name]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(
+            items=items, description="static conn files", update=static_conn_files_update)
+        bpy.context.scene.static_conn_files = files_names[0]
 
 
 def init_electrodes_sources():
@@ -1967,6 +2039,7 @@ def register():
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         bpy.utils.register_class(ChooseLabelFile)
+        bpy.utils.register_class(ColorStaticConnectionsDegree)
         # print('Freeview Panel was registered!')
     except:
         print("Can't register Freeview Panel!")
@@ -1998,6 +2071,7 @@ def unregister():
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
         bpy.utils.unregister_class(ChooseLabelFile)
+        bpy.utils.unregister_class(ColorStaticConnectionsDegree)
     except:
         pass
         # print("Can't unregister Freeview Panel!")
