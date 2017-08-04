@@ -104,6 +104,17 @@ def calc_electrodes_rest_connectivity(args):
     pu.run_on_subjects(args, con.main)
 
 
+def calc_fmri_seed_corr(args):
+    args = con.read_cmd_args(dict(
+        function='calc_fmri_seed_corr',
+        subject=args.subject, atlas=args.atlas,
+        fmri_surf_name='freesurfer', labels_regex='post*cingulate*rh',
+        seed_label_name='post_cingulate_rh', seed_label_r=5, overwrite_seed_data=False,
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
+
+
 def calc_electrodes_rest_connectivity_from_matlab(args):
 
     def read_matlab_and_split_into_windows(args):
