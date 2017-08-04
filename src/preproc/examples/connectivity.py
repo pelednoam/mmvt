@@ -70,6 +70,23 @@ def calc_fmri_connectivity(args):
     con.call_main(args)
 
 
+def calc_fmri_static_connectivity(args):
+    args = con.read_cmd_args(dict(
+        subject=args.subject,
+        atlas='laus125',
+        function='calc_lables_connectivity',
+        connectivity_modality='fmri',
+        connectivity_method='corr',
+        labels_extract_mode='mean',
+        identifier='freesurfer',
+        save_mmvt_connectivity=False,
+        calc_subs_connectivity=False,
+        recalc_connectivity=True,
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
+
+
 def calc_meg_connectivity(args):
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
