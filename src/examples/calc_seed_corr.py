@@ -10,6 +10,7 @@ import nibabel as nib
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import labels_utils as lu
+from src.preproc import fMRI as fmri
 
 links_dir = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
@@ -41,42 +42,6 @@ def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrit
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
     new_label.save(new_label_fname)
     return new_label, selected_hemi
-
-
-def load_fmri_data(fmri_surf_fname):
-    file_type = utils.file_type(fmri_surf_fname)
-    if file_type in ['nii', 'nii.gz', 'mgz', 'mgh']:
-        x = nib.load(fmri_surf_fname).get_data()
-    elif file_type == 'npy':
-        x = np.load(fmri_surf_fname)
-    else:
-        raise Exception('fMRI file format is not supported!')
-    return x
-
-
-def get_fmri_data(subject, fmri_surf_name, hemi):
-
-    def get_fmri_data(fmri_surf_name):
-        fmri_surf_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(fmri_surf_name, hemi))
-        if not op.isfile(fmri_surf_fname):
-            raise Exception('fMRI does not exist! {}'.format(fmri_surf_fname))
-        x = load_fmri_data(fmri_surf_fname)
-        return fmri_surf_fname, x
-
-    def get_fmri_other_hemi_data(fmri_surf_fname):
-        file_type = utils.file_type(fmri_surf_fname)
-        fmri_other_hemi_file_name = lu.get_other_hemi_label_name(utils.namebase(fmri_surf_fname))
-        fmri_other_hemi_surf_fname = op.join(utils.get_parent_fol(fmri_surf_fname),
-                                             '{}.{}'.format(fmri_other_hemi_file_name, file_type))
-        if not op.isfile(fmri_other_hemi_surf_fname):
-            raise Exception("Can't find {}!".format(fmri_other_hemi_surf_fname))
-        return load_fmri_data(fmri_other_hemi_surf_fname)
-
-    other_hemi = 'lh' if hemi == 'rh' else 'rh'
-    x = {}
-    fmri_surf_fname, x[hemi] = get_fmri_data(fmri_surf_name)
-    x[other_hemi] = get_fmri_other_hemi_data(fmri_surf_fname)
-    return x
 
 
 def calc_label_corr(subject, x, label, hemi, label_name, fmri_surf_name, overwrite=False, n_jobs=6):
@@ -132,5 +97,5 @@ if __name__ == '__main__':
 
     new_label, hemi = get_new_label(
         args.subject, args.atlas, args.regex, args.new_label_name, args.new_label_r,args.overwrite, args.n_jobs)
-    x = get_fmri_data(args.subject, args.fmri_surf_name, hemi)
+    x = fmri.load_fmri_data_for_both_hemis(args.subject, args.fmri_surf_name)
     calc_label_corr(args.subject, x, new_label, hemi, args.new_label_name, args.fmri_surf_name, args.overwrite, args.n_jobs)

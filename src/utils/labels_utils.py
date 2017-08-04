@@ -230,9 +230,13 @@ def remove_duplicate_hemis(label_name):
     return res
 
 
+def get_other_hemi(hemi):
+    return 'rh' if hemi == 'lh' else 'lh'
+
+
 def get_other_hemi_label_name(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
-    other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    other_hemi = get_other_hemi(hemi)
     res_label_name = build_label_name(delim, pos, label, other_hemi)
     return res_label_name
 

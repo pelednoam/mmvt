@@ -92,12 +92,13 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
             # hemi_fname = fmri_contrast_file_template.format(hemi=hemi)
         else:
             raise Exception('Wrong type of template!')
-        file_type = utils.file_type(hemi_fname)
-        if file_type == 'npy':
-            x = np.load(hemi_fname)
-        else:
-            fmri = nib.load(hemi_fname)
-            x = fmri.get_data().squeeze()
+        x = load_fmri_data(hemi_fname)
+        # file_type = utils.file_type(hemi_fname)
+        # if file_type == 'npy':
+        #     x = np.load(hemi_fname)
+        # else:
+        #     fmri = nib.load(hemi_fname)
+        #     x = fmri.get_data().squeeze()
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         if x.shape[0] != verts.shape[0]:
             if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -143,6 +144,7 @@ def calc_new_name(new_name, task, contrast_name, fmri_contrast_template_files, f
     if new_name.startswith('fmri_'):
         new_name = new_name[len('fmri_'):]
     return new_name
+
 
 def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_fol=''):
     if not op.isfile(fmri_fname):
@@ -1403,6 +1405,22 @@ def get_unique_files_into_mgz(files):
     files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
     print('get_unique_files_into_mgz: {}'.format(files))
     return files
+
+
+def load_fmri_data(fmri_surf_fname):
+    file_type = utils.file_type(fmri_surf_fname)
+    if file_type in ['nii', 'nii.gz', 'mgz', 'mgh']:
+        x = nib.load(fmri_surf_fname).get_data().squeeze()
+    elif file_type == 'npy':
+        x = np.load(fmri_surf_fname)
+    else:
+        raise Exception('fMRI file format is not supported!')
+    return x
+
+
+def load_fmri_data_for_both_hemis(subject, surf_name):
+    return {hemi:load_fmri_data(op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(surf_name, hemi)))
+            for hemi in utils.HEMIS}
 
 
 def misc(args):
