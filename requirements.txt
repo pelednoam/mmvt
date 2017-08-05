@@ -14,3 +14,4 @@ xlrd
 pymsgbox
 zmq
 pizco
+decorator
