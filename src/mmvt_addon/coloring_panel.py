@@ -131,7 +131,7 @@ def labels_contures_update(self, context):
 
 
 def object_coloring(obj, rgb):
-    print('ploting {} with {}'.format(obj.name, rgb))
+    # print('ploting {} with {}'.format(obj.name, rgb))
     if not obj:
         print('object_coloring: obj is None!')
         return False
@@ -250,6 +250,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         # else:
         #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
+    _addon().show_rois()
     # print('Finished coloring!!')
 
 
@@ -362,11 +363,15 @@ def color_connectivity_degree():
     corr = ColoringMakerPanel.static_conn
     threshold = bpy.context.scene.connectivity_degree_threshold
     labels = ColoringMakerPanel.connectivity_labels
-    degree_mat = np.sum(corr >= threshold, 0) # abs?
+    if bpy.context.scene.connectivity_degree_threshold_use_abs:
+        degree_mat = np.sum(abs(corr) >= threshold, 0)
+    else:
+        degree_mat = np.sum(corr >= threshold, 0)
     data_max = max(degree_mat)
     colors_ratio = 256 / (data_max)
     _addon().set_colorbar_max_min(data_max, 0)
     _addon().set_colormap('YlOrRd')
+    _addon().set_colorbar_title('fMRI connectivity degree')
 
     for label_name in labels:
         obj = bpy.data.objects[label_name]
@@ -379,7 +384,8 @@ def color_connectivity_degree():
         obj.active_material = cur_mat
 
     color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
-    # _addon().save_image()
+    if bpy.context.scene.connectivity_degree_save_image:
+        _addon().save_image()
 
 
 def static_conn_files_update(self, context):
@@ -1697,6 +1703,8 @@ def draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, 'static_conn_files', text='')
         col.prop(context.scene, 'connectivity_degree_threshold', text="Threshold")
+        col.prop(context.scene, 'connectivity_degree_threshold_use_abs', text="Use connectivity absolute value")
+        col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
         col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
 
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
@@ -1726,6 +1734,8 @@ bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
 bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
     default=0.7, min=0, max=1, description="", update=update_connectivity_degree_threshold)
+bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
 
 
 class ColoringMakerPanel(bpy.types.Panel):

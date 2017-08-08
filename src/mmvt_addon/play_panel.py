@@ -676,8 +676,9 @@ class CreateMovie(bpy.types.Operator):
     running = False
 
     def cancel(self, context):
-        context.window_manager.event_timer_remove(self._timer)
-        self._timer = None
+        if self._timer:
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
         CreateMovie.running = False
         return {'CANCELLED'}
 
@@ -696,7 +697,9 @@ class CreateMovie(bpy.types.Operator):
                 if len(movies) > 0:
                     os.rename(movies[0], op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
                         mu.namebase(bpy.context.scene.output_path))))
-                    shutil.rmtree(op.join(bpy.context.scene.output_path, 'new_images'))
+                    temp_fol = op.join(bpy.context.scene.output_path, 'new_images')
+                    if op.isdir(temp_fol):
+                        shutil.rmtree(temp_fol)
                     self.cancel(context)
         return {'PASS_THROUGH'}
 

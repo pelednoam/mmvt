@@ -78,7 +78,7 @@ def calc_fmri_static_connectivity(args):
         connectivity_modality='fmri',
         connectivity_method='corr',
         labels_extract_mode='mean',
-        identifier='freesurfer',
+        identifier='hesheng', #''linda',#'freesurfer',
         save_mmvt_connectivity=False,
         calc_subs_connectivity=False,
         recalc_connectivity=True,

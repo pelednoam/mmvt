@@ -498,7 +498,9 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=True, index=-1):
+def save_image(image_type='image', view_selected=None, index=-1):
+    if view_selected is None:
+        view_selected = bpy.context.scene.save_selected_view
     if index == -1:
         fol = bpy.path.abspath(bpy.context.scene.output_path)
         files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
