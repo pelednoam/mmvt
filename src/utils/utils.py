@@ -55,7 +55,7 @@ read_config_ini = mu.read_config_ini
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
-
+get_real_atlas_name = su.get_real_atlas_name
 
 from src.utils import args_utils as au
 is_int = au.is_int
