@@ -185,6 +185,8 @@ def clear_cortex(hemis=HEMIS):
             elif _addon().is_inflated():
                 cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
             clear_object_vertex_colors(cur_obj)
+        for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
+            object_coloring(label_obj, (1, 1, 1))
 
 
 #todo: call this code from the coloring
