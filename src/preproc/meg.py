@@ -1452,7 +1452,7 @@ def morph_labels_from_fsaverage(atlas='aparc250', fs_labels_fol='', sub_labels_f
 
 
 def labels_to_annot(parc_name, labels_fol='', overwrite=True):
-    utils.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
+    lu.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
 
 
 def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_modes=('mean_flip'), src=None):

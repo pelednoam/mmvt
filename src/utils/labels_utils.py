@@ -66,6 +66,33 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     return True
 
 
+def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=[]):
+    from src.utils import labels_utils as lu
+    if subjects_dir == '':
+        subjects_dir = os.environ['SUBJECTS_DIR']
+    subject_dir = op.join(subjects_dir, subject)
+    if utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))) \
+            and not overwrite:
+        return True
+    if len(labels) == 0:
+        labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
+        labels = []
+        labels_files = glob.glob(op.join(labels_fol, '*.label'))
+        if len(labels_files) == 0:
+            raise Exception('labels_to_annot: No labels files!')
+        for label_file in labels_files:
+            label = mne.read_label(label_file)
+            # print(label.name)
+            label.name = lu.get_label_hemi_invariant_name(label.name)
+            labels.append(label)
+        labels.sort(key=lambda l: l.name)
+    if overwrite:
+        for hemi in HEMIS:
+            utils.remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+    mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
+                              subjects_dir=subjects_dir)
+
+
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
     now = time.time()
     # print('Read labels')

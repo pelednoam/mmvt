@@ -358,13 +358,14 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
-    if annotations_exist:
+    if annotations_exist and not overwrite_annotation:
         return True
     else:
         if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
             if save_annot_file:
                 labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
-            return True
+            if not overwrite_annotation:
+                return True
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
             hemi, aparc_name))) for hemi in HEMIS])
@@ -400,13 +401,13 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
 def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annotation=False, surf_type='inflated',
                     n_jobs=6):
     try:
-        utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
     except:
         print("Can't write labels to annotation! Trying to solve labels collision")
         print(traceback.format_exc())
         solve_labels_collisions(subject, aparc_name, fsaverage, surf_type, n_jobs)
         try:
-            utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+            lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
             print(traceback.format_exc())
@@ -424,7 +425,7 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
     labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
-    utils.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
+    lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
         for hemi in HEMIS:
@@ -729,7 +730,7 @@ def create_high_level_atlas(subject):
         for line in utils.csv_file_reader(csv_fname, ','):
             new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
             labels.append(new_label)
-    utils.labels_to_annot(subject, SUBJECTS_DIR, 'high.level.atlas', labels=labels, overwrite=True)
+    lu.labels_to_annot(subject, SUBJECTS_DIR, 'high.level.atlas', labels=labels, overwrite=True)
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.high.level.atlas.annot'))
 
 
