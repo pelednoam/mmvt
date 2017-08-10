@@ -211,6 +211,7 @@ def _split_view():
     split_view(ShowHideObjectsPanel.split_view)
 
 
+@mu.tryit()
 def split_view(view):
     import math
     _addon().hide_subcorticals()
