@@ -117,7 +117,7 @@ def arrange_data(subjects):
             else:
                 print('Too many *_rest_reorient_skip_faln_mc.nii.gz files were found in {}!'.format(bold_fol))
                 continue
-        tr = fu.get_tr(target_file)
+        tr = int(fu.get_tr(target_file) * 1000) / 1000.0
         files_list.append('{} {} {} {}'.format(sub, bolds_numbers, str(anat_number).zfill(3), int(tr))) # int(trs[sub])))
         utils.make_dir(op.join(fmri_root_data, sub, 'scripts'))
         params_fname = op.join(fmri_root_data, sub, 'scripts', '{}.params'.format(sub))

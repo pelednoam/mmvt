@@ -1030,7 +1030,8 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
 
 def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
     def find_files(template_fname):
-        return [f for f in glob.glob(template_fname) if op.isfile(f) and utils.file_type(f) in file_types]
+        recursive = '**' in set(template_fname.split(op.sep))
+        return [f for f in glob.glob(template_fname, recursive=recursive) if op.isfile(f) and utils.file_type(f) in file_types]
 
     files = find_files(template_fname)
     if len(files) == 0:
@@ -1096,6 +1097,9 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
     fmri_fname = ''
     full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
     files = find_volume_files_from_template(full_fmri_file_template)
+    if len(files) == 0:
+        full_fmri_file_template = op.join(FMRI_DIR, subject, '**', fmri_file_template)
+        files = find_volume_files_from_template(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
         fmri_fname = files[0]
@@ -1176,7 +1180,7 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
     def run(cmd, *output_args, **kargs):
         if no_output(*output_args) or overwrite:
             rs(cmd, **kargs)
-            if no_output(*output_args):
+            if not print_only and no_output(*output_args):
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
 
@@ -1215,36 +1219,40 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
         rs('fcseed-config -vcsf -overwrite -fcname vcsf.dat -fsd {fsd} -mean -cfg {subject}/vcsf_{fsd}.cfg')
         run('fcseed-sess -s {subject} -cfg {subject}/vcsf_{fsd}.cfg', '001', 'vcsf.dat')
 
-    tr = get_tr(subject, fmri_fname) / 1000 # To sec
+    tr = get_tr(fmri_fname)
     create_analysis_info_file(fsd, trg_subject, tr, fwhm, lfp, nskip)
     for hemi in utils.HEMIS:
         # computes the average signal intensity maps
         run('selxavg3-sess -s {subject} -a {fsd}_{hemi} -svres -no-con-ok',
             '{}_{}'.format(fsd, hemi), 'res', 'res-001.nii.gz', hemi=hemi)
 
-    return copy_output_files()
+    return copy_output_files() if not print_only else True
 
 
-def get_tr(subject, fmri_fname):
+
+def get_tr(fmri_fname):
     try:
         tr_fname = utils.add_str_to_file_name(fmri_fname, '_tr', 'pkl')
         if op.isfile(tr_fname):
             return utils.load(tr_fname)
-        if utils.is_file_type(fmri_fname, 'nii.gz'):
-            old_fmri_fname = fmri_fname
-            fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
-            if not op.isfile(fmri_fname):
-                fu.mri_convert(old_fmri_fname, fmri_fname)
-        if utils.is_file_type(fmri_fname, 'mgz'):
-            fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
-            tr = fu.get_tr(fmri_fname)
+        # if utils.is_file_type(fmri_fname, 'nii.gz'):
+        #     fmri_fname = fu.nii_gz_to_mgz(fmri_fname)
+        #     # old_fmri_fname = fmri_fname
+        #     # fmri_fname = '{}mgz'.format(fmri_fname[:-len('nii.gz')])
+        #     # if not op.isfile(fmri_fname):
+        #     #     fu.mri_convert(old_fmri_fname, fmri_fname)
+        # elif utils.is_file_type(fmri_fname, 'nii'):
+        #     fmri_fname = fu.nii_to_mgz(fmri_fname)
+        # if utils.is_file_type(fmri_fname, 'mgz'):
+        #     fmri_fname = op.join(FMRI_DIR, subject, fmri_fname)
+        tr = fu.get_tr(fmri_fname)
             # print('fMRI fname: {}'.format(fmri_fname))
-            print('tr: {}'.format(tr))
-            utils.save(tr, tr_fname)
-            return tr
-        else:
-            print('file format not supported!')
-            return None
+        print('tr: {}'.format(tr))
+        utils.save(tr, tr_fname)
+        return tr
+        # else:
+        #     print('file format not supported!')
+        #     return None
     except:
         print(traceback.format_exc())
         return None
@@ -1593,7 +1601,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
 
     if 'get_tr' in args.function:
-        tr = get_tr(subject, args.fmri_fname)
+        tr = get_tr(args.fmri_fname)
         flags['get_tr'] = not tr is None
 
     if 'load_labels_ts' in args.function:

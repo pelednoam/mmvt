@@ -344,7 +344,7 @@ def get_tr(fmri_fname):
     try:
         img = nib.load(fmri_fname)
         hdr = img.get_header()
-        tr = float(hdr._header_data.tolist()[-1][0])
+        tr = float(hdr._header_data.tolist()[-1][0]) / 1000.0 # To sec
         return tr
     except:
         output = utils.run_script('mri_info --tr {}'.format(fmri_fname))
@@ -376,8 +376,19 @@ def nii_gz_to_mgz_name(fmri_fname):
     return '{}mgz'.format(fmri_fname[:-len('nii.gz')])
 
 
+def nii_to_mgz_name(fmri_fname):
+    return '{}mgz'.format(fmri_fname[:-len('nii')])
+
+
 def nii_gz_to_mgz(fmri_fname):
     new_fmri_fname = nii_gz_to_mgz_name(fmri_fname)
+    if not op.isfile(new_fmri_fname):
+        mri_convert(fmri_fname, new_fmri_fname)
+    return new_fmri_fname
+
+
+def nii_to_mgz(fmri_fname):
+    new_fmri_fname = nii_to_mgz_name(fmri_fname)
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
     return new_fmri_fname
