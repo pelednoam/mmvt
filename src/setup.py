@@ -207,12 +207,19 @@ def find_blender():
         elif op.isdir(op.join('D:\\', blender_win_fol)):
             blender_fol = op.join('D:\\', blender_win_fol)
     else:
-        output = utils.run_script("find ~/ -name 'blender'")
+        output = utils.run_script("find ~/ -name 'blender' -type d")
+        if not isinstance(output, str):
+            output = output.decode(sys.getfilesystemencoding(), 'ignore')
         blender_fols = output.split('\n')
         blender_fols = [fol for fol in blender_fols if op.isfile(op.join(
             utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
         if len(blender_fols) == 1:
             blender_fol = utils.get_parent_fol(blender_fols[0])
+        # if 'users' in sys.executable:
+        #     path_split = sys.executable.split(op.sep)
+        #     ind = path_split.index('users')
+        #     root_path = op.sep.join(path_split[:ind+2])
+        #     output = utils.run_script("find {} -name 'blender' -type d".format(root_path))
     return blender_fol
 
 
