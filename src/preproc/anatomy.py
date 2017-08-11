@@ -353,7 +353,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
     return lookup
 
 
-def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
+def create_annotation(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
@@ -363,7 +363,7 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
     else:
         if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
             if save_annot_file:
-                labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
+                labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
             if not overwrite_annotation:
                 return True
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
@@ -388,9 +388,9 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         if not ret:
             return False
     if do_solve_labels_collisions:
-        solve_labels_collisions(subject, aparc_name, fsaverage, surf_type, n_jobs)
+        solve_labels_collisions(subject, aparc_name, surf_type, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
+        labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
             SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
@@ -398,14 +398,14 @@ def create_annotation_from_template(subject, aparc_name='aparc250', fsaverage='f
         return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0
 
 
-def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annotation=False, surf_type='inflated',
+def labels_to_annot(subject, aparc_name, overwrite_annotation=False, surf_type='inflated',
                     n_jobs=6):
     try:
         lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
     except:
         print("Can't write labels to annotation! Trying to solve labels collision")
         print(traceback.format_exc())
-        solve_labels_collisions(subject, aparc_name, fsaverage, surf_type, n_jobs)
+        solve_labels_collisions(subject, aparc_name, surf_type, n_jobs)
         try:
             lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
         except:
@@ -413,8 +413,8 @@ def labels_to_annot(subject, aparc_name, fsaverage='fsaverage', overwrite_annota
             print(traceback.format_exc())
 
 
-def solve_labels_collisions(subject, aparc_name, fsaverage, surf_type='inflated', n_jobs=6):
-    backup_labels_fol = '{}_before_solve_collision'.format(aparc_name, fsaverage)
+def solve_labels_collisions(subject, aparc_name, surf_type='inflated', n_jobs=6):
+    backup_labels_fol = '{}_before_solve_collision'.format(aparc_name)
     lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
 
@@ -424,7 +424,7 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
                      minimum_labels_num=50):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
-    labels_to_annot(subject, aparc_name, fsaverage, overwrite_annotation, surf_type, n_jobs)
+    labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
     lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
@@ -531,7 +531,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
         return
-    vertices_labels_lookup = create_vertices_labels_lookup(subject, atlas)
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
     for hemi in utils.HEMIS:
         verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         contours = np.zeros((len(verts)))
@@ -551,21 +551,6 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
                  labels=[l.name for l in labels])
     return utils.both_hemi_files_exist(output_fname)
 
-
-def create_vertices_labels_lookup(subject, atlas):
-    output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_lookup.pkl'.format(atlas))
-    if op.isfile(output_fname):
-        lookup = utils.load(output_fname)
-        return lookup
-    lookup = {}
-    for hemi in utils.HEMIS:
-        lookup[hemi] = {}
-        labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
-        for label in labels:
-            for vertice in label.vertices:
-                lookup[hemi][vertice] = label.name
-    utils.save(lookup, output_fname)
-    return lookup
 #
 # @utils.timeit
 # def calc_verts_neighbors_lookup(subject):
@@ -753,7 +738,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage
-        flags['create_annotation_from_template'] = create_annotation_from_template(
+        flags['create_annotation'] = create_annotation(
             subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation,
             args.overwrite_morphing_labels, args.solve_labels_collisions, args.morph_labels_from_fsaverage,
             args.fs_labels_fol, args.save_annot_file, args.solve_labels_collision_surf_type, args.n_jobs)
@@ -851,7 +836,8 @@ def main(subject, remote_subject_dir, args, flags):
 def read_cmd_args(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
-    parser.add_argument('--template_subject', help='template subject', required=False, default='fsaverage')
+    parser.add_argument('--template_subject', help='template subject', required=False,
+                        default='fsaverage6,fsaverage5,fsaverage,colin27', type=au.str_arr_type)
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
     parser.add_argument('--cerebellum_segmentation_loose', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
@@ -872,8 +858,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
     parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
     parser.add_argument('--solve_labels_collision_surf_type', help='', required=False, default='inflated')
-
-
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

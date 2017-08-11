@@ -7,6 +7,7 @@ import os
 import shutil
 import glob
 import traceback
+from collections import defaultdict
 
 try:
     from src.utils import utils
@@ -21,13 +22,19 @@ HEMIS = ['rh', 'lh']
 
 def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
+    if isinstance(fsaverage, str):
+        fsaverage = [fsaverage]
+    for fsav in fsaverage:
+        fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(
+            subjects_dir, fsav, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
+        if fsaverage_annot_files_exist:
+            fsaverage = fsav
+            break
     subject_dir = op.join(subjects_dir, subject)
     labels_fol = op.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
     sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format(
-        '{hemi}', aparc_name)))
     if fsaverage_annot_files_exist:
         labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
     else:
@@ -97,40 +104,73 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
     now = time.time()
     # print('Read labels')
     # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
-    labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
+    # labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
         shutil.rmtree(backup_labels_fol)
     os.rename(labels_fol, backup_labels_fol)
     utils.make_dir(labels_fol)
-    hemis_verts, labels_hemi, pia_verts = {}, {}, {}
-    print('Read surface ({:.2f}s)'.format(time.time() - now))
-    for hemi in HEMIS:
+    save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial')
+    return
+
+    # hemis_verts, labels_hemi, pia_verts = {}, {}, {}
+    # print('Read surface ({:.2f}s)'.format(time.time() - now))
+    # for hemi in HEMIS:
+    #     surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
+    #     hemis_verts[hemi], _ = mne.surface.read_surface(surf_fname)
+    #     labels_hemi[hemi] = [l for l in labels if l.hemi == hemi]
+    # print('Calc centroids ({:.2f}s)'.format(time.time() - now))
+    # centroids = calc_labels_centroids(labels_hemi, hemis_verts)
+    # for hemi in HEMIS:
+    #     print('Calc vertices labeling for {} ({:.2f}s)'.format(hemi, time.time() - now))
+    #     hemi_centroids_dist = cdist(hemis_verts[hemi], centroids[hemi])
+    #     vertices_labels_indices = np.argmin(hemi_centroids_dist, axis=1)
+    #     labels_hemi_chunks = utils.chunks(list(enumerate(labels_hemi[hemi])), len(labels_hemi[hemi]) / n_jobs)
+    #     params = [(labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol) for labels_hemi_chunk in labels_hemi_chunks]
+    #     print('Save labels for {} ({:.2f}s)'.format(hemi, time.time() - now))
+    #     utils.run_parallel(_save_new_labels_parallel, params, n_jobs)
+
+
+# def _save_new_labels_parallel(params_chunk):
+#     labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol = params_chunk
+#     for ind, label in labels_hemi_chunk:
+#         vertices = np.where(vertices_labels_indices == ind)[0]
+#         pos = hemis_verts[label.hemi][vertices]
+#         new_label = mne.Label(vertices, pos, hemi=label.hemi, name=label.name, filename=None,
+#             subject=label.subject, color=label.color, verbose=None)
+#         if not op.isfile(op.join(labels_fol, new_label.name)):
+#             new_label.save(op.join(labels_fol, new_label.name))
+
+
+def create_vertices_labels_lookup(subject, atlas):
+    output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_lookup.pkl'.format(atlas))
+    if op.isfile(output_fname):
+        lookup = utils.load(output_fname)
+        return lookup
+    lookup = {}
+    for hemi in utils.HEMIS:
+        lookup[hemi] = {}
+        labels = read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        for label in labels:
+            for vertice in label.vertices:
+                lookup[hemi][vertice] = label.name
+    utils.save(lookup, output_fname)
+    return lookup
+
+
+def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial'):
+    lookup = create_vertices_labels_lookup(subject, atlas)
+    labels_fol = op.join(subjects_dir, subject, 'label', atlas)
+    for hemi in utils.HEMIS:
+        labels_vertices = defaultdict(list)
         surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
-        hemis_verts[hemi], _ = mne.surface.read_surface(surf_fname)
-        labels_hemi[hemi] = [l for l in labels if l.hemi == hemi]
-    print('Calc centroids ({:.2f}s)'.format(time.time() - now))
-    centroids = calc_labels_centroids(labels_hemi, hemis_verts)
-    for hemi in HEMIS:
-        print('Calc vertices labeling for {} ({:.2f}s)'.format(hemi, time.time() - now))
-        hemi_centroids_dist = cdist(hemis_verts[hemi], centroids[hemi])
-        vertices_labels_indices = np.argmin(hemi_centroids_dist, axis=1)
-        labels_hemi_chunks = utils.chunks(list(enumerate(labels_hemi[hemi])), len(labels_hemi[hemi]) / n_jobs)
-        params = [(labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol) for labels_hemi_chunk in labels_hemi_chunks]
-        print('Save labels for {} ({:.2f}s)'.format(hemi, time.time() - now))
-        utils.run_parallel(_save_new_labels_parallel, params, n_jobs)
-
-
-def _save_new_labels_parallel(params_chunk):
-    labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol = params_chunk
-    for ind, label in labels_hemi_chunk:
-        vertices = np.where(vertices_labels_indices == ind)[0]
-        pos = hemis_verts[label.hemi][vertices]
-        new_label = mne.Label(vertices, pos, hemi=label.hemi, name=label.name, filename=None,
-            subject=label.subject, color=label.color, verbose=None)
-        if not op.isfile(op.join(labels_fol, new_label.name)):
-            new_label.save(op.join(labels_fol, new_label.name))
+        surf, _ = mne.surface.read_surface(surf_fname)
+        for vertice, label in lookup[hemi].items():
+            labels_vertices[label].append(vertice)
+        for label, vertices in labels_vertices.items():
+            new_label = mne.Label(sorted(vertices), surf[vertices], hemi=hemi, name=label, subject=subject)
+            new_label.save(op.join(labels_fol, label))
 
 
 def calc_labels_centroids(labels_hemi, hemis_verts):

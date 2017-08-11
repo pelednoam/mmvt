@@ -941,7 +941,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "Data Panel"
+    bl_label = "Import objects and data"
     addon = None
     meg_evoked_files = []
     evoked_files = []

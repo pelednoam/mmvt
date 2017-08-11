@@ -1167,6 +1167,7 @@ def find_subsets(l, k):
         picks.append(list(sl-used))
     return picks
 
+
 def flat_list_of_sets(l):
     from operator import or_
     return reduce(or_, l)
