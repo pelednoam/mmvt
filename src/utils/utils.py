@@ -100,10 +100,9 @@ def get_scalar_map(x_min, x_max, color_map='jet'):
     return cmx.ScalarMappable(norm=cNorm, cmap=cm)
 
 
-def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None, norm_percs=(1, 99),
-                  norm_by_percentile=False):
+def arr_to_colors(x, x_min=None, x_max=None, colors_map='jet', scalar_map=None, norm_percs=(1, 99)):
     if scalar_map is None:
-        x_min, x_max = calc_min_max(x, x_min, x_max, norm_percs, norm_by_percentile)
+        x_min, x_max = calc_min_max(x, x_min, x_max, norm_percs)
         scalar_map = get_scalar_map(x_min, x_max, colors_map)
     return scalar_map.to_rgba(x)
 
@@ -123,9 +122,7 @@ def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, f
     raise Exception('colors ndim not 2 or 3!')
 
 
-def calc_min_max(x, x_min=None, x_max=None, norm_percs=None, norm_by_percentile=False):
-    if not norm_by_percentile:
-        norm_percs = None
+def calc_min_max(x, x_min=None, x_max=None, norm_percs=None):
     if x_min is None:
         x_min = np.nanmin(x) if norm_percs is None else np.percentile(x, norm_percs[0])
     if x_max is None:
@@ -1719,18 +1716,22 @@ def look_for_one_file(template, files_desc, pick_the_first_one=False, search_fun
         if pick_the_first_one:
             fname = files[0]
         else:
-            print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
-            for ind, fname in enumerate(files):
-                print('{}) {}'.format(ind + 1, fname))
-            file_num = input('Which on do you want to load (1, 2, ...)? ')
-            while not is_int(file_num):
-                print('Please enter a valid integer')
-                file_num = input('Which on do you want to load (1, 2, ...)? ')
-            file_num = int(file_num) - 1
-            fname = files[file_num]
+            fname = select_one_file(files, template, files_desc)
     else:
         fname = files[0]
     return fname
+
+
+def select_one_file(files, template, files_desc=''):
+    print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
+    for ind, fname in enumerate(files):
+        print('{}) {}'.format(ind + 1, fname))
+    file_num = input('Which on do you want to load (1, 2, ...)? ')
+    while not is_int(file_num):
+        print('Please enter a valid integer')
+        file_num = input('Which on do you want to load (1, 2, ...)? ')
+    file_num = int(file_num) - 1
+    return files[file_num]
 
 
 def get_logs_fol():

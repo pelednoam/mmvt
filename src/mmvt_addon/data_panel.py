@@ -38,8 +38,10 @@ bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description=
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
 bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
+bpy.types.Scene.add_fmri_subcorticals_data = bpy.props.BoolProperty(default=True, description="")
 
 bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'conditions difference', '', 0), ('mean', 'conditions average', '', 1)])
+bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
 bpy.types.Scene.fmri_labels_extract_method = bpy.props.StringProperty(default='mean')
 
@@ -504,9 +506,12 @@ def add_data_to_brain(source_files):
 def add_fmri_dynamics_to_parent_obj():
     brain_obj = create_empty_if_doesnt_exists('fMRI')
     measure = bpy.context.scene.fMRI_dynamic_files.split(' ')[-1]
-    source = [np.load(op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
+    sources = [np.load(op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         bpy.context.scene.atlas, measure, hemi))) for hemi in mu.HEMIS]
-    add_data_to_parent_obj(brain_obj, source, STAT_AVG)
+    if bpy.context.scene.add_fmri_subcorticals_data:
+        sources.append(np.load(op.join(mu.get_user_fol(), 'fmri', '{}.npz'.format(
+            bpy.context.scene.subcortical_fmri_files))))
+    add_data_to_parent_obj(brain_obj, sources, STAT_AVG)
     mu.view_all_in_graph_editor()
 
 
@@ -583,7 +588,11 @@ def add_data_to_parent_obj(parent_obj, source_files, stat):
 
             # For every time point insert keyframe to the main Brain object
             for ind in range(data.shape[0]):
-                mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+                try:
+                    mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+                except:
+                    mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
+                    print('asdf')
 
             # remove the orange keyframe sign in the fcurves window
             fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
@@ -949,12 +958,12 @@ class DataMakerPanel(bpy.types.Panel):
     eeg_data, eeg_meta = None, None
     meg_labels_data_exist = False
     subcortical_meg_data_exist = False
+    subcortical_fmri_data_exist = False
     fMRI_dynamic_exist = False
     electrodes_data = None
     electrodes_dists = None
     electrodes_names = None
     electrodes_conditions = None
-
 
     def draw(self, context):
         layout = self.layout
@@ -986,7 +995,12 @@ class DataMakerPanel(bpy.types.Panel):
         if DataMakerPanel.fMRI_dynamic_exist:
             col = layout.box().column()
             col.prop(context.scene, 'fMRI_dynamic_files', text="")
+            if DataMakerPanel.subcortical_fmri_data_exist:
+                col.prop(context.scene, 'add_fmri_subcorticals_data', text="add subcorticals")
+                if bpy.context.scene.add_fmri_subcorticals_data:
+                    col.prop(context.scene, 'subcortical_fmri_files', text='')
             col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
+
         # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
         # if len(DataMakerPanel.evoked_files) > 0:
         #     layout.label(text='External MEG evoked files:')
@@ -1045,6 +1059,12 @@ def init(addon):
                 if bpy.context.scene.meg_labels_extract_method in files_names else files_names[0]
     if op.isfile(op.join(mu.get_user_fol(), 'meg', 'subcortical_meg_activity.npz')):
         DataMakerPanel.subcortical_meg_data_exist = True
+    subcortical_fmri_files = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'subcorticals_*.npz'))
+    if len(subcortical_fmri_files) > 0:
+        DataMakerPanel.subcortical_fmri_data_exist = True
+        files_names = [mu.namebase(fname) for fname in subcortical_fmri_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=items, description="subcortical fMRI files")
 
     electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
     if len(electrodes_positions_files) > 0:

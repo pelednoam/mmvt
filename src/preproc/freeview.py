@@ -25,9 +25,11 @@ def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=Tr
         for group in groups:
             freeview_command += group + postfix + ' '
     utils.make_dir(blender_freeview_fol)
-    with open(op.join(blender_freeview_fol, 'run_freeview.sh'), 'w') as sh_file:
+    freeview_cmd_fname = op.join(blender_freeview_fol, 'run_freeview.sh')
+    with open(freeview_cmd_fname, 'w') as sh_file:
         sh_file.write(freeview_command)
     print(freeview_command)
+    return op.isfile(freeview_cmd_fname)
 
 
 # todo: fix duplications!
@@ -116,8 +118,8 @@ def check_mgz_values(atlas):
 
 def create_electrodes_points(subject, args): # bipolar=False, create_points_files=True, create_volume_file=False,
                              # way_points=False, electrodes_pos_fname=''):
-    if args.elecs_names is None:
-        return
+    if len(args.elecs_names) == 0:
+        return True
     groups = set([utils.elec_group(name, args.bipolar) for name in args.elecs_names])
     freeview_command = 'freeview -v T1.mgz:opacity=0.3 aparc+aseg.mgz:opacity=0.05:colormap=lut ' + \
         ('-w ' if args.way_points else '-c ')
@@ -156,11 +158,14 @@ def create_electrodes_points(subject, args): # bipolar=False, create_points_file
 
 
 def copy_T1(subject):
+    files_exist = True
     for brain_file in ['T1.mgz', 'orig.mgz']:
         blender_brain_file = op.join(MMVT_DIR, subject, 'freeview', brain_file)
         subject_brain_file = op.join(SUBJECTS_DIR, subject, 'mri', brain_file)
         if not op.isfile(blender_brain_file):
             utils.copy_file(subject_brain_file, blender_brain_file)
+        files_exist = files_exist and op.isfile(blender_brain_file)
+    return files_exist
 
 
 def read_electrodes_pos(subject, args):

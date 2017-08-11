@@ -71,10 +71,7 @@ def analyze_4d_data(args):
         subject=args.subject,
         atlas=args.atlas,
         function='analyze_4d_data',
-        # fmri_file_template='*rest*.{hemi}*.{format}',
-        # fmri_file_template='rest.sm6.fsaverage6.{hemi}.mgz',
-        # fmri_file_template='rest_linda.sm6.{subject}.{hemi}.mgz',
-        # fmri_file_template='{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz',
+        # fmri_file_template='fmcpr.up.sm6.{subject}.{hemi}.nii.gz',
         fmri_file_template='{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_{hemi}.mgz',
         # template_brain='fsaverage5',
         # template_brain='fsaverage6',
@@ -134,12 +131,13 @@ def calc_labels_mean_freesurfer(args):
     pu.run_on_subjects(args, fmri.main)
 
 
-def calculate_subcorticals_activity(args):
+def calc_subcorticals_activity(args):
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
-        function='calculate_subcorticals_activity',
-        fmri_file_template='rest*',
-        labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
+        function='calc_subcorticals_activity',
+        # fmri_file_template='rest*',
+        fmri_file_template='fmcpr.sm6.mni305.2mm',
+        labels_extract_mode='mean', #,pca,pca_2,pca_4,pca_8',
         overwrite_subs_data=True
     ))
     pu.run_on_subjects(args, fmri.main)

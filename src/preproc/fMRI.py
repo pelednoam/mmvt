@@ -77,7 +77,7 @@ def build_fmri_contrast_file_template(subject, fmri_contrast_file_template='', t
 
 
 def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=(3, 97),
-                      norm_by_percentile=True, symetric_colors=True, contrast_name='', new_name='', remote_fmri_dir='', template_brain=''):
+                      symetric_colors=True, contrast_name='', new_name='', remote_fmri_dir='', template_brain=''):
     data = None
     fmri_contrast_template_files = []
     for hemi in utils.HEMIS:
@@ -93,12 +93,6 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
         else:
             raise Exception('Wrong type of template!')
         x = load_fmri_data(hemi_fname)
-        # file_type = utils.file_type(hemi_fname)
-        # if file_type == 'npy':
-        #     x = np.load(hemi_fname)
-        # else:
-        #     fmri = nib.load(hemi_fname)
-        #     x = fmri.get_data().squeeze()
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.pial.ply'.format(hemi)))
         if x.shape[0] != verts.shape[0]:
             if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
@@ -111,7 +105,7 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
                                 "({}) doesn't have the same vertices number!".format(verts.shape[0]))
         x_ravel = x.ravel()
         data = x_ravel if data is None else np.hstack((x_ravel, data))
-    data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile)
+    data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs)
     if data_min == 0 and data_max == 0:
         print('Both min and max values are 0!!!')
         return False
@@ -459,18 +453,8 @@ def calculate_subcorticals_surface_activity(subject, volume_file, subcortical_co
         plt.show()
 
 
-def calculate_subcorticals_activity(subject, fmri_file_template, measures=['mean'], subcortical_codes_fname='', overwrite=False):
-    fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-    volume_files = find_volume_files_from_template(fmri_file_template)
-    if len(volume_files) == 1:
-        volume_file = volume_files[0]
-    elif len(volume_files) == 0:
-        print("Can't find the volume file! {}".format(fmri_file_template))
-        return False
-    else:
-        print('More than one file was found! {}'.format(fmri_file_template))
-        return False
-
+def calc_subcorticals_activity(subject, fmri_file_template, measures=['mean'], subcortical_codes_fname='', overwrite=False):
+    volume_file = get_fmri_fname(subject, fmri_file_template, only_volumes=True, raise_exception=False)
     x = nib.load(volume_file)
     x_data = x.get_data()
 
@@ -489,7 +473,10 @@ def calculate_subcorticals_activity(subject, fmri_file_template, measures=['mean
         os.mkdir(out_folder)
     if np.any(x_data.shape[:3] != aseg.shape):
         new_aseg_fname = op.join(FMRI_DIR, subject, 'aseg.mgz')
-        if not op.isfile(new_aseg_fname):
+        if op.isfile(new_aseg_fname):
+            aseg = nib.load(new_aseg_fname)
+        if np.any(x_data.shape[:3] != aseg.shape):
+            utils.remove_file(new_aseg_fname)
             fu.vol2vol(subject, aseg_fname, volume_file, new_aseg_fname)
         aseg = nib.load(new_aseg_fname)
 
@@ -518,7 +505,7 @@ def calculate_subcorticals_activity(subject, fmri_file_template, measures=['mean
                 x = x.T
                 x_r = pca.fit(x).transform(x)
                 labels_data.append(x_r)
-        labels_data = np.array(labels_data)
+        labels_data = np.array(labels_data, dtype=np.float64)
         np.savez(out_fname, data=labels_data, names=seg_names)
         print('Writing to {}, {}'.format(out_fname, labels_data.shape))
     return all([op.isfile(o) for o in out_fnames])
@@ -791,7 +778,8 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(remote_fmri_dir, subject, 'figures')
-    input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
+    input_fname_template_file = get_fmri_fname(subject, input_fname_template, only_volumes=False, raise_exception=False)
+    # input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
     for hemi in utils.HEMIS:
         fmri_fname = input_fname_template_file.format(hemi=hemi)
         fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
@@ -976,23 +964,29 @@ def calc_labels_minmax(subject, atlas, extract_modes):
                    for em in extract_modes])
 
 
-def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverage', format='mgz', overwrite=False):
+def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='fsaverage', format='mgz',
+                              norm_percs=(1, 99), overwrite=False):
+    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_minmax.npy')
+    hemi_minmax = []
+    if isinstance(template_brains, str):
+        template_brains = [template_brains]
     if fmri_file_template == '':
         fmri_file_template = '*{hemi}*{format}'
+    # todo: should do something more clever than just taking the first template brain
     input_fname_template = fmri_file_template.format(
-        subject=subject, morph_to_subject=template, hemi='{hemi}', format=format)
-    minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_minmax.npy')
-    data_min, data_max = [], []
+        subject=subject, morph_to_subject=template_brains[0], hemi='{hemi}', format=format)
+    fmri_fname_template = get_fmri_fname(subject, '*morphed*{}'.format(fmri_file_template), raise_exception=False)
+    if not utils.both_hemi_files_exist(fmri_fname_template):
+        fmri_fname_template = get_fmri_fname(subject, input_fname_template)
+
     for hemi in utils.HEMIS:
         fol = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi))
+        fmri_fname = fmri_fname_template.format(hemi=hemi)
         # Check if there is a morphed file
-        fmri_fname = get_fmri_fname(subject, '*morphed*{}*{}*{}'.format(subject, hemi, format),
-                                            raise_exception=False)
-        if not op.isfile(fmri_fname):
-            fmri_fname = get_fmri_fname(subject, input_fname_template.format(hemi=hemi))
         data = nib.load(fmri_fname).get_data().squeeze()
         T = data.shape[1]
-        if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T and op.isfile(minmax_fname):
+        if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T:
+            hemi_minmax.append(utils.calc_abs_minmax(data, norm_percs=norm_percs))
             continue
         verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         file_verts_num, subject_verts_num = data.shape[0], verts.shape[0]
@@ -1014,8 +1008,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
                 raise Exception('surf2surf: Target file was not created!')
             data = nib.load(fmri_fname).get_data().squeeze()
         assert (data.shape[0] == subject_verts_num)
-        data_min.append(np.min(data))
-        data_max.append(np.max(data))
+        hemi_minmax.append(utils.calc_abs_minmax(data, norm_percs=norm_percs))
         utils.delete_folder_files(fol)
         now = time.time()
         T = data.shape[1]
@@ -1023,7 +1016,9 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template='fsaverag
             utils.time_to_go(now, t, T, runs_num_to_print=10)
             np.save(op.join(fol, 't{}'.format(t)), data[:, t])
 
-    np.save(minmax_fname, [min(data_min), max(data_max)])
+    data_min, data_max = -max(hemi_minmax), max(hemi_minmax)
+    print('save_dynamic_activity_map minmax: {},{}'.format(data_min, data_max))
+    np.save(minmax_fname, (data_min, data_max))
     return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
                    for hemi in utils.HEMIS])
 
@@ -1093,13 +1088,21 @@ def find_volume_files_from_template(template_fname):
     return find_volume_files(find_template_files(template_fname))
 
 
-def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, raise_exception=True):
+def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, only_volumes=False, raise_exception=True):
     fmri_fname = ''
+    if '{subject}' in fmri_file_template:
+        fmri_file_template = fmri_file_template.replace('{subject}', subject)
     full_fmri_file_template = op.join(FMRI_DIR, subject, fmri_file_template)
-    files = find_volume_files_from_template(full_fmri_file_template)
+    if only_volumes:
+        files = find_volume_files_from_template(full_fmri_file_template)
+    else:
+        files = find_hemi_files_from_template(full_fmri_file_template)
     if len(files) == 0:
         full_fmri_file_template = op.join(FMRI_DIR, subject, '**', fmri_file_template)
-        files = find_volume_files_from_template(full_fmri_file_template)
+        if only_volumes:
+            files = find_volume_files_from_template(full_fmri_file_template)
+        else:
+            files = find_hemi_files_from_template(full_fmri_file_template)
     files_num = len(set([utils.namebase(f) for f in files]))
     if files_num == 1:
         fmri_fname = files[0]
@@ -1110,8 +1113,9 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, r
         else:
             return no_files_were_found_func()
     elif files_num > 1:
-        if raise_exception:
-            raise Exception("More than one file can be found in {}! {}".format(full_fmri_file_template, files))
+        fmri_fname = utils.select_one_file(files, fmri_file_template, 'fMRI')
+        # if raise_exception:
+        #     raise Exception("More than one file can be found in {}! {}".format(full_fmri_file_template, files))
     return fmri_fname
 
 
@@ -1193,7 +1197,8 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
     find_trg_subject(trg_subject)
     if fmri_file_template == '':
         fmri_file_template = '*'
-    fmri_fname = get_fmri_fname(subject, fmri_file_template, no_files_were_found, raise_exception=False)
+    fmri_fname = get_fmri_fname(
+        subject, fmri_file_template, no_files_were_found, only_volumes=True, raise_exception=False)
     if fmri_fname == '':
         return False
     output_files_exist = copy_output_files()
@@ -1315,11 +1320,11 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', 
                     save_fmri_hemi_data(subject, hemi, contrast, new_hemi_fname, task, output_fol=fmri_files_fol)
             calc_fmri_min_max(
                 subject, new_hemis_fname, task=task, norm_percs=args.norm_percs, contrast_name=contrast,
-                norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors)
+                symetric_colors=args.symetric_colors)
             if morphed_from_subject != subject:
                 calc_fmri_min_max(
                     morphed_from_subject, new_hemis_org_subject_fname, task=task, norm_percs=args.norm_percs,
-                    norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors,
+                    symetric_colors=args.symetric_colors,
                     contrast_name=contrast)
         # todo: save clusters also for morphed_from_subject
         find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
@@ -1356,7 +1361,7 @@ def fmri_pipeline_all(subject, atlas, task='*', contrast='*', filter_dic=None, n
     new_hemis_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(new_name, '{hemi}'))
     calc_fmri_min_max(
         subject, new_hemis_fname, task=all_tasks, norm_percs=norm_percs, contrast_name=all_contrasts,
-        norm_by_percentile=norm_by_percentile, symetric_colors=symetric_colors, new_name=new_name)
+        symetric_colors=symetric_colors, new_name=new_name)
     all_clusters_fnames = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_*_{}.pkl'.format(atlas)))
     all_clusters_fnames = [f for f in all_clusters_fnames if '-and-' not in utils.namebase(f)]
     all_clusters_uids = ['-'.join(n.split('_')[:2]) for n in
@@ -1556,8 +1561,8 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_fmri_min_max'):
         flags['calc_fmri_min_max'] = calc_fmri_min_max(
             subject, fmri_contrast_file_template, task=args.task, norm_percs=args.norm_percs,
-            norm_by_percentile=args.norm_by_percentile, symetric_colors=args.symetric_colors,
-            contrast_name=args.contrast_name, remote_fmri_dir=remote_fmri_dir, template_brain=args.target_subject)
+            symetric_colors=args.symetric_colors, contrast_name=args.contrast_name,
+            remote_fmri_dir=remote_fmri_dir, template_brain=args.target_subject)
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(
@@ -1577,8 +1582,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'save_dynamic_activity_map' in args.function:
         flags['save_dynamic_activity_map'] = save_dynamic_activity_map(
-            subject, args.fmri_file_template, template='fsaverage', format='mgz',
-            overwrite=args.overwrite_activity_data)
+            subject, args.fmri_file_template, template_brains=args.template_brain,
+            norm_percs=args.norm_percs, overwrite=args.overwrite_activity_data)
 
     if 'clean_4d_data' in args.function:
         flags['clean_4d_data'] = clean_4d_data(
@@ -1593,8 +1598,8 @@ def main(subject, remote_subject_dir, args, flags):
             flags['calc_meg_activity'] = calc_meg_activity_for_functional_rois(
                 subject, meg_subject, args.atlas, args.task, args.contrast_name, args.contrast, args.inverse_method)
 
-    if 'calculate_subcorticals_activity' in args.function:
-        flags['calculate_subcorticals_activity'] = calculate_subcorticals_activity(
+    if 'calc_subcorticals_activity' in args.function:
+        flags['calc_subcorticals_activity'] = calc_subcorticals_activity(
             subject, args.fmri_file_template, measures=args.labels_extract_mode, overwrite=args.overwrite_subs_data)
 
     if 'copy_volumes' in args.function:
