@@ -10,6 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import shutil
 import glob
 import traceback
+from collections import defaultdict
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
@@ -770,18 +771,21 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='',
+def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='', norm_percs=(1,99),
                           overwrite=False, remote_fmri_dir='', do_plot=False, do_plot_all_vertices=False,
                           excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
-    files_exist = np.all([utils.both_hemi_files_exist(op.join(
+    files_exist = all([utils.both_hemi_files_exist(op.join(
         MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}'))) for em in measures])
-    if files_exist and not overwrite:
+    minmax_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, '{em}'))
+    minmax_exist = all([op.isfile(minmax_fname_template.format(em=em)) for em in measures])
+    if files_exist and minmax_exist and not overwrite:
         return True
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     morph_from_subject = subject if template_brain == '' else template_brain
     figures_dir = op.join(remote_fmri_dir, subject, 'figures')
     input_fname_template_file = get_fmri_fname(subject, input_fname_template, only_volumes=False, raise_exception=False)
     # input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
+    labels_minmax = defaultdict(list)
     for hemi in utils.HEMIS:
         fmri_fname = input_fname_template_file.format(hemi=hemi)
         fmri_fname = convert_fmri_file(fmri_fname, from_format=input_format)
@@ -794,6 +798,9 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
             output_fname = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi))
             if op.isfile(output_fname) and not overwrite:
                 print('{} already exist'.format(output_fname))
+                if not op.isfile(minmax_fname_template.format(em=em)) or overwrite:
+                    labels_data = np.load(output_fname)['data']
+                    labels_minmax[em].append(utils.calc_min_max(labels_data, norm_percs=norm_percs))
                 continue
             if len(labels) == 0:
                 labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
@@ -803,10 +810,18 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
             labels_data, labels_names = lu.calc_time_series_per_label(
                 x, labels, em, excludes, figures_dir, do_plot, do_plot_all_vertices)
             np.savez(output_fname, data=labels_data, names=labels_names)
+            labels_minmax[em].append(utils.calc_min_max(labels_data, norm_percs=norm_percs))
             print('{} was saved'.format(output_fname))
 
-    return np.all([utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(
-        atlas, em, '{hemi}'))) for em in measures])
+    for em in measures:
+        if not op.isfile(minmax_fname_template.format(em=em)) or overwrite:
+            data_min, data_max = utils.calc_minmax_from_arr(labels_minmax[em])
+            utils.save((data_min, data_max), minmax_fname_template.format(em=em))
+
+    files_exist = all([utils.both_hemi_files_exist(op.join(
+        MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}'))) for em in measures])
+    minmax_exist = all([op.isfile(minmax_fname_template.format(em=em)) for em in measures])
+    return files_exist and minmax_exist
 
 
 def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_fmri_dir=''):
@@ -1022,7 +1037,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='f
             utils.time_to_go(now, t, T, runs_num_to_print=10)
             np.save(op.join(fol, 't{}'.format(t)), data[:, t])
 
-    data_min, data_max = utils.calc_hemis_minmax(hemi_minmax)
+    data_min, data_max = utils.calc_minmax_from_arr(hemi_minmax)
     print('save_dynamic_activity_map minmax: {},{}'.format(data_min, data_max))
     np.save(minmax_fname, (data_min, data_max))
     return np.all([len(glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi), '*.npy'))) == T
@@ -1412,7 +1427,6 @@ def filter_clusters(clusters, filter_dic):
 
 
 def get_unique_files_into_mgz(files):
-    from collections import defaultdict
     contrast_files_dic = defaultdict(list)
     for contrast_file in files:
         ft = utils.file_type(contrast_file)
@@ -1577,7 +1591,7 @@ def main(subject, remote_subject_dir, args, flags):
     if 'analyze_4d_data' in args.function:
         flags['analyze_4d_data'] = analyze_4d_data(
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain,
-            args.overwrite_labels_data, remote_fmri_dir, args.resting_state_plot,
+            args.norm_percs, args.overwrite_labels_data, remote_fmri_dir, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
     if 'calc_labels_minmax' in args.function:

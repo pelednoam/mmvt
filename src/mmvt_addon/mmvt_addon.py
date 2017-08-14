@@ -408,6 +408,9 @@ def fix_scale():
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             for i in range(3):
                 label_obj.scale[i] = 0.1
+    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
+        for i in range(3):
+            sub_obj.scale[i] = 0.1
 
 
 def main(addon_prefs=None):

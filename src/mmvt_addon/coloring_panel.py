@@ -73,14 +73,18 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
+    set_default_colormap(data_min, data_max)
+    fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
+    return fname, stc_t_smooth
+
+
+def set_default_colormap(data_min, data_max):
     # todo: should read default values from ini file
     if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-        if data_min == 0:
+        if data_min == 0 or np.sign(data_min) == np.sign(data_max):
             _addon().set_colormap('YlOrRd')
         else:
             _addon().set_colormap('BuPu-YlOrRd')
-    fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
-    return fname, stc_t_smooth
 
 
 def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False, view_selected=False):
@@ -187,6 +191,8 @@ def clear_cortex(hemis=HEMIS):
             clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
+    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
+        object_coloring(sub_obj, (1, 1, 1))
 
 
 #todo: call this code from the coloring
@@ -279,6 +285,21 @@ def load_faces_verts():
         faces_verts['lh'] = np.load(op.join(current_root_path, 'faces_verts_lh.npy'))
         faces_verts['rh'] = np.load(op.join(current_root_path, 'faces_verts_rh.npy'))
     return faces_verts
+
+
+def load_subs_faces_verts():
+    faces_verts = {}
+    verts = {}
+    current_root_path = mu.get_user_fol()
+    subcoticals = glob.glob(op.join(current_root_path, 'subcortical', '*_faces_verts.npy'))
+    for subcortical_file in subcoticals:
+        subcortical = mu.namebase(subcortical_file)[:-len('_faces_verts')]
+        lookup_file = op.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
+        verts_file = op.join(current_root_path, 'subcortical', '{}.npz'.format(subcortical))
+        if op.isfile(lookup_file) and op.isfile(verts_file):
+            faces_verts[subcortical] = np.load(lookup_file)
+            verts[subcortical] = np.load(verts_file)['verts']
+    return faces_verts, verts
 
 
 def load_meg_subcortical_activity():
@@ -374,7 +395,14 @@ def color_connectivity_degree():
     _addon().set_colorbar_max_min(data_max, 0)
     _addon().set_colormap('YlOrRd')
     _addon().set_colorbar_title('fMRI connectivity degree')
+    fix_labels_material(labels)
 
+    color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
+    if bpy.context.scene.connectivity_degree_save_image:
+        _addon().save_image()
+
+
+def fix_labels_material(labels):
     for label_name in labels:
         obj = bpy.data.objects[label_name]
         if obj.name + '_Mat' in bpy.data.materials:
@@ -384,10 +412,6 @@ def color_connectivity_degree():
             cur_mat.name = obj.name + '_Mat'
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
         obj.active_material = cur_mat
-
-    color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
-    if bpy.context.scene.connectivity_degree_save_image:
-        _addon().save_image()
 
 
 def static_conn_files_update(self, context):
@@ -401,20 +425,48 @@ def update_connectivity_degree_threshold(self, context):
 
 def fmri_labels_coloring(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
-    init_activity_map_coloring('FMRI')
+    init_activity_map_coloring('MEG' if bpy.context.scene.color_rois_homogeneously else 'FMRI', True)
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.fmri_labels_extract_method
-    labels_min, labels_max = np.load(
-        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
-    data_minmax = max(map(abs, [labels_min, labels_max]))
-    labels_min, labels_max = -data_minmax, data_minmax
+    if _addon().colorbar_values_are_locked():
+        labels_min, labels_max = _addon().get_colorbar_max_min()
+    else:
+        labels_min, labels_max = np.load(
+            op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
+        labels_min = 0
+        _addon().set_colorbar_max_min(labels_max, labels_min)
+    colors_ratio = 256 / (labels_max - labels_min)
+    set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
         labels_data = np.load(op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
-        labels_coloring_hemi(labels_data, ColoringMakerPanel.faces_verts,
-                                 hemi, threshold, 'avg', override_current_mat,
-                                 labels_min, labels_max)
+        fix_labels_material(labels_data['names'])
+        # todo check this also in other labels coloring
+        if bpy.context.scene.color_rois_homogeneously:
+            color_objects_homogeneously(
+                labels_data['data'], labels_data['names'], ['rest'], labels_min, colors_ratio, threshold)
+        else:
+            labels_coloring_hemi(
+                labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, 'avg', override_current_mat,
+                labels_min, labels_max)
+
+    if ColoringMakerPanel.fmri_subcorticals_mean_exist:
+        em = bpy.context.scene.fmri_labels_extract_method
+        subs_data = np.load(op.join(user_fol, 'fmri', 'subcorticals_{}.npz'.format(em)))
+        fix_labels_material(subs_data['names'])
+        if bpy.context.scene.color_rois_homogeneously:
+            color_objects_homogeneously(
+                subs_data['data'], subs_data['names'], ['rest'], labels_min, colors_ratio, threshold)
+        else:
+            t = bpy.context.scene.frame_current
+            for sub_name, sub_data in zip(subs_data['names'], subs_data['data']):
+                verts = ColoringMakerPanel.subs_verts[sub_name]
+                data = np.tile(sub_data[t], (len(verts), 1))
+                cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(sub_name))
+                activity_map_obj_coloring(
+                    cur_obj, data, ColoringMakerPanel.subs_faces_verts[sub_name], 0, True,
+                    labels_min, colors_ratio)
 
 
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
@@ -868,9 +920,7 @@ def color_volumetric():
 
 
 def color_subcortical_region(region_name, color):
-    # obj = bpy.data.objects.get(region_name + '_meg_activity', None)
-    # if not obj is None:
-    #     object_coloring(obj,     color)
+    #todo: read the ColoringPanel.subs_verts_faces like in fmri labels coloring
     cur_obj = bpy.data.objects.get(region_name + '_fmri_activity', None)
     obj_ana_fname = op.join(mu.get_user_fol(), 'subcortical', '{}.npz'.format(region_name))
     obj_lookup_fname = op.join(mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(region_name))
@@ -1614,6 +1664,7 @@ def draw(self, context):
     # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
     layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
+    layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
 
     if faces_verts_exist:
         meg_current_activity_data_exist = mu.hemi_files_exists(
@@ -1727,6 +1778,7 @@ bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], desc
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
@@ -1770,6 +1822,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     stc_file_exist = False
     meg_activity_data_exist = False
     fmri_labels_exist = False
+    fmri_subcorticals_mean_exist = False
     fmri_activity_map_exist = False
     eeg_exist = False
     meg_sensors_exist = False
@@ -1786,6 +1839,7 @@ class ColoringMakerPanel(bpy.types.Panel):
 def init(addon):
     ColoringMakerPanel.addon = addon
     ColoringMakerPanel.faces_verts = None
+    ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = None, None
 
     init_meg_activity_map()
     init_fmri_activity_map()
@@ -1937,8 +1991,12 @@ def init_fmri_labels():
     fmri_labels_data_exist = mu.hemi_files_exists(
         op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
     fmri_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
     ColoringMakerPanel.fmri_labels_exist = fmri_labels_data_exist and fmri_labels_data_minmax_exist
+    ColoringMakerPanel.fmri_subcorticals_mean_exist = op.isfile(
+        op.join(user_fol, 'fmri', 'subcorticals_{}.npz'.format(em)))
+    if ColoringMakerPanel.subs_faces_verts is None or ColoringMakerPanel.subs_verts is None:
+        ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = load_subs_faces_verts()
 
 
 def init_fmri_files():
