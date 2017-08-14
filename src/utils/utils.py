@@ -161,6 +161,18 @@ def calc_abs_minmax(x, norm_percs=None):
     return max(map(abs, [x_min, x_max]))
 
 
+def calc_abs_minmax(data_min, data_max):
+    minmax = max(map(abs, [data_min, data_max]))
+    return -minmax, minmax
+
+
+def calc_hemis_minmax(hemi_minmax):
+    data_min, data_max = min([x[0] for x in hemi_minmax]), max([x[1] for x in hemi_minmax])
+    if np.sign(data_max) != np.sign(data_min) and data_min != 0:
+        data_min, data_max = calc_abs_minmax(data_min, data_max)
+    return data_min, data_max
+
+
 def mat_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm_small='PuBu', threshold=0, default_val=0,
         scalar_map_big=None, scalar_map_small=None, flip_cm_big=False, flip_cm_small=False, min_is_abs_max=False,
         norm_percs = None):
