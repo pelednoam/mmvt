@@ -174,8 +174,12 @@ def get_obj_color(obj):
 
 
 def clear_subcortical_fmri_activity():
-    for cur_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
-        clear_object_vertex_colors(cur_obj)
+    for sub_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+        clear_object_vertex_colors(sub_obj)
+    for sub_obj in bpy.data.objects['Subcortical_meg_activity_map'].children:
+        object_coloring(sub_obj, (1, 1, 1))
+    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
+        object_coloring(sub_obj, (1, 1, 1))
 
 
 def clear_cortex(hemis=HEMIS):
@@ -191,8 +195,6 @@ def clear_cortex(hemis=HEMIS):
             clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
-    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
-        object_coloring(sub_obj, (1, 1, 1))
 
 
 #todo: call this code from the coloring
@@ -440,6 +442,8 @@ def fmri_labels_coloring(override_current_mat=True):
     colors_ratio = 256 / (labels_max - labels_min)
     set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
+        if bpy.data.objects[hemi].hide:
+            continue
         labels_data = np.load(op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
         fix_labels_material(labels_data['names'])
         # todo check this also in other labels coloring
