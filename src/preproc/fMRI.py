@@ -824,25 +824,25 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
     return files_exist and minmax_exist
 
 
-def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_fmri_dir=''):
-    input_fname_template_files, full_input_fname_template = build_fmri_contrast_file_template(
-        subject, input_fname_template, template_brain, remote_fmri_dir)
-    if len(input_fname_template_files) > 1:
-        print('More the one file was found! {}'.format(full_input_fname_template))
-        print(input_fname_template_files)
-        return ''
-    elif len(input_fname_template_files) == 0:
-        print("Can't find template files! {}".format(full_input_fname_template))
-        print(subject, input_fname_template, template_brain, remote_fmri_dir)
-        return ''
-    return input_fname_template_files[0]
+# def find_4d_fmri_file(subject, input_fname_template, template_brain='', remote_fmri_dir=''):
+#     input_fname_template_files, full_input_fname_template = build_fmri_contrast_file_template(
+#         subject, input_fname_template, template_brain, remote_fmri_dir)
+#     if len(input_fname_template_files) > 1:
+#         print('More the one file was found! {}'.format(full_input_fname_template))
+#         print(input_fname_template_files)
+#         return ''
+#     elif len(input_fname_template_files) == 0:
+#         print("Can't find template files! {}".format(full_input_fname_template))
+#         print(subject, input_fname_template, template_brain, remote_fmri_dir)
+#         return ''
+#     return input_fname_template_files[0]
 
 
 @utils.tryit()
 def calc_labels_mean_freesurfer_get_files(
-        args, remote_subject_dir, subject, atlas, input_fname_template, template_brain='', target_subject='',
+        args, remote_subject_dir, subject, atlas, input_fname_template, templates_brain='', target_subject='',
         remote_fmri_dir=''):
-    input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
+    input_fname_template_file = find_fmri_fname_template(subject, input_fname_template, templates_brain, False, format)
     fmri_fname = input_fname_template_file.format(hemi='rh')
     if not op.isfile(fmri_fname):
         target_subject = subject
@@ -866,33 +866,39 @@ def calc_labels_mean_freesurfer_get_files(
 
 @utils.tryit()
 def calc_labels_mean_freesurfer(
-        subject, atlas, input_fname_template, template_brain='', target_subject='',
-        remote_fmri_dir='', overwrite=True, excludes=('corpuscallosum', 'unknown')):
-    input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
-    fmri_fname = input_fname_template_file.format(hemi='rh')
-    if not op.isfile(fmri_fname):
-        print("Can't find fmri file ({}), abort!".format(fmri_fname))
-        return False
-    if target_subject == '':
-        x = nib.load(fmri_fname)
-        if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
-            target_subject = 'fsaverage5' if x.shape[0] == FSAVG5_VERTS else 'fsaverage'
-        else:
-            target_subject = subject
+        subject, atlas, input_fname_template, templates_brain='', target_subject='',
+        remote_fmri_dir='', overwrite=True, excludes=('corpuscallosum', 'unknown'),
+        overwrite_mri_segstat=False, norm_percs=(1,99)):
+    # input_fname_template_file = find_4d_fmri_file(subject, input_fname_template, template_brain, remote_fmri_dir)
+    output_fname_hemi = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_mean_{}.npz'.format(atlas, '{hemi}'))
+    minmax_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_mean_minmax.pkl'.format(atlas))
+    if utils.both_hemi_files_exist(output_fname_hemi) and op.isfile(minmax_fname_template) and not overwrite:
+        return True
+    input_fname_template_file = find_fmri_fname_template(subject, input_fname_template, templates_brain, False, format)
     res_dir = op.join(FMRI_DIR, subject)
     utils.make_dir(res_dir)
-    output_fname_hemi = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_mean_{}.npz'.format(atlas, '{hemi}'))
+    labels_minmax = []
     for hemi in utils.HEMIS:
         output_fname = output_fname_hemi.format(hemi=hemi)
+        fmri_fname = input_fname_template_file.format(hemi=hemi)
         if op.isfile(output_fname) and not overwrite:
             continue
-        fmri_fname = input_fname_template_file.format(hemi=hemi)
+        if target_subject == '':
+            x = nib.load(fmri_fname)
+            if x.shape[0] in [FSAVG5_VERTS, FSAVG_VERTS]:
+                target_subject = 'fsaverage5' if x.shape[0] == FSAVG5_VERTS else 'fsaverage'
+            else:
+                target_subject = subject
         labels_data, labels_names = fu.calc_labels_avg(
             target_subject, hemi, atlas, fmri_fname, res_dir, SUBJECTS_DIR, overwrite)
         labels_names, labels_data = lu.remove_exclude_labels_and_data(labels_names, labels_data, excludes)
         np.savez(output_fname, data=labels_data, names=labels_names)
         print('{} was saved ({} labels)'.format(output_fname, len(labels_names)))
-    return utils.both_hemi_files_exist(output_fname_hemi)
+        labels_minmax.append(utils.calc_min_max(labels_data, norm_percs=norm_percs))
+
+    data_min, data_max = utils.calc_minmax_from_arr(labels_minmax)
+    utils.save((data_min, data_max), minmax_fname_template)
+    return utils.both_hemi_files_exist(output_fname_hemi) and op.isfile(minmax_fname_template)
 
 
 def load_labels_ts(subject, atlas, labels_order_fname, st_template='*{atlas}*.txt', extract_measure='mean',
@@ -998,7 +1004,7 @@ def find_fmri_fname_template(subject, fmri_file_template, template_brains, only_
 def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='fsaverage', format='mgz',
                               norm_percs=(1, 99), overwrite=False):
     minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_minmax.npy')
-    fmri_fname_template = find_fmri_fname_template(subject, fmri_file_template, template_brains, format)
+    fmri_fname_template = find_fmri_fname_template(subject, fmri_file_template, template_brains, False, format)
     hemi_minmax = []
     for hemi in utils.HEMIS:
         fol = op.join(MMVT_DIR, subject, 'fmri', 'activity_map_{}'.format(hemi))
@@ -1141,7 +1147,7 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, o
 
 
 @utils.check_for_freesurfer
-def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest',
+def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', fsd='rest', only_preproc=False,
                              fwhm=6, lfp=0.08, nskip=4, remote_fmri_dir='', overwrite=False, print_only=False):
     # fsd: functional subdirectory
     def no_files_were_found():
@@ -1199,11 +1205,26 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
                     shutil.copy(res_fname, new_fname)
         return utils.both_hemi_files_exist(new_fname_template)
 
+    def copy_preproc_sess_outputs():
+        hemi_file_name = 'fmcpr.sm6.{}.{}.{}'.format(subject, '{hemi}', '{format}')
+        for hemi in utils.HEMIS:
+            res_fname = op.join(FMRI_DIR, subject, fsd, '001', hemi_file_name.format(hemi=hemi, format='nii.gz'))
+            new_fname = op.join(FMRI_DIR, subject, hemi_file_name.format(hemi=hemi, format='mgz'))
+            if not op.isfile(new_fname) or overwrite:
+                res_fname = fu.nii_gz_to_mgz(res_fname)
+                os.link(res_fname, new_fname)
+        volume_fname = op.join(FMRI_DIR, subject, fsd, '001', 'fmcpr.sm6.mni305.2mm.nii.gz')
+        volume_new_fname = op.join(FMRI_DIR, subject, 'fmcpr.sm6.mni305.2mm.mgz')
+        volume_fname = fu.nii_gz_to_mgz(volume_fname)
+        os.link(volume_fname, volume_new_fname)
+        return utils.both_hemi_files_exist(op.join(FMRI_DIR, subject, hemi_file_name.format(
+            hemi='{hemi}', format='mgz'))) and op.isfile(volume_new_fname)
+
     def no_output(*args):
         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
 
     def run(cmd, *output_args, **kargs):
-        if no_output(*output_args) or overwrite:
+        if no_output(*output_args) or overwrite or print_only:
             rs(cmd, **kargs)
             if not print_only and no_output(*output_args):
                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
@@ -1230,6 +1251,8 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
     # if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
     run('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run',
         '001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm)))
+    if only_preproc:
+        return copy_preproc_sess_outputs()
     run('plot-twf-sess -s {subject} -dat f.nii.gz -mc -fsd {fsd} && killall display', 'fmcpr.mcdat.png')
     run('plot-twf-sess -s {subject} -dat f.nii.gz -fsd {fsd} -meantwf && killall display', 'global.waveform.dat.png')
 
@@ -1610,7 +1633,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'clean_4d_data' in args.function:
         flags['clean_4d_data'] = clean_4d_data(
-            subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd,
+            subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd, args.only_preproc,
             args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
 
     if 'calc_meg_activity' in args.function:
@@ -1623,7 +1646,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'calc_subs_activity' in args.function:
         flags['calc_subs_activity'] = calc_subs_activity(
-            subject, args.fmri_file_template, measures=args.labels_extract_mode, overwrite=args.overwrite_subs_data)
+            subject, args.fmri_file_template, args.labels_extract_mode, args.subcortical_codes_file,
+            args.overwrite_subs_data)
 
     if 'copy_volumes' in args.function:
         flags['copy_volumes'] = copy_volumes(subject, fmri_contrast_file_template)
@@ -1648,7 +1672,8 @@ def main(subject, remote_subject_dir, args, flags):
         else:
             flags['calc_labels_mean_freesurfer'] = calc_labels_mean_freesurfer(
                 subject, args.atlas, args.fmri_file_template, args.template_brain,
-                args.target_subject, remote_fmri_dir, args.overwrite_labels_data, args.excluded_labels)
+                args.target_subject, remote_fmri_dir, args.overwrite_labels_data, args.excluded_labels,
+                args.overwrite_mri_segstat, args.norm_percs)
 
     return flags
 
@@ -1686,6 +1711,7 @@ def read_cmd_args(argv=None):
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
     parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
+    parser.add_argument('--only_preproc', help='run only only_preproc', required=False, default=0, type=au.is_true)
     parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
     parser.add_argument('--morph_labels_from_subject', help='', required=False, default='fsaverage')
     parser.add_argument('--morph_labels_to_subject', help='', required=False, default='')
@@ -1695,6 +1721,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--st_template', help='', required=False, default='*{subject}_{atlas}*.txt')
     parser.add_argument('--overwrite_labels_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_activity_data', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_mri_segstat', help='', required=False, default=0, type=au.is_true)
     # parser.add_argument('--raw_fwhm', help='Raw Full Width at Half Maximum for Spatial Smoothing', required=False, default=5, type=float)
     parser.add_argument('--template_brain', help='', required=False, default='')
     parser.add_argument('--target_subject', help='', required=False, default='')

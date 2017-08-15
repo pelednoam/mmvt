@@ -109,8 +109,9 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
         shutil.rmtree(backup_labels_fol)
-    os.rename(labels_fol, backup_labels_fol)
-    utils.make_dir(labels_fol)
+    shutil.copytree(labels_fol, backup_labels_fol)
+    # os.rename(labels_fol, backup_labels_fol)
+    # utils.make_dir(labels_fol)
     save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial')
     return
 
@@ -143,9 +144,9 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
 #             new_label.save(op.join(labels_fol, new_label.name))
 
 
-def create_vertices_labels_lookup(subject, atlas):
+def create_vertices_labels_lookup(subject, atlas, overwrite=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_lookup.pkl'.format(atlas))
-    if op.isfile(output_fname):
+    if op.isfile(output_fname) and not overwrite:
         lookup = utils.load(output_fname)
         return lookup
     lookup = {}
@@ -162,6 +163,7 @@ def create_vertices_labels_lookup(subject, atlas):
 def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial'):
     lookup = create_vertices_labels_lookup(subject, atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
+    utils.delete_folder_files(labels_fol)
     for hemi in utils.HEMIS:
         labels_vertices = defaultdict(list)
         surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
@@ -455,9 +457,10 @@ def remove_exclude_labels_and_data(labels_names, labels_data, excludes=()):
         org_labels_names = labels_names
         labels_names, indices = remove_exclude_labels(labels_names, excludes)
         remove_indices = list(set(range(len(org_labels_names))) - set(indices))
-        if len(remove_indices) != len(excludes):
+        if len(remove_indices) > len(excludes):
             raise Exception('Error in removing excludes')
-        labels_data = np.delete(labels_data, remove_indices, 0)
+        if len(remove_indices) > 0:
+            labels_data = np.delete(labels_data, remove_indices, 0)
     if len(labels_names) != labels_data.shape[0]:
         raise Exception(
             'Error in remove_exclude_labels_and_data! len(labels_names) {} != labels_data.shape {}'.format(

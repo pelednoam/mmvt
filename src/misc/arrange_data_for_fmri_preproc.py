@@ -12,10 +12,11 @@ root_path = [p for p in root_paths if op.isdir(p)][0]
 
 ana_results_fname = op.join(root_path, 'ana_results.pkl')
 
-preproc_fol = '/homes/5/npeled/space1/memory'
-# preproc_fol = '/autofs/cluster/scratch/tuesday/noam'
+# preproc_fol = '/homes/5/npeled/space1/memory'
+preproc_fol = '/autofs/cluster/scratch/tuesday/noam'
 fmri_root_data = op.join(preproc_fol, 'DataProcessed_memory')
-subject_fmri_fold = '/cluster/neuromind/douw/scans/adults'
+# subject_fmri_fold = '/cluster/neuromind/douw/scans/adults'
+subject_fmri_fold = '/homes/5/npeled/space1/fMRI'
 ts_root_fol = '/cluster/neuromind/douw/scans/patients_mri_epochs_final/laus125'
 
 

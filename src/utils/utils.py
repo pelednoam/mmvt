@@ -1760,7 +1760,8 @@ def merge_text_files(input_files, output_fname):
 
 
 def find_num_in_str(string):
-    return re.sub('\D', ',', string).replace(',', '')
+    # return re.sub('\D', ',', string).replace(',', '')
+    return ' '.join(re.sub('\D', ' ', string).split()).split()
 
 
 def file_modification_time(fname):

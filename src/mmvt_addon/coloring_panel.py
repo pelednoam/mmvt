@@ -406,7 +406,9 @@ def color_connectivity_degree():
 
 def fix_labels_material(labels):
     for label_name in labels:
-        obj = bpy.data.objects[label_name]
+        obj = bpy.data.objects.get(label_name, None)
+        if obj is None:
+            continue
         if obj.name + '_Mat' in bpy.data.materials:
             cur_mat = bpy.data.materials[obj.name + '_Mat']
         else:
@@ -427,7 +429,8 @@ def update_connectivity_degree_threshold(self, context):
 
 def fmri_labels_coloring(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
-    init_activity_map_coloring('MEG' if bpy.context.scene.color_rois_homogeneously else 'FMRI', True)
+    if not bpy.context.scene.color_rois_homogeneously:
+        init_activity_map_coloring('FMRI')
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
