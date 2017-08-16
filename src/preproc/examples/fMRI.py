@@ -113,7 +113,7 @@ def load_labels_ts(args):
 
 def calc_labels_mean_freesurfer(args):
     '''
-    python -m src.preproc.fMRI --a laus125 -f calc_labels_mean_freesurfer --fmri_file_template "{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz" --excluded_labels corpuscallosum,unknown --overwrite_labels_data 1 --remote_fmri_dir "/autofs/cluster/scratch/tuesday/noam/DataProcessed_memory/{subject}/surf" -s 'nmr00506','nmr00599','nmr00515','nmr00692','nmr00657','nmr00609','nmr00468','nmr00629','nmr00681','nmr00643','nmr00448','nmr00650','nmr00674','nmr00669','nmr00603','nmr00710','nmr00683','nmr00640','nmr00634','nmr00502','nmr00698'
+    python -m src.preproc.fMRI -a laus125 -f calc_labels_mean_freesurfer --fmri_file_template "{hemi}.{subject}_bld014_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_fsaverage6_sm6_fsaverage5*.mgz" --excluded_labels corpuscallosum,unknown --overwrite_labels_data 1 --remote_fmri_dir "/autofs/cluster/scratch/tuesday/noam/DataProcessed_memory/{subject}/surf" -s 'nmr00506','nmr00599','nmr00515','nmr00692','nmr00657','nmr00609','nmr00468','nmr00629','nmr00681','nmr00643','nmr00448','nmr00650','nmr00674','nmr00669','nmr00603','nmr00710','nmr00683','nmr00640','nmr00634','nmr00502','nmr00698'
     '''
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
@@ -131,12 +131,23 @@ def calc_labels_mean_freesurfer(args):
     pu.run_on_subjects(args, fmri.main)
 
 
+def save_dynamic_activity_map(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='save_dynamic_activity_map',
+        fmri_file_template='fmcpr.up.sm6.{subject}.{hemi}.*',
+        overwrite_activity_data=True
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+
 def calc_subcorticals_activity(args):
     args = fmri.read_cmd_args(dict(
         subject=args.subject,
         function='calc_subcorticals_activity',
         # fmri_file_template='rest*',
-        fmri_file_template='fmcpr.sm6.mni305.2mm',
+        fmri_file_template='fmcpr.sm6.mni305.2mm.*',
         labels_extract_mode='mean', #,pca,pca_2,pca_4,pca_8',
         overwrite_subs_data=True
     ))

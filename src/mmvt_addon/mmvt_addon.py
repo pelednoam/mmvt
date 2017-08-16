@@ -99,6 +99,7 @@ load_eeg_data = data_panel.load_eeg_data
 load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
+add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
@@ -408,6 +409,9 @@ def fix_scale():
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             for i in range(3):
                 label_obj.scale[i] = 0.1
+    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
+        for i in range(3):
+            sub_obj.scale[i] = 0.1
 
 
 def main(addon_prefs=None):

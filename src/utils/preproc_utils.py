@@ -4,6 +4,7 @@ from collections import defaultdict
 import glob
 import traceback
 import shutil
+import collections
 
 from src.utils import utils
 from src.utils import args_utils as au
@@ -205,3 +206,11 @@ def backup_folder(subject, folder_name, backup_suffix='_backup'):
         return
     print('backup {} to {}'.format(source_dir, target_dir))
     shutil.copytree(source_dir, target_dir)
+
+
+def check_func_output(ret):
+    if isinstance(ret, collections.Iterable):
+        ret = ret[0]
+        return ret[1:]
+    else:
+        return None

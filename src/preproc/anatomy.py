@@ -404,7 +404,7 @@ def labels_to_annot(subject, aparc_name, overwrite_annotation=False, surf_type='
         lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
     except:
         print("Can't write labels to annotation! Trying to solve labels collision")
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         solve_labels_collisions(subject, aparc_name, surf_type, n_jobs)
         try:
             lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
@@ -425,7 +425,6 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
     labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
-    lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=False)
     for surface_type in ['pial', 'inflated']:
         files_exist = True
         for hemi in HEMIS:
@@ -797,40 +796,7 @@ def main(subject, remote_subject_dir, args, flags):
     if 'transform_coordinates' in args.function:
         flags['transform_coordinates'] = transform_coordinates(subject, args)
 
-    # for flag_type, val in flags.items():
-    #     print('{}: {}'.format(flag_type, val))
     return flags
-
-
-# def run_on_subjects(args):
-#     subjects_flags, subjects_errors = {}, {}
-#     args.sftp_password = utils.get_sftp_password(
-#         args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
-#         if args.sftp else ''
-#     if '*' in args.subject:
-#         args.subject = [utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, args.subject))]
-#     for subject in args.subject:
-#         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
-#         # os.chdir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
-#         try:
-#             flags = main(subject, args)
-#             subjects_flags[subject] = flags
-#         except:
-#             subjects_errors[subject] = traceback.format_exc()
-#             print('Error in subject {}'.format(subject))
-#             print(traceback.format_exc())
-#
-#     errors = defaultdict(list)
-#     for subject, flags in subjects_flags.items():
-#         print('subject {}:'.format(subject))
-#         for flag_type, val in flags.items():
-#             print('{}: {}'.format(flag_type, val))
-#             if not val:
-#                 errors[subject].append(flag_type)
-#     if len(errors) > 0:
-#         print('Errors:')
-#         for subject, error in errors.items():
-#             print('{}: {}'.format(subject, error))
 
 
 def read_cmd_args(argv=None):
