@@ -20,32 +20,45 @@ except:
 HEMIS = ['rh', 'lh']
 
 
-def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
-            sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
+def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir):
+    fs_found = False
     if isinstance(fsaverage, str):
         fsaverage = [fsaverage]
     for fsav in fsaverage:
         fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(
             subjects_dir, fsav, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
-        if fsaverage_annot_files_exist:
+        fsaverage_labels_exist = len(glob.glob(op.join(subjects_dir, fsaverage, 'label', aparc_name, '*.label'))) > 0
+        if fsaverage_annot_files_exist or fsaverage_labels_exist:
             fsaverage = fsav
+            fs_found = True
             break
+    if not fs_found:
+        print("Can't find the annot file for any of the templates brain!")
+        return ''
+    else:
+        return fsaverage
+
+
+def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
+            sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
+    fsaverage = find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir)
+    if fsaverage == '':
+        return False
+    if subject == fsaverage:
+        return True
     subject_dir = op.join(subjects_dir, subject)
     labels_fol = op.join(subjects_dir, fsaverage, 'label', aparc_name) if fs_labels_fol=='' else fs_labels_fol
     sub_labels_fol = op.join(subject_dir, 'label', aparc_name) if sub_labels_fol=='' else sub_labels_fol
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
-    if fsaverage_annot_files_exist:
-        labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
-    else:
-        print("The annot files doesn't found ({}), trying to read the lablels files".format(
-            op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
-        labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
-    if len(labels) == 0:
-        print('morph_labels_from_fsaverage: No labels files found!')
-        return False
-    if subject == fsaverage:
-        return True
+    labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
+    # else:
+    #     print("The annot files doesn't found ({}), trying to read the lablels files".format(
+    #         op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
+    #     labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
+    # if len(labels) == 0:
+    #     print('morph_labels_from_fsaverage: No labels files found!')
+    #     return False
     surf_loaded = False
     for fs_label in labels:
         label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
@@ -344,6 +357,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
                     subject, atlas, surf_name, hemi))
                 if not read_only_from_annot:
+                    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
                     labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:

@@ -73,12 +73,12 @@ def calc_fmri_connectivity(args):
 def calc_fmri_static_connectivity(args):
     args = con.read_cmd_args(dict(
         subject=args.subject,
-        atlas='laus125',
+        atlas='yao17',#''laus125',
         function='calc_lables_connectivity',
         connectivity_modality='fmri',
         connectivity_method='corr',
         labels_extract_mode='mean',
-        identifier='hesheng', #''linda',#'freesurfer',
+        identifier='',#'freesurfer',#'hesheng', #''linda',#
         save_mmvt_connectivity=False,
         calc_subs_connectivity=False,
         recalc_connectivity=True,

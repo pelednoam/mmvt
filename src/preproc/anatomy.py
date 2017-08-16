@@ -359,6 +359,7 @@ def create_annotation(subject, aparc_name='aparc250', fsaverage='fsaverage', rem
     annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
         aparc_name))) for hemi in HEMIS])
     if annotations_exist and not overwrite_annotation:
+        print('The annotation file is already exist')
         return True
     else:
         if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:

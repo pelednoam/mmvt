@@ -161,7 +161,7 @@ def calc_abs_minmax(x, norm_percs=None):
     return max(map(abs, [x_min, x_max]))
 
 
-def calc_abs_minmax(data_min, data_max):
+def calc_minmax_abs_from_minmax(data_min, data_max):
     minmax = max(map(abs, [data_min, data_max]))
     return -minmax, minmax
 
@@ -169,7 +169,7 @@ def calc_abs_minmax(data_min, data_max):
 def calc_minmax_from_arr(hemi_minmax):
     data_min, data_max = min([x[0] for x in hemi_minmax]), max([x[1] for x in hemi_minmax])
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
-        data_min, data_max = calc_abs_minmax(data_min, data_max)
+        data_min, data_max = calc_minmax_abs_from_minmax(data_min, data_max)
     return data_min, data_max
 
 
