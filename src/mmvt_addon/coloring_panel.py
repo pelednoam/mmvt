@@ -406,8 +406,8 @@ def fmri_labels_coloring(override_current_mat=True):
     hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.fmri_labels_extract_method
-    labels_min, labels_max = np.load(
-        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+    labels_min, labels_max = mu.load(
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
     data_minmax = max(map(abs, [labels_min, labels_max]))
     labels_min, labels_max = -data_minmax, data_minmax
     for hemi in hemispheres:
@@ -1937,7 +1937,7 @@ def init_fmri_labels():
     fmri_labels_data_exist = mu.hemi_files_exists(
         op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
     fmri_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.npy'.format(atlas, em)))
+        op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
     ColoringMakerPanel.fmri_labels_exist = fmri_labels_data_exist and fmri_labels_data_minmax_exist
 
 
