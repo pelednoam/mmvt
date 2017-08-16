@@ -356,10 +356,10 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
 def create_annotation(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
-    annotations_exist = np.all([op.isfile(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi,
-        aparc_name))) for hemi in HEMIS])
+    annotation_fname_template = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
+    annotations_exist = utils.both_hemi_files_exist(annotation_fname_template)
     if annotations_exist and not overwrite_annotation:
-        print('The annotation file is already exist')
+        print('The annotation file is already exist ({})'.format(annotation_fname_template))
         return True
     else:
         if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
