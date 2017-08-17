@@ -604,6 +604,14 @@ def get_aseg_header(subject_mri_dir):
     return aseg_hdr
 
 
+def namebase_sep(fname):
+    name_with_ext = fname.split(op.sep)[-1]
+    if not name_with_ext.endswith('nii.gz'):
+        return '.'.join(name_with_ext.split('.')[:-1])
+    else:
+        return name_with_ext[:-len('nii.gz')]
+
+
 def namebase(fname):
     if 'nii.gz' not in fname:
         return op.splitext(op.basename(fname))[0]
@@ -612,6 +620,13 @@ def namebase(fname):
         while '.' in nb:
             nb = op.splitext(op.basename(nb))[0]
         return nb
+
+
+def file_type_sep(fname):
+    if fname.endswith('nii.gz'):
+        return 'nii.gz'
+    else:
+        return fname.split('.')[-1]
 
 
 def file_type(fname):
@@ -1734,8 +1749,9 @@ def look_for_one_file(template, files_desc, pick_the_first_one=False, search_fun
     return fname
 
 
-def select_one_file(files, template, files_desc=''):
-    print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
+def select_one_file(files, template='', files_desc='', print_title=True):
+    if print_title:
+        print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
     for ind, fname in enumerate(files):
         print('{}) {}'.format(ind + 1, fname))
     file_num = input('Which on do you want to load (1, 2, ...)? ')

@@ -323,6 +323,13 @@ def get_other_hemi_label_name(label_name):
     return res_label_name
 
 
+def get_template_hemi_label_name(label_name, wild_char=False):
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+    hemi_temp = '?h' if wild_char else '{hemi}'
+    res_label_name = build_label_name(delim, pos, label, hemi_temp)
+    return res_label_name
+
+
 def build_label_name(delim, pos, label, hemi):
     if pos == 'end':
         return '{}{}{}'.format(label, delim, hemi)
@@ -333,15 +340,6 @@ def build_label_name(delim, pos, label, hemi):
 def get_hemi_from_name(label_name):
     _, _, _, hemi = get_hemi_delim_and_pos(label_name)
     return hemi
-    # label_hemi = ''
-    # for hemi in ['rh', 'lh']:
-    #     if label_name.startswith('{}-'.format(hemi)) or label_name.startswith('{}.'.format(hemi)) or \
-    #             label_name.endswith('-{}'.format(hemi)) or label_name.endswith('.{}'.format(hemi)):
-    #         label_hemi = hemi
-    #         break
-    # if label_hemi == '':
-    #     raise Exception("Can't find hemi in {}".format(label_name))
-    # return label_hemi
 
 
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,

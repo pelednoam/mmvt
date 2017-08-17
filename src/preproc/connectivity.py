@@ -14,6 +14,7 @@ from tqdm import tqdm
 from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
+from src.preproc import fMRI as fmri
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 LINKS_DIR = utils.get_links_dir()
@@ -734,7 +735,6 @@ def calc_electrodes_rest_connectivity(subject, args):
 
 def calc_fmri_seed_corr(subject, atlas, identifier, labels_regex, new_label_name, new_label_r=5, overwrite=False,
                         n_jobs=6):
-    from src.preproc import fMRI as fmri
     new_label, hemi = get_new_label(
         subject, atlas, labels_regex, new_label_name, new_label_r, overwrite, n_jobs)
     x = fmri.load_fmri_data_for_both_hemis(subject, identifier)
@@ -768,6 +768,7 @@ def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrit
 
 
 def calc_label_corr(subject, x, label, hemi, label_name, identifier, overwrite=False, n_jobs=6):
+    identifier = identifier if identifier != '' else '{}_'.format(identifier)
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_seed_{}_{}_{}.npy'.format(
         identifier, label_name, '{hemi}'))
     minmax_fname = op.join(MMVT_DIR, subject, 'fmri', 'seed_{}_{}_minmax.pkl'.format(identifier, label_name))
@@ -889,7 +890,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--identifier', help='', required=False, default='')
+    parser.add_argument('--identifier', help='', required=False, default='fs')
     parser.add_argument('--connectivity_threshold', help='', required=False, default=0.7, type=float)
 
     parser.add_argument('--labels_regex', help='labels regex', required=False, default='post*cingulate*rh')

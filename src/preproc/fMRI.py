@@ -1203,6 +1203,9 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
                     fu.nii_gz_to_mgz(res_fname)
                     res_fname = utils.change_fname_extension(res_fname, 'mgz')
                     shutil.copy(res_fname, new_fname)
+        for hemi in utils.HEMIS:
+            utils.make_link(new_fname_template.format(hemi=hemi), op.join(
+                MMVT_DIR, subject, 'fmri', utils.namesbase_with_ext(new_fname_template.format(hemi=hemi))))
         return utils.both_hemi_files_exist(new_fname_template)
 
     def copy_preproc_sess_outputs():
@@ -1464,6 +1467,8 @@ def get_unique_files_into_mgz(files):
 
 
 def load_fmri_data(fmri_surf_fname):
+    if not op.isfile(fmri_surf_fname):
+        raise Exception("load_fmri_data: Can't find {}".format(fmri_surf_fname))
     file_type = utils.file_type(fmri_surf_fname)
     if file_type in ['nii', 'nii.gz', 'mgz', 'mgh']:
         x = nib.load(fmri_surf_fname).get_data().squeeze()
@@ -1475,8 +1480,34 @@ def load_fmri_data(fmri_surf_fname):
 
 
 def load_fmri_data_for_both_hemis(subject, surf_name):
-    return {hemi:load_fmri_data(op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(surf_name, hemi)))
-            for hemi in utils.HEMIS}
+    surf_name = surf_name if surf_name != '' else '{}_'.format(surf_name)
+    fname_temp = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}{}.npy'.format(surf_name, '{hemi}'))
+    if utils.both_hemi_files_exist(fname_temp):
+        return {hemi:load_fmri_data(op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}_{}.npy'.format(surf_name, hemi)))
+                for hemi in utils.HEMIS}
+    else:
+        fmri_files = get_all_fmri_files(subject)
+        if len(fmri_files) > 0:
+            if len(fmri_files) > 1:
+                print("Can't find {}. Do you want to pick a different one?".format(fname_temp))
+                fname = utils.select_one_file(fmri_files, print_title=False)
+            else:
+                fname = fmri_files[0]
+            fname = op.join(MMVT_DIR, subject, 'fmri', fname)
+            return {hemi: load_fmri_data(fname.format(hemi=hemi)) for hemi in utils.HEMIS}
+        else:
+            raise Exception("Can't find {} or any other fMRI files in {}!".format(
+                'fmri_{}_{}.npy'.format(surf_name, '{hemi}'), op.join(MMVT_DIR, subject, 'fmri')))
+
+
+def get_all_fmri_files(subject):
+    files = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'fmri_*.npy'))
+    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.mgz')))
+    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.nii')))
+    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.nii.gz')))
+    files = list(set(['{}.{}'.format(lu.get_template_hemi_label_name(utils.namebase_sep(f)), utils.file_type_sep(f))
+                      for f in files if lu.get_label_hemi(utils.namebase_sep(f)) != '']))
+    return files
 
 
 def misc(args):

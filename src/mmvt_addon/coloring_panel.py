@@ -641,6 +641,10 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
             else:
                 f = ColoringMakerPanel.fMRI[hemi]
 
+        if threshold > data_max:
+            print('Threshold > data_max, changing it to data_min')
+            threshold = data_min
+
         if f.ndim == 2:
             if t >= f.shape[1]:
                 bpy.context.scene.frame_current = t = f.shape[1] - 1
@@ -1695,7 +1699,7 @@ def draw(self, context):
             # col.label('fMRI')
             if len(fmri_files) > 0:
                 col.prop(context.scene, "fmri_files", text="")
-                col.operator(ColorfMRI.bl_idname, text="Plot fMRI contrast", icon='POTATO')
+                col.operator(ColorfMRI.bl_idname, text="Plot fMRI file", icon='POTATO')
             if ColoringMakerPanel.fmri_activity_map_exist:
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
