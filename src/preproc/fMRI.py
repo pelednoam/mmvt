@@ -572,7 +572,7 @@ def project_on_surface(subject, volume_file, surf_output_fname,
 
 
 def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
-    surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname)
+    surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname).replace('{subject}', subject)
     surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
     if len(surf_full_output_fnames) == 0:
         print('No hemi files were found from the template {}'.format(surf_full_output_fname))
@@ -1067,6 +1067,8 @@ def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', '
     try:
         if isinstance(file_types, str):
             file_types = [file_types]
+        # if '{subject}' in template_fname:
+        #     template_fname = template_fname.replace('{subject}', subject)
         template_files = find_template_files(template_fname.replace('{hemi}', '?h'), file_types)
         return find_hemi_files(template_files)
     except:
