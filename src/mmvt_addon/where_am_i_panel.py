@@ -265,6 +265,7 @@ class ClosestLabel(bpy.types.Operator):
     bl_label = "mmvt closest label"
     bl_options = {"UNDO"}
 
+    @staticmethod
     def invoke(self, context, event=None):
         label, hemi = find_closest_label()
         bpy.context.scene.closest_label_output = label

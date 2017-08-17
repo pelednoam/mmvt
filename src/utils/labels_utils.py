@@ -27,7 +27,7 @@ def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir):
     for fsav in fsaverage:
         fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(
             subjects_dir, fsav, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
-        fsaverage_labels_exist = len(glob.glob(op.join(subjects_dir, fsaverage, 'label', aparc_name, '*.label'))) > 0
+        fsaverage_labels_exist = len(glob.glob(op.join(subjects_dir, fsav, 'label', aparc_name, '*.label'))) > 0
         if fsaverage_annot_files_exist or fsaverage_labels_exist:
             fsaverage = fsav
             fs_found = True
