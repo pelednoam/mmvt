@@ -1724,5 +1724,4 @@ def create_labels_contours():
     subject, atlas = get_user(), bpy.context.scene.subject_annot_files
     cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours'.format(
         bpy.context.scene.python_cmd, subject, atlas)
-    print('Running {}'.format(cmd))
     run_command_in_new_thread(cmd, False)

@@ -1251,7 +1251,6 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
         return True
     create_folders_tree(fmri_fname)
     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
-    # if no_output('001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm))):
     run('preproc-sess -surface {trg_subject} lhrh -s {subject} -fwhm {fwhm} -fsd {fsd} -mni305 -per-run',
         '001', 'fmcpr.sm{}.mni305.2mm.nii.gz'.format(int(fwhm)))
     if only_preproc:

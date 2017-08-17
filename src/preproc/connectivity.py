@@ -759,11 +759,7 @@ def get_new_label(subject, atlas, regex, new_label_name, new_label_r=5, overwrit
     hemi_verts = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(selected_hemi)))['verts']
     dists = cdist(hemi_verts, [center_of_mass])
     vertice_indice = np.argmin(dists)
-    new_label = mne.grow_labels(subject, vertice_indice, new_label_r, 0 if selected_hemi == 'lh' else 1, SUBJECTS_DIR,
-                                n_jobs, names=new_label_name, surface='pial')[0]
-    utils.make_dir(op.join(SUBJECTS_DIR, subject))
-    utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
-    new_label.save(new_label_fname)
+    new_label = lu.grow_label(subject, vertice_indice, selected_hemi, new_label_name, new_label_r, n_jobs)
     return new_label, selected_hemi
 
 

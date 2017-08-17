@@ -508,7 +508,8 @@ def add_fmri_dynamics_to_parent_obj(add_fmri_subcorticals_data=True):
     measure = bpy.context.scene.fMRI_dynamic_files.split(' ')[-1]
     sources = [np.load(op.join(mu.get_user_fol(), 'fmri', 'labels_data_{}_{}_{}.npz'.format(
         bpy.context.scene.atlas, measure, hemi))) for hemi in mu.HEMIS]
-    if bpy.context.scene.add_fmri_subcorticals_data or add_fmri_subcorticals_data:
+    if (bpy.context.scene.add_fmri_subcorticals_data or add_fmri_subcorticals_data) and \
+            DataMakerPanel.subcortical_fmri_data_exist:
         sources.append(np.load(op.join(mu.get_user_fol(), 'fmri', '{}.npz'.format(
             bpy.context.scene.subcortical_fmri_files))))
     add_data_to_parent_obj(brain_obj, sources, STAT_AVG)

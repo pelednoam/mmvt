@@ -155,6 +155,7 @@ plot_stc_t = coloring_panel.plot_stc_t
 plot_stc = coloring_panel.plot_stc
 init_meg_activity_map = coloring_panel.init_meg_activity_map
 color_contours = coloring_panel.color_contours
+plot_label = coloring_panel.plot_label
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -227,6 +228,7 @@ is_rendered = appearance_panel.is_rendered
 set_closest_vertex_and_mesh_to_cursor = appearance_panel.set_closest_vertex_and_mesh_to_cursor
 get_closest_vertex_and_mesh_to_cursor = appearance_panel.get_closest_vertex_and_mesh_to_cursor
 clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_and_mesh_to_cursor
+snap_cursor = appearance_panel.snap_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from

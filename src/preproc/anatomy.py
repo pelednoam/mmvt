@@ -796,6 +796,10 @@ def main(subject, remote_subject_dir, args, flags):
     if 'transform_coordinates' in args.function:
         flags['transform_coordinates'] = transform_coordinates(subject, args)
 
+    if 'grow_label' in args.function:
+        flags['grow_label'] = lu.grow_label(
+            subject, args.vertice_indice, args.hemi, args.label_name, args.label_r, args.n_jobs)
+
     return flags
 
 
@@ -824,6 +828,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
     parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
     parser.add_argument('--solve_labels_collision_surf_type', help='', required=False, default='inflated')
+
+    parser.add_argument('--vertice_indice', help='', required=False, default=0, type=int)
+    parser.add_argument('--label_name', help='', required=False, default='')
+    parser.add_argument('--hemi', help='', required=False, default='')
+    parser.add_argument('--label_r', help='', required=False, default='5', type=int)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

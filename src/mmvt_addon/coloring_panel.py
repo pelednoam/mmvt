@@ -1570,7 +1570,7 @@ def plot_label(label_fname):
     label = mu.read_label_file(label_fname)
     hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
     label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
-    bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
+    # bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
     print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
     ColoringMakerPanel.labels_plotted.append((label, list(bpy.context.scene.labels_color)))
     hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}

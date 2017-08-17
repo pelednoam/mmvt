@@ -1,5 +1,4 @@
 import mne.surface
-from scipy.spatial.distance import cdist
 import time
 import os.path as op
 import numpy as np
@@ -622,6 +621,15 @@ def get_lh_rh_indices(labels):
     return indices
 
 
+def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_jobs=6):
+    new_label = mne.grow_labels(subject, vertice_indice, new_label_r, 0 if hemi == 'lh' else 1, SUBJECTS_DIR,
+                                n_jobs, names=new_label_name, surface='pial')[0]
+    utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
+    new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
+    new_label.save(new_label_fname)
+    return new_label
+
+
 if __name__ == '__main__':
     # subject = 'mg96'
     # atlas = 'laus250'
@@ -630,3 +638,5 @@ if __name__ == '__main__':
     # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
     # solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
     pass
+
+
