@@ -14,7 +14,6 @@ from src.utils import labels_utils as lu
 from src.utils import matlab_utils
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
-from src.mmvt_addon import colors_utils as cu
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
@@ -502,7 +501,7 @@ def create_spatial_connectivity(subject):
     try:
         verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
         connectivity_fname = op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl')
-        if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(verts_neighbors_fname):
+        if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(connectivity_fname):
             return True
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
@@ -531,7 +530,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
         return
-    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, overwrite)
     for hemi in utils.HEMIS:
         verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         contours = np.zeros((len(verts)))

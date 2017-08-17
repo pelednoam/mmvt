@@ -159,10 +159,21 @@ def get_utils_dir():
     return op.join(get_parent_fol(levels=2), 'utils')
 
 
+def get_preproc_dir():
+    return op.join(get_parent_fol(levels=2), 'preproc')
+
+
 def add_utils_to_import_path():
     utils_dir = get_utils_dir()
     if utils_dir not in sys.path:
         sys.path.append(utils_dir)
+
+
+def add_preproc_to_import_path():
+    preproc_dir = get_preproc_dir()
+    if preproc_dir not in sys.path:
+        sys.path.append(preproc_dir)
+
 
 try:
     from src.utils import args_utils as au

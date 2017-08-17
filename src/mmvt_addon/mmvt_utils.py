@@ -32,6 +32,8 @@ from itertools import chain
 from sys import platform as _platform
 from datetime import datetime
 from queue import Empty
+import glob
+
 
 class empty_bpy(object):
     class types(object):
@@ -1716,3 +1718,11 @@ def _read_annot(fname):
         ctab[:, 3] = 255 - ctab[:, 3]
 
     return annot, ctab, names
+
+
+def create_labels_contours():
+    subject, atlas = get_user(), bpy.context.scene.subject_annot_files
+    cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours'.format(
+        bpy.context.scene.python_cmd, subject, atlas)
+    print('Running {}'.format(cmd))
+    run_command_in_new_thread(cmd, False)

@@ -224,39 +224,28 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 def find_closest_label():
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+    closest_mesh_name, vertex_ind, vertex_co = \
+        _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
     labels = mu.read_labels_from_annot(annot_fname)
-    label = [l for l in labels if vertex_ind in l.vertices][0]
-    return label.name, hemi
+    vert_labels = [l for l in labels if vertex_ind in l.vertices]
+    if len(vert_labels) > 0:
+        label = vert_labels[0]
+        return label.name, hemi
+    else:
+        return 'unknown', hemi
 
-    # annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', '?h.{}.annot'.format(
-    #     bpy.context.scene.subject_annot_files)))
-    # distances, names, indices = [], [], []
-    # for annot_fname in annot_files:
-    #     labels = mu.read_labels_from_annot(annot_fname)
-    #     hemi = mu.get_hemi_from_fname(mu.namesbase_with_ext(annot_fname))
-    #     hemi_obj = bpy.data.objects['inflated_{}'.format(hemi)] if _addon().is_inflated() else bpy.data.objects[hemi]
-    #     for label in labels:
-    #         cursor = bpy.context.scene.cursor_location
-    #         cursor = cursor * hemi_obj.matrix_world.inverted()
-    #         kd = mathutils.kdtree.KDTree(len(label.vertices))
-    #         for i, v in enumerate(label.vertices):
-    #             kd.insert(hemi_obj.data.vertices[i].co, i)
-    #         kd.balance()
-    #
-    #         # Find the closest point to the 3d cursor
-    #         for (co, index, dist) in kd.find_n(cursor, 1):
-    #             distances.append(dist)
-    #             names.append(label.name)
-    #             indices.append(index)
-    #
-    # closest_label = names[np.argmin(np.array(distances))]
-    # print('closest area is: '+closest_label)
-    # print('dist: {}'.format(np.min(np.array(distances))))
-    # return closest_label, hemi
+
+def plot_closest_label_contour(label, hemi):
+    contours_files = glob.glob(op.join(mu.get_user_fol(), '*contours_lh.npz'))
+    contours_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+    if bpy.context.scene.subject_annot_files in contours_names:
+        bpy.context.scene.contours_coloring = bpy.context.scene.subject_annot_files
+        _addon().color_contours(label, hemi)
+    else:
+        mu.create_labels_contours()
 
 
 class ChooseVoxelID(bpy.types.Operator):
@@ -279,7 +268,8 @@ class ClosestLabel(bpy.types.Operator):
     def invoke(self, context, event=None):
         label, hemi = find_closest_label()
         bpy.context.scene.closest_label_output = label
-        _addon().color_contours(label, hemi)
+        if label != 'unknown':
+            plot_closest_label_contour(label, hemi)
         return {"FINISHED"}
 
 
