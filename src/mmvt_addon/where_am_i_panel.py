@@ -38,8 +38,15 @@ def where_i_am_draw(self, context):
         row.label(text='{}: {}'.format(atlas, name))
         # row.operator(ChooseVoxelID.bl_idname, text="Select", icon='SNAP_SURFACE')
     layout.operator(WhereAmI.bl_idname, text="Find closest object", icon='SNAP_SURFACE')
+    if bpy.context.scene.where_am_i_str != '':
+        layout.label(text=bpy.context.scene.where_am_i_str)
+    if bpy.context.scene.subject_annot_files != '':
+        col = layout.box().column()
+        col.prop(context.scene, 'subject_annot_files', text='')
+        col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
+        if bpy.context.scene.closest_label_output != '':
+            col.label(text=bpy.context.scene.closest_label_output)
     layout.operator(ClearWhereAmI.bl_idname, text="Clear", icon='PANEL_CLOSE')
-    layout.label(text=bpy.context.scene.where_am_i_str)
 
 
 def tkras_coo_update(self, context):
@@ -215,6 +222,43 @@ def find_closest_obj(search_also_for_subcorticals=True):
     return closest_area
 
 
+def find_closest_label():
+    subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+    closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+    hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
+        hemi, bpy.context.scene.subject_annot_files))
+    labels = mu.read_labels_from_annot(annot_fname)
+    label = [l for l in labels if vertex_ind in l.vertices][0]
+    return label.name, hemi
+
+    # annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', '?h.{}.annot'.format(
+    #     bpy.context.scene.subject_annot_files)))
+    # distances, names, indices = [], [], []
+    # for annot_fname in annot_files:
+    #     labels = mu.read_labels_from_annot(annot_fname)
+    #     hemi = mu.get_hemi_from_fname(mu.namesbase_with_ext(annot_fname))
+    #     hemi_obj = bpy.data.objects['inflated_{}'.format(hemi)] if _addon().is_inflated() else bpy.data.objects[hemi]
+    #     for label in labels:
+    #         cursor = bpy.context.scene.cursor_location
+    #         cursor = cursor * hemi_obj.matrix_world.inverted()
+    #         kd = mathutils.kdtree.KDTree(len(label.vertices))
+    #         for i, v in enumerate(label.vertices):
+    #             kd.insert(hemi_obj.data.vertices[i].co, i)
+    #         kd.balance()
+    #
+    #         # Find the closest point to the 3d cursor
+    #         for (co, index, dist) in kd.find_n(cursor, 1):
+    #             distances.append(dist)
+    #             names.append(label.name)
+    #             indices.append(index)
+    #
+    # closest_label = names[np.argmin(np.array(distances))]
+    # print('closest area is: '+closest_label)
+    # print('dist: {}'.format(np.min(np.array(distances))))
+    # return closest_label, hemi
+
+
 class ChooseVoxelID(bpy.types.Operator):
     bl_idname = "mmvt.choose_voxel_id"
     bl_label = "mmvt choose_voxel_id"
@@ -224,6 +268,18 @@ class ChooseVoxelID(bpy.types.Operator):
         obj = bpy.data.objects.get(bpy.context.scene.where_am_i_atlas, None)
         if not obj is None:
             obj.select = True
+        return {"FINISHED"}
+
+
+class ClosestLabel(bpy.types.Operator):
+    bl_idname = "mmvt.closest_label"
+    bl_label = "mmvt closest label"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        label, hemi = find_closest_label()
+        bpy.context.scene.closest_label_output = label
+        _addon().color_contours(label, hemi)
         return {"FINISHED"}
 
 
@@ -290,7 +346,11 @@ class ClearWhereAmI(bpy.types.Operator):
             WhereAmI.where_am_I_selected_obj.hide = WhereAmI.where_am_I_selected_obj_org_hide
             WhereAmI.where_am_I_selected_obj = None
 
+        if bpy.context.scene.closest_label_output != '':
+            _addon().clear_cortex()
+
         bpy.types.Scene.where_am_i_str = ''
+        bpy.context.scene.closest_label_output = ''
         # where_i_am_draw(self, context)
         return {"FINISHED"}
 
@@ -306,6 +366,8 @@ bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.where_am_i_str = bpy.props.StringProperty()
+bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.closest_label_output = bpy.props.StringProperty()
 # bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
 
@@ -338,6 +400,16 @@ def init(addon):
         atlas = mu.namebase(atlas_vol_fname)[:-len('+aseg')]
         WhereAmIPanel.vol_atlas[atlas] = np.load(atlas_vol_fname)
         WhereAmIPanel.vol_atlas_lut[atlas] = np.load(atlas_vol_lut_fname)
+    subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+    annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
+    if len(annot_files) > 0:
+        files_names = [mu.namebase(fname)[3:] for fname in annot_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
+        bpy.context.scene.subject_annot_files = files_names[0]
+    else:
+        bpy.context.scene.subject_annot_files = ''
+
     WhereAmIPanel.addon = addon
     register()
 
@@ -348,6 +420,7 @@ def register():
         bpy.utils.register_class(WhereAmIPanel)
         bpy.utils.register_class(WhereAmI)
         bpy.utils.register_class(ClearWhereAmI)
+        bpy.utils.register_class(ClosestLabel)
         bpy.utils.register_class(ChooseVoxelID)
         # print('Where am I Panel was registered!')
     except:
@@ -359,6 +432,7 @@ def unregister():
         bpy.utils.unregister_class(WhereAmIPanel)
         bpy.utils.unregister_class(WhereAmI)
         bpy.utils.unregister_class(ClearWhereAmI)
+        bpy.utils.unregister_class(ClosestLabel)
         bpy.utils.unregister_class(ChooseVoxelID)
     except:
         # print("Can't unregister Where am I Panel!")

@@ -154,6 +154,7 @@ plot_meg = coloring_panel.plot_meg
 plot_stc_t = coloring_panel.plot_stc_t
 plot_stc = coloring_panel.plot_stc
 init_meg_activity_map = coloring_panel.init_meg_activity_map
+color_contours = coloring_panel.color_contours
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

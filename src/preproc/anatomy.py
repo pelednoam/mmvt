@@ -841,6 +841,9 @@ def read_cmd_args(argv=None):
         args.overwrite_labels_ply_files = True
         args.overwrite_faces_verts = True
         args.overwrite_fs_files = True
+    if 'labeling' in args.function:
+        args.function.extend(['create_annotation', 'save_labels_vertices', 'calc_labeles_contours',
+                              'calc_labels_center_of_mass', 'save_labels_coloring'])
     print(args)
     return args
 

@@ -33,7 +33,7 @@ set subject={subject}
 set target="/space/bidlin4/1/users/Share/tools/current//code/targets/rN12Trio_avg152T1_brain.4dint"
 set epitarget="/space/bidlin4/1/users/Share/tools/current//code/templates/volume/EPI.mnc" 
 @ skip=4
-set TR_vol='3'
+set TR_vol='{tr}'
 set mprs  	        = (4)
 
 #goto process_FC
@@ -99,7 +99,7 @@ def arrange_data(subjects):
         bold_fols = [f for f in glob.glob(op.join(subject_fmri_fold, sub, 'bold', '*')) if op.isdir(f)]
         bolds_numbers = ','.join([str(int(utils.namebase(bold_fol))) for bold_fol in bold_fols])
         for bold_fol in bold_fols:
-            fmri_files = glob.glob(op.join(bold_fol, '{}_bld{}_rest.nii'.format(sub, utils.namebase(bold_fol))))
+            fmri_files = glob.glob(op.join(bold_fol, '*.nii'))# '{}_bld{}_rest.nii'.format(sub, utils.namebase(bold_fol))))
             if len(fmri_files) == 1:
                 sub_fmri_fol = utils.make_dir(op.join(sub_root_bold_fol, utils.namebase(bold_fol)))
                 # utils.delete_folder_files(sub_fmri_fol)
@@ -119,11 +119,11 @@ def arrange_data(subjects):
                 print('Too many *_rest_reorient_skip_faln_mc.nii.gz files were found in {}!'.format(bold_fol))
                 continue
         tr = int(fu.get_tr(target_file) * 1000) / 1000.0
-        files_list.append('{} {} {} {}'.format(sub, bolds_numbers, str(anat_number).zfill(3), int(tr))) # int(trs[sub])))
+        files_list.append('{} {} {} {}'.format(sub, bolds_numbers, str(anat_number).zfill(3), tr))#int(tr))) # int(trs[sub])))
         utils.make_dir(op.join(fmri_root_data, sub, 'scripts'))
         params_fname = op.join(fmri_root_data, sub, 'scripts', '{}.params'.format(sub))
         with open(params_fname, 'w') as f:
-            f.write(params_file_text.format(subject=sub, bolds=bolds_numbers.replace(',', ' ')))
+            f.write(params_file_text.format(subject=sub, bolds=bolds_numbers.replace(',', ' '), tr=tr))
 
     return files_list
 
@@ -155,13 +155,15 @@ def copy_fmri_ts_files(subjects, delete_previous_files=True):
 
 if __name__ == '__main__':
     # trs = get_trs()
-    res = utils.load(ana_results_fname)
-    subjects = res[5]
+    # res = utils.load(ana_results_fname)
+    # subjects = res[5]
     # copy_fmri_ts_files(subjects, delete_previous_files=True)
+    subjects = ['nmr01013']
+    list_name = 'fast_tr.txt' # 'sub_bold_mpr_tr.txt'
     files_list = arrange_data(subjects)#, trs)
     list_fol = utils.make_dir(op.join(fmri_root_data, 'Lists'))
     utils.make_dir(op.join(preproc_fol, 'Lists'))
-    with open(op.join(preproc_fol, 'Lists', 'sub_bold_mpr_tr.txt'), 'w') as f:
+    with open(op.join(preproc_fol, 'Lists', list_name), 'w') as f:
         for res in files_list:
             f.write('{}\n'.format(res))
 

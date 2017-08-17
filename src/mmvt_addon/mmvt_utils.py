@@ -1503,6 +1503,11 @@ def get_hemi_delim_and_pos(label_name):
     return delim, pos, label, hemi
 
 
+def get_hemi_from_fname(fname):
+    _, _, _, hemi = get_hemi_delim_and_pos(fname)
+    return hemi
+
+
 def get_other_hemi_label_name(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
@@ -1546,7 +1551,7 @@ class Label(object):
     hemi = ''
     name = ''
 
-    def __init__(self, name, hemi, vertices, pos, values, comment=''):
+    def __init__(self, name, hemi, vertices, pos=[], values=[], comment=''):
         self.name = name
         self.hemi = hemi
         self.vertices = vertices
@@ -1588,3 +1593,126 @@ def read_label_file(label_fname):
     _, _, label, hemi = get_hemi_delim_and_pos(namebase(label_fname))
     name = '{}-{}'.format(label, hemi)
     return Label(name, hemi, vertices, pos, values, comment)
+
+
+def read_labels_from_annot(annot_fname):
+    """Read labels from a FreeSurfer annotation file.
+
+    Note: Only cortical labels will be returned.
+
+    Parameters
+    ----------
+    subject : str
+        The subject for which to read the parcellation for.
+    parc : str
+        The parcellation to use, e.g., 'aparc' or 'aparc.a2009s'.
+    hemi : str
+        The hemisphere to read the parcellation for, can be 'lh', 'rh',
+        or 'both'.
+    surf_name : str
+        Surface used to obtain vertex locations, e.g., 'white', 'pial'
+    annot_fname : str or None
+        Filename of the .annot file. If not None, only this file is read
+        and 'parc' and 'hemi' are ignored.
+    regexp : str
+        Regular expression or substring to select particular labels from the
+        parcellation. E.g. 'superior' will return all labels in which this
+        substring is contained.
+    subjects_dir : string, or None
+        Path to SUBJECTS_DIR if it is not set in the environment.
+    verbose : bool, str, int, or None
+        If not None, override default verbose level (see :func:`mne.verbose`
+        and :ref:`Logging documentation <tut_logging>` for more).
+
+    Returns
+    -------
+    labels : list of Label
+        The labels, sorted by label name (ascending).
+    """
+    labels = list()
+    hemi = get_hemi_from_fname(namesbase_with_ext(annot_fname))
+    annot, ctab, label_names = _read_annot(annot_fname)
+    label_rgbas = ctab[:, :4]
+    label_ids = ctab[:, -1]
+
+    for label_id, label_name, label_rgba in\
+            zip(label_ids, label_names, label_rgbas):
+        vertices = np.where(annot == label_id)[0]
+        if len(vertices) == 0:
+            # label is not part of cortical surface
+            continue
+        name = label_name.decode() + '-' + hemi
+        label = Label(name, hemi, vertices, [], [])
+        labels.append(label)
+
+    # sort the labels by label name
+    labels = sorted(labels, key=lambda l: l.name)
+    return labels
+
+
+def _read_annot(fname):
+    """Read a Freesurfer annotation from a .annot file.
+
+    Note : Copied from PySurfer
+
+    Parameters
+    ----------
+    fname : str
+        Path to annotation file
+
+    Returns
+    -------
+    annot : numpy array, shape=(n_verts)
+        Annotation id at each vertex
+    ctab : numpy array, shape=(n_entries, 5)
+        RGBA + label id colortable array
+    names : list of str
+        List of region names as stored in the annot file
+
+    """
+    with open(fname, "rb") as fid:
+        n_verts = np.fromfile(fid, '>i4', 1)[0]
+        data = np.fromfile(fid, '>i4', n_verts * 2).reshape(n_verts, 2)
+        annot = data[data[:, 0], 1]
+        ctab_exists = np.fromfile(fid, '>i4', 1)[0]
+        if not ctab_exists:
+            raise Exception('Color table not found in annotation file')
+        n_entries = np.fromfile(fid, '>i4', 1)[0]
+        if n_entries > 0:
+            length = np.fromfile(fid, '>i4', 1)[0]
+            # orig_tab = np.fromfile(fid, '>c', length)
+            # orig_tab = orig_tab[:-1]
+
+            names = list()
+            ctab = np.zeros((n_entries, 5), np.int)
+            for i in range(n_entries):
+                name_length = np.fromfile(fid, '>i4', 1)[0]
+                name = np.fromfile(fid, "|S%d" % name_length, 1)[0]
+                names.append(name)
+                ctab[i, :4] = np.fromfile(fid, '>i4', 4)
+                ctab[i, 4] = (ctab[i, 0] + ctab[i, 1] * (2 ** 8) +
+                              ctab[i, 2] * (2 ** 16) +
+                              ctab[i, 3] * (2 ** 24))
+        else:
+            ctab_version = -n_entries
+            if ctab_version != 2:
+                raise Exception('Color table version not supported')
+            n_entries = np.fromfile(fid, '>i4', 1)[0]
+            ctab = np.zeros((n_entries, 5), np.int)
+            length = np.fromfile(fid, '>i4', 1)[0]
+            np.fromfile(fid, "|S%d" % length, 1)  # Orig table path
+            entries_to_read = np.fromfile(fid, '>i4', 1)[0]
+            names = list()
+            for i in range(entries_to_read):
+                np.fromfile(fid, '>i4', 1)  # Structure
+                name_length = np.fromfile(fid, '>i4', 1)[0]
+                name = np.fromfile(fid, "|S%d" % name_length, 1)[0]
+                names.append(name)
+                ctab[i, :4] = np.fromfile(fid, '>i4', 4)
+                ctab[i, 4] = (ctab[i, 0] + ctab[i, 1] * (2 ** 8) +
+                              ctab[i, 2] * (2 ** 16))
+
+        # convert to more common alpha value
+        ctab[:, 3] = 255 - ctab[:, 3]
+
+    return annot, ctab, names
