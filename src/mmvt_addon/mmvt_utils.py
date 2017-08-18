@@ -126,10 +126,18 @@ def is_linux():
     return IS_LINUX
 
 
-def namebase(file_name):
-    if file_name[-1] == op.sep:
-        file_name = file_name[:-1]
-    return op.splitext(op.basename(file_name))[0]
+def namebase(fname):
+    name_with_ext = fname.split(op.sep)[-1]
+    if not name_with_ext.endswith('nii.gz'):
+        return '.'.join(name_with_ext.split('.')[:-1])
+    else:
+        return name_with_ext[:-len('.nii.gz')]
+
+
+# def namebase(file_name):
+#     if file_name[-1] == op.sep:
+#         file_name = file_name[:-1]
+#     return op.splitext(op.basename(file_name))[0]
 
 
 def namesbase_with_ext(fname):
@@ -141,7 +149,13 @@ def get_fname_folder(fname):
 
 
 def file_type(fname):
-    return op.splitext(op.basename(fname))[1][1:]
+    if fname.endswith('nii.gz'):
+        return 'nii.gz'
+    else:
+        return fname.split('.')[-1]
+
+# def file_type(fname):
+#     return op.splitext(op.basename(fname))[1][1:]
 
 
 def file_fol():
@@ -1482,27 +1496,33 @@ def get_args_list(val):
 
 
 def get_hemi_delim_and_pos(label_name):
-    delim, pos, label = '', '', ''
+    delim, pos, label, label_hemi = '', '', label_name, ''
     for hemi in ['rh', 'lh']:
         if label_name.startswith('{}-'.format(hemi)):
             delim, pos, label = '-', 'start', label_name[3:]
+            label_hemi = hemi
             break
         if label_name.startswith('{}_'.format(hemi)):
             delim, pos, label = '_', 'start', label_name[3:]
+            label_hemi = hemi
             break
         if label_name.startswith('{}.'.format(hemi)):
             delim, pos, label = '.', 'start', label_name[3:]
+            label_hemi = hemi
             break
         if label_name.endswith('-{}'.format(hemi)):
             delim, pos, label = '-', 'end', label_name[:-3]
+            label_hemi = hemi
             break
         if label_name.endswith('_{}'.format(hemi)):
             delim, pos, label = '_', 'end', label_name[:-3]
+            label_hemi = hemi
             break
         if label_name.endswith('.{}'.format(hemi)):
+            label_hemi = hemi
             delim, pos, label = '.', 'end', label_name[:-3]
             break
-    return delim, pos, label, hemi
+    return delim, pos, label, label_hemi
 
 
 def get_hemi_from_fname(fname):
@@ -1510,10 +1530,84 @@ def get_hemi_from_fname(fname):
     return hemi
 
 
+def get_label_hemi_invariant_name(label_name):
+    _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
+    while label_inv_name != label_name:
+        label_name = label_inv_name
+        _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
+    return label_inv_name
+
+
+def get_hemi_from_full_fname(fname):
+    folder = namebase(fname)
+    hemi = get_hemi_from_fname(folder)
+    while hemi == '' and folder != '':
+        fname = get_parent_fol(fname)
+        folder = fname.split(op.sep)[-1]
+        hemi = get_hemi_from_fname(folder)
+    return hemi
+
+
+def get_label_for_full_fname(fname, delim='-'):
+    fname_file_type = file_type(fname)
+    names = [get_label_hemi_invariant_name(namebase(fname))]
+    folder = namebase(fname)
+    hemi = get_hemi_from_fname(folder)
+    while hemi == '' and folder != '':
+        fname = get_parent_fol(fname)
+        folder = fname.split(op.sep)[-1]
+        names.insert(0, get_label_hemi_invariant_name(folder))
+        hemi = get_hemi_from_fname(folder)
+    return '{}.{}.{}'.format(delim.join(names), hemi, fname_file_type)
+
+
+def get_both_hemis_files(fname):
+    hemi = get_hemi_from_fname(namebase(fname))
+    full_fname = fname
+    if hemi != '':
+        other_hemi_fname = op.join(get_parent_fol(fname), get_other_hemi_label_name(fname))
+    else:
+        folder = get_parent_fol(fname)
+        while hemi == '' and folder != '':
+            fname = get_parent_fol(fname)
+            folder = fname.split(op.sep)[-1]
+            hemi = get_hemi_from_fname(folder)
+        other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
+    return {hemi: full_fname, other_hemi(hemi): other_hemi_fname}
+
+
+def other_hemi(hemi):
+    return 'rh' if hemi == 'lh' else 'lh'
+
+
 def get_other_hemi_label_name(label_name):
+    add_file_type = False
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
-    other_hemi = 'rh' if hemi == 'lh' else 'lh'
-    return build_label_name(delim, pos, label, other_hemi)
+    if hemi == '':
+        delim, pos, label, hemi = get_hemi_delim_and_pos(namebase(label_name))
+        add_file_type = True
+    if hemi == '':
+        print("Can't find the hemi in {}!".format(label_name))
+        return ''
+    else:
+        other_hemi = 'rh' if hemi == 'lh' else 'lh'
+        other_hemi_fname = build_label_name(delim, pos, label, other_hemi)
+        if add_file_type:
+            other_hemi_fname = '{}.{}'.format(other_hemi_fname, file_type(label_name))
+        return other_hemi_fname
+
+
+def get_template_hemi_label_name(label_name, wild_char=False):
+    add_file_type = False
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+    if hemi == '':
+        delim, pos, label, hemi = get_hemi_delim_and_pos(namebase(label_name))
+        add_file_type = True
+    hemi_temp = '?h' if wild_char else '{hemi}'
+    res_label_name = build_label_name(delim, pos, label, hemi_temp)
+    if add_file_type:
+        res_label_name = '{}.{}'.format(res_label_name, file_type(label_name))
+    return res_label_name
 
 
 def build_label_name(delim, pos, label, hemi):
@@ -1725,3 +1819,27 @@ def create_labels_contours():
     cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours'.format(
         bpy.context.scene.python_cmd, subject, atlas)
     run_command_in_new_thread(cmd, False)
+
+
+def make_link(source, target, overwrite=False):
+    try:
+        os.symlink(source, target)
+        return True
+    except FileExistsError as e:
+        if not overwrite:
+            print('{} already exist'.format(target))
+        else:
+            os.remove(target)
+            os.symlink(source, target)
+        return True
+    except:
+        return False
+
+
+def both_hemi_files_exist(file_template):
+    return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
+
+
+def delete_files(temp):
+    for fname in glob.glob(temp):
+        os.remove(fname)

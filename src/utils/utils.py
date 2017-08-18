@@ -52,6 +52,9 @@ time_to_go = mu.time_to_go
 tryit = mu.tryit
 to_str = mu.to_str
 read_config_ini = mu.read_config_ini
+make_link = mu.make_link
+both_hemi_files_exist = mu.both_hemi_files_exist
+
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -1379,10 +1382,6 @@ def set_exe_permissions(fpath):
     os.chmod(fpath, 0o744)
 
 
-def both_hemi_files_exist(file_template):
-    return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
-
-
 def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
     import xlrd
     import csv
@@ -1693,13 +1692,6 @@ def file_modification_time(fname):
     except OSError:
         mtime = 0
     return datetime.fromtimestamp(mtime)
-
-
-def make_link(source, target):
-    try:
-        os.symlink(source, target)
-    except FileExistsError as e:
-        print('{} already exist'.format(target))
 
 
 def remove_link(source):

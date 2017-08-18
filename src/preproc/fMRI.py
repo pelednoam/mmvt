@@ -575,8 +575,11 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
     surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname).replace('{subject}', subject)
     surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
     if len(surf_full_output_fnames) == 0:
-        print('No hemi files were found from the template {}'.format(surf_full_output_fname))
-        return False, ''
+        surf_full_output_fname = op.join(MMVT_DIR, subject, 'fmri', surf_template_fname)
+        surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
+        if len(surf_full_output_fnames) == 0:
+            print('No hemi files were found from the template {}'.format(surf_full_output_fname))
+            return False, ''
     surf_full_output_fname = surf_full_output_fnames[0]
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
         surf_full_output_fname)))
@@ -1282,6 +1285,27 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
     return copy_output_files() if not print_only else True
 
 
+# def functional_connectivity_freesurfer(subject, fsd='rest', measure='mean', seg_id=1010, fcname='L_Posteriorcingulate',
+#                                        overwrite=False, print_only=False):
+#
+#     def no_output(*args):
+#         return not op.isfile(op.join(FMRI_DIR, subject, fsd, *args))
+#
+#     def run(cmd, *output_args, **kargs):
+#         if no_output(*output_args) or overwrite or print_only:
+#             rs(cmd, **kargs)
+#             if not print_only and no_output(*output_args):
+#                 raise Exception('{}\nNo output created in {}!!\n\n'.format(
+#                     cmd, op.join(FMRI_DIR, subject, fsd, *output_args)))
+#
+#     # http://surfer.nmr.mgh.harvard.edu/fswiki/FsFastFunctionalConnectivityWalkthrough
+#     rs = utils.partial_run_script(locals(), cwd=FMRI_DIR, print_only=print_only)
+#     rs('fcseed-config -segid {seg_id} -fcname {fcname}.dat -fsd {fsd} -{measure} -cfg {measure}.{fcname}.config')
+#     rs('fcseed-sess -s {subject} -cfg {fcname}.config')
+#
+#     if no_output('001', 'wm.dat'):
+#         run('fcseed-config -wm -fcname wm.dat -fsd bold -pca -cfg wm.config')
+#     'fcseed-sess -s sessionid -cfg wm.config'
 
 def get_tr(fmri_fname):
     try:

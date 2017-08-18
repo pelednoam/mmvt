@@ -1034,17 +1034,27 @@ def calc_stc_minmax(stc):
     return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
 
 
-def fmri_files_update(self, context):
+def plot_fmri_file(fmri_template_fname):
+    _fmri_files_update(mu.namebase(fmri_template_fname)[:-len('.{hemi}')])
+    activity_map_coloring('FMRI')
+
+
+def _fmri_files_update(fmri_file_name):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
-    fname_template = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(bpy.context.scene.fmri_files, '{hemi}'))
+    fname_template = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(fmri_file_name, '{hemi}'))
+    if not mu.both_hemi_files_exist(fname_template):
+        fname_template = op.join(user_fol, 'fmri', 'fmri_{}.{}.npy'.format(fmri_file_name, '{hemi}'))
+    if not mu.both_hemi_files_exist(fname_template):
+        fname_template = op.join(user_fol, 'fmri', 'fmri_{}-{}.npy'.format(fmri_file_name, '{hemi}'))
+    if not mu.both_hemi_files_exist(fname_template):
+        print('fmri_files_update: {} does not exist!'.format(fname_template))
+        ColoringMakerPanel.fMRI['rh'] = None
+        ColoringMakerPanel.fMRI['lh'] = None
+        return
     for hemi in mu.HEMIS:
         fname = fname_template.format(hemi=hemi)
-        if op.isfile(fname):
-            ColoringMakerPanel.fMRI[hemi] = np.load(fname)
-        else:
-            print('fmri_files_update: {} does not exist!'.format(fname))
-            ColoringMakerPanel.fMRI[hemi] = None
+        ColoringMakerPanel.fMRI[hemi] = np.load(fname)
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
         bpy.context.scene.fmri_files))
     if not op.isfile(fmri_data_maxmin_fname):
@@ -1058,6 +1068,10 @@ def fmri_files_update(self, context):
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_title('fMRI')
+
+
+def fmri_files_update(self, context):
+    _fmri_files_update(bpy.context.scene.fmri_files)
 
 
 def calc_fmri_min_max(fmri_data_maxmin_fname, fname_template):
@@ -2012,7 +2026,7 @@ def init_fmri_labels():
 
 def init_fmri_files():
     user_fol = mu.get_user_fol()
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh.npy'))
     if len(fmri_files) > 0:
         files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
