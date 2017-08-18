@@ -1502,12 +1502,18 @@ def load_fmri_data_for_both_hemis(subject, surf_name):
 
 
 def get_all_fmri_files(subject):
-    files = glob.glob(op.join(MMVT_DIR, subject, 'fmri', 'fmri_*.npy'))
-    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.mgz')))
-    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.nii')))
-    files.extend(glob.glob(op.join(MMVT_DIR, subject, 'fmri', '*.nii.gz')))
+    files = []
+    for fol in [op.join(MMVT_DIR, subject, 'fmri'), op.join(FMRI_DIR, subject)]:
+        for template in ['fmri_*.npy', '*.mgz', '*.nii', '*.nii.gz']:
+            files.extend(glob.glob(op.join(fol, template)))
     files = list(set(['{}.{}'.format(lu.get_template_hemi_label_name(utils.namebase_sep(f)), utils.file_type_sep(f))
                       for f in files if lu.get_label_hemi(utils.namebase_sep(f)) != '']))
+    for fname in files:
+        if not utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'fmri', fname)) and \
+                utils.both_hemi_files_exist(op.join(FMRI_DIR, subject, fname)):
+            for hemi in utils.HEMIS:
+                utils.make_link(op.join(FMRI_DIR, subject, fname.format(hemi=hemi)),
+                                op.join(MMVT_DIR, subject, 'fmri', fname.format(hemi=hemi)))
     return files
 
 
