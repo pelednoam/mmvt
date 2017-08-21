@@ -210,7 +210,6 @@ def backup_folder(subject, folder_name, backup_suffix='_backup'):
 
 def check_func_output(ret):
     if isinstance(ret, collections.Iterable):
-        ret = ret[0]
-        return ret[1:]
+        return ret[0], ret[1]
     else:
         return None

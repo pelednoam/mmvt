@@ -1647,7 +1647,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['project_volume_to_surface'] = project_volume_to_surface(
             subject, args.fmri_file_template, overwrite_surf_data=args.overwrite_surf_data, target_subject=args.target_subject,
             is_pet=args.is_pet, remote_fmri_dir=remote_fmri_dir, mmvt_args=args)
-        surf_output_fname = pu.check_func_output(flags['project_volume_to_surface'])
+        flags['project_volume_to_surface'], surf_output_fname = pu.check_func_output(flags['project_volume_to_surface'])
         fmri_contrast_file_template, args = calc_also_minmax(
             flags['project_volume_to_surface'], surf_output_fname, args)
 

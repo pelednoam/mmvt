@@ -881,8 +881,8 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
 
 
 def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
-                                  sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-                                  overwrite_files=False, print_traceback=True, sftp_port=22):
+        sftp=False, sftp_username='', sftp_domain='', sftp_password='',
+        overwrite_files=False, print_traceback=True, sftp_port=22):
     local_subject_dir = op.join(local_subjects_dir, subject)
     all_files_exists = False if overwrite_files else \
         check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=remote_subject_dir == '')
@@ -1802,6 +1802,8 @@ def files_needed(necessary_files):
             default_mmvt_args = dict(sftp=False, sftp_username='', sftp_domain='', sftp_password='',
                                 overwrite_fs_files=False, print_traceback=False, sftp_port=22)
             mmvt_args = kwargs.get('mmvt_args', default_mmvt_args)
+            if remote_subject_dir == '':
+                remote_subject_dir = mmvt_args.get('remote_subject_dir', '')
             ret = prepare_subject_folder(
                 necessary_files, subject, remote_subject_dir, subjects_dir,
                 mmvt_args.sftp, mmvt_args.sftp_username, mmvt_args.sftp_domain, mmvt_args.sftp_password,
