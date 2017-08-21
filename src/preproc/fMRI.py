@@ -386,7 +386,8 @@ def convert_fmri_file(input_fname_template, from_format='nii.gz', to_format='mgz
             inputs_files = glob.glob(intput_fname)
             if len(inputs_files) == 1:
                 intput_fname = inputs_files[0]
-                utils.run_script('mri_convert {} {}'.format(intput_fname, output_fname))
+                if not op.isfile(output_fname):
+                    utils.run_script('mri_convert {} {}'.format(intput_fname, output_fname))
                 return output_fname
             elif len(inputs_files) == 0:
                 print('No imput file was found! {}'.format(intput_fname))
