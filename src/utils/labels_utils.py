@@ -38,6 +38,20 @@ def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir):
         return fsaverage
 
 
+def load_surf(subject, mmvt_dir, subjects_dir):
+    verts = {}
+    for hemi in HEMIS:
+        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
+            hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
+        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
+            hemis_verts, _ = utils.read_ply_file(
+                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        else:
+            print("Can't find {} pial ply/npz files!".format(hemi))
+            return False
+        verts[hemi] = hemi_verts
+    return verts
+
 def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     fsaverage = find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir)
@@ -51,35 +65,15 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
     labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
-    # else:
-    #     print("The annot files doesn't found ({}), trying to read the lablels files".format(
-    #         op.join(subjects_dir, fsaverage, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))))
-    #     labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
-    # if len(labels) == 0:
-    #     print('morph_labels_from_fsaverage: No labels files found!')
-    #     return False
-    surf_loaded = False
+    verts = load_surf(subject, mmvt_dir, subjects_dir)
     for fs_label in labels:
         label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
         local_label_name = op.join(sub_labels_fol, '{}.label'.format(op.splitext(op.split(label_file)[1])[0]))
         if not op.isfile(local_label_name) or overwrite:
             # fs_label = mne.read_label(label_file)
             fs_label.values.fill(1.0)
-            sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=n_jobs, subjects_dir=subjects_dir)
+            sub_label = fs_label.morph(fsaverage, subject, grade=None, n_jobs=1, subjects_dir=subjects_dir)
             if np.all(sub_label.pos == 0):
-                if not surf_loaded:
-                    verts = {}
-                    for hemi in HEMIS:
-                        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
-                            hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
-                        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
-                            hemis_verts, _ = utils.read_ply_file(
-                                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
-                        else:
-                            print("Can't find {} pial ply/npz files!".format(hemi))
-                            return False
-                        verts[hemi] = hemi_verts
-                    surf_loaded = True
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
     return True
@@ -568,6 +562,7 @@ def create_atlas_coloring(subject, atlas, n_jobs=-1):
             label_inv_name = get_label_hemi_invariant_name(label.name)
             if label_inv_name not in labels_colors_rgb:
                 labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
+        print('Writing to {} and {}'.format(coloring_fname, coloring_names_fname))
         with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
             for label in labels:
                 label_inv_name = get_label_hemi_invariant_name(label.name)

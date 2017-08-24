@@ -6,6 +6,7 @@ import connections_panel
 import electrodes_panel
 import os.path as op
 
+SEL_ROIS, SEL_SUBS, SEL_ELECTRODES, SEL_MEG_SENSORS, SEL_EEG_SENSORS, SEL_CONNECTIONS = range(6)
 
 def _addon():
     return SelectionMakerPanel.addon
@@ -35,6 +36,31 @@ def deselect_all():
         bpy.context.scene.objects.active = bpy.data.objects[' ']
 
 
+def get_selected_fcurves_and_data():
+    # todo: support more than one type in selection
+    for selction_type, parent_obj in zip([SEL_ELECTRODES], [electrodes_panel.PARENT_OBJ]):
+        fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
+        fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
+        data = SelectionMakerPanel.data.get(selction_type, [])
+        names = SelectionMakerPanel.names.get(selction_type, [])
+        selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
+        data = data[selected_indices]
+    return fcurves, data
+
+
+def curves_sep_update(self, context):
+    fcurves, data = get_selected_fcurves_and_data()
+    if len(fcurves) == 0:
+        return
+    # data_amp = np.max(data) - np.min(data)
+    T = data.shape[1] - 1
+    C = len(fcurves)
+    for fcurve_ind, fcurve in enumerate(fcurves):
+        for t in range(T):
+            fcurve.keyframe_points[t].co[1] = data[fcurve_ind, t] + (C / 2 - fcurve_ind) * bpy.context.scene.curves_sep
+    mu.view_all_in_graph_editor()
+
+
 def meg_data_loaded():
     parent_obj = bpy.data.objects.get('Brain')
     if parent_obj is None:
@@ -62,6 +88,11 @@ def meg_sub_data_loaded():
 def fmri_data_loaded():
     fmri_parent_obj = bpy.data.objects.get('fMRI')
     return mu.count_fcurves(fmri_parent_obj) > 0
+
+
+def electrodes_data_loaded():
+    electrodes_obj = bpy.data.objects.get(electrodes_panel.PARENT_OBJ)
+    return electrodes_obj is not None and mu.count_fcurves(electrodes_obj, recursive=True) > 0
 
 
 def select_roi(roi_name):
@@ -187,6 +218,7 @@ class SelectAllRois(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_rois()
+        SelectionMakerPanel.selection.append(SEL_ROIS)
         mu.view_all_in_graph_editor(context)
         if bpy.context.scene.selection_type == 'diff':
             mu.change_fcurves_colors([bpy.data.objects['Brain']])
@@ -203,6 +235,7 @@ class SelectAllSubcorticals(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         select_only_subcorticals()
+        SelectionMakerPanel.selection.append(SEL_SUBS)
         mu.view_all_in_graph_editor(context)
         if bpy.context.scene.selection_type == 'diff':
             mu.change_fcurves_colors([bpy.data.objects['Subcortical_structures']])
@@ -219,6 +252,7 @@ class SelectAllMEGSensors(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_meg_sensors()
+        SelectionMakerPanel.selection.append(SEL_MEG_SENSORS)
         mu.unfilter_graph_editor()
         mu.change_fcurves_colors(bpy.data.objects['MEG_sensors'].children)
         mu.view_all_in_graph_editor(context)
@@ -233,6 +267,7 @@ class SelectAllEEG(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_eeg()
+        SelectionMakerPanel.selection.append(SEL_EEG_SENSORS)
         mu.unfilter_graph_editor()
         # if bpy.context.scene.selection_type == 'diff':
         #     mu.change_fcurves_colors([bpy.data.objects['Deep_electrodes']])
@@ -252,6 +287,7 @@ class SelectAllElectrodes(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_electrodes()
+        SelectionMakerPanel.selection.append(SEL_ELECTRODES)
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -264,6 +300,7 @@ class SelectAllConnections(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         select_all_connections()
+        SelectionMakerPanel.selection.append(SEL_CONNECTIONS)
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -280,7 +317,7 @@ class ClearSelection(bpy.types.Operator):
         if bpy.data.objects.get(' '):
             bpy.data.objects[' '].select = True
             bpy.context.scene.objects.active = bpy.data.objects[' ']
-
+        SelectionMakerPanel.selection = []
         return {"FINISHED"}
 
 
@@ -373,6 +410,8 @@ bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], descript
                                                               update=conditions_selection_update)
 bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
 bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
+bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
 
 
 def get_dt():
@@ -394,6 +433,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     addon = None
     modalities_num = 0
     connection_files_exist = False
+    data, names = {}, {}
 
     @staticmethod
     def draw(self, context):
@@ -416,7 +456,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
         if meg_sub_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
-        if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
+        if electrodes_data_loaded():
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('MEG_sensors'):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
@@ -426,6 +466,8 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
+        layout.prop(context.scene, 'fit_graph_on_selection', text='Fit graph on selection')
+        layout.prop(context.scene, 'curves_sep', text='curves separation')
 
         # if not SelectionMakerPanel.dt is None:
         #     points_in_sec = int(1 / SelectionMakerPanel.dt)
@@ -443,6 +485,7 @@ class SelectionMakerPanel(bpy.types.Panel):
 
 def init(addon):
     SelectionMakerPanel.addon = addon
+    SelectionMakerPanel.selection = []
     SelectionMakerPanel.dt = get_dt()
     modalities_itesm = []
     if meg_data_loaded():
@@ -453,7 +496,28 @@ def init(addon):
     bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
     SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
                 bpy.data.objects[_addon().get_connections_parent_name()].animation_data
+    bpy.context.scene.fit_graph_on_selection = False
+    get_data()
     register()
+
+
+def get_data():
+    SelectionMakerPanel.data = {}
+    if meg_data_loaded():
+        pass
+    if fmri_data_loaded():
+        pass
+    if meg_sub_data_loaded():
+        pass
+    if fmri_data_loaded():
+        pass
+    if electrodes_data_loaded():
+        SelectionMakerPanel.data[SEL_ELECTRODES], SelectionMakerPanel.names[SEL_ELECTRODES] = \
+            mu.get_fcurves_data(electrodes_panel.PARENT_OBJ, return_names=True)
+    if bpy.data.objects.get('MEG_sensors'):
+        pass
+    if bpy.data.objects.get('EEG_sensors'):
+        pass
 
 
 def register():

@@ -50,6 +50,31 @@ def load_edf_data_seizure(args):
     pu.run_on_subjects(args, elecs.main)
 
 
+def load_edf_data_seizure_2(args):
+    args = elecs.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        atlas='laus125',
+        function='create_raw_data_for_blender',
+        task='seizure',
+        bipolar=False,
+        raw_fname='/cluster/neuromind/npeled/taha/dm04002705/edf/DMphaseIISz_TG.edf',
+        start_time='00:00:00',
+        seizure_onset='00:01:30',
+        seizure_end='00:02:00',
+        baseline_onset='00:00:00',
+        baseline_end='00:01:00',
+        lower_freq_filter=0.5,
+        upper_freq_filter=70,
+        power_line_notch_widths=5,
+        ref_elec='PST1',
+        normalize_data=False,
+        calc_zscore=False,
+        factor=1000,
+        channels_names_mismatches='LFO=LIF'
+    ))
+    pu.run_on_subjects(args, elecs.main)
+
+
 def load_edf_data_rest(args):
     args = elecs.read_cmd_args(utils.Bag(
         subject=args.subject,

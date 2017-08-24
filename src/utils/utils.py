@@ -54,7 +54,7 @@ to_str = mu.to_str
 read_config_ini = mu.read_config_ini
 make_link = mu.make_link
 both_hemi_files_exist = mu.both_hemi_files_exist
-
+other_hemi = mu.other_hemi
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir

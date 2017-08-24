@@ -576,7 +576,7 @@ def elec_group_number(elec_name, bipolar=False):
         return group, int(num) if num != '' else ''
 
 
-def elec_group(elec_name, bipolar):
+def elec_group(elec_name, bipolar=False):
     #todo: should check the electrode type, if it's grid, it should be bipolar
     if '-' in elec_name:
         group, _, _ = elec_group_number(elec_name, True)
@@ -1096,7 +1096,7 @@ def change_fcurves_colors(objs, exclude=[]):
             fcurve.hide = False
 
 
-def count_fcurves(objs):
+def count_fcurves(objs, recursive=False):
     if not isinstance(objs, Iterable):
         objs = [objs]
     curves_num = 0
@@ -1104,24 +1104,36 @@ def count_fcurves(objs):
         if not obj is None and 'unknown' not in obj.name:
             if not obj is None and not obj.animation_data is None:
                 curves_num += len(obj.animation_data.action.fcurves)
+        if recursive:
+            curves_num += count_fcurves(obj.children)
     return curves_num
 
 
-def get_fcurves(obj):
+def get_fcurves(obj, recursive=False, only_selected=True):
     if isinstance(obj, str):
         obj = bpy.data.objects.get(obj)
         if obj is None:
             return None
-    fcurves = []
+    fcurves, fcurves_inds = [], []
     if not obj is None and not obj.animation_data is None:
-        fcurves = obj.animation_data.action.fcurves
+        if not only_selected or obj.select:
+            fcurves.extend(obj.animation_data.action.fcurves)
+    if recursive:
+        for obj in obj.children:
+            if not only_selected or obj.select:
+                fcurves.extend(get_fcurves(obj, recursive, only_selected))
     return fcurves
 
 
-def get_fcurves_names(obj):
+def get_fcurves_names(obj, recursive=False):
+    if isinstance(obj, str):
+        obj = bpy.data.objects.get(obj)
     fcurves_names = []
     if not obj is None and not obj.animation_data is None:
         fcurves_names = [get_fcurve_name(fcurve) for fcurve in obj.animation_data.action.fcurves]
+    if recursive:
+        for obj in obj.children:
+            fcurves_names.extend(get_fcurves_names(obj))
     return fcurves_names
 
 
@@ -1231,14 +1243,14 @@ def get_time_from_event(time_obj):
     return(datetime.now()-time_obj).seconds
 
 
-def change_fcurve(obj_name, fcurve_name, data):
-    bpy.data.objects[obj_name].select = True
-    parent_obj = bpy.data.objects[obj_name]
-    for fcurve in parent_obj.animation_data.action.fcurves:
-        if get_fcurve_name(fcurve) == fcurve_name:
-            N = min(len(fcurve.keyframe_points), len(data))
-            for ind in range(N):
-                fcurve.keyframe_points[ind].co[1] = data[ind]
+# def change_fcurve(obj_name, fcurve_name, data):
+#     bpy.data.objects[obj_name].select = True
+#     parent_obj = bpy.data.objects[obj_name]
+#     for fcurve in parent_obj.animation_data.action.fcurves:
+#         if get_fcurve_name(fcurve) == fcurve_name:
+#             N = min(len(fcurve.keyframe_points), len(data))
+#             for ind in range(N):
+#                 fcurve.keyframe_points[ind].co[1] = data[ind]
 
 @timeit
 def change_fcurves(obj_name, data, ch_names):
@@ -1254,6 +1266,30 @@ def change_fcurves(obj_name, data, ch_names):
         for time_ind in range(N):
             fcurve.keyframe_points[time_ind + 1].co[1] = data[ch_ind, time_ind]
         fcurve.keyframe_points[N].co[1] = 0
+
+
+@timeit
+def get_fcurves_data(obj_name='', fcurves=[], with_kids=True, return_names=False):
+    if obj_name != '':
+        parent_obj = bpy.data.objects[obj_name]
+        if parent_obj.animation_data is not None:
+            fcurves = parent_obj.animation_data.action.fcurves
+        if with_kids:
+            for obj in parent_obj.children:
+                if obj.animation_data is not None:
+                    fcurves.extend(obj.animation_data.action.fcurves)
+    if len(fcurves) == 0:
+        return []
+    T = len(fcurves[0].keyframe_points)
+    data = np.zeros((len(fcurves), T))
+    for fcurve_ind, fcurve in enumerate(fcurves):
+        for time_ind in range(T):
+            data[fcurve_ind, time_ind] = fcurve.keyframe_points[time_ind].co[1]
+    if return_names:
+        names = [get_fcurve_name(f) for f in fcurves]
+        return data, names
+    else:
+        return data
 
 
 @timeit
@@ -1574,10 +1610,6 @@ def get_both_hemis_files(fname):
             hemi = get_hemi_from_fname(folder)
         other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
     return {hemi: full_fname, other_hemi(hemi): other_hemi_fname}
-
-
-def other_hemi(hemi):
-    return 'rh' if hemi == 'lh' else 'lh'
 
 
 def get_other_hemi_label_name(label_name):

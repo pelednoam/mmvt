@@ -22,6 +22,8 @@ def PSMessage(action, options):
 
 class MMVT_Server(Server):
 
+    _running = False
+
     def on_request(self, sender, topic, content, msgid):
         """Handles Proxy Server communication, handling attribute access in served_object.
 

@@ -503,28 +503,33 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
 
 
 @pu.tryit_ret_bool
-def sort_electrodes_groups(subject, bipolar, do_plot=True):
+def sort_electrodes_groups(subject, bipolar, all_in_hemi='', do_plot=True):
     from sklearn.decomposition import PCA
     electrodes, pos = read_electrodes_file(subject, bipolar)
     first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
-    pca = PCA(n_components=2)
-    pca.fit(first_pos)
-    if pca.explained_variance_.shape[0] == 1:
-        # Can't find hemis via PAC, just ask the user
-        sorted_groups = dict(rh=[], lh=[])
-        print("Please set the hemi (rh/lh) for the following electrodes' groups:")
-        for group in elc_pos_groups.keys():
-            hemi = input('{}: '.format(group))
-            while hemi not in ['rh', 'lh']:
-                print('Wrong hemi value!')
-                hemi = input('{}: '.format(group))
-            sorted_groups[hemi].append(group)
+    if all_in_hemi in ['rh', 'lh']:
+        sorted_groups = {}
+        sorted_groups[all_in_hemi] = list(elc_pos_groups.keys())
+        sorted_groups[utils.other_hemi(all_in_hemi)] = []
     else:
-        transformed_pos = pca.transform(pos)
-        # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
-        transformed_first_pos = pca.transform(first_pos)
-        groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
-        sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
+        pca = PCA(n_components=2)
+        pca.fit(first_pos)
+        if pca.explained_variance_.shape[0] == 1:
+            # Can't find hemis via PAC, just ask the user
+            sorted_groups = dict(rh=[], lh=[])
+            print("Please set the hemi (rh/lh) for the following electrodes' groups:")
+            for group in elc_pos_groups.keys():
+                hemi = input('{}: '.format(group))
+                while hemi not in ['rh', 'lh']:
+                    print('Wrong hemi value!')
+                    hemi = input('{}: '.format(group))
+                sorted_groups[hemi].append(group)
+        else:
+            transformed_pos = pca.transform(pos)
+            # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
+            transformed_first_pos = pca.transform(first_pos)
+            groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
+            sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
     print(sorted_groups)
     utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
     if do_plot:
@@ -555,16 +560,65 @@ def read_edf(edf_fname, from_t, to_t):
     # edf_raw.plot(None, 1, 20, 20)
 
 
-def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
+def fix_mismatches(edf_raw, channels_names_mismatches):
+    for mismatch in channels_names_mismatches:
+        if '=' not in mismatch:
+            continue
+        gr1, gr2 = mismatch.split('=')
+        inds1 = np.array([i for i, l in enumerate(edf_raw.ch_names) if l.startswith(gr1)])
+        inds2 = np.array([i for i, l in enumerate(edf_raw.ch_names) if l.startswith(gr2)])
+        for ind, ch_ind in enumerate(inds1):
+            edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = '{}{}'.format(gr2, ind + 1)
+        for ind, ch_ind in enumerate(inds2):
+            edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = '{}{}'.format(gr1, ind + 1)
+
+
+def plot_electrodes(subject, edf_raw, data_channels, ref_ind=-1):
+    # inds = np.array([i for i, l in enumerate(edf_raw.ch_names) if l.startswith('LMF')])
+    # data_channels = data_channels[inds]
+    N = len(data_channels)
+    data, times = edf_raw[:N]
+    if ref_ind > -1:
+        ref_data, _ = edf_raw[ref_ind]
+        data -= np.tile(ref_data, (data.shape[0], 1))
+    amp = np.diff(utils.calc_min_max(data, norm_percs=[1, 99]))[0] * 2
+    amp_diff = np.arange(0, amp * N, amp)
+    amp_diff = np.tile(amp_diff, (data.shape[1], 1)).T
+    plt.plot(times, (data + amp_diff).T)
+    plt.savefig(op.join(MMVT_DIR, subject, 'figures', 'electrodes.png'))
+    plt.legend(data_channels)
+    plt.show()
+
+
+def fix_channles_names(edf_raw, data_channels):
+    channels_groups = set([utils.elec_group(l) for l in data_channels])
+    ch_groups = set([utils.elec_group(l) for l in edf_raw.ch_names])
+    fix_dict = {g: [c for c in channels_groups if g.lower() == c.lower()][0] for g in ch_groups if
+        g.lower() in [c.lower() for c in channels_groups]}
+    fix_dict = {k: v for k, v in fix_dict.items() if k != v}
+    if len(fix_dict) == 0:
+        return
+    for ch_ind, c in enumerate(edf_raw.ch_names):
+        gr, num = utils.elec_group_number(c)
+        if gr not in fix_dict:
+            continue
+        new_name = '{}{}'.format(fix_dict[gr], num)
+        edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = new_name
+
+
+def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=True):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     edf_fname, _ = locating_file(args.raw_fname, '*.edf')
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
+
+    # edf_raw.plot(n_channels=1)
     fs = float(edf_raw.info['sfreq'])
     if args.preload and args.remove_power_line_noise:
-        edf_raw.notch_filter(np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq),
-                             notch_widths=args.power_line_notch_widths)
+        power_line_freqs = np.arange(args.power_line_freq, args.power_line_freq * 4 + 1, args.power_line_freq)
+        power_line_freqs = [f for f in power_line_freqs if f < fs / 2] # must be less than the Nyquist frequency
+        edf_raw.notch_filter(power_line_freqs, notch_widths=args.power_line_notch_widths)
     if not (args.lower_freq_filter is None and args.upper_freq_filter is None):
         edf_raw.filter(args.lower_freq_filter, args.upper_freq_filter)
     dt = (edf_raw.times[1] - edf_raw.times[0])
@@ -573,22 +627,30 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
     data_channels, all_pos = read_electrodes_file(subject, bipolar=False)
     if args.bipolar:
         data_bipolar_channels, _ = read_electrodes_file(subject, bipolar=True)
+    fix_mismatches(edf_raw, args.channels_names_mismatches)
+    fix_channles_names(edf_raw, data_channels)
     # live_channels = find_live_channels(edf_raw, hz)
     # no_stim_channels = get_data_channels(edf_raw)
+    # data_channels_lower = [l.lower() for l in data_channels]
+    # ch_names_lower = [l.lower() for l in edf_raw.ch_names]
+
     channels_tup = [(ind, ch) for ind, ch in enumerate(edf_raw.ch_names) if ch in data_channels]
     channels_indices = [c[0] for c in channels_tup]
     labels = [c[1] for c in channels_tup]
     conditions = [c['name'] for c in args.conditions]
-    pos = all_pos[np.array(channels_indices)]
-
-    from scipy.spatial import distance
-    dists = distance.cdist(pos, pos, 'euclidean')
-    dists_output_fname = 'electrodes{}_dists.npy'.format('_bipolar' if args.bipolar else '')
-    dists_output_fname = op.join(MMVT_DIR, subject, 'electrodes', dists_output_fname)
-    np.save(dists_output_fname, dists)
+    # pos = all_pos[np.array(channels_indices)]
+    #
+    # from scipy.spatial import distance
+    # dists = distance.cdist(pos, pos, 'euclidean')
+    # dists_output_fname = 'electrodes{}_dists.npy'.format('_bipolar' if args.bipolar else '')
+    # dists_output_fname = op.join(MMVT_DIR, subject, 'electrodes', dists_output_fname)
+    # np.save(dists_output_fname, dists)
 
     if args.ref_elec != '':
         ref_ind = edf_raw.ch_names.index(args.ref_elec)
+
+    if do_plot:
+        plot_electrodes(subject, edf_raw, data_channels, ref_ind)
 
     data = None
     cond_id = 0
@@ -643,9 +705,9 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF):
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
         return op.isfile(output_fname)
     else:
-        meta_fname = op.join(fol, 'electrodes{}_meta_data{}'.format(
+        meta_fname = op.join(fol, 'electrodes{}_meta_data{}.npz'.format(
             '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
-        data_fname = op.join(fol, 'electrodes{}_data{}'.format(
+        data_fname = op.join(fol, 'electrodes{}_data{}.npy'.format(
             '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
@@ -840,7 +902,7 @@ def get_rois_colors(subject, atlas, rois):
     not_white_rois = sorted(list(not_white_rois))
     colors = cu.get_distinct_colors_and_names()
     lables_colors_rgbs_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
-    lables_colors_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_colors_names.csv'.format(atlas))
+    lables_colors_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_colors_names.txt'.format(atlas))
     labels_colors_exist = op.isfile(lables_colors_rgbs_fname) and op.isfile(lables_colors_names_fname)
     rois_colors_rgbs, rois_colors_names = OrderedDict(), OrderedDict()
     if not labels_colors_exist:
@@ -973,7 +1035,8 @@ def main(subject, remote_subject_dir, args, flags):
         flags['calc_dist_mat'] = calc_dist_mat(subject, bipolar=args.bipolar)
 
     if utils.should_run(args, 'sort_electrodes_groups'):
-        flags['sort_electrodes_groups'] = sort_electrodes_groups(subject, args.bipolar, do_plot=args.do_plot)
+        flags['sort_electrodes_groups'] = sort_electrodes_groups(
+            subject, args.bipolar, args.all_in_hemi, do_plot=args.do_plot)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
@@ -1048,9 +1111,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--remove_baseline', help='remove_baseline', required=False, default=1, type=au.is_true)
     parser.add_argument('--factor', help='', required=False, default=1, type=float)
     parser.add_argument('--calc_zscore', help='calc_zscore', required=False, default=0, type=au.is_true)
+    parser.add_argument('--channels_names_mismatches', required=False, default='', type=au.str_arr_type)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
+    parser.add_argument('--all_in_hemi', help='', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
 

@@ -708,6 +708,8 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     volume_fname, surf_output_fname, npy_surf_fname = get_volume_and_surf_fnames(
         subject, volume_fname_template, target_subject, remote_fmri_dir)
+    if volume_fname == '':
+        return False, ''
     if not utils.both_hemi_files_exist(npy_surf_fname) or overwrite_surf_data:
         project_on_surface(subject, volume_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
@@ -719,6 +721,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
 
 def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject='', remote_fmri_dir=''):
     remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
+    volume_fname_template = volume_fname_template if volume_fname_template != '' else '*'
     full_input_fname_template = op.join(remote_fmri_dir, volume_fname_template)
     full_input_fname_template = full_input_fname_template.replace('{format}', '*')
     full_input_fname_template = full_input_fname_template.format(subject=subject)
@@ -726,7 +729,8 @@ def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject=''
     volume_fname = utils.look_for_one_file(full_input_fname_template, 'fMRI volume files', pick_the_first_one=False,
                                            search_func=find_volume_files_from_template)
     if volume_fname is None:
-        return False
+        print("Can't find the input file! {}".format(full_input_fname_template))
+        return '', '', ''
 
     utils.make_dir(op.join(FMRI_DIR, subject))
     local_fname = op.join(FMRI_DIR, subject, utils.namesbase_with_ext(volume_fname))
@@ -1709,7 +1713,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'calc_subs_activity' in args.function:
         flags['calc_subs_activity'] = calc_subs_activity(
-            subject, args.fmri_file_template, args.labels_extract_mode, args.subcortical_codes_file,
+            subject, args.fmri_sub_file_template, args.labels_extract_mode, args.subcortical_codes_file,
             args.overwrite_subs_data)
 
     if 'copy_volumes' in args.function:
@@ -1773,6 +1777,7 @@ def read_cmd_args(argv=None):
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='')
+    parser.add_argument('--fmri_sub_file_template', help='', required=False, default='')
     parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
     parser.add_argument('--only_preproc', help='run only only_preproc', required=False, default=0, type=au.is_true)
     parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
@@ -1824,6 +1829,9 @@ def read_cmd_args(argv=None):
             args.subject.remove(sub)
             args.subject.extend([fol.split(op.sep)[-1] for fol in glob.glob(op.join(FMRI_DIR, sub))])
     args.subcortical_codes_file = op.join(MMVT_DIR, args.subcortical_codes_file)
+    if 'rest' in args.function:
+        args.function.extend(['project_volume_to_surface', 'analyze_4d_data', 'save_dynamic_activity_map',
+                              'calc_subs_activity'])
     return args
 
 
