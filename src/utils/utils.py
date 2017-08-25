@@ -884,6 +884,9 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
         sftp=False, sftp_username='', sftp_domain='', sftp_password='',
         overwrite_files=False, print_traceback=True, sftp_port=22):
     local_subject_dir = op.join(local_subjects_dir, subject)
+    mmvt_dir = get_link_dir(get_links_dir(), 'mmvt')
+    save(dict(remote_subject_dir=remote_subject_dir, sftp=sftp, sftp_username=sftp_username, sftp_domain=sftp_domain,
+              sftp_password=sftp_password, sftp_port=sftp_port), op.join(mmvt_dir, subject, 'remote_subject_info.pkl'))
     all_files_exists = False if overwrite_files else \
         check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=remote_subject_dir == '')
     if all_files_exists and not overwrite_files:

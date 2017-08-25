@@ -70,8 +70,13 @@ def open_freeview():
     if not op.isfile(T1):
         T1 = op.join(root, 'freeview', 'orig.mgz')
     if not op.isfile(T1):
-        print('No T1 / orig files in freeview folder!')
+        print('No T1 / orig files in freeview folder. Running preproc.freeview')
+        bpy.context.scene.freeview_messages = 'Preparing... Try to run again'
+        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {}'.format(
+            bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas, bpy.context.scene.bipolar)
+        mu.run_command_in_new_thread(cmd, False)
         return {'RUNNING_MODAL'}
+    bpy.context.scene.freeview_messages = ''
     aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
     lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
     electrodes_cmd = get_electrodes_command(root)
@@ -231,6 +236,8 @@ bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=True, description='Load electrodes')
 bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
+bpy.types.Scene.freeview_messages = bpy.props.StringProperty()
+
 
 
 class FreeviewPanel(bpy.types.Panel):
@@ -258,6 +265,8 @@ class FreeviewPanel(bpy.types.Panel):
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
+        if bpy.context.scene.freeview_messages != '':
+            layout.label(text=context.scene.freeview_messages)
         # row = layout.row(align=0)
         # row.operator(SliceViewerOpen.bl_idname, text="Slice Viewer", icon='PARTICLES')
         # if not bpy.context.scene.freeview_listen_to_keyboard:
@@ -277,6 +286,7 @@ def init(addon, addon_prefs=None):
     bpy.context.scene.fMRI_files_exist = len(glob.glob(op.join(mu.get_user_fol(), 'fmri', '*_lh.npy'))) > 0
         #mu.hemi_files_exists(op.join(mu.get_user_fol(), 'fmri_{hemi}.npy'))
     bpy.context.scene.electrodes_exist = not bpy.data.objects.get('Deep_electrodes', None) is None
+    bpy.context.scene.freeview_messages = ''
     register()
 
 

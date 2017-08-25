@@ -5,6 +5,7 @@ import glob
 import traceback
 import shutil
 import collections
+import logging
 
 from src.utils import utils
 from src.utils import args_utils as au
@@ -71,24 +72,32 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     errors = defaultdict(list)
     ret = True
     good_subjects, bad_subjects = [], []
+    logs_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'logs'))
+    logging.basicConfig(filename=op.join(logs_fol, 'preproc.log'), level=logging.DEBUG)
     for subject, flags in subjects_flags.items():
         print('subject {}:'.format(subject))
+        logging.info('subject {}:'.format(subject))
         for flag_type, val in flags.items():
             print('{}: {}'.format(flag_type, val))
+            logging.info('{}: {}'.format(flag_type, val))
             if not val:
                 errors[subject].append(flag_type)
     if len(errors) > 0:
         ret = False
         print('Errors:')
+        logging.info('Errors:')
         for subject, error in errors.items():
             print('{}: {}'.format(subject, error))
+            logging.info('{}: {}'.format(subject, error))
     for subject in subjects_flags.keys():
         if len(errors[subject]) == 0:
             good_subjects.append(subject)
         else:
             bad_subjects.append(subject)
     print('Good subjects:\n {}'.format(good_subjects))
+    logging.info('Good subjects:\n {}'.format(good_subjects))
     print('Bad subjects:\n {}'.format(bad_subjects))
+    logging.info('Good subjects:\n {}'.format(good_subjects))
     utils.write_list_to_file(good_subjects, op.join(utils.get_logs_fol(), 'good_subjects.txt'))
     utils.write_list_to_file(bad_subjects, op.join(utils.get_logs_fol(), 'bad_subjects.txt'))
     return ret

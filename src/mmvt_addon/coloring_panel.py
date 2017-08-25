@@ -260,7 +260,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         # else:
         #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
-    _addon().show_rois()
+    # _addon().show_rois()
     # print('Finished coloring!!')
 
 
@@ -400,6 +400,7 @@ def color_connectivity_degree():
     fix_labels_material(labels)
 
     color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
+    _addon().show_rois()
     if bpy.context.scene.connectivity_degree_save_image:
         _addon().save_image()
 
@@ -453,6 +454,7 @@ def fmri_labels_coloring(override_current_mat=True):
         if bpy.context.scene.color_rois_homogeneously:
             color_objects_homogeneously(
                 labels_data['data'], labels_data['names'], ['rest'], labels_min, colors_ratio, threshold)
+            _addon().show_rois()
         else:
             labels_coloring_hemi(
                 labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, 'avg', override_current_mat,
@@ -465,6 +467,7 @@ def fmri_labels_coloring(override_current_mat=True):
         if bpy.context.scene.color_rois_homogeneously:
             color_objects_homogeneously(
                 subs_data['data'], subs_data['names'], ['rest'], labels_min, colors_ratio, threshold)
+            _addon().show_rois()
         else:
             t = bpy.context.scene.frame_current
             for sub_name, sub_data in zip(subs_data['names'], subs_data['data']):
@@ -685,6 +688,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 color_objects_homogeneously(
                     meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
                     colors_ratio, threshold, '_meg_activity')
+                _addon().show_rois()
         elif map_type == 'FMRI' and not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
