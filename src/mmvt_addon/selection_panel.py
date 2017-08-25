@@ -57,6 +57,7 @@ def curves_sep_update(self=None, context=None):
     fcurves, data = get_selected_fcurves_and_data()
     for fcurve in fcurves:
         SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
+    # todo: check SelectionMakerPanel.curves_sep!
     if len(fcurves) == 0:
         return
     N, T, C = data.shape
