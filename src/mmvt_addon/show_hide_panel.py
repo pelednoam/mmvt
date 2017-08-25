@@ -260,6 +260,16 @@ def split_view(view):
             bpy.data.objects['rh'].rotation_euler[2] = -math.pi / 2
 
 
+def maximize_brain():
+    context = mu.get_view3d_context()
+    bpy.ops.screen.screen_full_area(context)
+
+
+def minimize_brain():
+    context = mu.get_view3d_context()
+    bpy.ops.screen.back_to_previous(context)
+
+
 class ShowSaggital(bpy.types.Operator):
     bl_idname = "mmvt.show_saggital"
     bl_label = "mmvt show_saggital"
@@ -282,6 +292,21 @@ class ShowCoronal(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class MaxMinBrain(bpy.types.Operator):
+    bl_idname = "mmvt.max_min_brain"
+    bl_label = "mmvt max_min_brain"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        if bpy.context.scene.brain_max_min:
+            maximize_brain()
+        else:
+            minimize_brain()
+        bpy.context.scene.brain_max_min = not bpy.context.scene.brain_max_min
+        return {"FINISHED"}
+
+
 class SplitView(bpy.types.Operator):
     bl_idname = "mmvt.split_view"
     bl_label = "mmvt split view"
@@ -291,7 +316,6 @@ class SplitView(bpy.types.Operator):
     def invoke(self, context, event=None):
         _split_view()
         return {"FINISHED"}
-
 
 
 class ShowAxial(bpy.types.Operator):
@@ -405,6 +429,9 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
+        # layout.operator(MaxMinBrain.bl_idname,
+        #                 text="{} Brain".format('Maximize' if bpy.context.scene.brain_max_min else 'Minimize'),
+        #                 icon='TRIA_UP' if bpy.context.scene.brain_max_min else 'TRIA_DOWN')
         layout.prop(context.scene, 'rotate_brain')
         layout.prop(context.scene, 'rotate_and_render')
         row = layout.row(align=True)
@@ -433,6 +460,7 @@ bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
 bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain')
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
+bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='x')
 bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='y')
@@ -452,6 +480,7 @@ def init(addon):
     show_hide_sub_corticals(False)
     show_hemis()
     bpy.context.scene.show_only_render = False
+    bpy.context.scene.brain_max_min = True
     for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         show_hide_hierarchy(True, fol)
     bpy.context.scene.rotate_brain = False
@@ -479,6 +508,7 @@ def register():
         bpy.utils.register_class(ShowCoronal)
         bpy.utils.register_class(ShowAxial)
         bpy.utils.register_class(SplitView)
+        bpy.utils.register_class(MaxMinBrain)
         # bpy.utils.register_class(FlipCameraView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideSubCerebellum)
@@ -496,6 +526,7 @@ def unregister():
         bpy.utils.unregister_class(ShowCoronal)
         bpy.utils.unregister_class(ShowAxial)
         bpy.utils.unregister_class(SplitView)
+        bpy.utils.unregister_class(MaxMinBrain)
         # bpy.utils.unregister_class(FlipCameraView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideSubCerebellum)

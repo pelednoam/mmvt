@@ -347,6 +347,8 @@ class SelectionListener(bpy.types.Operator):
                     _addon().select_connection(selected_obj_name)
                 elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:
                     _addon().vertices_selected(selected_obj_name)
+                if bpy.context.scene.curves_sep > 0:
+                    _addon().curves_sep_update()
             self.right_clicked = False
 
         if time.time() - self.press_time > 1:

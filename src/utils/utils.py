@@ -47,6 +47,7 @@ timeit = mu.timeit
 get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
+calc_min_max = mu.calc_min_max
 csv_file_reader = mu.csv_file_reader
 time_to_go = mu.time_to_go
 tryit = mu.tryit
@@ -123,18 +124,6 @@ def mat_to_colors(x, x_min=None, x_max=None, colorsMap='jet', scalar_map=None, f
     elif colors.ndim == 3:
         return colors[:, :, :3]
     raise Exception('colors ndim not 2 or 3!')
-
-
-def calc_min_max(x, x_min=None, x_max=None, norm_percs=None):
-    if x_min is None:
-        x_min = np.nanmin(x) if norm_percs is None else np.percentile(x, norm_percs[0])
-    if x_max is None:
-        x_max = np.nanmax(x) if norm_percs is None else np.percentile(x, norm_percs[1])
-    if x_min == 0 and x_max == 0 and norm_percs is not None:
-        x_min, x_max = calc_min_max(x)
-    if x_min == 0 and x_max == 0:
-        print('calc_min_max: min and max are 0!!!')
-    return x_min, x_max
 
 
 def arr_to_colors_two_colors_maps(x, x_min=None, x_max=None, cm_big='YlOrRd', cm_small='PuBu', threshold=0, default_val=0,

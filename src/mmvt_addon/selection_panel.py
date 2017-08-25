@@ -39,26 +39,56 @@ def deselect_all():
 def get_selected_fcurves_and_data():
     # todo: support more than one type in selection
     for selction_type, parent_obj in zip([SEL_ELECTRODES], [electrodes_panel.PARENT_OBJ]):
-        fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
+        # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
+        fcurves = mu.get_all_selected_fcurves(parent_obj)
         fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
-        data = SelectionMakerPanel.data.get(selction_type, [])
-        names = SelectionMakerPanel.names.get(selction_type, [])
-        selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
+        data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
+        if mu.if_cond_is_diff(parent_obj):
+            data = np.diff(data, axis=2)
+            selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
+        else:
+            selected_indices = [ind for ind, name in enumerate(names)
+                                if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
         data = data[selected_indices]
     return fcurves, data
 
 
-def curves_sep_update(self, context):
+def curves_sep_update(self=None, context=None):
     fcurves, data = get_selected_fcurves_and_data()
+    for fcurve in fcurves:
+        SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
     if len(fcurves) == 0:
         return
-    # data_amp = np.max(data) - np.min(data)
-    T = data.shape[1] - 1
-    C = len(fcurves)
-    for fcurve_ind, fcurve in enumerate(fcurves):
-        for t in range(T):
-            fcurve.keyframe_points[t].co[1] = data[fcurve_ind, t] + (C / 2 - fcurve_ind) * bpy.context.scene.curves_sep
+    N, T, C = data.shape
+    sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()
+    fcurve_ind = 0
+    for data_ind in range(N):
+        for c in range(C):
+            fcurve = fcurves[fcurve_ind]
+            for t in range(T):
+                fcurve.keyframe_points[t].co[1] = \
+                    data[data_ind, t, c] + (N / 2 - 0.5 - sep_inds[fcurve_ind]) * bpy.context.scene.curves_sep
+            fcurve_ind += 1
+            if bpy.context.scene.curves_sep == 0:
+                fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[T].co[1] = 0
     mu.view_all_in_graph_editor()
+
+
+@mu.tryit()
+def maximize_graph():
+    context = mu.get_graph_context()
+    bpy.ops.screen.screen_full_area(context)
+
+
+@mu.tryit()
+def minimize_graph():
+    context = mu.get_graph_context()
+    bpy.ops.screen.back_to_previous(context)
+
+
+def calc_best_curves_sep():
+    fcurves, data = get_selected_fcurves_and_data()
+    bpy.context.scene.curves_sep = np.diff(mu.calc_min_max(data, norm_percs=[3, 97]))[0] * 2
 
 
 def meg_data_loaded():
@@ -165,6 +195,8 @@ def select_all_electrodes():
         mu.filter_graph_editor(bpy.context.scene.conditions_selection)
     else:
         mu.change_fcurves_colors(parent_obj.children, bad)
+
+    # SelectionMakerPanel.curves_sep
 
 
 def select_all_connections():
@@ -288,6 +320,7 @@ class SelectAllElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         select_all_electrodes()
         SelectionMakerPanel.selection.append(SEL_ELECTRODES)
+        # curves_sep_update()
         mu.view_all_in_graph_editor(context)
         return {"FINISHED"}
 
@@ -329,6 +362,32 @@ class FitSelection(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         fit_selection(context)
+        return {"FINISHED"}
+
+
+class CalcBestCurvesSep(bpy.types.Operator):
+    bl_idname = "mmvt.calc_best_curves_sep"
+    bl_label = "calc_best_curves_sep"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        calc_best_curves_sep()
+        return {"FINISHED"}
+
+
+class MaxMinGraphPanel(bpy.types.Operator):
+    bl_idname = "mmvt.max_min_graph_panel"
+    bl_label = "max_min_graph_panel"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        if bpy.context.scene.graph_max_min:
+            maximize_graph()
+        else:
+            minimize_graph()
+        bpy.context.scene.graph_max_min = not bpy.context.scene.graph_max_min
         return {"FINISHED"}
 
 
@@ -411,6 +470,7 @@ bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], descript
 bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
 bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
+bpy.types.Scene.graph_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
 
 
@@ -433,7 +493,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     addon = None
     modalities_num = 0
     connection_files_exist = False
-    data, names = {}, {}
+    data, names, curves_sep = {}, {}, {}
 
     @staticmethod
     def draw(self, context):
@@ -468,6 +528,11 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
         layout.prop(context.scene, 'fit_graph_on_selection', text='Fit graph on selection')
         layout.prop(context.scene, 'curves_sep', text='curves separation')
+        layout.operator(CalcBestCurvesSep.bl_idname, text="Calc best curves sep", icon='RNA_ADD')
+        layout.operator(MaxMinGraphPanel.bl_idname,
+                        text="{} graph".format('Maximize' if bpy.context.scene.graph_max_min else 'Minimize'),
+                        icon='TRIA_UP' if bpy.context.scene.graph_max_min else 'TRIA_DOWN')
+
 
         # if not SelectionMakerPanel.dt is None:
         #     points_in_sec = int(1 / SelectionMakerPanel.dt)
@@ -497,12 +562,13 @@ def init(addon):
     SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
                 bpy.data.objects[_addon().get_connections_parent_name()].animation_data
     bpy.context.scene.fit_graph_on_selection = False
+    bpy.context.scene.graph_max_min = True
     get_data()
     register()
 
 
 def get_data():
-    SelectionMakerPanel.data = {}
+    SelectionMakerPanel.get_data = {}
     if meg_data_loaded():
         pass
     if fmri_data_loaded():
@@ -512,8 +578,10 @@ def get_data():
     if fmri_data_loaded():
         pass
     if electrodes_data_loaded():
-        SelectionMakerPanel.data[SEL_ELECTRODES], SelectionMakerPanel.names[SEL_ELECTRODES] = \
-            mu.get_fcurves_data(electrodes_panel.PARENT_OBJ, return_names=True)
+        SelectionMakerPanel.get_data[SEL_ELECTRODES] = _addon().load_electrodes_data
+        # data, names, conditions = _addon().load_electrodes_data()
+        # SelectionMakerPanel.data[SEL_ELECTRODES], SelectionMakerPanel.names[SEL_ELECTRODES] = \
+        #     mu.get_fcurves_data(electrodes_panel.PARENT_OBJ, return_names=True)
     if bpy.data.objects.get('MEG_sensors'):
         pass
     if bpy.data.objects.get('EEG_sensors'):
@@ -532,6 +600,8 @@ def register():
         bpy.utils.register_class(SelectAllMEGSensors)
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
+        bpy.utils.register_class(CalcBestCurvesSep)
+        bpy.utils.register_class(MaxMinGraphPanel)
         bpy.utils.register_class(NextWindow)
         bpy.utils.register_class(PrevWindow)
         bpy.utils.register_class(JumpToWindow)
@@ -551,6 +621,8 @@ def unregister():
         bpy.utils.unregister_class(SelectAllMEGSensors)
         bpy.utils.unregister_class(SelectAllSubcorticals)
         bpy.utils.unregister_class(SelectAllRois)
+        bpy.utils.unregister_class(CalcBestCurvesSep)
+        bpy.utils.unregister_class(MaxMinGraphPanel)
         bpy.utils.unregister_class(NextWindow)
         bpy.utils.unregister_class(PrevWindow)
         bpy.utils.unregister_class(JumpToWindow)

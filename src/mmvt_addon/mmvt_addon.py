@@ -115,6 +115,7 @@ both_conditions = selection_panel.both_conditions
 spec_condition = selection_panel.spec_condition
 fit_selection = selection_panel.fit_selection
 select_roi = selection_panel.select_roi
+curves_sep_update = selection_panel.curves_sep_update
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 color_objects = coloring_panel.color_objects

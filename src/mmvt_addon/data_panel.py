@@ -850,8 +850,8 @@ def load_electrodes_data(stat='diff'):
         else:
             data, names, conditions = None, None, None
         DataMakerPanel.electrodes_data = data
-        DataMakerPanel.electrodes_names = names
-        DataMakerPanel.electrodes_conditions = conditions
+        names = DataMakerPanel.electrodes_names = [mu.to_str(n) for n in names]
+        conditions = DataMakerPanel.electrodes_conditions = [mu.to_str(c) for c in conditions]
         return data, names, conditions
     else:
         return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions

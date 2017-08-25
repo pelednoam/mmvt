@@ -436,15 +436,15 @@ def show_only_selected_fcurves(context):
     dopesheet.show_only_selected = True
 
 
-def get_fcurve_values(parent_name, fcurve_name):
-    xs, ys = [], []
-    parent_obj = bpy.data.objects[parent_name]
-    for fcurve in parent_obj.animation_data.action.fcurves:
-        if get_fcurve_name(fcurve) == fcurve_name:
-            for kp in fcurve.keyframe_points:
-                xs.append(kp.co[0])
-                ys.append(kp.co[1])
-    return xs, ys
+# def get_fcurve_values(parent_name, fcurve_name):
+#     xs, ys = [], []
+#     parent_obj = bpy.data.objects[parent_name]
+#     for fcurve in parent_obj.animation_data.action.fcurves:
+#         if get_fcurve_name(fcurve) == fcurve_name:
+#             for kp in fcurve.keyframe_points:
+#                 xs.append(kp.co[0])
+#                 ys.append(kp.co[1])
+#     return xs, ys
 
 
 def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
@@ -1125,6 +1125,29 @@ def get_fcurves(obj, recursive=False, only_selected=True):
     return fcurves
 
 
+def get_all_selected_fcurves(parent_obj_name):
+    children = bpy.data.objects[parent_obj_name].children
+    parent_obj = bpy.data.objects[parent_obj_name]
+    children_have_fcurves = count_fcurves(children) > 0
+    parent_have_fcurves = not parent_obj.animation_data is None
+    fcurves = []
+    if parent_have_fcurves and (bpy.context.scene.selection_type == 'diff' or not children_have_fcurves):
+        fcurves = get_fcurves(parent_obj, recursive=False, only_selected=True)
+    elif children_have_fcurves:
+        for child in children:
+            fcurves.extend(get_fcurves(child, recursive=False, only_selected=True))
+    return fcurves
+
+
+def if_cond_is_diff(parent_obj):
+    if isinstance(parent_obj, str):
+        parent_obj = bpy.data.objects[parent_obj]
+    children = parent_obj.children
+    children_have_fcurves = count_fcurves(children) > 0
+    parent_have_fcurves = parent_obj.animation_data is not None
+    return parent_have_fcurves and (bpy.context.scene.selection_type == 'diff' or not children_have_fcurves)
+
+
 def get_fcurves_names(obj, recursive=False):
     if isinstance(obj, str):
         obj = bpy.data.objects.get(obj)
@@ -1329,6 +1352,18 @@ def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=Fa
 
 def get_max_abs(data_max, data_min):
     return max(map(abs, [data_max, data_min]))
+
+
+def calc_min_max(x, x_min=None, x_max=None, norm_percs=None):
+    if x_min is None:
+        x_min = np.nanmin(x) if norm_percs is None else np.percentile(x, norm_percs[0])
+    if x_max is None:
+        x_max = np.nanmax(x) if norm_percs is None else np.percentile(x, norm_percs[1])
+    if x_min == 0 and x_max == 0 and norm_percs is not None:
+        x_min, x_max = calc_min_max(x)
+    if x_min == 0 and x_max == 0:
+        print('calc_min_max: min and max are 0!!!')
+    return x_min, x_max
 
 
 def queue_get(queue):
@@ -1875,3 +1910,7 @@ def both_hemi_files_exist(file_template):
 def delete_files(temp):
     for fname in glob.glob(temp):
         os.remove(fname)
+
+
+# def to_str(val):
+#     return val.decode('ascii') if hasattr(val, 'decode') else str(val)
