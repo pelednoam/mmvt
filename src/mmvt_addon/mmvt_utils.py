@@ -1076,24 +1076,32 @@ def read_ply_file(ply_file):
     return verts, faces
 
 
-def change_fcurves_colors(objs, exclude=[]):
-    if not isinstance(objs, Iterable):
-        objs = [objs]
+def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):
     colors_num = count_fcurves(objs)
     colors = cu.get_distinct_colors(colors_num)
-    for obj in objs:
-        if obj.animation_data is None:
-            continue
-        if obj.name in exclude:
-            continue
-        for fcurve in obj.animation_data.action.fcurves:
-            fcurve_name = get_fcurve_name(fcurve)
-            if fcurve_name in exclude:
+    if len(fcurves) > 0:
+        for fcurve in fcurves:
+            change_fcurve_color(fcurve, colors, exclude)
+    else:
+        if not isinstance(objs, Iterable):
+            objs = [objs]
+        for obj in objs:
+            if obj.animation_data is None:
                 continue
-            fcurve.color_mode = 'CUSTOM'
-            fcurve.color = tuple(next(colors))
-            fcurve.select = True
-            fcurve.hide = False
+            if obj.name in exclude:
+                continue
+            for fcurve in obj.animation_data.action.fcurves:
+                change_fcurve_color(fcurve, colors, exclude)
+
+
+def change_fcurve_color(fcurve, colors_generator, exclude=[]):
+    fcurve_name = get_fcurve_name(fcurve)
+    if fcurve_name in exclude:
+        return
+    fcurve.color_mode = 'CUSTOM'
+    fcurve.color = tuple(next(colors_generator))
+    fcurve.select = True
+    fcurve.hide = False
 
 
 def count_fcurves(objs, recursive=False):

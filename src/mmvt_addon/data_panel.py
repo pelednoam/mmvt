@@ -799,6 +799,17 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     print('Finished keyframing {}!!'.format(parent_obj.name))
 
 
+def load_meg_labels_data():
+    base_path = mu.get_user_fol()
+    atlas = bpy.context.scene.atlas
+    labels_extract_method = bpy.context.scene.labels_data_files
+    data_rh = np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method)))
+    data_lh = np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))
+    data = np.concatenate((data_rh['data'], data_lh['data']))
+    names = np.concatenate((data_rh['names'], data_lh['names']))
+    return data, names, data_rh['conditions']
+
+
 def load_eeg_data():
     data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
     meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')

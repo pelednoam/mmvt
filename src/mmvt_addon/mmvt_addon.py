@@ -93,6 +93,7 @@ add_data_to_parent_obj = data_panel.add_data_to_parent_obj
 add_data_to_brain = data_panel.add_data_to_brain
 import_electrodes = data_panel.import_electrodes
 eeg_data_and_meta = data_panel.eeg_data_and_meta
+load_meg_labels_data = data_panel.load_meg_labels_data
 load_electrodes_data = data_panel.load_electrodes_data
 load_electrodes_dists = data_panel.load_electrodes_dists
 load_eeg_data = data_panel.load_eeg_data
@@ -116,6 +117,7 @@ spec_condition = selection_panel.spec_condition
 fit_selection = selection_panel.fit_selection
 select_roi = selection_panel.select_roi
 curves_sep_update = selection_panel.curves_sep_update
+calc_best_curves_sep = selection_panel.calc_best_curves_sep
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 color_objects = coloring_panel.color_objects
