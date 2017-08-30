@@ -441,7 +441,8 @@ def fmri_labels_coloring(override_current_mat=True):
     else:
         labels_min, labels_max = np.load(
             op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
-        labels_min = 0
+        if labels_min > 0:
+            labels_min = 0
         _addon().set_colorbar_max_min(labels_max, labels_min)
     colors_ratio = 256 / (labels_max - labels_min)
     set_default_colormap(labels_min, labels_max)

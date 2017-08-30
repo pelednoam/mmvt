@@ -9,9 +9,10 @@ from mne.label import _read_annot
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
+from src.utils import args_utils as au
+from src.utils import freesurfer_utils as fu
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
-APARC2ASEG = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 
 def create_freeview_cmd(subject, args):#, atlas, bipolar, create_points_files=True, way_points=False):
@@ -48,9 +49,9 @@ def create_lut_file_for_atlas(subject, atlas):
     lut_new = [[l[0], l[1].astype(str), l[2], l[3], l[4], l[5]] for l in lut if l[0] < 1000]
     for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
         if hemi == 'lh':
-            lut_new.append([1000, 'ctx-lh-unknown', 25, 5,  25, 0])
+            lut_new.append([offset, 'ctx-lh-unknown', 25, 5,  25, 0])
         else:
-            lut_new.append([2000, 'ctx-rh-unknown', 25,  5, 25,  0])
+            lut_new.append([offset, 'ctx-rh-unknown', 25,  5, 25,  0])
         _, ctab, names = _read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
         names = [name.astype(str) for name in names]
         for index, (label, cval) in enumerate(zip(names, ctab)):
@@ -73,30 +74,22 @@ def create_lut_file_for_atlas(subject, atlas):
 
 
 @utils.check_for_freesurfer
-def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file): #atlas, print_only=False, overwrite=False, check_mgz_values=False):
+def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only=False, args={}):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
         print('No annot file was found for {}!'.format(atlas))
         print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
         return False
-    necessary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
-    utils.check_for_necessary_files(necessary_files, op.join(SUBJECTS_DIR, subject))
-    # The atlas var need to be in the locals for the APARC2ASEG call
-    rs = utils.partial_run_script(locals(), print_only=False)
-    aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
-    mri_file_fol = op.join(SUBJECTS_DIR, subject, 'mri')
-    mri_file = op.join(mri_file_fol, aparc_aseg_file)
+
+    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(
+        subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only, mmvt_args=args)
+    if not ret:
+        return False
+
+    aparc_aseg_file = utils.namesbase_with_ext(aparc_aseg_fname)
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     blender_file = op.join(MMVT_DIR, subject, 'freeview', aparc_aseg_file)
-    if not op.isfile(blender_file) or overwrite_aseg_file:
-        current_dir = op.dirname(op.realpath(__file__))
-        os.chdir(mri_file_fol)
-        now = time.time()
-        rs(APARC2ASEG)
-        if op.isfile(mri_file) and op.getmtime(mri_file) > now:
-            shutil.copyfile(mri_file, blender_file)
-        else:
-            print('Failed to create {}'.format(mri_file))
-        os.chdir(current_dir)
+    utils.remove_file(blender_file)
+    shutil.copyfile(aparc_aseg_fname, blender_file)
     atlas_mat_fname = utils.change_fname_extension(blender_file, 'npy')
     if not op.isfile(atlas_mat_fname) or overwrite_aseg_file:
         d = nib.load(blender_file)
@@ -216,7 +209,6 @@ def main(subject, remote_subject_dir, args, flags):
 
 def read_cmd_args(argv):
     import argparse
-    from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT freeview preprocessing')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_aseg_file', help='overwrite_aseg_file', required=False, default=0, type=au.is_true)
