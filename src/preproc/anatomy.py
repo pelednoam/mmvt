@@ -218,27 +218,30 @@ def create_surfaces(subject, hemi='both', overwrite=False):
             hemi_npz_fname = '{}.ply'.format(surf_name)
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
-            if overwrite or not op.isfile(mmvt_hemi_ply_fname) or not op.isfile(mmvt_hemi_npz_fname) \
-                    or not op.isfile(surf_new_name):
+            if not op.isfile(surf_new_name) or overwrite:
                 print('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 utils.run_script('mris_convert {} {}'.format(surf_name, surf_wavefront_name))
                 os.rename(surf_wavefront_name, surf_new_name)
+            if not op.isfile(hemi_ply_fname)  or overwrite:
                 print('{} {}: convert asc to ply'.format(hemi, surf_type))
                 convert_hemis_srf_to_ply(subject, hemi, surf_type)
                 if surf_type == 'inflated':
                     verts, faces = utils.read_ply_file(hemi_ply_fname)
                     verts[:, 0] += 55 if hemi == 'rh' else -55
                     utils.write_ply_file(verts, faces, hemi_ply_fname)
+            if not op.isfile(mmvt_hemi_ply_fname) or overwrite:
                 if op.isfile(mmvt_hemi_ply_fname):
                     os.remove(mmvt_hemi_ply_fname)
                 shutil.copy(hemi_ply_fname, mmvt_hemi_ply_fname)
-            if op.isfile(mmvt_hemi_npz_fname):
-                os.remove(mmvt_hemi_npz_fname)
-            verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
-            np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
-            if op.isfile(hemi_npz_fname):
-                os.remove(hemi_npz_fname)
-            np.savez(hemi_npz_fname, verts=verts, faces=faces)
+            if not op.isfile(mmvt_hemi_npz_fname) or overwrite:
+                if op.isfile(mmvt_hemi_npz_fname):
+                    os.remove(mmvt_hemi_npz_fname)
+                verts, faces = utils.read_ply_file(mmvt_hemi_ply_fname)
+                np.savez(mmvt_hemi_npz_fname, verts=verts, faces=faces)
+            if not op.isfile(hemi_npz_fname) or overwrite:
+                if op.isfile(hemi_npz_fname):
+                    os.remove(hemi_npz_fname)
+                np.savez(hemi_npz_fname, verts=verts, faces=faces)
     return utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.ply')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.pial.npz')) and \
            utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', '{hemi}.inflated.ply')) and \
