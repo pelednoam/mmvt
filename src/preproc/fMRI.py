@@ -905,6 +905,7 @@ def calc_labels_mean_freesurfer(
     return utils.both_hemi_files_exist(output_fname_hemi) and op.isfile(minmax_fname_template)
 
 
+@utils.check_for_freesurfer
 def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['mean'],
                                 overwrite_aseg_file=False, norm_percs=(1, 99), print_only=False):
     output_fname_hemi = op.join(
@@ -917,16 +918,18 @@ def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['m
     ret, aparc_aseg_fname = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
     if not ret:
         return False
-    labels_names, labels_data, ret = [], [], True
+    ret = True
     new_aseg_fname = op.join(MMVT_DIR, subject, 'fmri', utils.namesbase_with_ext(aparc_aseg_fname))
     x_data = nib.load(volume_fname).get_data()
     aparc_aseg = morph_aseg(subject, x_data, volume_fname, aparc_aseg_fname, new_aseg_fname)
     aparc_aseg_data = aparc_aseg.get_data()
     for measure in measures:
-        # if utils.both_hemi_files_exist(output_fname_hemi) and \
-        #         op.isfile(minmax_fname_template) and not overwrite_aseg_file:
-        #     continue
+        if utils.both_hemi_files_exist(output_fname_hemi.format(hemi='{hemi', measure=measure)) and \
+                op.isfile(minmax_fname_template.format(measure=measure)) and not overwrite_aseg_file:
+            continue
+        labels_minmax = []
         for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
+            labels_names, labels_data = [], []
             _, _, names = mne.label._read_annot(
                 op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
             names = [name.astype(str) for name in names]
@@ -942,14 +945,18 @@ def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['m
                 elif measure.startswith('pca'):
                     comps_num = 1 if '_' not in measure else int(measure.split('_')[1])
                     labels_data.append(utils.pca(x, comps_num))
-        labels_data = np.array(labels_data, dtype=np.float64)
-        labels_minmax = utils.calc_min_max(labels_data, norm_percs=norm_percs)
-        output_fname = output_fname_hemi.format(hemi=hemi, measure=measure)
+            labels_data = np.array(labels_data, dtype=np.float64)
+            labels_minmax.append(utils.calc_min_max(labels_data, norm_percs=norm_percs))
+            output_fname = output_fname_hemi.format(hemi=hemi, measure=measure)
+            np.savez(output_fname, data=labels_data, names=labels_names)
+            print('Writing to {}, {}'.format(output_fname, labels_data.shape))
+            ret = ret and op.isfile(output_fname)
+
+        data_min, data_max = utils.calc_minmax_from_arr(labels_minmax)
         minmax_fname = minmax_fname_template.format(measure=measure)
-        np.savez(output_fname, data=labels_data, names=labels_names)
-        utils.save((-labels_minmax, labels_minmax), minmax_fname)
-        print('Writing to {}, {}'.format(output_fname, labels_data.shape))
-        ret = ret and op.isfile(output_fname) and op.isfile(minmax_fname)
+        utils.save((data_min, data_max), minmax_fname_template)
+        ret = ret and op.isfile(minmax_fname)
+
     return ret
 
 

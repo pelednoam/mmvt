@@ -451,12 +451,11 @@ def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overw
 
 
 @utils.check_for_freesurfer
+@utils.files_needed({'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']})
 def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=False, print_only=False):
     if not utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
         print('No annot file was found for {}!'.format(atlas))
         return False, ''
-    necessary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
-    utils.check_for_necessary_files(necessary_files, op.join(subjects_dir, subject))
     # The atlas var need to be in the locals for the APARC2ASEG call
     aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
     mri_file_fol = op.join(subjects_dir, subject, 'label')
