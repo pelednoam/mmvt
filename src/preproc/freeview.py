@@ -49,9 +49,9 @@ def create_lut_file_for_atlas(subject, atlas):
     lut_new = [[l[0], l[1].astype(str), l[2], l[3], l[4], l[5]] for l in lut if l[0] < 1000]
     for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
         if hemi == 'lh':
-            lut_new.append([1000, 'ctx-lh-unknown', 25, 5,  25, 0])
+            lut_new.append([offset, 'ctx-lh-unknown', 25, 5,  25, 0])
         else:
-            lut_new.append([2000, 'ctx-rh-unknown', 25,  5, 25,  0])
+            lut_new.append([offset, 'ctx-rh-unknown', 25,  5, 25,  0])
         _, ctab, names = _read_annot(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
         names = [name.astype(str) for name in names]
         for index, (label, cval) in enumerate(zip(names, ctab)):
@@ -80,7 +80,7 @@ def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only
         print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
         return False
 
-    aparc_aseg_fname, ret = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
+    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
     if not ret:
         return False
 

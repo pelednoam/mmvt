@@ -1811,6 +1811,18 @@ def files_needed(necessary_files):
     return real_files_needed
 
 
+def pca(x, comps_num=1):
+    import sklearn.decomposition as deco
+
+    remove_cols = np.where(np.all(x == np.mean(x, 0), 0))[0]
+    x = np.delete(x, remove_cols, 1)
+    x = (x - np.mean(x, 0)) / np.std(x, 0)
+    pca = deco.PCA(comps_num)
+    x = x.T
+    x_r = pca.fit(x).transform(x)
+    return x_r
+
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct
