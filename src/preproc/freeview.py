@@ -74,13 +74,14 @@ def create_lut_file_for_atlas(subject, atlas):
 
 
 @utils.check_for_freesurfer
-def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only=False):
+def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only=False, args={}):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
         print('No annot file was found for {}!'.format(atlas))
         print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
         return False
 
-    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
+    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(
+        subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only, mmvt_args=args)
     if not ret:
         return False
 

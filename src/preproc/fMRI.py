@@ -907,7 +907,7 @@ def calc_labels_mean_freesurfer(
 
 @utils.check_for_freesurfer
 def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['mean'],
-                                overwrite_aseg_file=False, norm_percs=(1, 99), print_only=False):
+                                overwrite_aseg_file=False, norm_percs=(1, 99), print_only=False, args={}):
     output_fname_hemi = op.join(
         MMVT_DIR, subject, 'fmri', 'labels_data_{}_volume_{}_{}.npz'.format(atlas, '{measure}', '{hemi}'))
     minmax_fname_template = op.join(
@@ -915,7 +915,8 @@ def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['m
     volume_fname = get_fmri_fname(subject, fmri_file_template, only_volumes=True, raise_exception=False)
     if volume_fname == '':
         return False
-    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
+    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(
+        subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only, mmvt_args=args)
     if not ret:
         return False
     ret = True
@@ -1797,7 +1798,7 @@ def main(subject, remote_subject_dir, args, flags):
     if 'calc_volumetric_labels_mean' in args.function:
         flags['calc_volumetric_labels_mean'] = calc_volumetric_labels_mean(
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.overwrite_parc_aseg_file,
-            args.norm_percs, args.print_only)
+            args.norm_percs, args.print_only, args=args)
 
     return flags
 
