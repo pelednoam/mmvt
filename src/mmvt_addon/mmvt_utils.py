@@ -639,14 +639,14 @@ def get_obj_hemi(obj_name):
 
 
 def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, read_stdout=True, read_stderr=False,
-                              stdin_func=lambda: True, stdout_func=lambda: True, stderr_func=lambda: True):
+                              stdin_func=lambda: True, stdout_func=lambda: True, stderr_func=lambda: True, cwd=None):
     if queues:
         q_in, q_out = Queue(), Queue()
         thread = threading.Thread(target=run_command_and_read_queue, args=(
             cmd, q_in, q_out, shell, read_stdin, read_stdout, read_stderr,
-            stdin_func, stdout_func, stderr_func))
+            stdin_func, stdout_func, stderr_func, cwd))
     else:
-        thread = threading.Thread(target=run_command, args=(cmd, shell))
+        thread = threading.Thread(target=run_command, args=(cmd, shell, cwd))
         q_in, q_out = None, None
     print('start!')
     thread.start()
@@ -654,7 +654,7 @@ def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, rea
 
 
 def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, read_stdout=True, read_stderr=False,
-                               stdin_func=lambda:True, stdout_func=lambda:True, stderr_func=lambda:True):
+                               stdin_func=lambda:True, stdout_func=lambda:True, stderr_func=lambda:True, cwd=None):
 
     def write_to_stdin(proc, q_in, while_func):
         while while_func():
@@ -697,7 +697,7 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
     stdout = PIPE if read_stdout else None
     stdin = PIPE if read_stdin else None
     stderr = PIPE if read_stderr else None
-    p = Popen(cmd, shell=shell, stdout=stdout, stdin=stdin, stderr=stderr, bufsize=1, close_fds=True) #, universal_newlines=True)
+    p = Popen(cmd, shell=shell, stdout=stdout, stdin=stdin, stderr=stderr, bufsize=1, close_fds=True, cwd=cwd) #, universal_newlines=True)
     if read_stdin:
         thread_write_to_stdin = threading.Thread(target=write_to_stdin, args=(p, q_in, stdin_func))
         thread_write_to_stdin.start()
@@ -723,7 +723,7 @@ def run_thread_2q(target_func, while_func=lambda:True, **kwargs):
     return q1, q2
 
 
-def run_command(cmd, shell=True, pipe=False):
+def run_command(cmd, shell=True, pipe=False, cwd=None):
     # global p
     from subprocess import Popen, PIPE, STDOUT
     print('run: {}'.format(cmd))
@@ -732,9 +732,9 @@ def run_command(cmd, shell=True, pipe=False):
         return None
     else:
         if pipe:
-            p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+            p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE, cwd=cwd)
         else:
-            p = subprocess.call(cmd, shell=shell)
+            p = subprocess.call(cmd, shell=shell, cwd=cwd)
         # p = Popen(cmd, shell=True, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         # p.stdin.write(b'-zoom 2\n')
         return p

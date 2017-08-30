@@ -57,6 +57,7 @@ def load_surf_files(nii_fname):
     fmri_hemis = mu.get_both_hemis_files(nii_fname)
     hemi = mu.get_hemi_from_full_fname(nii_fname)
     local_fname = build_local_fname(nii_fname, user_fol)
+    mu.make_dir(op.join(user_fol, 'fmri'))
     if nii_fol != op.join(user_fol, 'fmri'):
         mu.make_link(nii_fname, local_fname, True)
     other_hemi = mu.other_hemi(hemi)

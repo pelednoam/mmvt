@@ -208,7 +208,7 @@ def select_all_electrodes():
     else:
         mu.change_fcurves_colors(parent_obj.children, bad)
 
-    curves_sep_update()
+    # curves_sep_update()
 
 
 def select_all_connections():
@@ -540,9 +540,10 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
+        row = layout.row(align=True)
+        row.prop(context.scene, 'curves_sep', text='curves separation')
+        row.operator(CalcBestCurvesSep.bl_idname, text="Calc best curves sep", icon='RNA_ADD')
         layout.prop(context.scene, 'fit_graph_on_selection', text='Fit graph on selection')
-        layout.prop(context.scene, 'curves_sep', text='curves separation')
-        layout.operator(CalcBestCurvesSep.bl_idname, text="Calc best curves sep", icon='RNA_ADD')
         layout.prop(context.scene, 'find_curves_sep_auto', text='Always find the best curves separation')
         layout.operator(MaxMinGraphPanel.bl_idname,
                         text="{} graph".format('Maximize' if bpy.context.scene.graph_max_min else 'Minimize'),
@@ -594,8 +595,6 @@ def get_data():
     if meg_data_loaded():
         SelectionMakerPanel.get_data[SEL_ROIS] = _addon().load_meg_labels_data
         SelectionMakerPanel.fcurves[SEL_ROIS] = get_rois_fcruves
-        # for fcurve in fcurves:
-        #     SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
     if fmri_data_loaded():
         pass
     if meg_sub_data_loaded():
@@ -606,11 +605,6 @@ def get_data():
         SelectionMakerPanel.get_data[SEL_ELECTRODES] = _addon().load_electrodes_data
         SelectionMakerPanel.fcurves[SEL_ELECTRODES] = \
             partial(mu.get_fcurves, obj=electrodes_panel.PARENT_OBJ, recursive=True, only_selected=True)
-        # for fcurve in fcurves:
-        #     SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
-            # data, names, conditions = _addon().load_electrodes_data()
-        # SelectionMakerPanel.data[SEL_ELECTRODES], SelectionMakerPanel.names[SEL_ELECTRODES] = \
-        #     mu.get_fcurves_data(electrodes_panel.PARENT_OBJ, return_names=True)
     if bpy.data.objects.get('MEG_sensors'):
         pass
     if bpy.data.objects.get('EEG_sensors'):
