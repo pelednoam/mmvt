@@ -8,6 +8,7 @@ import numpy as np
 import shutil
 import traceback
 import nibabel as nib
+import time
 from nibabel.spatialimages import ImageFileError
 
 import logging
@@ -34,6 +35,7 @@ mri_surf2surf = 'mri_surf2surf --srcsubject {source_subject} --srcsurfval {sourc
 mri_vol2vol = 'mri_vol2vol --mov {source_volume_fname} --s {subject} --targ {target_volume_fname} --o {output_volume_fname} --nearest'
 
 mri_segstats = 'mri_segstats --i {fmri_fname} --avgwf {output_txt_fname} --annot {target_subject} {hemi} {atlas} --sum {output_sum_fname}'
+mri_aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
 
 @utils.check_for_freesurfer
@@ -446,3 +448,26 @@ def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overw
         return labels_data, labels_names, output_txt_fname, output_sum_fname
     else:
         return labels_data, labels_names
+
+
+@utils.check_for_freesurfer
+def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=False, print_only=False):
+    if not utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+        print('No annot file was found for {}!'.format(atlas))
+        return False
+    necessary_files = {'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']}
+    utils.check_for_necessary_files(necessary_files, op.join(subjects_dir, subject))
+    # The atlas var need to be in the locals for the APARC2ASEG call
+    aparc_aseg_file = '{}+aseg.mgz'.format(atlas)
+    mri_file_fol = op.join(subjects_dir, subject, 'mri')
+    aparc_aseg_fname = op.join(mri_file_fol, aparc_aseg_file)
+    rs = utils.partial_run_script(locals(), print_only=print_only, cwd=mri_file_fol)
+    if not op.isfile(aparc_aseg_fname) or overwrite_aseg_file:
+        now = time.time()
+        rs(mri_aparc2aseg)
+        if op.isfile(aparc_aseg_fname) and op.getmtime(aparc_aseg_fname) > now:
+            return True, aparc_aseg_fname
+        else:
+            print('Failed to create {}'.format(aparc_aseg_fname))
+            return False, ''
+    return True, aparc_aseg_fname

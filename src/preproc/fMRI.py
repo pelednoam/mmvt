@@ -447,11 +447,13 @@ def calc_subs_surface_activity(subject, fmri_file_template, template_brains, thr
         plt.show()
 
 
-def morph_aseg(subject, x_data, volume_fname):
-    aseg_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
+def morph_aseg(subject, x_data, volume_fname, aseg_fname='', new_aseg_fname=''):
+    if aseg_fname == '':
+        aseg_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz')
     aseg = nib.load(aseg_fname)
     if np.any(x_data.shape[:3] != aseg.shape):
-        new_aseg_fname = op.join(FMRI_DIR, subject, 'aseg.mgz')
+        if new_aseg_fname == '':
+            new_aseg_fname = op.join(FMRI_DIR, subject, 'aseg.mgz')
         if op.isfile(new_aseg_fname):
             aseg = nib.load(new_aseg_fname)
         if np.any(x_data.shape[:3] != aseg.shape):
@@ -909,6 +911,47 @@ def calc_labels_mean_freesurfer(
     return utils.both_hemi_files_exist(output_fname_hemi) and op.isfile(minmax_fname_template)
 
 
+def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, overwrite_aseg_file=False, print_only=False):
+    volume_fname = get_fmri_fname(subject, fmri_file_template, only_volumes=False, raise_exception=False)
+    if volume_fname == '':
+        return False
+    x = nib.load(volume_fname)
+    x_data = x.get_data()
+
+    aparc_aseg_fname, ret = fu.create_aparc_aseg_file(subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only)
+    if not ret:
+        return False
+    new_aseg_fname = op.join(MMVT_DIR, subject, 'fmri', utils.namesbase_with_ext(aparc_aseg_fname))
+    aparc_aseg_data = morph_aseg(subject, x_data, volume_fname, aparc_aseg_fname, new_aseg_fname)
+    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
+    for label_name in labels:
+        seg_name, seg_id = get_numeric_index_to_label(label, lut)
+        if seg_name is None:
+            continue
+        pts = calc_label_voxels(seg_id, aseg_data, grid)
+        yield pts, seg_name, seg_id
+
+    for pts, seg_name, seg_id in sub_cortical_generator:
+        seg_names.append(seg_name)
+        x = np.array([x_data[i, j, k] for i, j, k in pts])
+        if measure == 'mean':
+            labels_data.append(np.mean(x, 0))
+        elif measure.startswith('pca'):
+            import sklearn.decomposition as deco
+
+            remove_cols = np.where(np.all(x == np.mean(x, 0), 0))[0]
+            x = np.delete(x, remove_cols, 1)
+            x = (x - np.mean(x, 0)) / np.std(x, 0)
+            comps = 1 if '_' not in measure else int(measure.split('_')[1])
+            pca = deco.PCA(comps)
+            x = x.T
+            x_r = pca.fit(x).transform(x)
+            labels_data.append(x_r)
+    labels_data = np.array(labels_data, dtype=np.float64)
+    np.savez(out_fname, data=labels_data, names=seg_names)
+    print('Writing to {}, {}'.format(out_fname, labels_data.shape))
+
+
 def load_labels_ts(subject, atlas, labels_order_fname, st_template='*{atlas}*.txt', extract_measure='mean',
                    excludes=('corpuscallosum', 'unknown'), indices_to_remove_from_data=(0,4,113,117),
                    backup_existing_files=True, pick_the_first_one=False):
@@ -1125,7 +1168,8 @@ def find_volume_files_from_template(template_fname):
     return find_volume_files(find_template_files(template_fname))
 
 
-def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, only_volumes=False, raise_exception=True):
+def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=lambda x: '', only_volumes=False,
+                   raise_exception=True):
     fmri_fname = ''
     if '{subject}' in fmri_file_template:
         fmri_file_template = fmri_file_template.replace('{subject}', subject)
@@ -1144,10 +1188,10 @@ def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=None, o
     if files_num == 1:
         fmri_fname = files[0]
     elif files_num == 0:
-        if no_files_were_found_func is None:
-            if raise_exception:
-                raise Exception("Can't find any file in {}!".format(fmri_file_template))
+        if raise_exception:
+            raise Exception("Can't find any file in {}!".format(fmri_file_template))
         else:
+            print("Can't find any file in {}!".format(fmri_file_template))
             return no_files_were_found_func()
     elif files_num > 1:
         fmri_fname = utils.select_one_file(files, fmri_file_template, 'fMRI')
@@ -1741,6 +1785,10 @@ def main(subject, remote_subject_dir, args, flags):
                 subject, args.atlas, args.fmri_file_template, args.template_brain,
                 args.target_subject, remote_fmri_dir, args.overwrite_labels_data, args.excluded_labels,
                 args.overwrite_mri_segstat, args.norm_percs)
+
+
+    if 'calc_volumetric_labels_mean' in args.function:
+        flags['calc_volumetric_labels_mean'] = calc_volumetric_labels_mean(subject, args.atlas)
 
     return flags
 
