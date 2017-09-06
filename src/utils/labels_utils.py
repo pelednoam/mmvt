@@ -7,6 +7,7 @@ import shutil
 import glob
 import traceback
 from collections import defaultdict
+import functools
 
 try:
     from src.utils import utils
@@ -336,6 +337,7 @@ def get_hemi_from_name(label_name):
     return hemi
 
 
+# @functools.lru_cache(maxsize=None)
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=[], rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
                 hemi='both', surf_name='pial', labels_fol='', read_only_from_annot=False, n_jobs=1):

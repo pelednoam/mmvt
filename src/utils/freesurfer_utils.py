@@ -15,6 +15,8 @@ import logging
 logger = logging.getLogger('surfer')
 
 from src.utils import utils
+import nibabel.freesurfer as nib_fs
+
 
 mni305_to_subject_reg = 'reg-mni305.2mm --s {subject} --reg mn305_to_{subject}.dat'
 mni305_to_subject = 'mri_vol2vol --mov {mni305_sig_file} --reg mn305_to_{subject}.dat --o {subject_sig_file} --fstarg'
@@ -290,23 +292,33 @@ def check_env_var(var_name, var_val):
 
 
 @utils.check_for_freesurfer
-def aseg_to_srf(subject, subjects_dir, output_fol, region_id, mask_fname, norm_fname,
+def aseg_to_srf(subject, subjects_dir, output_fol, region_id, lookup, mask_fname, norm_fname,
                 overwrite_subcortical_objs=False):
     ret = True
     tmp_fol = op.join(subjects_dir, subject, 'tmp', utils.rand_letters(6))
     utils.make_dir(tmp_fol)
     rs = utils.partial_run_script(locals())
-    output_fname = op.join(output_fol, '{}.srf'.format(region_id))
-    tmp_output_fname = op.join(tmp_fol, '{}.asc'.format(region_id))
-    if overwrite_subcortical_objs:
-        utils.remove_file(output_fname)
+    # output_fname = op.join(output_fol, '{}.srf'.format(region_id))
+    # tmp_output_fname = op.join(tmp_fol, '{}.asc'.format(region_id))
+    # if overwrite_subcortical_objs:
+    #     utils.remove_file(output_fname)
     try:
         rs(mri_pretess)
         rs(mri_tessellate)
         rs(mris_smooth)
-        rs(mris_convert)
-        if op.isfile(tmp_output_fname):
-            shutil.move(tmp_output_fname, output_fname)
+        fs_file = op.join(tmp_fol, '{}_smooth'.format(region_id))
+        verts, faces = nib_fs.read_geometry(fs_file)
+        num = int(op.basename(fs_file).split('_')[0])
+        if num not in lookup:
+            print('Error in the subcorticals lookup table!')
+            return False
+        new_name = lookup.get(num, '')
+        utils.write_ply_file(verts, faces, op.join(output_fol, '{}.ply'.format(new_name)), True)
+        # mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
+        # rs(mris_convert)
+        # if op.isfile(tmp_output_fname):
+        #     shutil.move(tmp_output_fname, output_fname)
+        if op.isdir(tmp_fol):
             shutil.rmtree(tmp_fol)
         else:
             ret = False

@@ -58,7 +58,7 @@ def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner201
         'right' if ind <= subregions_num/2 else 'left',  ind if ind <= subregions_num/2 else int(ind - subregions_num/2)), ind] for ind in range(1, subregions_num + 1)])
     lookup = {int(val): name for name, val in zip(subcortical_lookup[:, 0], subcortical_lookup[:, 1])}
     mmvt_subcorticals_fol_name = 'cerebellum'
-    ret = subcortical_segmentation(subject, args.overwrite_subcorticals, model, lookup, warp_buckner_hemis_atlas_fname,
+    ret = subcortical_segmentation(subject, args.overwrite_subcorticals, lookup, warp_buckner_hemis_atlas_fname,
                                     mmvt_subcorticals_fol_name, subject)
     return ret
 
@@ -92,8 +92,8 @@ def split_cerebellum_hemis(subject, mask_fname, new_maks_name, subregions_num):
 
 
 @utils.check_for_freesurfer
-def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subcorticals', lookup=None,
-                             mask_name='aseg.mgz', mmvt_subcorticals_fol_name='subcorticals',
+def subcortical_segmentation(subject, overwrite_subcorticals=False, lookup=None,
+                             mask_name='aseg.mgz', mmvt_subcorticals_fol_name='subcortical',
                              template_subject='', norm_name='norm.mgz', overwrite=True):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
@@ -117,40 +117,40 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, model='subco
         return False
 
     # subcortical_lookup = np.genfromtxt(codes_file, dtype=str, delimiter=',')
-    utils.make_dir(op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name))
-    function_output_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name, '{}_objs'.format(model))
-    utils.make_dir(function_output_fol)
-    renamed_output_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
-    utils.make_dir(renamed_output_fol)
+    # function_output_fol = op.join(MMVT_DIR, subject, '{}_objs'.format(model))
+    # utils.make_dir(function_output_fol)
+    mmvt_output_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
+    utils.make_dir(mmvt_output_fol)
     if lookup is None:
         lookup = load_subcortical_lookup_table()
 
-    obj_files = glob.glob(op.join(function_output_fol, '*.srf'))
+    ply_files = glob.glob(op.join(mmvt_output_fol, '*.ply'))
+    npz_files = glob.glob(op.join(mmvt_output_fol, '*.npz'))
     errors = []
-    if len(obj_files) < len(lookup) or overwrite_subcorticals:
+    if len(ply_files) < len(lookup) or len(npz_files) < len(lookup) or overwrite_subcorticals:
         if overwrite:
-            utils.delete_folder_files(function_output_fol)
-            utils.delete_folder_files(renamed_output_fol)
-        print('Trying to write into {}'.format(function_output_fol))
+            utils.delete_folder_files(mmvt_output_fol)
         for region_id in lookup.keys():
-            if op.isfile(op.join(function_output_fol, '{}.srf'.format(region_id))):
+            if op.isfile(op.join(mmvt_output_fol, '{}.ply'.format(lookup.get(region_id, '')))):
                 continue
             ret = fu.aseg_to_srf(
-                subject, SUBJECTS_DIR, function_output_fol, region_id, mask_fname, norm_fname, overwrite_subcorticals)
+                subject, SUBJECTS_DIR, mmvt_output_fol, region_id, lookup, mask_fname, norm_fname,
+                overwrite_subcorticals)
             if not ret:
                 errors.append(lookup[region_id])
     if len(errors) > 0:
         print('Errors: {}'.format(','.join(errors)))
-    ply_files = glob.glob(op.join(renamed_output_fol, '*.ply'))
-    if len(ply_files) < len(lookup) or overwrite_subcorticals:
-        convert_and_rename_subcortical_files(
-            subject, function_output_fol, renamed_output_fol, lookup, mmvt_subcorticals_fol_name)
+        return False
+    # ply_files = glob.glob(op.join(mmvt_output_fol, '*.ply'))
+    # if len(ply_files) < len(lookup) or overwrite_subcorticals:
+    #     utils.make_dir(mmvt_output_fol)
+    #     convert_and_rename_subcortical_files(function_output_fol, mmvt_output_fol, lookup)
     # blender_dir = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
     # if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files) or overwrite_subcorticals:
     #     utils.delete_folder_files(blender_dir)
-    #     copy_subcorticals_to_mmvt(renamed_output_fol, subject, mmvt_subcorticals_fol_name)
-    flag_ok = len(glob.glob(op.join(renamed_output_fol, '*.ply'))) >= len(lookup) and \
-        len(glob.glob(op.join(renamed_output_fol, '*.npz'))) >= len(lookup)
+    #     copy_subcorticals_to_mmvt(mmvt_output_fol, subject, mmvt_subcorticals_fol_name)
+    flag_ok = len(glob.glob(op.join(mmvt_output_fol, '*.ply'))) >= len(lookup) and \
+        len(glob.glob(op.join(mmvt_output_fol, '*.npz'))) >= len(lookup)
     return flag_ok
 
 
@@ -161,7 +161,7 @@ def load_subcortical_lookup_table(fname='sub_cortical_codes.txt'):
     return lookup
 
 
-def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup, mmvt_subcorticals_fol_name='subcortical'):
+def convert_and_rename_subcortical_files(fol, new_fol, lookup):
     obj_files = glob.glob(op.join(fol, '*.srf'))
     utils.delete_folder_files(new_fol)
     for obj_file in obj_files:
@@ -171,14 +171,14 @@ def convert_and_rename_subcortical_files(subject, fol, new_fol, lookup, mmvt_sub
             utils.srf2ply(obj_file, op.join(new_fol, '{}.ply'.format(new_name)))
             verts, faces = utils.read_ply_file(op.join(new_fol, '{}.ply'.format(new_name)))
             np.savez(op.join(new_fol, '{}.npz'.format(new_name)), verts=verts, faces=faces)
-    copy_subcorticals_to_mmvt(new_fol, subject, mmvt_subcorticals_fol_name)
+    # copy_subcorticals_to_mmvt(new_fol, subject, mmvt_subcorticals_fol_name)
 
 
-def copy_subcorticals_to_mmvt(subcorticals_fol, subject, mmvt_subcorticals_fol_name='subcortical'):
-    blender_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
-    if op.isdir(blender_fol):
-        shutil.rmtree(blender_fol)
-    shutil.copytree(subcorticals_fol, blender_fol)
+# def copy_subcorticals_to_mmvt(subcorticals_fol, subject, mmvt_subcorticals_fol_name='subcortical'):
+#     blender_fol = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
+#     if op.isdir(blender_fol):
+#         shutil.rmtree(blender_fol)
+#     shutil.copytree(subcorticals_fol, blender_fol)
 
 
 def rename_cortical(lookup, fol, new_fol):
@@ -361,12 +361,12 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
         lookup[hemi] = create_labels_lookup(subject, hemi, aparc_name)
         if len(lookup[hemi]) == 0:
             continue
-        srf_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(aparc_name, surf_type, hemi))
+        mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(aparc_name, surf_type, hemi))
         ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(aparc_name, surf_type, hemi))
         utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
         blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(aparc_name, surf_type, hemi))
-        utils.convert_srf_files_to_ply(srf_fol, overwrite_ply_files)
-        rename_cortical(lookup, srf_fol, ply_fol)
+        utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
+        rename_cortical(lookup, mat_fol, ply_fol)
         if surf_type == 'inflated':
             for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
                 verts, faces = utils.read_ply_file(ply_fname)
@@ -375,7 +375,7 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
                 utils.write_ply_file(verts, faces, ply_fname)
         utils.rmtree(blender_fol)
         shutil.copytree(ply_fol, blender_fol)
-        utils.rmtree(srf_fol)
+        utils.rmtree(mat_fol)
         utils.rmtree(ply_fol)
     return lookup
 
@@ -448,8 +448,7 @@ def solve_labels_collisions(subject, aparc_name, surf_type='inflated', n_jobs=6)
 
 
 def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False,
-                     overwrite_annotation=False, matlab_cmd='matlab', surf_type='inflated', n_jobs=6,
-                     minimum_labels_num=50):
+                     overwrite_annotation=False, matlab_cmd='matlab', surf_type='inflated', n_jobs=6):
     dont_do_anything = True
     ret = {'pial':True, 'inflated':True}
     utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
@@ -459,8 +458,9 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
         files_exist = True
         for hemi in HEMIS:
             blender_labels_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(aparc_name, surface_type, hemi))
+            labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name, hemi=hemi)
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
-                len(glob.glob(op.join(blender_labels_fol, '*.ply'))) > minimum_labels_num
+                len(glob.glob(op.join(blender_labels_fol, '*.ply'))) == len(labels)
         # if surface_type == 'inflated':
         if overwrite or not files_exist:
             dont_do_anything = False
@@ -763,7 +763,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-        flags['create_surfaces'] = create_surfaces(subject, overwrite=args.overwrite_hemis_srf)
+        flags['create_surfaces'] = create_surfaces(subject, overwrite=args.overwrite_hemis_ply)
 
     if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage
@@ -844,7 +844,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_subcorticals', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)
-    parser.add_argument('--overwrite_hemis_srf', help='overwrite_hemis_srf', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_hemis_ply', help='overwrite_hemis_ply', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_ply_files', help='overwrite_ply_files', required=False, default=0, type=au.is_true)
@@ -875,7 +875,7 @@ def read_cmd_args(argv=None):
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
-        args.overwrite_hemis_srf = True
+        args.overwrite_hemis_ply = True
         args.overwrite_labels_ply_files = True
         args.overwrite_faces_verts = True
         args.overwrite_fs_files = True

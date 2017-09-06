@@ -26,7 +26,7 @@ import os.path as op
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
-# import scipy.io as sio
+import scipy.io as sio
 import getpass
 
 from src.mmvt_addon import mmvt_utils as mu
@@ -209,6 +209,7 @@ def read_ply_file(ply_file, npz_fname=''):
     elif file_type(ply_file) == 'npz' or op.isfile(npz_file):
         d = np.load(npz_file)
         verts, faces = d['verts'], d['faces']
+        faces = faces.astype(np.int)
     # elif npz_fname != '' and op.isfile(npz_fname):
     #     d = np.load(npz_fname)
     #     verts, faces = d['verts'], d['faces']
@@ -231,12 +232,13 @@ def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     try:
         verts_num = verts.shape[0]
         faces_num = faces.shape[0]
-        faces = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
+        faces = faces.astype(np.int)
+        faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
         with open(ply_file_name, 'w') as f:
             f.write(PLY_HEADER.format(verts_num, faces_num))
         with open(ply_file_name, 'ab') as f:
             np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
-            np.savetxt(f, faces, fmt='%d', delimiter=' ')
+            np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
         if write_also_npz:
             np.savez('{}.npz'.format(op.splitext(ply_file_name)[0]), verts=verts, faces=faces)
         return True
@@ -267,12 +269,14 @@ def obj2ply(obj_file, ply_file):
     write_ply_file(verts, faces, ply_file)
 
 
-def convert_srf_files_to_ply(srf_folder, overwrite=True):
-    srf_files = glob.glob(op.join(srf_folder, '*.srf'))
-    for srf_file in srf_files:
-        ply_file = '{}.ply'.format(srf_file[:-4])
+def convert_mat_files_to_ply(mat_folder, overwrite=True):
+    mat_files = glob.glob(op.join(mat_folder, '*.mat'))
+    for mat_file in mat_files:
+        ply_file = '{}.ply'.format(mat_file[:-4])
         if overwrite or not op.isfile(ply_file):
-            srf2ply(srf_file, ply_file)
+            d = Bag(**sio.loadmat(mat_file))
+            write_ply_file(d.verts, d.faces, ply_file, True)
+            # srf2ply(srf_file, ply_file)
 
 
 def get_ply_vertices_num(ply_file_template):
@@ -298,6 +302,7 @@ def calc_ply_faces_verts(verts, faces, out_file, overwrite=False, ply_name='', e
         faces_sort = np.sort(_faces)
         faces_count = Counter(faces_sort)
         max_len = max([v for v in faces_count.values()])
+        print(ply_name, verts.shape[0], max_len)
         lookup = np.ones((verts.shape[0], max_len)) * -1
         diff = np.diff(faces_sort)
         n = 0
@@ -1791,9 +1796,12 @@ def files_needed(necessary_files):
             subjects_dir = get_link_dir(get_links_dir(), 'subjects', 'SUBJECTS_DIR')
             subject = kwargs.get('subject', args[0])
             remote_subject_dir = kwargs.get('remote_subject_dir', '')
-            default_mmvt_args = dict(sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-                                overwrite_fs_files=False, print_traceback=False, sftp_port=22)
+            default_mmvt_args = Bag(
+                sftp=False, sftp_username='', sftp_domain='', sftp_password='',
+                overwrite_fs_files=False, print_traceback=False, sftp_port=22)
             mmvt_args = kwargs.get('mmvt_args', default_mmvt_args)
+            if len(mmvt_args) == 0:
+                mmvt_args = default_mmvt_args
             if remote_subject_dir == '':
                 remote_subject_dir = mmvt_args.get('remote_subject_dir', '')
             ret = prepare_subject_folder(

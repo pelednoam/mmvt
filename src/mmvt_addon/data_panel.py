@@ -196,7 +196,7 @@ def import_brain(context=None):
         return
     user_fol = mu.get_user_fol()
     print("importing ROIs")
-    import_rois(user_fol)
+    import_rois(op.join(user_fol, 'labels'))
     import_hemis_for_functional_maps(user_fol)
     import_subcorticals(op.join(user_fol, 'subcortical'))
     # if op.isdir(op.join(user_fol, 'cerebellum')):

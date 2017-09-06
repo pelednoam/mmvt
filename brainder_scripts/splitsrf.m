@@ -162,8 +162,12 @@ for lab = 1:nL,
     facL{lab} = reshape(tmp(facL{lab}(:)),size(facL{lab}));
 
     % Save the resulting surface
-    fname = sprintf('%s.%0.4d.srf',srfprefix,lab);
-    srfwrite(vtxL{lab},facL{lab},fname)
+    %fname = sprintf('%s.%0.4d.srf',srfprefix,lab);
+    % srfwrite(vtxL{lab},facL{lab},fname)
+    verts = vtxL{lab};
+    faces = facL{lab};
+    fname = sprintf('%s.%0.4d.mat',srfprefix,lab);
+    save(fname, 'verts', 'faces');
     
     % Add the corresponding line to the index file
     fprintf(fidx,'%s,%g\n',fname,udpx(lab));
