@@ -244,6 +244,7 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
     return to_subject_coords
 
 
+@utils.check_for_freesurfer
 def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):
     '''
     Creates the annot file by using the freesurfer mris_ca_label function

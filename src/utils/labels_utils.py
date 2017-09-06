@@ -52,6 +52,7 @@ def load_surf(subject, mmvt_dir, subjects_dir):
         verts[hemi] = hemi_verts
     return verts
 
+
 def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     fsaverage = find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir)

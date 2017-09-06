@@ -440,7 +440,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     args.xticklabels = au.str_arr_to_markers(args, 'xticklabels')
-    print(args)
+    # print(args)
     n_jobs = utils.get_n_jobs(args.n_jobs)
 
     # fol = '/home/noam/Pictures/mmvt/mg99'

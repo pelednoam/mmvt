@@ -218,7 +218,7 @@ def read_cmd_args(argv):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['T1.mgz', 'orig.mgz']}
-    print(args)
+    # print(args)
     return args
 
 

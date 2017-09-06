@@ -214,7 +214,8 @@ def _split_view():
 @mu.tryit()
 def split_view(view):
     import math
-    _addon().hide_subcorticals()
+    if view != 0:
+        _addon().hide_subcorticals()
     pial_shift = 10
     inflated_shift = 13
     if view == 0: # Normal

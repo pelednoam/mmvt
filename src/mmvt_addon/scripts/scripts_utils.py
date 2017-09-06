@@ -334,7 +334,7 @@ def parse_args(parser, argv):
     args = Bag(au.parse_parser(parser, argv))
     args.real_atlas = get_real_atlas_name(args.atlas)
     if (len(args.subjects) == 0 and args.subject == '') or (len(args.subjects) > 0 and args.subject != ''):
-        print(args)
+        # print(args)
         raise Exception('You need to set --subject or --subjects!')
     return args
 

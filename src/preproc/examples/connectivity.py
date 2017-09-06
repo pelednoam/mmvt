@@ -73,7 +73,7 @@ def calc_fmri_connectivity(args):
 def calc_fmri_static_connectivity(args):
     args = con.read_cmd_args(dict(
         subject=args.subject,
-        atlas='yao17',#''laus125',
+        atlas='laus125',# 'yao17'
         function='calc_lables_connectivity',
         connectivity_modality='fmri',
         connectivity_method='corr',
@@ -125,7 +125,7 @@ def calc_fmri_seed_corr(args):
     args = con.read_cmd_args(dict(
         function='calc_fmri_seed_corr',
         subject=args.subject, atlas=args.atlas,
-        identifier='freesurfer', labels_regex='post*cingulate*rh',
+        identifier='freesurfer', labels_regex='precentral-rh',#''post*cingulate*rh',
         seed_label_name='post_cingulate_rh', seed_label_r=5, overwrite_seed_data=True,
         n_jobs=args.n_jobs
     ))

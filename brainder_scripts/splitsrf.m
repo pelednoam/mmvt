@@ -52,12 +52,15 @@ try
 end
 
 % Accept inputs
-srffile   = varargin{1};
+verts_fname   = varargin{1};
 dpxfile   = varargin{2};
 srfprefix = varargin{3};
 
 % Read the surface file and DPV/DPF file with labels
-[vtx,fac] = srfread(srffile);
+d = load(verts_fname);
+vtx = d.verts;
+fac = d.faces;
+% [vtx,fac] = srfread(srffile);
 dpx = dpxread(dpxfile);
 nV = size(vtx,1);
 nF = size(fac,1);

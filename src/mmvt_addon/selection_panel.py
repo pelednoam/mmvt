@@ -38,6 +38,8 @@ def get_selected_fcurves_and_data():
     # todo: support more than one type in selection
     all_fcurves, all_data = [], []
     for selction_type, parent_obj in zip([SEL_ELECTRODES, SEL_ROIS], [electrodes_panel.PARENT_OBJ, 'Brain']):
+        if selction_type not in SelectionMakerPanel.get_data:
+            continue
         # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
         data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
         fcurves = SelectionMakerPanel.fcurves[selction_type]()
@@ -64,7 +66,7 @@ def curves_sep_update(self=None, context=None):
     sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()
     fcurve_ind = 0
     for data_ind in range(N):
-        data_mean = np.mean(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
+        data_mean = np.median(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
         for c in range(C):
             fcurve = fcurves[fcurve_ind]
             if SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), -1) == bpy.context.scene.curves_sep:

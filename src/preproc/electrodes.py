@@ -1132,7 +1132,7 @@ def read_cmd_args(argv=None):
         args.upper_freq_filter = None
     if args.bipolar:
         args.ref_elec = ''
-    print(args)
+    # print(args)
     return args
 
 

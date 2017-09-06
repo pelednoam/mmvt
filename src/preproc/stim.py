@@ -260,7 +260,7 @@ def read_cmd_args(argv=None):
     add_args(parser)
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser))
-    print(args)
+    # print(args)
     return args
 
 if __name__ == '__main__':

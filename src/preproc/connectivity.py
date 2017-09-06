@@ -899,7 +899,7 @@ def read_cmd_args(argv=None):
     args = utils.Bag(au.parse_parser(parser, argv))
     if len(args.conditions) == 1:
         args.stat = STAT_AVG
-    print(args)
+    # print(args)
     return args
 
 

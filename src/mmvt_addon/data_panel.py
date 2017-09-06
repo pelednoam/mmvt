@@ -732,6 +732,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
                 cond_str = cond_str.astype(str)
                 # Set the values to zeros in the first and last frame for current object(current label)
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
+                # todo: +2? WTF?!?
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, T + 2)
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
