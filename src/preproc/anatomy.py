@@ -4,6 +4,7 @@ import os.path as op
 import shutil
 import traceback
 from collections import defaultdict
+from tqdm import tqdm
 
 import mne
 import numpy as np
@@ -556,11 +557,11 @@ def create_spatial_connectivity(subject):
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
-        return
+        return True
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
-        return
+        return False
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, overwrite)
     for hemi in utils.HEMIS:
         verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
@@ -580,6 +581,47 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
         np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
                  labels=[l.name for l in labels])
     return utils.both_hemi_files_exist(output_fname)
+
+@utils.timeit
+def create_verts_faces_lookup(subject):
+    output_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
+    for hemi in utils.HEMIS:
+        if op.isfile(output_fname.format(hemi=hemi)):
+            continue
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+        looup = {}
+        for v in tqdm(range(len(verts))):
+            looup[v] = np.where(faces == v)[0]
+        utils.save(looup, output_fname.format(hemi=hemi))
+
+@utils.timeit
+def find_faces_with_vertices_from_different_labels(subject, atlas):
+    # create_verts_faces_lookup(subject)
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
+    verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    contours_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    # verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format('{hemi}'))
+    verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
+    output_fname = op.join(MMVT_DIR, subject, 'contours_faces.pkl')
+    contours_faces = dict(rh=set(), lh=set())
+    for hemi in utils.HEMIS:
+        contours_dict = np.load(contours_fname.format(hemi=hemi))
+        vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
+        # verts_faces_lookup = np.load(verts_faces_lookup_fname.format(hemi=hemi))
+        verts_faces_lookup = utils.load(verts_faces_lookup_fname.format(hemi=hemi))
+        contours_vertices = np.where(contours_dict['contours'])[0]
+        # verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+        for vert in tqdm(contours_vertices):
+            vert_label = vertices_labels_lookup[hemi].get(vert, '')
+            vert_faces = verts_faces_lookup[vert]
+            for vert_nei in vertices_neighbors[vert]:
+                nei_label = vertices_labels_lookup[hemi].get(vert_nei, '')
+                if vert_label != nei_label:
+                    nei_faces = verts_faces_lookup[vert_nei]
+                    common_faces = set(vert_faces) & set(nei_faces) # - {-1}
+                    contours_faces[hemi] |= common_faces
+    utils.save(contours_faces, output_fname)
+    return op.isfile(output_fname)
 
 #
 # @utils.timeit
@@ -830,6 +872,10 @@ def main(subject, remote_subject_dir, args, flags):
     if 'grow_label' in args.function:
         flags['grow_label'] = lu.grow_label(
             subject, args.vertice_indice, args.hemi, args.label_name, args.label_r, args.n_jobs)
+
+    if 'find_faces_with_vertices_from_different_labels' in args.function:
+        flags['find_faces_with_vertices_from_different_labels'] = find_faces_with_vertices_from_different_labels(
+            subject, args.atlas)
 
     return flags
 
