@@ -589,14 +589,15 @@ def create_verts_faces_lookup(subject):
         if op.isfile(output_fname.format(hemi=hemi)):
             continue
         verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
-        looup = {}
-        for v in tqdm(range(len(verts))):
-            looup[v] = np.where(faces == v)[0]
-        utils.save(looup, output_fname.format(hemi=hemi))
+        lookup = defaultdict(list)
+        for f_ind, f in tqdm(enumerate(faces)):
+            for v_ind in f:
+                lookup[v_ind].append(f_ind)
+        utils.save(lookup, output_fname.format(hemi=hemi))
 
 @utils.timeit
 def find_faces_with_vertices_from_different_labels(subject, atlas):
-    # create_verts_faces_lookup(subject)
+    create_verts_faces_lookup(subject)
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
     contours_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
@@ -607,10 +608,8 @@ def find_faces_with_vertices_from_different_labels(subject, atlas):
     for hemi in utils.HEMIS:
         contours_dict = np.load(contours_fname.format(hemi=hemi))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
-        # verts_faces_lookup = np.load(verts_faces_lookup_fname.format(hemi=hemi))
         verts_faces_lookup = utils.load(verts_faces_lookup_fname.format(hemi=hemi))
         contours_vertices = np.where(contours_dict['contours'])[0]
-        # verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
         for vert in tqdm(contours_vertices):
             vert_label = vertices_labels_lookup[hemi].get(vert, '')
             vert_faces = verts_faces_lookup[vert]
@@ -618,7 +617,7 @@ def find_faces_with_vertices_from_different_labels(subject, atlas):
                 nei_label = vertices_labels_lookup[hemi].get(vert_nei, '')
                 if vert_label != nei_label:
                     nei_faces = verts_faces_lookup[vert_nei]
-                    common_faces = set(vert_faces) & set(nei_faces) # - {-1}
+                    common_faces = set(vert_faces) & set(nei_faces)
                     contours_faces[hemi] |= common_faces
     utils.save(contours_faces, output_fname)
     sio.savemat(op.join(MMVT_DIR, subject, 'contours_faces_{}.mat'.format(atlas)),
