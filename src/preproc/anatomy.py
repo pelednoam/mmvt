@@ -602,7 +602,7 @@ def find_faces_with_vertices_from_different_labels(subject, atlas):
     contours_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     # verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format('{hemi}'))
     verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
-    output_fname = op.join(MMVT_DIR, subject, 'contours_faces.pkl')
+    output_fname = op.join(MMVT_DIR, subject, 'contours_faces_{}.pkl'.format(atlas))
     contours_faces = dict(rh=set(), lh=set())
     for hemi in utils.HEMIS:
         contours_dict = np.load(contours_fname.format(hemi=hemi))
@@ -621,6 +621,8 @@ def find_faces_with_vertices_from_different_labels(subject, atlas):
                     common_faces = set(vert_faces) & set(nei_faces) # - {-1}
                     contours_faces[hemi] |= common_faces
     utils.save(contours_faces, output_fname)
+    sio.savemat(op.join(MMVT_DIR, subject, 'contours_faces_{}.mat'.format(atlas)),
+                mdict={hemi:np.array(list(contours_faces[hemi])) + 1 for hemi in utils.HEMIS})
     return op.isfile(output_fname)
 
 #
