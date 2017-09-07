@@ -196,7 +196,7 @@ def import_brain(context=None):
         return
     user_fol = mu.get_user_fol()
     print("importing ROIs")
-    import_rois(op.join(user_fol, 'labels'))
+    import_rois(user_fol)
     import_hemis_for_functional_maps(user_fol)
     import_subcorticals(op.join(user_fol, 'subcortical'))
     # if op.isdir(op.join(user_fol, 'cerebellum')):
@@ -251,12 +251,13 @@ def create_empty_if_doesnt_exists(name, brain_layer=None, layers_array=None, par
 
 @mu.tryit()
 def import_rois(base_path):
-    anatomy_inputs = {'Cortex-rh': op.join(base_path, '{}.pial.rh'.format(bpy.context.scene.atlas)),
-                      'Cortex-lh': op.join(base_path, '{}.pial.lh'.format(bpy.context.scene.atlas)),
-                      'Cortex-inflated-rh': op.join(base_path, '{}.inflated.rh'.format(bpy.context.scene.atlas)),
-                      'Cortex-inflated-lh': op.join(base_path, '{}.inflated.lh'.format(bpy.context.scene.atlas)),
-                      'Subcortical_structures': op.join(base_path, 'subcortical'),
-                      'Cerebellum': op.join(base_path, 'cerebellum')}
+    anatomy_inputs = {
+        'Cortex-rh': op.join(base_path, 'labels', '{}.pial.rh'.format(bpy.context.scene.atlas)),
+        'Cortex-lh': op.join(base_path, 'labels','{}.pial.lh'.format(bpy.context.scene.atlas)),
+        'Cortex-inflated-rh': op.join(base_path, 'labels', '{}.inflated.rh'.format(bpy.context.scene.atlas)),
+        'Cortex-inflated-lh': op.join(base_path, 'labels', '{}.inflated.lh'.format(bpy.context.scene.atlas)),
+        'Subcortical_structures': op.join(base_path, 'subcortical'),
+        'Cerebellum': op.join(base_path, 'cerebellum')}
     brain_layer = _addon().BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]

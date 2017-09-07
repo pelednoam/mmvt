@@ -221,7 +221,8 @@ def create_surfaces(subject, hemi='both', overwrite=False):
                 print('Reading {}'.format(surf_name))
                 verts, faces = nib_fs.read_geometry(surf_name)
                 if surf_type == 'inflated':
-                    verts[:, 0] += 55 if hemi == 'rh' else -55
+                    verts_offset = 55 if hemi == 'rh' else -55
+                    verts[:, 0] = verts[:, 0] + verts_offset
                 utils.write_ply_file(verts, faces, mmvt_hemi_ply_fname, True)
                 sio.savemat(mmvt_hemi_mat_fname, mdict={'verts': verts, 'faces': faces + 1})
     return all([utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', file_name)) for file_name in \
@@ -367,12 +368,12 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
         blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(aparc_name, surf_type, hemi))
         utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
         rename_cortical(lookup, mat_fol, ply_fol)
-        if surf_type == 'inflated':
-            for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
-                verts, faces = utils.read_ply_file(ply_fname)
-                verts_offset = 55 if hemi == 'rh' else -55
-                verts[:, 0] = verts[:, 0] + verts_offset
-                utils.write_ply_file(verts, faces, ply_fname)
+        # if surf_type == 'inflated':
+        #     for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
+        #         verts, faces = utils.read_ply_file(ply_fname)
+        #         verts_offset = 55 if hemi == 'rh' else -55
+        #         verts[:, 0] = verts[:, 0] + verts_offset
+        #         utils.write_ply_file(verts, faces, ply_fname)
         utils.rmtree(blender_fol)
         shutil.copytree(ply_fol, blender_fol)
         utils.rmtree(mat_fol)

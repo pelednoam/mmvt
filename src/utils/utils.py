@@ -275,7 +275,7 @@ def convert_mat_files_to_ply(mat_folder, overwrite=True):
         ply_file = '{}.ply'.format(mat_file[:-4])
         if overwrite or not op.isfile(ply_file):
             d = Bag(**sio.loadmat(mat_file))
-            write_ply_file(d.verts, d.faces, ply_file, True)
+            write_ply_file(d.verts, d.faces - 1, ply_file, True)
             # srf2ply(srf_file, ply_file)
 
 
