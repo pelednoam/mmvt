@@ -113,9 +113,9 @@ else
 
         % Depending on how many vertices of the current face
         % are in different labels, behave differently
-        nuCidx = numel(unique(Cidx));
-        if nuCidx == 1, % If all vertices share same label
-
+        %nuCidx = numel(unique(Cidx));
+        %if nuCidx == 1, % If all vertices share same label
+        if Cidx(1) == Cidx(2) && Cidx(2) == Cidx(3)
             % Add the current face to the list of faces of the
             % respective label, and don't create new faces
             facL{Cidx(1)} = [facL{Cidx(1)}; Cfac];

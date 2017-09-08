@@ -84,6 +84,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     np.savez(output_file, pos=pos, names=names, pos_org=pos_org)
     return pos, names
 
+
 def get_names_dists_non_bipolar_electrodes(data):
     names = data[:, 0]
     pos = data[:, 1:4].astype(float)
@@ -606,7 +607,7 @@ def fix_channles_names(edf_raw, data_channels):
         edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = new_name
 
 
-def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=True):
+def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     edf_fname, _ = locating_file(args.raw_fname, '*.edf')
     if not op.isfile(edf_fname):
@@ -625,8 +626,6 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=True):
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
     data_channels, all_pos = read_electrodes_file(subject, bipolar=False)
-    if args.bipolar:
-        data_bipolar_channels, _ = read_electrodes_file(subject, bipolar=True)
     fix_mismatches(edf_raw, args.channels_names_mismatches)
     fix_channles_names(edf_raw, data_channels)
     # live_channels = find_live_channels(edf_raw, hz)
@@ -646,9 +645,7 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=True):
     # dists_output_fname = op.join(MMVT_DIR, subject, 'electrodes', dists_output_fname)
     # np.save(dists_output_fname, dists)
 
-    if args.ref_elec != '':
-        ref_ind = edf_raw.ch_names.index(args.ref_elec)
-
+    ref_ind = edf_raw.ch_names.index(args.ref_elec) if args.ref_elec != '' else -1
     if do_plot:
         plot_electrodes(subject, edf_raw, data_channels, ref_ind)
 
@@ -700,18 +697,43 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=True):
 
     if args.moving_average_win_size > 0:
         output_fname = op.join(
-            fol, 'electrodes{}_data_{}.npz'.format('_bipolar' if args.bipolar else '', STAT_NAME[stat]))
+            fol, 'electrodes_data_{}.npz'.format('_{}'.format(STAT_NAME[stat] if len(conditions) > 1 else '')))
         stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
-        return op.isfile(output_fname)
+        if args.bipolar:
+            return data_electrodes_to_bipolar(subject)
+        else:
+            return op.isfile(output_fname)
     else:
-        meta_fname = op.join(fol, 'electrodes{}_meta_data{}.npz'.format(
-            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
-        data_fname = op.join(fol, 'electrodes{}_data{}.npy'.format(
-            '_bipolar' if args.bipolar else '', '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
+        meta_fname = op.join(fol, 'electrodes_meta_data{}.npz'.format(
+            '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
+        data_fname = op.join(fol, 'electrodes_data{}.npy'.format(
+            '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
-        return op.isfile(data_fname) and op.isfile(meta_fname)
+        if args.bipolar:
+            return data_electrodes_to_bipolar(subject)
+        else:
+            return op.isfile(data_fname) and op.isfile(meta_fname)
+
+
+
+def data_electrodes_to_bipolar(subject):
+    fol = op.join(MMVT_DIR, subject, 'electrodes')
+    meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
+    data = np.load(op.join(fol, 'electrodes_data.npy'))
+    channels, conditions, times = meta_data['names'], meta_data['conditions'], meta_data['times']
+    _, _, bipolar_channels = convert_electrodes_coordinates_file_to_npy(subject, bipolar=True, copy_to_blender=True)
+    data_bipolar = np.zeros((len(bipolar_channels), data.shape[1], len(conditions)))
+    for cond_ind in range(len(conditions)):
+        for ind, bipolar_channel in enumerate(bipolar_channels):
+            ind1, ind2 = (np.where(channels == cha)[0][0] for cha in bipolar_channel.split('-'))
+            data_bipolar[ind, :, cond_ind] = data[ind2, :, cond_ind] - data[ind1, :, cond_ind]
+    meta_fname = op.join(fol, 'electrodes_bipolar_meta_data.npz')
+    data_fname = op.join(fol, 'electrodes_bipolar_data.npy')
+    np.savez(meta_fname, names=bipolar_channels, conditions=conditions, times=times)
+    np.save(data_fname, data_bipolar)
+    return op.isfile(meta_fname) and op.isfile(data_fname)
 
 
 def calc_seizure_times(start_time, seizure_onset, seizure_end, baseline_onset, baseline_end,
@@ -1138,5 +1160,6 @@ def read_cmd_args(argv=None):
 
 if __name__ == '__main__':
     args = read_cmd_args()
-    pu.run_on_subjects(args, main)
+    # pu.run_on_subjects(args, main)
+    data_electrodes_to_bipolar(args.subject[0])
     print('finish!')

@@ -1831,6 +1831,9 @@ def pca(x, comps_num=1):
     return x_r
 
 
+def all_items_equall(arr):
+    return all([x == arr[0] for x in arr])
+
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):
 #     import struct

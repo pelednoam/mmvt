@@ -56,7 +56,7 @@ def load_edf_data_seizure_2(args):
         atlas='laus125',
         function='create_raw_data_for_blender',
         task='seizure',
-        bipolar=False,
+        bipolar=args.bipolar,
         raw_fname='/cluster/neuromind/npeled/taha/dm04002705/edf/DMphaseIISz_TG.edf',
         start_time='00:00:00',
         seizure_onset='00:01:30',

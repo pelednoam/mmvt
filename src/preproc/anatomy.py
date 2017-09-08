@@ -464,6 +464,10 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
                 len(glob.glob(op.join(blender_labels_fol, '*.ply'))) == len(labels)
         # if surface_type == 'inflated':
+        from src.preproc import parcelate_cortex
+        srfprefix = '{}.{}.{}'.format(hemi, surface_type, aparc_name)
+        parcelate_cortex.parcelate(subject, aparc_name, hemi, surface_type, srfprefix)
+
         if overwrite or not files_exist:
             dont_do_anything = False
             matlab_output_files = glob.glob(op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(
@@ -477,9 +481,9 @@ def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=F
                            'surface_type': surface_type})
                 cmd = '{} -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
                 # cmd = '{} -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
-                script_ret = utils.run_script(cmd)
-                if script_ret == '':
-                    return False
+                # script_ret = utils.run_script(cmd)
+                # if script_ret == '':
+                #     return False
             # convert the  obj files to ply
             lookup = convert_perecelated_cortex(subject, aparc_name, surface_type, overwrite_ply_files)
             matlab_labels_vertices = True
@@ -562,7 +566,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
         return False
-    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, overwrite)
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
     for hemi in utils.HEMIS:
         verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         contours = np.zeros((len(verts)))
@@ -596,7 +600,7 @@ def create_verts_faces_lookup(subject):
         utils.save(lookup, output_fname.format(hemi=hemi))
 
 @utils.timeit
-def find_faces_with_vertices_from_different_labels(subject, atlas):
+def calc_faces_contours(subject, atlas):
     create_verts_faces_lookup(subject)
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
@@ -874,8 +878,8 @@ def main(subject, remote_subject_dir, args, flags):
         flags['grow_label'] = lu.grow_label(
             subject, args.vertice_indice, args.hemi, args.label_name, args.label_r, args.n_jobs)
 
-    if 'find_faces_with_vertices_from_different_labels' in args.function:
-        flags['find_faces_with_vertices_from_different_labels'] = find_faces_with_vertices_from_different_labels(
+    if 'calc_faces_contours' in args.function:
+        flags['calc_faces_contours'] = calc_faces_contours(
             subject, args.atlas)
 
     return flags

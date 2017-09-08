@@ -152,18 +152,24 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
 #             new_label.save(op.join(labels_fol, new_label.name))
 
 
-def create_vertices_labels_lookup(subject, atlas, overwrite=False):
-    output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_lookup.pkl'.format(atlas))
+def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwrite=False):
+    output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_{}lookup.pkl'.format(
+        atlas, 'ids_' if save_labels_ids else ''))
     if op.isfile(output_fname) and not overwrite:
         lookup = utils.load(output_fname)
         return lookup
     lookup = {}
+
     for hemi in utils.HEMIS:
         lookup[hemi] = {}
         labels = read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        if save_labels_ids:
+            labels_names = [l.name for l in labels]
         for label in labels:
+            if save_labels_ids:
+                label_id = labels_names.index(label.name)
             for vertice in label.vertices:
-                lookup[hemi][vertice] = label.name
+                lookup[hemi][vertice] = label_id if save_labels_ids else label.name
     utils.save(lookup, output_fname)
     return lookup
 
