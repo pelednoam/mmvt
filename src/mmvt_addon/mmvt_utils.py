@@ -759,7 +759,7 @@ def make_dir(fol):
     return fol
 
 
-def profileit(sort_field='cumtime'):
+def profileit(sort_field='cumtime', root_folder=''):
     """
     Parameters
     ----------
@@ -790,7 +790,9 @@ def profileit(sort_field='cumtime'):
         def wrapper(*args, **kwargs):
             prof = cProfile.Profile()
             retval = prof.runcall(func, *args, **kwargs)
-            prof_dir = op.join(get_user_fol(), 'profileit')
+            prof_root_folder = get_user_fol() if root_folder == '' else root_folder
+            make_dir(prof_root_folder)
+            prof_dir = op.join(prof_root_folder, 'profileit')
             make_dir(prof_dir)
             prof_fname = op.join(prof_dir, '{}_{}'.format(func.__name__, rand_letters(5)))
             stat_fname = '{}.stat'.format(prof_fname)

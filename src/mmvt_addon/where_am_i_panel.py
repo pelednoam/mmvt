@@ -460,30 +460,32 @@ class WhereAmIPanel(bpy.types.Panel):
 
 
 def init(addon):
-    trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
-    volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))
-    luts = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*ColorLUT.npz'))
-    if op.isfile(trans_fname):
-        WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(trans_fname))
-    for atlas_vol_fname, atlas_vol_lut_fname in zip(volumes, luts):
-        atlas = mu.namebase(atlas_vol_fname)[:-len('+aseg')]
-        WhereAmIPanel.vol_atlas[atlas] = np.load(atlas_vol_fname)
-        WhereAmIPanel.vol_atlas_lut[atlas] = np.load(atlas_vol_lut_fname)
-    subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
-    if len(annot_files) > 0:
-        files_names = [mu.namebase(fname)[3:] for fname in annot_files]
-        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
-        bpy.context.scene.subject_annot_files = files_names[0]
-    else:
-        bpy.context.scene.subject_annot_files = ''
+    try:
+        trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
+        volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))
+        luts = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*ColorLUT.npz'))
+        if op.isfile(trans_fname):
+            WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(trans_fname))
+        for atlas_vol_fname, atlas_vol_lut_fname in zip(volumes, luts):
+            atlas = mu.namebase(atlas_vol_fname)[:-len('+aseg')]
+            WhereAmIPanel.vol_atlas[atlas] = np.load(atlas_vol_fname)
+            WhereAmIPanel.vol_atlas_lut[atlas] = np.load(atlas_vol_lut_fname)
+        subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+        annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
+        if len(annot_files) > 0:
+            files_names = [mu.namebase(fname)[3:] for fname in annot_files]
+            items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+            bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
+            bpy.context.scene.subject_annot_files = files_names[0]
+        else:
+            bpy.context.scene.subject_annot_files = ''
 
-    bpy.context.scene.closest_label_output = ''
-    bpy.context.scene.new_label_r = 5
-    WhereAmIPanel.addon = addon
-    register()
-
+        bpy.context.scene.closest_label_output = ''
+        bpy.context.scene.new_label_r = 5
+        WhereAmIPanel.addon = addon
+        register()
+    except:
+        print("Can't init where-am-I panel!s")
 
 def register():
     try:

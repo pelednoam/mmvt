@@ -20,20 +20,22 @@ function splitting_cortical()
               mkdir(output_folder_hemi);
           end
           chdir(output_folder_hemi);
+          contours_faces = load([MMVT_DIR '/' SUBJECT '/contours_faces_' APARC '.mat']);
           inner_splitting_cortical_surface(...
               [SUBJECTS_DIR '/' SUBJECT '/label/' hemi '.' APARC '.annot'], ...
               [SUBJECTS_DIR '/' SUBJECT '/label/' hemi '.' APARC '.annot.dpv'], ...
               [MMVT_DIR '/' SUBJECT '/surf/' hemi '.' SURF_TYPE '.mat'], ... 
-              [hemi '.' SURF_TYPE '.' APARC]);
+              [hemi '.' SURF_TYPE '.' APARC], ...
+              contours_faces.(hemi));
               %[SUBJECTS_DIR '/' SUBJECT '/surf/' hemi '.' SURF_TYPE '.srf'], ... 
         end
     end
 
     function inner_splitting_cortical_surface(annotation_file, dpv_output_file, ...
-            subject_surface, file_prefix)
+            subject_surface, file_prefix, contours_faces)
         ret = annot2dpv(annotation_file, dpv_output_file, FREESURFER_HOME);
         if ret
-            splitsrf(subject_surface, dpv_output_file, file_prefix);
+            splitsrf(subject_surface, dpv_output_file, file_prefix, contours_faces);
         end
     end
 

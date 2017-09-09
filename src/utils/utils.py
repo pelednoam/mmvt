@@ -44,6 +44,7 @@ is_mac = mu.is_mac
 read_floats_rx = mu.read_floats_rx
 read_numbers_rx = mu.read_numbers_rx
 timeit = mu.timeit
+profileit = mu.profileit
 get_time = mu.get_time
 get_data_max_min = mu.get_data_max_min
 get_max_abs = mu.get_max_abs
@@ -1833,6 +1834,7 @@ def pca(x, comps_num=1):
 
 def all_items_equall(arr):
     return all([x == arr[0] for x in arr])
+
 
 # From http://stackoverflow.com/a/28952464/1060738
 # def read_windows_dir_shortcut(dir_path):

@@ -410,15 +410,18 @@ def run_faulthandler():
 @mmvt_utils.tryit()
 def fix_scale():
     for hemi in mmvt_utils.HEMIS:
-        hemi_obj = bpy.data.objects[hemi]
-        for i in range(3):
-            hemi_obj.scale[i] = 0.1
-        for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
+        hemi_obj = bpy.data.objects.get(hemi, None)
+        if hemi_obj is not None:
             for i in range(3):
-                label_obj.scale[i] = 0.1
-    for sub_obj in bpy.data.objects['Subcortical_structures'].children:
-        for i in range(3):
-            sub_obj.scale[i] = 0.1
+                hemi_obj.scale[i] = 0.1
+        if bpy.data.objects.get('Cortex-{}'.format(hemi), None) is not None:
+            for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
+                for i in range(3):
+                    label_obj.scale[i] = 0.1
+    if bpy.data.objects.get('Subcortical_structures', None) is not None:
+        for sub_obj in bpy.data.objects['Subcortical_structures'].children:
+            for i in range(3):
+                sub_obj.scale[i] = 0.1
 
 
 def main(addon_prefs=None):

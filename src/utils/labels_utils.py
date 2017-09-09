@@ -106,6 +106,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
             utils.remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
     mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
                               subjects_dir=subjects_dir)
+    return labels
 
 
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
@@ -166,10 +167,8 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
         if save_labels_ids:
             labels_names = [l.name for l in labels]
         for label in labels:
-            if save_labels_ids:
-                label_id = labels_names.index(label.name)
             for vertice in label.vertices:
-                lookup[hemi][vertice] = label_id if save_labels_ids else label.name
+                lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
     utils.save(lookup, output_fname)
     return lookup
 
