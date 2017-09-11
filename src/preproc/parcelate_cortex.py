@@ -47,9 +47,9 @@ def parcelate(subject, atlas, hemi, surface_type, n_jobs=6):
         # are in different labels, behave differently
         # nuCidx = len(np.unique(Cidx))
         # if nuCidx == 1: # If all vertices share same label
-        # same_label = utils.all_items_equall(Cidx)
-        # if same_label:
-        if Cidx[0] == Cidx[1] == Cidx[2]:
+        # if Cidx[0] == Cidx[1] == Cidx[2]:
+        same_label = utils.all_items_equall(Cidx)
+        if same_label:
             # Add the current face to the list of faces of the
             # respective label, and don't create new faces
             facL[Cidx[0]] += [Cfac.tolist()]
