@@ -188,18 +188,21 @@ def create_surfaces(subject, hemi='both', overwrite=False):
         for surf_type in ['inflated', 'pial']:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
-            mmvt_hemi_mat_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.mat'.format(hemi, surf_type))
+            mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
+            # mmvt_hemi_mat_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.mat'.format(hemi, surf_type))
             if not op.isfile(mmvt_hemi_ply_fname) or overwrite:
                 print('Reading {}'.format(surf_name))
-                verts, faces = nib_fs.read_geometry(surf_name)
+                if op.isfile(mmvt_hemi_npz_fname):
+                    verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+                else:
+                    verts, faces = nib_fs.read_geometry(surf_name)
                 if surf_type == 'inflated':
                     verts_offset = 55 if hemi == 'rh' else -55
                     verts[:, 0] = verts[:, 0] + verts_offset
                 utils.write_ply_file(verts, faces, mmvt_hemi_ply_fname, True)
-                sio.savemat(mmvt_hemi_mat_fname, mdict={'verts': verts, 'faces': faces + 1})
+                # sio.savemat(mmvt_hemi_mat_fname, mdict={'verts': verts, 'faces': faces + 1})
     return all([utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'surf', file_name)) for file_name in \
-                ('{hemi}.pial.ply', '{hemi}.pial.npz', '{hemi}.pial.mat', '{hemi}.inflated.ply', '{hemi}.inflated.npz',
-                 '{hemi}.inflated.mat')])
+                ('{hemi}.pial.ply', '{hemi}.pial.npz', '{hemi}.inflated.ply', '{hemi}.inflated.npz')])
 
 
 # def create_surfaces(subject, hemi='both', overwrite=False):
@@ -424,21 +427,23 @@ def solve_labels_collisions(subject, atlas, surf_type='inflated', n_jobs=6):
 
 
 @utils.timeit
-def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False, n_jobs=6):
+def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False,
+                     overwrite_vertices_labels_lookup=False, n_jobs=6):
     utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
     labels_to_annot(subject, atlas, overwrite_annotation, n_jobs=n_jobs)
     params = []
 
     for surface_type in ['pial', 'inflated']:
         files_exist = True
+        vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
+            subject, atlas, True, overwrite_vertices_labels_lookup)
         for hemi in HEMIS:
             blender_labels_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
             labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
-                len(glob.glob(op.join(blender_labels_fol, '*.ply'))) == len(labels)
-
+                len(glob.glob(op.join(blender_labels_fol, '*.ply'))) >= len(labels)
             if overwrite or not files_exist:
-                params.append((subject, atlas, hemi, surface_type))
+                params.append((subject, atlas, hemi, surface_type, vertices_labels_ids_lookup[hemi]))
 
     if len(params) > 0:
         results = utils.run_parallel(_parcelate_cortex_parallel, params, njobs=n_jobs)
@@ -449,9 +454,9 @@ def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False
 
 def _parcelate_cortex_parallel(p):
     from src.preproc import parcelate_cortex
-    subject, atlas, hemi, surface_type = p
+    subject, atlas, hemi, surface_type, vertices_labels_ids_lookup = p
     print('Parcelate the {} {} cortex'.format(hemi, surface_type))
-    return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type)
+    return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup)
 
 
 def save_matlab_labels_vertices(subject, atlas):
@@ -515,10 +520,11 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
-        return False
+        create_spatial_connectivity(subject)
+        return calc_labeles_contours(subject, atlas, overwrite, verbose)
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
     for hemi in utils.HEMIS:
-        verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
         contours = np.zeros((len(verts)))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         # labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
@@ -549,6 +555,7 @@ def create_verts_faces_lookup(subject):
             for v_ind in f:
                 lookup[v_ind].append(f_ind)
         utils.save(lookup, output_fname.format(hemi=hemi))
+
 
 @utils.timeit
 def calc_faces_contours(subject, atlas):
@@ -604,7 +611,7 @@ def calc_labels_center_of_mass(subject, atlas):
         if np.all(labels[0].pos == 0):
             verts = {}
             for hemi in utils.HEMIS:
-                verts[hemi], _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+                verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)
             for label in labels:
                 label.pos = verts[label.hemi][label.vertices]
         center_of_mass = lu.calc_center_of_mass(labels)
@@ -710,6 +717,7 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
         args.overwrite_fs_files, args.print_traceback, args.sftp_port)
 
 
+@utils.tryit()
 def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
     output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
@@ -729,6 +737,7 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
     return aparc_ret and lut_ret
 
 
+@utils.tryit()
 def create_high_level_atlas(subject):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
         fu.create_annotation_file(
@@ -773,7 +782,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'parcelate_cortex'):
         flags['parcelate_cortex'] = parcelate_cortex(
-            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_annotation, args.n_jobs)
+            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_annotation,
+            args.overwrite_vertices_labels_lookup, args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
@@ -843,6 +853,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_subcorticals', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_annotation', help='overwrite_annotation', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_vertices_labels_lookup', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_morphing_labels', help='overwrite_morphing_labels', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_hemis_ply', help='overwrite_hemis_ply', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)

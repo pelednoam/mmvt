@@ -1219,7 +1219,7 @@ def save_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM', smoo
                                      norm_by_percentile, norm_percs, plot_cb)
         subject = MRI_SUBJECT if morph_to_subject == '' else morph_to_subject
         for hemi in HEMIS:
-            verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+            verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0] != data.shape[0]:
                 raise Exception('save_activity_map: wrong number of vertices!')
@@ -1346,7 +1346,7 @@ def save_vertex_activity_map(events, stat, stcs_conds=None, inverse_method='dSPM
             raise Exception('stat not in [STAT_DIFF, STAT_AVG]!')
         stcs = get_stat_stc_over_conditions(events, stat, stcs_conds, inverse_method, smoothed=True)
         for hemi in HEMIS:
-            verts, faces = utils.read_pial_npz(MRI_SUBJECT, MMVT_DIR, hemi)
+            verts, faces = utils.read_pial(MRI_SUBJECT, MMVT_DIR, hemi)
             data = stcs[hemi]
             if verts.shape[0]!=data.shape[0]:
                 raise Exception('save_vertex_activity_map: wrong number of vertices!')

@@ -1,11 +1,10 @@
-import os
 import os.path as op
 import numpy as np
 import shutil
-import time
 import csv
 import nibabel as nib
 from mne.label import _read_annot
+from collections import Iterable
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -80,8 +79,11 @@ def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only
         print('Run python -m src.preproc.anatomy -s {} -a {} -f create_surfaces,create_annotation'.format(subject, atlas))
         return False
 
-    ret, aparc_aseg_fname = fu.create_aparc_aseg_file(
+    # aparc_aseg_fname
+    ret = fu.create_aparc_aseg_file(
         subject, atlas, SUBJECTS_DIR, overwrite_aseg_file, print_only, mmvt_args=args)
+    if isinstance(ret, Iterable):
+        ret, aparc_aseg_fname = ret
     if not ret:
         return False
 

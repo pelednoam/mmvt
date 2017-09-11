@@ -13,6 +13,12 @@ try:
 except:
     pass
 
+try:
+    import mne
+    MNE_EXIST = True
+except:
+    MNE_EXIST = False
+
 import traceback
 import math
 import sys
@@ -850,7 +856,7 @@ def dump_args(func):
 
 
 # def tryit(throw_exception=True):
-def tryit(except_retval=None, throw_exception=False):
+def tryit(except_retval=False, throw_exception=False):
     def real_tryit(func):
         def wrapper(*args, **kwargs):
             try:
@@ -1726,21 +1732,21 @@ def check_hemi(hemi):
     return hemi
 
 
-class Label(object):
-    vertices = []
-    pos = []
-    values = []
-    comment = ''
-    hemi = ''
-    name = ''
+if MNE_EXIST:
+    class Label(mne.label.Label):
+        pass
+else:
+    class Label(object):
+        vertices, pos, values = [], [], []
+        comment, hemi, name = '', '', ''
 
-    def __init__(self, name, hemi, vertices, pos=[], values=[], comment=''):
-        self.name = name
-        self.hemi = hemi
-        self.vertices = vertices
-        self.pos = pos
-        self.values = values
-        self.comment = comment
+        def __init__(self, name, hemi, vertices, pos=[], values=[], comment=''):
+            self.name = name
+            self.hemi = hemi
+            self.vertices = vertices
+            self.pos = pos
+            self.values = values
+            self.comment = comment
 
 
 def read_label_file(label_fname):
@@ -1775,7 +1781,7 @@ def read_label_file(label_fname):
     values = values[order]
     _, _, label, hemi = get_hemi_delim_and_pos(namebase(label_fname))
     name = '{}-{}'.format(label, hemi)
-    return Label(name, hemi, vertices, pos, values, comment)
+    return Label(vertices, pos, values, hemi, name=name)
 
 
 def read_labels_from_annots(subject, subjects_dir, atlas, hemi='both'):
@@ -1832,7 +1838,8 @@ def read_labels_from_annot(annot_fname):
             # label is not part of cortical surface
             continue
         name = label_name.decode() + '-' + hemi
-        label = Label(name, hemi, vertices, [], [])
+        # label = Label(name, hemi, vertices, [], [])
+        label = Label(vertices, None, None, hemi, name=name)
         labels.append(label)
 
     # sort the labels by label name

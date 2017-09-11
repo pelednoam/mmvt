@@ -14,6 +14,7 @@ try:
 except:
     print('No matplotlib')
 import subprocess
+import functools
 from functools import partial
 import warnings
 from decorator import decorator
@@ -222,13 +223,14 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
-def read_pial_npz(subject, mmvt_dir, hemi):
-    d = np.load(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi)))
-    return d['verts'], d['faces']
+# def read_pial_npz(subject, mmvt_dir, hemi):
+#     d = np.load(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi)))
+#     return d['verts'], d['faces']
 
 
-def read_pial(subject, mmvt_dir, hemi):
-    verts, faces = read_ply_file(op.join(mmvt_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+@functools.lru_cache(maxsize=None)
+def read_pial(subject, mmvt_dir, hemi, surface_type='pial'):
+    verts, faces = read_ply_file(op.join(mmvt_dir, subject, 'surf', '{}.{}.ply'.format(hemi, surface_type)))
     return verts, faces
 
 

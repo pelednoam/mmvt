@@ -48,7 +48,7 @@ def load_surf(subject, mmvt_dir, subjects_dir):
     verts = {}
     for hemi in HEMIS:
         if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
-            hemi_verts, _ = utils.read_pial_npz(subject, mmvt_dir, hemi)
+            hemi_verts, _ = utils.read_pial(subject, mmvt_dir, hemi)
         elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
             hemis_verts, _ = utils.read_ply_file(
                 op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
@@ -163,7 +163,14 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
         atlas, 'ids_' if save_labels_ids else ''))
     if op.isfile(output_fname) and not overwrite:
         lookup = utils.load(output_fname)
-        return lookup
+        lookup_ok = True
+        for hemi in utils.HEMIS:
+            verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+            lookup_ok = lookup_ok and len(lookup[hemi].keys()) == len(verts)
+        if lookup_ok:
+            return lookup
+        else:
+            create_vertices_labels_lookup(subject, atlas, save_labels_ids, overwrite=True)
     lookup = {}
 
     for hemi in utils.HEMIS:

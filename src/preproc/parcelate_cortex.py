@@ -17,12 +17,14 @@ def mode(arr):
 
 
 # @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
-def parcelate(subject, atlas, hemi, surface_type, overwrite_vertices_labels_lookup=False):
+def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=None,
+              overwrite_vertices_labels_lookup=False):
     output_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
     utils.make_dir(output_fol)
     vtx, fac = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surface_type)))
-    vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
-        subject, atlas, True, overwrite_vertices_labels_lookup)[hemi]
+    if vertices_labels_ids_lookup is None:
+        vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
+            subject, atlas, True, overwrite_vertices_labels_lookup)[hemi]
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
     if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
         labels.append(lu.Label('unknown-{}'.format(hemi), hemi, []))

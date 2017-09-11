@@ -168,7 +168,7 @@ def save_fmri_hemi_data(subject, hemi, contrast_name, fmri_fname, task, output_f
 
 
 def _save_fmri_hemi_data(subject, hemi, x, contrast_name, task, output_fol='', output_name=''):
-    verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+    verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
     if len(verts) != x.shape[0]:
         raise Exception('Wrong number of vertices!')
     if output_fol == '':
@@ -1021,12 +1021,12 @@ def check_vertices_num(subject, hemi, x, morph_from_subject=''):
     elif x.shape[0] == FSAVG5_VERTS:
         morph_from_subject = 'fsaverage5'
     else:
-        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
         if x.shape[0] == verts.shape[0]:
             morph_from_subject = subject
         else:
             if morph_from_subject != '':
-                verts, faces = utils.read_pial_npz(morph_from_subject, MMVT_DIR, hemi)
+                verts, faces = utils.read_pial(morph_from_subject, MMVT_DIR, hemi)
                 if x.shape[0] != verts.shape[0]:
                     raise Exception("Can't find the subject to morph from!")
             else:
@@ -1076,7 +1076,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='f
         if not overwrite and len(glob.glob(op.join(fol, '*.npy'))) == T:
             hemi_minmax.append(utils.calc_min_max(data, norm_percs=norm_percs))
             continue
-        verts, faces = utils.read_pial_npz(subject, MMVT_DIR, hemi)
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
         file_verts_num, subject_verts_num = data.shape[0], verts.shape[0]
         if file_verts_num != subject_verts_num:
             if file_verts_num == FSAVG_VERTS:
