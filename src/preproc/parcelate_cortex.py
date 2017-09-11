@@ -42,7 +42,7 @@ def parcelate(subject, atlas, hemi, surface_type, n_jobs=6):
     for f in range (nF):
         # Current face & labels
         Cfac = fac[f]
-        Cidx = [vertices_labels_ids_lookup[vert_ind] for vert_ind in Cfac]
+        Cidx = [vertices_labels_ids_lookup[vert_ind] for vert_ind in Cfac if vert_ind in vertices_labels_ids_lookup]
         # Depending on how many vertices of the current face
         # are in different labels, behave differently
         # nuCidx = len(np.unique(Cidx))
