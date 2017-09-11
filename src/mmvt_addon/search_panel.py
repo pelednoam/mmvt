@@ -112,6 +112,7 @@ class SearchPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Search Panel"
     addon = None
+    init = False
     marked_objects = []
 
     def draw(self, context):
@@ -131,6 +132,7 @@ class SearchPanel(bpy.types.Panel):
 
 def init(addon):
     SearchPanel.addon = addon
+    SearchPanel.init = True
     register()
 
 

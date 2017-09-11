@@ -415,7 +415,9 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             show_icon = show_hide_icon[action]
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
             row.operator(bl_idname, text=show_text, icon=show_icon)
-        if _addon().is_pial():
+        subs_exist = bpy.data.objects.get('Subcortical_structures', None) is not None and \
+                     len(bpy.data.objects['Subcortical_structures'].children) > 0
+        if _addon().is_pial() and subs_exist:
             sub_vis = not bpy.context.scene.objects_show_hide_sub_cortical
             sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
             sub_icon = show_hide_icon['show' if sub_vis else 'hide']
@@ -475,6 +477,9 @@ bpy.types.Scene.current_view_direction = 0
 
 def init(addon):
     ShowHideObjectsPanel.addon = addon
+    if bpy.data.objects.get('lh', None) is None:
+        print('No brain!')
+        return
     bpy.context.scene.objects_show_hide_rh = False
     bpy.context.scene.objects_show_hide_lh = False
     bpy.context.scene.objects_show_hide_sub_cortical = False

@@ -247,6 +247,7 @@ class FreeviewPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Freeview"
     addon = None
+    init = False
     freeview_in_queue = None
     freeview_out_queue = None
 
@@ -277,9 +278,9 @@ class FreeviewPanel(bpy.types.Panel):
 
 def init(addon, addon_prefs=None):
     FreeviewPanel.addon = addon
-    print('freeview command: {}'.format(addon_prefs.freeview_cmd))
-    print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
-    print('Use -stdin? {}'.format(addon_prefs.freeview_cmd_stdin))
+    # print('freeview command: {}'.format(addon_prefs.freeview_cmd))
+    # print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
+    # print('Use -stdin? {}'.format(addon_prefs.freeview_cmd_stdin))
     FreeviewPanel.addon_prefs = addon_prefs
     bpy.context.scene.freeview_listen_to_keyboard = False
     bpy.context.scene.freeview_listener_is_running = False
@@ -287,6 +288,7 @@ def init(addon, addon_prefs=None):
         #mu.hemi_files_exists(op.join(mu.get_user_fol(), 'fmri_{hemi}.npy'))
     bpy.context.scene.electrodes_exist = not bpy.data.objects.get('Deep_electrodes', None) is None
     bpy.context.scene.freeview_messages = ''
+    FreeviewPanel.init = True
     register()
 
 

@@ -109,6 +109,7 @@ class DTIPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "DTI"
     addon = None
+    init = False
     # d = mu.Bag({})
 
     def draw(self, context):
@@ -127,10 +128,12 @@ def check_for_dti_files():
 def init(addon):
     if not check_for_dti_files():
         unregister()
+        DTIPanel.init = False
     else:
         register()
         DTIPanel.addon = addon
         mu.create_empty_if_doesnt_exists(PARENT_OBJ, addon.BRAIN_EMPTY_LAYER, None, 'Brain')
+        DTIPanel.init = True
         # DTIPanel.d = d
         # print('DRI panel initialization completed successfully!')
 

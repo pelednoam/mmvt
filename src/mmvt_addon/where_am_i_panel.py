@@ -447,6 +447,7 @@ class WhereAmIPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Where Am I"
     addon = None
+    init = False
     subject_orig_trans = None
     vol_atlas = {}
     vol_atlas_lut = {}
@@ -483,9 +484,11 @@ def init(addon):
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
         WhereAmIPanel.addon = addon
+        WhereAmIPanel.init = True
         register()
     except:
         print("Can't init where-am-I panel!s")
+
 
 def register():
     try:

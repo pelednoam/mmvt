@@ -517,6 +517,7 @@ class PlayPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Play"
     addon = None
+    init = False
     data = None
     loop_indices = None
     is_playing = False
@@ -708,6 +709,7 @@ def init(addon):
     register()
     PlayPanel.addon = addon
     init_plotting()
+    PlayPanel.init = True
     # print('PlayPanel initialization completed successfully!')
 
 

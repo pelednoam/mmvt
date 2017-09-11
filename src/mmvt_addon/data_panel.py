@@ -966,6 +966,7 @@ class DataMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Import objects and data"
     addon = None
+    init = False
     meg_evoked_files = []
     evoked_files = []
     externals = []
@@ -1099,6 +1100,7 @@ def init(addon):
         bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(
             items=items,description="fMRI_dynamic")
         bpy.context.scene.fMRI_dynamic_files = files_names[0]
+    DataMakerPanel.init = True
     register()
 
 

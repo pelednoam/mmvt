@@ -800,7 +800,7 @@ def connections_draw(self, context):
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
-bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(items=[],
+bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(items=[('', '', '', 0)],
         description="Connectivity files", update=connectivity_files_update)
 bpy.types.Scene.connections_threshold = bpy.props.FloatProperty(default=5, min=0, description="")
 bpy.types.Scene.abs_threshold = bpy.props.BoolProperty(
@@ -832,6 +832,7 @@ class ConnectionsPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Connections"
     addon = None
+    init = False
     d = None #mu.Bag({})
     show_connections = True
     do_filter = True
@@ -857,14 +858,15 @@ def init(addon):
     ConnectionsPanel.connections_files_exist = len(conn_files) > 0
     if not ConnectionsPanel.connections_files_exist:
         print('No connectivity files were found in {}'.format(conn_files_template))
+        ConnectionsPanel.init = False
         unregister()
         return
 
     conn_names = [mu.namebase(fname).replace('_', ' ') for fname in conn_files]
     conn_items = [(c, c, '', ind) for ind, c in enumerate(conn_names)]
-    bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(
-        items=conn_items, description="connectivity files", update=connectivity_files_update)
     if len(conn_names) > 0:
+        bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(
+            items=conn_items, description="connectivity files", update=connectivity_files_update)
         ConnectionsPanel.conn_names = conn_names
         conn_obj_names = ['connections_{}'.format(con_name.replace(' ', '_')) for con_name in conn_names]
         for parent_obj in bpy.data.objects['Functional maps'].children:
@@ -877,6 +879,7 @@ def init(addon):
     ConnectionsPanel.addon = addon
     bpy.context.scene.connections_threshold = 0
     check_connections()
+    ConnectionsPanel.init = True
     register()
 
 

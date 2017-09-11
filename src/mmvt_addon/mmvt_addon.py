@@ -424,42 +424,39 @@ def fix_scale():
                 sub_obj.scale[i] = 0.1
 
 
+def get_classes():
+    classes = (
+        appearance_panel.AppearanceMakerPanel,
+        show_hide_panel.ShowHideObjectsPanel
+    )
+    return classes
+
+
+def get_panels():
+    return (appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
+            render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
+            electrodes_panel, streaming_panel, stim_panel, fMRI_panel, connections_panel, vertex_data_panel, dti_panel,
+            pizco_panel)
+
+
 def main(addon_prefs=None):
     init(addon_prefs)
     try:
         mmvt = sys.modules[__name__]
-        appearance_panel.init(mmvt)
-        show_hide_panel.init(mmvt)
-        selection_panel.init(mmvt)
-        coloring_panel.init(mmvt)
-        electrodes_panel.init(mmvt)
-        play_panel.init(mmvt)
-        filter_panel.init(mmvt)
-        freeview_panel.init(mmvt, addon_prefs)
-        render_panel.init(mmvt)
-        fMRI_panel.init(mmvt)
-        streaming_panel.init(mmvt)
-        colorbar_panel.init(mmvt)
-        search_panel.init(mmvt)
-        transparency_panel.init(mmvt)
-        where_am_i_panel.init(mmvt)
-        data_panel.init(mmvt)
-        stim_panel.init(mmvt)
-        dti_panel.init(mmvt)
-        connections_panel.init(mmvt)
-        vertex_data_panel.init(mmvt)
-        load_results_panel.init(mmvt)
-        pizco_panel.init(mmvt)
+        for panel in get_panels():
+            panel.unregister()
+        for panel in get_panels():
+            panel.init(mmvt)
+            # bpy.utils.register_class(cls)
         # list_panel.init(mmvt)
-        # _listener_in_queue, _listener__out_queue = start_listener()
-        # listener_panel.init(mmvt)
         pass
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
 
     fix_scale()
-    split_view(0)
+    if bpy.data.objects.get('rh'):
+        split_view(0)
     show_electrodes(False)
     show_hide_connections(False)
     mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)

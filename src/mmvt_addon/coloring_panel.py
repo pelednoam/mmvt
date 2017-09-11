@@ -741,7 +741,12 @@ def create_inflated_curv_coloring():
         print('Creating the inflated curvatures coloring')
         for hemi in mu.HEMIS:
             cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-            curv = np.load(op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi)))
+            curv_fname = op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi))
+            faces_verts_fname = op.join(mu.get_user_fol(), 'faces_verts_{}.npy'.format(hemi))
+            if not op.isfile(curv_fname) or not op.isfile(faces_verts_fname):
+                print("Can't plot the {} curves!".format(hemi))
+                continue
+            curv = np.load(curv_fname)
             lookup = np.load(op.join(mu.get_user_fol(), 'faces_verts_{}.npy'.format(hemi)))
             color_obj_curvs(cur_obj, curv, lookup)
         for hemi in mu.HEMIS:
@@ -1871,6 +1876,7 @@ def init(addon):
     ColoringMakerPanel.faces_verts = None
     ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = None, None
 
+    register()
     init_meg_activity_map()
     init_fmri_activity_map()
     init_meg_labels_coloring_type()
@@ -1889,7 +1895,6 @@ def init(addon):
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
     ColoringMakerPanel.init = True
-    register()
 
 
 def init_labels_vertices():

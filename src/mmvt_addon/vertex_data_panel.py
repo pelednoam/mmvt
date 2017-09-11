@@ -138,6 +138,7 @@ class DataInVertMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Data in vertex"
     addon = None
+    init = False
 
     def draw(self, context):
         layout = self.layout
@@ -151,7 +152,8 @@ def init(addon):
     lookup_files = glob.glob(op.join(mu.get_user_fol(), 'activity_map_*_verts_lookup.npy'))
     if len(lookup_files) == 0:
         print('No lookup files for vertex_data_panel')
-        return
+        DataInVertMakerPanel.init = False
+    DataInVertMakerPanel.init = True
     register()
 
 

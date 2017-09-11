@@ -507,6 +507,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Selection"
     addon = None
+    init = False
     modalities_num = 0
     connection_files_exist = False
     data, names, curves_sep, fcurves = {}, {}, {}, {}
@@ -583,6 +584,7 @@ def init(addon):
     bpy.context.scene.graph_max_min = True
     bpy.context.scene.find_curves_sep_auto = False
     get_data()
+    SelectionMakerPanel.init = True
     register()
 
 

@@ -577,6 +577,7 @@ class FilteringMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Filter number of curves"
     addon = None
+    init = False
     electrodes_colors = {}
     filter_items = []
 
@@ -587,6 +588,7 @@ class FilteringMakerPanel(bpy.types.Panel):
 def init(addon):
     FilteringMakerPanel.addon = addon
     get_filter_functions()
+    FilteringMakerPanel.init = True
     register()
 
 

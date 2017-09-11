@@ -509,6 +509,7 @@ class AppearanceMakerPanel(bpy.types.Panel):
     bl_label = "Appearance"
     addon = None
     init = False
+    init = False
     cortex_inflated_rh = 0
     cortex_inflated_lh = 0
     cortex_rh = 0
@@ -550,12 +551,11 @@ def init(addon):
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
     AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
     AppearanceMakerPanel.showing_electrodes = showing_electordes()
-    bpy.ops.mmvt.selection_listener()
+    AppearanceMakerPanel.init = True
 
 
 def register():
     try:
-        unregister()
         bpy.utils.register_class(AppearanceMakerPanel)
         bpy.utils.register_class(ShowHideMEGSensors)
         bpy.utils.register_class(ShowHideElectrodes)
@@ -563,8 +563,10 @@ def register():
         bpy.utils.register_class(ShowHideConnections)
         bpy.utils.register_class(SelectionListener)
         bpy.utils.register_class(SnapCursor)
+        bpy.ops.mmvt.selection_listener()
     except:
         print("Can't register Appearance Panel!")
+        print(traceback.format_exc())
 
 
 def unregister():

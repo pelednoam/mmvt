@@ -595,6 +595,7 @@ class RenderingMakerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Render"
     addon = None
+    init = False
     render_in_queue = None
     background_rendering = False
     queue = None
@@ -623,6 +624,7 @@ def init(addon):
     logging.basicConfig(
         filename=op.join(mu.get_user_fol(), 'logs', 'reander_panel.log'),
         level=logging.DEBUG, format='%(asctime)-15s %(levelname)8s %(name)s %(message)s')
+    RenderingMakerPanel.init = True
     register()
 
 

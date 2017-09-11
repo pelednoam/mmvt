@@ -56,6 +56,7 @@ class TransparencyPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Transparency"
     addon = None
+    init = False
 
     def draw(self, context):
         transparency_draw(self, context)
@@ -67,6 +68,7 @@ bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0
 
 def init(addon):
     TransparencyPanel.addon = addon
+    TransparencyPanel.init = True
     register()
 
 
