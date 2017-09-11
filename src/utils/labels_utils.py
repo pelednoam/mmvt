@@ -9,6 +9,11 @@ import traceback
 from collections import defaultdict
 import functools
 
+from src.mmvt_addon import mmvt_utils as mu
+read_labels_from_annots = mu.read_labels_from_annots
+read_labels_from_annot = mu.read_labels_from_annot
+Label = mu.Label
+
 try:
     from src.utils import utils
     from src.utils import preproc_utils as pu
@@ -106,7 +111,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
             utils.remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
     mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
                               subjects_dir=subjects_dir)
-    return labels
+    return len(labels) > 0
 
 
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
@@ -163,12 +168,23 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
 
     for hemi in utils.HEMIS:
         lookup[hemi] = {}
-        labels = read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        create_unknown_label = False
+        labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
+            create_unknown_label = True
+            verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+            unknown_verts = set(range(verts.shape[0]))
         if save_labels_ids:
             labels_names = [l.name for l in labels]
         for label in labels:
             for vertice in label.vertices:
                 lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
+            if create_unknown_label:
+                unknown_verts -= set(label.vertices)
+        if create_unknown_label:
+            for vertice in unknown_verts:
+                lookup[hemi][vertice] = len(labels_names) if save_labels_ids else 'unknown-{}'.format(hemi)
+
     utils.save(lookup, output_fname)
     return lookup
 
@@ -342,7 +358,7 @@ def get_hemi_from_name(label_name):
     return hemi
 
 
-# @functools.lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=[], rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
                 hemi='both', surf_name='pial', labels_fol='', read_only_from_annot=False, n_jobs=1):
@@ -350,14 +366,18 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
         labels = []
         if try_first_from_annotation:
             try:
-                labels = mne.read_labels_from_annot(subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name,
-                                                    hemi=hemi)
+                labels = mne.read_labels_from_annot(
+                    subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
             except:
-                print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}. Trying to read labels files".format(
-                    subject, atlas, surf_name, hemi))
-                if not read_only_from_annot:
-                    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-                    labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+                try:
+                    labels = read_labels_from_annots(subject, subjects_dir, atlas, hemi)
+                except:
+                    print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
+                        subject, atlas, surf_name, hemi))
+                    print('Trying to read labels files')
+                    if not read_only_from_annot:
+                        labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
+                        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
                 labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
@@ -417,23 +437,26 @@ def _read_labels_parallel(files_chunk):
     return labels
 
 
-def read_hemi_labels(subject, subjects_dir, atlas, hemi, surf_name='pial', labels_fol=''):
-    # todo: replace with labels utils read labels function
-    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol=='' else labels_fol
-    annot_fname_template = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
-    if utils.both_hemi_files_exist(annot_fname_template):
-        labels = mne.read_labels_from_annot(subject, atlas, hemi, surf_name)
-        if len(labels) == 0:
-            raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
-    else:
-        labels = []
-        for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
-            label = mne.read_label(label_file)
-            labels.append(label)
-        if len(labels) == 0:
-            print('No labels were found in {}!'.format(labels_fol))
-            return []
-    return labels
+# def read_hemi_labels(subject, subjects_dir, atlas, hemi, surf_name='pial', labels_fol=''):
+#     # todo: replace with labels utils read labels function
+#     labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol=='' else labels_fol
+#     annot_fname_template = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
+#     if utils.both_hemi_files_exist(annot_fname_template):
+#         try:
+#             labels = mne.read_labels_from_annot(subject, atlas, hemi, surf_name)
+#         except:
+#             labels = read_labels_from_annots(subject, subjects_dir, atlas, hemi)
+#         if len(labels) == 0:
+#             raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
+#     else:
+#         labels = []
+#         for label_file in glob.glob(op.join(labels_fol, '*{}.label'.format(hemi))):
+#             label = mne.read_label(label_file)
+#             labels.append(label)
+#         if len(labels) == 0:
+#             print('No labels were found in {}!'.format(labels_fol))
+#             return []
+#     return labels
 
 
 def calc_center_of_mass(labels, ret_mat=False):

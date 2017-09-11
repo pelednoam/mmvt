@@ -62,6 +62,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
                 ans = input('Do you wish to continue (y/n)? ')
                 if not au.is_true(ans):
                     continue
+            flags['prepare_subject_folder'] = True
 
             flags = main_func(tup, remote_subject_dir, args, flags)
             subjects_flags[subject] = flags

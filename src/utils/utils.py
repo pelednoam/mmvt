@@ -57,6 +57,7 @@ read_config_ini = mu.read_config_ini
 make_link = mu.make_link
 both_hemi_files_exist = mu.both_hemi_files_exist
 other_hemi = mu.other_hemi
+check_hemi = mu.check_hemi
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -199,6 +200,7 @@ def read_ply_file(ply_file, npz_fname=''):
         ply_file = '{}.ply'.format(ply_file)
     npz_file = change_fname_extension(ply_file, 'npz')
     if file_type(ply_file) == 'ply' and not op.isfile(npz_file):
+        # print('Reading {}'.format(ply_file))
         with open(ply_file, 'r') as f:
             lines = f.readlines()
             verts_num = int(lines[2].split(' ')[-1])
@@ -208,6 +210,7 @@ def read_ply_file(ply_file, npz_fname=''):
             verts = np.array([list(map(float, l.strip().split(' '))) for l in verts_lines])
             faces = np.array([list(map(int, l.strip().split(' '))) for l in faces_lines])[:,1:]
     elif file_type(ply_file) == 'npz' or op.isfile(npz_file):
+        # print('Reading {}'.format(npz_file))
         d = np.load(npz_file)
         verts, faces = d['verts'], d['faces']
         faces = faces.astype(np.int)
@@ -224,8 +227,8 @@ def read_pial_npz(subject, mmvt_dir, hemi):
     return d['verts'], d['faces']
 
 
-def read_pial(subject, subjects_dir, hemi):
-    verts, faces = read_ply_file(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+def read_pial(subject, mmvt_dir, hemi):
+    verts, faces = read_ply_file(op.join(mmvt_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
     return verts, faces
 
 
@@ -317,16 +320,6 @@ def calc_ply_faces_verts(verts, faces, out_file, overwrite=False, ply_name='', e
             errors[ply_name] = 'Wrong values in lookup table! ' + \
                 'faces ravel: {}, max looup val: {}'.format(len(_faces), int(np.max(lookup)))
     return errors
-
-
-def check_hemi(hemi):
-    if hemi in HEMIS:
-        hemi = [hemi]
-    elif hemi=='both':
-        hemi = HEMIS
-    else:
-        raise ValueError('wrong hemi value!')
-    return hemi
 
 
 def normalize_data(data, norm_by_percentile, norm_percs=None):

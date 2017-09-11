@@ -329,16 +329,16 @@ def check_ply_files(subject):
 
 
 @utils.timeit
-def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_ply_files=False, hemi='both'):
+def convert_perecelated_cortex(subject, atlas, surf_type='pial', overwrite_ply_files=False, hemi='both'):
     lookup = {}
     for hemi in utils.get_hemis(hemi):
-        lookup[hemi] = create_labels_lookup(subject, hemi, aparc_name)
+        lookup[hemi] = create_labels_lookup(subject, hemi, atlas)
         if len(lookup[hemi]) == 0:
             continue
-        mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(aparc_name, surf_type, hemi))
-        ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(aparc_name, surf_type, hemi))
+        mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(atlas, surf_type, hemi))
+        ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(atlas, surf_type, hemi))
         utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-        blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(aparc_name, surf_type, hemi))
+        blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surf_type, hemi))
         # utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
         # rename_cortical(lookup, mat_fol, ply_fol)
         # if surf_type == 'inflated':
@@ -354,155 +354,128 @@ def convert_perecelated_cortex(subject, aparc_name, surf_type='pial', overwrite_
     return lookup
 
 
-def create_annotation(subject, aparc_name='aparc250', fsaverage='fsaverage', remote_subject_dir='',
+def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
         morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
-    annotation_fname_template = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))
+    annotation_fname_template = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     annotations_exist = utils.both_hemi_files_exist(annotation_fname_template)
     if annotations_exist and not overwrite_annotation:
         print('The annotation file is already exist ({})'.format(annotation_fname_template))
         return True
     else:
-        if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0:
+        if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))) > 0:
             if save_annot_file:
-                labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
+                labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
             if not overwrite_annotation:
                 return True
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
         remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
-            hemi, aparc_name))) for hemi in HEMIS])
+            hemi, atlas))) for hemi in HEMIS])
         if remote_annotations_exist:
             for hemi in HEMIS:
-                shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)),
-                            op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
+                shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas)),
+                            op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
             return True
     existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
-    if '{}.annot'.format(aparc_name) in existing_freesurfer_annotations:
+    if '{}.annot'.format(atlas) in existing_freesurfer_annotations:
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
         if not annotations_exist:
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
             annotations_exist = fu.create_annotation_file(
-                subject, aparc_name, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
+                subject, atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
     if morph_labels_from_fsaverage:
-        ret = lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, aparc_name, n_jobs=n_jobs,
+        ret = lu.morph_labels_from_fsaverage(subject, SUBJECTS_DIR, MMVT_DIR, atlas, n_jobs=n_jobs,
             fsaverage=fsaverage, overwrite=overwrite_morphing, fs_labels_fol=fs_labels_fol)
         if not ret:
             return False
     if do_solve_labels_collisions:
-        solve_labels_collisions(subject, aparc_name, surf_type, n_jobs)
+        solve_labels_collisions(subject, atlas, surf_type, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, aparc_name, overwrite_annotation, surf_type, n_jobs)
+        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
-            SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
+            SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas)))
     else:
-        return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', aparc_name, '*.label'))) > 0
+        return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))) > 0
 
 
-def labels_to_annot(subject, aparc_name, overwrite_annotation=False, surf_type='inflated',
+def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
                     n_jobs=6):
     labels = []
     try:
-        labels = lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+        labels = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
     except:
         print("Can't write labels to annotation! Trying to solve labels collision")
         # print(traceback.format_exc())
-        solve_labels_collisions(subject, aparc_name, surf_type, n_jobs)
+        solve_labels_collisions(subject, atlas, surf_type, n_jobs)
         try:
-            labels = lu.labels_to_annot(subject, SUBJECTS_DIR, aparc_name, overwrite=overwrite_annotation)
+            labels = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
         except:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
             print(traceback.format_exc())
     return labels
 
 
-def solve_labels_collisions(subject, aparc_name, surf_type='inflated', n_jobs=6):
-    backup_labels_fol = '{}_before_solve_collision'.format(aparc_name)
-    lu.solve_labels_collision(subject, SUBJECTS_DIR, aparc_name, backup_labels_fol, surf_type, n_jobs)
-    lu.backup_annotation_files(subject, SUBJECTS_DIR, aparc_name)
+def solve_labels_collisions(subject, atlas, surf_type='inflated', n_jobs=6):
+    backup_labels_fol = '{}_before_solve_collision'.format(atlas)
+    lu.solve_labels_collision(subject, SUBJECTS_DIR, atlas, backup_labels_fol, surf_type, n_jobs)
+    lu.backup_annotation_files(subject, SUBJECTS_DIR, atlas)
 
 
 @utils.timeit
-def parcelate_cortex(subject, aparc_name, overwrite=False, overwrite_ply_files=False,
-                     overwrite_annotation=False, matlab_cmd='matlab', surf_type='inflated', n_jobs=6):
-    from src.preproc import parcelate_cortex
-
-    dont_do_anything = True
-    ret = {'pial':True, 'inflated':True}
+def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False, n_jobs=6):
     utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-    labels_to_annot(subject, aparc_name, overwrite_annotation, 'pial', n_jobs)
+    labels_to_annot(subject, atlas, overwrite_annotation, n_jobs=n_jobs)
+    params = []
 
     for surface_type in ['pial', 'inflated']:
         files_exist = True
         for hemi in HEMIS:
-            blender_labels_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(aparc_name, surface_type, hemi))
-            labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name, hemi=hemi)
+            blender_labels_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
+            labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
                 len(glob.glob(op.join(blender_labels_fol, '*.ply'))) == len(labels)
-        # if surface_type == 'inflated':
 
             if overwrite or not files_exist:
-                print('Parcelate the {} {} cortex'.format(hemi, surface_type))
-                parcelate_cortex.parcelate(subject, aparc_name, hemi, surface_type)
-            #     dont_do_anything = False
-        #     matlab_output_files = glob.glob(op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(
-        #         aparc_name, surface_type, hemi), '*.srf'))
-        #     if len(matlab_output_files) == 0 or overwrite:
-        #         matlab_command = op.join(BRAINDER_SCRIPTS_DIR, 'splitting_cortical.m')
-        #         matlab_command = "'{}'".format(matlab_command)
-        #         sio.savemat(op.join(BRAINDER_SCRIPTS_DIR, 'params.mat'),
-        #             mdict={'subject': subject, 'aparc':aparc_name, 'subjects_dir': SUBJECTS_DIR, 'mmvt_dir': MMVT_DIR,
-        #                    'scripts_dir': BRAINDER_SCRIPTS_DIR, 'freesurfer_home': FREESURFER_HOME,
-        #                    'surface_type': surface_type})
-        #         cmd = '{} -nodisplay -nosplash -nodesktop -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
-                # cmd = '{} -r "run({}); exit;"'.format(matlab_cmd, matlab_command)
-                # script_ret = utils.run_script(cmd)
-                # srfprefix = '{}.{}.{}'.format(hemi, surface_type, aparc_name)
-                # if script_ret == '':
-                #     return False
-            # convert the  obj files to ply
-            # lookup = convert_perecelated_cortex(subject, aparc_name, surface_type, overwrite_ply_files)
-            # matlab_labels_vertices = True
-            # if surface_type == 'pial':
-            #     matlab_labels_vertices = save_matlab_labels_vertices(subject, aparc_name)
+                params.append((subject, atlas, hemi, surface_type))
 
-            # labels_num = sum([len(lookup[hemi]) for hemi in HEMIS])
-            labels_files_num = sum([len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
-                aparc_name, surface_type, hemi), '*.ply'))) for hemi in HEMIS])
-            # labels_dic_fname = op.join(MMVT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi))
-            # print('labels_files_num == labels_num: {}'.format(labels_files_num == labels_num))
-            # print('isfile(labels_dic_fname): {}'.format(op.isfile(labels_dic_fname)))
-            # print('matlab_labels_vertices files: {}'.format(matlab_labels_vertices))
-            ret[surface_type] = labels_files_num == len(labels) # and op.isfile(labels_dic_fname) # and matlab_labels_vertices
-    if dont_do_anything:
-        return True
+    if len(params) > 0:
+        results = utils.run_parallel(_parcelate_cortex_parallel, params, njobs=n_jobs)
+        return all(results)
     else:
-        return ret['pial'] and ret['inflated']
+        return True
 
 
-def save_matlab_labels_vertices(subject, aparc_name):
+def _parcelate_cortex_parallel(p):
+    from src.preproc import parcelate_cortex
+    subject, atlas, hemi, surface_type = p
+    print('Parcelate the {} {} cortex'.format(hemi, surface_type))
+    return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type)
+
+
+def save_matlab_labels_vertices(subject, atlas):
     for hemi in HEMIS:
-        matlab_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_labels.m'.format(hemi, aparc_name))
+        matlab_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot_labels.m'.format(hemi, atlas))
         if op.isfile(matlab_fname):
             labels_dic = matlab_utils.matlab_cell_arrays_to_dict(matlab_fname)
-            utils.save(labels_dic, op.join(MMVT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(aparc_name, hemi)))
+            utils.save(labels_dic, op.join(MMVT_DIR, subject, 'labels_dic_{}_{}.pkl'.format(atlas, hemi)))
         else:
             return False
     return True
 
 
-def save_labels_vertices(subject, aparc_name):
+def save_labels_vertices(subject, atlas):
     try:
-        labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name, sorted_according_to_annot_file=True,
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, sorted_according_to_annot_file=True,
                                 read_only_from_annot=True)
         if len(labels) == 0:
-            labels = lu.read_labels(subject, SUBJECTS_DIR, aparc_name)
+            labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
         labels_names, labels_vertices = defaultdict(list), defaultdict(list)
         for label in labels:
             labels_names[label.hemi].append(label.name)
             labels_vertices[label.hemi].append(label.vertices)
-        output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(aparc_name))
+        output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(atlas))
         utils.save((labels_names, labels_vertices), output_fname)
         return op.isfile(output_fname)
     except:
@@ -548,7 +521,8 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
         verts, _ = utils.read_pial_npz(subject, MMVT_DIR, hemi)
         contours = np.zeros((len(verts)))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
-        labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        # labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         for label_ind, label in enumerate(labels):
             if verbose:
                 label_nei = np.zeros((len(label.vertices)))
@@ -798,11 +772,8 @@ def main(subject, remote_subject_dir, args, flags):
             args.fs_labels_fol, args.save_annot_file, args.solve_labels_collision_surf_type, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
-        # *) Calls Matlab 'splitting_cortical.m' script
         flags['parcelate_cortex'] = parcelate_cortex(
-            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_ply_files,
-            args.overwrite_annotation, args.matlab_cmd, args.solve_labels_collision_surf_type,
-            args.n_jobs)
+            subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_annotation, args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures

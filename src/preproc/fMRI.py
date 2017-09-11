@@ -807,7 +807,8 @@ def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], tem
                     labels_minmax[em].append(utils.calc_min_max(labels_data, norm_percs=norm_percs))
                 continue
             if len(labels) == 0:
-                labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
+                # labels = lu.read_hemi_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi)
+                labels = lu.read_labels(morph_from_subject, SUBJECTS_DIR, atlas, hemi=hemi)
                 if len(labels) == 0:
                     print('No {} {} labels were found!'.format(morph_from_subject, atlas))
                     return False

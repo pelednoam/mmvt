@@ -1716,6 +1716,16 @@ def max_stc(stc):
     return max([max_stc_hemi(stc, hemi) for hemi in HEMIS])
 
 
+def check_hemi(hemi):
+    if hemi in HEMIS:
+        hemi = [hemi]
+    elif hemi=='both':
+        hemi = HEMIS
+    else:
+        raise ValueError('wrong hemi value!')
+    return hemi
+
+
 class Label(object):
     vertices = []
     pos = []
@@ -1768,6 +1778,14 @@ def read_label_file(label_fname):
     return Label(name, hemi, vertices, pos, values, comment)
 
 
+def read_labels_from_annots(subject, subjects_dir, atlas, hemi='both'):
+    labels = []
+    for hemi in check_hemi(hemi):
+        hemi_annot_fname = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+        labels.extend(read_labels_from_annot(hemi_annot_fname))
+    return sorted(labels, key=lambda l: l.name)
+
+
 def read_labels_from_annot(annot_fname):
     """Read labels from a FreeSurfer annotation file.
 
@@ -1808,8 +1826,7 @@ def read_labels_from_annot(annot_fname):
     label_rgbas = ctab[:, :4]
     label_ids = ctab[:, -1]
 
-    for label_id, label_name, label_rgba in\
-            zip(label_ids, label_names, label_rgbas):
+    for label_id, label_name, label_rgba in zip(label_ids, label_names, label_rgbas):
         vertices = np.where(annot == label_id)[0]
         if len(vertices) == 0:
             # label is not part of cortical surface
