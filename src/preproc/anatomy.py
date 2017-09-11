@@ -384,6 +384,9 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
         if not annotations_exist:
+            prepare_subject_folder(subject, remote_subject_dir, args,
+                                   {'label': [annot_file for annot_file in existing_freesurfer_annotations]})
+        if not utils.both_hemi_files_exist(annotation_fname_template):
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
             annotations_exist = fu.create_annotation_file(
                 subject, atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)

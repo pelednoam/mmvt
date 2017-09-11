@@ -17,6 +17,7 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
 from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
+from src.utils import args_utils as au
 
 SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
@@ -1996,7 +1997,6 @@ def main(tup, remote_subject_dir, args, flags):
 
 def read_cmd_args(argv=None):
     import argparse
-    from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT anatomy preprocessing')
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None, type=au.str_arr_type)
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
