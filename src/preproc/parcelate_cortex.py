@@ -27,7 +27,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
             subject, atlas, True, overwrite_vertices_labels_lookup)[hemi]
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
     if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
-        labels.append(lu.Label('unknown-{}'.format(hemi), hemi, []))
+        labels.append(lu.Label([], name='unknown-{}'.format(hemi), hemi=hemi))
 
     nV = vtx.shape[0]
     nF = fac.shape[0]

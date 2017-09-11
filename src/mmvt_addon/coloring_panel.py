@@ -2119,7 +2119,6 @@ def init_connectivity_labels_avg():
 
 def register():
     try:
-        unregister()
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(ColorElectrodesDists)
         bpy.utils.register_class(ColorElectrodesStim)

@@ -202,6 +202,7 @@ show_sagital = show_hide_panel.show_sagital
 show_coronal = show_hide_panel.show_coronal
 show_axial = show_hide_panel.show_axial
 split_view = show_hide_panel.split_view
+view_all = show_hide_panel.view_all
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
@@ -439,28 +440,37 @@ def get_panels():
             pizco_panel)
 
 
+def load_all_panels():
+    mmvt = sys.modules[__name__]
+    for panel in get_panels():
+        panel.init(mmvt)
+        fix_scale()
+        if bpy.data.objects.get('rh'):
+            split_view(0)
+        view_all()
+        show_electrodes(False)
+        show_hide_connections(False)
+        mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
+        mmvt_utils.unfilter_graph_editor()
+
+
 def main(addon_prefs=None):
     init(addon_prefs)
     try:
         mmvt = sys.modules[__name__]
         for panel in get_panels():
             panel.unregister()
-        for panel in get_panels():
-            panel.init(mmvt)
-            # bpy.utils.register_class(cls)
+        if bpy.data.objects.get('rh', None) is None:
+            data_panel.init(mmvt)
+        else:
+            load_all_panels()
+
         # list_panel.init(mmvt)
         pass
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
 
-    fix_scale()
-    if bpy.data.objects.get('rh'):
-        split_view(0)
-    show_electrodes(False)
-    show_hide_connections(False)
-    mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
-    mmvt_utils.unfilter_graph_editor()
 
 
 if __name__ == "__main__":

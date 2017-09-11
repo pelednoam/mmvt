@@ -221,6 +221,7 @@ def import_brain(context=None):
             obj.name = obj.name[0:-4]
     bpy.ops.object.select_all(action='DESELECT')
     print('Brain importing is Finished ')
+    _addon().load_all_panels()
 
 
 class ImportBrain(bpy.types.Operator):

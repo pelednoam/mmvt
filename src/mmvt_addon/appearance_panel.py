@@ -120,6 +120,8 @@ def hemis_distance_update(self, context):
 
 def inflating_update(self, context):
     try:
+        if bpy.data.objects.get('rh', None) is None:
+            return
         bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
         bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
@@ -146,6 +148,8 @@ def get_inflated_ratio():
 
 
 def appearance_show_rois_activity_update(self=None, context=None):
+    if not AppearanceMakerPanel.init:
+        return
     # todo: Figure out why the hell
     for _ in range(2):
         if bpy.context.scene.surface_type == 'pial':

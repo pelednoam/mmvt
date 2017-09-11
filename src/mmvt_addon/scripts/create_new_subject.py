@@ -14,7 +14,7 @@ except:
 def wrap_blender_call():
     args = read_args()
     create_new_subject_file(args)
-    if not args.only_empty:
+    if args.import_in_blender:
         su.call_script(__file__, args)
 
 
@@ -40,7 +40,7 @@ def create_new_subject_file(args):
 def read_args(argv=None):
     parser = su.add_default_args()
     parser.add_argument('--overwrite_blend', help='', required=False, default=0, type=su.is_true)
-    parser.add_argument('--only_empty', help='', required=False, default=0, type=su.is_true)
+    parser.add_argument('--import_in_blender', help='', required=False, default=0, type=su.is_true)
     return su.parse_args(parser, argv)
 
 

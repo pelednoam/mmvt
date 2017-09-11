@@ -1740,7 +1740,7 @@ else:
         vertices, pos, values = [], [], []
         comment, hemi, name = '', '', ''
 
-        def __init__(self, name, hemi, vertices, pos=[], values=[], comment=''):
+        def __init__(self, vertices, pos=None, values=None, hemi=None, comment='', name=None):
             self.name = name
             self.hemi = hemi
             self.vertices = vertices

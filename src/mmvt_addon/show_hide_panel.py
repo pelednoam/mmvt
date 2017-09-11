@@ -33,6 +33,11 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
         start_rotating()
 
 
+def view_all():
+    c = mu.get_view3d_context()
+    bpy.ops.view3d.view_all(c)
+
+
 def start_rotating():
     bpy.context.scene.rotate_brain = True
 
@@ -214,12 +219,14 @@ def _split_view():
 @mu.tryit()
 def split_view(view):
     import math
+    if not ShowHideObjectsPanel.init:
+        return
     if view != 0:
         _addon().hide_subcorticals()
     pial_shift = 10
     inflated_shift = 13
     if view == 0: # Normal
-        _addon().show_coronal()
+        show_coronal()
         if _addon().is_inflated():
             bpy.data.objects['inflated_lh'].location[0] = 0
             bpy.data.objects['inflated_lh'].rotation_euler[2] = 0
@@ -231,7 +238,7 @@ def split_view(view):
             bpy.data.objects['rh'].location[0] = 0
             bpy.data.objects['rh'].rotation_euler[2] = 0
     elif view == 1: # Split lateral
-        _addon().show_coronal()
+        show_coronal()
         # lateral split view
         # inflated_lh: loc  x:13, rot z: -90
         # inflated_lr: loc  x:-13, rot z: 90
@@ -405,6 +412,8 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
 
     def draw(self, context):
+        if not ShowHideObjectsPanel.init:
+            return
         layout = self.layout
         vis = dict(Right = not bpy.context.scene.objects_show_hide_rh, Left = not bpy.context.scene.objects_show_hide_lh)
         show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
