@@ -16,7 +16,7 @@ def mode(arr):
     #return Counter(arr).most_common(1)
 
 
-# @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
+@utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
 def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=None,
               overwrite_vertices_labels_lookup=False):
     output_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))

@@ -111,7 +111,7 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
 
-    flags, evoked, epochs = meg.calc_evokes_wrapper(subject, mri_subject, conditions, args, flags)
+    flags, evoked, epochs = meg.calc_evokes_wrapper(subject, conditions, args, flags, mri_subject=mri_subject)
 
     if utils.should_run(args, 'create_eeg_mesh'):
         flags['create_eeg_mesh'] = create_eeg_mesh(mri_subject, args.eeg_electrodes_excluded_from_mesh)
