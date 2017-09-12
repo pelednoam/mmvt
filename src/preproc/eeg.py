@@ -127,7 +127,7 @@ def main(tup, remote_subject_dir, args, flags):
         if not op.isfile(eeg_cor):
             raise Exception("Can't find head-MRI transformation matrix. Should be in {} or in {}".format(meg.COR, eeg_cor))
         meg.COR = eeg_cor
-    flags = meg.calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
+    flags = meg.calc_fwd_inv_wrapper(subject, conditions, args, flags, mri_subject)
     flags = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     return flags
 

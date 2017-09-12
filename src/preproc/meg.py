@@ -449,7 +449,7 @@ def find_epoches(raw, picks,  events, event_id, tmin, tmax, baseline=(None, 0)):
 
 def check_src_ply_vertices_num(src):
     # check the vertices num with the ply files
-    ply_vertives_num = utils.get_ply_vertices_num(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'))
+    ply_vertives_num = utils.get_ply_vertices_num(op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'))
     if ply_vertives_num is not None:
         print(ply_vertives_num)
         src_vertices_num = [src_h['np'] for src_h in src]
@@ -494,13 +494,17 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
             #     {'bem': '{}-{}-{}-src.fif'.format(mri_subject, oct_name, oct_num)}, args)
             src = mne.setup_source_space(MRI_SUBJECT, spacing=recreate_src_spacing, surface=recreate_src_surface,
-                                         overwrite=True, n_jobs=n_jobs)
+                                         overwrite=True, subjects_dir=SUBJECTS_MRI_DIR, n_jobs=n_jobs)
         else:
             raise Exception("Can't calculate the fwd solution without the source")
     return src
 
 
-def check_bem(mri_subject):
+def check_bem(mri_subject, args={}):
+    if len(args) == 0:
+        args = utils.Bag(
+            sftp=False, sftp_username='', sftp_domain='', sftp_password='',
+            overwrite_fs_files=False, print_traceback=False, sftp_port=22)
     if not op.isfile(BEM):
         prepare_subject_folder(
             mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
@@ -530,20 +534,20 @@ def check_bem(mri_subject):
                 utils.remove_file(bem_file)
                 shutil.copy(op.join(bem_fol, 'watershed', watershed_file.format(mri_subject)),
                             op.join(bem_fol, bem_file))
-        model = mne.make_bem_model(mri_subject)
+        model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
         bem = mne.make_bem_solution(model)
         mne.write_bem_solution(BEM, bem)
 
 
 def make_forward_solution(mri_subject, events, sub_corticals_codes_file='', usingMEG=True, usingEEG=True, calc_corticals=True,
         calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
-        recreate_src_surface='white', overwrite_fwd=False, n_jobs=4):
+        recreate_src_surface='white', overwrite_fwd=False, n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
     fwd_fname = FWD if usingMEG else FWD_EEG
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
-        check_bem(mri_subject)
+        check_bem(mri_subject, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in EPO:
             if calc_corticals:
@@ -1794,10 +1798,13 @@ def get_meg_files(subject, necessary_fnames, args, events):
     prepare_subject_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
-def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
+def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
+    if mri_subject == '':
+        mri_subject = subject
     inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
     inv_fname, _ = locating_file(inv_fname, '*inv.fif')
     get_meg_files(subject, [inv_fname], args, conditions)
+    fwd = None
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution'):
             prepare_subject_folder(
@@ -1817,9 +1824,9 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
                 mri_subject, conditions, sub_corticals_codes_file, args.fwd_usingMEG, args.fwd_usingEEG,
                 args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
-                args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.n_jobs)
+                args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.n_jobs, args)
 
-        if utils.should_run(args, 'calc_inverse_operator'):
+        if utils.should_run(args, 'calc_inverse_operator') and fwd is not None:
             get_meg_files(subject, [EPO, FWD], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, args.inv_loose, args.inv_depth, args.use_empty_room_for_noise_cov,
@@ -1952,7 +1959,7 @@ def main(tup, remote_subject_dir, args, flags):
     # flags: calc_evoked
     flags, evoked, epochs = calc_evokes_wrapper(subject, conditions, args, flags, mri_subject=mri_subject)
     # flags: make_forward_solution, calc_inverse_operator
-    flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
+    flags = calc_fwd_inv_wrapper(subject, conditions, args, flags, mri_subject)
     # flags: calc_stc_per_condition
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
