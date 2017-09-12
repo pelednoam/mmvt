@@ -131,6 +131,7 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, lookup=None,
     if len(ply_files) < len(lookup) or len(npz_files) < len(lookup) or overwrite_subcorticals:
         if overwrite:
             utils.delete_folder_files(mmvt_output_fol)
+        #todo: parallel this loop!
         for region_id in lookup.keys():
             if op.isfile(op.join(mmvt_output_fol, '{}.ply'.format(lookup.get(region_id, '')))):
                 continue
@@ -383,9 +384,6 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     if '{}.annot'.format(atlas) in existing_freesurfer_annotations:
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
-        if not annotations_exist:
-            prepare_subject_folder(subject, remote_subject_dir, args,
-                                   {'label': [annot_file for annot_file in existing_freesurfer_annotations]})
         if not utils.both_hemi_files_exist(annotation_fname_template):
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
             annotations_exist = fu.create_annotation_file(
@@ -880,12 +878,14 @@ def read_cmd_args(argv=None):
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
+    existing_freesurfer_annotations = ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
                  'lh.sphere.reg', 'rh.sphere.reg'],
-        'mri:transforms' : ['talairach.xfm', 'talairach.m3z']}
-        # 'label':['rh.{}.annot'.format(args.atlas), 'lh.{}.annot'.format(args.atlas)]}
+        'mri:transforms' : ['talairach.xfm', 'talairach.m3z'],
+        'label':['rh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations] +
+                ['lh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations]}
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
