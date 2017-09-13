@@ -769,6 +769,23 @@ def create_labels_names_lookup(subject, atlas):
     return lookup
 
 
+def create_new_subject_blend_file(subject, atlas, overwrite_blend=False):
+    # Create a file for the new subject
+    new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
+    empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
+    if not op.isfile(empty_subject_fname):
+        resources_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
+        shutil.copy(op.join(resources_dir, 'empty_subject.blend'), empty_subject_fname)
+    if op.isfile(new_fname) and not overwrite_blend:
+        overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
+        if au.is_true(overwrite):
+           os.remove(new_fname)
+           shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
+    else:
+        shutil.copy(empty_subject_fname, new_fname)
+    return op.isfile(new_fname)
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -830,6 +847,10 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_3d_atlas'):
         flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
 
+    if utils.should_run(args, 'create_new_subject_blend_file'):
+        flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
+            subject, args.atlas, args.overwrite_blend)
+
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
@@ -864,6 +885,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_ply_files', help='overwrite_ply_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_blend', help='overwrite_blend', required=False, default=0, type=au.is_true)
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')
