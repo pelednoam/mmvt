@@ -237,9 +237,16 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
     # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
-    reject_dict = dict(grad=reject_grad, mag=reject_mag) if reject else None
-    if not reject_dict is None and pick_eog:
-        reject['eog'] = reject_eog
+    if reject:
+        reject_dict = {}
+        if reject_mag > 0:
+            reject_dict['mag'] = reject_mag
+        if reject_grad > 0:
+            reject_dict['grad'] = reject_grad
+        if pick_eog and reject_eog > 0:
+            reject_dict['eog'] = reject_eog
+    else:
+        reject_dict = None
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
     if remove_power_line_noise:
         raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
@@ -268,6 +275,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         raise Exception('tmax-tmin must be greater than zero!')
     epochs = mne.Epochs(raw, events, conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
+    print('{} good epochs'.format(len(epochs)))
     if '{cond}' in epoches_fname:
         for event in epochs.event_id: #events.keys():
             epochs[event].save(get_cond_fname(epoches_fname, event))
@@ -296,11 +304,11 @@ def calc_epochs_necessary_files(args):
 def calc_epochs_wrapper_args(conditions, args, raw=None):
     return calc_epochs_wrapper(
         conditions, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
-        None, args.calc_epochs_from_raw, args.stim_channels,
+        None, args.stim_channels,
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num)
+        args.windows_num, args.overwrite_epochs)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -325,17 +333,17 @@ locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
 
 def calc_epochs_wrapper(
         conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
-        calc_epochs_from_raw=False, stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
+        stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0):
+        windows_num=0, overwrite_epochs=False):
     # Calc evoked data for averaged data and for each condition
     try:
+        # if not calc_epochs_from_raw:
         epo_fname, epo_exist = locating_file(EPO, '*epo.fif')
         if not epo_exist:
-            calc_epochs_from_raw = True
             epo_fname = EPO
-        if not calc_epochs_from_raw:
+        if epo_exist and not overwrite_epochs:
             if '{cond}' in epo_fname:
                 epo_exist = True
                 epochs = {}
@@ -346,10 +354,9 @@ def calc_epochs_wrapper(
                         epo_exist = False
                         break
             else:
-                epo_exist = op.isfile(epo_fname) and not calc_epochs_from_raw
-                if epo_exist:
+                if op.isfile(epo_fname):
                     epochs = mne.read_epochs(epo_fname)
-        if not epo_exist or calc_epochs_from_raw:
+        if not epo_exist or overwrite_epochs:
             if raw is None:
                 raw = load_raw(bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
@@ -369,13 +376,13 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
-def calc_evokes(epochs, events, mri_subject, norm_by_percentile=False, norm_percs=None):
+def calc_evokes(epochs, events, mri_subject, normalize_data=True, norm_by_percentile=False, norm_percs=None):
     try:
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
         evokes = [epochs[event].average() for event in events_keys]
-        save_evokes_to_mmvt(evokes, events_keys, mri_subject, norm_by_percentile, norm_percs)
+        save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs)
         if '{cond}' in EVO:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
@@ -394,17 +401,23 @@ def calc_evokes(epochs, events, mri_subject, norm_by_percentile=False, norm_perc
     return flag, evokes
 
 
-def save_evokes_to_mmvt(evokes, events_keys, mri_subject, norm_by_percentile=False, norm_percs=None):
+def save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data=False, norm_by_percentile=False,
+                        norm_percs=None):
     fol = op.join(MMVT_DIR, mri_subject, 'meg')
     utils.make_dir(fol)
     meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
+    if len(meg_indices) == 0:
+        print('None of the channels names starts with MEG!')
+        meg_indices = range(len(evokes[0].ch_names))
     ch_names = [evokes[0].ch_names[k] for k in meg_indices]
     dt = np.diff(evokes[0].times[:2])[0]
     data = np.zeros((len(meg_indices), evokes[0].data.shape[1], len(events_keys)))
     for event_ind, event in enumerate(events_keys):
         data[:, :, event_ind] = evokes[event_ind].data[meg_indices]
-    data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    data_max, data_min = utils.get_data_max_min(np.diff(data), norm_by_percentile, norm_percs)
+    if normalize_data:
+        data = utils.normalize_data(data, norm_by_percentile, norm_percs)
+    data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
+    data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
     max_abs = utils.get_max_abs(data_max, data_min)
     np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
     np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
@@ -1815,19 +1828,20 @@ def calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags):
     return flags
 
 
-def calc_evokes_wrapper(subject, mri_subject, conditions, args, flags):
+def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subject=''):
+    if mri_subject == '':
+        mri_subject = subject
     evoked, epochs = None, None
     if utils.should_run(args, 'calc_epochs'):
         necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args)
+        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw)
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
-            epochs, conditions, mri_subject, args.norm_by_percentile, args.norm_percs)
+            epochs, conditions, mri_subject, args.normalize_data, args.norm_by_percentile, args.norm_percs)
 
     return flags, evoked, epochs
-
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
@@ -1916,7 +1930,9 @@ def init_main(subject, mri_subject, remote_subject_dir, args):
     return fname_format, fname_format_cond, conditions
 
 
-def init(subject, mri_subject, args, remote_subject_dir=''):
+def init(subject, args, mri_subject='', remote_subject_dir=''):
+    if mri_subject == '':
+        mri_subject = subject
     fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
     init_globals_args(
         subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
@@ -1927,14 +1943,14 @@ def main(tup, remote_subject_dir, args, flags):
     (subject, mri_subject), inverse_method = tup
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
-    fname_format, fname_format_cond, conditions = init(subject, mri_subject, args, remote_subject_dir)
+    fname_format, fname_format_cond, conditions = init(subject, args, mri_subject, remote_subject_dir)
     # fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
     # init_globals_args(
     #     subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
     stat = STAT_AVG if len(conditions) == 1 else STAT_DIFF
 
     # flags: calc_evoked
-    flags, evoked, epochs = calc_evokes_wrapper(subject, mri_subject, conditions, args, flags)
+    flags, evoked, epochs = calc_evokes_wrapper(subject, conditions, args, flags, mri_subject=mri_subject)
     # flags: make_forward_solution, calc_inverse_operator
     flags = calc_fwd_inv_wrapper(subject, mri_subject, conditions, args, flags)
     # flags: calc_stc_per_condition
@@ -2008,6 +2024,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
+    parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
@@ -2066,7 +2083,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip,mean,pca_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
-    parser.add_argument('--norm_by_percentile', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--normalize_data', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)

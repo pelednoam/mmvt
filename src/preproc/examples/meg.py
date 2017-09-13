@@ -54,7 +54,7 @@ def calc_mne_python_sample_data_stcs_diff(args):
         conditions = ['LA', 'RA']
     ))
     smooth = False
-    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args, args.mri_subject[0])
     stc_template_name = meg.STC_HEMI_SMOOTH if smooth else meg.STC_HEMI
     stc_fnames = [stc_template_name.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
     output_fname = stc_template_name.format(cond='diff', method=args.inverse_method[0], hemi='lh')
@@ -98,7 +98,7 @@ def calc_msit_stcs_diff(args):
         contrast='interference',
         cleaning_method='nTSSS'))
     smooth = False
-    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args, args.mri_subject[0])
     stc_template_name = meg.STC_HEMI_SMOOTH if smooth else meg.STC_HEMI
     stc_fnames = [stc_template_name.format(cond=cond, method=args.inverse_method[0], hemi='lh') for cond in conditions.keys()]
     output_fname = stc_template_name.format(cond='diff', method=args.inverse_method[0], hemi='lh')
@@ -114,7 +114,7 @@ def morph_stc(args):
         contrast='interference',
         cleaning_method='nTSSS'))
     morph_to_subject = 'ab' # 'fsaverage5'
-    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args.mri_subject[0], args)
+    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args, args.mri_subject[0])
     meg.morph_stc(conditions, morph_to_subject, args.inverse_method[0], args.n_jobs)
 
 
