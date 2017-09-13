@@ -771,6 +771,7 @@ def create_labels_names_lookup(subject, atlas):
 
 def create_new_subject_blend_file(subject, atlas, overwrite_blend=False):
     # Create a file for the new subject
+    atlas = utils.get_real_atlas_name(args.atlas, short_name=True)
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
     empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
     if not op.isfile(empty_subject_fname):

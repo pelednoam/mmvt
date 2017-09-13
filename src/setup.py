@@ -241,7 +241,7 @@ def install_blender_reqs():
         resource_fol = utils.get_resources_fol()
         # Get pip
         blender_bin_fol = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.78', 'python', 'bin') if utils.is_osx() else \
-            op.join(blender_fol, '2.78', 'python')
+            glob.glob(op.join(blender_fol, '2.7?', 'python'))[0]
         python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
         current_dir = os.getcwd()
         os.chdir(blender_bin_fol)

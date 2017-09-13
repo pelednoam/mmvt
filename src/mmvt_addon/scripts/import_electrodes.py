@@ -50,6 +50,10 @@ def read_args(argv=None):
             else:
                 raise Exception('More than one electrodes positions files in {}'.format(pos_files_fol) +
                                 'please indicate which one using the -p flag')
+        else:
+            pos_file = op.join(pos_files_fol, '{}.npz'.format(su.namebase(pos_file)))
+        if not op.isfile(pos_file):
+            raise ("Can't find pos file! {}".format(pos_file))
         pos_files.append(pos_file)
     args.pos_file = pos_files
     if len(args.pos_file) == 1:
