@@ -447,6 +447,7 @@ def load_all_panels():
         fix_scale()
         if bpy.data.objects.get('rh'):
             split_view(0)
+            split_view(0)
         view_all()
         show_electrodes(False)
         show_hide_connections(False)

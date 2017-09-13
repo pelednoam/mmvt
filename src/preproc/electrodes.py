@@ -139,9 +139,10 @@ def grid_or_depth(data):
     # return np.array(electrodes_group_type)
 
 
-def read_electrodes_file(subject, bipolar):
-    electrodes_fname = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
-    electrodes_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', electrodes_fname)
+def read_electrodes_file(subject, bipolar, postfix=''):
+    electrodes_fname = 'electrodes{}_positions{}.npz'.format(
+        '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else '')
+    electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
     d = np.load(electrodes_fname)
@@ -150,7 +151,7 @@ def read_electrodes_file(subject, bipolar):
 
 def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):
     output_fname = 'electrodes{}_positions{}.npz'.format('_bipolar' if bipolar else '', fname_postfix)
-    output_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', output_fname)
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', output_fname)
     np.savez(output_fname, pos=elecs_coordinates, names=elecs_names, pos_org=[])
     return output_fname
 
@@ -717,7 +718,6 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
             return op.isfile(data_fname) and op.isfile(meta_fname)
 
 
-
 def data_electrodes_to_bipolar(subject):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
@@ -974,11 +974,11 @@ def transform_electrodes_to_mni(subject, args):
 
 def transform_electrodes_to_subject(subject, args):
     from src.utils import freesurfer_utils as fu
-    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
+    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar, 'mni')
     elecs_coords_to_subject = fu.transform_subject_to_subject_coordinates(
-        subject, args.trans_to_subject, elecs_coords, SUBJECTS_DIR)
+        args.trans_from_subject, subject, elecs_coords, SUBJECTS_DIR)
     save_electrodes_coords(subject, elecs_names, elecs_coords_to_subject, args.good_channels, args.bad_channels,
-                           '_{}'.format(args.trans_to_subject))
+                           '_from_{}'.format(args.trans_from_subject))
 
 
 def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=None, bad_channels=None, fname_postfix=''):
@@ -1140,6 +1140,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--all_in_hemi', help='', required=False, default='')
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
+    parser.add_argument('--trans_from_subject', help='transform electrodes coords from this subject', required=False,
+                        default='colin27')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
@@ -1160,6 +1162,5 @@ def read_cmd_args(argv=None):
 
 if __name__ == '__main__':
     args = read_cmd_args()
-    # pu.run_on_subjects(args, main)
-    data_electrodes_to_bipolar(args.subject[0])
+    pu.run_on_subjects(args, main)
     print('finish!')
