@@ -93,9 +93,10 @@ def split_cerebellum_hemis(subject, mask_fname, new_maks_name, subregions_num):
 
 
 @utils.check_for_freesurfer
+@utils.timeit
 def subcortical_segmentation(subject, overwrite_subcorticals=False, lookup=None,
                              mask_name='aseg.mgz', mmvt_subcorticals_fol_name='subcortical',
-                             template_subject='', norm_name='norm.mgz', overwrite=True):
+                             template_subject='', norm_name='norm.mgz', overwrite=True, n_jobs=6):
     # 1) mri_pretess: Changes region segmentation so that the neighbors of all voxels have a face in common
     # 2) mri_tessellate: Creates surface by tessellating
     # 3) mris_smooth: Smooth the new surface
@@ -131,29 +132,32 @@ def subcortical_segmentation(subject, overwrite_subcorticals=False, lookup=None,
     if len(ply_files) < len(lookup) or len(npz_files) < len(lookup) or overwrite_subcorticals:
         if overwrite:
             utils.delete_folder_files(mmvt_output_fol)
-        #todo: parallel this loop!
-        for region_id in lookup.keys():
-            if op.isfile(op.join(mmvt_output_fol, '{}.ply'.format(lookup.get(region_id, '')))):
-                continue
-            ret = fu.aseg_to_srf(
-                subject, SUBJECTS_DIR, mmvt_output_fol, region_id, lookup, mask_fname, norm_fname,
-                overwrite_subcorticals)
-            if not ret:
-                errors.append(lookup[region_id])
+        lookup_keys = [k for k in lookup.keys() if not op.isfile(op.join(mmvt_output_fol, '{}.ply'.format(
+            lookup.get(k, ''))))]
+        chunks = np.array_split(lookup_keys, n_jobs)
+        params = [(subject, SUBJECTS_DIR, mmvt_output_fol, region_ids, lookup, mask_fname, norm_fname,
+                   overwrite_subcorticals) for region_ids in chunks]
+        errors = utils.run_parallel(_subcortical_segmentation_parallel, params, n_jobs)
+        errors = utils.flat_list_of_lists(errors)
     if len(errors) > 0:
         print('Errors: {}'.format(','.join(errors)))
         return False
-    # ply_files = glob.glob(op.join(mmvt_output_fol, '*.ply'))
-    # if len(ply_files) < len(lookup) or overwrite_subcorticals:
-    #     utils.make_dir(mmvt_output_fol)
-    #     convert_and_rename_subcortical_files(function_output_fol, mmvt_output_fol, lookup)
-    # blender_dir = op.join(MMVT_DIR, subject, mmvt_subcorticals_fol_name)
-    # if not op.isdir(blender_dir) or len(glob.glob(op.join(blender_dir, '*.ply'))) < len(ply_files) or overwrite_subcorticals:
-    #     utils.delete_folder_files(blender_dir)
-    #     copy_subcorticals_to_mmvt(mmvt_output_fol, subject, mmvt_subcorticals_fol_name)
     flag_ok = len(glob.glob(op.join(mmvt_output_fol, '*.ply'))) >= len(lookup) and \
         len(glob.glob(op.join(mmvt_output_fol, '*.npz'))) >= len(lookup)
     return flag_ok
+
+
+def _subcortical_segmentation_parallel(chunk):
+    (subject, SUBJECTS_DIR, mmvt_output_fol, region_ids, lookup, mask_fname, norm_fname,
+     overwrite_subcorticals) = chunk
+    errors = []
+    for region_id in region_ids:
+        ret = fu.aseg_to_srf(
+            subject, SUBJECTS_DIR, mmvt_output_fol, region_id, lookup, mask_fname, norm_fname,
+            overwrite_subcorticals)
+        if not ret:
+            errors.append(lookup[region_id])
+    return errors
 
 
 def load_subcortical_lookup_table(fname='sub_cortical_codes.txt'):
@@ -765,6 +769,24 @@ def create_labels_names_lookup(subject, atlas):
     return lookup
 
 
+def create_new_subject_blend_file(subject, atlas, overwrite_blend=False):
+    # Create a file for the new subject
+    atlas = utils.get_real_atlas_name(args.atlas, short_name=True)
+    new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
+    empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
+    if not op.isfile(empty_subject_fname):
+        resources_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
+        shutil.copy(op.join(resources_dir, 'empty_subject.blend'), empty_subject_fname)
+    if op.isfile(new_fname) and not overwrite_blend:
+        overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
+        if au.is_true(overwrite):
+           os.remove(new_fname)
+           shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
+    else:
+        shutil.copy(empty_subject_fname, new_fname)
+    return op.isfile(new_fname)
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -788,7 +810,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
-        flags['subcortical'] = subcortical_segmentation(subject, args.overwrite_subcorticals)
+        flags['subcortical'] = subcortical_segmentation(subject, args.overwrite_subcorticals, n_jobs=args.n_jobs)
 
     if utils.should_run(args, 'calc_faces_verts_dic'):
         # *) Create a dictionary for verts and faces for both hemis
@@ -826,6 +848,10 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_3d_atlas'):
         flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
 
+    if utils.should_run(args, 'create_new_subject_blend_file'):
+        flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
+            subject, args.atlas, args.overwrite_blend)
+
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
@@ -860,6 +886,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_ply_files', help='overwrite_ply_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_blend', help='overwrite_blend', required=False, default=0, type=au.is_true)
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')

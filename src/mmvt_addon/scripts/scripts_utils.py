@@ -362,7 +362,7 @@ def get_camera_dir(args):
 #     return get_parent_fol(get_user_fol())
 
 
-def get_real_atlas_name(atlas, csv_fol=''):
+def get_real_atlas_name(atlas, csv_fol='', short_name=False):
     if csv_fol == '':
         csv_fol = get_mmvt_dir()
     csv_fname = op.join(csv_fol, 'atlas.csv')
@@ -372,7 +372,7 @@ def get_real_atlas_name(atlas, csv_fol=''):
             if len(line) < 2:
                 continue
             if atlas in [line[0], line[1]]:
-                real_atlas_name = line[1]
+                real_atlas_name = line[0] if short_name else line[1]
                 break
         if real_atlas_name == '':
             print("Can't find the atlas {} in {}! Please add it to the csv file.".format(atlas, csv_fname))

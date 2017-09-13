@@ -139,9 +139,14 @@ def grid_or_depth(data):
     # return np.array(electrodes_group_type)
 
 
+<<<<<<< HEAD
 def read_electrodes_file(subject, bipolar, postfix=''):
     electrodes_fname = 'electrodes{}_positions{}.npz'.format(
         '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else '')
+=======
+def read_electrodes_file(subject, bipolar):
+    electrodes_fname = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
+>>>>>>> 8f4418d3f5a1c2bc4013ff6491d6419d2ed506dc
     electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
@@ -215,7 +220,7 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
 def convert_electrodes_coordinates_file_to_npy(
         subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name='', snaps=[True, False]):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
-    electrodes_folder = op.join(SUBJECTS_DIR, subject, 'electrodes')
+    electrodes_folder = op.join(MMVT_DIR, subject, 'electrodes')
     file_found = False
     for snap in snaps:
         csv_file = op.join(electrodes_folder, '{}{}_RAS.csv'.format(subject, '_snap' if snap else ''))
@@ -223,11 +228,11 @@ def convert_electrodes_coordinates_file_to_npy(
             continue
         file_found = True
         output_file_name = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
-        output_file = op.join(SUBJECTS_DIR, subject, 'electrodes', output_file_name)
+        output_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
         pos, names = electrodes_csv_to_npy(csv_file, output_file, bipolar)
-        if copy_to_blender:
-            blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
-            shutil.copyfile(output_file, blender_file)
+        # if copy_to_blender:
+        #     blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
+        #     shutil.copyfile(output_file, blender_file)
     if not file_found:
         print('No electrodes coordinates file!')
         return False, None, None
@@ -235,8 +240,8 @@ def convert_electrodes_coordinates_file_to_npy(
 
 
 def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
-    subject_elec_fname_no_ras_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}.{postfix}')
-    subject_elec_fname_pattern = op.join(SUBJECTS_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
+    subject_elec_fname_no_ras_pattern = op.join(MMVT_DIR, subject, 'electrodes', '{subject}.{postfix}')
+    subject_elec_fname_pattern = op.join(MMVT_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
     subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
     subject_elec_fname_xlsx = subject_elec_fname_pattern.format(subject=subject, postfix='xlsx')
 
@@ -261,9 +266,9 @@ def create_electrode_data_file(subject, task, from_t, to_t, stat, conditions, bi
     if input_fname == '':
         input_fname = 'data.mat'
     input_file = utils.get_file_if_exist(
-        [op.join(SUBJECTS_DIR, subject, 'electrodes', input_fname),
+        [op.join(MMVT_DIR, subject, 'electrodes', input_fname),
          op.join(ELECTRODES_DIR, subject, task, input_fname),
-         op.join(SUBJECTS_DIR, subject, 'electrodes', 'evo.mat'),
+         op.join(MMVT_DIR, subject, 'electrodes', 'evo.mat'),
          op.join(ELECTRODES_DIR, subject, task, 'evo.mat')])
     if not input_file is None:
         input_type = utils.namebase(input_file) if input_type == '' else input_type
