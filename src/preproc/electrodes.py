@@ -139,15 +139,10 @@ def grid_or_depth(data):
     # return np.array(electrodes_group_type)
 
 
-<<<<<<< HEAD
 def read_electrodes_file(subject, bipolar, postfix=''):
     electrodes_fname = 'electrodes{}_positions{}.npz'.format(
         '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else '')
-=======
-def read_electrodes_file(subject, bipolar):
-    electrodes_fname = 'electrodes{}_positions.npz'.format('_bipolar' if bipolar else '')
->>>>>>> 8f4418d3f5a1c2bc4013ff6491d6419d2ed506dc
-    electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
+    # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
     d = np.load(electrodes_fname)
