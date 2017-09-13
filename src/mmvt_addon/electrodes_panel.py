@@ -116,12 +116,14 @@ def _electrodes_update():
 
 
 def select_electrode(current_electrode):
+    group, elc1, elc2 = mu.elec_group_number(current_electrode, True)
     for elec in ElecsPanel.all_electrodes:
         bpy.data.objects[elec].select = elec == current_electrode
     # _addon().filter_electrode_func(bpy.context.scene.electrodes)
 
 
 def electode_was_manually_selected(selected_electrode_name):
+
     for elc_name in ElecsPanel.all_electrodes:
         if elc_name == selected_electrode_name:
             bpy.context.scene.electrodes = elc_name
