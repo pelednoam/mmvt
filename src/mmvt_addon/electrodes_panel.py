@@ -121,6 +121,13 @@ def select_electrode(current_electrode):
     # _addon().filter_electrode_func(bpy.context.scene.electrodes)
 
 
+def electode_was_manually_selected(selected_electrode_name):
+    for elc_name in ElecsPanel.all_electrodes:
+        if elc_name == selected_electrode_name:
+            bpy.context.scene.electrodes = elc_name
+            break
+
+
 def color_electrodes(current_electrode, prev_electrode):
     # bpy.context.scene.bipolar = '-' in current_electrode
     current_electrode_group = mu.elec_group(current_electrode, bpy.context.scene.bipolar)

@@ -771,7 +771,7 @@ def create_labels_names_lookup(subject, atlas):
 
 def create_new_subject_blend_file(subject, atlas, overwrite_blend=False):
     # Create a file for the new subject
-    atlas = utils.get_real_atlas_name(args.atlas, short_name=True)
+    atlas = utils.get_real_atlas_name(atlas, short_name=True)
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
     empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
     if not op.isfile(empty_subject_fname):
@@ -785,6 +785,15 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False):
     else:
         shutil.copy(empty_subject_fname, new_fname)
     return op.isfile(new_fname)
+
+
+def check_bem(subject, remote_subject_dir, args):
+    from src.preproc import meg
+    meg_args = meg.read_cmd_args(dict(subject=subject))
+    meg_args.update(args)
+    meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
+    args.remote_subject_dir = remote_subject_dir
+    meg.check_bem(subject, meg_args)
 
 
 def main(subject, remote_subject_dir, args, flags):
@@ -866,6 +875,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'calc_faces_contours' in args.function:
         flags['calc_faces_contours'] = calc_faces_contours(
             subject, args.atlas)
+
+    if 'check_bem' in args.function:
+        flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
     return flags
 

@@ -27,8 +27,12 @@ import os.path as op
 from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
-import scipy.io as sio
 import getpass
+
+try:
+    import scipy.io as sio
+except:
+    print('No scipy!')
 
 from src.mmvt_addon import mmvt_utils as mu
 # links to mmvt_utils
