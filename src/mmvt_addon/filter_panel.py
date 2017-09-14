@@ -508,14 +508,19 @@ class Filtering(bpy.types.Operator):
         # print(self.current_root_path)
         # source_files = ["/homes/5/npeled/space3/MMVT/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
+            # todo: should be called once (maybe those files are already loaded?
             fol = op.join(mu.get_user_fol(), 'electrodes')
-            meta_files = glob.glob(op.join(fol, 'electrodes_*meta*.npz'))
+            bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+            meta_files = glob.glob(op.join(fol, 'electrodes_{}meta*.npz'.format(bip)))
             if len(meta_files) > 0:
-                data_files = glob.glob(op.join(fol, 'electrodes_*data.npy'))
+                data_files = glob.glob(op.join(fol, 'electrodes_{}data*.npy'.format(bip)))
+                print('Loading data file: {}'.format(data_files[0]))
+                print('Loading meta data file: {}'.format(meta_files[0]))
                 data = np.load(data_files[0])
                 meta = np.load(meta_files[0])
             else:
-                data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_data_*.npz'))
+                data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data*.npz'.format(bip)))
+                print('Loading data file: {}'.format(data_files[0]))
                 meta = np.load(data_files[0])
                 data = meta['data']
             if len(data_files) == 0:
