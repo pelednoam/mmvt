@@ -140,8 +140,8 @@ def grid_or_depth(data):
 
 
 def read_electrodes_file(subject, bipolar, postfix=''):
-    electrodes_fname = 'electrodes{}_positions{}.npz'.format(
-        '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else '')
+    electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}_positions{}.npz'.format(
+        '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else ''))
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
@@ -712,10 +712,11 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
             '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
-        if args.bipolar:
-            return data_electrodes_to_bipolar(subject)
-        else:
-            return op.isfile(data_fname) and op.isfile(meta_fname)
+        return op.isfile(data_fname) and op.isfile(meta_fname) and data_electrodes_to_bipolar(subject)
+        # if args.bipolar:
+        #     return data_electrodes_to_bipolar(subject)
+        # else:
+        #     return op.isfile(data_fname) and op.isfile(meta_fname)
 
 
 def data_electrodes_to_bipolar(subject):

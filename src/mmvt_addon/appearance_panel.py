@@ -335,7 +335,7 @@ class SelectionListener(bpy.types.Operator):
                 mu.unfilter_graph_editor()
                 if bpy.context.scene.fit_graph_on_selection:
                     mu.view_all_in_graph_editor()
-                selected_obj = bpy.context.selected_objects[0]
+                selected_obj = bpy.context.selected_objects[-1]
                 selected_obj_name = selected_obj.name
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:

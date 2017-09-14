@@ -9,6 +9,9 @@ from src.utils import preproc_utils as pu
 from src.utils import matlab_utils as mu
 
 
+ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
+
+
 def read_electrodes_coordiantes_from_specific_xlsx_sheet(subject, bipolar):
     args = elecs.read_cmd_args(['-s', subject, '-b', str(bipolar)])
     args.ras_xls_sheet_name = 'RAS_Snapped'
@@ -57,13 +60,13 @@ def load_edf_data_seizure_2(args):
         function='create_raw_data_for_blender',
         task='seizure',
         bipolar=args.bipolar,
-        raw_fname='/cluster/neuromind/npeled/taha/dm04002705/edf/DMphaseIISz_TG.edf',
+        raw_fname=op.join(ELECTRODES_DIR, args.subject[0], 'DMphaseIISz_TG.edf'),# '/cluster/neuromind/npeled/taha/dm04002705/edf/DMphaseIISz_TG.edf',
         start_time='00:00:00',
-        seizure_onset='00:01:30',
+        seizure_onset='00:01:20',
         seizure_end='00:02:00',
         baseline_onset='00:00:00',
         baseline_end='00:01:00',
-        lower_freq_filter=0.5,
+        lower_freq_filter=2,
         upper_freq_filter=70,
         power_line_notch_widths=5,
         ref_elec='PST1',

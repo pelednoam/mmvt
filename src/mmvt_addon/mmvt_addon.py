@@ -441,10 +441,13 @@ def get_panels():
             pizco_panel)
 
 
-def load_all_panels():
+def load_all_panels(addon_prefs):
     mmvt = sys.modules[__name__]
     for panel in get_panels():
-        panel.init(mmvt)
+        if panel is freeview_panel:
+            panel.init(mmvt, addon_prefs)
+        else:
+            panel.init(mmvt)
         fix_scale()
         if bpy.data.objects.get('rh'):
             split_view(0)
@@ -465,7 +468,7 @@ def main(addon_prefs=None):
         if bpy.data.objects.get('rh', None) is None:
             data_panel.init(mmvt)
         else:
-            load_all_panels()
+            load_all_panels(addon_prefs)
 
         # list_panel.init(mmvt)
         pass

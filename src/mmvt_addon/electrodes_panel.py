@@ -68,7 +68,7 @@ def _leads_update():
     # show_elecs_hemi_update()
     ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
     init_electrodes_list()
-    bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
+    # bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
     # bpy.context.scene.show_only_lead = True
     _show_only_current_lead_update()
 
@@ -97,6 +97,7 @@ def _electrodes_update():
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
     color_electrodes(current_electrode, prev_electrode)
+    bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
     if prev_electrode != '' and prev_electrode != current_electrode:
         unselect_prev_electrode(prev_electrode)
         # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
@@ -111,20 +112,23 @@ def _electrodes_update():
                 plot_labels_probs(loc)
     else:
         print('lookup table is None!')
-    select_electrode(current_electrode)
+    # select_electrode(current_electrode)
     mu.change_fcurves_colors(bpy.data.objects[current_electrode])
 
 
 def select_electrode(current_electrode):
-    group, elc1, elc2 = mu.elec_group_number(current_electrode, True)
+    # group, elc1, elc2 = mu.elec_group_number(current_electrode, True)
     for elec in ElecsPanel.all_electrodes:
         bpy.data.objects[elec].select = elec == current_electrode
     # _addon().filter_electrode_func(bpy.context.scene.electrodes)
 
 
 def electode_was_manually_selected(selected_electrode_name):
-
-    for elc_name in ElecsPanel.all_electrodes:
+    if not ElecsPanel.init:
+        return
+    group = ElecsPanel.groups[selected_electrode_name]
+    bpy.context.scene.leads = group
+    for elc_name in ElecsPanel.groups_electrodes[group]:
         if elc_name == selected_electrode_name:
             bpy.context.scene.electrodes = elc_name
             break
@@ -322,6 +326,7 @@ def unselect_prev_electrode(prev_electrode):
     prev_elc = bpy.data.objects.get(prev_electrode)
     if not prev_elc is None:
         _addon().de_select_electrode_and_sensor(prev_elc, False)
+        # prev_elc.select = False
 
 
 def elecs_draw(self, context):
@@ -647,7 +652,11 @@ def init_electrodes_list():
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
     lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
-    bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
+    last_obj_name = bpy.context.selected_objects[-1].name if len(bpy.context.selected_objects) > 0 else ''
+    if len(bpy.context.selected_objects) > 0 and ElecsPanel.groups[last_obj_name] == lead:
+        bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
+    else:
+        bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
 
 
 def init_electrodes_labeling(addon):
