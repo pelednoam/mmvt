@@ -425,6 +425,54 @@ def fix_scale():
         for sub_obj in bpy.data.objects['Subcortical_structures'].children:
             for i in range(3):
                 sub_obj.scale[i] = 0.1
+    eeg_helmet = bpy.data.objects.get('eeg_helmet', None)
+    if eeg_helmet is not None:
+        for i in range(3):
+            eeg_helmet.scale[i] = 0.1
+
+
+def fix_cortex_labels_material():
+    remove_materials()
+    new_mats_list = ['Helmet_map_mat', 'unselected_label_Mat_cortex', 'unselected_label_Mat_subcortical']
+    materials_names = [m.name for m in bpy.data.materials]
+    print([mat not in materials_names for mat in new_mats_list])
+    if any([mat not in materials_names for mat in new_mats_list]):
+        print('Import new materials!')
+        import_new_materials()
+
+    labels = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children + \
+             bpy.data.objects['Cortex-inflated-lh'].children + bpy.data.objects['Cortex-inflated-rh'].children
+    subcorticals = bpy.data.objects['Subcortical_structures'].children
+    ret = fix_objects_material(labels, 'unselected_label_Mat_cortex') and \
+          fix_objects_material(subcorticals, 'unselected_label_Mat_subcortical')
+    if not ret:
+        remove_materials()
+        bpy.ops.wm.save_mainfile()
+        print('!!!!! Restart Blender !!!!!')
+        # bpy.ops.wm.quit_blender()
+
+
+def fix_objects_material(objects, material_name):
+    materials_names = [m.name for m in bpy.data.materials]
+    ret = True
+    for obj in objects:
+        if obj.name + '_Mat' in materials_names:
+            cur_mat = bpy.data.materials[obj.name + '_Mat']
+        else:
+            if material_name in materials_names:
+                obj.active_material = bpy.data.materials[material_name].copy()
+                obj.active_material.name = obj.name + '_Mat'
+                cur_mat = obj.active_material
+        try:
+            cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+            # obj.active_material = cur_mat
+        except:
+            ret = False
+            pass
+            # remove_materials()
+            # print('Quit!')
+            # bpy.ops.wm.quit_blender()
+    return ret
 
 
 def get_classes():
@@ -442,17 +490,18 @@ def get_panels():
             pizco_panel)
 
 
-def load_all_panels(addon_prefs):
+def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
+    fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)
         else:
             panel.init(mmvt)
-        fix_scale()
         if bpy.data.objects.get('rh'):
             split_view(0)
             split_view(0)
+            fix_scale()
         view_all()
         show_electrodes(False)
         show_hide_connections(False)
@@ -469,7 +518,8 @@ def main(addon_prefs=None):
         if bpy.data.objects.get('rh', None) is None:
             data_panel.init(mmvt)
         else:
-            load_all_panels(addon_prefs)
+            if addon_prefs is not None:
+                load_all_panels(addon_prefs)
         mmvt_utils._addon = mmvt
 
         # list_panel.init(mmvt)
@@ -478,6 +528,32 @@ def main(addon_prefs=None):
         print('The classes are already registered!')
         print(traceback.format_exc())
 
+
+def remove_materials():
+    # objs = bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children + \
+    #        bpy.data.objects['Cortex-inflated-lh'].children + bpy.data.objects['Cortex-inflated-rh'].children + \
+    #        bpy.data.objects['Subcortical_structures'].children
+    # for obj in objs:
+    #     if bpy.data.materials.get(obj.name + '_Mat') is not None:
+    #         bpy.data.materials[obj.name + '_Mat'].use_fake_user = False
+    #         bpy.data.materials[obj.name + '_Mat'].user_clear()
+
+    # get new materials from empty brain
+    new_mats_list = ['Helmet_map_mat', 'unselected_label_Mat_cortex', 'unselected_label_Mat_subcortical']
+    for cur_mat in new_mats_list:
+        if bpy.data.materials.get(cur_mat) is not None:
+            bpy.data.materials[cur_mat].use_fake_user = False
+            bpy.data.materials[cur_mat].user_clear()
+
+
+
+
+def import_new_materials():
+    empty_brain_path = op.join(mmvt_utils.get_parent_fol(mmvt_utils.get_user_fol()), 'empty_subject.blend')
+    new_mats_list = ['Helmet_map_mat', 'unselected_label_Mat_cortex', 'unselected_label_Mat_subcortical']
+    for cur_mat in new_mats_list:
+        bpy.ops.wm.append(filepath=empty_brain_path, directory=empty_brain_path + '\\Material\\', filename=cur_mat)
+        bpy.data.materials[cur_mat].use_fake_user = True
 
 
 if __name__ == "__main__":

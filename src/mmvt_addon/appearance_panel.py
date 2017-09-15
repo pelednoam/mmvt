@@ -348,7 +348,8 @@ class SelectionListener(bpy.types.Operator):
                     if not pial_obj is None:
                         # pial_obj.select = True
                         _addon().select_roi(pial_obj_name)
-                        mu.change_fcurves_colors(pial_obj)
+                        # mu.change_selected_fcurves_colors(pial_obj)
+                        # mu.change_selected_fcurves_colors()
                 elif selected_obj_type == mu.OBJ_TYPE_CON:
                     _addon().select_connection(selected_obj_name)
                 elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:

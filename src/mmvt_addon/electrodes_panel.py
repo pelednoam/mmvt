@@ -92,9 +92,8 @@ def _electrodes_update():
     update_cursor()
     color_electrodes(current_electrode, prev_elect)
     # bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
-    selected_electrodes_objs = [obj for obj in bpy.context.selected_objects if
-                                mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
-    selected_electrodes = [obj.name for obj in selected_electrodes_objs]
+    selected_electrodes = [obj.name for obj in bpy.context.selected_objects if
+                           mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
     # Check if it's a new selection:
     # print(len(selected_electrodes), current_electrode, ElecsPanel.prev_electrodes)
     if len(selected_electrodes) == 1 and current_electrode not in ElecsPanel.prev_electrodes:
@@ -124,7 +123,7 @@ def _electrodes_update():
     else:
         print('lookup table is None!')
     # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
-    mu.change_selected_fcurves_colors(selected_electrodes_objs)
+    mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
 
 
 def clear_electrodes_selection():

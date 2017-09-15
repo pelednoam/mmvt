@@ -397,26 +397,12 @@ def color_connectivity_degree():
     _addon().set_colorbar_max_min(data_max, 0)
     _addon().set_colormap('YlOrRd')
     _addon().set_colorbar_title('fMRI connectivity degree')
-    fix_labels_material(labels)
+    # _addon().fix_labels_material(labels)
 
     color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
     _addon().show_rois()
     if bpy.context.scene.connectivity_degree_save_image:
         _addon().save_image()
-
-
-def fix_labels_material(labels):
-    for label_name in labels:
-        obj = bpy.data.objects.get(label_name, None)
-        if obj is None:
-            continue
-        if obj.name + '_Mat' in bpy.data.materials:
-            cur_mat = bpy.data.materials[obj.name + '_Mat']
-        else:
-            cur_mat = bpy.data.materials['Deep_electrode_mat'].copy()
-            cur_mat.name = obj.name + '_Mat'
-        cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
-        obj.active_material = cur_mat
 
 
 def static_conn_files_update(self, context):
@@ -450,7 +436,7 @@ def fmri_labels_coloring(override_current_mat=True):
         if bpy.data.objects[hemi].hide:
             continue
         labels_data = np.load(op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
-        fix_labels_material(labels_data['names'])
+        # fix_labels_material(labels_data['names'])
         # todo check this also in other labels coloring
         if bpy.context.scene.color_rois_homogeneously:
             color_objects_homogeneously(
@@ -464,7 +450,7 @@ def fmri_labels_coloring(override_current_mat=True):
     if ColoringMakerPanel.fmri_subcorticals_mean_exist:
         em = bpy.context.scene.fmri_labels_extract_method
         subs_data = np.load(op.join(user_fol, 'fmri', 'subcorticals_{}.npz'.format(em)))
-        fix_labels_material(subs_data['names'])
+        # fix_labels_material(subs_data['names'])
         if bpy.context.scene.color_rois_homogeneously:
             color_objects_homogeneously(
                 subs_data['data'], subs_data['names'], ['rest'], labels_min, colors_ratio, threshold)

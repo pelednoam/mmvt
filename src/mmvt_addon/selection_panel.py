@@ -146,8 +146,8 @@ def select_roi(roi_name):
 
     # check if MEG data is loaded and attahced to the obj
     if mu.count_fcurves(roi) > 0:
-        roi.select  = True
-        mu.change_fcurves_colors(roi)
+        roi.select = True
+        # mu.change_fcurves_colors(roi)
     else:
         # Check if dynamic fMRI data is loaded
         fmri_parent_obj = bpy.data.objects.get('fMRI')
@@ -158,6 +158,7 @@ def select_roi(roi_name):
                 fmri_parent_obj.select = True
             else:
                 fcurve.hide = True
+    mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
     mu.view_all_in_graph_editor()
 
 

@@ -80,6 +80,7 @@ HEMIS = ['rh', 'lh']
 INF_HEMIS = ['inflated_{}'.format(hemi) for hemi in HEMIS]
 (OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH, OBJ_TYPE_SUBCORTEX,
     OBJ_TYPE_ELECTRODE, OBJ_TYPE_EEG, OBJ_TYPE_CEREBELLUM, OBJ_TYPE_CON, OBJ_TYPE_CON_VERTICE) = range(10)
+OBJ_TYPES_ROIS = [OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_INFLATED_RH, OBJ_TYPE_CORTEX_INFLATED_LH]
 
 show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
 
@@ -1087,9 +1088,13 @@ def read_ply_file(ply_file):
     return verts, faces
 
 
-def change_selected_fcurves_colors(selected_objects, color_also_objects=True, exclude=()):
+def change_selected_fcurves_colors(selected_objects_types, color_also_objects=True, exclude=()):
     import colorsys
     # print('change_selected_fcurves_colors')
+    if not isinstance(selected_objects_types, Iterable):
+        selected_objects_types = [selected_objects_types]
+    selected_objects = [obj for obj in bpy.context.selected_objects if
+                        check_obj_type(obj.name) in selected_objects_types]
     selected_objects = [obj for obj in selected_objects if obj.animation_data is not None and
                         obj.name not in exclude][::-1]
     selected_objects_len = 6 if len(selected_objects) <= 6 else len(selected_objects)

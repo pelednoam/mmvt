@@ -27,14 +27,16 @@ def set_light_layers_depth(val):
 
 
 def transparency_draw(self, context):
+    layout = self.layout
     if context.scene.filter_view_type == 'rendered' and bpy.context.scene.appearance_show_rois_activity == 'activity':
     # if context.scene.filter_view_type == 'RENDERED' and bpy.context.scene.appearance_show_activity_layer is True:
-        layout = self.layout
         layout.prop(context.scene, 'appearance_solid_slider', text="Show solid brain")
         split2 = layout.split()
         # split2.prop(context.scene, 'appearance_depth_Bool', text="Show cortex deep layers")
         split2.prop(context.scene, 'appearance_depth_slider', text="Depth")
         # layout.operator("mmvt.appearance_update", text="Update")
+    else:
+        layout.label(text='This panel works only in rendered brain and activity map mode')
 
 
 class UpdateAppearance(bpy.types.Operator):

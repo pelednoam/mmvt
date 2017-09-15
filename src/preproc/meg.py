@@ -1503,7 +1503,15 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             for cond in events.keys():
                 stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi)
                 if not op.isfile(stc_fname):
-                    raise Exception("Can't find the stc file! {}".format(stc_fname))
+                    print("Can't find the stc file! {}".format(stc_fname))
+                template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
+                stcs = glob.glob(template)
+                if len(stcs) == 1:
+                    stc_fname = stcs[0]
+                    print('Loading {} instead'.format(stc_fname))
+                else:
+                    stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
+                    print('Loading {} instead'.format(stc_fname))
                 stcs[cond] = mne.read_source_estimate(stc_fname)
 
         global_inverse_operator = False
