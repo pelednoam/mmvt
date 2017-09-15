@@ -583,7 +583,7 @@ def init(addon):
                 bpy.data.objects[_addon().get_connections_parent_name()].animation_data
     bpy.context.scene.fit_graph_on_selection = False
     bpy.context.scene.graph_max_min = True
-    bpy.context.scene.find_curves_sep_auto = False
+    bpy.context.scene.find_curves_sep_auto = True
     get_data()
     SelectionMakerPanel.init = True
     register()

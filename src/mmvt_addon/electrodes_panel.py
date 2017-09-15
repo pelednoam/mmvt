@@ -85,9 +85,6 @@ def electrodes_update(self, context):
 def _electrodes_update():
     if _addon() is None or not ElecsPanel.init:
         return
-    # _addon().show_electrodes()
-    # show_elecs_hemi_update()
-    # _show_only_current_lead_update()
     # mu.print_traceback()
     prev_elect = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
@@ -95,40 +92,27 @@ def _electrodes_update():
     update_cursor()
     color_electrodes(current_electrode, prev_elect)
     # bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
-    selected_electrodes = [obj.name for obj in bpy.context.selected_objects if mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
+    selected_electrodes_objs = [obj for obj in bpy.context.selected_objects if
+                                mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
+    selected_electrodes = [obj.name for obj in selected_electrodes_objs]
     # Check if it's a new selection:
-    print(len(selected_electrodes), current_electrode, ElecsPanel.prev_electrodes)
+    # print(len(selected_electrodes), current_electrode, ElecsPanel.prev_electrodes)
     if len(selected_electrodes) == 1 and current_electrode not in ElecsPanel.prev_electrodes:
-        print('1')
         # Clear and init prev_electrodes
         unselect_prev_electrode(ElecsPanel.prev_electrodes)
         ElecsPanel.prev_electrodes = set([current_electrode])
     # Check if this is a new electrodes where the shift is pressed
     elif len(selected_electrodes) > 1 and current_electrode not in ElecsPanel.prev_electrodes:
-        print('2')
         # Add current electrode to prev_electrodes
         ElecsPanel.prev_electrodes.add(current_electrode)
     # Check if the user unselect one of the selected electrodes
     elif len(selected_electrodes) > 1 and current_electrode in ElecsPanel.prev_electrodes:
-        print('3')
         bpy.data.objects[current_electrode].select = False
         unselect_prev_electrode([current_electrode])
         ElecsPanel.prev_electrodes.remove(current_electrode)
     else:
         clear_electrodes_selection()
-        print('4')
-    # if prev_elect != '' and prev_elect != current_electrode:
-    #     if current_electrode in ElecsPanel.prev_electrodes:
-    #         print('current_electrode in ElecsPanel.prev_electrodes')
-    #         ElecsPanel.prev_electrodes.remove(current_electrode)
-    #         unselect_prev_electrode([current_electrode])
-    #     else:
-    #         ElecsPanel.prev_electrodes.append(prev_elect)
-    #         if len(bpy.context.selected_objects) <= 1:
-    #             unselect_prev_electrode(ElecsPanel.prev_electrodes)
-    #             ElecsPanel.prev_electrodes = []
-    #     # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
-        #      _show_only_current_lead_update()
+
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup.get(current_electrode, None)
         if loc is None:
@@ -139,9 +123,8 @@ def _electrodes_update():
                 plot_labels_probs(loc)
     else:
         print('lookup table is None!')
-    # select_electrode(current_electrode)
     # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
-    mu.change_selected_fcurves_colors()
+    mu.change_selected_fcurves_colors(selected_electrodes_objs)
 
 
 def clear_electrodes_selection():
@@ -159,11 +142,10 @@ def select_electrode(current_electrode):
 def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init:
         return
-    print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
+    # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]
     # It's enough to update the lead to update also the elecctrode, according to bpy.context.active_object
     bpy.context.scene.leads = group
-
 
 
 def color_electrodes(current_electrode, prev_electrode):
@@ -546,7 +528,7 @@ class KeyboardListener(bpy.types.Operator):
         if time.time() - self.press_time > 1 and bpy.context.scene.listen_to_keyboard and \
                 event.type not in ['TIMER', 'MOUSEMOVE', 'WINDOW_DEACTIVATE', 'INBETWEEN_MOUSEMOVE', 'TIMER_REPORT', 'NONE']:
             self.press_time = time.time()
-            print(event.type)
+            # print(event.type)
             if event.type in KeyboardListener.funcs.keys():
                 KeyboardListener.funcs[event.type]()
             else:
@@ -687,7 +669,7 @@ def init_electrodes_list():
     lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
     last_obj_name = bpy.context.active_object.name if bpy.context.active_object is not None else ''
     # mu.print_traceback()
-    if last_obj_name != '' and ElecsPanel.groups[last_obj_name] == lead:
+    if last_obj_name != '' and last_obj_name in ElecsPanel.groups and ElecsPanel.groups[last_obj_name] == lead:
         bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
     else:
         bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]

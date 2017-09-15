@@ -1087,12 +1087,13 @@ def read_ply_file(ply_file):
     return verts, faces
 
 
-def change_selected_fcurves_colors(color_also_objects=True, exclude=()):
+def change_selected_fcurves_colors(selected_objects, color_also_objects=True, exclude=()):
     import colorsys
     # print('change_selected_fcurves_colors')
-    selected_objects = [obj for obj in bpy.context.selected_objects if obj.animation_data is not None and
-                        obj.name not in exclude]
-    Hs = np.linspace(0, 360, len(selected_objects) + 1)[:-1] / 360
+    selected_objects = [obj for obj in selected_objects if obj.animation_data is not None and
+                        obj.name not in exclude][::-1]
+    selected_objects_len = 6 if len(selected_objects) <= 6 else len(selected_objects)
+    Hs = np.linspace(0, 360, selected_objects_len + 1)[:-1] / 360
     fcurves_per_obj = count_fcurves(selected_objects[0])
     Ls = [0.3, 0.7] if fcurves_per_obj == 2 else [0.5]
 

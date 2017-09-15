@@ -332,7 +332,6 @@ class SelectionListener(bpy.types.Operator):
 
         if self.right_clicked:
             self.right_clicked = False
-            print('right click!')
             # print(bpy.context.selected_objects)
             if len(bpy.context.selected_objects):
                 mu.unfilter_graph_editor()
@@ -361,7 +360,6 @@ class SelectionListener(bpy.types.Operator):
                 elif bpy.context.scene.curves_sep > 0:
                     _addon().curves_sep_update()
             else:
-                print('clear_electrodes_selection')
                 _addon().clear_electrodes_selection()
         if time.time() - self.press_time > 1:
             if event.type == 'RIGHTMOUSE':
