@@ -253,6 +253,7 @@ set_show_only_lead = electrodes_panel.set_show_only_lead
 is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 get_electrodes_names = electrodes_panel.get_electrodes_names
 electode_was_manually_selected = electrodes_panel.electode_was_manually_selected
+clear_electrodes_selection = electrodes_panel.clear_electrodes_selection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
@@ -469,6 +470,7 @@ def main(addon_prefs=None):
             data_panel.init(mmvt)
         else:
             load_all_panels(addon_prefs)
+        mmvt_utils._addon = mmvt
 
         # list_panel.init(mmvt)
         pass

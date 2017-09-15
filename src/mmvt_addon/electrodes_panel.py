@@ -64,12 +64,8 @@ def leads_update(self, context):
 def _leads_update():
     if _addon() is None or not ElecsPanel.init:
         return
-    # _addon().show_electrodes()
-    # show_elecs_hemi_update()
-    ElecsPanel.current_lead = current_lead = bpy.context.scene.leads
+    ElecsPanel.current_lead = bpy.context.scene.leads
     init_electrodes_list()
-    # bpy.context.scene.electrodes = ElecsPanel.groups_first_electrode[current_lead]
-    # bpy.context.scene.show_only_lead = True
     _show_only_current_lead_update()
 
 
@@ -92,15 +88,46 @@ def _electrodes_update():
     # _addon().show_electrodes()
     # show_elecs_hemi_update()
     # _show_only_current_lead_update()
-    prev_electrode = ElecsPanel.current_electrode
+    # mu.print_traceback()
+    prev_elect = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
-    color_electrodes(current_electrode, prev_electrode)
-    bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
-    if prev_electrode != '' and prev_electrode != current_electrode:
-        unselect_prev_electrode(prev_electrode)
-        # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
+    color_electrodes(current_electrode, prev_elect)
+    # bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
+    selected_electrodes = [obj.name for obj in bpy.context.selected_objects if mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
+    # Check if it's a new selection:
+    print(len(selected_electrodes), current_electrode, ElecsPanel.prev_electrodes)
+    if len(selected_electrodes) == 1 and current_electrode not in ElecsPanel.prev_electrodes:
+        print('1')
+        # Clear and init prev_electrodes
+        unselect_prev_electrode(ElecsPanel.prev_electrodes)
+        ElecsPanel.prev_electrodes = set([current_electrode])
+    # Check if this is a new electrodes where the shift is pressed
+    elif len(selected_electrodes) > 1 and current_electrode not in ElecsPanel.prev_electrodes:
+        print('2')
+        # Add current electrode to prev_electrodes
+        ElecsPanel.prev_electrodes.add(current_electrode)
+    # Check if the user unselect one of the selected electrodes
+    elif len(selected_electrodes) > 1 and current_electrode in ElecsPanel.prev_electrodes:
+        print('3')
+        bpy.data.objects[current_electrode].select = False
+        unselect_prev_electrode([current_electrode])
+        ElecsPanel.prev_electrodes.remove(current_electrode)
+    else:
+        clear_electrodes_selection()
+        print('4')
+    # if prev_elect != '' and prev_elect != current_electrode:
+    #     if current_electrode in ElecsPanel.prev_electrodes:
+    #         print('current_electrode in ElecsPanel.prev_electrodes')
+    #         ElecsPanel.prev_electrodes.remove(current_electrode)
+    #         unselect_prev_electrode([current_electrode])
+    #     else:
+    #         ElecsPanel.prev_electrodes.append(prev_elect)
+    #         if len(bpy.context.selected_objects) <= 1:
+    #             unselect_prev_electrode(ElecsPanel.prev_electrodes)
+    #             ElecsPanel.prev_electrodes = []
+    #     # if ElecsPanel.groups[prev_electrode] != bpy.context.scene.current_lead:
         #      _show_only_current_lead_update()
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup.get(current_electrode, None)
@@ -113,7 +140,13 @@ def _electrodes_update():
     else:
         print('lookup table is None!')
     # select_electrode(current_electrode)
-    mu.change_fcurves_colors(bpy.data.objects[current_electrode])
+    # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
+    mu.change_selected_fcurves_colors()
+
+
+def clear_electrodes_selection():
+    unselect_prev_electrode(ElecsPanel.prev_electrodes)
+    ElecsPanel.prev_electrodes = set()
 
 
 def select_electrode(current_electrode):
@@ -126,12 +159,11 @@ def select_electrode(current_electrode):
 def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init:
         return
+    print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]
+    # It's enough to update the lead to update also the elecctrode, according to bpy.context.active_object
     bpy.context.scene.leads = group
-    for elc_name in ElecsPanel.groups_electrodes[group]:
-        if elc_name == selected_electrode_name:
-            bpy.context.scene.electrodes = elc_name
-            break
+
 
 
 def color_electrodes(current_electrode, prev_electrode):
@@ -159,11 +191,11 @@ def is_current_electrode_marked():
 
 
 def print_electrode_loc(loc):
-    print('{}:'.format(ElecsPanel.current_electrode))
-    for subcortical_name, subcortical_prob in zip(loc['subcortical_rois'], loc['subcortical_probs']):
-        print('{}: {}'.format(subcortical_name, subcortical_prob))
-    for cortical_name, cortical_prob in zip(loc['cortical_rois'], loc['cortical_probs']):
-        print('{}: {}'.format(cortical_name, cortical_prob))
+    # print('{}:'.format(ElecsPanel.current_electrode))
+    # for subcortical_name, subcortical_prob in zip(loc['subcortical_rois'], loc['subcortical_probs']):
+    #     print('{}: {}'.format(subcortical_name, subcortical_prob))
+    # for cortical_name, cortical_prob in zip(loc['cortical_rois'], loc['cortical_probs']):
+    #     print('{}: {}'.format(cortical_name, cortical_prob))
     ElecsPanel.subcortical_rois = loc['subcortical_rois']
     ElecsPanel.subcortical_probs = loc['subcortical_probs']
     ElecsPanel.cortical_rois = loc['cortical_rois']
@@ -322,10 +354,11 @@ def plot_labels_probs(elc):
             print('No cortical vertices for {}'.format(elc['name']))
 
 
-def unselect_prev_electrode(prev_electrode):
-    prev_elc = bpy.data.objects.get(prev_electrode)
-    if not prev_elc is None:
-        _addon().de_select_electrode_and_sensor(prev_elc, False)
+def unselect_prev_electrode(prev_electrodes):
+    for prev_electrode in prev_electrodes:
+        prev_elc = bpy.data.objects.get(prev_electrode)
+        if not prev_elc is None:
+            _addon().de_select_electrode_and_sensor(prev_elc, False)
         # prev_elc.select = False
 
 
@@ -569,6 +602,7 @@ class ElecsPanel(bpy.types.Panel):
     init = False
     electrodes, leads = [], []
     current_electrode = ''
+    prev_electrodes = set()
     electrodes_locs, lookup = None, None
     subcortical_rois, subcortical_probs = [], []
     cortical_rois, cortical_probs = [], []
@@ -645,15 +679,15 @@ def init_leads_list(leads=None):
 
 
 def init_electrodes_list():
-    # ElecsPanel.electrodes = [el.name for el in ElecsPanel.parent.children]
     ElecsPanel.electrodes = ElecsPanel.groups_electrodes[ElecsPanel.current_lead]
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
     lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
-    last_obj_name = bpy.context.selected_objects[-1].name if len(bpy.context.selected_objects) > 0 else ''
-    if len(bpy.context.selected_objects) > 0 and ElecsPanel.groups[last_obj_name] == lead:
+    last_obj_name = bpy.context.active_object.name if bpy.context.active_object is not None else ''
+    # mu.print_traceback()
+    if last_obj_name != '' and ElecsPanel.groups[last_obj_name] == lead:
         bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
     else:
         bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]

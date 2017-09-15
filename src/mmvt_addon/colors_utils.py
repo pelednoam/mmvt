@@ -36,6 +36,11 @@ for k in sorted(list(kelly_colors_dic.keys())):
 boynton_colors = ["yellow", "green", "magenta", "blue", "red", "deepskyblue", "orange", "brown", 'darkblue', 'aquamarine', 'chocolate', 'indigo']#, "gray"]
 
 
+def get_distinct_colors_hs(colors_num=0):
+    Hs = np.linspace(0, 360, colors_num + 1)
+    return Hs[:-1]
+
+
 def get_distinct_colors(colors_num=0):
     if colors_num == 2:
         return cycle((np.array([kelly_colors_dic[col] for col in ['grayish_yellow', 'strong_violet']]) / 255.0).tolist())

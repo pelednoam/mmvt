@@ -41,6 +41,9 @@ from queue import Empty
 import glob
 
 
+_addon = None
+
+
 class empty_bpy(object):
     class types(object):
         class Scene(object): pass
@@ -1084,6 +1087,24 @@ def read_ply_file(ply_file):
     return verts, faces
 
 
+def change_selected_fcurves_colors(color_also_objects=True, exclude=()):
+    import colorsys
+    # print('change_selected_fcurves_colors')
+    selected_objects = [obj for obj in bpy.context.selected_objects if obj.animation_data is not None and
+                        obj.name not in exclude]
+    Hs = np.linspace(0, 360, len(selected_objects) + 1)[:-1] / 360
+    fcurves_per_obj = count_fcurves(selected_objects[0])
+    Ls = [0.3, 0.7] if fcurves_per_obj == 2 else [0.5]
+
+    for obj_ind, obj in enumerate(selected_objects):
+        if color_also_objects:
+            obj_color = colorsys.hls_to_rgb(Hs[obj_ind], 0.5, 1)
+            _addon.object_coloring(obj, obj_color)
+        for fcurve_ind, fcurve in enumerate(obj.animation_data.action.fcurves):
+            new_color = colorsys.hls_to_rgb(Hs[obj_ind], Ls[fcurve_ind], 1)
+            change_fcurve_color(fcurve, new_color, exclude)
+
+
 def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):
     colors_num = count_fcurves(objs)
     colors = cu.get_distinct_colors(colors_num)
@@ -1102,12 +1123,12 @@ def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):
                 change_fcurve_color(fcurve, colors, exclude)
 
 
-def change_fcurve_color(fcurve, colors_generator, exclude=[]):
+def change_fcurve_color(fcurve, color, exclude=[]):
     fcurve_name = get_fcurve_name(fcurve)
     if fcurve_name in exclude:
         return
     fcurve.color_mode = 'CUSTOM'
-    fcurve.color = tuple(next(colors_generator))
+    fcurve.color = color if isinstance(color, tuple) and len(color) == 3 else tuple(next(color))
     fcurve.select = True
     fcurve.hide = False
 
@@ -1944,6 +1965,11 @@ def both_hemi_files_exist(file_template):
 def delete_files(temp):
     for fname in glob.glob(temp):
         os.remove(fname)
+
+
+def print_traceback():
+    import traceback
+    print(''.join(traceback.format_stack()))
 
 
 # def to_str(val):

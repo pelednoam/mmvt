@@ -80,7 +80,7 @@ def curves_sep_update(self=None, context=None):
                 fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[T].co[1] = 0
     for fcurve in fcurves:
         SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
-    mu.change_fcurves_colors(fcurves=fcurves)
+    # mu.change_fcurves_colors(fcurves=fcurves)
     mu.view_all_in_graph_editor()
 
 
@@ -365,6 +365,7 @@ class ClearSelection(bpy.types.Operator):
             bpy.data.objects[' '].select = True
             bpy.context.scene.objects.active = bpy.data.objects[' ']
         SelectionMakerPanel.selection = []
+        _addon().clear_electrodes_selection()
         return {"FINISHED"}
 
 

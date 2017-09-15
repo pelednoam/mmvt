@@ -331,11 +331,14 @@ class SelectionListener(bpy.types.Operator):
             # mu.view_all_in_graph_editor()
 
         if self.right_clicked:
+            self.right_clicked = False
+            print('right click!')
+            # print(bpy.context.selected_objects)
             if len(bpy.context.selected_objects):
                 mu.unfilter_graph_editor()
                 if bpy.context.scene.fit_graph_on_selection:
                     mu.view_all_in_graph_editor()
-                selected_obj = bpy.context.selected_objects[-1]
+                selected_obj = bpy.context.active_object # bpy.context.selected_objects[-1]
                 selected_obj_name = selected_obj.name
                 selected_obj_type = mu.check_obj_type(selected_obj_name)
                 if selected_obj_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH]:
@@ -357,8 +360,9 @@ class SelectionListener(bpy.types.Operator):
                     _addon().calc_best_curves_sep()
                 elif bpy.context.scene.curves_sep > 0:
                     _addon().curves_sep_update()
-            self.right_clicked = False
-
+            else:
+                print('clear_electrodes_selection')
+                _addon().clear_electrodes_selection()
         if time.time() - self.press_time > 1:
             if event.type == 'RIGHTMOUSE':
                 self.press_time = time.time()
