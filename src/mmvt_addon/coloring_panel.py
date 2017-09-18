@@ -42,7 +42,7 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
         return True
 
 
-@mu.dump_args
+# @mu.dump_args
 def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
@@ -72,6 +72,7 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     else:
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
+        # _addon().set_colorbar_prec(abs(int(np.round(np.log10(data_max)))))
     normalize_data = True
     # if normalize_data:
     #     stc_t_smooth.rh_data /= data_max
@@ -1014,16 +1015,25 @@ def meg_files_update(self, context):
             bpy.data.scenes['Scene'].frame_preview_end = T
             if context.scene.frame_current > T:
                 context.scene.frame_current = T
-            calc_stc_minmax(ColoringMakerPanel.stc)
-            try:
-                bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
-            except:
-                bpy.context.scene.meg_max_t = 0
+            data_min, data_max = calc_stc_minmax()
+            _addon().set_colorbar_max_min(data_max, data_min)
+            _addon().set_colorbar_title('MEG')
+            # try:
+            #     bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
+            # except:
+            #     bpy.context.scene.meg_max_t = 0
 
 
-def calc_stc_minmax(stc):
+def calc_stc_minmax():
+    stc = ColoringMakerPanel.stc
     data_min = mu.min_stc(stc)
     data_max = mu.max_stc(stc)
+    factor = abs(int(np.round(np.log10(data_max))))
+    if factor > 3:
+        # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
+        ColoringMakerPanel.stc._data *= np.power(10, factor)
+        data_min *= np.power(10, factor)
+        data_max *= np.power(10, factor)
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
         ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax
@@ -1513,6 +1523,26 @@ class ColorMeg(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ColorMegMax(bpy.types.Operator):
+    bl_idname = "mmvt.meg_max_color"
+    bl_label = "mmvt meg max color"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        if ColoringMakerPanel.stc_file_chosen:
+            max_vert, bpy.context.scene.frame_current = ColoringMakerPanel.stc.get_peak(time_as_index=True, vert_as_index=True)
+            print(max_vert, bpy.context.scene.frame_current)
+            plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
+                     threshold=bpy.context.scene.coloring_threshold, save_image=False)
+        elif ColoringMakerPanel.activity_map_chosen:
+            #todo: implement
+            pass
+            # activity_map_coloring('MEG')
+        else:
+            print('ColorMegMax: Both stc_file_chosen and activity_map_chosen are False!')
+        return {"FINISHED"}
+
 class ColorMegLabels(bpy.types.Operator):
     bl_idname = "mmvt.meg_labels_color"
     bl_label = "mmvt meg labels color"
@@ -1702,6 +1732,7 @@ def draw(self, context):
             col.prop(context.scene, 'meg_files', '')
             # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+            col.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
         if meg_labels_data_exist and meg_labels_data_minmax_exist:
@@ -2121,6 +2152,7 @@ def register():
         bpy.utils.register_class(ColorVol)
         bpy.utils.register_class(ColorGroupsManually)
         bpy.utils.register_class(ColorMeg)
+        bpy.utils.register_class(ColorMegMax)
         bpy.utils.register_class(ColorMegLabels)
         bpy.utils.register_class(ColorfMRI)
         bpy.utils.register_class(ColorfMRILabels)
@@ -2153,6 +2185,7 @@ def unregister():
         bpy.utils.unregister_class(ColorVol)
         bpy.utils.unregister_class(ColorGroupsManually)
         bpy.utils.unregister_class(ColorMeg)
+        bpy.utils.unregister_class(ColorMegMax)
         bpy.utils.unregister_class(ColorMegLabels)
         bpy.utils.unregister_class(ColorfMRI)
         bpy.utils.unregister_class(ColorfMRILabels)

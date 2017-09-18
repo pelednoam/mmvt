@@ -5,8 +5,8 @@ import numpy as np
 import mmvt_utils as mu
 
 
-PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
-
+# PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
+PERC_FORMATS = {p:'{:.' + str(p) + 'f}' for p in range(15)}
 
 def _addon():
     return ColorbarPanel.addon
@@ -211,7 +211,7 @@ bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(items=[], description="c
 bpy.types.Scene.colorbar_max = bpy.props.FloatProperty(description="", update=colorbar_update)
 bpy.types.Scene.colorbar_min = bpy.props.FloatProperty(description="", update=colorbar_update)
 bpy.types.Scene.colorbar_title = bpy.props.StringProperty(description="", update=colorbar_update)
-bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=5, description="", update=colorbar_update)
+bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=15, description="", update=colorbar_update)
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)
 bpy.types.Scene.hide_cb_center = bpy.props.BoolProperty(default=False, update=hide_cb_center_update)
@@ -270,6 +270,7 @@ def init(addon):
         bpy.context.scene.colorbar_title = '     MEG'
         bpy.context.scene.colorbar_y = 0.18
         bpy.context.scene.colorbar_text_y = -1.53
+        bpy.context.scene.colorbar_prec = 2
     if not colorbar_values_are_locked():
         bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
 
