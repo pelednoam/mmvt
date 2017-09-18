@@ -483,3 +483,47 @@ def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=Fal
             print('Failed to create {}'.format(aparc_aseg_fname))
             return False, ''
     return True, aparc_aseg_fname
+
+
+def parse_patch(filename):
+    import struct
+    with open(filename, 'rb') as fp:
+        header, = struct.unpack('>i', fp.read(4))
+        nverts, = struct.unpack('>i', fp.read(4))
+        data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4')])
+        assert len(data) == nverts
+        return data
+
+
+def read_fsaverage_flat_patch(hemi, subjects_dir, surface_type='pial'):
+    pts, polys = nib_fs.read_geometry(op.join(subjects_dir, 'fsaverage', 'surf', '{}.{}'.format(hemi, surface_type)))
+
+    patch_fname = op.join(subjects_dir, 'fsaverage', 'surf', '{}.cortex.patch.flat'.format(hemi))
+    patch = parse_patch(patch_fname)
+    verts = patch[patch['vert'] > 0]['vert'] - 1
+    edges = -patch[patch['vert'] < 0]['vert'] - 1
+
+    idx = np.zeros((len(pts),), dtype=bool)
+    idx[verts] = True
+    idx[edges] = True
+    valid = idx[polys.ravel()].reshape(-1, 3).all(1)
+    polys = polys[valid]
+    idx = np.zeros((len(pts),))
+    idx[verts] = 1
+    idx[edges] = -1
+
+    for i, x in enumerate(['x', 'y', 'z']):
+        pts[verts, i] = patch[patch['vert'] > 0][x]
+        pts[edges, i] = patch[patch['vert'] < 0][x]
+    return pts, polys
+
+
+if __name__ == '__main__':
+    from src.utils import preproc_utils as pu
+    SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
+
+    pts, polys = read_fsaverage_flat_patch('rh', SUBJECTS_DIR)
+    utils.write_ply_file(pts, polys, op.join(MMVT_DIR, 'fsaverage', 'surf', 'rh.flat.pial.ply'))
+    print('Finish!')
+
+

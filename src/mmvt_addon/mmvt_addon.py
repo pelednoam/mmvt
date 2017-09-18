@@ -492,6 +492,7 @@ def get_panels():
 
 def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
+    check_empty_subject_version()
     fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
@@ -527,6 +528,23 @@ def main(addon_prefs=None):
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())
+
+
+def check_empty_subject_version():
+    import shutil
+    resources_dir = mmvt_utils.get_resources_dir()
+    mmvt_dir = mmvt_utils.get_mmvt_dir()
+    resources_empty_brain = op.join(resources_dir, 'empty_subject.blend')
+    mmvt_empty_brain = op.join(mmvt_dir, 'empty_subject.blend')
+    if not op.isfile(mmvt_empty_brain):
+        print('Copying new empty brain')
+        shutil.copy(resources_empty_brain, mmvt_empty_brain)
+    else:
+        empty_brain_resources_mod_time = mmvt_utils.file_modification_time(resources_empty_brain)
+        empty_brain_mmvt_mod_time = mmvt_utils.file_modification_time(mmvt_empty_brain)
+        if empty_brain_resources_mod_time > empty_brain_mmvt_mod_time:
+            print('Copying new empty brain')
+            shutil.copy(resources_empty_brain, mmvt_empty_brain)
 
 
 def remove_materials():

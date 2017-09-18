@@ -1955,6 +1955,8 @@ def init_meg_activity_map():
             list_items.append((activity_type, activity_type, '', len(list_items)))
     if MNE_EXIST:
         list_items = create_stc_files_list(list_items)
+    else:
+        print('No MNE installed in Blender. Run python -m src.setup -f install_blender_reqs')
     if len(list_items) > 0:
         bpy.types.Scene.meg_files = bpy.props.EnumProperty(
             items=list_items, description="MEG files", update=meg_files_update)

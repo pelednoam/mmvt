@@ -40,7 +40,6 @@ from datetime import datetime
 from queue import Empty
 import glob
 
-
 _addon = None
 
 
@@ -96,6 +95,8 @@ except:
 
 get_link_dir = su.get_link_dir
 get_links_dir = su.get_links_dir
+get_resources_dir = su.get_resources_dir
+get_mmvt_dir = su.get_mmvt_dir
 
 floats_const_pattern = r"""
      [-+]?
@@ -1978,5 +1979,13 @@ def print_traceback():
     print(''.join(traceback.format_stack()))
 
 
-# def to_str(val):
+def file_modification_time(fname):
+    from datetime import datetime
+    try:
+        mtime = os.path.getmtime(fname)
+    except OSError:
+        mtime = 0
+    return datetime.fromtimestamp(mtime)
+
+        # def to_str(val):
 #     return val.decode('ascii') if hasattr(val, 'decode') else str(val)

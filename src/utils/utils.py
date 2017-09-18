@@ -63,6 +63,7 @@ make_link = mu.make_link
 both_hemi_files_exist = mu.both_hemi_files_exist
 other_hemi = mu.other_hemi
 check_hemi = mu.check_hemi
+file_modification_time = mu.file_modification_time
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -1684,15 +1685,6 @@ def locating_file(default_fname, glob_pattern, parent_fol):
                 else:
                     print("Couldn't find {}!".format(op.join(parent_fol, fname_input)))
     return fname, exist
-
-
-def file_modification_time(fname):
-    from datetime import datetime
-    try:
-        mtime = os.path.getmtime(fname)
-    except OSError:
-        mtime = 0
-    return datetime.fromtimestamp(mtime)
 
 
 def remove_link(source):
