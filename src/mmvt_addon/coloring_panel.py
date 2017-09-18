@@ -72,6 +72,11 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     else:
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
+    normalize_data = True
+    # if normalize_data:
+    #     stc_t_smooth.rh_data /= data_max
+    #     stc_t_smooth.lh_data /= data_max
+    #     data_min, data_max = 0, 1
     colors_ratio = 256 / (data_max - data_min)
     set_default_colormap(data_min, data_max)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
