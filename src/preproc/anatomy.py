@@ -797,6 +797,39 @@ def check_bem(subject, remote_subject_dir, args):
     meg.check_bem(subject, meg_args)
 
 
+def create_flat_map(subject, overwrite=False, template_brain='fsaverage'):
+    from mne.source_estimate import read_morph_map, _sparse_argmax_nnz_row
+
+    fs_ply_flat = op.join(SUBJECTS_DIR, template_brain, 'surf', '{}.flat.pial.ply'.format('{hemi}'))
+    fs_srf_flat = op.join(SUBJECTS_DIR, template_brain, 'surf', '{}.flat.pial'.format('{hemi}'))
+    subject_bad_verts_fname = op.join(MMVT_DIR, subject, 'flat_bad_vertices.pkl')
+    subject_bad_verts = {}
+
+    if op.isfile(subject_bad_verts_fname) and not overwrite:
+        return True
+
+    map = {}
+    map['lh'], map['rh'] = read_morph_map(subject, template_brain, SUBJECTS_DIR)
+    for hemi in utils.HEMIS:
+        fs_ply_flat_hemi = fs_ply_flat.format(hemi=hemi)
+        fs_srf_flat_hemi = fs_srf_flat.format(hemi=hemi)
+        fs_flat_verts, fs_flat_faces = fu.read_fsaverage_flat_patch(hemi, SUBJECTS_DIR)
+        if not op.isfile(fs_ply_flat_hemi) or not op.isfile(fs_srf_flat_hemi) or overwrite:
+            if not op.isfile(fs_srf_flat_hemi):
+                print('Writing {}'.format(fs_srf_flat_hemi))
+                nib.freesurfer.write_geometry(fs_srf_flat_hemi, fs_flat_verts, fs_flat_faces)
+            if not op.isfile(fs_ply_flat_hemi):
+                print('Writing {}'.format(fs_ply_flat_hemi))
+                verts = fs_flat_verts * 0.1
+                utils.write_ply_file(verts, fs_flat_faces, fs_ply_flat_hemi, True)
+        fs_good_verts = np.unique(fs_flat_faces)
+        fs_bad_verts = np.setdiff1d(np.arange(fs_flat_verts.shape[0]), fs_good_verts)
+        subject_bad_verts[hemi] = _sparse_argmax_nnz_row(map[hemi][fs_bad_verts])
+
+    utils.save(subject_bad_verts, subject_bad_verts_fname)
+    return op.isfile(subject_bad_verts_fname)
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -862,6 +895,10 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
             subject, args.atlas, args.overwrite_blend)
 
+    if utils.should_run(args, 'create_flat_map' in args.function):
+        flags['create_flat_map'] = create_flat_map(
+            subject, overwrite=args.overwrite_flat_surf, template_brain='fsaverage')
+
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
@@ -900,6 +937,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_ply_files', help='overwrite_ply_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_blend', help='overwrite_blend', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_flat_surf', help='overwrite_flat_surf', required=False, default=0, type=au.is_true)
     parser.add_argument('--solve_labels_collisions', help='solve_labels_collisions', required=False, default=0, type=au.is_true)
     parser.add_argument('--morph_labels_from_fsaverage', help='morph_labels_from_fsaverage', required=False, default=1, type=au.is_true)
     parser.add_argument('--fs_labels_fol', help='fs_labels_fol', required=False, default='')

@@ -25,7 +25,8 @@ mris_ca_label = 'mris_ca_label {subject} {hemi} sphere.reg {freesurfer_home}/ave
 mri_pretess = 'mri_pretess {mask_fname} {region_id} {norm_fname} {tmp_fol}/{region_id}_filled.mgz'
 mri_tessellate = 'mri_tessellate {tmp_fol}/{region_id}_filled.mgz {region_id} {tmp_fol}/{region_id}_notsmooth'
 mris_smooth = 'mris_smooth -nw {tmp_fol}/{region_id}_notsmooth {tmp_fol}/{region_id}_smooth'
-mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
+# mris_convert = 'mris_convert {tmp_fol}/{region_id}_smooth {tmp_fol}/{region_id}.asc'
+_mris_convert = 'mris_convert {org_surf_fname} {new_surf_fname}'
 
 mri_vol2surf_pet = 'mri_vol2surf --mov {volume_fname} --hemi {hemi} --projfrac {projfrac} --o {output_fname} --cortex --regheader {subject} --trgsubject {subject}'
 
@@ -518,12 +519,30 @@ def read_fsaverage_flat_patch(hemi, subjects_dir, surface_type='pial'):
     return pts, polys
 
 
+def mris_convert(org_surf_fname, new_surf_fname, print_only=False):
+    # mris_convert = 'mris_convert {org_surf_fname} {new_surf_fname}'
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(_mris_convert)
+    return op.isfile(new_surf_fname)
+
+
+def write_surf(filename, pts, polys, comment=b''):
+    import struct
+    with open(filename, 'wb') as fp:
+        fp.write(b'\xff\xff\xfe')
+        fp.write(comment+b'\n\n')
+        fp.write(struct.pack('>2I', len(pts), len(polys)))
+        fp.write(pts.astype(np.float32).byteswap())#.tostring())
+        fp.write(polys.astype(np.uint32).byteswap())#.tostring())
+        fp.write(b'\n')
+
+
 if __name__ == '__main__':
     from src.utils import preproc_utils as pu
     SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
     for hemi in utils.HEMIS:
-        verts, faces = read_fsaverage_flat_patch('rh', SUBJECTS_DIR)
+        verts, faces = read_fsaverage_flat_patch(hemi, SUBJECTS_DIR)
         verts *= 0.1
         utils.write_ply_file(verts, faces, op.join(MMVT_DIR, 'fsaverage', 'surf', '{}.flat.pial.ply').format(hemi), True)
     print('Finish!')
