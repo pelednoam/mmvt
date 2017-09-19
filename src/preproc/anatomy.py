@@ -895,7 +895,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
             subject, args.atlas, args.overwrite_blend)
 
-    if utils.should_run(args, 'create_flat_map' in args.function):
+    if utils.should_run(args, 'create_flat_map'):
         flags['create_flat_map'] = create_flat_map(
             subject, overwrite=args.overwrite_flat_surf, template_brain='fsaverage')
 

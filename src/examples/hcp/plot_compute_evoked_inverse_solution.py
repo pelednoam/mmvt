@@ -18,18 +18,24 @@ import hcp
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 
+from src.utils import utils
+
+links_dir = utils.get_links_dir()
+SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
+MMVT_DIR = utils.get_link_dir(links_dir, 'mmvt')
+HCP_DIR = utils.get_link_dir(links_dir, 'hcp')
+MEG_DIR = utils.get_link_dir(links_dir, 'meg')
+
+
 # from hcp import preprocessing as preproc
 
 ##############################################################################
 # we assume our data is inside a designated folder under $HOME
-storage_dir = op.expanduser('~/mne-hcp-data')
-root = '/home/npeled'
-hcp_path = op.join(root, 'hcp')
-recordings_path = op.join(hcp_path, 'hcp-meg')
-subjects_dir = '/home/npeled/subjects'
+# storage_dir = op.expanduser('~/mne-hcp-data')
+recordings_path = op.join(HCP_DIR, 'hcp-meg')
 subject = '100307'  # our test subject
 task = 'task_working_memory'
-meg_sub_fol = op.join(root, 'meg', subject)
+meg_sub_fol = op.join(MEG_DIR, subject)
 fwd_fname = op.join(meg_sub_fol, '{}-fwd.fif'.format(subject))
 inv_fname = op.join(meg_sub_fol, '{}-inv.fif'.format(subject))
 noise_cov_fname = op.join(meg_sub_fol, '{}-noise-cov.fif'.format(subject, task))
@@ -43,7 +49,7 @@ run_index = 0
 # These are the same as in :ref:`tut_plot_evoked`
 
 hcp_evokeds = hcp.read_evokeds(onset='stim', subject=subject,
-                                   data_type=task, hcp_path=hcp_path)
+                                   data_type=task, HCP_DIR=HCP_DIR)
 for evoked in hcp_evokeds:
     if not evoked.comment == 'Wrkmem_LM-TIM-face_BT-diff_MODE-mag':
         continue
@@ -54,7 +60,7 @@ for evoked in hcp_evokeds:
 
 # src_outputs = hcp.anatomy.compute_forward_stack(
 #     subject=subject, subjects_dir=subjects_dir,
-#     hcp_path=hcp_path, recordings_path=recordings_path,
+#     HCP_DIR=HCP_DIR, recordings_path=recordings_path,
 #     # speed up computations here. Setting `add_dist` to True may improve the
 #     # accuracy.
 #     src_params=dict(add_dist=False),
@@ -70,7 +76,7 @@ fwd = mne.read_forward_solution(fwd_fname)
 # place. See also :ref:`tut_reproduce_erf`.
 
 if not op.isfile(noise_cov_fname):
-    raw_noise = hcp.read_raw(subject=subject, hcp_path=hcp_path,
+    raw_noise = hcp.read_raw(subject=subject, HCP_DIR=HCP_DIR,
                              data_type='noise_empty_room')
     raw_noise.load_data()
 
