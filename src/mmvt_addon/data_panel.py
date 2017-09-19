@@ -400,16 +400,49 @@ def create_inflating_morphing():
 @mu.tryit(None, False)
 def create_inflating_flat_morphing():
     print('Creating inflation flat morphing')
+    # for hemi in mu.HEMIS:
+    #     verts_faces_dic = op.join(mu.get_user_fol(), 'faces_verts_lookup_{}.pkl'.format(hemi))
+    #     flat_surf = op.join(mu.get_user_fol, 'surf', '{}.flat.pial.npz'.format(hemi))
+    #     inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+    #     if op.isfile(flat_surf):
+    #         flat_verts, _ = np.load(flat_surf)
+    #         inflated.shape_key_add(name='flat')
+    #         for vert_ind in range(len(inflated.data.vertices)):
+    #             for ii in range(3):
+    #                 inflated.data.shape_keys.key_blocks['flat'].data[vert_ind].co[ii] = flat_verts[vert_ind][ii]
+
     for hemi in mu.HEMIS:
-        verts_faces_dic = op.join(mu.get_user_fol(), 'faces_verts_lookup_{}.pkl'.format(hemi))
-        flat_surf = op.join(mu.get_user_fol, 'surf', '{}.flat.pial.npz'.format(hemi))
-        inflated = bpy.data.objects['inflated_{}'.format(hemi)]
-        if op.isfile(flat_surf):
-            flat_verts, _ = np.load(flat_surf)
-            inflated.shape_key_add(name='flat')
-            for vert_ind in range(len(inflated.data.vertices)):
-                for ii in range(3):
-                    inflated.data.shape_keys.key_blocks['flat'].data[vert_ind].co[ii] = flat_verts[vert_ind][ii]
+        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        # d = np.load(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format(hemi)))
+        # flat_faces, flat_verts = d['faces'], d['verts']
+
+        vg = cur_obj.vertex_groups.new('bad_vertices')
+        d = mu.load(op.join(mu.get_user_fol(), 'flat_bad_vertices.pkl'))
+        bad_vertices = d[hemi]
+        # bad_vertices = set(np.arange(0,len(flat_verts))).difference(set(np.unique(flat_faces)))
+        # vg = cur_obj.vertex_groups.new('valid_vertices')
+        # valid_vertices = np.unique(flat_faces)
+        # for vertex_ind in valid_vertices:
+        #     vg.add([int(vertex_ind)], 1.0, 'ADD')
+        for vertex_ind in bad_vertices:
+            vg.add([int(vertex_ind)], 1.0, 'ADD')
+
+        shapekey = cur_obj.shape_key_add(name='flat')
+        postfix = ''
+        flatmap_orientation = 1
+        if hemi == 'lh':
+            postfix = '.001'
+            flatmap_orientation = -1
+        shapekey.relative_key = bpy.data.shape_keys['Key{}'.format(postfix)].key_blocks["inflated"]
+        for vert in cur_obj.data.vertices:
+            shapekey.data[vert.index].co = \
+                (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)
+        modifier = cur_obj.modifiers.new('mask_bad_vertices', 'MASK')
+        # modifier.vertex_group = 'valid_vertices'
+        modifier.vertex_group = 'bad_vertices'
+        modifier.invert_vertex_group = True
+
+
 
 
 class ImportElectrodes(bpy.types.Operator):
@@ -975,6 +1008,16 @@ class AddDataToElectrodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class StartFlatProcess(bpy.types.Operator):
+    bl_idname = "mmvt.start_flat_process"
+    bl_label = "deselect all"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        create_inflating_flat_morphing()
+        return {"FINISHED"}
+
 class DataMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -1001,6 +1044,7 @@ class DataMakerPanel(bpy.types.Panel):
         # layout.prop(context.scene, 'conf_path')
         # col = self.layout.column(align=True)
         col = layout.box().column()
+        col.operator(StartFlatProcess.bl_idname, text="Import flat stuff", icon='MATERIAL_DATA')
         col.prop(context.scene, 'atlas', text="Atlas")
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
@@ -1123,6 +1167,8 @@ def init(addon):
 def register():
     try:
         unregister()
+
+        bpy.utils.register_class(StartFlatProcess)
         bpy.utils.register_class(DataMakerPanel)
         bpy.utils.register_class(AddDataToElectrodes)
         # bpy.utils.register_class(AddDataNoCondsToBrain)
@@ -1146,6 +1192,7 @@ def register():
 
 def unregister():
     try:
+        bpy.utils.unregister_class(StartFlatProcess)
         bpy.utils.unregister_class(DataMakerPanel)
         bpy.utils.unregister_class(AddDataToElectrodes)
         # bpy.utils.unregister_class(AddDataNoCondsToBrain)

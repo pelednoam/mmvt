@@ -117,13 +117,56 @@ def hemis_distance_update(self, context):
             bpy.data.objects['Cortex-lh'].location[0] = bpy.data.objects['lh'].location[0] = \
                 AppearanceMakerPanel.cortex_lh - bpy.context.scene.hemis_distance
 
+        if bpy.data.objects.get('inflated_rh') and bpy.data.objects.get('Cortex-inflated-rh'):
+            bpy.data.objects['inflated_rh'].location[0] = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
+                AppearanceMakerPanel.cortex_rh + bpy.context.scene.hemis_distance
+            bpy.data.objects['inflated_lh'].location[0] = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
+                AppearanceMakerPanel.cortex_rh - bpy.context.scene.hemis_distance
+
+
+# def inflating_update(self, context):
+#     try:
+#         if bpy.data.objects.get('rh', None) is None:
+#             return
+#         bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
+#         bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
+#         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+#         vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
+#         if obj_name != '':
+#             if 'inflated' not in obj_name:
+#                 obj_name = 'inflated_{}'.format(obj_name)
+#             ob = bpy.data.objects[obj_name]
+#             scene = bpy.context.scene
+#             me = ob.to_mesh(scene, True, 'PREVIEW')
+#             bpy.context.scene.cursor_location = me.vertices[vert].co / 10
+#             bpy.data.meshes.remove(me)
+#     except:
+#         print('Error in inflating update!')
+#         print(traceback.format_exc())
+
 
 def inflating_update(self, context):
     try:
         if bpy.data.objects.get('rh', None) is None:
             return
-        bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating
-        bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating
+        if bpy.context.scene.inflating >0: #flattening
+            _addon().show_coronal(True)
+            _addon().view_all()
+            bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
+            bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = bpy.context.scene.inflating
+            bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
+            bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1
+            use_masking = True
+        else: #deflating
+            bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
+            bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
+            bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
+            bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
+            use_masking = False
+        for hemi in ['rh', 'lh']:
+            bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
+            bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
+            print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
         vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
         if obj_name != '':
@@ -141,6 +184,7 @@ def inflating_update(self, context):
 
 def set_inflated_ratio(ratio):
     bpy.context.scene.inflating = ratio
+    _addon().view_all()
 
 
 def get_inflated_ratio():
@@ -206,8 +250,10 @@ def surface_type_update(self, context):
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = inflated
             bpy.context.scene.layers[_addon().ROIS_LAYER] = not inflated
         elif is_activity():
-            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
-            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
+            # bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
+            # bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
+            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = True
+            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not True
     if inflated:
         AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
         AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
@@ -219,6 +265,16 @@ def surface_type_update(self, context):
         show_hide_meg_sensors(AppearanceMakerPanel.showing_meg_sensors)
         show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
         show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
+
+    if bpy.context.scene.surface_type == 'inflated':
+        set_inflated_ratio(0)
+        # print('inflated - set_inflated_ratio(0) the actual value={}'.format(bpy.context.scene.inflating))
+    if bpy.context.scene.surface_type == 'flat_map':
+        set_inflated_ratio(1)
+        # print('flat_map - set_inflated_ratio(1) the actual value={}'.format(bpy.context.scene.inflating))
+    if bpy.context.scene.surface_type == 'pial':
+        set_inflated_ratio(-1)
+        # print('pial - set_inflated_ratio(-1) the actual value={}'.format(bpy.context.scene.inflating))
 
     if bpy.context.scene.cursor_is_snapped:
         vertex_ind, closest_mesh_name = get_closest_vertex_and_mesh_to_cursor()
@@ -282,10 +338,12 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
     layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
-    if 'Key' in bpy.data.shape_keys and is_inflated() and is_activity():
+    # if 'Key' in bpy.data.shape_keys and is_inflated() and is_activity():
+    #     layout.prop(context.scene, 'inflating')
+    if 'Key' in bpy.data.shape_keys and is_activity():
         layout.prop(context.scene, 'inflating')
-    if bpy.context.scene.surface_type == 'pial':
-        layout.prop(context.scene, 'hemis_distance', text='hemis dist')
+    # if bpy.context.scene.surface_type == 'pial':
+    layout.prop(context.scene, 'hemis_distance', text='hemis dist')
     # else:
     #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
     #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
@@ -438,17 +496,21 @@ bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcor
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
     items=[("rendered", "Rendered Brain", "", 1), ("solid", "Solid Brain", "", 2)],description="Brain appearance",
     update=filter_view_type_update)
+# bpy.types.Scene.surface_type = bpy.props.EnumProperty(
+#     items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
+#     update=surface_type_update)
 bpy.types.Scene.surface_type = bpy.props.EnumProperty(
-    items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
+    items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2),("flat_map", "Flat map", "", 3)],description="Surface type",
     update=surface_type_update)
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
+# bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
+bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_distance_update)
 
 
 class SnapCursor(bpy.types.Operator):
@@ -547,6 +609,23 @@ def init(addon):
             bpy.data.objects['inflated_rh'].location[0] = loc_val
         AppearanceMakerPanel.cortex_inflated_lh = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
             bpy.data.objects['inflated_lh'].location[0] = -1*loc_val
+        try:
+            bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
+            bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
+        except:
+            print('No flat mapping.')
+        try:
+            bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
+            bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1
+        except:
+            print('No inflated mapping.')
+
+        for hemi in ['lh', 'rh']:
+            try:
+                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = True
+                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = True
+            except:
+                pass
     if bpy.data.objects.get('Cortex-rh') and bpy.data.objects.get('lh'):
         AppearanceMakerPanel.cortex_rh = bpy.data.objects['Cortex-rh'].location[0] = \
             bpy.data.objects['rh'].location[0] = 0
@@ -555,7 +634,7 @@ def init(addon):
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0 #-5
     bpy.context.scene.cursor_is_snapped = False
-    set_inflated_ratio(1)
+    set_inflated_ratio(0)
     appearance_show_rois_activity_update()
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
     AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()

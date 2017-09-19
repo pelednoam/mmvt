@@ -143,7 +143,12 @@ def show_sagital():
     bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
 
 
-def show_coronal():
+def show_coronal(show_frontal=False):
+    if show_frontal:
+        bpy.types.Scene.current_view = 'coronal'
+        bpy.types.Scene.current_view_direction = 0
+        return
+
     if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
         if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
             bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 3.1415927410125732]
