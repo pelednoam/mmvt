@@ -102,7 +102,11 @@ def calc_best_curves_sep():
 
 
 def _calc_best_curves_sep(data):
-    return max([np.diff(mu.calc_min_max(data[k], norm_percs=[3, 97]))[0] for k in range(data.shape[0])]) * 1.1
+    try:
+        return max([np.diff(mu.calc_min_max(data[k], norm_percs=[3, 97]))[0] for k in range(data.shape[0])]) * 1.1
+    except:
+        print('Error in _calc_best_curves_sep')
+        return 0
 
 
 def meg_data_loaded():

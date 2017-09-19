@@ -753,6 +753,7 @@ def create_inflated_curv_coloring():
                     color_obj_curvs(inflated_cur_obj, curv, lookup)
                 except:
                     print("Can't create {}'s curves!".format(cur_obj.name))
+                    print(traceback.format_exc())
     except:
         print('Error in create_inflated_curv_coloring!')
         print(traceback.format_exc())

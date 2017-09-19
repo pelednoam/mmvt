@@ -522,8 +522,10 @@ if __name__ == '__main__':
     from src.utils import preproc_utils as pu
     SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
-    pts, polys = read_fsaverage_flat_patch('rh', SUBJECTS_DIR)
-    utils.write_ply_file(pts, polys, op.join(MMVT_DIR, 'fsaverage', 'surf', 'rh.flat.pial.ply'))
+    for hemi in utils.HEMIS:
+        verts, faces = read_fsaverage_flat_patch('rh', SUBJECTS_DIR)
+        verts *= 0.1
+        utils.write_ply_file(verts, faces, op.join(MMVT_DIR, 'fsaverage', 'surf', '{}.flat.pial.ply').format(hemi), True)
     print('Finish!')
 
 

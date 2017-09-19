@@ -445,6 +445,10 @@ def fix_cortex_labels_material():
     subcorticals = bpy.data.objects['Subcortical_structures'].children
     ret = fix_objects_material(labels, 'unselected_label_Mat_cortex') and \
           fix_objects_material(subcorticals, 'unselected_label_Mat_subcortical')
+    eeg_helmet = bpy.data.objects.get('eeg_helmet', None)
+    if eeg_helmet is not None:
+        eeg_helmet.active_material = bpy.data.materials['Helmet_map_mat']
+
     if not ret:
         remove_materials()
         bpy.ops.wm.save_mainfile()

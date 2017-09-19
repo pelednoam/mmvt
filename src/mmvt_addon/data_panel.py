@@ -397,6 +397,21 @@ def create_inflating_morphing():
                 inflated.data.shape_keys.key_blocks['pial'].data[vert_ind].co[ii] = pial.data.vertices[vert_ind].co[ii]
 
 
+@mu.tryit(None, False)
+def create_inflating_flat_morphing():
+    print('Creating inflation flat morphing')
+    for hemi in mu.HEMIS:
+        verts_faces_dic = op.join(mu.get_user_fol(), 'faces_verts_lookup_{}.pkl'.format(hemi))
+        flat_surf = op.join(mu.get_user_fol, 'surf', '{}.flat.pial.npz'.format(hemi))
+        inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+        if op.isfile(flat_surf):
+            flat_verts, _ = np.load(flat_surf)
+            inflated.shape_key_add(name='flat')
+            for vert_ind in range(len(inflated.data.vertices)):
+                for ii in range(3):
+                    inflated.data.shape_keys.key_blocks['flat'].data[vert_ind].co[ii] = flat_verts[vert_ind][ii]
+
+
 class ImportElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_importing"
     bl_label = "import2 electrodes"

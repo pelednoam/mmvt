@@ -549,12 +549,13 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     return utils.both_hemi_files_exist(output_fname)
 
 @utils.timeit
-def create_verts_faces_lookup(subject):
-    output_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
+def create_verts_faces_lookup(subject, surface_type='pial'):
+    output_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}{}.pkl'.format(
+        '{hemi}', '' if surface_type == 'pial' else '{}_'.format(surface_type)))
     for hemi in utils.HEMIS:
         if op.isfile(output_fname.format(hemi=hemi)):
             continue
-        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi, surface_type)
         lookup = defaultdict(list)
         for f_ind, f in tqdm(enumerate(faces)):
             for v_ind in f:
