@@ -40,6 +40,7 @@ mri_vol2vol = 'mri_vol2vol --mov {source_volume_fname} --s {subject} --targ {tar
 mri_segstats = 'mri_segstats --i {fmri_fname} --avgwf {output_txt_fname} --annot {target_subject} {hemi} {atlas} --sum {output_sum_fname}'
 mri_aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.mgz'
 
+mris_flatten = 'mris_flatten {hemi}.inflated.patch {hemi}.flat.patch'
 
 @utils.check_for_freesurfer
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
@@ -496,7 +497,7 @@ def parse_patch(filename):
         return data
 
 
-def write_patch(filename, pts, edges):
+def write_patch(filename, pts, edges=set()):
     from tqdm import tqdm
     import struct
     with open(filename, 'wb') as fp:
@@ -550,11 +551,19 @@ def write_surf(filename, pts, polys, comment=b''):
         fp.write(b'\n')
 
 
-if __name__ == '__main__':
+def flat_brain(subject, subjects_dir, print_only=False):
+    # mris_flatten lh.inflated.patch lh.flat.test.patch
+    surf_dir = op.join(subjects_dir, subject, 'surf')
+    for hemi in utils.HEMIS:
+        rs = utils.partial_run_script(locals(), cwd=surf_dir, print_only=print_only)
+        rs(mris_flatten)
+    return {hemi:op.join(surf_dir, 'lh.flat.test.patch') for hemi in utils.HEMIS}
+
+
+def test_patch(subject):
     from src.utils import preproc_utils as pu
     SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
-    subject = 'sample'
     flat_patch_cut_vertices = utils.load(op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl'))
     for hemi in utils.HEMIS:
         # verts, faces = read_patch(hemi, SUBJECTS_DIR)
@@ -580,4 +589,7 @@ if __name__ == '__main__':
         utils.write_ply_file(patch_verts, patch_faces, op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.test.ply').format(hemi))
     print('Finish!')
 
+
+if __name__ == '__main__':
+    test_patch('sample')
 

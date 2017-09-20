@@ -517,7 +517,7 @@ def create_spatial_connectivity(subject):
     return success
 
 
-def flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=True):
+def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=True):
     output_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
     if op.isfile(output_fname) and not overwrite:
         return True
@@ -595,6 +595,7 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
         print('empty bad vertices for pair {} and {}'.format(label1, label2))
     return bad_vertices
 
+
 def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,hemi):
     not_seem_verts = set(all_verts)-set(seem_verts)
 
@@ -606,6 +607,31 @@ def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,
     d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
     np.savez(output_fname.format(hemi=hemi), seems_neighbor_verts=seems_neighbor_verts)
     return list(set(seems_neighbor_verts))
+
+
+def create_flat_brain(subject):
+    flat_patch_cut_vertices_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
+    calc_flat_patch_cut_vertices(subject)
+    flat_patch_cut_vertices = utils.load(flat_patch_cut_vertices_fname)
+    for hemi in utils.HEMIS:
+        inf_verts, _ = nib.freesurfer.read_geometry(
+            op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated'.format(hemi)))
+        patch_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format(hemi))
+        flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
+        fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
+                                     if ind not in flat_patch_cut_vertices_hemi])
+    fu.flat_brain(subject, SUBJECTS_DIR)
+
+
+def read_flat_brain_patch(subject):
+    flat_patches_fnames = fu.flat_brain(subject, SUBJECTS_DIR, print_only=True)
+    ply_outputs = op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.ply'.format('{hemi}'))
+    for hemi in utils.HEMIS:
+        patch_verts, patch_faces = fu.read_patch(
+            subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patches_fnames[hemi])
+        patch_verts *= 0.1
+        utils.write_ply_file(patch_verts, patch_faces, ply_outputs.format(hemi=hemi), True)
+    return utils.both_hemi_files_exist(ply_outputs)
 
 
 @utils.tryit(False, False)
@@ -1014,8 +1040,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'check_bem' in args.function:
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
-    if 'flat_patch_cut_vertices' in args.function:
-        flat_patch_cut_vertices(subject)
+    if 'calc_flat_patch_cut_vertices' in args.function:
+        calc_flat_patch_cut_vertices(subject)
 
     return flags
 
