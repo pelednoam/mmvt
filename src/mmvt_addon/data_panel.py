@@ -413,19 +413,19 @@ def create_inflating_flat_morphing():
 
     for hemi in mu.HEMIS:
         cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        # d = np.load(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format(hemi)))
-        # flat_faces, flat_verts = d['faces'], d['verts']
+        d = np.load(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format(hemi)))
+        flat_faces, flat_verts = d['faces'], d['verts']
 
-        vg = cur_obj.vertex_groups.new('bad_vertices')
-        d = mu.load(op.join(mu.get_user_fol(), 'flat_bad_vertices.pkl'))
-        bad_vertices = d[hemi]
-        # bad_vertices = set(np.arange(0,len(flat_verts))).difference(set(np.unique(flat_faces)))
-        # vg = cur_obj.vertex_groups.new('valid_vertices')
-        # valid_vertices = np.unique(flat_faces)
-        # for vertex_ind in valid_vertices:
-        #     vg.add([int(vertex_ind)], 1.0, 'ADD')
-        for vertex_ind in bad_vertices:
+        # vg = cur_obj.vertex_groups.new('bad_vertices')
+        # d = mu.load(op.join(mu.get_user_fol(), 'flat_bad_vertices.pkl'))
+        # bad_vertices = d[hemi]
+        bad_vertices = set(np.arange(0,len(flat_verts))).difference(set(np.unique(flat_faces)))
+        vg = cur_obj.vertex_groups.new('valid_vertices')
+        valid_vertices = np.unique(flat_faces)
+        for vertex_ind in valid_vertices:
             vg.add([int(vertex_ind)], 1.0, 'ADD')
+        # for vertex_ind in bad_vertices:
+        #     vg.add([int(vertex_ind)], 1.0, 'ADD')
 
         shapekey = cur_obj.shape_key_add(name='flat')
         postfix = ''
@@ -438,8 +438,8 @@ def create_inflating_flat_morphing():
             shapekey.data[vert.index].co = \
                 (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)
         modifier = cur_obj.modifiers.new('mask_bad_vertices', 'MASK')
-        # modifier.vertex_group = 'valid_vertices'
-        modifier.vertex_group = 'bad_vertices'
+        modifier.vertex_group = 'valid_vertices'
+        # modifier.vertex_group = 'bad_vertices'
         modifier.invert_vertex_group = True
 
 

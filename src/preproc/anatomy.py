@@ -517,6 +517,95 @@ def create_spatial_connectivity(subject):
     return success
 
 
+def calc_bad_vertices_ohad(subject, atlas='aparc.DKTatlas40', overwrite=True, verbose=False):
+    output_fname = op.join(MMVT_DIR, subject, 'bad_vertices_{}.npz'.format('{hemi}'))
+    if utils.both_hemi_files_exist(output_fname) and not overwrite:
+        return True
+    neighbors_regions_for_cut =[('posteriorcingulate', 'isthmuscingulate'), ('posteriorcingulate', 'precuneus'),
+                                ('paracentral', 'precuneus'), ('isthmuscingulate', 'parahippocampal'),
+                                ('isthmuscingulate', 'lingual'), ('precuneus', 'lingual'),
+                                ('pericalcarine', 'lingual'), ('lateralorbitofrontal', 'medialorbitofrontal'),
+                                ('superiortemporal', 'entorhinal'), ('superiortemporal', 'inferiortemporal'),
+                                ('caudalanteriorcingulate', 'posteriorcingulate'),
+                                ('superiorfrontal', 'posteriorcingulate'), ('paracentral', 'superiorfrontal')]
+
+    verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if not utils.both_hemi_files_exist(verts_neighbors_fname):
+        print('calc_labeles_contours: You should first run create_spatial_connectivity')
+        create_spatial_connectivity(subject)
+        return calc_labeles_contours(subject, atlas, overwrite, verbose)
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
+    bad_vertices = {'lh': None, 'rh': None}
+
+    for hemi in utils.HEMIS:
+        d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
+        vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        bad_vertices_hemi = []
+        for regions_pair in neighbors_regions_for_cut:
+            print('Working on {} and {} '.format(regions_pair[0], regions_pair[1]))
+            cur_bad_vertices = get_vertices_between_labels(hemi, regions_pair[0], regions_pair[1], labels,
+                                                            vertices_neighbors, d['contours'])
+            print('found {} bad vertices'.format(len(cur_bad_vertices)))
+            bad_vertices_hemi.extend(cur_bad_vertices)
+        unknon_ind = [label.name for label in labels].index('unknown-{}'.format(hemi))
+
+
+        # output_fname_seems_neighbors = op.join(MMVT_DIR, subject, 'neighbros_of_seems_{}.npz'.format('{hemi}'))
+        # get_neighbros_of_seems(np.arange(0, len(vertices_neighbors)), bad_vertices_hemi, vertices_neighbors,
+        #                        output_fname_seems_neighbors, hemi)
+
+        bad_vertices_hemi.extend(labels[unknon_ind].vertices)
+        bad_vertices[hemi] = bad_vertices_hemi
+
+        np.savez(output_fname.format(hemi=hemi), bad_vertices=bad_vertices[hemi])
+        print(output_fname.format(hemi=hemi))
+
+        # for label_ind, label in enumerate(labels):
+        #     if verbbad_verticesose:
+        #         label_nei = np.zeros((len(label.vertices)))
+        #     for vert_ind, vert in enumerate(label.vertices):
+        #         nei = set([vertices_labels_lookup[hemi].get(v, '') for v in vertices_neighbors[vert]]) - set([''])
+        #         contours[vert] = label_ind + 1 if len(nei) > 1 else 0
+        #         if verbose:
+        #             label_nei[vert_ind] = contours[vert]
+        #     if verbose:
+        #         print(label.name, len(np.where(label_nei)[0]) / len(verts))
+        # np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
+        #          labels=[l.name for l in labels])
+    return True
+
+
+def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros, contours):
+    bad_vertices = []
+    label1_code = [label.name for label in labels].index('{}-{}'.format(label1, hemi))+1
+    label2_code = [label.name for label in labels].index('{}-{}'.format(label2, hemi))+1
+
+    label1_contours_verts_inds = np.where(contours == label1_code)
+    label2_contours_verts_inds = np.where(contours == label2_code)
+
+    for vert_ind in label1_contours_verts_inds[0]:
+        for neighbor_vert in vertices_neighbros[vert_ind]:
+            if neighbor_vert in label2_contours_verts_inds[0]:
+                bad_vertices.append(vert_ind)
+                break
+    if len(bad_vertices)==0:
+        print('empty bad vertices for pair {} and {}'.format(label1, label2))
+    return bad_vertices
+
+def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,hemi):
+    not_seem_verts = set(all_verts)-set(seem_verts)
+
+    seems_neighbor_verts = []
+    for vert in seem_verts:
+        for vert_neighbor in vertices_neighbors[vert]:
+            seems_neighbor_verts.extend(vert_neighbor)
+
+    d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
+    np.savez(output_fname.format(hemi=hemi), seems_neighbor_verts=seems_neighbor_verts)
+    return list(set(seems_neighbor_verts))
+
+
 @utils.tryit(False, False)
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
@@ -916,6 +1005,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'check_bem' in args.function:
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
+
+    if 'ohad_debug' in args.function:
+        calc_bad_vertices_ohad(subject)
 
     return flags
 
