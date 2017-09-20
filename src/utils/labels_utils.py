@@ -157,6 +157,32 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
 #         if not op.isfile(op.join(labels_fol, new_label.name)):
 #             new_label.save(op.join(labels_fol, new_label.name))
 
+def create_unknown_labels(subject, atlas):
+    labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
+    utils.make_dir(labels_fol)
+    unknown_labels_fname_template = op.join(labels_fol,  'unknown-{}.label'.format('{hemi}'))
+    if utils.both_hemi_files_exist(unknown_labels_fname_template):
+        unknown_labels = {hemi:mne.read_label(unknown_labels_fname_template.format(hemi=hemi), subject)
+                          for hemi in utils.HEMIS}
+        return unknown_labels
+
+    unknown_labels = {}
+    for hemi in utils.HEMIS:
+        labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        unknown_label_name = 'unknown-{}'.format(hemi)
+        if unknown_label_name not in [l.name for l in labels]:
+            verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+            unknown_verts = set(range(verts.shape[0]))
+        else:
+            continue
+        for label in labels:
+            unknown_verts -= set(label.vertices)
+        unknown_verts = np.array(sorted(list(unknown_verts)))
+        unknown_label = mne.Label(unknown_verts, hemi=hemi, name=unknown_label_name, subject=subject)
+        unknown_labels[hemi] = unknown_label
+        unknown_label.save(unknown_labels_fname_template.format(hemi=hemi))
+    return unknown_labels
+
 
 def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwrite=False):
     output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_{}lookup.pkl'.format(

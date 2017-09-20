@@ -1834,7 +1834,7 @@ def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
                 args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
                 args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.n_jobs, args)
 
-        if utils.should_run(args, 'calc_inverse_operator') and fwd is not None:
+        if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
             get_meg_files(subject, [EPO, FWD], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, args.inv_loose, args.inv_depth, args.use_empty_room_for_noise_cov,

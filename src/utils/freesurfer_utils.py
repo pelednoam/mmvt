@@ -496,10 +496,23 @@ def parse_patch(filename):
         return data
 
 
-def read_fsaverage_flat_patch(hemi, subjects_dir, surface_type='pial'):
-    pts, polys = nib_fs.read_geometry(op.join(subjects_dir, 'fsaverage', 'surf', '{}.{}'.format(hemi, surface_type)))
+def write_patch(filename, pts, edges):
+    from tqdm import tqdm
+    import struct
+    with open(filename, 'wb') as fp:
+        fp.write(struct.pack('>2i', -1, len(pts)))
+        for i, pt in tqdm(pts, total=len(pts)):
+            if i not in edges:
+                fp.write(struct.pack('>i3f', -i-1, *pt))
+            else:
+                fp.write(struct.pack('>i3f', i+1, *pt))
 
-    patch_fname = op.join(subjects_dir, 'fsaverage', 'surf', '{}.cortex.patch.flat'.format(hemi))
+
+def read_patch(subject, hemi, subjects_dir, surface_type='pial', patch_fname=''):
+    pts, polys = nib_fs.read_geometry(op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surface_type)))
+
+    if patch_fname == '':
+        patch_fname = op.join(subjects_dir, subject, 'surf', '{}.cortex.patch.flat'.format(hemi))
     patch = parse_patch(patch_fname)
     verts = patch[patch['vert'] > 0]['vert'] - 1
     edges = -patch[patch['vert'] < 0]['vert'] - 1
@@ -509,9 +522,9 @@ def read_fsaverage_flat_patch(hemi, subjects_dir, surface_type='pial'):
     idx[edges] = True
     valid = idx[polys.ravel()].reshape(-1, 3).all(1)
     polys = polys[valid]
-    idx = np.zeros((len(pts),))
-    idx[verts] = 1
-    idx[edges] = -1
+    # idx = np.zeros((len(pts),))
+    # idx[verts] = 1
+    # idx[edges] = -1
 
     for i, x in enumerate(['x', 'y', 'z']):
         pts[verts, i] = patch[patch['vert'] > 0][x]
@@ -541,10 +554,30 @@ if __name__ == '__main__':
     from src.utils import preproc_utils as pu
     SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
+    subject = 'sample'
+    flat_patch_cut_vertices = utils.load(op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl'))
     for hemi in utils.HEMIS:
-        verts, faces = read_fsaverage_flat_patch(hemi, SUBJECTS_DIR)
-        verts *= 0.1
-        utils.write_ply_file(verts, faces, op.join(MMVT_DIR, 'fsaverage', 'surf', '{}.flat.pial.ply').format(hemi), True)
+        # verts, faces = read_patch(hemi, SUBJECTS_DIR)
+        # write_patch(op.join(MMVT_DIR, 'fsaverage', 'surf', '{}.flat.test.pial'.format(hemi)), verts, faces)
+
+        # fs_verts, fs_faces = utils.read_pial('fsaverage', MMVT_DIR, hemi, surface_type='inflated')
+        print('Reading inflated surf')
+        fs_verts, fs_faces = nib.freesurfer.read_geometry(op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated'.format(hemi)))
+        # flat_verts, flat_faces = read_patch(hemi, SUBJECTS_DIR, surface_type='inflated')
+        # good_verts = set(np.unique(flat_faces))
+        # bad_verts = np.setdiff1d(np.arange(0, flat_verts.shape[0]), good_verts)
+        # bad_faces_inds = set(utils.flat_list_of_lists([verts_faces_lookup[hemi][v] for v in bad_verts]))
+        patch_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format(hemi))
+        print('Writing patch')
+        flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
+        write_patch(patch_fname, [(ind, v) for ind, v in enumerate(fs_verts) if ind not in flat_patch_cut_vertices_hemi], set())#flat_faces)
+
+        print('Reading patch')
+        patch_verts, patch_faces = read_patch(subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=patch_fname)
+
+        print('Writing ply')
+        patch_verts *= 0.1
+        utils.write_ply_file(patch_verts, patch_faces, op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.test.ply').format(hemi))
     print('Finish!')
 
 

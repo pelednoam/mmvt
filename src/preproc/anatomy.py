@@ -517,9 +517,9 @@ def create_spatial_connectivity(subject):
     return success
 
 
-def calc_bad_vertices_ohad(subject, atlas='aparc.DKTatlas40', overwrite=True, verbose=False):
-    output_fname = op.join(MMVT_DIR, subject, 'bad_vertices_{}.npz'.format('{hemi}'))
-    if utils.both_hemi_files_exist(output_fname) and not overwrite:
+def flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=True):
+    output_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
+    if op.isfile(output_fname) and not overwrite:
         return True
     neighbors_regions_for_cut =[('posteriorcingulate', 'isthmuscingulate'), ('posteriorcingulate', 'precuneus'),
                                 ('paracentral', 'precuneus'), ('isthmuscingulate', 'parahippocampal'),
@@ -533,33 +533,35 @@ def calc_bad_vertices_ohad(subject, atlas='aparc.DKTatlas40', overwrite=True, ve
     if not utils.both_hemi_files_exist(verts_neighbors_fname):
         print('calc_labeles_contours: You should first run create_spatial_connectivity')
         create_spatial_connectivity(subject)
-        return calc_labeles_contours(subject, atlas, overwrite, verbose)
-    vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
+        # return calc_labeles_contours(subject, atlas, overwrite, verbose)
+    # vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
     bad_vertices = {'lh': None, 'rh': None}
 
+    unknown_labels = lu.create_unknown_labels(subject, atlas)
     for hemi in utils.HEMIS:
         d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         bad_vertices_hemi = []
         for regions_pair in neighbors_regions_for_cut:
-            print('Working on {} and {} '.format(regions_pair[0], regions_pair[1]))
-            cur_bad_vertices = get_vertices_between_labels(hemi, regions_pair[0], regions_pair[1], labels,
-                                                            vertices_neighbors, d['contours'])
-            print('found {} bad vertices'.format(len(cur_bad_vertices)))
+            # print('Working on {} and {} '.format(regions_pair[0], regions_pair[1]))
+            cur_bad_vertices = get_vertices_between_labels(
+                hemi, regions_pair[0], regions_pair[1], labels, vertices_neighbors, d['contours'])
+            # print('found {} bad vertices'.format(len(cur_bad_vertices)))
             bad_vertices_hemi.extend(cur_bad_vertices)
-        unknon_ind = [label.name for label in labels].index('unknown-{}'.format(hemi))
+
+        # unknon_ind = [label.name for label in labels].index('unknown-{}'.format(hemi))
 
 
         # output_fname_seems_neighbors = op.join(MMVT_DIR, subject, 'neighbros_of_seems_{}.npz'.format('{hemi}'))
         # get_neighbros_of_seems(np.arange(0, len(vertices_neighbors)), bad_vertices_hemi, vertices_neighbors,
         #                        output_fname_seems_neighbors, hemi)
 
-        bad_vertices_hemi.extend(labels[unknon_ind].vertices)
+        bad_vertices_hemi.extend(unknown_labels[hemi].vertices)
         bad_vertices[hemi] = bad_vertices_hemi
 
-        np.savez(output_fname.format(hemi=hemi), bad_vertices=bad_vertices[hemi])
-        print(output_fname.format(hemi=hemi))
+    utils.save(bad_vertices, output_fname)
+    print(output_fname)
 
         # for label_ind, label in enumerate(labels):
         #     if verbbad_verticesose:
@@ -573,7 +575,7 @@ def calc_bad_vertices_ohad(subject, atlas='aparc.DKTatlas40', overwrite=True, ve
         #         print(label.name, len(np.where(label_nei)[0]) / len(verts))
         # np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
         #          labels=[l.name for l in labels])
-    return True
+    return op.isfile(output_fname)
 
 
 def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros, contours):
@@ -641,6 +643,9 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
 def create_verts_faces_lookup(subject, surface_type='pial'):
     output_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}{}.pkl'.format(
         '{hemi}', '' if surface_type == 'pial' else '{}_'.format(surface_type)))
+    if utils.both_hemi_files_exist(output_fname):
+        return {hemi:utils.load(output_fname.format(hemi=hemi)) for hemi in utils.HEMIS}
+
     for hemi in utils.HEMIS:
         if op.isfile(output_fname.format(hemi=hemi)):
             continue
@@ -886,7 +891,7 @@ def check_bem(subject, remote_subject_dir, args):
     meg.check_bem(subject, meg_args)
 
 
-def create_flat_map(subject, overwrite=False, template_brain='fsaverage'):
+def create_flat_map(subject, overwrite=False, template_brain='fsaverage', create_flat_ply=True):
     from mne.source_estimate import read_morph_map, _sparse_argmax_nnz_row
 
     fs_ply_flat = op.join(SUBJECTS_DIR, template_brain, 'surf', '{}.flat.pial.ply'.format('{hemi}'))
@@ -914,6 +919,9 @@ def create_flat_map(subject, overwrite=False, template_brain='fsaverage'):
         fs_good_verts = np.unique(fs_flat_faces)
         fs_bad_verts = np.setdiff1d(np.arange(fs_flat_verts.shape[0]), fs_good_verts)
         subject_bad_verts[hemi] = _sparse_argmax_nnz_row(map[hemi][fs_bad_verts])
+
+        # if create_flat_ply:
+
 
     utils.save(subject_bad_verts, subject_bad_verts_fname)
     return op.isfile(subject_bad_verts_fname)
@@ -1006,8 +1014,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'check_bem' in args.function:
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
-    if 'ohad_debug' in args.function:
-        calc_bad_vertices_ohad(subject)
+    if 'flat_patch_cut_vertices' in args.function:
+        flat_patch_cut_vertices(subject)
 
     return flags
 
