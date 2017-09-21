@@ -596,17 +596,17 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
     return bad_vertices
 
 
-def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,hemi):
-    not_seem_verts = set(all_verts)-set(seem_verts)
-
-    seems_neighbor_verts = []
-    for vert in seem_verts:
-        for vert_neighbor in vertices_neighbors[vert]:
-            seems_neighbor_verts.extend(vert_neighbor)
-
-    d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
-    np.savez(output_fname.format(hemi=hemi), seems_neighbor_verts=seems_neighbor_verts)
-    return list(set(seems_neighbor_verts))
+# def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,hemi):
+#     not_seem_verts = set(all_verts)-set(seem_verts)
+#
+#     seems_neighbor_verts = []
+#     for vert in seem_verts:
+#         for vert_neighbor in vertices_neighbors[vert]:
+#             seems_neighbor_verts.extend(vert_neighbor)
+#
+#     d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
+#     np.savez(output_fname.format(hemi=hemi), seems_neighbor_verts=seems_neighbor_verts)
+#     return list(set(seems_neighbor_verts))
 
 
 def create_flat_brain(subject, n_jobs=2):
@@ -621,13 +621,14 @@ def create_flat_brain(subject, n_jobs=2):
         fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
                                      if ind not in flat_patch_cut_vertices_hemi])
     params = [(subject, hemi) for hemi in utils.HEMIS]
-    utils.run_parallel(_flat_brain_parallel, params, n_jobs)
+    results = utils.run_parallel(_flat_brain_parallel, params, n_jobs)
+    return all(results)
 
 
 def _flat_brain_parallel(p):
     subject, hemi = p
     flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR)
-    read_flat_brain_patch(subject, hemi, flat_patch_fname)
+    return read_flat_brain_patch(subject, hemi, flat_patch_fname)
 
 
 def read_flat_brain_patch(subject, hemi, flat_patch_fname):
@@ -635,7 +636,7 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
     patch_verts, patch_faces = fu.read_patch(
         subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patch_fname)
     patch_verts *= 0.1
-    utils.write_ply_file(patch_verts, patch_faces, ply_fname, True)
+    return utils.write_ply_file(patch_verts, patch_faces, ply_fname, True)
 
 
 @utils.tryit(False, False)
@@ -921,42 +922,6 @@ def check_bem(subject, remote_subject_dir, args):
     meg.check_bem(subject, meg_args)
 
 
-def create_flat_map(subject, overwrite=False, template_brain='fsaverage', create_flat_ply=True):
-    from mne.source_estimate import read_morph_map, _sparse_argmax_nnz_row
-
-    fs_ply_flat = op.join(SUBJECTS_DIR, template_brain, 'surf', '{}.flat.pial.ply'.format('{hemi}'))
-    fs_srf_flat = op.join(SUBJECTS_DIR, template_brain, 'surf', '{}.flat.pial'.format('{hemi}'))
-    subject_bad_verts_fname = op.join(MMVT_DIR, subject, 'flat_bad_vertices.pkl')
-    subject_bad_verts = {}
-
-    if op.isfile(subject_bad_verts_fname) and not overwrite:
-        return True
-
-    map = {}
-    map['lh'], map['rh'] = read_morph_map(subject, template_brain, SUBJECTS_DIR)
-    for hemi in utils.HEMIS:
-        fs_ply_flat_hemi = fs_ply_flat.format(hemi=hemi)
-        fs_srf_flat_hemi = fs_srf_flat.format(hemi=hemi)
-        fs_flat_verts, fs_flat_faces = fu.read_fsaverage_flat_patch(hemi, SUBJECTS_DIR)
-        if not op.isfile(fs_ply_flat_hemi) or not op.isfile(fs_srf_flat_hemi) or overwrite:
-            if not op.isfile(fs_srf_flat_hemi):
-                print('Writing {}'.format(fs_srf_flat_hemi))
-                nib.freesurfer.write_geometry(fs_srf_flat_hemi, fs_flat_verts, fs_flat_faces)
-            if not op.isfile(fs_ply_flat_hemi):
-                print('Writing {}'.format(fs_ply_flat_hemi))
-                verts = fs_flat_verts * 0.1
-                utils.write_ply_file(verts, fs_flat_faces, fs_ply_flat_hemi, True)
-        fs_good_verts = np.unique(fs_flat_faces)
-        fs_bad_verts = np.setdiff1d(np.arange(fs_flat_verts.shape[0]), fs_good_verts)
-        subject_bad_verts[hemi] = _sparse_argmax_nnz_row(map[hemi][fs_bad_verts])
-
-        # if create_flat_ply:
-
-
-    utils.save(subject_bad_verts, subject_bad_verts_fname)
-    return op.isfile(subject_bad_verts_fname)
-
-
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -1022,10 +987,6 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
             subject, args.atlas, args.overwrite_blend)
 
-    if utils.should_run(args, 'create_flat_map'):
-        flags['create_flat_map'] = create_flat_map(
-            subject, overwrite=args.overwrite_flat_surf, template_brain='fsaverage')
-
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
         flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
@@ -1044,8 +1005,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'check_bem' in args.function:
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
-    if 'calc_flat_patch_cut_vertices' in args.function:
-        calc_flat_patch_cut_vertices(subject)
+    if 'create_flat_brain' in args.function:
+        create_flat_brain(subject)
 
     return flags
 
