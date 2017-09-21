@@ -609,7 +609,7 @@ def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,
     return list(set(seems_neighbor_verts))
 
 
-def create_flat_brain(subject):
+def create_flat_brain(subject, n_jobs=2):
     flat_patch_cut_vertices_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
     calc_flat_patch_cut_vertices(subject)
     flat_patch_cut_vertices = utils.load(flat_patch_cut_vertices_fname)
@@ -620,18 +620,22 @@ def create_flat_brain(subject):
         flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
         fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
                                      if ind not in flat_patch_cut_vertices_hemi])
-    fu.flat_brain(subject, SUBJECTS_DIR)
+    params = [(subject, hemi) for hemi in utils.HEMIS]
+    utils.run_parallel(_flat_brain_parallel, params, n_jobs)
 
 
-def read_flat_brain_patch(subject):
-    flat_patches_fnames = fu.flat_brain(subject, SUBJECTS_DIR, print_only=True)
-    ply_outputs = op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.ply'.format('{hemi}'))
-    for hemi in utils.HEMIS:
-        patch_verts, patch_faces = fu.read_patch(
-            subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patches_fnames[hemi])
-        patch_verts *= 0.1
-        utils.write_ply_file(patch_verts, patch_faces, ply_outputs.format(hemi=hemi), True)
-    return utils.both_hemi_files_exist(ply_outputs)
+def _flat_brain_parallel(p):
+    subject, hemi = p
+    flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR)
+    read_flat_brain_patch(subject, hemi, flat_patch_fname)
+
+
+def read_flat_brain_patch(subject, hemi, flat_patch_fname):
+    ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.ply'.format(hemi))
+    patch_verts, patch_faces = fu.read_patch(
+        subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patch_fname)
+    patch_verts *= 0.1
+    utils.write_ply_file(patch_verts, patch_faces, ply_fname, True)
 
 
 @utils.tryit(False, False)
@@ -1115,6 +1119,7 @@ if __name__ == '__main__':
     # if not args.no_fs and os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
     #     print('Source freesurfer and rerun')
     # else:
+    # read_flat_brain_patch('sample')
     pu.run_on_subjects(args, main)
     print('finish!')
 

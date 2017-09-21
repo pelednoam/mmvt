@@ -194,10 +194,10 @@ def clear_cortex(hemis=HEMIS):
             for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
                 clear_object_vertex_colors(cur_obj)
         else:
-            if _addon().is_pial():
-                cur_obj = bpy.data.objects[hemi]
-            elif _addon().is_inflated():
-                cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+            # if _addon().is_pial():
+            #     cur_obj = bpy.data.objects[hemi]
+            # elif _addon().is_inflated():
+            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
             clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
@@ -579,10 +579,10 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
             activity_map_obj_coloring(
                 cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
     else:
-        if _addon().is_pial():
-            cur_obj = bpy.data.objects[hemi]
-        elif _addon().is_inflated():
-            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        # if _addon().is_pial():
+        #     cur_obj = bpy.data.objects[hemi]
+        # elif _addon().is_inflated():
+        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
         activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
 
 

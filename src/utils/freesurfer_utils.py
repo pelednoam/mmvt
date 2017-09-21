@@ -551,13 +551,12 @@ def write_surf(filename, pts, polys, comment=b''):
         fp.write(b'\n')
 
 
-def flat_brain(subject, subjects_dir, print_only=False):
-    # mris_flatten lh.inflated.patch lh.flat.test.patch
+def flat_brain(subject, hemi, subjects_dir, print_only=False):
+    # mris_flatten lh.inflated.patch lh.flat.patch
     surf_dir = op.join(subjects_dir, subject, 'surf')
-    for hemi in utils.HEMIS:
-        rs = utils.partial_run_script(locals(), cwd=surf_dir, print_only=print_only)
-        rs(mris_flatten)
-    return {hemi:op.join(surf_dir, 'lh.flat.test.patch') for hemi in utils.HEMIS}
+    rs = utils.partial_run_script(locals(), cwd=surf_dir, print_only=print_only)
+    rs(mris_flatten)
+    return op.join(surf_dir, '{}.flat.patch'.format(hemi))
 
 
 def test_patch(subject):
