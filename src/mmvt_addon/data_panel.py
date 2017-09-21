@@ -419,13 +419,21 @@ def create_inflating_flat_morphing():
         # vg = cur_obj.vertex_groups.new('bad_vertices')
         # d = mu.load(op.join(mu.get_user_fol(), 'flat_bad_vertices.pkl'))
         # bad_vertices = d[hemi]
-        bad_vertices = set(np.arange(0,len(flat_verts))).difference(set(np.unique(flat_faces)))
+        # good_vertices = list(set(np.unique(flat_faces)))
+        bad_vertices = set(np.arange(0, len(flat_verts))).difference(set(np.unique(flat_faces)))
         vg = cur_obj.vertex_groups.new('valid_vertices')
         valid_vertices = np.unique(flat_faces)
         for vertex_ind in valid_vertices:
             vg.add([int(vertex_ind)], 1.0, 'ADD')
         # for vertex_ind in bad_vertices:
         #     vg.add([int(vertex_ind)], 1.0, 'ADD')
+
+        flat_verts_means = np.mean(flat_verts[valid_vertices], 0)
+        flat_verts_norm = flat_verts - np.tile(flat_verts_means, (flat_verts.shape[0], 1))
+
+        # flat_verts_norm[list(bad_vertices)] = (0.0, 0.0, 0.0)
+        for vert_ind in list(bad_vertices):
+            flat_verts_norm[vert_ind] = (0.0, 0.0, 0.0)
 
         shapekey = cur_obj.shape_key_add(name='flat')
         postfix = ''
@@ -435,12 +443,12 @@ def create_inflating_flat_morphing():
             flatmap_orientation = -1
         shapekey.relative_key = bpy.data.shape_keys['Key{}'.format(postfix)].key_blocks["inflated"]
         for vert in cur_obj.data.vertices:
-            shapekey.data[vert.index].co = \
-                (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)
+            # shapekey.data[vert.index].co = (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)
+            shapekey.data[vert.index].co = (flat_verts_norm[vert.index, 1]*-5, 0, flat_verts_norm[vert.index, 0]*-5)
         modifier = cur_obj.modifiers.new('mask_bad_vertices', 'MASK')
         modifier.vertex_group = 'valid_vertices'
         # modifier.vertex_group = 'bad_vertices'
-        modifier.invert_vertex_group = True
+        # modifier.invert_vertex_group = True
 
 
 

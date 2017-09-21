@@ -151,18 +151,33 @@ def inflating_update(self, context):
             return
         if bpy.context.scene.inflating >0: #flattening
             _addon().show_coronal(True)
-            _addon().view_all()
+            # _addon().view_all()
             bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
             bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = bpy.context.scene.inflating
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
             bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1
+
+            bpy.data.objects['inflated_rh'].location[0] = 10 * bpy.context.scene.inflating
+            bpy.data.objects['inflated_lh'].location[0] = -10 * bpy.context.scene.inflating
+
             use_masking = True
         else: #deflating
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
             bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
             bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
             bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
+
+            bpy.data.objects['inflated_rh'].location[0] = 0
+            bpy.data.objects['inflated_lh'].location[0] = 0
             use_masking = False
+
+        if bpy.context.scene.inflating == 1.0:
+            bpy.context.scene.surface_type == 'flat_map'
+        elif bpy.context.scene.inflating == 0.0:
+            bpy.context.scene.surface_type == 'inflated'
+        elif bpy.context.scene.inflating == -1.0:
+            bpy.context.scene.surface_type == 'pial'
+
         for hemi in ['rh', 'lh']:
             bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
             bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
@@ -243,6 +258,7 @@ def filter_view_type_update(self, context):
 
 
 def surface_type_update(self, context):
+    # tmp = bpy.context.scene.surface_type
     inflated = bpy.context.scene.surface_type == 'inflated'
     # todo: why we need the for loop here?!?
     for _ in range(2):
