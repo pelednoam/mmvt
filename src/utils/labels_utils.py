@@ -170,17 +170,19 @@ def create_unknown_labels(subject, atlas):
     for hemi in utils.HEMIS:
         labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         unknown_label_name = 'unknown-{}'.format(hemi)
-        if unknown_label_name not in [l.name for l in labels]:
+        labels_names = [l.name for l in labels]
+        if unknown_label_name not in labels_names:
             verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
             unknown_verts = set(range(verts.shape[0]))
+            for label in labels:
+                unknown_verts -= set(label.vertices)
+            unknown_verts = np.array(sorted(list(unknown_verts)))
+            unknown_label = mne.Label(unknown_verts, hemi=hemi, name=unknown_label_name, subject=subject)
         else:
-            continue
-        for label in labels:
-            unknown_verts -= set(label.vertices)
-        unknown_verts = np.array(sorted(list(unknown_verts)))
-        unknown_label = mne.Label(unknown_verts, hemi=hemi, name=unknown_label_name, subject=subject)
+            unknown_label = labels[labels_names.index(unknown_label_name)]
         unknown_labels[hemi] = unknown_label
-        unknown_label.save(unknown_labels_fname_template.format(hemi=hemi))
+        if not op.isfile(unknown_labels_fname_template.format(hemi=hemi)):
+            unknown_label.save(unknown_labels_fname_template.format(hemi=hemi))
     return unknown_labels
 
 

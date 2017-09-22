@@ -1098,6 +1098,8 @@ def change_selected_fcurves_colors(selected_objects_types, color_also_objects=Tr
                         check_obj_type(obj.name) in selected_objects_types]
     selected_objects = [obj for obj in selected_objects if obj.animation_data is not None and
                         obj.name not in exclude][::-1]
+    if len(selected_objects) == 0:
+        return
     selected_objects_len = 6 if len(selected_objects) <= 6 else len(selected_objects)
     Hs = np.linspace(0, 360, selected_objects_len + 1)[:-1] / 360
     fcurves_per_obj = count_fcurves(selected_objects[0])

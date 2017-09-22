@@ -149,11 +149,17 @@ def inflating_update(self, context):
     try:
         if bpy.data.objects.get('rh', None) is None:
             return
-        if bpy.context.scene.inflating >0: #flattening
+        try:
+            _ = bpy.data.shape_keys['Key'].key_blocks["flat"].value
+            flat_exist = True
+        except:
+            flat_exist = False
+        if bpy.context.scene.inflating > 0: #flattening
             _addon().show_coronal(True)
             # _addon().view_all()
-            bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
-            bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = bpy.context.scene.inflating
+            if flat_exist:
+                bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
+                bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = bpy.context.scene.inflating
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
             bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1
 
@@ -164,8 +170,9 @@ def inflating_update(self, context):
         else: #deflating
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
             bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
-            bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
-            bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
+            if flat_exist:
+                bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
+                bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
 
             bpy.data.objects['inflated_rh'].location[0] = 0
             bpy.data.objects['inflated_lh'].location[0] = 0
@@ -178,10 +185,11 @@ def inflating_update(self, context):
         elif bpy.context.scene.inflating == -1.0:
             bpy.context.scene.surface_type == 'pial'
 
-        for hemi in ['rh', 'lh']:
-            bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
-            bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
-            print(use_masking)
+        if flat_exist:
+            for hemi in ['rh', 'lh']:
+                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
+                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
+                print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
         vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
         if obj_name != '':
