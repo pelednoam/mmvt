@@ -1735,6 +1735,11 @@ def look_for_one_file(template, files_desc, pick_the_first_one=False, search_fun
 
 
 def select_one_file(files, template='', files_desc='', print_title=True):
+    if len(files) == 1:
+        return files[0]
+    elif len(files) == 0:
+        print('No file was found ({})'.format(template))
+        return None
     if print_title:
         print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
     for ind, fname in enumerate(files):

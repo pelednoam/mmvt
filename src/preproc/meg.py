@@ -6,7 +6,7 @@ import glob
 import shutil
 import numpy as np
 from functools import partial
-from collections import defaultdict
+from collections import defaultdict, Iterable
 from itertools import product
 import traceback
 import mne
@@ -381,6 +381,9 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, norm_by_percen
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
+        if any([event not in epochs.event_id for event in events_keys]):
+            print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
+            return False, None
         evokes = [epochs[event].average() for event in events_keys]
         save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs)
         if '{cond}' in EVO:
@@ -799,17 +802,22 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
-    inv_fname, _ = locating_file(INV, '*inv.fif')
-    evo_fname, _ = locating_file(EVO, '*ave.fif')
-    epo_fname, _ = locating_file(EVO, '*epo.fif')
-    if '{cond}' not in INV:
+    inv_fname, inv_exist = locating_file(INV, '*inv.fif')
+    if not inv_exist:
+        print('No inverse operator was found!')
+        return False, stcs, stcs_num
+    if '{cond}' not in inv_fname:
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
     for cond_name in events.keys():
         try:
             if not global_inverse_operator:
-                inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
+                inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
             if single_trial_stc:
+                epo_fname, epo_found = locating_file(EPO, '*epo.fif')
+                if not epo_found:
+                    print('single_trial_stc and not epoch file was found!')
+                    return False, stcs, stcs_num
                 epo_cond = get_cond_fname(epo_fname, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 mne.set_eeg_reference(epochs, ref_channels=None)
@@ -820,12 +828,19 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
                 evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                if evoked is None:
+                    return False, stcs, stcs_num
                 if not stc_t_min is None and not stc_t_max is None:
                     evoked = evoked.crop(stc_t_min, stc_t_max)
-                mne.set_eeg_reference(evoked, ref_channels=None)
+                try:
+                    mne.set_eeg_reference(evoked, ref_channels=None)
+                except:
+                    print('Cannot create EEG average reference projector (no EEG data found)')
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-                if save_stc:
-                    stcs[cond_name].save(STC.format(cond=cond_name, method=inverse_method)[:-4])
+                stc_fname = STC.format(cond=cond_name, method=inverse_method)[:-4]
+                if save_stc and not op.isfile(stc_fname):
+                    print('Saving the source estimate to {}'.format(stc_fname))
+                    stcs[cond_name].save(stc_fname)
             flag = True
         except:
             print(traceback.format_exc())
@@ -835,24 +850,31 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
 
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
-    evo_fname, _ = locating_file(EVO, '*ave.fif')
-    if '{cond}' not in EVO:
+    evo_fname, evo_found = locating_file(EVO, '*ave.fif')
+    if not evo_found:
+        print('get_evoked_cond: No evoked file found!')
+        return None
+    if '{cond}' not in evo_fname:
         try:
             evoked = mne.read_evokeds(evo_fname, condition=cond_name, baseline=baseline)
         except:
             print('No evoked data with the condition {}'.format(cond_name))
             evoked = None
     else:
-        evo_cond = get_cond_fname(EVO, cond_name)
+        evo_cond = get_cond_fname(evo_fname, cond_name)
         if op.isfile(evo_cond):
             evoked = mne.read_evokeds(evo_cond, baseline=baseline)[0]
         else:
             print('No evoked file, trying to use epo file')
-            if '{cond}' not in EPO:
-                epochs = mne.read_epochs(EPO, apply_SSP_projection_vectors, add_eeg_ref)
+            epo_fname, epo_found = locating_file(EPO, '*epo.fif')
+            if not epo_found:
+                print('No epochs were found!')
+                return None
+            if '{cond}' not in epo_fname:
+                epochs = mne.read_epochs(epo_fname, apply_SSP_projection_vectors, add_eeg_ref)
                 evoked = epochs[cond_name].average()
             else:
-                epo_cond = get_cond_fname(EPO, cond_name)
+                epo_cond = get_cond_fname(epo_fname, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 evoked = epochs.average()
             mne.write_evokeds(evo_cond, evoked)
@@ -1498,6 +1520,10 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
         do_plot=False, n_jobs=1):
     try:
+        inv_fname, inv_exist = locating_file(INV, '*inv.fif')
+        if not inv_exist:
+            print('No inverse operator found!')
+            return False
         if stcs is None:
             stcs = {}
             for cond in events.keys():
@@ -1505,20 +1531,15 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 if not op.isfile(stc_fname):
                     print("Can't find the stc file! {}".format(stc_fname))
                 template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
-                stcs = glob.glob(template)
-                if len(stcs) == 1:
-                    stc_fname = stcs[0]
-                    print('Loading {} instead'.format(stc_fname))
-                else:
-                    stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
-                    print('Loading {} instead'.format(stc_fname))
+                stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
+                if not op.isfile(stc_fname):
+                    return False
+                print('Loading {} instead'.format(stc_fname))
                 stcs[cond] = mne.read_source_estimate(stc_fname)
-
         global_inverse_operator = False
-        if '{cond}' not in INV:
+        if '{cond}' not in inv_fname:
             global_inverse_operator = True
             if src is None:
-                inv_fname, _ = locating_file(INV, '*inv.fif')
                 inverse_operator = read_inverse_operator(inv_fname)
                 src = inverse_operator['src']
 
@@ -1535,13 +1556,14 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             conditions.append(cond_name)
             if not global_inverse_operator:
                 if src is None:
-                    inverse_operator = read_inverse_operator(INV.format(cond=cond_name))
+                    inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
                     src = inverse_operator['src']
             # labels = lu.read_hemi_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
             labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
                                     labels_fol=labels_fol, read_only_from_annot=True, n_jobs=n_jobs)
             if len(labels) == 0:
-                raise Exception('No labels!!!')
+                print('No labels were found for {} atlas!'.format(atlas))
+                return False
 
             if isinstance(stc_cond, types.GeneratorType):
                 stc_cond_num = stcs_num[cond_name]
@@ -1851,6 +1873,8 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
         necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
         flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw)
+    if utils.should_run(args, 'calc_epochs') and not flags['calc_epochs']:
+        return flags, evoked, epochs
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
@@ -1861,10 +1885,11 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
     stcs_conds, stcs_num = None, {}
+    if isinstance(inverse_method, Iterable):
+        inverse_method = inverse_method[0]
     if utils.should_run(args, 'calc_stc_per_condition'):
-        inv_fname, _ = locating_file(INV, '*inv.fif')
-        evo_fname, _ = locating_file(EVO, '*ave.fif')
-        get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
+        # inv_fname, inv_exist = locating_file(INV, '*inv.fif')
+        get_meg_files(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
@@ -1874,6 +1899,10 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
 def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_method, stcs_conds, args, flags,
                                           stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
+        inv_fname, inv_exist = locating_file(INV, '*inv.fif')
+        if not inv_exist:
+            print('No inverse operator was found!')
+            return False
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
         for hemi_ind, hemi in enumerate(HEMIS):
@@ -2095,7 +2124,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
-    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip,mean,pca_flip', type=au.str_arr_type)
+    parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
     parser.add_argument('--normalize_data', help='', required=False, default=1, type=au.is_true)

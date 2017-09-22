@@ -126,7 +126,7 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
     shutil.copytree(labels_fol, backup_labels_fol)
     # os.rename(labels_fol, backup_labels_fol)
     # utils.make_dir(labels_fol)
-    save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial')
+    save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol)
     return
 
     # hemis_verts, labels_hemi, pia_verts = {}, {}, {}
@@ -186,25 +186,30 @@ def create_unknown_labels(subject, atlas):
     return unknown_labels
 
 
-def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwrite=False):
+def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwrite=False, read_labels_from_fol=''):
     output_fname = op.join(MMVT_DIR, subject, '{}_vertices_labels_{}lookup.pkl'.format(
         atlas, 'ids_' if save_labels_ids else ''))
     if op.isfile(output_fname) and not overwrite:
         lookup = utils.load(output_fname)
-        lookup_ok = True
-        for hemi in utils.HEMIS:
-            verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
-            lookup_ok = lookup_ok and len(lookup[hemi].keys()) == len(verts)
+        unique_values_num = sum([len(set(lookup[hemi].values())) for hemi in utils.HEMIS])
+        # check it's not only the unknowns
+        lookup_ok = unique_values_num > 2
+        if lookup_ok:
+            for hemi in utils.HEMIS:
+                verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+                lookup_ok = lookup_ok and len(lookup[hemi].keys()) == len(verts)
         if lookup_ok:
             return lookup
-        else:
-            create_vertices_labels_lookup(subject, atlas, save_labels_ids, overwrite=True)
     lookup = {}
 
     for hemi in utils.HEMIS:
         lookup[hemi] = {}
         create_unknown_label = False
-        labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        if read_labels_from_fol != '':
+            labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi, try_first_from_annotation=False,
+                                 labels_fol=read_labels_from_fol)
+        else:
+            labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
             create_unknown_label = True
             verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
@@ -224,8 +229,9 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
     return lookup
 
 
-def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial'):
-    lookup = create_vertices_labels_lookup(subject, atlas)
+def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=''):
+    # todo: Doens't work on DC, laus250. check that out
+    lookup = create_vertices_labels_lookup(subject, atlas, read_labels_from_fol=read_labels_from_fol)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     utils.delete_folder_files(labels_fol)
     for hemi in utils.HEMIS:
@@ -412,10 +418,10 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                     print('Trying to read labels files')
                     if not read_only_from_annot:
                         labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-                        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+                        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
-                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol, n_jobs=n_jobs)
+                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
             print("Can't read the {} labels!".format(atlas))
             return []
@@ -692,12 +698,14 @@ def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_j
 
 
 if __name__ == '__main__':
-    # subject = 'mg96'
-    # atlas = 'laus250'
+    subject = 'DC'
+    atlas = 'laus250'
     # label_name = 'bankssts_1-lh'
-    # n_jobs = 6
+    n_jobs = 6
     # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
-    # solve_labels_collision(subject, SUBJECTS_DIR, '{}_orig'.format(atlas), atlas, n_jobs)
+    save_labels_from_vertices_lookup(
+        subject, atlas, SUBJECTS_DIR, surf_type='pial',
+        read_labels_from_fol=op.join(SUBJECTS_DIR, subject, 'label', '{}_before_solve_collision'.format(atlas)))
     pass
 
 

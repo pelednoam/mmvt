@@ -371,7 +371,9 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
         print('The annotation file is already exist ({})'.format(annotation_fname_template))
         return True
     else:
-        if len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))) > 0:
+        labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
+        # If there are only 2 files, most likely it's the unknowns
+        if len(labels_files) > 3:
             if save_annot_file:
                 labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
             if not overwrite_annotation:
