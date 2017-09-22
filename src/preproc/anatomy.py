@@ -535,7 +535,7 @@ def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=Tr
         create_spatial_connectivity(subject)
         # return calc_labeles_contours(subject, atlas, overwrite, verbose)
     # vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas, False, overwrite)
-    bad_vertices = {'lh': None, 'rh': None}
+    bad_vertices = {}
 
     unknown_labels = lu.create_unknown_labels(subject, atlas)
     for hemi in utils.HEMIS:
@@ -609,34 +609,56 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
 #     return list(set(seems_neighbor_verts))
 
 
-def create_flat_brain(subject, n_jobs=2):
-    flat_patch_cut_vertices_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
-    calc_flat_patch_cut_vertices(subject)
-    flat_patch_cut_vertices = utils.load(flat_patch_cut_vertices_fname)
-    for hemi in utils.HEMIS:
-        inf_verts, _ = nib.freesurfer.read_geometry(
-            op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated'.format(hemi)))
-        patch_fname = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format(hemi))
-        flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
-        fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
-                                     if ind not in flat_patch_cut_vertices_hemi])
-    params = [(subject, hemi) for hemi in utils.HEMIS]
+def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
+    patch_fname_template = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format('{hemi}'))
+    if not utils.both_hemi_files_exist(patch_fname_template) or overwrite:
+        flat_patch_cut_vertices_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
+        calc_flat_patch_cut_vertices(subject)
+        flat_patch_cut_vertices = utils.load(flat_patch_cut_vertices_fname)
+        for hemi in utils.HEMIS:
+            patch_fname = patch_fname_template.format(hemi=hemi)
+            if op.isfile(patch_fname) and not overwrite:
+                continue
+            inf_verts, _ = nib.freesurfer.read_geometry(
+                op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated'.format(hemi)))
+            flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
+            fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
+                                         if ind not in flat_patch_cut_vertices_hemi])
+    params = [(subject, hemi, print_only) for hemi in utils.HEMIS]
     results = utils.run_parallel(_flat_brain_parallel, params, n_jobs)
     return all(results)
 
 
 def _flat_brain_parallel(p):
-    subject, hemi = p
-    flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR)
+    subject, hemi, print_only = p
+    flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR, print_only)
     return read_flat_brain_patch(subject, hemi, flat_patch_fname)
 
 
 def read_flat_brain_patch(subject, hemi, flat_patch_fname):
     ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.ply'.format(hemi))
-    patch_verts, patch_faces = fu.read_patch(
+    flat_verts, flat_faces = fu.read_patch(
         subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patch_fname)
-    patch_verts *= 0.1
-    return utils.write_ply_file(patch_verts, patch_faces, ply_fname, True)
+    bad_vertices = np.setdiff1d(np.arange(len(flat_verts)), flat_faces)
+    valid_vertices = np.unique(flat_faces)
+
+    # flat_verts *= 0.1
+    flat_verts_norm = utils.remove_mean_columnwise(flat_verts, valid_vertices)
+    flat_verts_norm[bad_vertices] = 0
+    # for vert_ind in list(bad_vertices):
+    #     flat_verts_norm[vert_ind] = (0.0, 0.0, 0.0)
+
+    # flat_verts = np.roll(flat_verts, -1, 1)
+    flat_verts = flat_verts[:, [1, 2, 0]]
+    flat_verts[:, 0] *= -0.5
+    flat_verts[:, 1] = 0
+    flat_verts[:, 2] *= -0.5
+
+    # for vert in cur_obj.data.vertices:
+        # shapekey.data[vert.index].co = (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)
+        # shapekey.data[vert.index].co = (flat_verts_norm[vert.index, 1] * -5, 0, flat_verts_norm[vert.index, 0] * -5)
+
+    return utils.write_ply_file(flat_verts, flat_faces, ply_fname, True)
 
 
 @utils.tryit(False, False)
@@ -1006,7 +1028,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
     if 'create_flat_brain' in args.function:
-        create_flat_brain(subject)
+        create_flat_brain(subject, args.print_only, args.overwrite_flat_surf, args.n_jobs)
 
     return flags
 
@@ -1039,6 +1061,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
     parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
     parser.add_argument('--solve_labels_collision_surf_type', help='', required=False, default='inflated')
+    parser.add_argument('--print_only', help='', required=False, default=False)
 
     parser.add_argument('--vertice_indice', help='', required=False, default=0, type=int)
     parser.add_argument('--label_name', help='', required=False, default='')
