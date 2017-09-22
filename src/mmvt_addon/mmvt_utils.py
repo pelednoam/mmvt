@@ -97,6 +97,7 @@ get_link_dir = su.get_link_dir
 get_links_dir = su.get_links_dir
 get_resources_dir = su.get_resources_dir
 get_mmvt_dir = su.get_mmvt_dir
+get_subjects_dir = su.get_subjects_dir
 
 floats_const_pattern = r"""
      [-+]?

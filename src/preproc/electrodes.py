@@ -75,6 +75,8 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         pos_org.extend([() for _ in pos_grid])
     else:
         names, pos = get_names_dists_non_bipolar_electrodes(data)
+        # fix for a bug in ielu
+        names = [n.replace('elec_unsorted', '') for n in names]
         pos_org = []
     if len(set(names)) != len(names):
         raise Exception('Duplicate electrodes names!')
@@ -144,9 +146,11 @@ def read_electrodes_file(subject, bipolar, postfix=''):
         '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else ''))
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
-        convert_electrodes_coordinates_file_to_npy(subject, bipolar, True)
+        convert_electrodes_pos(subject, bipolar, True)
     d = np.load(electrodes_fname)
-    return d['names'], d['pos']
+    # fix for a bug in ielu
+    names = [n.replace('elec_unsorted', '') for n in d['names']]
+    return names, d['pos']
 
 
 def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):
@@ -212,15 +216,24 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
     return op.isfile(output_fname)
 
 
-def convert_electrodes_coordinates_file_to_npy(
+def convert_electrodes_pos(
         subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name='', snaps=[True, False]):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(MMVT_DIR, subject, 'electrodes')
+
     file_found = False
     for snap in snaps:
-        csv_file = op.join(electrodes_folder, '{}{}_RAS.csv'.format(subject, '_snap' if snap else ''))
+        elc_file_name = '{}{}_RAS.csv'.format(subject, '_snap' if snap else '')
+        csv_file = op.join(electrodes_folder, elc_file_name)
+        subjects_elecs_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', elc_file_name)
         if not op.isfile(csv_file):
-            continue
+            if op.isfile(subjects_elecs_fname):
+                shutil.copy(subjects_elecs_fname, op.join(electrodes_folder, elc_file_name))
+            else:
+                print("Can't find {}!".format(elc_file_name))
+                continue
+        elif op.isfile(subjects_elecs_fname) and utils.file_is_newer(subjects_elecs_fname, csv_file):
+            shutil.copy(subjects_elecs_fname, op.join(electrodes_folder, elc_file_name))
         file_found = True
         output_file_name = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
         output_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
@@ -724,7 +737,7 @@ def data_electrodes_to_bipolar(subject):
     meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
     data = np.load(op.join(fol, 'electrodes_data.npy'))
     channels, conditions, times = meta_data['names'], meta_data['conditions'], meta_data['times']
-    _, _, bipolar_channels = convert_electrodes_coordinates_file_to_npy(subject, bipolar=True, copy_to_blender=True)
+    _, _, bipolar_channels = convert_electrodes_pos(subject, bipolar=True, copy_to_blender=True)
     data_bipolar = np.zeros((len(bipolar_channels), data.shape[1], len(conditions)))
     for cond_ind in range(len(conditions)):
         for ind, bipolar_channel in enumerate(bipolar_channels):
@@ -826,12 +839,14 @@ def get_electrodes_groups(subject, bipolar):
 
 
 @pu.tryit_ret_bool
-def create_electrodes_groups_coloring(subject, bipolar, coloring_fname='electrodes_groups_coloring.csv'):
+def create_electrodes_groups_coloring(subject, bipolar, coloring_fname=''):
+    if coloring_fname == '':
+        coloring_fname = 'electrodes_{}groups_coloring.csv'.format('bipolar_' if bipolar else '')
     electrodes, groups = get_electrodes_groups(subject, bipolar)
     colors_rgb_and_names = cu.get_distinct_colors_and_names(len(groups) - 1, boynton=True)
     group_colors = dict()
     coloring_fname = op.join(MMVT_DIR, subject, 'coloring', coloring_fname)
-    coloring_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'electrodes_groups_coloring_names.csv')
+    coloring_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'electrodes_groups_coloring_names.txt')
     with open(coloring_names_fname, 'w') as colors_names_file:
         for group, (color_rgb, color_name) in zip(groups, colors_rgb_and_names):
             if 'ref' in group.lower():
@@ -1051,7 +1066,7 @@ def main(subject, remote_subject_dir, args, flags):
     locating_file = partial(utils.locating_file, parent_fol=op.join(ELECTRODES_DIR, subject))
 
     if utils.should_run(args, 'convert_electrodes_pos'):
-        flags['convert_electrodes_pos'], _, _ = convert_electrodes_coordinates_file_to_npy(
+        flags['convert_electrodes_pos'], _, _ = convert_electrodes_pos(
             subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
 
     if utils.should_run(args, 'calc_dist_mat'):

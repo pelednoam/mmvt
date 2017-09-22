@@ -5,6 +5,7 @@ import csv
 import nibabel as nib
 from mne.label import _read_annot
 from collections import Iterable
+import glob
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -100,15 +101,15 @@ def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only
     return op.isfile(blender_file) and op.isfile(atlas_mat_fname)
 
 
-def check_mgz_values(atlas):
-    import nibabel as nib
-    vol = nib.load(op.join(MMVT_DIR, subject, 'freeview', '{}+aseg.mgz'.format(atlas)))
-    vol_data = vol.get_data()
-    vol_data = vol_data[np.where(vol_data)]
-    data = vol_data.ravel()
-    import matplotlib.pyplot as plt
-    plt.hist(data, bins=100)
-    plt.show()
+# def check_mgz_values(atlas):
+#     import nibabel as nib
+#     vol = nib.load(op.join(MMVT_DIR, subject, 'freeview', '{}+aseg.mgz'.format(atlas)))
+#     vol_data = vol.get_data()
+#     vol_data = vol_data[np.where(vol_data)]
+#     data = vol_data.ravel()
+#     import matplotlib.pyplot as plt
+#     plt.hist(data, bins=100)
+#     plt.show()
 
 
 def create_electrodes_points(subject, args): # bipolar=False, create_points_files=True, create_volume_file=False,
@@ -164,8 +165,21 @@ def copy_T1(subject):
 
 
 def read_electrodes_pos(subject, args):
-    electrodes_file = args.electrodes_pos_fname if args.electrodes_pos_fname != '' else op.join(
-        SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format('_bipolar' if args.bipolar else ''))
+    # electrodes_file = args.electrodes_pos_fname if args.electrodes_pos_fname != '' else op.join(
+    #     SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_positions.npz'.format('_bipolar' if args.bipolar else ''))
+    if args.electrodes_pos_fname != '':
+        electrodes_file = args.electrodes_pos_fname
+    else:
+        # electrodes_file = op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes{}_{}positions.npz'.format(
+        #     '_bipolar' if args.bipolar else '', 'snap_' if args.snap else ''))
+        electrodes_files = glob.glob(op.join(MMVT_DIR, subject, 'electrodes', 'electrodes*_*positions.npz'))
+        if len(electrodes_files) == 0:
+            electrodes_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'electrodes', 'electrodes*_*positions.npz'))
+        if len(electrodes_files) == 0:
+            print('No electrodes pos files were found!')
+            return [], []
+        electrodes_file = utils.select_one_file(electrodes_files, 'electrodes*_*positions.npz', 'electrodes')
+
     if op.isfile(electrodes_file):
         elecs = np.load(electrodes_file)
         elecs_pos, elecs_names = elecs['pos'], [name.astype(str) for name in elecs['names']]

@@ -150,6 +150,10 @@ def get_mmvt_dir():
     # return op.join(get_links_dir(), 'mmvt')
 
 
+def get_subjects_dir():
+    return get_link_dir(get_links_dir(), 'subjects', 'SUBJECTS_DIR')
+
+
 def get_blender_dir():
     return get_link_dir(get_links_dir(), 'blender')
     # return op.join(get_links_dir(), 'blender')

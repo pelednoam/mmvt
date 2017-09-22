@@ -55,17 +55,25 @@ def freeview_save_cursor():
 
 
 def open_freeview():
+    import shutil
     root = mu.get_user_fol()
     if bpy.context.scene.fMRI_files_exist and bpy.context.scene.freeview_load_fMRI:
         sig_fnames = glob.glob(op.join(root, 'freeview', '*{}*.mgz'.format(bpy.context.scene.fmri_files))) + \
                      glob.glob(op.join(root, 'freeview', '*{}*.nii'.format(bpy.context.scene.fmri_files)))
         if len(sig_fnames) > 0:
             sig_fname = sig_fnames[0]
-            sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6'.format(sig_fname) if op.isfile(sig_fname) else ''
+            sig_cmd = '-v "{}":colormap=heat:heatscale=2,3,6 '.format(sig_fname) if op.isfile(sig_fname) else ''
         else:
             sig_cmd = ''
     else:
         sig_cmd = ''
+    if bpy.context.scene.freeview_load_CT:
+        mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
+        if FreeviewPanel.CT_files_exist:
+            ct_cmd = '-v "{}":opacity=0 '.format(mmvt_ct_fname)
+        else:
+            print("Can't find CT {}!".format(mmvt_ct_fname))
+            ct_cmd = ''
     T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
     if not op.isfile(T1):
         T1 = op.join(root, 'freeview', 'orig.mgz')
@@ -80,8 +88,8 @@ def open_freeview():
     aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
     lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
     electrodes_cmd = get_electrodes_command(root)
-    cmd = '{} {} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}'.format(
-        FreeviewPanel.addon_prefs.freeview_cmd, sig_cmd, T1, aseg, lut, electrodes_cmd,
+    cmd = '{} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}{}{}'.format(
+        FreeviewPanel.addon_prefs.freeview_cmd, T1, aseg, lut, electrodes_cmd, sig_cmd, ct_cmd,
         ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
         ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
     print(cmd)
@@ -236,8 +244,8 @@ bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=True, description='Load electrodes')
 bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
+bpy.types.Scene.freeview_load_CT = bpy.props.BoolProperty(default=True, description='Load CT')
 bpy.types.Scene.freeview_messages = bpy.props.StringProperty()
-
 
 
 class FreeviewPanel(bpy.types.Panel):
@@ -263,6 +271,8 @@ class FreeviewPanel(bpy.types.Panel):
                          glob.glob(fmri_files_template.format(format='nii'))
         if bpy.context.scene.fMRI_files_exist and len(fmri_vol_files) > 0:
             layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
+        layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
+
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
         row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
@@ -277,6 +287,7 @@ class FreeviewPanel(bpy.types.Panel):
 
 
 def init(addon, addon_prefs=None):
+    import shutil
     FreeviewPanel.addon = addon
     # print('freeview command: {}'.format(addon_prefs.freeview_cmd))
     # print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
@@ -288,6 +299,13 @@ def init(addon, addon_prefs=None):
         #mu.hemi_files_exists(op.join(mu.get_user_fol(), 'fmri_{hemi}.npy'))
     bpy.context.scene.electrodes_exist = not bpy.data.objects.get('Deep_electrodes', None) is None
     bpy.context.scene.freeview_messages = ''
+    root = mu.get_user_fol()
+    mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
+    if not op.isfile(mmvt_ct_fname):
+        subjects_ct_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'mri', 'ct_nas.nii.gz')
+        if op.isfile(subjects_ct_fname):
+            shutil.copy(subjects_ct_fname, mmvt_ct_fname)
+    FreeviewPanel.CT_files_exist = op.isfile(mmvt_ct_fname)
     FreeviewPanel.init = True
     register()
 

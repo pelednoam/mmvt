@@ -1769,6 +1769,10 @@ def file_modification_time(fname):
     return time.strftime('%H:%M:%S %m/%d/%Y', time.gmtime(op.getmtime(fname)))
 
 
+def file_is_newer(fname1, fname2):
+    return time.gmtime(op.getmtime(fname1)) > time.gmtime(op.getmtime(fname2))
+
+
 @decorator
 def ignore_warnings(f, *args, **kw):
     with warnings.catch_warnings():
