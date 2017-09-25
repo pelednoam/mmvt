@@ -50,15 +50,17 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
             vertices_idx.append(index)
             vertices_co.append(co)
 
-    closest_mesh_name = names[np.argmin(np.array(distances))]
+    distances = np.array(distances)
+    closest_mesh_name = names[np.argmin(distances)]
     # print('closest_mesh =' + str(closest_mesh_name))
-    vertex_ind = vertices_idx[np.argmin(np.array(distances))]
+    vertex_ind = vertices_idx[np.argmin(distances)]
     # print('vertex_ind = ' + str(vertex_ind))
-    vertex_co = vertices_co[np.argmin(np.array(distances))] * obj.matrix_world
+    vertex_co = vertices_co[np.argmin(distances)] * obj.matrix_world
+    distance = np.min(distances)
     # print('vertex_co', vertex_co)
     # print(closest_mesh_name, bpy.data.objects[closest_mesh_name].data.vertices[vertex_ind].co)
     # print(closest_mesh_name.replace('inflated_', ''), bpy.data.objects[closest_mesh_name.replace('inflated_', '')].data.vertices[vertex_ind].co)
-    return closest_mesh_name, vertex_ind, vertex_co
+    return closest_mesh_name, vertex_ind, vertex_co, distance
 
 
 class ClearVertexData(bpy.types.Operator):
@@ -123,7 +125,7 @@ class CreateVertexData(bpy.types.Operator):
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def invoke(self, context, event=None):
-        closest_mesh_name, vertex_ind, vertex_co = find_vertex_index_and_mesh_closest_to_cursor()
+        closest_mesh_name, vertex_ind, vertex_co, _ = find_vertex_index_and_mesh_closest_to_cursor()
         print(vertex_co)
         self.create_empty_in_vertex_location(vertex_co)
         data_path = mu.get_user_fol()

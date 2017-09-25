@@ -230,10 +230,16 @@ def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig
                 op.join(subject_fol, 'mn305_to_{}.dat'.format(subject)))
 
 
+@utils.tryit(None)
 def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
     import mne.transforms
-    xfm = mne.source_space._read_talxfm(subject, subjects_dir, 'nibabel')
-    return mne.transforms.apply_trans(xfm['trans'], coords)
+    talairach_fname = op.join(subjects_dir, subject, 'mri', 'transforms', 'talairach.xfm')
+    if op.isfile(talairach_fname):
+        xfm = mne.source_space._read_talxfm(subject, subjects_dir, 'nibabel')
+        return mne.transforms.apply_trans(xfm['trans'], coords)
+    else:
+        print('transform_subject_to_mni_coordinates: No {}!'.format(talairach_fname))
+        return None
     # MNI305RAS = TalXFM * Norig * inv(Torig) * [tkrR tkrA tkrS 1]'
     # TalXFM: subject/orig/transforms/talairach.xfm Norig: mri_info --vox2ras orig.mgz Torig: mri_info --vox2ras-tkr orig.mgz
 

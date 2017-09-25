@@ -489,7 +489,7 @@ class SelectionListener(bpy.types.Operator):
 def snap_cursor(flag=None):
     flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
     if flag:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=True)
         bpy.context.scene.cursor_location = vertex_co
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)

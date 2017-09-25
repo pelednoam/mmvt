@@ -234,7 +234,7 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 def find_closest_label():
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    closest_mesh_name, vertex_ind, vertex_co = \
+    closest_mesh_name, vertex_ind, vertex_co, _ = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
@@ -275,7 +275,7 @@ def build_new_label_name():
 
 
 def grow_a_label():
-    closest_mesh_name, vertex_ind, _ = \
+    closest_mesh_name, vertex_ind, _, _ = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     subject, atlas = mu.get_user(), bpy.context.scene.subject_annot_files

@@ -52,7 +52,7 @@ def _clusters_update():
     _addon().clear_closet_vertex_and_mesh_to_cursor()
     if _addon().is_pial():
         bpy.context.scene.cursor_location = cluster_centroid
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             cluster_centroid, mu.HEMIS, False)
         _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
     # elif _addon().get_inflated_ratio() == 1:
@@ -62,7 +62,7 @@ def _clusters_update():
     #     pial_vert = bpy.data.objects[inflated_mesh].data.vertices[vertex_ind]
     #     bpy.context.scene.cursor_location = pial_vert.co / 10.0
     else:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             cluster_centroid, mu.HEMIS, False)
         inflated_mesh = 'inflated_{}'.format(closest_mesh_name)
         me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
@@ -125,7 +125,7 @@ def find_closest_cluster(only_within=False):
     cursor = np.array(bpy.context.scene.cursor_location)
     print('cursor {}'.format(cursor))
     if _addon().is_inflated(): # and _addon().get_inflated_ratio() == 1:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=True)
         # print(closest_mesh_name, vertex_ind, vertex_co)
         # print(vertex_co - bpy.context.scene.cursor_location)
@@ -137,7 +137,7 @@ def find_closest_cluster(only_within=False):
         _addon().set_tkreg_ras_coo(pial_vert.co, move_cursor=False)
         # _addon().save_cursor_position(cursor)
     else:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor()
         print(closest_mesh_name, vertex_ind, vertex_co)
         print(vertex_co - bpy.context.scene.cursor_location)
         bpy.context.scene.cursor_location = vertex_co

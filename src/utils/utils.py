@@ -1386,12 +1386,20 @@ def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
     import xlrd
     import csv
     wb = xlrd.open_workbook(xlsx_fname)
+    sheet_num = 0
     if len(wb.sheets()) > 1 and sheet_name == '':
-        raise Exception('More than one sheet in the xlsx file!')
+        print('More than one sheet in the xlsx file:')
+        for ind, sh in enumerate(wb.sheets()):
+            print('{}) {}'.format(ind + 1, sh.name))
+        sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+        while not is_int(sheet_num):
+            print('Please enter a valid integer')
+            sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+        sheet_num = int(sheet_num) - 1
     if sheet_name != '':
         sh = wb.sheet_by_name(sheet_name)
     else:
-        sh = wb.sheets()[0]
+        sh = wb.sheets()[sheet_num]
     print('Converting sheet "{}" to csv'.format(sh.name))
     with open(csv_fname, 'w') as csv_file:
         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
@@ -1744,10 +1752,10 @@ def select_one_file(files, template='', files_desc='', print_title=True):
         print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
     for ind, fname in enumerate(files):
         print('{}) {}'.format(ind + 1, fname))
-    file_num = input('Which on do you want to load (1, 2, ...)? ')
+    file_num = input('Which one do you want to load (1, 2, ...)? ')
     while not is_int(file_num):
         print('Please enter a valid integer')
-        file_num = input('Which on do you want to load (1, 2, ...)? ')
+        file_num = input('Which one do you want to load (1, 2, ...)? ')
     file_num = int(file_num) - 1
     return files[file_num]
 
@@ -1845,6 +1853,14 @@ def remove_mean_columnwise(x, lines=None):
         return  x - np.tile(np.mean(x, 0), (x.shape[0], 1))
     else:
         return x - np.tile(np.mean(x[lines], 0), (x.shape[0], 1))
+
+
+def is_float(x):
+    try:
+        float(x)
+        return True
+    except:
+        return False
 
 
 if __name__ == '__main__':

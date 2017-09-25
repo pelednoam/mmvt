@@ -164,8 +164,10 @@ def fix_str_items_in_csv(csv):
     lines = []
     for line in csv:
         fix_line = list(map(lambda x: str(x).replace('"', ''), line))
-        if not np.all([len(v)==0 for v in fix_line[1:]]):
+        if not np.all([len(v)==0 for v in fix_line[1:]]) and np.all([utils.is_float(x) for x in fix_line[1:]]):
             lines.append(fix_line)
+        else:
+            print('csv: ignoring the following line: {}'.format(line))
     return np.array(lines)
 
 
@@ -980,12 +982,15 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
     figlegend.savefig(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
 
-@pu.tryit_ret_bool
 def transform_electrodes_to_mni(subject, args):
     from src.utils import freesurfer_utils as fu
     elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
-    save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels, '_mni')
+    if elecs_coords_mni is not None:
+        save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels, '_mni')
+        return True
+    else:
+        return False
 
 
 def transform_electrodes_to_subject(subject, args):
