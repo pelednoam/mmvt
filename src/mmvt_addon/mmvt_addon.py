@@ -513,6 +513,7 @@ def load_all_panels(addon_prefs=None):
         view_all()
         show_electrodes(False)
         show_hide_connections(False)
+        # show_activity(False)
         mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
         mmvt_utils.unfilter_graph_editor()
 
@@ -529,7 +530,11 @@ def main(addon_prefs=None):
             if addon_prefs is not None:
                 load_all_panels(addon_prefs)
         mmvt_utils._addon = mmvt
-
+        for hemi in ['lh', 'rh']:
+            bpy.data.objects[hemi].hide = True
+            bpy.data.objects[hemi].hide_render = True
+            bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
+        show_activity(False)
         # list_panel.init(mmvt)
         pass
     except:

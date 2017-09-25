@@ -17,7 +17,7 @@ def setup_layers():
     bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = bpy.context.scene.show_hide_electrodes
     bpy.context.scene.layers[_addon().EEG_LAYER] = bpy.context.scene.show_hide_eeg
     bpy.context.scene.layers[_addon().ROIS_LAYER] = is_rois()
-    bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
+    # bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
     bpy.context.scene.layers[_addon().CONNECTIONS_LAYER] = bpy.context.scene.appearance_show_connections_layer
 
 
@@ -178,12 +178,16 @@ def inflating_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = 0
             use_masking = False
 
+        bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
+
         if bpy.context.scene.inflating == 1.0:
             bpy.context.scene.surface_type == 'flat_map'
         elif bpy.context.scene.inflating == 0.0:
             bpy.context.scene.surface_type == 'inflated'
         elif bpy.context.scene.inflating == -1.0:
             bpy.context.scene.surface_type == 'pial'
+            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = True
+
 
         if flat_exist:
             for hemi in ['rh', 'lh']:
@@ -207,7 +211,9 @@ def inflating_update(self, context):
 
 def set_inflated_ratio(ratio):
     bpy.context.scene.inflating = ratio
-    _addon().view_all()
+
+    if not is_rendered():
+        _addon().view_all()
 
 
 def get_inflated_ratio():
@@ -277,7 +283,7 @@ def surface_type_update(self, context):
             # bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = inflated
             # bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not inflated
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = True
-            bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not True
+            # bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = not True
     if inflated:
         AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
         AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
@@ -292,12 +298,16 @@ def surface_type_update(self, context):
 
     if bpy.context.scene.surface_type == 'inflated':
         set_inflated_ratio(0)
+
         # print('inflated - set_inflated_ratio(0) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'flat_map':
         set_inflated_ratio(1)
         # print('flat_map - set_inflated_ratio(1) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'pial':
         set_inflated_ratio(-1)
+        bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = True
+        # bpy.data.objects['lh'].hide  = True
+        # bpy.data.objects['rh'].hide = True
         # print('pial - set_inflated_ratio(-1) the actual value={}'.format(bpy.context.scene.inflating))
 
     if bpy.context.scene.cursor_is_snapped:
@@ -523,9 +533,19 @@ bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
 # bpy.types.Scene.surface_type = bpy.props.EnumProperty(
 #     items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],description="Surface type",
 #     update=surface_type_update)
-bpy.types.Scene.surface_type = bpy.props.EnumProperty(
-    items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2),("flat_map", "Flat map", "", 3)],description="Surface type",
-    update=surface_type_update)
+
+try:
+    _ = bpy.data.shape_keys['Key'].key_blocks["flat"].value
+    flat_exist = True
+    bpy.types.Scene.surface_type = bpy.props.EnumProperty(
+        items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat_map", "Flat map", "", 3)],
+        description="Surface type", update=surface_type_update)
+except:
+    flat_exist = False
+    bpy.types.Scene.surface_type = bpy.props.EnumProperty(
+        items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],
+        description="Surface type", update=surface_type_update)
+
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
@@ -614,6 +634,7 @@ class AppearanceMakerPanel(bpy.types.Panel):
     showing_electrodes = False
     closest_vertex_to_cursor = -1
     closest_mesh_to_cursor = ''
+    has_flatmap = False
 
     def draw(self, context):
         if AppearanceMakerPanel.init:
@@ -663,7 +684,14 @@ def init(addon):
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
     AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
     AppearanceMakerPanel.showing_electrodes = showing_electordes()
+    show_inflated()
     AppearanceMakerPanel.init = True
+
+    # bpy.data.objects['lh'].hide = True
+    # bpy.data.objects['rh'].hide = True
+    # bpy.data.objects['lh'].hide_render = True
+    # bpy.data.objects['rh'].hide_render = True
+
 
 
 def register():
