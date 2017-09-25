@@ -39,6 +39,7 @@ FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 
 FSAVG_VERTS = 10242
 FSAVG5_VERTS = 163842
+COLIN27_VERTS = dict(lh=166836, rh=165685)
 
 _bbregister = 'bbregister --mov {fsl_input}.nii --bold --s {subject} --init-fsl --lta register.lta'
 _mri_robust_register = 'mri_robust_register --mov {fsl_input}.nii --dst $SUBJECTS_DIR/colin27/mri/orig.mgz' +\
@@ -99,7 +100,7 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
                 temp_barin = 'fsaverage5' if x.shape[0] == FSAVG5_VERTS else 'fsaverage'
                 raise Exception(
                     "It seems that the fMRI contrast was made on {}, and not on the subject.\n".format(temp_barin) +
-                    "You can run the fMRI preproc on the template barin, or morph the fMRI contrast map to the subject.")
+                    "You can run the fMRI preproc on the template brain, or morph the fMRI contrast map to the subject.")
             else:
                 raise Exception("fMRI contrast map ({}) and the {} pial surface ".format(len(x), hemi) +
                                 "({}) doesn't have the same vertices number!".format(verts.shape[0]))
@@ -569,6 +570,7 @@ def project_on_surface(subject, volume_file, surf_output_fname,
 
 
 def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
+    utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname).replace('{subject}', subject)
     surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
     if len(surf_full_output_fnames) == 0:
@@ -1020,6 +1022,8 @@ def check_vertices_num(subject, hemi, x, morph_from_subject=''):
         morph_from_subject = 'fsaverage'
     elif x.shape[0] == FSAVG5_VERTS:
         morph_from_subject = 'fsaverage5'
+    elif x.shape[0] == COLIN27_VERTS[hemi]:
+        morph_from_subject = 'colin27'
     else:
         verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
         if x.shape[0] == verts.shape[0]:
