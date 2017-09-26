@@ -73,6 +73,8 @@ def open_freeview():
         else:
             print("Can't find CT {}!".format(mmvt_ct_fname))
             ct_cmd = ''
+    else:
+        ct_cmd = ''
     T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
     if not op.isfile(T1):
         T1 = op.join(root, 'freeview', 'orig.mgz')

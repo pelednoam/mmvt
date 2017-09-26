@@ -534,7 +534,7 @@ def main(addon_prefs=None):
             bpy.data.objects[hemi].hide = True
             bpy.data.objects[hemi].hide_render = True
             bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
-        show_activity(False)
+        # show_activity(False)
         # list_panel.init(mmvt)
         pass
     except:
