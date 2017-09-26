@@ -1,4 +1,4 @@
 #!/bin/tcsh
 setenv FREESURFER_HOME /usr/local/freesurfer
 source $FREESURFER_HOME/SetUpFreeSurfer.csh
-/home/ohadfel/blender-2.78-linux-glibc211-x86_64/blender
+your_mmvt_root_folder/links/blender/blender --enable-new-depsgraph
