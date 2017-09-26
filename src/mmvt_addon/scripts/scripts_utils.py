@@ -445,5 +445,31 @@ def read_list_from_file(fname):
     return arr
 
 
+def select_one_file(files, template='', files_desc='', print_title=True):
+    if len(files) == 1:
+        return files[0]
+    elif len(files) == 0:
+        print('No file was found ({})'.format(template))
+        return None
+    if print_title:
+        print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
+    for ind, fname in enumerate(files):
+        print('{}) {}'.format(ind + 1, fname))
+    file_num = input('Which one do you want to load (1, 2, ...)? ')
+    while not is_int(file_num):
+        print('Please enter a valid integer')
+        file_num = input('Which one do you want to load (1, 2, ...)? ')
+    file_num = int(file_num) - 1
+    return files[file_num]
+
+
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+
 if __name__ == '__main__':
     init_mmvt_addon()

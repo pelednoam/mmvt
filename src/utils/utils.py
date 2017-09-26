@@ -68,6 +68,7 @@ file_modification_time = mu.file_modification_time
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
 get_real_atlas_name = su.get_real_atlas_name
+select_one_file = su.select_one_file
 
 from src.utils import args_utils as au
 is_int = au.is_int
@@ -1740,24 +1741,6 @@ def look_for_one_file(template, files_desc, pick_the_first_one=False, search_fun
     else:
         fname = files[0]
     return fname
-
-
-def select_one_file(files, template='', files_desc='', print_title=True):
-    if len(files) == 1:
-        return files[0]
-    elif len(files) == 0:
-        print('No file was found ({})'.format(template))
-        return None
-    if print_title:
-        print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
-    for ind, fname in enumerate(files):
-        print('{}) {}'.format(ind + 1, fname))
-    file_num = input('Which one do you want to load (1, 2, ...)? ')
-    while not is_int(file_num):
-        print('Please enter a valid integer')
-        file_num = input('Which one do you want to load (1, 2, ...)? ')
-    file_num = int(file_num) - 1
-    return files[file_num]
 
 
 def get_logs_fol():

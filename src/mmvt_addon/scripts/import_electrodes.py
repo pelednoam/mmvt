@@ -36,7 +36,8 @@ def read_args(argv=None):
         args.subject = subject
         pos_files_fol = op.join(su.get_mmvt_dir(), args.subject, 'electrodes')
         if pos_file == '':
-            pos_file_options = glob.glob(op.join(pos_files_fol, 'electrodes*positions*.npz'))
+            pos_file_template = op.join(pos_files_fol, 'electrodes*positions*.npz')
+            pos_file_options = glob.glob(pos_file_template)
             if args.bipolar:
                 pos_file_options = [fname for fname in pos_file_options if 'bipolar' in fname]
             else:
@@ -48,8 +49,7 @@ def read_args(argv=None):
                 pos_file = pos_file_options[0]
                 print('electrodes file: {}'.format(pos_file))
             else:
-                raise Exception('More than one electrodes positions files in {}'.format(pos_files_fol) +
-                                'please indicate which one using the -p flag')
+                pos_file = su.select_one_file(pos_file_options, pos_file_template, 'electrodes positions files')
         else:
             pos_file = op.join(pos_files_fol, '{}.npz'.format(su.namebase(pos_file)))
         if not op.isfile(pos_file):
