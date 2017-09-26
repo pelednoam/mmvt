@@ -499,7 +499,7 @@ def get_panels():
 
 def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
-    check_empty_subject_version()
+    # check_empty_subject_version()
     fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
