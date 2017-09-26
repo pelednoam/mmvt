@@ -571,7 +571,7 @@ def color_contours(specific_label='', specific_hemi='both'):
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True):
-    if bpy.data.objects[hemi].hide:
+    if bpy.data.objects['inflated_{}'.format(hemi)].hide:
         return
     faces_verts = ColoringMakerPanel.faces_verts[hemi]
     if bpy.context.scene.coloring_both_pial_and_inflated:
@@ -591,7 +591,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
 
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    not_hiden_hemis = [hemi for hemi in HEMIS if not bpy.data.objects['inflated_{}'.format(hemi)].hide]
     t = bpy.context.scene.frame_current
     frame_str = str(t)
     data_min, data_max = 0, 0

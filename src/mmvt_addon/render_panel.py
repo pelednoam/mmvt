@@ -574,6 +574,8 @@ def pop_from_queue():
 
 
 def update_camera_files():
+    if not RenderingMakerPanel.init:
+        return
     camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', '*camera*.pkl'))
     if len(camera_files) > 0:
         files_names = [mu.namebase(fname) for fname in camera_files]
