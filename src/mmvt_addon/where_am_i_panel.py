@@ -479,7 +479,8 @@ def init(addon):
             bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
             bpy.context.scene.subject_annot_files = files_names[0]
         else:
-            bpy.context.scene.subject_annot_files = ''
+            bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
+            # bpy.context.scene.subject_annot_files = ''
 
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
@@ -487,7 +488,7 @@ def init(addon):
         WhereAmIPanel.init = True
         register()
     except:
-        print("Can't init where-am-I panel!s")
+        print("Can't init where-am-I panel!")
 
 
 def register():

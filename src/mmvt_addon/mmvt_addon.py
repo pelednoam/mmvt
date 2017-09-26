@@ -530,10 +530,12 @@ def main(addon_prefs=None):
             if addon_prefs is not None:
                 load_all_panels(addon_prefs)
         mmvt_utils._addon = mmvt
-        for hemi in ['lh', 'rh']:
-            bpy.data.objects[hemi].hide = True
-            bpy.data.objects[hemi].hide_render = True
-            bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
+        if bpy.data.objects.get('rh') and bpy.data.objects.get('lh'):
+            for hemi in ['lh', 'rh']:
+                bpy.data.objects[hemi].hide = True
+                bpy.data.objects[hemi].hide_render = True
+                if bpy.data.objects.get('inflated_{}'.format(hemi)):
+                    bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
         # show_activity(False)
         # list_panel.init(mmvt)
         pass
@@ -573,8 +575,8 @@ def remove_materials():
     for cur_mat in new_mats_list:
         if bpy.data.materials.get(cur_mat) is not None:
             bpy.data.materials[cur_mat].use_fake_user = False
-            bpy.data.materials[cur_mat].user_clear()
-
+            # bpy.data.materials[cur_mat].user_clear()
+            bpy.data.materials.remove(bpy.data.materials[cur_mat], do_unlink=True)
 
 
 

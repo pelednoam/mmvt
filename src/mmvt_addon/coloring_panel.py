@@ -806,7 +806,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         bpy.ops.mesh.vertex_color_remove(c)
         # except:
         #     print("Can't remove vertex color!")
-    vcol_layer = mesh.vertex_colors.new('Col')
+    if mesh.vertex_colors.get('Col') is None:
+        vcol_layer = mesh.vertex_colors.new('Col')
     # vcol_layer = mesh.vertex_colors["Col"]
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:

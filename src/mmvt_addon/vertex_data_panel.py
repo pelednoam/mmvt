@@ -73,7 +73,7 @@ class ClearVertexData(bpy.types.Operator):
         for obj in bpy.data.objects:
             if obj.name.startswith('Activity_in_vertex'):
                 obj.select = True
-                bpy.context.scene.objects.unlink(obj)
+                # bpy.context.scene.objects.unlink(obj)
                 bpy.data.objects.remove(obj)
 
         return {"FINISHED"}

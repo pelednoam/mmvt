@@ -540,11 +540,13 @@ try:
     bpy.types.Scene.surface_type = bpy.props.EnumProperty(
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat_map", "Flat map", "", 3)],
         description="Surface type", update=surface_type_update)
+    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 except:
     flat_exist = False
     bpy.types.Scene.surface_type = bpy.props.EnumProperty(
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],
         description="Surface type", update=surface_type_update)
+    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=0, default=0, step=0.1, update=inflating_update)
 
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
@@ -552,7 +554,7 @@ bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
-bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
+# bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
 bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_distance_update)
 
