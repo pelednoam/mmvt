@@ -1052,12 +1052,13 @@ class DataMakerPanel(bpy.types.Panel):
         # layout.prop(context.scene, 'conf_path')
         # col = self.layout.column(align=True)
         col = layout.box().column()
-        col.operator(StartFlatProcess.bl_idname, text="Import flat stuff", icon='MATERIAL_DATA')
+
         col.prop(context.scene, 'atlas', text="Atlas")
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
 
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes*positions*.npz'))
+        col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
         if len(electrodes_positions_files) > 0:
             col = layout.box().column()
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
