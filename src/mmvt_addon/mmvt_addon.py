@@ -581,7 +581,9 @@ def remove_materials():
 
 
 def import_new_materials():
-    empty_brain_path = op.join(mmvt_utils.get_parent_fol(mmvt_utils.get_user_fol()), 'empty_subject.blend')
+    #empty_brain_path = op.join(mmvt_utils.get_parent_fol(mmvt_utils.get_user_fol()), 'empty_subject.blend')
+    empty_brain_path = op.join(mmvt_utils.get_resources_dir(), 'empty_subject.blend')
+    
     new_mats_list = ['Helmet_map_mat', 'unselected_label_Mat_cortex', 'unselected_label_Mat_subcortical']
     for cur_mat in new_mats_list:
         bpy.ops.wm.append(filepath=empty_brain_path, directory=empty_brain_path + '\\Material\\', filename=cur_mat)
