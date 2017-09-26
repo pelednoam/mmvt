@@ -878,7 +878,7 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
             op.basename(electrode_labeling_fname)))
     most_probable_rois = get_most_probable_rois(elecs_probs, p_threshold, good_channels)
     rois_colors_rgbs, rois_colors_names = get_rois_colors(subject, atlas, most_probable_rois)
-    save_rois_colors_legend(subject, rois_colors_rgbs, bipolar, legend_name)
+    # save_rois_colors_legend(subject, rois_colors_rgbs, bipolar, legend_name)
     utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     if coloring_fname == '':
         coloring_fname = 'electrodes{}_{}_coloring.csv'.format('_bipolar' if bipolar else '', atlas)
