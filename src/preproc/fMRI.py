@@ -1476,6 +1476,7 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', 
                     symetric_colors=args.symetric_colors,
                     contrast_name=contrast)
         # todo: save clusters also for morphed_from_subject
+        # todo: we should send a template for the surf fname instead of contrast
         find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
     # todo: check what to return
     return True

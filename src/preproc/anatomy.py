@@ -298,9 +298,9 @@ def calc_faces_verts_dic(subject, atlas, overwrite=False):
         ply_files.extend(subcortical_plys)
         out_files.extend(faces_verts_dic_fnames)
     for hemi in utils.HEMIS:
-        labels_plys = glob.glob(op.join(MMVT_DIR, subject, '{}.pial.{}'.format(atlas, hemi), '*.ply'))
+        labels_plys = glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.pial.{}'.format(atlas, hemi), '*.ply'))
         if len(labels_plys) > 0:
-            faces_verts_dic_fnames = [op.join(MMVT_DIR, subject, '{}.pial.{}'.format(atlas, hemi), '{}_faces_verts.npy'.format(
+            faces_verts_dic_fnames = [op.join(MMVT_DIR, subject, 'labels', '{}.pial.{}'.format(atlas, hemi), '{}_faces_verts.npy'.format(
                 utils.namebase(ply))) for ply in labels_plys]
             ply_files.extend(labels_plys)
             out_files.extend(faces_verts_dic_fnames)
