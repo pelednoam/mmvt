@@ -209,13 +209,20 @@ def init_clusters(subject, input_fname):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, contrast_name, t_val, atlas, task, volume_name='', input_fol='', load_from_annotation=True, n_jobs=1):
-    contrast_name = contrast_name if volume_name == '' else volume_name
-    volume_name = volume_name if volume_name != '' else contrast_name
-    if input_fol == '':
-        input_fol = op.join(MMVT_DIR, subject, 'fmri')
-    input_fname = op.join(input_fol, 'fmri_{}_{}_{}.npy'.format(task, contrast_name, '{hemi}'))
-    contrast, connectivity, verts = init_clusters(subject, input_fname)
+def find_clusters(subject, surf_template_fname, t_val, atlas, task, load_from_annotation=True, n_jobs=1):
+    # contrast_name = contrast_name if volume_name == '' else volume_name
+    # volume_name = volume_name if volume_name != '' else contrast_name
+    # if input_fol == '':
+    #     input_fol = op.join(MMVT_DIR, subject, 'fmri')
+    # input_fname = op.join(input_fol, 'fmri_{}_{}_{}.npy'.format(task, contrast_name, '{hemi}'))
+
+    surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', surf_template_fname)
+    surf_full_input_fnames = find_hemi_files_from_template(surf_full_input_fname)
+    if len(surf_full_input_fnames) == 0:
+        print('No hemi files were found from the template {}'.format(surf_full_input_fname))
+        return False
+    surf_full_input_fname = utils.select_one_file(surf_full_input_fnames, surf_full_input_fname, 'fMRI surf')
+    contrast, connectivity, verts = init_clusters(subject, surf_full_input_fname)
     clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
@@ -229,10 +236,14 @@ def find_clusters(subject, contrast_name, t_val, atlas, task, volume_name='', in
         else:
             clusters_labels['values'].extend(clusters_labels_hemi)
 
+    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('fmri_', '')
+    if task != '':
+        name = '{}_{}'.format(name, task)
     clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}_{}.pkl'.format(task, volume_name, atlas))
+        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
+    return op.isfile(clusters_labels_output_fname)
 
 
 # def find_clusters_tval_hist(subject, contrast_name, output_fol, input_fol='', n_jobs=1):
@@ -299,6 +310,9 @@ def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, v
                                      n_jobs=1):
     cluster_labels = []
     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))):
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+        fu.write_surf(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi)), verts, faces)
     if load_from_annotation and op.isfile(annot_fname):
         labels = mne.read_labels_from_annot(subject, annot_fname=annot_fname, surf_name='pial')
     else:
@@ -1115,7 +1129,7 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='f
                    for hemi in utils.HEMIS])
 
 
-def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
+def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy')):
     def find_files(template_fname):
         recursive = '**' in set(template_fname.split(op.sep))
         return [f for f in glob.glob(template_fname, recursive=recursive) if op.isfile(f) and utils.file_type(f) in file_types]
@@ -1128,7 +1142,7 @@ def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
     return files
 
 
-def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii')):
+def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy')):
     try:
         if isinstance(file_types, str):
             file_types = [file_types]
@@ -1731,7 +1745,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(
-            subject, args.contrast, args.threshold, args.atlas, args.task, volume_name)
+            subject, args.fmri_file_template, args.threshold, args.atlas, args.task)
 
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)

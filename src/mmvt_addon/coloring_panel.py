@@ -190,15 +190,17 @@ def clear_subcortical_fmri_activity():
 
 def clear_cortex(hemis=HEMIS):
     for hemi in hemis:
-        if bpy.context.scene.coloring_both_pial_and_inflated:
-            for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-                clear_object_vertex_colors(cur_obj)
-        else:
-            # if _addon().is_pial():
-            #     cur_obj = bpy.data.objects[hemi]
-            # elif _addon().is_inflated():
-            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
             clear_object_vertex_colors(cur_obj)
+        # if bpy.context.scene.coloring_both_pial_and_inflated:
+        #     for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+        #         clear_object_vertex_colors(cur_obj)
+        # else:
+        #     # if _addon().is_pial():
+        #     #     cur_obj = bpy.data.objects[hemi]
+        #     # elif _addon().is_inflated():
+        #     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        #     clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
 
@@ -439,7 +441,7 @@ def fmri_labels_coloring(override_current_mat=True):
     colors_ratio = 256 / (labels_max - labels_min)
     set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
-        if bpy.data.objects[hemi].hide:
+        if bpy.data.objects['inflated_{}'.format(hemi)].hide:
             continue
         labels_data = np.load(op.join(user_fol, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, hemi)))
         # fix_labels_material(labels_data['names'])
@@ -536,17 +538,20 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
                 label_colors_data = np.hstack((label_data_t, label_colors_t))
                 label_colors_data = np.tile(label_colors_data, (len(label_vertices), 1))
                 colors_data[label_vertices, :] = label_colors_data
-    if bpy.context.scene.coloring_both_pial_and_inflated:
-        for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-            activity_map_obj_coloring(
-                cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
-    else:
-        if _addon().is_pial():
-            cur_obj = bpy.data.objects[hemi]
-        elif _addon().is_inflated():
-            cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        activity_map_obj_coloring(
-            cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
+    # if bpy.context.scene.coloring_both_pial_and_inflated:
+    #     for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+    #         activity_map_obj_coloring(
+    #             cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
+    # else:
+    #     if _addon().is_pial():
+    #         cur_obj = bpy.data.objects[hemi]
+    #     elif _addon().is_inflated():
+    #         cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+    #     activity_map_obj_coloring(
+    #         cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
+    cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+    activity_map_obj_coloring(
+        cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
@@ -574,16 +579,18 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     if bpy.data.objects['inflated_{}'.format(hemi)].hide:
         return
     faces_verts = ColoringMakerPanel.faces_verts[hemi]
-    if bpy.context.scene.coloring_both_pial_and_inflated:
-        for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-            activity_map_obj_coloring(
-                cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
-    else:
-        # if _addon().is_pial():
-        #     cur_obj = bpy.data.objects[hemi]
-        # elif _addon().is_inflated():
-        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-        activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+    # if bpy.context.scene.coloring_both_pial_and_inflated:
+    #     for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
+    #         activity_map_obj_coloring(
+    #             cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+    # else:
+    #     # if _addon().is_pial():
+    #     #     cur_obj = bpy.data.objects[hemi]
+    #     # elif _addon().is_inflated():
+    #     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+    #     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+    cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+    activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
 
 
 @mu.timeit
@@ -1150,7 +1157,7 @@ def color_electrodes_sources():
         # print('electrodes source: color {} with {}'.format(region, color))
         color_subcortical_region(region, color)
     for hemi in mu.HEMIS:
-        if bpy.data.objects[hemi].hide:
+        if bpy.data.objects['inflated_{}'.format(hemi)].hide:
             continue
         labels_coloring_hemi(labels_data[hemi], ColoringMakerPanel.faces_verts, hemi, 0,
                              colors_min=data_min, colors_max=data_max)
@@ -1720,7 +1727,7 @@ def draw(self, context):
         connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
     # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
-    layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
+    # layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
     layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
 
     if faces_verts_exist:
@@ -1835,7 +1842,7 @@ bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description=
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
-bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
+# bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")

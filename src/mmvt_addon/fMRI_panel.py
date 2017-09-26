@@ -23,8 +23,9 @@ def get_clusters_file_names():
 
 def get_clusters_files(user_fol=''):
     clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_*.pkl'))
-    files_names = ['_'.join(mu.namebase(fname)[len('clusters_labels_'):].split('_')[:-1])
-                            for fname in clusters_labels_files]
+    # files_names = ['_'.join(mu.namebase(fname)[len('clusters_labels_'):].split('_')[:-1])
+    #                         for fname in clusters_labels_files]
+    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     return files_names, clusters_labels_files
 
 
@@ -73,11 +74,12 @@ def _clusters_update():
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
-            if bpy.context.scene.coloring_both_pial_and_inflated:
-                for is_inflated in [True, False]:
-                    plot_blob(fMRIPanel.cluster_labels, faces_verts, is_inflated)
-            else:
-                plot_blob(fMRIPanel.cluster_labels, faces_verts)
+            plot_blob(fMRIPanel.cluster_labels, faces_verts, True)
+            # if bpy.context.scene.coloring_both_pial_and_inflated:
+            #     for is_inflated in [True, False]:
+            #         plot_blob(fMRIPanel.cluster_labels, faces_verts, is_inflated)
+            # else:
+            #     plot_blob(fMRIPanel.cluster_labels, faces_verts)
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -291,16 +293,20 @@ def plot_all_blobs():
     data_min, colors_ratio = calc_colors_ratio(blobs_activity)
     threshold = bpy.context.scene.fmri_clustering_threshold
     for hemi in hemis:
-        if bpy.context.scene.coloring_both_pial_and_inflated:
-            for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
-                _addon().activity_map_obj_coloring(
-                    bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
-                    data_min=data_min, colors_ratio=colors_ratio)
-        else:
-            inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
-            _addon().activity_map_obj_coloring(
-                bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
-                data_min=data_min, colors_ratio=colors_ratio)
+        inf_hemi = 'inflated_{}'.format(hemi)
+        _addon().activity_map_obj_coloring(
+            bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
+            data_min=data_min, colors_ratio=colors_ratio)
+        # if bpy.context.scene.coloring_both_pial_and_inflated:
+        #     for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
+        #         _addon().activity_map_obj_coloring(
+        #             bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
+        #             data_min=data_min, colors_ratio=colors_ratio)
+        # else:
+        #     inf_hemi = hemi if _addon().is_pial() else 'inflated_{}'.format(hemi)
+        #     _addon().activity_map_obj_coloring(
+        #         bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
+        #         data_min=data_min, colors_ratio=colors_ratio)
     for hemi in set(mu.HEMIS) - hemis:
         _addon().clear_cortex([hemi])
     fMRIPanel.blobs_plotted = True
