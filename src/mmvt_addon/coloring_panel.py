@@ -750,13 +750,22 @@ def create_inflated_curv_coloring():
             color_obj_curvs(cur_obj, curv, lookup)
         for hemi in mu.HEMIS:
             curvs_fol = op.join(mu.get_user_fol(), 'surf', '{}_{}_curves'.format(bpy.context.scene.atlas, hemi))
-            lookup_fol = op.join(mu.get_user_fol(), '{}.pial.{}'.format(bpy.context.scene.atlas, hemi))
+            lookup_fol = op.join(mu.get_user_fol(), 'labels', '{}.pial.{}'.format(bpy.context.scene.atlas, hemi))
             for cur_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
                 try:
                     label = cur_obj.name
                     inflated_cur_obj = bpy.data.objects['inflated_{}'.format(label)]
-                    curv = np.load(op.join(curvs_fol, '{}_curv.npy'.format(label)))
-                    lookup = np.load(op.join(lookup_fol, '{}_faces_verts.npy'.format(label)))
+                    curv_file = op.join(curvs_fol, '{}_curv.npy'.format(label))
+                    if op.isfile(curv_file):
+                        curv = np.load(curv_file)
+                    else:
+                        print('Can\'t find the file {}'.format(curv_file))
+
+                    faces_verts_file = op.join(lookup_fol, '{}_faces_verts.npy'.format(label))
+                    if op.isfile(faces_verts_file):
+                        lookup = np.load(faces_verts_file)
+                    else:
+                        print('Can\'t find the file {}'.format(faces_verts_file))
                     color_obj_curvs(inflated_cur_obj, curv, lookup)
                 except:
                     print("Can't create {}'s curves!".format(cur_obj.name))
@@ -1926,6 +1935,8 @@ def init(addon):
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
     ColoringMakerPanel.init = True
+    for hemi in ['lh', 'rh']:
+        bpy.data.objects['inflated_{}'.format(hemi)].data.vertex_colors.new('Col')
 
 
 def init_labels_vertices():
