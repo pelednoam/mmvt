@@ -64,7 +64,7 @@ class TransparencyPanel(bpy.types.Panel):
         transparency_draw(self, context)
 
 
-bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=0.0, min=0, max=1, update=appearance_update)
+bpy.types.Scene.appearance_solid_slider = bpy.props.FloatProperty(default=1.0, min=0, max=1, update=appearance_update)
 bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0, max=10, update=appearance_update)
 
 

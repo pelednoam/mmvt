@@ -95,14 +95,15 @@ def import_hemis_for_functional_maps(base_path):
                 cur_obj.scale = [0.1] * 3
                 cur_obj.hide = False
                 cur_obj.name = obj_name
-                if surf_name == 'inflated':
-                    cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
-                    # cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
-                else:
-                    cur_obj.active_material = bpy.data.materials['Activity_map_mat']
+                # if surf_name == 'inflated':
+                #     cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
+                #     # cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
+                # else:
+                cur_obj.active_material = bpy.data.materials['Activity_map_mat']
                 cur_obj.parent = bpy.data.objects["Functional maps"]
                 cur_obj.hide_select = True
                 cur_obj.data.vertex_colors.new()
+                # cur_obj.data.vertex_colors.new('blank')
         except:
             mu.log_err('Error in importing {}'.format(ply_fname), logging)
 
@@ -1169,6 +1170,7 @@ def init(addon):
         bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(
             items=items,description="fMRI_dynamic")
         bpy.context.scene.fMRI_dynamic_files = files_names[0]
+    # _addon().create_inflated_curv_coloring()
     DataMakerPanel.init = True
     register()
 
