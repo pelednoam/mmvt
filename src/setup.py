@@ -258,8 +258,9 @@ def install_blender_reqs():
             cmd = '{} install zmq pizco scipy mne joblib tqdm'.format(op.join('bin', 'pip'))
             utils.run_script(cmd)
         else:
-            from src.mmvt_addon.scripts import install_blender_reqs
-            install_blender_reqs.wrap_blender_call(args.only_verbose)
+            print('Sorry, installing external python libs in python will be implemented in the future')
+            # from src.mmvt_addon.scripts import install_blender_reqs
+            # install_blender_reqs.wrap_blender_call(args.only_verbose)
         os.chdir(current_dir)
     except:
         print(traceback.format_exc())
