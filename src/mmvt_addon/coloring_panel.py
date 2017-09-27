@@ -214,13 +214,15 @@ def clear_object_vertex_colors(cur_obj):
     # bpy.ops.mesh.vertex_color_remove()
     # vcol_layer = mesh.vertex_colors.new()
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        mesh.vertex_colors.active_index = 1
+        # mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
     if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
         bpy.ops.mesh.vertex_color_remove()
     if mesh.vertex_colors.get('Col') is None:
         vcol_layer = mesh.vertex_colors.new('Col')
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        mesh.vertex_colors.active_index = 1
+        # mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
         mesh.vertex_colors['Col'].active_render = True
 
 
@@ -810,7 +812,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     scn.objects.active = cur_obj
     cur_obj.select = True
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        mesh.vertex_colors.active_index = 1
+        # mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
     if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
         c = mu.get_graph_context()
         bpy.ops.mesh.vertex_color_remove(c)
@@ -821,7 +824,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # vcol_layer = mesh.vertex_colors["Col"]
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        mesh.vertex_colors.active_index = 1
+        # mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
         mesh.vertex_colors['Col'].active_render = True
     # else:
     vcol_layer = mesh.vertex_colors.active

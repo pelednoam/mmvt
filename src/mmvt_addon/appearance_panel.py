@@ -27,7 +27,7 @@ def change_view3d():
         bpy.context.scene.layers[_addon().LIGHTS_LAYER] = True
         viewport_shade_str = 'RENDERED'
         bpy.context.scene.render.engine = 'CYCLES'
-        _addon().set_brain_transparency(1.0)
+        _addon().set_brain_transparency(0.0)
     else:
         bpy.context.scene.layers[_addon().LIGHTS_LAYER] = False
         viewport_shade_str = 'SOLID'
@@ -186,6 +186,7 @@ def inflating_update(self, context):
         infl = bpy.context.scene.inflating
         if 0 < infl <= 1.0:
             bpy.context.scene.surface_type = 'flat_map'
+            _addon().show_coronal(True)
         elif -1.0 < infl <= 0.0:
             bpy.context.scene.surface_type = 'inflated'
         elif infl == -1.0:
