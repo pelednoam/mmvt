@@ -846,6 +846,13 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
+    # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
+    if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format('{hemi}'))):
+        for hemi in utils.HEMIS:
+            shutil.copy(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)),
+                        op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)))
+    else:
+        print("No ?h.sphere.reg files! You won't be able to plot stc files")
     if all([utils.both_hemi_files_exist(
             STC_HEMI.format(cond=cond, method=inverse_method, hemi='{hemi}'))
             for cond in events.keys()]) and \

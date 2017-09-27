@@ -117,6 +117,9 @@ def analyze_task(subject, task, hcp_params):
     flags = meg.calc_labels_avg_per_condition_wrapper(subject, events, args.atlas, args.inverse_method, stcs_conds, args, flags)
 
 
+def analyze_rest():
+    pass
+
 if __name__ == '__main__':
     subject = '100307'
     task = 'task_working_memory'

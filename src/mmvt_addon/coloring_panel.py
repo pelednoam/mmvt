@@ -60,7 +60,8 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
         stc_t = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         return stc_t
 
-    subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+    # subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+    subjects_dir = mu.get_parent_fol(mu.get_user_fol())
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
     stc_t = create_stc_t(stc, t)
