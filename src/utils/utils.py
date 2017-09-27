@@ -64,6 +64,8 @@ both_hemi_files_exist = mu.both_hemi_files_exist
 other_hemi = mu.other_hemi
 check_hemi = mu.check_hemi
 file_modification_time = mu.file_modification_time
+min_stc = mu.min_stc
+max_stc = mu.max_stc
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -1679,7 +1681,10 @@ def add_str_to_file_name(fname, txt, suf=''):
 
 def locating_file(default_fname, glob_pattern, parent_fol):
     fname = op.join(parent_fol, default_fname)
-    exist = op.isfile(fname)
+    if '{cond}' in fname:
+        exist = len(glob.glob(fname.replace('{cond}', '*'))) > 1
+    else:
+        exist = op.isfile(fname)
     if not exist:
         files = glob.glob(op.join(parent_fol, glob_pattern))
         exist = len(files) > 0

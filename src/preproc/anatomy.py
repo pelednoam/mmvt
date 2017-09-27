@@ -652,7 +652,7 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
 
     # flat_verts = np.roll(flat_verts, -1, 1)
     flat_verts = flat_verts[:, [1, 2, 0]]
-    flat_verts[:, 0] *= -0.5
+    flat_verts[:, 0] *= -0.5  # * (10 if hemi == 'rh' else -10)
     flat_verts[:, 1] = 0
     flat_verts[:, 2] *= -0.5
 

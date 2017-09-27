@@ -1000,8 +1000,16 @@ def transform_electrodes_to_subject(subject, args):
     elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar, 'mni')
     elecs_coords_to_subject = fu.transform_subject_to_subject_coordinates(
         args.trans_from_subject, subject, elecs_coords, SUBJECTS_DIR)
-    save_electrodes_coords(subject, elecs_names, elecs_coords_to_subject, args.good_channels, args.bad_channels,
-                           '_from_{}'.format(args.trans_from_subject))
+    electrodes_fname = save_electrodes_coords(
+        subject, elecs_names, elecs_coords_to_subject, args.good_channels, args.bad_channels,
+        '_from_{}'.format(args.trans_from_subject))
+    print('Writing {}'.format(electrodes_fname))
+    csv_fname = op.join(MMVT_DIR, subject, 'electrodes', '{}_RAS_from_{}.csv'.format(subject, args.trans_from_subject))
+    print('Save also to csv {}'.format(csv_fname))
+    csv_data = np.hstack((np.array(elecs_names).reshape((len(elecs_names), 1)),
+                          elecs_coords_to_subject)).astype(np.str)
+    np.savetxt(csv_fname, csv_data, fmt='%s', delimiter=',')
+    return op.isfile(electrodes_fname)
 
 
 def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=None, bad_channels=None, fname_postfix=''):
@@ -1018,6 +1026,7 @@ def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=Non
         utils.make_dir(op.join(MMVT_DIR, 'colin27', 'electrodes'))
         blender_file = op.join(MMVT_DIR, 'colin27', 'electrodes', output_file_name.replace(fname_postfix, ''))
         shutil.copyfile(electrodes_fname, blender_file)
+    return electrodes_fname
 
 
 def set_args(args):

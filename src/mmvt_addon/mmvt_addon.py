@@ -518,6 +518,10 @@ def load_all_panels(addon_prefs=None):
         # show_activity(False)
         mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
         mmvt_utils.unfilter_graph_editor()
+        for hemi in ['lh', 'rh']:
+            if bpy.data.objects.get(hemi):
+                bpy.data.objects[hemi].hide = True
+                bpy.data.objects[hemi].hide_render = True
 
 
 def main(addon_prefs=None):

@@ -142,39 +142,39 @@ def reprocess_the_data_from_scratch(all_events, event_id, tmin, tmax, baseline, 
 #
 # These are obtained from the 'tmegpreproc' pipeline.
 # Things are pythonized and simplified however, so
-def using_preprocessed_epochs():
-    evokeds_from_epochs_hcp = list()
+def using_preprocessed_epochs(all_events, events_ids):
+    from collections import  defaultdict
+    evokeds_from_epochs_hcp = defaultdict(list)
     all_epochs_hcp = list()
 
     for run_index, events in zip([0, 1], all_events):
 
         unique_subset = np.nonzero(np.r_[1, np.diff(events[:, 0])])[0]
         # use diff to find first unique events
-        this_events = events[unique_subset]
-        subset = np.in1d(events[:, 2], event_id.values())
+        # this_events = events[unique_subset]
 
         epochs_hcp = hcp.read_epochs(run_index=run_index, **hcp_params)
-
         # subset epochs, add events and id
+        subset = np.in1d(events[:, 2], list(events_ids.values()))
+
         epochs_hcp = epochs_hcp[unique_subset][subset]
         epochs_hcp.events[:, 2] = events[subset, 2]
-        epochs_hcp.event_id = event_id
-        all_epochs_hcp.append(epochs_hcp)
+        epochs_hcp.event_id = events_ids
+        break
+        # all_epochs_hcp.append(epochs_hcp)
 
-        evoked = epochs_hcp['face'].average()
-
-        del epochs_hcp
-        # These epochs have different channels.
-        # We use a designated function to re-apply the channels and interpolate
-        # them.
-
+    # del epochs_hcp
+    # These epochs have different channels.
+    # We use a designated function to re-apply the channels and interpolate
+    # them.
+    for event_name, event_id in events_ids.items():
+        evoked = epochs_hcp[event_name].average()
         evoked.baseline = baseline
         evoked.apply_baseline()
         evoked = preproc.interpolate_missing(evoked, **hcp_params)
+        evokeds_from_epochs_hcp[event_name].append(evoked)
 
-        evokeds_from_epochs_hcp.append(evoked)
-
-    return all_epochs_hcp, evokeds_from_epochs_hcp
+    return epochs_hcp, evokeds_from_epochs_hcp
 
 
 ##############################################################################
@@ -249,13 +249,17 @@ def compare_the_outputs(evokeds_from_epochs_hcp, evoked_hcp):
 if __name__ == '__main__':
     tmin, tmax = -1.5, 2.5
     decim = 4
-    event_id = dict(face=1)
+    events_id = dict(face=1, tools=2)
     baseline = (-0.5, 0)
 
     all_events = collect_events()
     # all_epochs, evokeds = reprocess_the_data_from_scratch(all_events, event_id, tmin, tmax, baseline, decim)
-    # all_epochs_hcp, evokeds_from_epochs_hcp = using_preprocessed_epochs
-    evoked_hcp = official_ERF()
+    all_epochs_hcp, evokeds_from_epochs_hcp = using_preprocessed_epochs(all_events, events_id)
+    # evoked_hcp = official_ERF()
+
+    all_epochs_hcp.save(meg.EPO)
+    for event, evoked in zip(events_id.keys(), evokeds_from_epochs_hcp):
+        mne.write_evokeds(meg.get_cond_fname(meg.EVO, event), evoked)
+
+    mne.write_evokeds(meg.EVO, evokeds_from_epochs_hcp)
     print('Finish!')
-    # epochs.save(meg.EPO)
-    mne.write_evokeds(meg.EVO, evoked_hcp)

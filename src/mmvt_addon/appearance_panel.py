@@ -182,32 +182,35 @@ def inflating_update(self, context):
         bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
         bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = False
 
-        if bpy.context.scene.inflating == 1.0:
-            bpy.context.scene.surface_type == 'flat_map'
-        elif bpy.context.scene.inflating == 0.0:
-            bpy.context.scene.surface_type == 'inflated'
-        elif bpy.context.scene.inflating == -1.0:
-            bpy.context.scene.surface_type == 'pial'
+        AppearanceMakerPanel.no_surface_type_update = True
+        infl = bpy.context.scene.inflating
+        if 0 < infl <= 1.0:
+            bpy.context.scene.surface_type = 'flat_map'
+        elif -1.0 < infl <= 0.0:
+            bpy.context.scene.surface_type = 'inflated'
+        elif infl == -1.0:
+            bpy.context.scene.surface_type = 'pial'
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = True
             if bpy.context.scene.show_hide_electrodes:
                 bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = True
+        AppearanceMakerPanel.no_surface_type_update = False
 
         if flat_exist:
             for hemi in ['rh', 'lh']:
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
-                print(use_masking)
+                # print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
         #todo: only in snapping?
-        vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
-        if obj_name != '':
-            if 'inflated' not in obj_name:
-                obj_name = 'inflated_{}'.format(obj_name)
-            ob = bpy.data.objects[obj_name]
-            scene = bpy.context.scene
-            me = ob.to_mesh(scene, True, 'PREVIEW')
-            bpy.context.scene.cursor_location = me.vertices[vert].co / 10
-            bpy.data.meshes.remove(me)
+        # vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
+        # if obj_name != '':
+        #     if 'inflated' not in obj_name:
+        #         obj_name = 'inflated_{}'.format(obj_name)
+        #     ob = bpy.data.objects[obj_name]
+        #     scene = bpy.context.scene
+        #     me = ob.to_mesh(scene, True, 'PREVIEW')
+        #     bpy.context.scene.cursor_location = me.vertices[vert].co / 10
+        #     bpy.data.meshes.remove(me)
     except:
         print('Error in inflating update!')
         print(traceback.format_exc())
@@ -275,8 +278,9 @@ def filter_view_type_update(self, context):
     change_view3d()
 
 
-
 def surface_type_update(self, context):
+    if AppearanceMakerPanel.no_surface_type_update:
+        return
     # tmp = bpy.context.scene.surface_type
     inflated = bpy.context.scene.surface_type == 'inflated'
     # todo: why we need the for loop here?!?
@@ -644,6 +648,7 @@ class AppearanceMakerPanel(bpy.types.Panel):
     closest_vertex_to_cursor = -1
     closest_mesh_to_cursor = ''
     has_flatmap = False
+    no_surface_type_update = False
 
     def draw(self, context):
         if AppearanceMakerPanel.init:

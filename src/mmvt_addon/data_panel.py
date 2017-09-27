@@ -648,11 +648,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat):
 
             # For every time point insert keyframe to the main Brain object
             for ind in range(data.shape[0]):
-                try:
-                    mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
-                except:
-                    mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
-                    print('asdf')
+                mu.insert_keyframe_to_custom_prop(parent_obj, source_name, data[ind], ind + 2)
 
             # remove the orange keyframe sign in the fcurves window
             fcurves = parent_obj.animation_data.action.fcurves[obj_counter]

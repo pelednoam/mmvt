@@ -839,13 +839,24 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 stc_fname = STC.format(cond=cond_name, method=inverse_method)[:-4]
                 if save_stc and not op.isfile(stc_fname):
-                    print('Saving the source estimate to {}'.format(stc_fname))
+                    print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
             flag = True
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
+    if all([utils.both_hemi_files_exist(
+            STC_HEMI.format(cond=cond, method=inverse_method, hemi='{hemi}'))
+            for cond in events.keys()]) and \
+            len(glob.glob(STC_HEMI.format(cond='*', method=inverse_method, hemi='?h'))) == 4:
+        conds = list(events.keys())
+        for hemi in utils.HEMIS:
+            STC_HEMI
+            calc_stc_diff(
+                STC_HEMI.format(cond=conds[0], method=inverse_method, hemi=hemi),
+                STC_HEMI.format(cond=conds[1], method=inverse_method, hemi=hemi),
+                STC_HEMI.format(cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi))
     return flag, stcs, stcs_num
 
 
@@ -1515,27 +1526,31 @@ def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_modes=('
             np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}_{}'.format(cond_name, extract_mode)), np.array(labels_ts))
 
 
+def get_stc_conds(events, inverse_method):
+    stcs = {}
+    hemi = 'lh' # both will be loaded
+    for cond in events.keys():
+        stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi)
+        if not op.isfile(stc_fname):
+            print("Can't find the stc file! {}".format(stc_fname))
+        template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
+        stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
+        if not op.isfile(stc_fname):
+            return False
+        print('Loading {} instead'.format(stc_fname))
+        stcs[cond] = mne.read_source_estimate(stc_fname)
+    return stcs
+
+
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_modes=['mean_flip'], inverse_method='dSPM', positive=False, moving_average_win_size=0,
         norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
-        do_plot=False, n_jobs=1):
+        factor=1, do_plot=False, n_jobs=1):
     try:
         inv_fname, inv_exist = locating_file(INV, '*inv.fif')
         if not inv_exist:
             print('No inverse operator found!')
             return False
-        if stcs is None:
-            stcs = {}
-            for cond in events.keys():
-                stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi)
-                if not op.isfile(stc_fname):
-                    print("Can't find the stc file! {}".format(stc_fname))
-                template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
-                stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
-                if not op.isfile(stc_fname):
-                    return False
-                print('Loading {} instead'.format(stc_fname))
-                stcs[cond] = mne.read_source_estimate(stc_fname)
         global_inverse_operator = False
         if '{cond}' not in inv_fname:
             global_inverse_operator = True
@@ -1546,6 +1561,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         if do_plot:
             utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'figures'))
 
+        # if stcs is None:
+        #     stcs = get_stc_conds(events, hemi, inverse_method)
         conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
         conditions = []
         labels_data = {}
@@ -1594,23 +1611,24 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         labels_names = [utils.to_str(l.name) for l in labels]
         for em in extract_modes:
             labels_data[em] = labels_data[em].squeeze()
+            labels_data[em] *= np.power(10, factor)
             if positive or moving_average_win_size > 0:
                 labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
 
             labels_output_fname = LBL.format(atlas, em, hemi) if labels_output_fname_template == '' else \
                 labels_output_fname_template.format(hemi=hemi)
-            labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}_{}.npz'.format(
-                atlas, em, hemi))
+            # labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}_{}.npz'.format(
+            #     atlas, em, hemi))
             lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi)))
             print('Saving to {}'.format(labels_output_fname))
 
             np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-            # Normalize the data
-            data_max, data_min = utils.get_data_max_min(labels_data[em], norm_by_percentile, norm_percs)
-            max_abs = utils.get_max_abs(data_max, data_min)
-            labels_data[em] = labels_data[em] / max_abs
-            np.savez(labels_norm_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
             shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+            # Normalize the data
+            # data_max, data_min = utils.get_data_max_min(labels_data[em], norm_by_percentile, norm_percs)
+            # max_abs = utils.get_max_abs(data_max, data_min)
+            # labels_data[em] = labels_data[em] / max_abs
+            # np.savez(labels_norm_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
 
         flag = np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi))))
                        for em in extract_modes])
@@ -1905,13 +1923,21 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
             return False
         stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [INV], args, conditions)
+
+        if stcs_conds is None:
+            stcs_conds = get_stc_conds(conditions, inverse_method)
+        data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
+        data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
+        data_minmax = utils.get_max_abs(data_max, data_min)
+        factor = -int(np.round(np.log10(data_minmax)))
+
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
                 inverse_method=inverse_method, positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
-                stcs=stcs_conds, stcs_num=stcs_num, n_jobs=args.n_jobs)
+                stcs=stcs_conds, factor=factor, stcs_num=stcs_num, n_jobs=args.n_jobs)
             if stcs_conds and isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(

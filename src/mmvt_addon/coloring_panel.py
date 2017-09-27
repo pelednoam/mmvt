@@ -826,6 +826,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # else:
     vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
+    vcol_layer = mesh.vertex_colors['Col']
     if colors_picked_from_cm:
         verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert])
     else:
@@ -1047,7 +1048,7 @@ def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
     data_min = mu.min_stc(stc)
     data_max = mu.max_stc(stc)
-    factor = abs(int(np.round(np.log10(data_max))))
+    factor = -int(np.round(np.log10(data_max)))
     if factor > 3:
         # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         ColoringMakerPanel.stc._data *= np.power(10, factor)
