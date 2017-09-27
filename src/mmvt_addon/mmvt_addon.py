@@ -510,9 +510,11 @@ def load_all_panels(addon_prefs=None):
             split_view(0)
             split_view(0)
             fix_scale()
+        show_activity()
+        show_pial()
         view_all()
-        show_electrodes(False)
-        show_hide_connections(False)
+        # show_electrodes(False)
+        # show_hide_connections(False)
         # show_activity(False)
         mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
         mmvt_utils.unfilter_graph_editor()
@@ -536,8 +538,6 @@ def main(addon_prefs=None):
                 bpy.data.objects[hemi].hide_render = True
                 if bpy.data.objects.get('inflated_{}'.format(hemi)):
                     bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
-        # show_activity(False)
-        # list_panel.init(mmvt)
         pass
     except:
         print('The classes are already registered!')
@@ -577,7 +577,6 @@ def remove_materials():
             bpy.data.materials[cur_mat].use_fake_user = False
             # bpy.data.materials[cur_mat].user_clear()
             bpy.data.materials.remove(bpy.data.materials[cur_mat], do_unlink=True)
-
 
 
 def import_new_materials():

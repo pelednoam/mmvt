@@ -250,23 +250,24 @@ def convert_electrodes_pos(
 
 
 def rename_and_convert_electrodes_file(subject, ras_xls_sheet_name=''):
-    subject_elec_fname_no_ras_pattern = op.join(MMVT_DIR, subject, 'electrodes', '{subject}.{postfix}')
-    subject_elec_fname_pattern = op.join(MMVT_DIR, subject, 'electrodes', '{subject}_RAS.{postfix}')
-    subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
-    subject_elec_fname_xlsx = subject_elec_fname_pattern.format(subject=subject, postfix='xlsx')
+    for root_fol in [MMVT_DIR, SUBJECTS_DIR]:
+        subject_elec_fname_no_ras_pattern = op.join(root_fol, subject, 'electrodes', '{subject}.{postfix}')
+        subject_elec_fname_pattern = op.join(root_fol, subject, 'electrodes', '{subject}_RAS.{postfix}')
+        subject_elec_fname_csv = subject_elec_fname_pattern.format(subject=subject, postfix='csv')
+        subject_elec_fname_xlsx = subject_elec_fname_pattern.format(subject=subject, postfix='xlsx')
 
-    utils.rename_files([subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xlsx'),
-                        subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xlsx'),
-                        subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xls'),
-                        subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xls')],
-                       subject_elec_fname_pattern.format(subject=subject, postfix='xlsx'))
-    utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='csv')],
-                       subject_elec_fname_csv)
-    utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='xlsx')],
-                       subject_elec_fname_xlsx)
-    if op.isfile(subject_elec_fname_xlsx) and \
-                    (not op.isfile(subject_elec_fname_csv) or op.getsize(subject_elec_fname_csv) == 0):
-        utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv, ras_xls_sheet_name)
+        utils.rename_files([subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xlsx'),
+                            subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xlsx'),
+                            subject_elec_fname_no_ras_pattern.format(subject=subject, postfix='xls'),
+                            subject_elec_fname_no_ras_pattern.format(subject=subject.upper(), postfix='xls')],
+                           subject_elec_fname_pattern.format(subject=subject, postfix='xlsx'))
+        utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='csv')],
+                           subject_elec_fname_csv)
+        utils.rename_files([subject_elec_fname_pattern.format(subject=subject.upper(), postfix='xlsx')],
+                           subject_elec_fname_xlsx)
+        if op.isfile(subject_elec_fname_xlsx) and \
+                        (not op.isfile(subject_elec_fname_csv) or op.getsize(subject_elec_fname_csv) == 0):
+            utils.csv_from_excel(subject_elec_fname_xlsx, subject_elec_fname_csv, ras_xls_sheet_name)
 
 
 @pu.tryit_ret_bool
@@ -520,7 +521,7 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
 
 
 @pu.tryit_ret_bool
-def sort_electrodes_groups(subject, bipolar, all_in_hemi='', do_plot=True):
+def sort_electrodes_groups(subject, bipolar, all_in_hemi='', ask_for_hemis=False, do_plot=True):
     from sklearn.decomposition import PCA
     electrodes, pos = read_electrodes_file(subject, bipolar)
     first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
@@ -531,15 +532,16 @@ def sort_electrodes_groups(subject, bipolar, all_in_hemi='', do_plot=True):
     else:
         pca = PCA(n_components=2)
         pca.fit(first_pos)
-        if pca.explained_variance_.shape[0] == 1:
+        if pca.explained_variance_.shape[0] == 1 or ask_for_hemis:
             # Can't find hemis via PAC, just ask the user
             sorted_groups = dict(rh=[], lh=[])
-            print("Please set the hemi (rh/lh) for the following electrodes' groups:")
+            print("Please set the hemi (r/l) for the following electrodes' groups:")
             for group in elc_pos_groups.keys():
-                hemi = input('{}: '.format(group))
-                while hemi not in ['rh', 'lh']:
+                inp = input('{}: '.format(group))
+                while inp not in ['r', 'l']:
                     print('Wrong hemi value!')
-                    hemi = input('{}: '.format(group))
+                    inp = input('{}: '.format(group))
+                hemi = '{}h'.format(inp)
                 sorted_groups[hemi].append(group)
         else:
             transformed_pos = pca.transform(pos)
@@ -1079,7 +1081,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'sort_electrodes_groups'):
         flags['sort_electrodes_groups'] = sort_electrodes_groups(
-            subject, args.bipolar, args.all_in_hemi, do_plot=args.do_plot)
+            subject, args.bipolar, args.all_in_hemi, args.ask_for_hemis, do_plot=args.do_plot)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
@@ -1159,6 +1161,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
     parser.add_argument('--all_in_hemi', help='', required=False, default='')
+    parser.add_argument('--ask_for_hemis', help='', required=False, default=False, type=au.is_int)
     parser.add_argument('--do_plot', help='do plot', required=False, default=0, type=au.is_true)
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
     parser.add_argument('--trans_from_subject', help='transform electrodes coords from this subject', required=False,

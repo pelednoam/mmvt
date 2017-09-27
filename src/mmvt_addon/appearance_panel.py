@@ -180,6 +180,7 @@ def inflating_update(self, context):
             use_masking = False
 
         bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
+        bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = False
 
         if bpy.context.scene.inflating == 1.0:
             bpy.context.scene.surface_type == 'flat_map'
@@ -188,7 +189,10 @@ def inflating_update(self, context):
         elif bpy.context.scene.inflating == -1.0:
             bpy.context.scene.surface_type == 'pial'
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = True
-
+            if bpy.context.scene.show_hide_electrodes:
+                bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = True
+            bpy.data.objects['rh'] = False
+            bpy.data.objects['lh'] = False
 
         if flat_exist:
             for hemi in ['rh', 'lh']:
@@ -196,6 +200,7 @@ def inflating_update(self, context):
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
                 print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
+        #todo: only in snapping?
         vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
         if obj_name != '':
             if 'inflated' not in obj_name:
@@ -329,11 +334,13 @@ def surface_type_update(self, context):
 
 
 def show_pial():
-    bpy.context.scene.surface_type = 'pial'
+    bpy.context.scene.inflating = -1
+    # bpy.context.scene.surface_type = 'pial'
 
 
 def show_inflated():
-    bpy.context.scene.surface_type = 'inflated'
+    # bpy.context.scene.surface_type = 'inflated'
+    bpy.context.scene.inflating = 0
 
 
 def change_to_rendered_brain():
@@ -558,7 +565,7 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
 
 
 class SnapCursor(bpy.types.Operator):

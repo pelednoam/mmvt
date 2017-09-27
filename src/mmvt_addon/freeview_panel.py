@@ -272,7 +272,8 @@ class FreeviewPanel(bpy.types.Panel):
                          glob.glob(fmri_files_template.format(format='nii'))
         if bpy.context.scene.fMRI_files_exist and len(fmri_vol_files) > 0:
             layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
-        layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
+        if FreeviewPanel.CT_files_exist:
+            layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
 
         row = layout.row(align=0)
         row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')

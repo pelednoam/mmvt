@@ -217,7 +217,8 @@ def clear_object_vertex_colors(cur_obj):
         mesh.vertex_colors.active_index = 1
     if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
         bpy.ops.mesh.vertex_color_remove()
-    vcol_layer = mesh.vertex_colors.new('Col')
+    if mesh.vertex_colors.get('Col') is None:
+        vcol_layer = mesh.vertex_colors.new('Col')
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         mesh.vertex_colors.active_index = 1
         mesh.vertex_colors['Col'].active_render = True
@@ -823,7 +824,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         mesh.vertex_colors.active_index = 1
         mesh.vertex_colors['Col'].active_render = True
     # else:
-    # vcol_layer = mesh.vertex_colors.active
+    vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     if colors_picked_from_cm:
         verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert])
@@ -1936,7 +1937,9 @@ def init(addon):
     bpy.context.scene.coloring_meg_subcorticals = False
     ColoringMakerPanel.init = True
     for hemi in ['lh', 'rh']:
-        bpy.data.objects['inflated_{}'.format(hemi)].data.vertex_colors.new('Col')
+        mesh = bpy.data.objects['inflated_{}'.format(hemi)].data
+        if mesh.vertex_colors.get('Col') is None:
+            mesh.vertex_colors.new('Col')
 
 
 def init_labels_vertices():

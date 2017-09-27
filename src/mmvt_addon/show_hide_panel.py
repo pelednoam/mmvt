@@ -60,15 +60,16 @@ def show_hide_hierarchy(do_hide, obj_name):
 
 
 def show_hide_hemi(val, hemi):
-    show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
+    # show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
     show_hide_hierarchy(val, 'Cortex-inflated-{}'.format(hemi))
-    for obj_name in [hemi, 'inflated_{}'.format(hemi)]:
-        if bpy.data.objects.get(obj_name) is not None:
-            hide_obj(bpy.data.objects[obj_name], val)
+    # for obj_name in [hemi, 'inflated_{}'.format(hemi)]:
+    obj_name = 'inflated_{}'.format(hemi)
+    if bpy.data.objects.get(obj_name) is not None:
+        hide_obj(bpy.data.objects[obj_name], val)
 
 
 def show_hemis():
-    for obj_name in ['rh', 'lh', 'Cortex-rh', 'Cortex-lh']:
+    for obj_name in ['rh', 'lh', 'Cortex-inflated-rh', 'Cortex-inflated-lh']:
         show_hide_hierarchy(False, obj_name)
 
 
