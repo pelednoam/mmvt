@@ -265,14 +265,17 @@ def init(addon):
     bpy.context.scene.show_cb_in_render = False
     mu.select_hierarchy('colorbar_camera', False, False)
     if not ColorbarPanel.colorbar_updated and not colorbar_values_are_locked():
-        bpy.context.scene.colorbar_min = -1
-        bpy.context.scene.colorbar_max = 1
-        bpy.context.scene.colorbar_title = '     MEG'
+        # bpy.context.scene.colorbar_min = -1
+        # bpy.context.scene.colorbar_max = 1
+        # bpy.context.scene.colorbar_title = '     MEG'
         bpy.context.scene.colorbar_y = 0.18
         bpy.context.scene.colorbar_text_y = -1.53
         bpy.context.scene.colorbar_prec = 2
     if not colorbar_values_are_locked():
-        bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
+        if 'fMRI' in bpy.context.scene.colorbar_title:
+            bpy.context.scene.colorbar_files = 'PuBu-RdOrYl'
+        else:
+            bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
 
 
 def register():
