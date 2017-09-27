@@ -191,8 +191,6 @@ def inflating_update(self, context):
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = True
             if bpy.context.scene.show_hide_electrodes:
                 bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = True
-            bpy.data.objects['rh'] = False
-            bpy.data.objects['lh'] = False
 
         if flat_exist:
             for hemi in ['rh', 'lh']:
