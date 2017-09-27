@@ -624,8 +624,8 @@ def init(addon):
     if not ret:
         print('No electrodes labeling files.')
         return
-    addon.clear_colors_from_parent_childrens('Deep_electrodes')
-    addon.clear_cortex()
+    # addon.clear_colors_from_parent_childrens('Deep_electrodes')
+    # addon.clear_cortex()
     bpy.context.scene.show_only_lead = False
     bpy.context.scene.listen_to_keyboard = False
     bpy.context.scene.listener_is_running = False

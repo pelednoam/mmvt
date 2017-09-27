@@ -95,7 +95,7 @@ def fmri_blobs_percentile_max_update(self, context):
 def plot_blob(cluster_labels, faces_verts, is_inflated=None):
     is_inflated = _addon().is_inflated() if is_inflated is None else is_inflated
     fMRIPanel.dont_show_clusters_info = False
-    _addon().init_activity_map_coloring('FMRI', subcorticals=False)
+    _addon().init_activity_map_coloring('FMRI')#, subcorticals=False)
     blob_vertices = cluster_labels['vertices']
     hemi = cluster_labels['hemi']
     real_hemi = hemi
@@ -287,7 +287,7 @@ def unfilter_clusters():
 def plot_all_blobs():
     # fMRIPanel.dont_show_clusters_info = False
     faces_verts = _addon().get_faces_verts()
-    _addon().init_activity_map_coloring('FMRI', subcorticals=False)
+    _addon().init_activity_map_coloring('FMRI')#, subcorticals=False)
     blobs_activity, hemis = calc_blobs_activity(
         fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
     data_min, colors_ratio = calc_colors_ratio(blobs_activity)
@@ -643,8 +643,8 @@ def init(addon):
             # fMRIPanel.clusters_labels[key] = support_old_verions(fMRIPanel.clusters_labels[file_name])
             fMRIPanel.lookup[key] = create_lookup_table(fMRIPanel.clusters_labels[key])
 
-    bpy.context.scene.fmri_cluster_val_threshold = 2
-    bpy.context.scene.fmri_cluster_size_threshold = 20
+    # bpy.context.scene.fmri_cluster_val_threshold = 2
+    # bpy.context.scene.fmri_cluster_size_threshold = 20
     bpy.context.scene.search_closest_cluster_only_in_filtered = True
     bpy.context.scene.fmri_what_to_plot = 'blob'
     bpy.context.scene.fmri_how_to_sort = 'tval'
