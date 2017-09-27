@@ -303,10 +303,10 @@ def init(addon, addon_prefs=None):
     bpy.context.scene.freeview_messages = ''
     root = mu.get_user_fol()
     mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
-    if not op.isfile(mmvt_ct_fname):
-        subjects_ct_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'mri', 'ct_nas.nii.gz')
-        if op.isfile(subjects_ct_fname):
-            shutil.copy(subjects_ct_fname, mmvt_ct_fname)
+    # if not op.isfile(mmvt_ct_fname):
+    #     subjects_ct_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'mri', 'ct_nas.nii.gz')
+    #     if op.isfile(subjects_ct_fname):
+    #         shutil.copy(subjects_ct_fname, mmvt_ct_fname)
     FreeviewPanel.CT_files_exist = op.isfile(mmvt_ct_fname)
     FreeviewPanel.init = True
     register()
