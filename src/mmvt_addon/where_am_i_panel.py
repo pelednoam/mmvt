@@ -1,11 +1,23 @@
+try:
+    import matplotlib
+    # Force matplotlib to not use any Xwindows backend.
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import nibabel as nib
+    from nibabel.orientations import axcodes2ornt, aff2axcodes
+    from nibabel.affines import voxel_sizes
+    CAN_UPDATE_SLICES = True
+except:
+    CAN_UPDATE_SLICES = False
+
 import bpy
 import mathutils
 import numpy as np
-import os.path as op
 import mmvt_utils as mu
 import glob
 import traceback
 from collections import Counter
+import os.path as op
 
 def _addon():
     return WhereAmIPanel.addon
@@ -284,6 +296,83 @@ def grow_a_label():
         bpy.context.scene.python_cmd, subject, atlas)
     cmd += '--vertice_indice {} --hemi {} --label_name {} --label_r {}'.format(vertex_ind, hemi, label_name, label_r)
     mu.run_command_in_new_thread(cmd, False)
+
+
+def update_slices(pos):
+    screen = bpy.data.screens['Neuro']
+    mri_fname = op.join(mu.get_user_fol(), 'freeview', 'T1.mgz')
+    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    images_names = save_slices(mri_fname, x, y, z, modality='mri')
+    ind = 0
+    for area in screen.areas:
+        if area.type == 'IMAGE_EDITOR':
+            override = bpy.context.copy()
+            override['area'] = area
+            override["screen"] = screen
+
+            bpy.ops.image.open(override, filepath=images_names[ind])
+            bpy.ops.image.view_zoom_ratio(override, ratio=1)
+            ind += 1
+
+
+def save_slices(fname, x, y, z, modality='mri'):
+    """ Function to display row of image slices """
+    header = nib.load(fname)
+    affine = np.array(header.affine, float)
+    data = header.get_data()
+    images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
+    mu.make_dir(images_fol)
+    images_names = []
+
+    clim = np.percentile(data, (1., 99.))
+    codes = axcodes2ornt(aff2axcodes(affine))
+    order = np.argsort([c[0] for c in codes])
+    flips = np.array([c[1] < 0 for c in codes])[order]
+    sizes = [data.shape[order] for order in order]
+    scalers = voxel_sizes(affine)
+    coordinates = np.array([x, y, z])[order].astype(int)
+
+    r = [scalers[order[2]] / scalers[order[1]],
+         scalers[order[2]] / scalers[order[0]],
+         scalers[order[1]] / scalers[order[0]]]
+    for ii, xax, yax, ratio, prespective in zip([0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['Sagital', 'Coronal', 'Axial']):
+        fig = plt.figure()
+        fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=False)
+        ax = plt.Axes(fig, [0., 0., 1., 1.])
+        ax.set_axis_off()
+        fig.add_axes(ax)
+
+        d = get_image_data(data, order, flips, ii, coordinates)
+        ax.imshow(
+            d, vmin=clim[0], vmax=clim[1], aspect=1,
+            cmap='gray', interpolation='nearest', origin='lower')
+        lims = [0, sizes[xax], 0, sizes[yax]]
+        ax.axis(lims)
+        ax.set_aspect(ratio)
+        ax.patch.set_visible(False)
+        ax.set_frame_on(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.axes.get_xaxis().set_visible(False)
+
+        x, y, z = coordinates
+        image_fname = op.join(images_fol, '{}_{}_{}_{}_{}.png'.format(modality, prespective, x, y, z))
+        print('Saving {}'.format(image_fname))
+        plt.savefig(image_fname, dpi=sizes[xax])
+        images_names.append(image_fname)
+    return images_names
+
+
+def get_image_data(image_data, order, flips, ii, pos):
+    data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
+    xax = [1, 0, 0][ii]
+    yax = [2, 2, 1][ii]
+    if order[xax] < order[yax]:
+        data = data.T
+    if flips[xax]:
+        data = data[:, ::-1]
+    if flips[yax]:
+        data = data[::-1]
+    return data
 
 
 class ChooseVoxelID(bpy.types.Operator):

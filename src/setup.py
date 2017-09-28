@@ -255,7 +255,7 @@ def install_blender_reqs():
         utils.run_script(cmd)
         # install blender reqs:
         if not utils.is_windows():
-            cmd = '{} install zmq pizco scipy mne joblib tqdm'.format(op.join('bin', 'pip'))
+            cmd = '{} install zmq pizco scipy mne joblib tqdm nibabel matplotlib'.format(op.join('bin', 'pip'))
             utils.run_script(cmd)
         else:
             print('Sorry, installing external python libs in python will be implemented in the future')

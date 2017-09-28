@@ -477,6 +477,7 @@ class SelectionListener(bpy.types.Operator):
                     _addon().find_closest_cluster(only_within=True)
                 if _addon().is_pial():
                     _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+                _addon().update_slices(bpy.context.scene.cursor_location * 10)
                     # _addon().save_cursor_position()
 
         if time.time() - self.press_time > 0.1:

@@ -1990,5 +1990,9 @@ def file_modification_time(fname):
         mtime = 0
     return datetime.fromtimestamp(mtime)
 
+
+def apply_trans(trans, point):
+    return np.dot(trans, np.append(point, 1))[:3]
+
         # def to_str(val):
 #     return val.decode('ascii') if hasattr(val, 'decode') else str(val)

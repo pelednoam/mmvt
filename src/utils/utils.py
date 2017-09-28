@@ -66,6 +66,7 @@ check_hemi = mu.check_hemi
 file_modification_time = mu.file_modification_time
 min_stc = mu.min_stc
 max_stc = mu.max_stc
+apply_trans = mu.apply_trans
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
