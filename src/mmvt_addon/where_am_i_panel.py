@@ -288,10 +288,10 @@ def grow_a_label():
     mu.run_command_in_new_thread(cmd, False)
 
 
-@mu.timeit
-def update_slices():
+# @mu.timeit
+def update_slices(modality='mri'):
     screen = bpy.data.screens['Neuro']
-    images_names = ['mri_{}.png'.format(pres) for pres in ['sagital', 'coronal', 'axial']]
+    images_names = ['{}_{}.png'.format(modality, pres) for pres in ['sagital', 'coronal', 'axial']]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
     for area in screen.areas:
@@ -307,11 +307,13 @@ def update_slices():
 
 
 def start_slicer_server():
-    cmd = '{} -m src.misc.slicer_listener'.format(bpy.context.scene.python_cmd)
+    cmd = '{} -m src.listeners.slicer_listener'.format(bpy.context.scene.python_cmd)
     mu.run_command_in_new_thread(cmd, False)
 
 
 def init_listener():
+    if mu.conn_to_listener.handle_is_open:
+        return True
     ret = False
     tries = 0
     while not ret and tries < 3:
@@ -328,24 +330,29 @@ def init_listener():
     return ret
 
 
-def create_slices(modality='mri'):
-    pos = bpy.context.scene.cursor_location * 10
-    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
-    xyz = ','.join(map(str, [x, y, z]))
+def create_slices(modalities='mri'):
+    init_listener()
 
+    pos = bpy.context.scene.cursor_location * 10
+    # x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    # xyz = ','.join(map(str, [x, y, z]))
+    xyz = ','.join(map(str, pos))
     # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(modality)))
     # for output_file in output_files:
     #     os.remove(output_file)
-    mu.remove_file(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(modality)))
-    cmd = '{} -m src.preproc.anatomy -s {} -f create_slices --slice_xyz {} --slices_modality {}'.format(
-        bpy.context.scene.python_cmd, mu.get_user(), xyz, modality)
-    print('Running {}'.format(cmd))
-    WhereAmIPanel.tic = time.time()
-    print(WhereAmIPanel.tic)
+
+    flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
+        '_'.join(modalities.split(','))))
+    mu.remove_file(flag_fname)
+    # cmd = '{} -m src.preproc.anatomy -s {} -f create_slices --slice_xyz {} --slices_modalities {}'.format(
+    #     bpy.context.scene.python_cmd, mu.get_user(), pos, modalities)
+    # print('Running {}'.format(cmd))
+    # WhereAmIPanel.tic = time.time()
+    # print(WhereAmIPanel.tic)
     # mu.run_command_in_new_thread(cmd, False)
 
     ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
-        subject=mu.get_user(), xyz=xyz, modality=modality)))
+        subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
     bpy.ops.mmvt.wait_for_slices()
 
 
@@ -354,19 +361,25 @@ class WaitForSlices(bpy.types.Operator):
     bl_label = "wait_for_slices"
     bl_options = {"UNDO"}
     running = False
-    modality = 'mri'
+    modalities = 'mri'
 
     def cancel(self, context):
-        if self._timer:
-            context.window_manager.event_timer_remove(self._timer)
-            self._timer = None
-            self.running = False
+        # print('WaitForSlices: cancel')
+        try:
+            if self._timer:
+                context.window_manager.event_timer_remove(self._timer)
+                self._timer = None
+                self.running = False
+        except:
+            print('Error in WaitForSlices.cancel')
         return {'CANCELLED'}
 
     def invoke(self, context, event=None):
+        # print('WaitForSlices: invoke')
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
+        # print('WaitForSlices: execute')
         if not self.running:
             self.running = True
             context.window_manager.modal_handler_add(self)
@@ -375,11 +388,11 @@ class WaitForSlices(bpy.types.Operator):
 
     def modal(self, context, event):
         if event.type == 'TIMER' and self.running:
-            output_file = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(self.modality))
-            # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(self.modality)))
+            output_file = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
+                '_'.join(self.modalities.split(','))))
             if op.isfile(output_file):
                 os.remove(output_file)
-                print('took {:.5f}s'.format(time.time() - WhereAmIPanel.tic))
+                # print('took {:.5f}s'.format(time.time() - WhereAmIPanel.tic))
                 update_slices()
                 self.cancel(context)
         return {'PASS_THROUGH'}
@@ -585,8 +598,7 @@ def init(addon):
         bpy.context.scene.new_label_r = 5
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
-        # start_slicer_server()
-        init_listener()
+        start_slicer_server()
         register()
     except:
         print("Can't init where-am-I panel!")

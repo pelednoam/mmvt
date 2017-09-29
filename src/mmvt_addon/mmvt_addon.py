@@ -18,6 +18,7 @@ import sys
 import importlib
 import traceback
 import logging
+import atexit
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
@@ -526,6 +527,7 @@ def load_all_panels(addon_prefs=None):
 
 
 def main(addon_prefs=None):
+    # atexit.register(my_cleanup_code)
     init(addon_prefs)
     try:
         mmvt = sys.modules[__name__]

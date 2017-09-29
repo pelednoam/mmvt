@@ -1,6 +1,6 @@
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 import nibabel as nib
 from nibabel.viewers import OrthoSlicer3D
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     else:
         # open_slicer('/home/noam/mmvt/mg78/freeview/orig.mgz', 0.9862712 , -45.62893867,  12.2588706)
         subject = 'nmr00979'
-        subject = '100307'
+        # subject = '100307'
         trans_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
         d = utils.Bag(np.load(trans_fname))
         ras_tkr2vox = np.linalg.inv(d.vox2ras_tkr)
@@ -164,14 +164,14 @@ if __name__ == '__main__':
         # x, y, z = 151, 106, 139
         # x, y, z = 166, 118, 113
         p = [133, 122, 84]
-        # open_slicer(op.join(SUBJECTS_DIR, 'sample', 'mri', 'T1.mgz'), 0, 0, 0)
+        open_slicer(op.join(SUBJECTS_DIR, subject, 'mri', 'ct.nii.gz'), 0, 0, 0)
 
         # ct_header = nib.load(ct_fname).get_header()
         # ct_vox2ras_tkr = ct_header.get_vox2ras_tkr()
         # ct_ras_tkr2vox = np.linalg.inv(ct_vox2ras_tkr)
         # ct_x, ct_y, ct_z = utils.apply_trans(ct_ras_tkr2vox, point).astype(np.int)
 
-        save_slices(subject, mri_fname, x, y, z, 'mri')
+        # save_slices(subject, mri_fname, x, y, z, 'mri')
         # save_slices(subject, ct_fname, 128, 139, 110, 'ct')
 
         # print('Error! Should send the mri fname, x, y and z')

@@ -877,12 +877,33 @@ def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
     output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
+    ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
+    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
+    return op.isfile(output_fname)
+
+
+def save_subject_ct_trans(subject):
+    output_fname = op.join(MMVT_DIR, subject, 'ct_trans.npz')
+    ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
+    if not op.isfile(ct_fname):
+        subjects_ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
+        if op.isfile(subjects_ct_fname):
+            shutil.copy(subjects_ct_fname, ct_fname)
+        else:
+            print("Can't find subject's CT! ({})".format(ct_fname))
+            return False
+    header = nib.load(ct_fname).header
+    ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
+    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
+    return op.isfile(output_fname)
+
+
+def get_trans_functions(header):
     vox2ras_tkr = header.get_vox2ras_tkr()
     ras_tkr2vox = np.linalg.inv(vox2ras_tkr)
     vox2ras = header.get_vox2ras()
     ras2vox = np.linalg.inv(vox2ras)
-    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    return op.isfile(output_fname)
+    return ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox
 
 
 def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
@@ -946,14 +967,27 @@ def check_bem(subject, remote_subject_dir, args):
     meg.check_bem(subject, meg_args)
 
 
+def full_extent(ax, pad=0.0):
+    from matplotlib.transforms import Bbox
+    """Get the full extent of an axes, including axes labels, tick labels, and titles."""
+    # For text objects, we need to draw the figure first, otherwise the extents
+    # are undefined.
+    ax.figure.canvas.draw()
+    items = [ax, *ax.texts]
+    bbox = Bbox.union([item.get_window_extent() for item in items])
+
+    return bbox.expanded(1.0 + pad, 1.0 + pad)
+
 # @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
-@utils.timeit
+# @utils.timeit
+# @utils.ignore_warnings
 def create_slices(subject, xyz, modality='mri', header=None, data=None):
-    import time
-    print(time.time())
     import matplotlib
-    # Force matplotlib to not use any Xwindows backend.
-    matplotlib.use('Agg')
+    try:
+        # Force matplotlib to not use any Xwindows backend.
+        matplotlib.use('Agg')
+    except:
+        pass
     import matplotlib.pyplot as plt
     from nibabel.orientations import axcodes2ornt, aff2axcodes
     from nibabel.affines import voxel_sizes
@@ -968,6 +1002,15 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
             else:
                 print("Can't find subject's T1.mgz!")
                 return False
+    elif modality == 'ct':
+        fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
+        if not op.isfile(fname):
+            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
+            if op.isfile(subjects_fname):
+                shutil.copy(subjects_fname, fname)
+            else:
+                print("Can't find subject's CT! ({})".format(fname))
+                return False
     else:
         print('create_slices: The modality {} is not supported!')
         return False
@@ -979,46 +1022,108 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
     utils.make_dir(images_fol)
     images_names = []
 
-    # clim = np.percentile(data, (1., 99.))
-    clim = np.load(op.join(MMVT_DIR, subject, 'freeview', 'T1_precentiles.npy'))
+    percentiles_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_1_99_precentiles.npy'.format(modality))
+    if not op.isfile(percentiles_fname):
+        clim = np.percentile(data, (1, 99))
+        np.save(percentiles_fname, clim)
+    else:
+        clim = np.load(percentiles_fname)
     codes = axcodes2ornt(aff2axcodes(affine))
     order = np.argsort([c[0] for c in codes])
     flips = np.array([c[1] < 0 for c in codes])[order]
     sizes = [data.shape[order] for order in order]
     scalers = voxel_sizes(affine)
-    x, y, z = xyz.split(',')
+    x, y, z = xyz #.split(',')
     coordinates = np.array([x, y, z])[order].astype(int)
-    print('Creating slices for {}'.format(coordinates))
+    # print('Creating slices for {}'.format(coordinates))
 
     r = [scalers[order[2]] / scalers[order[1]],
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
 
-    fig = plt.figure()
-    # fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=False)
-    fig.set_size_inches(1., 1, forward=False)
-    ax = plt.Axes(fig, [0., 0., 1., 1.])
-    ax.set_axis_off()
-    fig.add_axes(ax)
+    if utils.all_items_equall(sizes):
+        fig = plt.figure()
+        # fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=False)
+        fig.set_size_inches(1., 1, forward=False)
+        ax = plt.Axes(fig, [0., 0., 1., 1.])
+        ax.set_axis_off()
+        fig.add_axes(ax)
 
-    for ii, xax, yax, ratio, prespective in zip([0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial']):
 
+    # plt.style.use('dark_background')
+    # fig, axes = plt.subplots(2, 2)
+    # fig.set_size_inches((8, 8), forward=True)
+    # axes = [axes[0, 0], axes[0, 1], axes[1, 0]]
+
+    crosshairs = [dict()] * 3
+    verts, horizs = [None] * 3, [None] * 3
+    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+        verts[ii] = [[0] * 2, [-0.5, sizes[yax] - 0.5]]
+        horizs[ii] = [[-0.5, sizes[xax] - 0.5], [0] * 2]
+    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+        loc = coordinates[ii]
+        if flips[ii]:
+            loc = sizes[ii] - loc
+        loc = [loc] * 2
+        if ii == 0:
+            verts[2][0] = loc
+            verts[1][0] = loc
+        elif ii == 1:
+            horizs[2][1] = loc
+            verts[0][0] = loc
+        else:  # ii == 2
+            horizs[1][1] = loc
+            horizs[0][1] = loc
+
+    for ii, xax, yax, ratio, prespective, label in zip(
+            [0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
+        # if not utils.all_items_equall(sizes):
+        #     fig = plt.figure()
+        #     fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=True)
+        #     ax = plt.Axes(fig, [0., 0., 1., 1.])
+        #     # ax = plt.subplot(111)
+        #     ax.set_axis_off()
+        #     fig.add_axes(ax)
+        # ax = axes[ii]
         d = get_image_data(data, order, flips, ii, coordinates)
+        if modality == 'ct':
+            d[np.where(d == 0)] = -200
         ax.imshow(
             d, vmin=clim[0], vmax=clim[1], aspect=1,
             cmap='gray', interpolation='nearest', origin='lower')
         lims = [0, sizes[xax], 0, sizes[yax]]
+
+        ax.plot(horizs[ii], color=(0, 1, 0), linestyle='-')
+        ax.plot(verts[ii], color=(0, 1, 0), linestyle='-')
+
+        # bump = 0.01
+        # poss = [[lims[1] / 2., lims[3]],
+        #         [(1 + bump) * lims[1], lims[3] / 2.],
+        #         [lims[1] / 2., 0],
+        #         [lims[0] - bump * lims[1], lims[3] / 2.]]
+        # anchors = [['center', 'bottom'], ['left', 'center'],
+        #            ['center', 'top'], ['right', 'center']]
+        # for pos, anchor, lab in zip(poss, anchors, label):
+        #     ax.text(pos[0], pos[1], lab, color='white',
+        #             horizontalalignment=anchor[0],
+        #             verticalalignment=anchor[1])
+
         ax.axis(lims)
         ax.set_aspect(ratio)
         ax.patch.set_visible(False)
         ax.set_frame_on(False)
         ax.axes.get_yaxis().set_visible(False)
         ax.axes.get_xaxis().set_visible(False)
+        # ax.set_facecolor('black')
+
+        # extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        # extent = full_extent(ax).transformed(fig.dpi_scale_trans.inverted())
 
         image_fname = op.join(images_fol, '{}_{}.png'.format(modality, prespective))
-        print('Saving {}'.format(image_fname))
-        plt.savefig(image_fname, dpi=sizes[xax])
+        # print('Saving {}'.format(image_fname))
+        plt.savefig(image_fname, dpi=sizes[xax]) # bbox_inches=extent
         images_names.append(image_fname)
+    plt.close()
     with open(op.join(images_fol, '{}_slices.txt'.format(modality)), 'w') as f:
         f.write('Slices created for {}'.format(coordinates))
     return all([op.isfile(img) for img in images_names])
