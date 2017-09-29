@@ -1093,8 +1093,8 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
             cmap='gray', interpolation='nearest', origin='lower')
         lims = [0, sizes[xax], 0, sizes[yax]]
 
-        ax.plot(horizs[ii], color=(0, 1, 0), linestyle='-')
-        ax.plot(verts[ii], color=(0, 1, 0), linestyle='-')
+        # ax.plot(horizs[ii], color=(0, 1, 0), linestyle='-')
+        # ax.plot(verts[ii], color=(0, 1, 0), linestyle='-')
 
         # bump = 0.01
         # poss = [[lims[1] / 2., lims[3]],
