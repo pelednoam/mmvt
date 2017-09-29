@@ -306,6 +306,11 @@ def update_slices():
     # mu.conn_to_listener.close()
 
 
+def start_slicer_server():
+    cmd = '{} -m src.misc.slicer_listener'.format(bpy.context.scene.python_cmd)
+    mu.run_command_in_new_thread(cmd, False)
+
+
 def init_listener():
     ret = False
     tries = 0
@@ -580,6 +585,7 @@ def init(addon):
         bpy.context.scene.new_label_r = 5
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
+        # start_slicer_server()
         init_listener()
         register()
     except:
