@@ -296,7 +296,7 @@ set_light_layers_depth = transparency_panel.set_light_layers_depth
 set_ras_coo = where_am_i_panel.set_ras_coo
 set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
 find_closest_obj = where_am_i_panel.find_closest_obj
-update_slices = where_am_i_panel.update_slices
+create_slices = where_am_i_panel.create_slices
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

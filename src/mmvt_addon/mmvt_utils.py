@@ -73,6 +73,7 @@ except:
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
+
 print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
@@ -1994,5 +1995,13 @@ def file_modification_time(fname):
 def apply_trans(trans, point):
     return np.dot(trans, np.append(point, 1))[:3]
 
-        # def to_str(val):
-#     return val.decode('ascii') if hasattr(val, 'decode') else str(val)
+
+def remove_file(fname, raise_error_if_does_not_exist=False):
+    try:
+        if op.isfile(fname):
+            os.remove(fname)
+    except:
+        if raise_error_if_does_not_exist:
+            raise Exception(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

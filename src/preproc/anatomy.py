@@ -946,6 +946,96 @@ def check_bem(subject, remote_subject_dir, args):
     meg.check_bem(subject, meg_args)
 
 
+# @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
+@utils.timeit
+def create_slices(subject, xyz, modality='mri'):
+    import time
+    print(time.time())
+    # import matplotlib
+    # Force matplotlib to not use any Xwindows backend.
+    # matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from nibabel.orientations import axcodes2ornt, aff2axcodes
+    from nibabel.affines import voxel_sizes
+
+    """ Function to display row of image slices """
+    if modality == 'mri':
+        fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
+        if not op.isfile(fname):
+            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+            if op.isfile(subjects_fname):
+                shutil.copy(subjects_fname, fname)
+            else:
+                print("Can't find subject's T1.mgz!")
+                return False
+    else:
+        print('create_slices: The modality {} is not supported!')
+        return False
+    header = nib.load(fname)
+    affine = np.array(header.affine, float)
+    data = header.get_data()
+    images_fol = op.join(MMVT_DIR, subject, 'figures', 'slices')
+    utils.make_dir(images_fol)
+    images_names = []
+
+    # clim = np.percentile(data, (1., 99.))
+    clim = np.load(op.join(MMVT_DIR, subject, 'freeview', 'T1_precentiles.npy'))
+    codes = axcodes2ornt(aff2axcodes(affine))
+    order = np.argsort([c[0] for c in codes])
+    flips = np.array([c[1] < 0 for c in codes])[order]
+    sizes = [data.shape[order] for order in order]
+    scalers = voxel_sizes(affine)
+    x, y, z = xyz
+    coordinates = np.array([x, y, z])[order].astype(int)
+    print('Creating slices for {}'.format(coordinates))
+
+    r = [scalers[order[2]] / scalers[order[1]],
+         scalers[order[2]] / scalers[order[0]],
+         scalers[order[1]] / scalers[order[0]]]
+
+    fig = plt.figure()
+    # fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=False)
+    fig.set_size_inches(1., 1, forward=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+
+    for ii, xax, yax, ratio, prespective in zip([0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial']):
+
+        d = get_image_data(data, order, flips, ii, coordinates)
+        ax.imshow(
+            d, vmin=clim[0], vmax=clim[1], aspect=1,
+            cmap='gray', interpolation='nearest', origin='lower')
+        lims = [0, sizes[xax], 0, sizes[yax]]
+        ax.axis(lims)
+        ax.set_aspect(ratio)
+        ax.patch.set_visible(False)
+        ax.set_frame_on(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.axes.get_xaxis().set_visible(False)
+
+        image_fname = op.join(images_fol, '{}_{}.png'.format(modality, prespective))
+        print('Saving {}'.format(image_fname))
+        plt.savefig(image_fname, dpi=sizes[xax])
+        images_names.append(image_fname)
+    with open(op.join(images_fol, '{}_slices.txt'.format(modality)), 'w') as f:
+        f.write('Slices created for {}'.format(coordinates))
+    return all([op.isfile(img) for img in images_names])
+
+
+def get_image_data(image_data, order, flips, ii, pos):
+    data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
+    xax = [1, 0, 0][ii]
+    yax = [2, 2, 1][ii]
+    if order[xax] < order[yax]:
+        data = data.T
+    if flips[xax]:
+        data = data[:, ::-1]
+    if flips[yax]:
+        data = data[::-1]
+    return data
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -1030,7 +1120,10 @@ def main(subject, remote_subject_dir, args, flags):
         flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
 
     if 'create_flat_brain' in args.function:
-        create_flat_brain(subject, args.print_only, args.overwrite_flat_surf, args.n_jobs)
+        flags['create_flat_brain'] = create_flat_brain(subject, args.print_only, args.overwrite_flat_surf, args.n_jobs)
+
+    if 'create_slices' in args.function:
+        flags['create_slices'] = create_slices(subject, args.slice_xyz, args.slices_modality)
 
     return flags
 
@@ -1069,6 +1162,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--label_name', help='', required=False, default='')
     parser.add_argument('--hemi', help='', required=False, default='')
     parser.add_argument('--label_r', help='', required=False, default='5', type=int)
+
+    parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
+    parser.add_argument('--slices_modality', help='', required=False, default='mri')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

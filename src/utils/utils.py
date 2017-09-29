@@ -67,6 +67,7 @@ file_modification_time = mu.file_modification_time
 min_stc = mu.min_stc
 max_stc = mu.max_stc
 apply_trans = mu.apply_trans
+remove_file = mu.remove_file
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -671,16 +672,6 @@ def read_labels_from_annot(subject, aparc_name, subjects_dir):
             return []
     return labels
 
-
-def remove_file(fname, raise_error_if_does_not_exist=False):
-    try:
-        if op.isfile(fname):
-            os.remove(fname)
-    except:
-        if raise_error_if_does_not_exist:
-            raise Exception(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
 
 def get_hemis(hemi):
     return HEMIS if hemi == 'both' else [hemi]

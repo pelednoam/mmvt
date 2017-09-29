@@ -152,6 +152,7 @@ def inflating_update(self, context):
             return
         try:
             _ = bpy.data.shape_keys['Key'].key_blocks["flat"].value
+            _ = bpy.data.shape_keys['Key.001'].key_blocks["flat"].value
             flat_exist = True
         except:
             flat_exist = False
@@ -427,12 +428,25 @@ class SelectionListener(bpy.types.Operator):
     bl_options = {'UNDO'}
     press_time = time.time()
     running = False
-    right_clicked = False
+    right_clicked, left_clicked = False, False
+    cursor_pos = None
 
     def modal(self, context, event):
         # def show_fcurves(obj):
         #     mu.change_fcurves_colors(obj)
             # mu.view_all_in_graph_editor()
+        if self.left_clicked:
+            self.left_clicked = False
+            if bpy.context.scene.cursor_is_snapped:
+                snap_cursor(True)
+            if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
+                _addon().find_closest_cluster(only_within=True)
+            if _addon().is_pial():
+                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+            if self.cursor_pos != tuple(bpy.context.scene.cursor_location):
+                self.cursor_pos = tuple(bpy.context.scene.cursor_location)
+                _addon().create_slices()
+            # _addon().save_cursor_position()
 
         if self.right_clicked:
             self.right_clicked = False
@@ -471,14 +485,8 @@ class SelectionListener(bpy.types.Operator):
                 self.press_time = time.time()
                 self.right_clicked = True
             if event.type == 'LEFTMOUSE':
-                if bpy.context.scene.cursor_is_snapped:
-                    snap_cursor(True)
-                if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
-                    _addon().find_closest_cluster(only_within=True)
-                if _addon().is_pial():
-                    _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
-                _addon().update_slices(bpy.context.scene.cursor_location * 10)
-                    # _addon().save_cursor_position()
+                self.press_time = time.time()
+                self.left_clicked = True
 
         if time.time() - self.press_time > 0.1:
             if event.type == 'TIMER':

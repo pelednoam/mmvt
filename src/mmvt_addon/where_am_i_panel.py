@@ -1,15 +1,3 @@
-try:
-    import matplotlib
-    # Force matplotlib to not use any Xwindows backend.
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import nibabel as nib
-    from nibabel.orientations import axcodes2ornt, aff2axcodes
-    from nibabel.affines import voxel_sizes
-    CAN_UPDATE_SLICES = True
-except:
-    CAN_UPDATE_SLICES = False
-
 import bpy
 import mathutils
 import numpy as np
@@ -18,6 +6,8 @@ import glob
 import traceback
 from collections import Counter
 import os.path as op
+import os
+import time
 
 def _addon():
     return WhereAmIPanel.addon
@@ -298,81 +288,74 @@ def grow_a_label():
     mu.run_command_in_new_thread(cmd, False)
 
 
-def update_slices(pos):
+def update_slices():
     screen = bpy.data.screens['Neuro']
-    mri_fname = op.join(mu.get_user_fol(), 'freeview', 'T1.mgz')
-    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
-    images_names = save_slices(mri_fname, x, y, z, modality='mri')
+    images_names = ['mri_{}.png'.format(pres) for pres in ['sagital', 'coronal', 'axial']]
+    images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             override = bpy.context.copy()
             override['area'] = area
             override["screen"] = screen
-
-            bpy.ops.image.open(override, filepath=images_names[ind])
+            bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
+            # bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
             bpy.ops.image.view_zoom_ratio(override, ratio=1)
             ind += 1
 
 
-def save_slices(fname, x, y, z, modality='mri'):
-    """ Function to display row of image slices """
-    header = nib.load(fname)
-    affine = np.array(header.affine, float)
-    data = header.get_data()
-    images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
-    mu.make_dir(images_fol)
-    images_names = []
+def create_slices(modality='mri'):
+    pos = bpy.context.scene.cursor_location * 10
+    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    xyz = ','.join(map(str, [x, y, z]))
 
-    clim = np.percentile(data, (1., 99.))
-    codes = axcodes2ornt(aff2axcodes(affine))
-    order = np.argsort([c[0] for c in codes])
-    flips = np.array([c[1] < 0 for c in codes])[order]
-    sizes = [data.shape[order] for order in order]
-    scalers = voxel_sizes(affine)
-    coordinates = np.array([x, y, z])[order].astype(int)
-
-    r = [scalers[order[2]] / scalers[order[1]],
-         scalers[order[2]] / scalers[order[0]],
-         scalers[order[1]] / scalers[order[0]]]
-    for ii, xax, yax, ratio, prespective in zip([0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['Sagital', 'Coronal', 'Axial']):
-        fig = plt.figure()
-        fig.set_size_inches(1. * sizes[xax] / sizes[yax], 1, forward=False)
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.set_axis_off()
-        fig.add_axes(ax)
-
-        d = get_image_data(data, order, flips, ii, coordinates)
-        ax.imshow(
-            d, vmin=clim[0], vmax=clim[1], aspect=1,
-            cmap='gray', interpolation='nearest', origin='lower')
-        lims = [0, sizes[xax], 0, sizes[yax]]
-        ax.axis(lims)
-        ax.set_aspect(ratio)
-        ax.patch.set_visible(False)
-        ax.set_frame_on(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.axes.get_xaxis().set_visible(False)
-
-        x, y, z = coordinates
-        image_fname = op.join(images_fol, '{}_{}_{}_{}_{}.png'.format(modality, prespective, x, y, z))
-        print('Saving {}'.format(image_fname))
-        plt.savefig(image_fname, dpi=sizes[xax])
-        images_names.append(image_fname)
-    return images_names
+    # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(modality)))
+    # for output_file in output_files:
+    #     os.remove(output_file)
+    mu.remove_file(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(modality)))
+    cmd = '{} -m src.preproc.anatomy -s {} -f create_slices --slice_xyz {} --slices_modality {}'.format(
+        bpy.context.scene.python_cmd, mu.get_user(), xyz, modality)
+    print('Running {}'.format(cmd))
+    WhereAmIPanel.tic = time.time()
+    print(WhereAmIPanel.tic)
+    mu.run_command_in_new_thread(cmd, False)
+    bpy.ops.mmvt.wait_for_slices()
 
 
-def get_image_data(image_data, order, flips, ii, pos):
-    data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
-    xax = [1, 0, 0][ii]
-    yax = [2, 2, 1][ii]
-    if order[xax] < order[yax]:
-        data = data.T
-    if flips[xax]:
-        data = data[:, ::-1]
-    if flips[yax]:
-        data = data[::-1]
-    return data
+class WaitForSlices(bpy.types.Operator):
+    bl_idname = "mmvt.wait_for_slices"
+    bl_label = "wait_for_slices"
+    bl_options = {"UNDO"}
+    running = False
+    modality = 'mri'
+
+    def cancel(self, context):
+        if self._timer:
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
+            self.running = False
+        return {'CANCELLED'}
+
+    def invoke(self, context, event=None):
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        if not self.running:
+            self.running = True
+            context.window_manager.modal_handler_add(self)
+            self._timer = context.window_manager.event_timer_add(0.1, context.window)
+            return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        if event.type == 'TIMER' and self.running:
+            output_file = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(self.modality))
+            # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(self.modality)))
+            if op.isfile(output_file):
+                os.remove(output_file)
+                print('took {:.5f}s'.format(time.time() - WhereAmIPanel.tic))
+                update_slices()
+                self.cancel(context)
+        return {'PASS_THROUGH'}
 
 
 class ChooseVoxelID(bpy.types.Operator):
@@ -589,6 +572,7 @@ def register():
         bpy.utils.register_class(ClosestLabel)
         bpy.utils.register_class(ChooseVoxelID)
         bpy.utils.register_class(GrowLabel)
+        bpy.utils.register_class(WaitForSlices)
         # print('Where am I Panel was registered!')
     except:
         print("Can't register Where am I Panel!")
@@ -602,6 +586,7 @@ def unregister():
         bpy.utils.unregister_class(ClosestLabel)
         bpy.utils.unregister_class(ChooseVoxelID)
         bpy.utils.unregister_class(GrowLabel)
+        bpy.utils.unregister_class(WaitForSlices)
     except:
         # print("Can't unregister Where am I Panel!")
         pass
