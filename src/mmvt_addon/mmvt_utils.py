@@ -948,7 +948,7 @@ class connection_to_listener(object):
 
     def init(self):
         try:
-            connection_to_listener.check_if_open()
+            # connection_to_listener.check_if_open()
             # connection_to_listener.run_addon_listener()
             address = ('localhost', 6000)
             self.conn = Client(address, authkey=b'mmvt')

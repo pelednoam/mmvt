@@ -948,12 +948,12 @@ def check_bem(subject, remote_subject_dir, args):
 
 # @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
 @utils.timeit
-def create_slices(subject, xyz, modality='mri'):
+def create_slices(subject, xyz, modality='mri', header=None, data=None):
     import time
     print(time.time())
-    # import matplotlib
+    import matplotlib
     # Force matplotlib to not use any Xwindows backend.
-    # matplotlib.use('Agg')
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from nibabel.orientations import axcodes2ornt, aff2axcodes
     from nibabel.affines import voxel_sizes
@@ -971,9 +971,10 @@ def create_slices(subject, xyz, modality='mri'):
     else:
         print('create_slices: The modality {} is not supported!')
         return False
-    header = nib.load(fname)
+    if header is None or data is None:
+        header = nib.load(fname)
+        data = header.get_data()
     affine = np.array(header.affine, float)
-    data = header.get_data()
     images_fol = op.join(MMVT_DIR, subject, 'figures', 'slices')
     utils.make_dir(images_fol)
     images_names = []
@@ -985,7 +986,7 @@ def create_slices(subject, xyz, modality='mri'):
     flips = np.array([c[1] < 0 for c in codes])[order]
     sizes = [data.shape[order] for order in order]
     scalers = voxel_sizes(affine)
-    x, y, z = xyz
+    x, y, z = xyz.split(',')
     coordinates = np.array([x, y, z])[order].astype(int)
     print('Creating slices for {}'.format(coordinates))
 

@@ -288,6 +288,7 @@ def grow_a_label():
     mu.run_command_in_new_thread(cmd, False)
 
 
+@mu.timeit
 def update_slices():
     screen = bpy.data.screens['Neuro']
     images_names = ['mri_{}.png'.format(pres) for pres in ['sagital', 'coronal', 'axial']]
@@ -302,6 +303,24 @@ def update_slices():
             # bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
             bpy.ops.image.view_zoom_ratio(override, ratio=1)
             ind += 1
+    # mu.conn_to_listener.close()
+
+
+def init_listener():
+    ret = False
+    tries = 0
+    while not ret and tries < 3:
+        try:
+            ret = mu.conn_to_listener.init()
+            if ret:
+                mu.conn_to_listener.send_command(b'Hey!\n')
+            else:
+                mu.message(None, 'Error initialize the listener. Try again')
+        except:
+            print("Can't open connection to listener")
+            print(traceback.format_exc())
+        tries += 1
+    return ret
 
 
 def create_slices(modality='mri'):
@@ -318,7 +337,10 @@ def create_slices(modality='mri'):
     print('Running {}'.format(cmd))
     WhereAmIPanel.tic = time.time()
     print(WhereAmIPanel.tic)
-    mu.run_command_in_new_thread(cmd, False)
+    # mu.run_command_in_new_thread(cmd, False)
+
+    ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
+        subject=mu.get_user(), xyz=xyz, modality=modality)))
     bpy.ops.mmvt.wait_for_slices()
 
 
@@ -558,6 +580,7 @@ def init(addon):
         bpy.context.scene.new_label_r = 5
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
+        init_listener()
         register()
     except:
         print("Can't init where-am-I panel!")
