@@ -68,6 +68,7 @@ def convert_coordinates(subject, xyz, modality, coordinates_system):
         return None
     if coordinates_system == 'tk_ras':
         vox = utils.apply_trans(trans.ras_tkr2vox, point).astype(np.int)
+        print('T1: {}'.format(vox))
     elif coordinates_system == 'vox':
         vox = point
     return vox
@@ -93,6 +94,8 @@ class AddonListener(object):
     def listen(self):
         while True:
             try:
+                if self.conn is None:
+                    raise Exception('self.conn is None! bye bye!')
                 msg = self.conn.recv()
                 if msg == 'close\n':
                     self.conn.close()
@@ -100,6 +103,7 @@ class AddonListener(object):
                 else:
                     if isinstance(msg, dict):
                         msg = utils.Bag(msg['data'])
+                        # print(msg)
                         for modality in msg.modalities.split(','):
                             xyz = convert_coordinates(msg.subject, msg.xyz, modality, msg.coordinates_system)
                             if xyz is None:

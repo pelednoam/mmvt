@@ -1058,22 +1058,22 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
     crosshairs = [dict()] * 3
     verts, horizs = [None] * 3, [None] * 3
     for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
-        verts[ii] = [[0] * 2, [-0.5, sizes[yax] - 0.5]]
-        horizs[ii] = [[-0.5, sizes[xax] - 0.5], [0] * 2]
+        verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
+        horizs[ii] = np.array([[-0.5, sizes[xax] - 0.5], [0] * 2]).T
     for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
         loc = coordinates[ii]
         if flips[ii]:
             loc = sizes[ii] - loc
         loc = [loc] * 2
         if ii == 0:
-            verts[2][0] = loc
-            verts[1][0] = loc
+            verts[2][:, 0] = loc
+            verts[1][:, 0] = loc
         elif ii == 1:
-            horizs[2][1] = loc
-            verts[0][0] = loc
+            horizs[2][:, 1] = loc
+            verts[0][:, 0] = loc
         else:  # ii == 2
-            horizs[1][1] = loc
-            horizs[0][1] = loc
+            horizs[1][:, 1] = loc
+            horizs[0][:, 1] = loc
 
     for ii, xax, yax, ratio, prespective, label in zip(
             [0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
@@ -1093,8 +1093,12 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
             cmap='gray', interpolation='nearest', origin='lower')
         lims = [0, sizes[xax], 0, sizes[yax]]
 
-        # ax.plot(horizs[ii], color=(0, 1, 0), linestyle='-')
-        # ax.plot(verts[ii], color=(0, 1, 0), linestyle='-')
+        ln1, = ax.plot(horizs[ii].T[0], horizs[ii].T[1], color=(0, 1, 0), linestyle='-', linewidth=0.2)
+        ln2, = ax.plot(verts[ii].T[0], verts[ii].T[1], color=(0, 1, 0), linestyle='-', linewidth=0.2)
+
+        print('hline y={} vline x={}'.format(horizs[ii][0, 1], verts[ii][0, 0]))
+        # ax.axhline(y=horizs[ii][0, 1], color='r', linestyle='-')
+        # ax.axvline(x=verts[ii][0, 0], color='r', linestyle='-')
 
         # bump = 0.01
         # poss = [[lims[1] / 2., lims[3]],
@@ -1122,6 +1126,8 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
         image_fname = op.join(images_fol, '{}_{}.png'.format(modality, prespective))
         # print('Saving {}'.format(image_fname))
         plt.savefig(image_fname, dpi=sizes[xax]) # bbox_inches=extent
+        ln1.remove()
+        ln2.remove()
         images_names.append(image_fname)
     plt.close()
     with open(op.join(images_fol, '{}_slices.txt'.format(modality)), 'w') as f:

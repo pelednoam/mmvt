@@ -22,6 +22,7 @@ def open_slicer(mri_fname, x, y, z):
     mri_data = mri_file.get_data()
     viewer = OrthoSlicer3D(mri_data, mri_file.affine)
     viewer._set_position(x, y, z)
+    print(viewer._data_idx)
     viewer.show()
 
 
@@ -154,7 +155,8 @@ if __name__ == '__main__':
         trans_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
         d = utils.Bag(np.load(trans_fname))
         ras_tkr2vox = np.linalg.inv(d.vox2ras_tkr)
-        mri_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+        mri_fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
+        ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
         # ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct_nas.nii.gz')
         # x, y, z = 0.9862712 , -45.62893867,  12.2588706
         # x, y, z = 125, 151, 68
@@ -164,7 +166,7 @@ if __name__ == '__main__':
         # x, y, z = 151, 106, 139
         # x, y, z = 166, 118, 113
         p = [133, 122, 84]
-        open_slicer(op.join(SUBJECTS_DIR, subject, 'mri', 'ct.nii.gz'), 0, 0, 0)
+        open_slicer(mri_fname, 0.9862712 , -45.62893867,  12.2588706)
 
         # ct_header = nib.load(ct_fname).get_header()
         # ct_vox2ras_tkr = ct_header.get_vox2ras_tkr()
@@ -175,3 +177,4 @@ if __name__ == '__main__':
         # save_slices(subject, ct_fname, 128, 139, 110, 'ct')
 
         # print('Error! Should send the mri fname, x, y and z')
+        print('asdf')
