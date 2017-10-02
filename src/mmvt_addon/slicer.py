@@ -59,7 +59,9 @@ def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
             continue
         if modality == 'ct':
             d[np.where(d == 0)] = -200
-        image = create_image(d, d.shape, clim, colors_ratio, prespective, modality, colormap)
+        image = create_image(d, d.shape, clim, colors_ratio, prespective, modality, colormap,
+                             int(horizs[ii][0, 1]), int(verts[ii][0, 0]))
+
         images[prespective] = image
     return images
 
@@ -80,7 +82,7 @@ def get_image_data(image_data, order, flips, ii, pos):
     return data
 
 
-def create_image(data, sizes, clim, colors_ratio, prespective, modality, colormap):
+def create_image(data, sizes, clim, colors_ratio, prespective, modality, colormap, horz_cross, vert_corss):
     image_name = '{}_{}.png'.format(modality, prespective)
     if image_name not in bpy.data.images:
         image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
@@ -91,6 +93,15 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
     # add alpha value
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
+
+    print(horz_cross)
+    for x in range(data.shape[0]):
+        pixels[x, horz_cross] = [0, 1, 0, 1]
+        # pixels[x, data.shape[1] - horz_cross] = [1, 0, 0, 1]
+    for y in range(data.shape[1]):
+        pixels[vert_corss, y] = [0, 1, 0, 1]
+
+
     image.pixels = pixels.ravel()
     return image
 
