@@ -95,7 +95,8 @@ class AddonListener(object):
         while True:
             try:
                 if self.conn is None:
-                    raise Exception('self.conn is None! bye bye!')
+                    print('self.conn is None! bye bye!')
+                    break
                 msg = self.conn.recv()
                 if msg == 'close\n':
                     self.conn.close()

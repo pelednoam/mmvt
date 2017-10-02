@@ -302,10 +302,25 @@ def update_slices(modality='mri'):
             bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
             # bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
             bpy.ops.image.view_zoom_ratio(override, ratio=1)
-            area.spaces.active.mode = 'MASK'
             ind += 1
     # mu.conn_to_listener.close()
 
+
+def init_slices():
+    screen = bpy.data.screens['Neuro']
+    images_names = ['{}_{}.png'.format('mri', pres) for pres in ['sagital', 'coronal', 'axial']]
+    images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
+    ind = 0
+    for area in screen.areas:
+        if area.type == 'IMAGE_EDITOR':
+            override = bpy.context.copy()
+            override['area'] = area
+            override["screen"] = screen
+            bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
+            bpy.ops.image.view_zoom_ratio(override, ratio=1)
+            area.spaces.active.mode = 'MASK'
+            ind += 1
+# area.spaces.active.image
 
 def start_slicer_server():
     cmd = '{} -m src.listeners.slicer_listener'.format(bpy.context.scene.python_cmd)
@@ -600,6 +615,7 @@ def init(addon):
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
         start_slicer_server()
+        init_slices()
         register()
     except:
         print("Can't init where-am-I panel!")

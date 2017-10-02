@@ -28,9 +28,9 @@ def save_cursor_position(pos=None):
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
-    cursor_position = np.array(pos) * 10
-    ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
-        position=cursor_position)))
+    # cursor_position = np.array(pos) * 10
+    # ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
+    #     position=cursor_position)))
     # if not ret:
     #     mu.message(None, 'Listener was stopped! Try to restart')
 
@@ -98,7 +98,7 @@ def open_freeview():
 
 
 def get_electrodes_command(root):
-    if bpy.data.objects.get('Deep_electrodes'):
+    if bpy.data.objects.get('Deep_electrodes') and bpy.context.scene.freeview_load_electrodes:
         cmd = ' -c '
         groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar) for obj in bpy.data.objects['Deep_electrodes'].children])
         for group in groups:

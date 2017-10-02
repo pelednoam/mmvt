@@ -1031,6 +1031,7 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
     codes = axcodes2ornt(aff2axcodes(affine))
     order = np.argsort([c[0] for c in codes])
     flips = np.array([c[1] < 0 for c in codes])[order]
+    flips[0] = not flips[0]
     sizes = [data.shape[order] for order in order]
     scalers = voxel_sizes(affine)
     x, y, z = xyz #.split(',')

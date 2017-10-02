@@ -446,6 +446,7 @@ class SelectionListener(bpy.types.Operator):
             if self.cursor_pos != tuple(bpy.context.scene.cursor_location):
                 self.cursor_pos = tuple(bpy.context.scene.cursor_location)
                 _addon().create_slices()
+                _addon().save_cursor_position()
             screen = bpy.data.screens['Neuro']
             for area in screen.areas:
                 if area.type == 'IMAGE_EDITOR':
