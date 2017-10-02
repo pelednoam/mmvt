@@ -779,8 +779,9 @@ def create_inflated_curv_coloring():
         print(traceback.format_exc())
 
 
-def calc_colors(vert_values, data_min, colors_ratio):
-    cm = _addon().get_cm()
+def calc_colors(vert_values, data_min, colors_ratio, cm=None):
+    if cm is None:
+        cm = _addon().get_cm()
     if cm is None:
         return np.zeros((len(vert_values), 3))
     colors_indices = ((np.array(vert_values) - data_min) * colors_ratio).astype(int)

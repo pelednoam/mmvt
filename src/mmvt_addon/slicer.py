@@ -1,10 +1,101 @@
+import bpy
 import numpy as np
 import numpy.linalg as npl
 import os.path as op
 
 import mmvt_utils as mu
+from coloring_panel import calc_colors
 
-# Most of this code is taken from nibabel 
+
+def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
+
+    if modality_data is None:
+        modality_data = mu.Bag(np.load(op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))))
+    if colormap is None:
+        colormap_fname = op.join(mu.file_fol(), 'color_maps', 'gray.npy')
+        colormap = np.load(colormap_fname)
+    affine = np.array(modality_data.affine, float)
+    data = modality_data.data
+    clim = modality_data.precentiles
+    colors_ratio = modality_data.colors_ratio
+
+    codes = axcodes2ornt(aff2axcodes(affine))
+    order = np.argsort([c[0] for c in codes])
+    flips = np.array([c[1] < 0 for c in codes])[order]
+    flips[0] = not flips[0]
+    sizes = [data.shape[order] for order in order]
+    scalers = voxel_sizes(affine)
+    x, y, z = xyz
+    coordinates = np.array([x, y, z])[order].astype(int)
+
+    r = [scalers[order[2]] / scalers[order[1]],
+         scalers[order[2]] / scalers[order[0]],
+         scalers[order[1]] / scalers[order[0]]]
+
+    verts, horizs = [None] * 3, [None] * 3
+    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+        verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
+        horizs[ii] = np.array([[-0.5, sizes[xax] - 0.5], [0] * 2]).T
+    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+        loc = coordinates[ii]
+        if flips[ii]:
+            loc = sizes[ii] - loc
+        loc = [loc] * 2
+        if ii == 0:
+            verts[2][:, 0] = loc
+            verts[1][:, 0] = loc
+        elif ii == 1:
+            horizs[2][:, 1] = loc
+            verts[0][:, 0] = loc
+        else:  # ii == 2
+            horizs[1][:, 1] = loc
+            horizs[0][:, 1] = loc
+
+    images = {}
+    for ii, xax, yax, ratio, prespective, label in zip(
+            [0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
+        d = get_image_data(data, order, flips, ii, coordinates)
+        if d is None:
+            continue
+        if modality == 'ct':
+            d[np.where(d == 0)] = -200
+        image = create_image(d, d.shape, clim, colors_ratio, prespective, modality, colormap)
+        images[prespective] = image
+    return images
+
+
+def get_image_data(image_data, order, flips, ii, pos):
+    try:
+        data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
+    except:
+        return None
+    xax = [1, 0, 0][ii]
+    yax = [2, 2, 1][ii]
+    if order[xax] < order[yax]:
+        data = data.T
+    if flips[xax]:
+        data = data[:, ::-1]
+    if flips[yax]:
+        data = data[::-1]
+    return data
+
+
+def create_image(data, sizes, clim, colors_ratio, prespective, modality, colormap):
+    image_name = '{}_{}.png'.format(modality, prespective)
+    if image_name not in bpy.data.images:
+        image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
+    else:
+        image = bpy.data.images[image_name]
+
+    colors = calc_colors(data, clim[0], colors_ratio, colormap)
+    # add alpha value
+    pixels = np.ones((colors.shape[0], colors.shape[1], 4))
+    pixels[:, :, :3] = colors
+    image.pixels = pixels.ravel()
+    return image
+
+
+# Most of this code is taken from nibabel
 def axcodes2ornt(axcodes, labels=None):
     """ Convert axis codes `axcodes` to an orientation
 
@@ -237,140 +328,3 @@ def voxel_sizes(affine):
     """
     top_left = affine[:-1, :-1]
     return np.sqrt(np.sum(top_left ** 2, axis=0))
-
-
-def create_slices(subject, xyz, modality='mri', affine=None, data=None):
-    
-    if data is None or affine is None:
-        modality_data = mu.Bag(np.load('{}_data'.format(modality)))
-    affine = np.array(modality_data.affine, float)
-    # images_fol = op.join(mu.get_user_fol(), subject, 'figures', 'slices')
-    # utils.make_dir(images_fol)
-    images_names = []
-    clim = modality_data.precentiles
-    codes = axcodes2ornt(aff2axcodes(affine))
-    order = np.argsort([c[0] for c in codes])
-    flips = np.array([c[1] < 0 for c in codes])[order]
-    flips[0] = not flips[0]
-    sizes = [data.shape[order] for order in order]
-    scalers = voxel_sizes(affine)
-    x, y, z = xyz #.split(',')
-    coordinates = np.array([x, y, z])[order].astype(int)
-    # print('Creating slices for {}'.format(coordinates))
-
-    r = [scalers[order[2]] / scalers[order[1]],
-         scalers[order[2]] / scalers[order[0]],
-         scalers[order[1]] / scalers[order[0]]]
-
-    crosshairs = [dict()] * 3
-    verts, horizs = [None] * 3, [None] * 3
-    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
-        verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
-        horizs[ii] = np.array([[-0.5, sizes[xax] - 0.5], [0] * 2]).T
-    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
-        loc = coordinates[ii]
-        if flips[ii]:
-            loc = sizes[ii] - loc
-        loc = [loc] * 2
-        if ii == 0:
-            verts[2][:, 0] = loc
-            verts[1][:, 0] = loc
-        elif ii == 1:
-            horizs[2][:, 1] = loc
-            verts[0][:, 0] = loc
-        else:  # ii == 2
-            horizs[1][:, 1] = loc
-            horizs[0][:, 1] = loc
-
-    for ii, xax, yax, ratio, prespective, label in zip(
-            [0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
-        d = get_image_data(data, order, flips, ii, coordinates)
-        if d is None:
-            continue
-        if modality == 'ct':
-            d[np.where(d == 0)] = -200
-        ax.imshow(
-            d, vmin=clim[0], vmax=clim[1], aspect=1,
-            cmap='gray', interpolation='nearest', origin='lower')
-        lims = [0, sizes[xax], 0, sizes[yax]]
-
-        ln1, = ax.plot(horizs[ii].T[0], horizs[ii].T[1], color=(0, 1, 0), linestyle='-', linewidth=0.2)
-        ln2, = ax.plot(verts[ii].T[0], verts[ii].T[1], color=(0, 1, 0), linestyle='-', linewidth=0.2)
-
-        print('hline y={} vline x={}'.format(horizs[ii][0, 1], verts[ii][0, 0]))
-        # ax.axhline(y=horizs[ii][0, 1], color='r', linestyle='-')
-        # ax.axvline(x=verts[ii][0, 0], color='r', linestyle='-')
-
-        # bump = 0.01
-        # poss = [[lims[1] / 2., lims[3]],
-        #         [(1 + bump) * lims[1], lims[3] / 2.],
-        #         [lims[1] / 2., 0],
-        #         [lims[0] - bump * lims[1], lims[3] / 2.]]
-        # anchors = [['center', 'bottom'], ['left', 'center'],
-        #            ['center', 'top'], ['right', 'center']]
-        # for pos, anchor, lab in zip(poss, anchors, label):
-        #     ax.text(pos[0], pos[1], lab, color='white',
-        #             horizontalalignment=anchor[0],
-        #             verticalalignment=anchor[1])
-
-        ax.axis(lims)
-        ax.set_aspect(ratio)
-        ax.patch.set_visible(False)
-        ax.set_frame_on(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.axes.get_xaxis().set_visible(False)
-        # ax.set_facecolor('black')
-
-        # extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        # extent = full_extent(ax).transformed(fig.dpi_scale_trans.inverted())
-
-        image_fname = op.join(images_fol, '{}_{}.png'.format(modality, prespective))
-        # print('Saving {}'.format(image_fname))
-        plt.savefig(image_fname, dpi=sizes[xax]) # bbox_inches=extent
-        ln1.remove()
-        ln2.remove()
-        images_names.append(image_fname)
-    plt.close()
-    with open(op.join(images_fol, '{}_slices.txt'.format(modality)), 'w') as f:
-        f.write('Slices created for {}'.format(coordinates))
-    return all([op.isfile(img) for img in images_names])
-
-
-def get_image_data(image_data, order, flips, ii, pos):
-    try:
-        data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
-    except:
-        return None
-    xax = [1, 0, 0][ii]
-    yax = [2, 2, 1][ii]
-    if order[xax] < order[yax]:
-        data = data.T
-    if flips[xax]:
-        data = data[:, ::-1]
-    if flips[yax]:
-        data = data[::-1]
-    return data
-
-
-def create_image(image_name, data, sizes):
-    image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
-
-    ## For white image
-    # pixels = [1.0] * (4 * size[0] * size[1])
-
-    pixels = [None] * sizes[0] * sizes[1]
-    for x in range(sizes[0]):
-        for y in range(sizes[1]):
-            # assign RGBA to something useful
-            r = x / sizes[0]
-            g = y / sizes[1]
-            b = (1 - r) * g
-            a = 1.0
-
-            pixels[(y * sizes[0]) + x] = [r, g, b, a]
-
-    # flatten list
-    pixels = [chan for px in pixels for chan in px]
-
-    # assign pixels
-    image.pixels = pixels

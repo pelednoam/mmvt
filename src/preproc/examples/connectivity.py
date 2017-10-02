@@ -7,6 +7,7 @@ from src.utils import preproc_utils as pu
 
 LINKS_DIR = utils.get_links_dir()
 ELECTRODES_DIR = utils.get_link_dir(LINKS_DIR, 'electrodes')
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
 def example1(subject):
@@ -174,6 +175,21 @@ def calc_electrodes_rest_connectivity_from_matlab(args):
         # fmax=100
     ))
     pu.run_on_subjects(args, con.main)
+
+
+def load_connectivity_results(args):
+    # from src.utils import matlab_utils as matu
+    # mat_file = matu.load_mat_to_bag(op.join(MMVT_DIR, args.subject[0], 'connectivity', 'corr.mat'))
+    # conn = mat_file.mAdjMat
+    # labels = matu.matlab_cell_str_to_list(mat_file.mLabels)
+    args = con.read_cmd_args(dict(
+        function='calc_rois_matlab_connectivity',
+        subject=args.subject, atlas=args.atlas,
+        mat_fname=op.join(MMVT_DIR, args.subject[0], 'connectivity', 'corr.mat'),
+        mat_field='mAdjMat', sorted_labels_names_field='mLabelsCort',
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
 
 
 if __name__ == '__main__':

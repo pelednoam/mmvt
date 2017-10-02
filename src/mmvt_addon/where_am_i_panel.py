@@ -289,9 +289,10 @@ def grow_a_label():
 
 
 # @mu.timeit
-def update_slices(modality='mri', ratio=1):
+def update_slices(modality='mri', ratio=1, images=None):
     screen = bpy.data.screens['Neuro']
-    images_names = ['{}_{}.png'.format(modality, pres) for pres in ['sagital', 'coronal', 'axial']]
+    perspectives = ['sagital', 'coronal', 'axial']
+    images_names = ['{}_{}.png'.format(modality, pres) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
     extra_images = set([img.name for img in bpy.data.images]) - \
@@ -303,12 +304,15 @@ def update_slices(modality='mri', ratio=1):
             override = bpy.context.copy()
             override['area'] = area
             override["screen"] = screen
-            if images_names[ind] not in bpy.data.images:
-                bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
-                area.spaces.active.mode = 'MASK'
-            # bpy.data.images[images_names[ind]].reload()
-            image = bpy.data.images[images_names[ind]]
-            image.reload()
+            if images is None:
+                if images_names[ind] not in bpy.data.images:
+                    bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
+                    area.spaces.active.mode = 'MASK'
+                # bpy.data.images[images_names[ind]].reload()
+                image = bpy.data.images[images_names[ind]]
+                image.reload()
+            else:
+                image = images[perspectives[ind]]
             area.spaces.active.image = image
             # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
             bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
@@ -346,22 +350,22 @@ def init_listener():
 
 
 def create_slices(modalities='mri'):
-    init_listener()
+    # init_listener()
+
     # slice_brain(bpy.context.scene.cursor_location, bpy.types.Scene.cut_type,
     #             op.join(mu.get_user_fol(), 'figures', 'slices'))
     # print()
-    pos = bpy.context.scene.cursor_location * 10
 
     # x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     # xyz = ','.join(map(str, [x, y, z]))
-    xyz = ','.join(map(str, pos))
+    # xyz = ','.join(map(str, pos))
     # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(modality)))
     # for output_file in output_files:
     #     os.remove(output_file)
 
-    flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
-        '_'.join(modalities.split(','))))
-    mu.remove_file(flag_fname)
+    # flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
+    #     '_'.join(modalities.split(','))))
+    # mu.remove_file(flag_fname)
     # cmd = '{} -m src.preproc.anatomy -s {} -f create_slices --slice_xyz {} --slices_modalities {}'.format(
     #     bpy.context.scene.python_cmd, mu.get_user(), pos, modalities)
     # print('Running {}'.format(cmd))
@@ -369,8 +373,17 @@ def create_slices(modalities='mri'):
     # print(WhereAmIPanel.tic)
     # mu.run_command_in_new_thread(cmd, False)
 
-    ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
-        subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
+    # ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
+    #     subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
+    import slicer
+    import importlib
+    importlib.reload(slicer)
+
+    pos = bpy.context.scene.cursor_location * 10
+    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    xyz = [x, y, z]
+    images = slicer.create_slices(xyz, 'mri',modality_data=WhereAmIPanel.mri_data, colormap=WhereAmIPanel.gray_colormap)
+    update_slices(modality='mri', ratio=1, images=images)
     bpy.ops.mmvt.wait_for_slices()
 
 
@@ -586,6 +599,8 @@ class WhereAmIPanel(bpy.types.Panel):
     update = True
     call_update = True
     move_cursor = True
+    mri_data = None
+    gray_colormap = None
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -615,9 +630,17 @@ def init(addon):
 
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
+
+        mri_data_fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format('mri'))
+        if op.isfile(mri_data_fname):
+            WhereAmIPanel.mri_data = mu.Bag(np.load(mri_data_fname))
+        gray_colormap_fname = op.join(mu.file_fol(), 'color_maps', 'gray.npy')
+        if op.isfile(gray_colormap_fname):
+            WhereAmIPanel.gray_colormap = np.load(gray_colormap_fname)
+
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
-        start_slicer_server()
+        # start_slicer_server()
         init_slices()
         register()
     except:

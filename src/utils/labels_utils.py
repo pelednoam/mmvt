@@ -401,7 +401,7 @@ def get_hemi_from_name(label_name):
 
 @functools.lru_cache(maxsize=None)
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
-                output_fname='', exclude=[], rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
+                output_fname='', exclude=None, rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
                 hemi='both', surf_name='pial', labels_fol='', read_only_from_annot=False, n_jobs=1):
     try:
         labels = []
@@ -425,6 +425,8 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
         if len(labels) == 0:
             print("Can't read the {} labels!".format(atlas))
             return []
+        if exclude is None:
+            exclude = []
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
         if rh_then_lh or lh_then_rh:
             rh_labels = [l for l in labels if l.hemi == 'rh']

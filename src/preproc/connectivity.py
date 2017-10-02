@@ -106,12 +106,17 @@ def downsample_data(data):
 
 
 def calc_rois_matlab_connectivity(subject, args):
+    from src.utils import matlab_utils as matu
     if not op.isfile(args.mat_fname):
         print("Can't find the input file {}!".format(args.mat_fname))
         return False
     d = dict()
-    data = sio.loadmat(args.mat_fname)[args.mat_field]
-    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject)
+    mat_file = sio.loadmat(args.mat_fname)
+    data = mat_file[args.mat_field]
+    sorted_labels_names = None
+    if args.sorted_labels_names_field != '':
+        sorted_labels_names = matu.matlab_cell_str_to_list(mat_file[args.sorted_labels_names_field])
+    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, sorted_labels_names=sorted_labels_names)
     (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(data, d['labels'], d['hemis'], args)
     # args.stat, args.conditions, args.windows, args.threshold,
@@ -535,7 +540,7 @@ def create_vertices_lookup(con_indices, con_names, labels):
 
 def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_labels_names=None):
     labels = lu.read_labels(
-        subject, SUBJECTS_DIR, args.atlas, exclude=args.labels_exclude,
+        subject, SUBJECTS_DIR, args.atlas, exclude=tuple(args.labels_exclude),
         sorted_according_to_annot_file=sorted_according_to_annot_file)
     if not sorted_labels_names is None:
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
@@ -820,8 +825,8 @@ def calc_fmri_corr_degree(subject, identifier='', threshold=0.7, connectivity_me
 
 
 def main(subject, remote_subject_dir, args, flags):
-    if utils.should_run(args, 'save_rois_connectivity'):
-        flags['save_rois_connectivity'] = calc_rois_matlab_connectivity(subject, args)
+    if utils.should_run(args, 'calc_rois_matlab_connectivity'):
+        flags['calc_rois_matlab_connectivity'] = calc_rois_matlab_connectivity(subject, args)
 
     if utils.should_run(args, 'calc_electrodes_coh'):
         # todo: Add the necessary parameters
@@ -856,6 +861,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('--mat_fname', help='matlab connection file name', required=False, default='')
     parser.add_argument('--mat_field', help='matlab connection field name', required=False, default='')
+    parser.add_argument('--sorted_labels_names_field', help='matlab connection labels name', required=False, default='')
     parser.add_argument('--labels_exclude', help='rois to exclude', required=False, default='unknown,corpuscallosum',
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)

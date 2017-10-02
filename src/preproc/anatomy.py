@@ -21,7 +21,6 @@ from src.utils import preproc_utils as pu
 
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
-BRAINDER_SCRIPTS_DIR = op.join(utils.get_parent_fol(utils.get_parent_fol()), 'brainder_scripts')
 HEMIS = ['rh', 'lh']
 
 
@@ -1186,9 +1185,10 @@ def save_images_data_and_header(subject):
         data, header = get_data_and_header(subject, modality)
         affine = header.affine
         precentiles = np.percentile(data, (1, 99))
+        colors_ratio = 256 / (precentiles[1] - precentiles[0])
         output_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_data.npz'.format(modality))
         if not op.isfile(output_fname):
-            np.savez(output_fname, data=data, affine=affine, precentiles=precentiles)
+            np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
         # percentiles_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_1_99_precentiles.npy'.format(modality))
         # if not op.isfile(percentiles_fname):
         #     precentiles = np.percentile(data, (1, 99))

@@ -89,7 +89,7 @@ class AddonListener(object):
             print('connection accepted from', self.listener.last_accepted)
         except:
             print('Error in init_listener')
-            print(traceback.format_exc())
+            # print(traceback.format_exc())
 
     def listen(self):
         while True:

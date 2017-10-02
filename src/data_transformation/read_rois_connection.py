@@ -16,7 +16,7 @@ HEMIS_WITHIN, HEMIS_BETWEEN = range(2)
 
 def save_connectivity_to_blender(subject, atlas, data, conditions, stat, w=0, threshold=0, threshold_percentile=0):
     d = {}
-    d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=['unknown', 'corpuscallosum'],
+    d['labels'] = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=('unknown', 'corpuscallosum'),
             sorted_according_to_annot_file=True)
     d['locations'] = lu.calc_center_of_mass(d['labels'], ret_mat=True)
     d['hemis'] = ['rh' if l.hemi == 'rh' else 'lh' for l in d['labels']]

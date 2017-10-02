@@ -32,6 +32,12 @@ def create_jet_cm(n=256):
     return colors_map
 
 
+def create_gray_cm(n=256):
+    colors = plt.cm.gray(np.linspace(0, 1, n))
+    colors_map = mcolors.LinearSegmentedColormap.from_list('gray', colors)
+    return colors_map
+
+
 def create_YlOrRd_cm(n=256):
     colors = plt.cm.YlOrRd(np.linspace(0, 1, n))
     colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
@@ -90,12 +96,12 @@ def create_cm(cm_name):
 
 
 cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'PuBu_RdOrYl':create_PuBu_RdOrYl_cm,
-       'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm,
+       'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm, 'gray':create_gray_cm,
        'jet':create_jet_cm, 'hot':create_hot_cm}
 
 if __name__ == '__main__':
     # create_cm('YlOrRd')
     # create_cm('RdOrYl')
-    create_cm('PuBu_RdOrYl')
+    create_cm('gray')
     # create_cm('jet')
     # create_cm('hot')

@@ -12,7 +12,7 @@ MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 def create_coloring(x, subject, atlas, conditions, colors_map='YlOrRd', exclude=['unknown', 'corpuscallosum'],
                     colors_min_val=None, colors_max_val=None):
-    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=exclude, sorted_according_to_annot_file=True,
+    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, exclude=tuple(exclude), sorted_according_to_annot_file=True,
                             only_names=True)
     for cond_id, cond_name in enumerate(conditions):
         values = x[:, cond_id]
