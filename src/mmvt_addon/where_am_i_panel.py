@@ -304,12 +304,11 @@ def update_slices(modality='mri'):
             override["screen"] = screen
             if images_names[ind] not in bpy.data.images:
                 bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
-            else:
-                # bpy.data.images[images_names[ind]].reload()
-                image = bpy.data.images[images_names[ind]]
-                image.reload()
-                area.spaces.active.image = image
-                # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
+            # bpy.data.images[images_names[ind]].reload()
+            image = bpy.data.images[images_names[ind]]
+            image.reload()
+            area.spaces.active.image = image
+            # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
             bpy.ops.image.view_zoom_ratio(override, ratio=1)
             ind += 1
     # mu.conn_to_listener.close()
@@ -319,6 +318,7 @@ def init_slices():
     extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
+
 
 
 def start_slicer_server():
