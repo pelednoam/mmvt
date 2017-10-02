@@ -375,6 +375,14 @@ def create_slices(modalities='mri'):
 
     # ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
     #     subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
+    if WhereAmIPanel.mri_data is None or WhereAmIPanel.gray_colormap is None:
+        print('To be able to see slices, you need to do the following:')
+        if WhereAmIPanel.mri_data is None:
+            print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header')
+        if WhereAmIPanel.gray_colormap is None:
+            print('python -m src.setup -f copy_resources_files')
+        return
+
     import slicer
     import importlib
     importlib.reload(slicer)

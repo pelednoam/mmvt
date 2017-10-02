@@ -122,8 +122,13 @@ def calc_rois_matlab_connectivity(subject, args):
     # args.stat, args.conditions, args.windows, args.threshold,
     #     args.threshold_percentile, args.color_map, args.norm_by_percentile, args.norm_percs, args.symetric_colors)
     d['conditions'] = args.conditions
-    np.savez(op.join(MMVT_DIR, subject, 'rois_con'), **d)
-    return op.isfile(op.join(MMVT_DIR, subject, 'rois_con'))
+    output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'rois_con.npy')
+    np.savez(output_fname, **d)
+    vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
+    con_vertices_fname = op.join(
+        MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format('rois'))
+    utils.save((vertices, vertices_lookup), con_vertices_fname)
+    return op.isfile(output_fname) and con_vertices_fname
 
 
 def calc_lables_connectivity(subject, labels_extract_mode, args):
@@ -543,6 +548,13 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
         subject, SUBJECTS_DIR, args.atlas, exclude=tuple(args.labels_exclude),
         sorted_according_to_annot_file=sorted_according_to_annot_file)
     if not sorted_labels_names is None:
+        sorted_labels_names_fix = []
+        org_delim, org_pos, label, label_hemi = lu.get_hemi_delim_and_pos(labels[0].name)
+        for label_name in sorted_labels_names:
+            delim, pos, label, label_hemi = lu.get_hemi_delim_and_pos(label_name)
+            label_fix = lu.build_label_name(org_delim, org_pos, label, label_hemi)
+            sorted_labels_names_fix.append(label_fix)
+        sorted_labels_names = sorted_labels_names_fix
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
         # Remove labels that are not in sorted_labels_names
         labels = [l for l in labels if l.name in sorted_labels_names]
@@ -557,7 +569,7 @@ def calc_connectivity(data, labels, hemis, args):
     #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     # import time
     M = data.shape[0]
-    W = data.shape[2] if not 'windows' in args or args.windows == 0 else args.windows
+    W = data.shape[2] if not 'windows' in args else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, len(args.conditions)))
@@ -871,7 +883,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
-    parser.add_argument('--windows', help='', required=False, default=0, type=int)
+    parser.add_argument('--windows', help='', required=False, default=1, type=int)
     parser.add_argument('--t_max', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)

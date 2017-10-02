@@ -977,8 +977,6 @@ def full_extent(ax, pad=0.0):
 
     return bbox.expanded(1.0 + pad, 1.0 + pad)
 
-# @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
-# @utils.timeit
 # @utils.ignore_warnings
 def create_slices(subject, xyz, modality='mri', header=None, data=None):
     import matplotlib
@@ -1156,6 +1154,7 @@ def get_image_data(image_data, order, flips, ii, pos):
 def save_images_data_and_header(subject):
     def get_data_and_header(subject, modality):
         # print('Loading header and data for {}, {}'.format(subject, modality))
+        utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
         if modality == 'mri':
             fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
             if not op.isfile(fname):
@@ -1181,19 +1180,19 @@ def save_images_data_and_header(subject):
         data = header.get_data()
         return data, header
 
+    ret = True
     for modality in ['mri', 'ct']:
         data, header = get_data_and_header(subject, modality)
+        if data is None or header is None:
+            continue
         affine = header.affine
         precentiles = np.percentile(data, (1, 99))
         colors_ratio = 256 / (precentiles[1] - precentiles[0])
         output_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_data.npz'.format(modality))
         if not op.isfile(output_fname):
             np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
-        # percentiles_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_1_99_precentiles.npy'.format(modality))
-        # if not op.isfile(percentiles_fname):
-        #     precentiles = np.percentile(data, (1, 99))
-        #     np.save(percentiles_fname, precentiles)
-        # return header, data
+        ret = ret and op.isfile(output_fname)
+    return ret
 
 
 def main(subject, remote_subject_dir, args, flags):
@@ -1256,6 +1255,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'calc_3d_atlas'):
         flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
+
+    if utils.should_run(args, 'save_images_data_and_header'):
+        flags['save_images_data_and_header'] = save_images_data_and_header(subject)
 
     if utils.should_run(args, 'create_new_subject_blend_file'):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
@@ -1362,8 +1364,8 @@ if __name__ == '__main__':
     #     print('Source freesurfer and rerun')
     # else:
     # read_flat_brain_patch('sample')
-    # pu.run_on_subjects(args, main)
-    save_images_data_and_header(args.subject[0])
+    pu.run_on_subjects(args, main)
+    # save_images_data_and_header(args.subject[0])
     print('finish!')
 
     # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'

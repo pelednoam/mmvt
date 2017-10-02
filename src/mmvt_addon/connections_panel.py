@@ -60,6 +60,7 @@ def check_connections(stat=STAT_DIFF):
     # d = load_connections_file()
     d = ConnectionsPanel.d
     if d is None:
+        print('No connection file!')
         return None
     threshold = bpy.context.scene.connections_threshold
     threshold_type = bpy.context.scene.connections_threshold_type
