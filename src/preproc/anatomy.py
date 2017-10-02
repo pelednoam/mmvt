@@ -1087,6 +1087,8 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
         #     fig.add_axes(ax)
         # ax = axes[ii]
         d = get_image_data(data, order, flips, ii, coordinates)
+        if d is None:
+            continue
         if modality == 'ct':
             d[np.where(d == 0)] = -200
         ax.imshow(
@@ -1137,7 +1139,10 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
 
 
 def get_image_data(image_data, order, flips, ii, pos):
-    data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
+    try:
+        data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
+    except:
+        return None
     xax = [1, 0, 0][ii]
     yax = [2, 2, 1][ii]
     if order[xax] < order[yax]:

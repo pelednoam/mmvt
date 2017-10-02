@@ -294,33 +294,32 @@ def update_slices(modality='mri'):
     images_names = ['{}_{}.png'.format(modality, pres) for pres in ['sagital', 'coronal', 'axial']]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
+    extra_images = set([img.name for img in bpy.data.images]) - set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
+    for img_name in extra_images:
+        bpy.data.images.remove(bpy.data.images[img_name])
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             override = bpy.context.copy()
             override['area'] = area
             override["screen"] = screen
-            bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
-            # bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
+            if images_names[ind] not in bpy.data.images:
+                bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
+            else:
+                # bpy.data.images[images_names[ind]].reload()
+                image = bpy.data.images[images_names[ind]]
+                image.reload()
+                area.spaces.active.image = image
+                # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
             bpy.ops.image.view_zoom_ratio(override, ratio=1)
             ind += 1
     # mu.conn_to_listener.close()
 
 
 def init_slices():
-    screen = bpy.data.screens['Neuro']
-    images_names = ['{}_{}.png'.format('mri', pres) for pres in ['sagital', 'coronal', 'axial']]
-    images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
-    ind = 0
-    for area in screen.areas:
-        if area.type == 'IMAGE_EDITOR':
-            override = bpy.context.copy()
-            override['area'] = area
-            override["screen"] = screen
-            bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
-            bpy.ops.image.view_zoom_ratio(override, ratio=1)
-            area.spaces.active.mode = 'MASK'
-            ind += 1
-# area.spaces.active.image
+    extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
+    for img_name in extra_images:
+        bpy.data.images.remove(bpy.data.images[img_name])
+
 
 def start_slicer_server():
     cmd = '{} -m src.listeners.slicer_listener'.format(bpy.context.scene.python_cmd)

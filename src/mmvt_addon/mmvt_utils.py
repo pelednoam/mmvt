@@ -680,7 +680,8 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
                 print('stdin output: {}'.format(output))
             except:
                 print("Something is wrong with the in pipe, can't write to stdin!!!")
-                print(traceback.format_exc())
+                break
+                # print(traceback.format_exc())
         print('End of write_to_stdin')
 
     def read_from_stdout(proc, q_out, while_func):
@@ -692,7 +693,8 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
                     # print('stdout: {}'.format(line))
             except:
                 print('Error in reading stdout!!!')
-                print(traceback.format_exc())
+                break
+                # print(traceback.format_exc())
         print('End of read_from_stdout')
 
     def read_from_stderr(proc, while_func):
@@ -704,7 +706,8 @@ def run_command_and_read_queue(cmd, q_in, q_out, shell=True, read_stdin=True, re
                     print('stderr: {}'.format(line))
             except:
                 print('Error in reading stderr!!!')
-                print(traceback.format_exc())
+                break
+                # print(traceback.format_exc())
         print('End of read_from_stderr')
 
     stdout = PIPE if read_stdout else None
