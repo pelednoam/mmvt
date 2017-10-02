@@ -104,6 +104,8 @@ def import_hemis_for_functional_maps(base_path):
                 cur_obj.hide_select = True
                 cur_obj.data.vertex_colors.new()
                 # cur_obj.data.vertex_colors.new('blank')
+                # for vert in cur_obj.data.vertex_colors['blank'].data:
+                #     vert.color = (1.0, 1.0, 1)
         except:
             mu.log_err('Error in importing {}'.format(ply_fname), logging)
 

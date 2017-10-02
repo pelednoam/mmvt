@@ -74,6 +74,8 @@ import load_results_panel
 importlib.reload(load_results_panel)
 import list_panel
 importlib.reload(list_panel)
+import slicer_panel
+importlib.reload(slicer_panel)
 
 
 print("mmvt addon started!")
@@ -302,6 +304,8 @@ create_slices = where_am_i_panel.create_slices
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 
 def get_max_time_steps():
@@ -496,7 +500,7 @@ def get_panels():
     return (appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, connections_panel, vertex_data_panel, dti_panel,
-            pizco_panel)
+            pizco_panel, slicer_panel)
 
 
 def load_all_panels(addon_prefs=None):
@@ -543,8 +547,13 @@ def main(addon_prefs=None):
             for hemi in ['lh', 'rh']:
                 bpy.data.objects[hemi].hide = True
                 bpy.data.objects[hemi].hide_render = True
-                if bpy.data.objects.get('inflated_{}'.format(hemi)):
-                    bpy.data.objects['inflated_{}'.format(hemi)].active_material = bpy.data.materials['Activity_map_mat']
+                inflated_obj = bpy.data.objects.get('inflated_{}'.format(hemi))
+                if inflated_obj:
+                    inflated_obj.active_material = bpy.data.materials['Activity_map_mat']
+                # if inflated_obj.data.vertex_colors.get('blank') is None:
+                #     inflated_obj.data.vertex_colors.new('blank')
+                #     for vert in inflated_obj.data.vertex_colors['blank'].data:
+                #         vert.color = (1.0, 1.0, 1)
         pass
     except:
         print('The classes are already registered!')

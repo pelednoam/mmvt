@@ -347,8 +347,11 @@ def init_listener():
 
 def create_slices(modalities='mri'):
     init_listener()
-
+    slice_brain(bpy.context.scene.cursor_location, bpy.types.Scene.cut_type,
+                op.join(mu.get_user_fol(), 'figures', 'slices'))
+    print()
     pos = bpy.context.scene.cursor_location * 10
+
     # x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     # xyz = ','.join(map(str, [x, y, z]))
     xyz = ','.join(map(str, pos))
@@ -564,6 +567,7 @@ bpy.types.Scene.closest_label_output = bpy.props.StringProperty()
 bpy.types.Scene.closest_label = bpy.props.StringProperty()
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
+bpy.types.Scene.cut_type = 'sagital'
 # bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
 
