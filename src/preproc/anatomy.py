@@ -1154,6 +1154,48 @@ def get_image_data(image_data, order, flips, ii, pos):
     return data
 
 
+def save_images_data_and_header(subject):
+    def get_data_and_header(subject, modality):
+        # print('Loading header and data for {}, {}'.format(subject, modality))
+        if modality == 'mri':
+            fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
+            if not op.isfile(fname):
+                subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+                if op.isfile(subjects_fname):
+                    shutil.copy(subjects_fname, fname)
+                else:
+                    print("Can't find subject's T1.mgz!")
+                    return None, None
+        elif modality == 'ct':
+            fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
+            if not op.isfile(fname):
+                subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
+                if op.isfile(subjects_fname):
+                    shutil.copy(subjects_fname, fname)
+                else:
+                    print("Can't find subject's CT! ({})".format(fname))
+                    return None, None
+        else:
+            print('create_slices: The modality {} is not supported!')
+            return None, None
+        header = nib.load(fname)
+        data = header.get_data()
+        return data, header
+
+    for modality in ['mri', 'ct']:
+        data, header = get_data_and_header(subject, modality)
+        affine = header.affine
+        precentiles = np.percentile(data, (1, 99))
+        output_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_data.npz'.format(modality))
+        if not op.isfile(output_fname):
+            np.savez(output_fname, data=data, affine=affine, precentiles=precentiles)
+        # percentiles_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_1_99_precentiles.npy'.format(modality))
+        # if not op.isfile(percentiles_fname):
+        #     precentiles = np.percentile(data, (1, 99))
+        #     np.save(percentiles_fname, precentiles)
+        # return header, data
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -1320,7 +1362,8 @@ if __name__ == '__main__':
     #     print('Source freesurfer and rerun')
     # else:
     # read_flat_brain_patch('sample')
-    pu.run_on_subjects(args, main)
+    # pu.run_on_subjects(args, main)
+    save_images_data_and_header(args.subject[0])
     print('finish!')
 
     # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'

@@ -289,12 +289,13 @@ def grow_a_label():
 
 
 # @mu.timeit
-def update_slices(modality='mri'):
+def update_slices(modality='mri', ratio=1):
     screen = bpy.data.screens['Neuro']
     images_names = ['{}_{}.png'.format(modality, pres) for pres in ['sagital', 'coronal', 'axial']]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
-    extra_images = set([img.name for img in bpy.data.images]) - set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
+    extra_images = set([img.name for img in bpy.data.images]) - \
+                   set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
     for area in screen.areas:
@@ -304,21 +305,20 @@ def update_slices(modality='mri'):
             override["screen"] = screen
             if images_names[ind] not in bpy.data.images:
                 bpy.data.images.load(op.join(images_fol, images_names[ind]), check_existing=False)
+                area.spaces.active.mode = 'MASK'
             # bpy.data.images[images_names[ind]].reload()
             image = bpy.data.images[images_names[ind]]
             image.reload()
             area.spaces.active.image = image
             # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
-            bpy.ops.image.view_zoom_ratio(override, ratio=1)
+            bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
             ind += 1
-    # mu.conn_to_listener.close()
 
 
 def init_slices():
     extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
-
 
 
 def start_slicer_server():
@@ -347,9 +347,9 @@ def init_listener():
 
 def create_slices(modalities='mri'):
     init_listener()
-    slice_brain(bpy.context.scene.cursor_location, bpy.types.Scene.cut_type,
-                op.join(mu.get_user_fol(), 'figures', 'slices'))
-    print()
+    # slice_brain(bpy.context.scene.cursor_location, bpy.types.Scene.cut_type,
+    #             op.join(mu.get_user_fol(), 'figures', 'slices'))
+    # print()
     pos = bpy.context.scene.cursor_location * 10
 
     # x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]

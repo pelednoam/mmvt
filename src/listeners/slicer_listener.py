@@ -124,7 +124,8 @@ class AddonListener(object):
                 # pass
                 print(traceback.format_exc())
         print('Stop listening!')
-        self.listener.close()
+        if self.listener is not None:
+            self.listener.close()
 
 
 def main():

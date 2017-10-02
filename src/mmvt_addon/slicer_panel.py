@@ -328,6 +328,7 @@ def init(addon):
     bpy.context.scene.show_full_slice = False
     create_joint_brain_obj()
     print('init slicer')
+    register()
 
 
 def register():

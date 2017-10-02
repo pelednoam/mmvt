@@ -451,6 +451,7 @@ class SelectionListener(bpy.types.Operator):
             for area in screen.areas:
                 if area.type == 'IMAGE_EDITOR':
                     print(area.spaces[0].cursor_location)
+                    
             #
                         # _addon().save_cursor_position()
 
