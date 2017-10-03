@@ -113,7 +113,15 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         return None
 
 
-
+def on_click(ii, x, y, sizes, flips):
+    xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
+    x = sizes[xax] - x if flips[xax] else x
+    y = sizes[yax] - y if flips[yax] else y
+    idxs = [None, None, None, 1.]
+    idxs[xax] = x
+    idxs[yax] = y
+    idxs[ii] = self.    _data_idx[ii]
+    self._set_position(*np.dot(self._affine, idxs)[:3])
 
 # Most of this code is taken from nibabel
 def axcodes2ornt(axcodes, labels=None):

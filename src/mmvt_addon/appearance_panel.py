@@ -452,10 +452,7 @@ class SelectionListener(bpy.types.Operator):
                 if area.type == 'IMAGE_EDITOR':
                     pos = area.spaces[0].cursor_location
                     image_name = area.spaces.active.image.name
-                    print('asdf')
-                    
-            #
-                        # _addon().save_cursor_position()
+                    # print('asdf')
 
         if self.right_clicked:
             self.right_clicked = False
