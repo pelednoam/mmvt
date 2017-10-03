@@ -10,7 +10,13 @@ from coloring_panel import calc_colors
 
 def init(modality, modality_data=None, colormap=None):
     if modality_data is None:
-        modality_data = mu.Bag(np.load(op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))))
+        fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))
+        if op.isfile(fname):
+            modality_data = mu.Bag(np.load(fname))
+        else:
+            print('To see the slices you need to create the file {}_data.npz by calling:'.format(modality))
+            print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
+            return None
     if colormap is None:
         colormap_fname = op.join(mu.file_fol(), 'color_maps', 'gray.npy')
         colormap = np.load(colormap_fname)

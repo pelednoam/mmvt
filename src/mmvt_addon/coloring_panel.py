@@ -878,9 +878,20 @@ def color_manually():
     subject_fol = mu.get_user_fol()
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     values = []
+    coloring_objects, coloring_labels = False, False
     rand_colors = cu.get_distinct_colors(30)
     labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
-    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', '{}.csv'.format(bpy.context.scene.coloring_files))):
+    coloring_name = '{}.csv'.format(bpy.context.scene.coloring_files)
+    if coloring_name.startswith('_labels_'):
+        atlas = coloring_name.split('_')[2]
+        obj_type = mu.OBJ_TYPE_LABEL
+        coloring_labels = True
+    else:
+        obj_type = ''
+        coloring_objects = True
+    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
+        if len(line) == 0:
+            continue
         obj_name, color_name = line[0], line[1:4]
         if len(line) == 5:
             values.append(float(line[4]))
@@ -888,7 +899,8 @@ def color_manually():
             continue
         if isinstance(color_name, list) and len(color_name) == 1:
             color_name = color_name[0]
-        obj_type = mu.check_obj_type(obj_name)
+        if obj_type == '':
+            obj_type = mu.check_obj_type(obj_name)
         if obj_type is None:
             delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
             if delim != '' and pos != '' and hemi != '' and label != obj_name:
@@ -914,7 +926,11 @@ def color_manually():
                 colors[obj_type].append(color_rgb)
                 data[obj_type].append(1.)
 
-    color_objects(objects_names, colors, data)
+    if coloring_objects:
+        color_objects(objects_names, colors, data)
+    elif coloring_labels:
+        plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
+
     if len(values) > 0:
         _addon().set_colorbar_max_min(np.max(values), np.min(values))
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
@@ -1637,13 +1653,21 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         return {'FINISHED'}
 
 
-def plot_label(label_fname):
-    label = mu.read_label_file(label_fname)
-    hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
-    label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
+def plot_label(label, color=''):
+    if isinstance(label, str):
+        label = mu.read_label_file(label)
+    else:
+        try:
+            _, _, _ = label.name, label.vertices, label.pos
+        except:
+            raise Exception('plot_label: label can be label fname or label object!')
+    # hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
+    # label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
     # bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
-    print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
-    ColoringMakerPanel.labels_plotted.append((label, list(bpy.context.scene.labels_color)))
+    # print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
+
+    color = list(bpy.context.scene.labels_color) if color == '' else color
+    ColoringMakerPanel.labels_plotted.append((label, color))
     hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
     data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
     for label, color in ColoringMakerPanel.labels_plotted:
@@ -1651,6 +1675,20 @@ def plot_label(label_fname):
     for hemi in mu.HEMIS:
         color_hemi_data(hemi, data[hemi], threshold=0.5)
     _addon().show_activity()
+
+
+def plot_labels(labels_names, colors, atlas):
+    atlas_labels = mu.read_labels_from_annots(mu.get_user(), mu.get_subjects_dir(), atlas, hemi='both')
+    org_delim, org_pos, label, label_hemi = mu.get_hemi_delim_and_pos(atlas_labels[0].name)
+    labels_names_fix = []
+    for label_name in labels_names:
+        delim, pos, label, label_hemi = mu.get_hemi_delim_and_pos(label_name)
+        label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
+        labels_names_fix.append(label_fix)
+    labels = [l for l in atlas_labels if l.name in labels_names_fix]
+    # todo: check if bpy.context.scene.color_rois_homogeneously
+    for label, color in zip(labels, colors):
+        plot_label(label, color)
 
 
 def clear_colors():

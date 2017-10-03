@@ -452,7 +452,10 @@ def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False
                 params.append((subject, atlas, hemi, surface_type, vertices_labels_ids_lookup[hemi]))
 
     if len(params) > 0:
-        results = utils.run_parallel(_parcelate_cortex_parallel, params, njobs=n_jobs)
+        if n_jobs > 1:
+            results = utils.run_parallel(_parcelate_cortex_parallel, params, njobs=n_jobs)
+        else:
+            results = [_parcelate_cortex_parallel(p) for p in params]
         return all(results)
     else:
         return True
@@ -1253,9 +1256,6 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_subject_orig_trans'):
         flags['save_subject_orig_trans'] = save_subject_orig_trans(subject)
 
-    if utils.should_run(args, 'calc_3d_atlas'):
-        flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
-
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject)
 
@@ -1286,6 +1286,10 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'create_slices' in args.function:
         flags['create_slices'] = create_slices(subject, args.slice_xyz, args.slices_modality)
+
+    if 'calc_3d_atlas' in args.function:
+        flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
+
 
     return flags
 

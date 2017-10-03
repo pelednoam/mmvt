@@ -358,6 +358,8 @@ def init_listener():
 
 
 def create_slices(modalities='mri', pos=None):
+    if WhereAmIPanel.slicer_state is None:
+        return
     if pos is None:
         pos = bpy.context.scene.cursor_location
     if WhereAmIPanel.run_slices_listener:
@@ -396,6 +398,8 @@ def save_slices_cursor_pos():
 
 
 def slices_were_clicked():
+    if WhereAmIPanel.slicer_state is None:
+        return
     screen = bpy.data.screens['Neuro']
     images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
     for area in screen.areas:

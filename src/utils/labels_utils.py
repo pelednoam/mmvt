@@ -210,7 +210,7 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
                                  labels_fol=read_labels_from_fol)
         else:
             labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
-        if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
+        if True: # 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
             create_unknown_label = True
             verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
             unknown_verts = set(range(verts.shape[0]))
