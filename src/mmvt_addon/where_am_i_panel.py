@@ -111,6 +111,7 @@ def voxel_coo_update(self, context):
         set_ras_coo(ras[0])
         WhereAmIPanel.update = True
     get_3d_atlas_name()
+    create_slices()
 
 
 def get_3d_atlas_name():
@@ -350,35 +351,20 @@ def init_listener():
 
 
 def create_slices(modalities='mri'):
-    # init_listener()
+    if WhereAmIPanel.run_slices_listener:
+        init_listener()
+        xyz = ','.join(map(str, bpy.context.scene.cursor_location * 10))
+        ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
+            subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
+        flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
+            '_'.join(modalities.split(','))))
+        bpy.ops.mmvt.wait_for_slices()
+        return
 
-    # slice_brain(bpy.context.scene.cursor_location, bpy.types.Scene.cut_type,
-    #             op.join(mu.get_user_fol(), 'figures', 'slices'))
-    # print()
-
-    # x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
-    # xyz = ','.join(map(str, [x, y, z]))
-    # xyz = ','.join(map(str, pos))
-    # output_files = glob.glob(op.join(mu.get_user_fol(), 'figures', 'slices', '{}_*.png'.format(modality)))
-    # for output_file in output_files:
-    #     os.remove(output_file)
-
-    # flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
-    #     '_'.join(modalities.split(','))))
-    # mu.remove_file(flag_fname)
-    # cmd = '{} -m src.preproc.anatomy -s {} -f create_slices --slice_xyz {} --slices_modalities {}'.format(
-    #     bpy.context.scene.python_cmd, mu.get_user(), pos, modalities)
-    # print('Running {}'.format(cmd))
-    # WhereAmIPanel.tic = time.time()
-    # print(WhereAmIPanel.tic)
-    # mu.run_command_in_new_thread(cmd, False)
-
-    # ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
-    #     subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
     if WhereAmIPanel.mri_data is None or WhereAmIPanel.gray_colormap is None:
-        print('To be able to see slices, you need to do the following:')
+        print('To be able to see the slices, you need to do the following:')
         if WhereAmIPanel.mri_data is None:
-            print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header')
+            print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
         if WhereAmIPanel.gray_colormap is None:
             print('python -m src.setup -f copy_resources_files')
         return
@@ -392,7 +378,6 @@ def create_slices(modalities='mri'):
     xyz = [x, y, z]
     images = slicer.create_slices(xyz, 'mri',modality_data=WhereAmIPanel.mri_data, colormap=WhereAmIPanel.gray_colormap)
     update_slices(modality='mri', ratio=1, images=images)
-    bpy.ops.mmvt.wait_for_slices()
 
 
 class WaitForSlices(bpy.types.Operator):
@@ -648,7 +633,9 @@ def init(addon):
 
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
-        # start_slicer_server()
+        WhereAmIPanel.run_slices_listener = False
+        if WhereAmIPanel.run_slices_listener:
+            start_slicer_server()
         init_slices()
         register()
     except:

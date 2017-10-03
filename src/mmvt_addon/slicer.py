@@ -27,6 +27,7 @@ def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
     scalers = voxel_sizes(affine)
     x, y, z = xyz
     coordinates = np.array([x, y, z])[order].astype(int)
+    # print(coordinates)
 
     r = [scalers[order[2]] / scalers[order[1]],
          scalers[order[2]] / scalers[order[0]],
@@ -94,12 +95,11 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
 
-    print(horz_cross)
+    # print(prespective, horz_cross, vert_corss)
     for x in range(data.shape[0]):
-        pixels[x, horz_cross] = [0, 1, 0, 1]
-        # pixels[x, data.shape[1] - horz_cross] = [1, 0, 0, 1]
+        pixels[x, vert_corss] = [0, 1, 0, 1]
     for y in range(data.shape[1]):
-        pixels[vert_corss, y] = [0, 1, 0, 1]
+        pixels[horz_cross, y] = [0, 1, 0, 1]
 
 
     image.pixels = pixels.ravel()
