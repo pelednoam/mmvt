@@ -447,10 +447,12 @@ class SelectionListener(bpy.types.Operator):
                 self.cursor_pos = tuple(bpy.context.scene.cursor_location)
                 _addon().create_slices()
                 _addon().save_cursor_position()
-            # screen = bpy.data.screens['Neuro']
-            # for area in screen.areas:
-            #     if area.type == 'IMAGE_EDITOR':
-            #         print(area.spaces[0].cursor_location)
+            screen = bpy.data.screens['Neuro']
+            for area in screen.areas:
+                if area.type == 'IMAGE_EDITOR':
+                    pos = area.spaces[0].cursor_location
+                    image_name = area.spaces.active.image.name
+                    print('asdf')
                     
             #
                         # _addon().save_cursor_position()

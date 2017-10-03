@@ -113,6 +113,8 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         return None
 
 
+
+
 # Most of this code is taken from nibabel
 def axcodes2ornt(axcodes, labels=None):
     """ Convert axis codes `axcodes` to an orientation
