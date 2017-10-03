@@ -314,6 +314,8 @@ def update_slices(modality='mri', ratio=1, images=None):
                 image.reload()
             else:
                 image = images[perspectives[ind]]
+                if area.spaces.active.mode != 'MASK':
+                    area.spaces.active.mode = 'MASK'
             area.spaces.active.image = image
             # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
             bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
@@ -350,10 +352,12 @@ def init_listener():
     return ret
 
 
-def create_slices(modalities='mri'):
+def create_slices(modalities='mri', pos=None):
+    if pos is None:
+        pos = bpy.context.scene.cursor_location
     if WhereAmIPanel.run_slices_listener:
         init_listener()
-        xyz = ','.join(map(str, bpy.context.scene.cursor_location * 10))
+        xyz = ','.join(map(str, pos * 10))
         ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
             subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
         flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
@@ -373,7 +377,7 @@ def create_slices(modalities='mri'):
     import importlib
     importlib.reload(slicer)
 
-    pos = bpy.context.scene.cursor_location * 10
+    pos = np.array(pos)
     x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     xyz = [x, y, z]
     images = slicer.create_slices(xyz, 'mri',modality_data=WhereAmIPanel.mri_data, colormap=WhereAmIPanel.gray_colormap)
@@ -634,9 +638,11 @@ def init(addon):
         WhereAmIPanel.addon = addon
         WhereAmIPanel.init = True
         WhereAmIPanel.run_slices_listener = False
+        init_slices()
         if WhereAmIPanel.run_slices_listener:
             start_slicer_server()
-        init_slices()
+        else:
+            create_slices('mri', (0, 0, 0))
         register()
     except:
         print("Can't init where-am-I panel!")

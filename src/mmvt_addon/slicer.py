@@ -2,6 +2,7 @@ import bpy
 import numpy as np
 import numpy.linalg as npl
 import os.path as op
+import traceback
 
 import mmvt_utils as mu
 from coloring_panel import calc_colors
@@ -62,8 +63,8 @@ def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
             d[np.where(d == 0)] = -200
         image = create_image(d, d.shape, clim, colors_ratio, prespective, modality, colormap,
                              int(horizs[ii][0, 1]), int(verts[ii][0, 0]))
-
-        images[prespective] = image
+        if image is not None:
+            images[prespective] = image
     return images
 
 
@@ -71,6 +72,7 @@ def get_image_data(image_data, order, flips, ii, pos):
     try:
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
+        print(traceback.format_exc())
         return None
     xax = [1, 0, 0][ii]
     yax = [2, 2, 1][ii]
@@ -90,20 +92,25 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
     else:
         image = bpy.data.images[image_name]
 
-    colors = calc_colors(data, clim[0], colors_ratio, colormap)
-    # add alpha value
-    pixels = np.ones((colors.shape[0], colors.shape[1], 4))
-    pixels[:, :, :3] = colors
+    try:
+        colors = calc_colors(data, clim[0], colors_ratio, colormap)
+        # add alpha value
+        pixels = np.ones((colors.shape[0], colors.shape[1], 4))
+        pixels[:, :, :3] = colors
 
-    # print(prespective, horz_cross, vert_corss)
-    for x in range(data.shape[0]):
-        pixels[x, vert_corss] = [0, 1, 0, 1]
-    for y in range(data.shape[1]):
-        pixels[horz_cross, y] = [0, 1, 0, 1]
+        # print(prespective, horz_cross, vert_corss)
+        if 0 <= vert_corss < data.shape[1]:
+            for x in range(data.shape[0]):
+                pixels[x, vert_corss] = [0, 1, 0, 1]
+        if 0 <= horz_cross < data.shape[0]:
+            for y in range(data.shape[1]):
+                pixels[horz_cross, y] = [0, 1, 0, 1]
 
-
-    image.pixels = pixels.ravel()
-    return image
+        image.pixels = pixels.ravel()
+        return image
+    except:
+        print(traceback.format_exc())
+        return None
 
 
 # Most of this code is taken from nibabel
