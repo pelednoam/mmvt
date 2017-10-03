@@ -377,7 +377,7 @@ def create_slices(modalities='mri', pos=None):
     import importlib
     importlib.reload(slicer)
 
-    pos = np.array(pos)
+    pos = np.array(pos * 10)
     x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     xyz = [x, y, z]
     images = slicer.create_slices(xyz, 'mri',modality_data=WhereAmIPanel.mri_data, colormap=WhereAmIPanel.gray_colormap)
