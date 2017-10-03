@@ -11,7 +11,7 @@ def slice_brain():
     create_joint_brain_obj()
     # coordinate = list(D.screens['Default'].areas[3].spaces[0].cursor_location)
     optional_cut_types = ['sagital', 'coronal', 'axial']
-    optional_rots = [[1.5708, 0, 1.5708], [1.5708, 0, 0], [0, 0, 0]]
+    optional_rots = [[1.5708, 0, 1.5708], [1.5708, 0, 3.14], [0, 3.14, 0]]
     option_ind = optional_cut_types.index(cut_type)
     cut_pos = [0.0, 0.0, 0.0]
     cut_pos[option_ind] = coordinate[option_ind]
@@ -24,17 +24,24 @@ def slice_brain():
     else:
         bpy.data.objects['{}_plane'.format(cut_type)].hide = False
         bpy.data.objects['{}_plane'.format(cut_type)].hide_render = False
+    optional_cut_types.remove(cut_type)
+    for cut in optional_cut_types:
+        if bpy.data.objects.get('{}_plane'.format(cut)):
+            bpy.data.objects['{}_plane'.format(cut)].hide = True
+            bpy.data.objects['{}_plane'.format(cut)].hide_render = True
+
+
     cur_plane_obj = bpy.data.objects['{}_plane'.format(cut_type)]
     cur_plane_obj.location = tuple(cut_pos)
     images_path = 'mri_{}.png'.format(cut_type)
     # slice_image_path = glob.glob('{}*{}*'.format(images_path, cut_type))
-    slice_image = bpy.data.images.load(images_path)
+    slice_image = bpy.data.images[images_path]
     cur_plane_obj.data.uv_textures['UVMap'].data[0].image = slice_image
     if bpy.data.objects.get('masking_cube') is None:
         bpy.ops.mesh.primitive_cube_add(radius=10)
         bpy.context.object.name = 'masking_cube'
     cube_location = [0, 0, 0]
-    if cut_pos[option_ind] > 0:
+    if cut_pos[option_ind] > 0 or cut_type == 'axial':
         cube_location[option_ind] = cut_pos[option_ind] + 9.99
     elif cut_pos[option_ind] < 0:
         cube_location[option_ind] = cut_pos[option_ind] - 9.99
@@ -70,7 +77,7 @@ def create_joint_brain_obj():
     if bpy.data.objects.get('joint_brain') is None:
         bpy.ops.mesh.primitive_cube_add(radius=0.1, location=(500, 500, 500))
         bpy.context.object.name = 'joint_brain'
-        for hemi in ['lh', 'rh']:
+        for hemi in ['lh', 'rh', 'Brain-Stem', 'Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex']:
             bpy.ops.object.modifier_add(type='BOOLEAN')
             bpy.data.objects['joint_brain'].modifiers['Boolean'].object = bpy.data.objects[hemi]
             bpy.data.objects['joint_brain'].modifiers['Boolean'].operation = 'UNION'
@@ -264,7 +271,7 @@ def create_joint_brain_obj():
 #     # layout.operator(ColorbarButton.bl_idname, text="Do something", icon='ROTATE')
 
 
-def show_full_slice_update():
+def show_full_slice_update(self, context):
     for cut_type in ['axial', 'coronal', 'sagital']:
         if bpy.data.objects.get('{}_plane'.format(cut_type)):
             bpy.data.objects['{}_plane'.format(cut_type)].modifiers['Boolean'].show_viewport =\
@@ -296,9 +303,8 @@ items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Type of slice')
 # bpy.types.Scene.slice_using_left_click = bpy.props.BoolProperty(
 #     default=True, description="slice_using_left_click", update=show_cb_in_render_update)
-# bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(
-#     default=False, update=show_full_slice_update)
-bpy.types.Scene.show_full_slice = bpy.props.BoolProperty()
+bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update)
+# bpy.types.Scene.show_full_slice = bpy.props.BoolProperty()
 
 
 def slicer_draw(self, context):
