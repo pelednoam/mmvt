@@ -1,13 +1,17 @@
 import bpy
 import mathutils
 import numpy as np
-import mmvt_utils as mu
+import importlib
 import glob
 import traceback
 from collections import Counter
 import os.path as op
 import os
 import time
+import mmvt_utils as mu
+import slicer
+importlib.reload(slicer)
+
 
 def _addon():
     return WhereAmIPanel.addon
@@ -111,7 +115,7 @@ def voxel_coo_update(self, context):
         set_ras_coo(ras[0])
         WhereAmIPanel.update = True
     get_3d_atlas_name()
-    create_slices()
+    # create_slices()
 
 
 def get_3d_atlas_name():
@@ -326,6 +330,7 @@ def init_slices():
     extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
+    # save_slices_cursor_pos()
 
 
 def start_slicer_server():
@@ -373,15 +378,39 @@ def create_slices(modalities='mri', pos=None):
             print('python -m src.setup -f copy_resources_files')
         return
 
-    import slicer
-    import importlib
-    importlib.reload(slicer)
-
-    pos = np.array(pos * 10)
+    pos = np.array(pos) * 10
     x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     xyz = [x, y, z]
-    images = slicer.create_slices(xyz, 'mri',modality_data=WhereAmIPanel.mri_data, colormap=WhereAmIPanel.gray_colormap)
+    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, 'mri')
     update_slices(modality='mri', ratio=1, images=images)
+
+
+def save_slices_cursor_pos():
+    screen = bpy.data.screens['Neuro']
+    for area in screen.areas:
+        if area.type == 'IMAGE_EDITOR':
+            active_image = area.spaces.active.image
+            if active_image is not None:
+                pos = area.spaces.active.cursor_location
+                WhereAmIPanel.slices_cursor_pos[active_image.name] = tuple(pos)
+
+
+def slices_were_clicked():
+    screen = bpy.data.screens['Neuro']
+    images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
+    for area in screen.areas:
+        if area.type == 'IMAGE_EDITOR':
+            active_image = area.spaces.active.image
+            if active_image is not None:
+                pos = tuple(area.spaces.active.cursor_location)
+                if pos != WhereAmIPanel.slices_cursor_pos[active_image.name]:
+                    print(active_image.name, pos)
+                    image_ind = images_names.index(active_image.name)
+                    new_pos = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
+                    x, y, z = apply_trans(_trans().vox2ras_tkr, np.array([new_pos])).astype(np.int)[0] / 10
+                    bpy.context.scene.cursor_location = (x, y, z)
+                    _addon().save_cursor_position()
+    save_slices_cursor_pos()
 
 
 class WaitForSlices(bpy.types.Operator):
@@ -598,6 +627,8 @@ class WhereAmIPanel(bpy.types.Panel):
     move_cursor = True
     mri_data = None
     gray_colormap = None
+    slices_cursor_pos = {}
+    slicer_state = None
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -642,10 +673,13 @@ def init(addon):
         if WhereAmIPanel.run_slices_listener:
             start_slicer_server()
         else:
-            create_slices('mri', (0, 0, 0))
+            WhereAmIPanel.slicer_state = slicer.init('mri')
+            create_slices('mri', bpy.context.scene.cursor_location)
+        save_slices_cursor_pos()
         register()
     except:
         print("Can't init where-am-I panel!")
+        print(traceback.format_exc())
 
 
 def register():

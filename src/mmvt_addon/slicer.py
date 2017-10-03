@@ -8,8 +8,7 @@ import mmvt_utils as mu
 from coloring_panel import calc_colors
 
 
-def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
-
+def init(modality, modality_data=None, colormap=None):
     if modality_data is None:
         modality_data = mu.Bag(np.load(op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))))
     if colormap is None:
@@ -19,21 +18,42 @@ def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
     data = modality_data.data
     clim = modality_data.precentiles
     colors_ratio = modality_data.colors_ratio
-
     codes = axcodes2ornt(aff2axcodes(affine))
     order = np.argsort([c[0] for c in codes])
     flips = np.array([c[1] < 0 for c in codes])[order]
     flips[0] = not flips[0]
     sizes = [data.shape[order] for order in order]
     scalers = voxel_sizes(affine)
-    x, y, z = xyz
-    coordinates = np.array([x, y, z])[order].astype(int)
-    # print(coordinates)
-
     r = [scalers[order[2]] / scalers[order[1]],
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
+    self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
+                       colors_ratio=colors_ratio, colormap=colormap))
+    return self
 
+
+def create_slices(xyz, state=None, modality='mri', modality_data=None, colormap=None):
+    if state is None:
+        self = init(modality_data, modality, colormap)
+    else:
+        self = state
+    x, y, z = xyz[:3]
+    state.coordinates = np.array([x, y, z])[self.order].astype(int)
+    cross_vert, cross_horiz = calc_cross(state.coordinates, self.sizes, self.flips)
+    images = {}
+    for ii, xax, yax, ratio, prespective, label in zip(
+            [0, 1, 2], [1, 0, 0], [2, 2, 1], self.r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
+        d = get_image_data(self.data, self.order, self.flips, ii, state.coordinates)
+        if modality == 'ct':
+            d[np.where(d == 0)] = -200
+        image = create_image(d, d.shape, self.clim, self.colors_ratio, prespective, modality, self.colormap,
+                             int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
+        if image is not None:
+            images[prespective] = image
+    return images
+
+
+def calc_cross(coordinates, sizes, flips):
     verts, horizs = [None] * 3, [None] * 3
     for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
         verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
@@ -52,28 +72,15 @@ def create_slices(xyz, modality='mri', modality_data=None, colormap=None):
         else:  # ii == 2
             horizs[1][:, 1] = loc
             horizs[0][:, 1] = loc
-
-    images = {}
-    for ii, xax, yax, ratio, prespective, label in zip(
-            [0, 1, 2], [1, 0, 0], [2, 2, 1], r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
-        d = get_image_data(data, order, flips, ii, coordinates)
-        if d is None:
-            continue
-        if modality == 'ct':
-            d[np.where(d == 0)] = -200
-        image = create_image(d, d.shape, clim, colors_ratio, prespective, modality, colormap,
-                             int(horizs[ii][0, 1]), int(verts[ii][0, 0]))
-        if image is not None:
-            images[prespective] = image
-    return images
+    return verts, horizs
 
 
 def get_image_data(image_data, order, flips, ii, pos):
     try:
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
-        print(traceback.format_exc())
-        return None
+        data = np.zeros(np.rollaxis(image_data, axis=order[ii])[0].shape)
+        return data
     xax = [1, 0, 0][ii]
     yax = [2, 2, 1][ii]
     if order[xax] < order[yax]:
@@ -113,15 +120,21 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         return None
 
 
-def on_click(ii, x, y, sizes, flips):
+def on_click(ii, xy, state):
+    x, y = xy
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
-    x = sizes[xax] - x if flips[xax] else x
-    y = sizes[yax] - y if flips[yax] else y
-    idxs = [None, None, None, 1.]
-    idxs[xax] = x
-    idxs[yax] = y
-    idxs[ii] = self.    _data_idx[ii]
-    self._set_position(*np.dot(self._affine, idxs)[:3])
+    trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
+    x = state.sizes[xax] - x if state.flips[xax] else x
+    y = state.sizes[yax] - y if state.flips[yax] else y
+    idxs = [None, None, None]
+    idxs[xax] = y
+    idxs[yax] = x
+    idxs[ii] = state.coordinates[ii]
+    idxs = [idxs[ind] for ind in trans]
+    # print(idxs)
+    create_slices(idxs, state) # np.dot(state.affine, idxs)[:3]
+    return idxs
+
 
 # Most of this code is taken from nibabel
 def axcodes2ornt(axcodes, labels=None):
