@@ -1686,6 +1686,7 @@ def plot_labels(labels_names, colors, atlas):
         label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
         labels_names_fix.append(label_fix)
     labels = [l for l in atlas_labels if l.name in labels_names_fix]
+    labels.sort(key=lambda x: labels_names_fix.index(x.name))
     # todo: check if bpy.context.scene.color_rois_homogeneously
     for label, color in zip(labels, colors):
         plot_label(label, color)
