@@ -437,12 +437,11 @@ def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False
                      overwrite_vertices_labels_lookup=False, n_jobs=6):
     utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
     labels_to_annot(subject, atlas, overwrite_annotation, n_jobs=n_jobs)
+    vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
+        subject, atlas, True, overwrite_vertices_labels_lookup)
     params = []
-
     for surface_type in ['pial', 'inflated']:
         files_exist = True
-        vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
-            subject, atlas, True, overwrite_vertices_labels_lookup)
         for hemi in HEMIS:
             blender_labels_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
             labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)

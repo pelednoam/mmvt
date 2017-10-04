@@ -16,7 +16,7 @@ def mode(arr):
     #return Counter(arr).most_common(1)
 
 
-@utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
+# @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
 def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=None,
               overwrite_vertices_labels_lookup=False):
     output_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
@@ -103,7 +103,10 @@ def writing_ply_files(lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
     # Reindex the faces
     tmp = np.zeros(nV, dtype=np.int)
     tmp[vidx] = np.arange(len(vidx))
-    facL_lab = np.reshape(tmp[facL_lab_flat], (len(facL_lab), len(facL_lab[0])))
+    try:
+        facL_lab = np.reshape(tmp[facL_lab_flat], (len(facL_lab), len(facL_lab[0])))
+    except:
+        print('asdf')
     # Save the resulting surface
     label_name = '{}-{}.ply'.format(lu.get_label_hemi_invariant_name(labels[lab].name), hemi)
     # print('Writing {}'.format(op.join(output_fol, label_name)))
