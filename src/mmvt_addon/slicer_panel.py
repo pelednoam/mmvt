@@ -78,6 +78,8 @@ def create_joint_brain_obj():
         bpy.ops.mesh.primitive_cube_add(radius=0.1, location=(500, 500, 500))
         bpy.context.object.name = 'joint_brain'
         for hemi in ['lh', 'rh', 'Brain-Stem', 'Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex']:
+            if hemi not in bpy.data.objects:
+                continue
             bpy.ops.object.modifier_add(type='BOOLEAN')
             bpy.data.objects['joint_brain'].modifiers['Boolean'].object = bpy.data.objects[hemi]
             bpy.data.objects['joint_brain'].modifiers['Boolean'].operation = 'UNION'
