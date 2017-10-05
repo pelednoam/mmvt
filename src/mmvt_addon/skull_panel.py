@@ -14,7 +14,8 @@ def thickness_arrows_update(self, context):
 
 
 def show_point_arrow_update(self, context):
-    SkullPanel.prev_vertex_arrow.hide = True
+    if SkullPanel.prev_vertex_arrow is not None:
+        SkullPanel.prev_vertex_arrow.hide = True
 
 
 def import_skull():
