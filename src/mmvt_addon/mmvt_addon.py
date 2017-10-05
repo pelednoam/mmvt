@@ -76,6 +76,8 @@ import list_panel
 importlib.reload(list_panel)
 import slicer_panel
 importlib.reload(slicer_panel)
+import skull_panel
+importlib.reload(skull_panel)
 
 
 print("mmvt addon started!")
@@ -104,6 +106,7 @@ load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
 add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
+create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
@@ -501,13 +504,13 @@ def get_panels():
     return (appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, pizco_panel)
+            slicer_panel, skull_panel, pizco_panel)
 
 
 def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
-    fix_cortex_labels_material()
+    # fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)
