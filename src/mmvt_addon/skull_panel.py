@@ -13,6 +13,10 @@ def thickness_arrows_update(self, context):
     mu.show_hide_hierarchy(bpy.context.scene.thickness_arrows, 'thickness_arrows', also_parent=True, select=False)
 
 
+def show_point_arrow_update(self, context):
+    SkullPanel.prev_vertex_arrow.hide = True
+
+
 def import_skull():
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     base_path = op.join(mu.get_user_fol(), 'skull')
@@ -150,6 +154,13 @@ def find_point_thickness():
     # bpy.context.scene.cursor_location = vertex_co
     print(closest_mesh_name, vertex_ind, vertex_co, distance, loc)
     SkullPanel.vertex_skull_thickness = distance
+    if not bpy.context.scene.thickness_arrows and bpy.context.scene.show_point_arrow:
+        if SkullPanel.prev_vertex_arrow is not None:
+            SkullPanel.prev_vertex_arrow.hide = True
+        vertex_arrow = bpy.data.objects.get('mt_{}'.format(vertex_ind), None)
+        if vertex_arrow is not None:
+            vertex_arrow.hide = False
+            SkullPanel.prev_vertex_arrow = vertex_arrow
 
 
 def fix_normals():
@@ -184,9 +195,10 @@ def ray_cast():
     show_hit = bpy.data.objects.get(emptys_name, None) is None
     _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
 
-    def draw_empty_arrow(loc, dir):
+    def draw_empty_arrow(vert_ind, loc, dir):
         R = (-dir).to_track_quat('Z', 'X').to_matrix().to_4x4()
-        mt = bpy.data.objects.new("mt", None)
+        mt = bpy.data.objects.new('mt_{}'.format(vert_ind), None)
+        mt.name = 'mt_{}'.format(vert_ind)
         R.translation = loc + dir
         # mt.show_name = True
         mt.matrix_world = R
@@ -222,7 +234,7 @@ def ray_cast():
         hit, loc, norm, index = outer_obj.ray_cast(o, n)
         if hit:
             print('{}/{} hit outer on face {}'.format(vert_ind, N, index))
-            hits.append((o, loc))
+            hits.append((vert_ind, o, loc))
             thickness = (omw * loc - omw * o).length * factor
         else:
             print('{}/{} no hit!'.format(vert_ind, N))
@@ -234,11 +246,11 @@ def ray_cast():
     mu.save(thickness_info, output_info_fname)
 
     if hits:
-        avge_thickness = sum((omw * hit - omw * o).length for o, hit in hits) / len(hits)
+        avge_thickness = sum((omw * hit - omw * o).length for vert_ind, o, hit in hits) / len(hits)
         print(avge_thickness)
         if show_hit:
-            for hit, o in hits:
-                draw_empty_arrow(omw * o, omw * hit - omw * o)
+            for vert_ind, hit, o in hits:
+                draw_empty_arrow(vert_ind, omw * o, omw * hit - omw * o)
 
 
 def skull_draw(self, context):
@@ -250,6 +262,8 @@ def skull_draw(self, context):
     # layout.operator(FindPointThickness.bl_idname, text="Calc point thickness", icon='MESH_DATA')
     if SkullPanel.vertex_skull_thickness > 0:
         layout.label(text='Thickness: {:.3f}'.format(SkullPanel.vertex_skull_thickness))
+
+    layout.prop(context.scene, 'show_point_arrow', text='Show point thickness vector')
     layout.prop(context.scene, 'thickness_arrows', text='Thickness arrows')
 
 
@@ -303,11 +317,11 @@ class FindPointThickness(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         find_point_thickness()
-        # plot_distances_from_outer()
         return {'PASS_THROUGH'}
 
 
 bpy.types.Scene.thickness_arrows = bpy.props.BoolProperty(default=False, update=thickness_arrows_update)
+bpy.types.Scene.show_point_arrow = bpy.props.BoolProperty(default=False, update=show_point_arrow_update)
 
 
 class SkullPanel(bpy.types.Panel):
@@ -319,6 +333,7 @@ class SkullPanel(bpy.types.Panel):
     addon = None
     init = False
     vertex_skull_thickness = 0
+    prev_vertex_arrow = None
 
     def draw(self, context):
         if SkullPanel.init:
@@ -339,6 +354,7 @@ def init(addon):
     register()
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False
+    bpy.context.scene.show_point_arrow = False
 
 
 def register():
