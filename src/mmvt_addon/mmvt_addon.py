@@ -310,6 +310,8 @@ find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_ind
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+find_point_thickness = skull_panel.find_point_thickness
 
 
 def get_max_time_steps():
@@ -442,6 +444,11 @@ def fix_scale():
     if eeg_helmet is not None:
         for i in range(3):
             eeg_helmet.scale[i] = 0.1
+    inner_skull = bpy.data.objects.get('inner_skull', None)
+    if inner_skull is not None:
+        for i in range(3):
+            inner_skull.scale[i] = 0.1
+
 
 
 def fix_cortex_labels_material():
