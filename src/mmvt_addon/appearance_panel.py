@@ -447,6 +447,11 @@ class SelectionListener(bpy.types.Operator):
                 self.cursor_pos = tuple(bpy.context.scene.cursor_location)
                 _addon().create_slices()
                 _addon().save_cursor_position()
+                if bpy.context.scene.is_sliced_ind > -1:
+                    tmp_new = bpy.context.scene.cursor_location[bpy.context.scene.is_sliced_ind]
+                    tmp_old = bpy.context.scene.last_cursor_location[bpy.context.scene.is_sliced_ind]
+                    if abs(tmp_new-tmp_old) > 0.005:
+                        _addon().clear_slice()
                 if bpy.data.objects.get('inner_skull', None) is not None:
                     _addon().find_point_thickness()
             _addon().slices_were_clicked()

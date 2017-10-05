@@ -13,6 +13,8 @@ def slice_brain():
     optional_cut_types = ['sagital', 'coronal', 'axial']
     optional_rots = [[1.5708, 0, 1.5708], [1.5708, 0, 3.14], [0, 3.14, 0]]
     option_ind = optional_cut_types.index(cut_type)
+    bpy.context.scene.is_sliced_ind = option_ind
+    bpy.context.scene.last_cursor_location = coordinate
     cut_pos = [0.0, 0.0, 0.0]
     cut_pos[option_ind] = coordinate[option_ind]
     print('rot={}'.format(optional_rots[option_ind]))
@@ -66,6 +68,7 @@ def slice_brain():
 def clear_slice():
     optional_cut_types = ['sagital', 'coronal', 'axial']
     bpy.data.objects['masking_cube'].location = (20, 20, 20)
+    bpy.context.scene.is_sliced_ind = -1
     for cut_type in optional_cut_types:
         if bpy.data.objects.get('{}_plane'.format(cut_type)):
             bpy.data.objects['{}_plane'.format(cut_type)].hide = True
@@ -277,7 +280,7 @@ def show_full_slice_update(self, context):
     for cut_type in ['axial', 'coronal', 'sagital']:
         if bpy.data.objects.get('{}_plane'.format(cut_type)):
             bpy.data.objects['{}_plane'.format(cut_type)].modifiers['Boolean'].show_viewport =\
-                bpy.context.scene.show_full_slice
+                not bpy.context.scene.show_full_slice
 
 
 class SliceBrainButton(bpy.types.Operator):
@@ -312,8 +315,8 @@ bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=s
 def slicer_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, "slicer_cut_type", text="")
-    layout.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='LOAD_FACTORY')
-    layout.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='LOAD_FACTORY')
+    layout.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
+    layout.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
     layout.prop(context.scene, 'show_full_slice', text='Show full slice')
 
 
@@ -335,7 +338,13 @@ def init(addon):
     SlicerPanel.addon = addon
     bpy.context.scene.show_full_slice = False
     create_joint_brain_obj()
-    print('init slicer')
+    # print('init slicer')
+    # bpy.context.scene.is_sliced_ind = -1
+    # bpy.context.scene.last_cursor_location = [0.0, 0.0, 0.0]
+    bpy.types.Scene.last_cursor_location = bpy.props.FloatVectorProperty(default=(0.0, 0.0, 0.0),size=3)
+    bpy.types.Scene.is_sliced_ind = bpy.props.IntProperty(default=-1)
+    bpy.context.scene.last_cursor_location = (0.0, 0.0, 0.0)
+    bpy.context.scene.is_sliced_ind = -1
     SlicerPanel.init = True
     register()
 
@@ -346,9 +355,9 @@ def register():
         bpy.utils.register_class(SlicerPanel)
         bpy.utils.register_class(SliceBrainButton)
         bpy.utils.register_class(SliceBrainClearButton)
-        print('SlicerPanel was registered')
-        print('SliceBrainButton was registered')
-        print('SliceBrainClearButton was registered')
+        # print('SlicerPanel was registered')
+        # print('SliceBrainButton was registered')
+        # print('SliceBrainClearButton was registered')
     except:
         print("Can't register Slicer Panel!")
 
