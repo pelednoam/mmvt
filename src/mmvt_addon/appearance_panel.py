@@ -456,7 +456,6 @@ class SelectionListener(bpy.types.Operator):
                     _addon().find_point_thickness()
             _addon().slices_were_clicked()
 
-
         if self.right_clicked:
             self.right_clicked = False
             # print(bpy.context.selected_objects)
