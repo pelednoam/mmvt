@@ -1020,6 +1020,10 @@ def default_coloring(loop_indices):
 
 
 def meg_files_update(self, context):
+    _meg_files_update(context)
+
+
+def _meg_files_update(context):
     user_fol = mu.get_user_fol()
     ColoringMakerPanel.activity_map_chosen = False
     ColoringMakerPanel.stc_file_chosen = False
@@ -1051,7 +1055,7 @@ def meg_files_update(self, context):
         if full_stc_fname == '':
             print("Can't find the stc file in {}".format(template))
         else:
-            ColoringMakerPanel.stc = stc = mne.read_source_estimate(full_stc_fname)
+            ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
             T = ColoringMakerPanel.stc.data.shape[1] - 1
             bpy.data.scenes['Scene'].frame_preview_start = 0
             bpy.data.scenes['Scene'].frame_preview_end = T

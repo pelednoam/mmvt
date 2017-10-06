@@ -152,7 +152,7 @@ def calc_subject_evoked_response(subject, root_fol, task, atlas, events_id, fnam
         for hemi in utils.HEMIS:
             meg.calc_labels_avg_per_condition(
                 atlas, hemi, 'pial', events_id, labels_from_annot=False, labels_fol='', stcs=stcs,
-                inverse_method=inverse_method, positive=positive, moving_average_win_size=moving_average_win_size,
+                positive=positive, moving_average_win_size=moving_average_win_size,
                 do_plot=True)
 
 

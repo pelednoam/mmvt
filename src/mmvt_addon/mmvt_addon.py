@@ -528,18 +528,18 @@ def load_all_panels(addon_prefs=None):
             split_view(0)
             split_view(0)
             fix_scale()
-        show_activity()
-        show_pial()
-        view_all()
-        # show_electrodes(False)
-        # show_hide_connections(False)
-        # show_activity(False)
-        mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
-        mmvt_utils.unfilter_graph_editor()
-        for hemi in ['lh', 'rh']:
-            if bpy.data.objects.get(hemi):
-                bpy.data.objects[hemi].hide = True
-                bpy.data.objects[hemi].hide_render = True
+    show_activity()
+    show_pial()
+    view_all()
+    # show_electrodes(False)
+    # show_hide_connections(False)
+    # show_activity(False)
+    mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
+    mmvt_utils.unfilter_graph_editor()
+    for hemi in ['lh', 'rh']:
+        if bpy.data.objects.get(hemi):
+            bpy.data.objects[hemi].hide = True
+            bpy.data.objects[hemi].hide_render = True
 
 
 def main(addon_prefs=None):

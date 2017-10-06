@@ -794,12 +794,11 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov, inv_loose=0.2,
 
 def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
-                           single_trial_stc=False, save_stc=True):
+                           single_trial_stc=False, save_stc=True, snr=3.0):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs, stcs_num = {}, {}
-    snr = 3.0
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
     inv_fname, inv_exist = locating_file(INV, '*inv.fif')
@@ -1550,8 +1549,8 @@ def get_stc_conds(events, inverse_method):
 
 
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
-        extract_modes=['mean_flip'], inverse_method='dSPM', positive=False, moving_average_win_size=0,
-        norm_by_percentile=True, norm_percs=(1,99), labels_output_fname_template='', src=None,
+        extract_modes=['mean_flip'], positive=False, moving_average_win_size=0,
+        labels_output_fname_template='', src=None,
         factor=1, do_plot=False, n_jobs=1):
     try:
         inv_fname, inv_exist = locating_file(INV, '*inv.fif')
@@ -1917,7 +1916,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         get_meg_files(subject, [INV, EVO], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
-            args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc)
+            args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc, snr=args.snr)
     return flags, stcs_conds, stcs_num
 
 
@@ -1941,9 +1940,8 @@ def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_me
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
-                inverse_method=inverse_method, positive=args.evoked_flip_positive,
+                positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
-                norm_by_percentile=args.norm_by_percentile, norm_percs=args.norm_percs,
                 stcs=stcs_conds, factor=factor, stcs_num=stcs_num, n_jobs=args.n_jobs)
             if stcs_conds and isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
@@ -2128,6 +2126,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_ori', help='', required=False, default=None)
     parser.add_argument('--t_min', help='', required=False, default=0.0, type=float)
     parser.add_argument('--t_max', help='', required=False, default=0.0, type=float)
+    parser.add_argument('--snr', help='', required=False, default=3.0, type=float)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
     parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
