@@ -343,15 +343,13 @@ class SkullPanel(bpy.types.Panel):
 
 def init(addon):
     SkullPanel.addon = addon
-    # user_fol = mu.get_user_fol()
-    # skull_files = glob.glob(op.join(user_fol, 'skull', 'skull*.npz'))
-    # if len(skull_files) == 0:
-    #     return None
-    # files_names = [mu.namebase(fname)[len('skull'):].replace('_', ' ') for fname in skull_files]
-    # skull_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-    # bpy.types.Scene.skull_files = bpy.props.EnumProperty(
-    #     items=skull_items, description="tempalte files",update=skull_files_update)
-    # bpy.context.scene.skull_files = files_names[0]
+    user_fol = mu.get_user_fol()
+    skull_ply_files_exist = op.isfile(op.join(user_fol, 'skull', 'inner_skull.ply')) and \
+                            op.isfile(op.join(user_fol, 'skull', 'outer_skull.ply'))
+    skull_objs_exist = bpy.data.objects.get('inner_skull', None) is not None and \
+                       bpy.data.objects.get('inner_skull', None) is not None
+    if not skull_ply_files_exist and not skull_objs_exist:
+        return
     register()
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False
