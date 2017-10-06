@@ -1577,7 +1577,8 @@ class ColorMegMax(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         if ColoringMakerPanel.stc_file_chosen:
-            max_vert, bpy.context.scene.frame_current = ColoringMakerPanel.stc.get_peak(time_as_index=True, vert_as_index=True)
+            max_vert, bpy.context.scene.frame_current = ColoringMakerPanel.stc.get_peak(
+                time_as_index=True, vert_as_index=True, mode=bpy.context.scene.meg_peak_mode)
             print(max_vert, bpy.context.scene.frame_current)
             plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
                      threshold=bpy.context.scene.coloring_threshold, save_image=False)
@@ -1802,6 +1803,7 @@ def draw(self, context):
             # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
             col.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
+            col.prop(context.scene, 'meg_peak_mode', '')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
         if meg_labels_data_exist and meg_labels_data_minmax_exist:
@@ -1893,6 +1895,8 @@ bpy.types.Scene.hide_connection_under_threshold = bpy.props.BoolProperty(
     default=True, description="Hide connections under threshold")
 bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
+bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
+    items=[('abs', 'Absolute values', '', 0), ('pos', 'Only positive', '', 1), ('neg', 'only negative', '', 2)])
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
@@ -1985,6 +1989,7 @@ def init(addon):
 
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
+    bpy.context.scene.meg_peak_mode = 'abs'
     ColoringMakerPanel.init = True
     for hemi in ['lh', 'rh']:
         mesh = bpy.data.objects['inflated_{}'.format(hemi)].data

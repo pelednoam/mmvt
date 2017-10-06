@@ -18,14 +18,19 @@ def analyze(subject):
         # atlas='laus250',
         inverse_method='MNE',
         t_min=-2, t_max=2,
+        noise_t_min=-2.5, noise_t_max=-1.5,
         bad_channels=[],
         stim_channels='STIM',
         pick_ori='normal',
         reject=False,
-        overwrite_epochs=False))
+        overwrite_epochs=False,
+        overwrite_inv=True,
+        overwrite_noise_cov=True))
     fname_format, fname_format_cond, conditions = meg.init(subject, args)
     conditions['left'] = 4
+    args.conditions = conditions
     # raw = mne.io.read_raw_ctf(op.join(MEG_DIR, subject, 'raw', 'DC_leftIndex_day1.ds'), preload=True)
+    # print(raw.info['sfreq'])
     # if not op.isfile(meg.RAW):
     #     raw.save(meg.RAW)
     # flags, evoked, epochs = meg.calc_evokes_wrapper(subject, conditions, args, flags, raw=raw)
@@ -33,9 +38,13 @@ def analyze(subject):
     #     fig = evoked[0].plot_joint(times=[-0.5, 0.05, 0.150, 0.250, 0.6])
     #     plt.show()
     # flags = meg.calc_fwd_inv_wrapper(subject, conditions, args, flags)
-    flags, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args, flags)
-    flags = meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args, flags)
+    # flags, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args, flags)
+    # flags = meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args, flags)
+    dipoles_times = [(0.25, 0.35)]
+    dipoles_names =['peak_left_motor']
+    meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
 
 
 if __name__ == '__main__':
     analyze('DC')
+    print('Finish!')

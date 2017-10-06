@@ -29,7 +29,7 @@ STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
-FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH, BEM,STC, \
+FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH, BEM, STC, \
 STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
 COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 42
 
@@ -123,6 +123,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SRC_SMOOTH = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-all-src.fif'.format(MRI_SUBJECT))
     BEM = op.join(SUBJECT_MRI_FOLDER, 'bem', '{}-5120-5120-5120-bem-sol.fif'.format(MRI_SUBJECT))
     COR = op.join(SUBJECT_MRI_FOLDER, 'mri', 'T1-neuromag', 'sets', 'COR.fif')
+    if not op.isfile(COR):
+        COR = op.join(SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(SUBJECT))
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
     MEG_TO_HEAD_TRANS = op.join(SUBJECT_MEG_FOLDER, 'trans', 'meg_to_head_trans.npy')
     print_files_names()
@@ -717,9 +719,20 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     return src
 
 
-def calc_noise_cov(epochs):
+def calc_noise_cov(epochs, noise_t_min=None, noise_t_max=0, args=None):
     if len(epochs) > 1:
-        noise_cov = mne.compute_covariance(epochs.crop(None, 0)) #, copy=True))
+        # Check if we need to recalc the epoches...
+        if epochs.tmin <= noise_t_min and epochs.tmin >= noise_t_max:
+            noise_cov = mne.compute_covariance(epochs.crop(noise_t_min, noise_t_max))
+        else:
+            # Yes, we do...
+            noise_args = utils.Bag(args.copy())
+            noise_args.t_min = noise_t_min
+            noise_args.t_max = noise_t_max
+            noise_args.overwrite_epochs = True
+            noise_args.baseline = (noise_t_min, noise_t_max)
+            _, noise_epochs = calc_epochs_wrapper_args(noise_args.conditions, noise_args)
+            noise_cov = mne.compute_covariance(noise_epochs.crop(noise_t_min, noise_t_max))
     else:
         if op.isfile(EPO_NOISE):
             demi_epochs = mne.read_epochs(EPO_NOISE)
@@ -729,18 +742,21 @@ def calc_noise_cov(epochs):
     return noise_cov
 
 
-def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_for_noise_cov=False,
+def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0,
+                          overwrite_inverse_operator=False, use_empty_room_for_noise_cov=False,
                           overwrite_noise_cov=False, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
-                          fwd_usingMEG=True, fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None,
-                          spec_subcortical_fwd=None, region=None):
+                          fwd_usingMEG=True, fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None,
+                          subcortical_fwd=None, spec_subcortical_fwd=None, region=None, args=None):
     conds = ['all'] if '{cond}' not in EPO else events.keys()
     fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
     inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
+    flag = True
     for cond in conds:
-        if (not calc_for_cortical_fwd or op.isfile(get_cond_fname(inv_fname, cond))) and \
-                (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
-                (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region))):
-            continue
+        if (not overwrite_inverse_operator and
+            (not calc_for_cortical_fwd or op.isfile(get_cond_fname(inv_fname, cond))) and \
+            (not calc_for_sub_cortical_fwd or op.isfile(get_cond_fname(INV_SUB, cond))) and \
+            (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region)))):
+                continue
         try:
             epo = get_cond_fname(EPO, cond)
             epochs = mne.read_epochs(epo)
@@ -749,7 +765,7 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, use_empty_room_f
                 noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
                 noise_cov.save(NOISE_COV)
             elif overwrite_noise_cov or not op.isfile(NOISE_COV):
-                noise_cov = calc_noise_cov(epochs)
+                noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, args)
                 noise_cov.save(NOISE_COV)
             else:
                 noise_cov = mne.read_cov(NOISE_COV)
@@ -840,6 +856,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
+                    stcs[cond_name].save(op.join(MMVT_DIR, SUBJECT, 'meg', utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
@@ -864,6 +881,93 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 STC_HEMI.format(cond=conds[1], method=inverse_method, hemi=hemi),
                 STC_HEMI.format(cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi))
     return flag, stcs, stcs_num
+
+
+def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6):
+    from mne.forward import make_forward_dipole
+    if not op.isfile(NOISE_COV):
+        print("The noise covariance cannot be found in {}!".format(NOISE_COV))
+        return False
+    if not op.isfile(BEM):
+        print("The BEM solution cannot be found in {}!".format(BEM))
+        return False
+    if not op.isfile(COR):
+        print("The MEG-to-head-trans matrix cannot be found in {}!".format(COR))
+        return False
+    if evokes is None:
+        evokes = mne.read_evokeds(EVO)
+    if not isinstance(evokes, Iterable):
+        evokes = [evokes]
+
+    for evoked in evokes:
+        evoked.pick_types(meg=use_meg, eeg=use_eeg)
+        for (t_min, t_max), dipole_title in zip(dipoles_times, dipoloes_title):
+            dipole_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_{}_{}.pkl'.format(evoked.comment, dipole_title))
+            dipole_fix_output_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_fix_{}_{}.pkl'.format(evoked.comment, dipole_title))
+            dipole_stc_fwd_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_{}_fwd_stc_{}.pkl'.format(evoked.comment, dipole_title))
+            dipole_location_figure_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_{}_{}.png'.format(evoked.comment, dipole_title))
+            if not op.isfile(dipole_fname):
+                evoked_t = evoked.copy()
+                evoked_t.crop(t_min, t_max)
+                dipole, residual = mne.fit_dipole(evoked_t, NOISE_COV, BEM, COR, min_dist, n_jobs)
+                utils.save((dipole, residual), dipole_fname)
+            else:
+                dipole, residual = utils.load(dipole_fname)
+            if not op.isfile(dipole_fix_output_fname):
+                # Estimate the time course of a single dipole with fixed position and orientation
+                # (the one that maximized GOF)over the entire interval
+                best_idx = np.argmax(dipole.gof)
+                dipole_fixed, residual_fixed = mne.fit_dipole(
+                    evoked, NOISE_COV, BEM, COR, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
+                    n_jobs=n_jobs)
+                utils.save((dipole_fixed, residual_fixed), dipole_fix_output_fname)
+            else:
+                dipole_fixed, residual_fixed = utils.load(dipole_fix_output_fname)
+            if not op.isfile(dipole_stc_fwd_fname):
+                dipole_fwd, dipole_stc = make_forward_dipole(dipole, BEM, evoked.info, COR, n_jobs=n_jobs)
+                utils.save((dipole_fwd, dipole_stc), dipole_stc_fwd_fname)
+            else:
+                dipole_fwd, dipole_stc = utils.load(dipole_stc_fwd_fname)
+            if not op.isfile(dipole_location_figure_fname):
+                dipole.plot_locations(COR, MRI_SUBJECT, SUBJECTS_MRI_DIR, mode='orthoview')
+                plt.savefig(dipole_location_figure_fname)
+
+            # save_diploe_loc(dipole, COR)
+            best_idx = np.argmax(dipole.gof)
+            best_time = dipole.times[best_idx]
+            # plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time)
+            dipole_fixed.plot()
+            print('asdf')
+
+
+def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):
+    from mne.simulation import simulate_evoked
+
+    noise_cov = mne.read_cov(NOISE_COV)
+    pred_evoked = simulate_evoked(dipole_fwd, dipole_stc, evoked.info, cov=noise_cov) #, nave=np.inf)
+
+    # first plot the topography at the time of the best fitting (single) dipole
+    plot_params = dict(times=best_time, ch_type='mag', outlines='skirt',
+                       colorbar=True)#, vmin=vmin, vmax=vmin)
+    evoked.plot_topomap(**plot_params)
+    # compare this to the predicted field
+    pred_evoked.plot_topomap(**plot_params)
+    print('Comparison of measured and predicted fields at {:.0f} ms'.format(best_time * 1000.))
+
+
+def save_diploe_loc(dipole, trans):
+    from mne.transforms import _get_trans, apply_trans
+
+    orig_trans = utils.Bag(np.load(op.join(MMVT_DIR, MRI_SUBJECT, 'orig_trans.npz')))
+    trans = _get_trans(trans, fro='head', to='mri')[0]
+    scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
+    dipole_ori = apply_trans(trans['trans'], dipole.ori, move=False)
+    dipole_locs = apply_trans(orig_trans.ras_tkr2vox, scatter_points)
+    best_idx = np.argmax(dipole.gof)
+    best_point = dipole_locs[best_idx]
+    dipole_xyz = np.round(best_point).astype(int)
+    print(dipole_xyz, dipole_ori)
+
 
 
 def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
@@ -1031,7 +1135,7 @@ def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all
     if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
         make_forward_solution_to_specific_subcortrical(events, region)
     if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
-        calc_inverse_operator(events, inv_loose, inv_depth, False, False, False, True, region=region)
+        calc_inverse_operator(events, inv_loose, inv_depth, False, False, False, False, True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
@@ -1883,9 +1987,9 @@ def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
             get_meg_files(subject, [EPO, FWD], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
-                conditions, args.inv_loose, args.inv_depth, args.use_empty_room_for_noise_cov,
-                args.overwrite_noise_cov, args.inv_calc_cortical, args.inv_calc_subcorticals,
-                args.fwd_usingMEG, args.fwd_usingEEG)
+                conditions, args.inv_loose, args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
+                args.use_empty_room_for_noise_cov, args.overwrite_noise_cov, args.inv_calc_cortical,
+                args.inv_calc_subcorticals, args.fwd_usingMEG, args.fwd_usingEEG, args=args)
     return flags
 
 
@@ -2126,6 +2230,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_ori', help='', required=False, default=None)
     parser.add_argument('--t_min', help='', required=False, default=0.0, type=float)
     parser.add_argument('--t_max', help='', required=False, default=0.0, type=float)
+    parser.add_argument('--noise_t_min', help='', required=False, default=None, type=au.float_or_none)
+    parser.add_argument('--noise_t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--snr', help='', required=False, default=3.0, type=float)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)

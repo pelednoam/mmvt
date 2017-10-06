@@ -47,7 +47,8 @@ def get_selected_fcurves_and_data():
             continue
         fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
         if mu.if_cond_is_diff(parent_obj):
-            data = np.diff(data, axis=2)
+            if data.ndim == 3:
+                data = np.diff(data, axis=2)
             selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
         else:
             selected_indices = [ind for ind, name in enumerate(names)
@@ -62,7 +63,11 @@ def curves_sep_update(self=None, context=None):
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return
-    N, T, C = data.shape
+    if data.ndim == 3:
+        N, T, C = data.shape
+    else:
+        N, T = data.shape
+        C = 1
     sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()
     fcurve_ind = 0
     for data_ind in range(N):
