@@ -23,17 +23,19 @@ def analyze(subject):
         stim_channels='STIM',
         pick_ori='normal',
         reject=False,
-        overwrite_epochs=False,
+        overwrite_epochs=True,
         overwrite_inv=True,
         overwrite_noise_cov=True))
     fname_format, fname_format_cond, conditions = meg.init(subject, args)
     conditions['left'] = 4
     args.conditions = conditions
-    # raw = mne.io.read_raw_ctf(op.join(MEG_DIR, subject, 'raw', 'DC_leftIndex_day1.ds'), preload=True)
+    raw = mne.io.read_raw_ctf(op.join(MEG_DIR, subject, 'raw', 'DC_leftIndex_day1.ds'), preload=True)
+    ica = meg.remove_artifacts(raw)
     # print(raw.info['sfreq'])
     # if not op.isfile(meg.RAW):
     #     raw.save(meg.RAW)
-    # flags, evoked, epochs = meg.calc_evokes_wrapper(subject, conditions, args, flags, raw=raw)
+    flags, evoked, epochs = meg.calc_evokes_wrapper(subject, conditions, args, flags, raw=raw, ica=ica)
+
     # if evoked is not None:
     #     fig = evoked[0].plot_joint(times=[-0.5, 0.05, 0.150, 0.250, 0.6])
     #     plt.show()

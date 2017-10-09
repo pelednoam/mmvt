@@ -509,8 +509,6 @@ def add_data_to_brain(source_files):
     for f in source_files:
         T = len(f['data'][0])
         for obj_name, data in zip(f['names'], f['data']):
-            if data.ndim == 1 and len(f['conditions']) == 1:
-                data = data.reshape((len(data), 1))
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue

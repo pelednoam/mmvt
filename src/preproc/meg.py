@@ -31,7 +31,7 @@ HEMIS = ['rh', 'lh']
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
 FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH, BEM, STC, \
 STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
-COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 42
+COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS, ARTIFACTS_REM_ICA = [''] * 43
 
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
@@ -49,7 +49,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
         BEM, STC, STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH,\
-        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
+        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS, ARTIFACTS_REM_ICA
     if files_includes_cond:
         fname_format = fname_format_cond
     SUBJECT = subject
@@ -127,6 +127,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
         COR = op.join(SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(SUBJECT))
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
     MEG_TO_HEAD_TRANS = op.join(SUBJECT_MEG_FOLDER, 'trans', 'meg_to_head_trans.npy')
+    ARTIFACTS_REM_ICA = op.join(SUBJECT_MEG_FOLDER, 'artifacts_removal-ica.fif')
     print_files_names()
 
 
@@ -234,7 +235,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0):
+                 windows_num=0, ica=None):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
@@ -278,6 +279,17 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     epochs = mne.Epochs(raw, events, conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     print('{} good epochs'.format(len(epochs)))
+    if ica is None and op.isfile(ARTIFACTS_REM_ICA):
+        from mne.preprocessing import read_ica
+        ica = read_ica(ARTIFACTS_REM_ICA)
+    if ica is not None:
+        epochs = ica.apply(epochs)
+    save_epochs(epochs, epoches_fname)
+    return epochs
+
+
+def save_epochs(epochs, epoches_fname=None):
+    epoches_fname = EPO if epoches_fname is None else epoches_fname
     if '{cond}' in epoches_fname:
         for event in epochs.event_id: #events.keys():
             epochs[event].save(get_cond_fname(epoches_fname, event))
@@ -286,8 +298,6 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
             epochs.save(epoches_fname)
         except:
             print(traceback.format_exc())
-    return epochs
-
 
 # def createEventsFiles(behavior_file, pattern):
 #     make_ecr_events(RAW, behavior_file, EVE, pattern)
@@ -303,14 +313,14 @@ def calc_epochs_necessary_files(args):
     return necessary_files
 
 
-def calc_epochs_wrapper_args(conditions, args, raw=None):
+def calc_epochs_wrapper_args(conditions, args, raw=None, ica=None):
     return calc_epochs_wrapper(
         conditions, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
         None, args.stim_channels,
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs)
+        args.windows_num, args.overwrite_epochs, ica)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -338,7 +348,7 @@ def calc_epochs_wrapper(
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0, overwrite_epochs=False):
+        windows_num=0, overwrite_epochs=False, ica=None):
     # Calc evoked data for averaged data and for each condition
     try:
         # if not calc_epochs_from_raw:
@@ -364,7 +374,7 @@ def calc_epochs_wrapper(
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  epo_fname, task, windows_length, windows_shift, windows_num)
+                                  epo_fname, task, windows_length, windows_shift, windows_num, ica)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -1993,14 +2003,14 @@ def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
     return flags
 
 
-def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subject=''):
+def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, ica=None, mri_subject=''):
     if mri_subject == '':
         mri_subject = subject
     evoked, epochs = None, None
     if utils.should_run(args, 'calc_epochs'):
         necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw)
+        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw, ica)
     if utils.should_run(args, 'calc_epochs') and not flags['calc_epochs']:
         return flags, evoked, epochs
 
@@ -2087,6 +2097,115 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
                     '{}-{}.stc'.format(mmvt_fname, hemi))
         print('Saveing to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
+
+def remove_artifacts(raw, remove_from_raw=True, overwrite_ica=False, do_plot=False):
+    if op.isfile(ARTIFACTS_REM_ICA) and not overwrite_ica:
+        from mne.preprocessing import read_ica
+        ica = read_ica(ARTIFACTS_REM_ICA)
+        return ica
+
+    # Apply the solution to Raw, Epochs or Evoked like this:
+    # ica.apply(epochs)
+
+    from mne.preprocessing import ICA
+    from mne.preprocessing import create_ecg_epochs, create_eog_epochs
+
+    raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+               filter_length='10s', phase='zero-double')
+
+    ###############################################################################
+    # 1) Fit ICA model using the FastICA algorithm.
+
+    # Other available choices are `infomax` or `extended-infomax`
+    # We pass a float value between 0 and 1 to select n_components based on the
+    # percentage of variance explained by the PCA components.
+
+    ica = ICA(n_components=0.95, method='fastica')
+
+    picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
+                           stim=False, exclude='bads')
+
+    ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
+
+    # maximum number of components to reject
+    n_max_ecg, n_max_eog = 3, 1  # here we don't expect horizontal EOG components
+
+    ###############################################################################
+    # 2) identify bad components by analyzing latent sources.
+
+    title = 'Sources related to %s artifacts (red)'
+
+    # generate ECG epochs use detection via phase statistics
+    ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
+    ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
+    if do_plot:
+        ica.plot_scores(scores, exclude=ecg_inds, title=title % 'ecg', labels='ecg')
+        show_picks = np.abs(scores).argsort()[::-1][:5]
+        ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
+        ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
+
+    ecg_inds = ecg_inds[:n_max_ecg]
+    ica.exclude += ecg_inds
+
+    # detect EOG by correlation
+    try:
+        eog_inds, scores = ica.find_bads_eog(raw)
+        if do_plot:
+            ica.plot_scores(scores, exclude=eog_inds, title=title % 'eog', labels='eog')
+            show_picks = np.abs(scores).argsort()[::-1][:5]
+            ica.plot_sources(raw, show_picks, exclude=eog_inds, title=title % 'eog')
+            ica.plot_components(eog_inds, title=title % 'eog', colorbar=True)
+
+        eog_inds = eog_inds[:n_max_eog]
+        ica.exclude += eog_inds
+    except:
+        print("Can't remove EOG artifacts!")
+    ###############################################################################
+    # 3) Assess component selection and unmixing quality.
+
+    # estimate average artifact
+    if do_plot:
+        ecg_evoked = ecg_epochs.average()
+        print('We found %i ECG events' % ecg_evoked.nave)
+        ica.plot_sources(ecg_evoked, exclude=ecg_inds)  # plot ECG sources + selection
+        ica.plot_overlay(ecg_evoked, exclude=ecg_inds)  # plot ECG cleaning
+        try:
+            eog_evoked = create_eog_epochs(raw, tmin=-.5, tmax=.5, picks=picks).average()
+            print('We found %i EOG events' % eog_evoked.nave)
+            ica.plot_sources(eog_evoked, exclude=eog_inds)  # plot EOG sources + selection
+            ica.plot_overlay(eog_evoked, exclude=eog_inds)  # plot EOG cleaning
+        except:
+            print("Can't create oeg epochs, no EEG")
+    # check the amplitudes do not change
+    # ica.plot_overlay(raw)  # EOG artifacts remain
+
+    ###############################################################################
+
+    # To save an ICA solution you can say:
+    ica.save(ARTIFACTS_REM_ICA)
+    return ica
+
+    # You can later load the solution by saying:
+    # from mne.preprocessing import read_ica
+    # read_ica('my_ica.fif')
+
+    # Apply the solution to Raw, Epochs or Evoked like this:
+    # ica.apply(epochs)
+
+
+# def detect_eog_ecg(raw, do_plot=False):
+#     from mne.preprocessing import create_ecg_epochs, create_eog_epochs
+#     average_ecg = create_ecg_epochs(raw).average()
+#     print('We found %i ECG events' % average_ecg.nave)
+#     if do_plot:
+#         average_ecg.plot_joint()
+#     try:
+#         average_eog = create_eog_epochs(raw).average()
+#         print('We found %i EOG events' % average_eog.nave)
+#         if do_plot:
+#             average_eog.plot_joint()
+#     except:
+#         print('No EEG could be found')
 
 # def calc_labels_data_from_activity_map(mri_subject, atlas):
 #     for hemi in utils.HEMIS:
