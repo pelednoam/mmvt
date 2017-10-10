@@ -2098,54 +2098,43 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
         print('Saveing to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def remove_artifacts(raw, remove_from_raw=True, overwrite_ica=False, do_plot=False):
+def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica', remove_from_raw=True, overwrite_ica=False, do_plot=False):
+    from mne.preprocessing import ICA
+    from mne.preprocessing import create_ecg_epochs, create_eog_epochs
+
     if op.isfile(ARTIFACTS_REM_ICA) and not overwrite_ica:
         from mne.preprocessing import read_ica
         ica = read_ica(ARTIFACTS_REM_ICA)
         return ica
 
-    # Apply the solution to Raw, Epochs or Evoked like this:
-    # ica.apply(epochs)
-
-    from mne.preprocessing import ICA
-    from mne.preprocessing import create_ecg_epochs, create_eog_epochs
-
     raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
                filter_length='10s', phase='zero-double')
-
-    ###############################################################################
     # 1) Fit ICA model using the FastICA algorithm.
-
-    # Other available choices are `infomax` or `extended-infomax`
-    # We pass a float value between 0 and 1 to select n_components based on the
-    # percentage of variance explained by the PCA components.
-
-    ica = ICA(n_components=0.95, method='fastica')
-
+    ica = ICA(n_components=n_components, method=method)
     picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                            stim=False, exclude='bads')
-
     ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
-
-    # maximum number of components to reject
-    n_max_ecg, n_max_eog = 3, 1  # here we don't expect horizontal EOG components
+    print(ica)
+    # if do_plot:
+    #     ica.plot_components(picks=range(max(ica.n_components_, 20)), inst=raw)
 
     ###############################################################################
     # 2) identify bad components by analyzing latent sources.
-
-    title = 'Sources related to %s artifacts (red)'
-
     # generate ECG epochs use detection via phase statistics
     ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
     ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
-    if do_plot:
-        ica.plot_scores(scores, exclude=ecg_inds, title=title % 'ecg', labels='ecg')
-        show_picks = np.abs(scores).argsort()[::-1][:5]
-        ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
-        ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
+    if len(ecg_inds) == 0:
+        print('No ECG artifacts!')
+    else:
+        if do_plot:
+            title = 'Sources related to %s artifacts (red)'
+            ica.plot_scores(scores, exclude=ecg_inds, title=title % 'ecg', labels='ecg')
+            show_picks = np.abs(scores).argsort()[::-1][:5]
+            ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
+            ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
 
-    ecg_inds = ecg_inds[:n_max_ecg]
-    ica.exclude += ecg_inds
+        ecg_inds = ecg_inds[:n_max_ecg]
+        ica.exclude += ecg_inds
 
     # detect EOG by correlation
     try:
@@ -2175,23 +2164,19 @@ def remove_artifacts(raw, remove_from_raw=True, overwrite_ica=False, do_plot=Fal
             ica.plot_sources(eog_evoked, exclude=eog_inds)  # plot EOG sources + selection
             ica.plot_overlay(eog_evoked, exclude=eog_inds)  # plot EOG cleaning
         except:
-            print("Can't create oeg epochs, no EEG")
-    # check the amplitudes do not change
-    # ica.plot_overlay(raw)  # EOG artifacts remain
+            print("Can't create eog epochs, no EEG")
+        # check the amplitudes do not change
+        ica.plot_overlay(raw)  # EOG artifacts remain
 
-    ###############################################################################
-
-    # To save an ICA solution you can say:
-    ica.save(ARTIFACTS_REM_ICA)
+    if len(ica.exclude) == 0:
+        print("ICA didn't find any artifacts!")
+    else:
+        if not op.isfile(ARTIFACTS_REM_ICA) or overwrite_ica:
+            ica.save(ARTIFACTS_REM_ICA)
+        if remove_from_raw:
+            raw = ica.apply(raw)
+            raw.save(RAW, overwrite=True)
     return ica
-
-    # You can later load the solution by saying:
-    # from mne.preprocessing import read_ica
-    # read_ica('my_ica.fif')
-
-    # Apply the solution to Raw, Epochs or Evoked like this:
-    # ica.apply(epochs)
-
 
 # def detect_eog_ecg(raw, do_plot=False):
 #     from mne.preprocessing import create_ecg_epochs, create_eog_epochs
@@ -2322,6 +2307,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
+    parser.add_argument('--overwrite_ica', help='overwrite_ica', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
