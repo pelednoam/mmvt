@@ -13,6 +13,8 @@ import mne
 import types
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
+from mne.preprocessing import ICA
+from mne.preprocessing import create_ecg_epochs, create_eog_epochs
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -31,7 +33,7 @@ HEMIS = ['rh', 'lh']
 SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
 FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH, BEM, STC, \
 STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
-COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS, ARTIFACTS_REM_ICA = [''] * 43
+COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 42
 
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
@@ -49,7 +51,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
         BEM, STC, STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH,\
-        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS, ARTIFACTS_REM_ICA
+        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
     if files_includes_cond:
         fname_format = fname_format_cond
     SUBJECT = subject
@@ -127,7 +129,6 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
         COR = op.join(SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(SUBJECT))
     ASEG = op.join(SUBJECT_MRI_FOLDER, 'ascii')
     MEG_TO_HEAD_TRANS = op.join(SUBJECT_MEG_FOLDER, 'trans', 'meg_to_head_trans.npy')
-    ARTIFACTS_REM_ICA = op.join(SUBJECT_MEG_FOLDER, 'artifacts_removal-ica.fif')
     print_files_names()
 
 
@@ -2098,13 +2099,12 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
         print('Saveing to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica', remove_from_raw=True, overwrite_ica=False, do_plot=False):
-    from mne.preprocessing import ICA
-    from mne.preprocessing import create_ecg_epochs, create_eog_epochs
-
-    if op.isfile(ARTIFACTS_REM_ICA) and not overwrite_ica:
+def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica', remove_from_raw=True,
+                     overwrite_ica=False, do_plot=False):
+    ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'artifacts_removal-ica.fif')
+    if op.isfile(ica_fname) and not overwrite_ica:
         from mne.preprocessing import read_ica
-        ica = read_ica(ARTIFACTS_REM_ICA)
+        ica = read_ica(ica_fname)
         return ica
 
     raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
@@ -2171,33 +2171,135 @@ def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='f
     if len(ica.exclude) == 0:
         print("ICA didn't find any artifacts!")
     else:
-        if not op.isfile(ARTIFACTS_REM_ICA) or overwrite_ica:
-            ica.save(ARTIFACTS_REM_ICA)
+        if not op.isfile(ica_fname) or overwrite_ica:
+            ica.save(ica_fname)
         if remove_from_raw:
             raw = ica.apply(raw)
             raw.save(RAW, overwrite=True)
     return ica
 
-# def detect_eog_ecg(raw, do_plot=False):
-#     from mne.preprocessing import create_ecg_epochs, create_eog_epochs
-#     average_ecg = create_ecg_epochs(raw).average()
-#     print('We found %i ECG events' % average_ecg.nave)
-#     if do_plot:
-#         average_ecg.plot_joint()
-#     try:
-#         average_eog = create_eog_epochs(raw).average()
-#         print('We found %i EOG events' % average_eog.nave)
-#         if do_plot:
-#             average_eog.plot_joint()
-#     except:
-#         print('No EEG could be found')
 
-# def calc_labels_data_from_activity_map(mri_subject, atlas):
-#     for hemi in utils.HEMIS:
-#         labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
-#         activity_map_fol = op.join(MMVT_DIR, mri_subject, 'activity_map_{}'.format(hemi))
-#         activity_files = glob.glob(op.join(activity_map_fol, 't*.npy'))
-#         labels_data =
+def remove_artifacts_with_template_matching(ica_subjects='all', meg_root_fol=''):
+    subject_ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'artifacts_removal-ica.fif')
+    if not op.isfile(subject_ica_fname):
+        print('You should first call remove_artifacts to create an ICA file')
+        return False
+    if meg_root_fol == '':
+        meg_root_fol = MEG_DIR
+    eog_teampltes = find_eog_template(ica_subjects, meg_root_fol)
+    if eog_teampltes is None:
+        print('EOG template is None!')
+        return False
+    raw_fnames_for_eog_template = list(eog_teampltes.keys())
+    reference_ica, reference_eog_inds = eog_teampltes[raw_fnames_for_eog_template[0]]
+    subject_ica = mne.preprocessing.read_ica(subject_ica_fname)
+    icas = [reference_ica, subject_ica]
+    template = (0, reference_eog_inds[0])
+    fig_template, fig_detected = mne.preprocessing.corrmap(
+        icas, template=template, label="blinks", show=True, threshold=.8, ch_type='mag')
+    print('hmmm')
+
+
+def find_eog_template(subjects='all', n_components=0.95, meg_root_fol='', method='fastica'):
+    eog_teampltes_fname = op.join(MEG_DIR, 'eog_templates.pkl')
+    if op.isfile(eog_teampltes_fname):
+        eog_teampltes = utils.load(eog_teampltes_fname)
+        return eog_teampltes
+    # subject_ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'artifacts_removal-ica.fif')
+    # subject_ica = mne.preprocessing.read_ica(subject_ica_fname)
+    # n_components = subject_ica.n_components
+    raw_files = collect_raw_files(subjects, meg_root_fol, excludes=(RAW))
+    reject = dict(mag=5e-12, grad=4000e-13)
+    valid_raw_files, eog_templates = {}, {}
+    template_found = False
+    for raw_fname in raw_files:
+        raw_ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'artifacts_removal-ica.fif')
+        if not op.isfile(raw_ica_fname) or raw_fname == RAW:
+            continue
+        try:
+            raw = mne.io.read_raw_fif(raw_fname)
+            eog_epochs = create_eog_epochs(raw, reject=reject)  # get single EOG trials
+            if len(eog_epochs) > 0:
+                valid_raw_files[raw_fname] = eog_epochs
+                if op.isfile(raw_ica_fname):
+                    ica = mne.preprocessing.read_ica(raw_ica_fname)
+                else:
+                    ica = ICA(n_components=n_components, method=method)
+                    picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
+                                           stim=False, exclude='bads')
+                    ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
+                eog_inds, scores = ica.find_bads_eog(eog_epochs)  # find via correlation
+                if len(eog_inds) > 0:
+                    eog_templates[raw_fname] = (ica, eog_inds)
+                    template_found = True
+                    break
+                    # ica.plot_components(eog_inds, colorbar=True)
+                    # eog_average = eog_epochs.average()
+                    # ica.plot_sources(eog_average, exclude=eog_inds)
+        except:
+            print("Can't examine EOG artifacts on {}".format(raw_fname))
+            print(traceback.format_exc())
+    if template_found:
+        utils.save(eog_templates, eog_teampltes_fname)
+        return eog_templates
+    else:
+        print("Couldn't find any teamplte for EOG!")
+        return None
+
+
+def fit_ica_on_subjects(subjects='all', n_components=0.95, method='fastica', ica_fname='', meg_root_fol='',
+                        overwrite_ica=False):
+    from mne.preprocessing import ICA
+
+    if ica_fname == '':
+        ica_fname = 'artifacts_removal-ica.fif'
+    ica_files_num, raw_files_num = 0, 0
+    raw_files = collect_raw_files(subjects, meg_root_fol)
+    for raw_fname in raw_files:
+        subject_ica_fname = op.join(utils.get_parent_fol(raw_fname), ica_fname)
+        if (not op.isfile(subject_ica_fname) or overwrite_ica) and 'empty' not in utils.namebase(raw_fname):
+            raw_files_num += 1
+    print('{} raw data were found!'.format(raw_files_num))
+    for raw_fname in raw_files:
+        try:
+            subject_ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'artifacts_removal-ica.fif')
+            if op.isfile(subject_ica_fname) and not overwrite_ica:
+                ica_files_num += 1
+                continue
+            # Don't analyze empty room...
+            if 'empty' in utils.namebase(raw_fname):
+                continue
+            print('Fitting ICA on {}'.format(raw_fname))
+            raw = mne.io.read_raw_fif(raw_fname, preload=True)
+            raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+                       filter_length='10s', phase='zero-double')
+            picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
+                                   stim=False, exclude='bads')
+            ica = ICA(n_components=n_components, method=method)
+            ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
+            if not op.isfile(subject_ica_fname) or overwrite_ica:
+                ica.save(subject_ica_fname)
+            ica_files_num += 1
+            del raw, ica
+        except:
+            print(traceback.format_exc())
+    print('{} ICA files were created'.format(ica_files_num))
+
+
+def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
+    if meg_root_fol == '':
+        meg_root_fol = MEG_DIR
+    if subjects == 'all' or 'all' in subjects:
+        raw_files = glob.glob(op.join(meg_root_fol, '**', '*raw.fif'), recursive=True)
+    else:
+        raw_files = []
+        for subject in subjects:
+            subject_raw_file = utils.select_one_file(glob.glob(op.join(meg_root_fol, subject, '*raw.fif')))
+            if subject_raw_file is not None:
+                raw_files.append(subject_raw_file)
+    raw_files = [raw_fname for raw_fname in raw_files if
+                 'empty' not in utils.namebase(raw_fname) and utils.namebase(raw_fname) not in excludes]
+    return raw_files
 
 
 def init_main(subject, mri_subject, remote_subject_dir, args):
@@ -2291,6 +2393,9 @@ def main(tup, remote_subject_dir, args, flags):
             None, conditions, stat, stcs_conds_smooth, inverse_method, args.morph_to_subject,
             args.norm_by_percentile, args.norm_percs, False)
 
+    if 'fit_ica_on_subjects' in args.function:
+        fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
+
     return flags
 
 
@@ -2307,7 +2412,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
-    parser.add_argument('--overwrite_ica', help='overwrite_ica', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
@@ -2374,8 +2478,18 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
+    parser.add_argument('--meg_root_fol', required=False, default='')
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
+    # **** ICA *****
+    parser.add_argument('--ica_n_components', required=False, default=0.95, type=float)
+    parser.add_argument('--ica_n_max_ecg', required=False, default=3, type=int)
+    parser.add_argument('--ica_n_max_eog', required=False, default=1, type=int)
+    parser.add_argument('--ica_method', required=False, default='fastica')
+    parser.add_argument('--overwrite_ica', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--remove_artifacts_from_raw', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--do_plot_ica', help='', required=False, default=0, type=au.is_true)
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],

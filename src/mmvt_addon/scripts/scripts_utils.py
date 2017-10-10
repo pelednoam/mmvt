@@ -452,15 +452,20 @@ def select_one_file(files, template='', files_desc='', print_title=True):
         print('No file was found ({})'.format(template))
         return None
     if print_title:
-        print('More than one {} files were found in {}, please pick one.'.format(files_desc, template))
+        print('More than one {} files were found {}, please pick one.'.format(
+            files_desc, 'in {}'.format(template) if template != '' else ''))
     for ind, fname in enumerate(files):
         print('{}) {}'.format(ind + 1, fname))
-    file_num = input('Which one do you want to load (1, 2, ...)? ')
+    input_str = 'Which one do you want to load (1, 2, ...)? Press 0 to cancel'
+    file_num = input(input_str)
     while not is_int(file_num):
         print('Please enter a valid integer')
-        file_num = input('Which one do you want to load (1, 2, ...)? ')
-    file_num = int(file_num) - 1
-    return files[file_num]
+        file_num = input(input_str)
+    if file_num == 0:
+        return None
+    else:
+        file_num = int(file_num) - 1
+        return files[file_num]
 
 
 def is_int(s):
