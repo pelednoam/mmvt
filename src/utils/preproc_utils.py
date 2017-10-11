@@ -26,10 +26,7 @@ def decode_subjects(subjects):
     return subjects
 
 
-def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
-    if subjects_itr is None:
-        subjects_itr = args.subject
-    subjects_flags, subjects_errors = {}, {}
+def init_args(args):
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.necessary_files == '':
         args.necessary_files = dict()
@@ -39,12 +36,19 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
             if args.sftp else ''
     set_default_args(args)
+    args.atlas = utils.get_real_atlas_name(args.atlas)
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
+    return args
+
+def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
+    if subjects_itr is None:
+        subjects_itr = args.subject
+    subjects_flags, subjects_errors = {}, {}
+    args = init_args(args)
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
         remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
-        args.atlas = utils.get_real_atlas_name(args.atlas)
         logging.info(args)
         print('****************************************************************')
         print('subject: {}, atlas: {}'.format(subject, args.atlas))

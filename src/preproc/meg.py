@@ -310,14 +310,14 @@ def calc_epochs_necessary_files(args):
     return necessary_files
 
 
-def calc_epochs_wrapper_args(conditions, args, raw=None, ica=None):
+def calc_epochs_wrapper_args(conditions, args, raw=None):
     return calc_epochs_wrapper(
         conditions, args.t_min, args.t_max, args.baseline, raw, args.read_events_from_file,
         None, args.stim_channels,
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs, args.epochs_name)
+        args.windows_num, args.overwrite_epochs, args.epo_fname)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -348,12 +348,8 @@ def calc_epochs_wrapper(
         windows_num=0, overwrite_epochs=False, epo_fname=''):
     # Calc evoked data for averaged data and for each condition
     try:
-        if epo_fname == '':
-            epo_fname, epo_exist = locating_file(EPO, '*epo.fif')
-            if not epo_exist:
-                epo_fname = EPO
-        else:
-            epo_exist = op.isfile(epo_fname)
+        epo_fname = get_epo_fname(epo_fname)
+        epo_exist = op.isfile(epo_fname)
         if epo_exist and not overwrite_epochs:
             if '{cond}' in epo_fname:
                 epo_exist = True
@@ -390,8 +386,7 @@ def calc_epochs_wrapper(
 def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='',
                 norm_by_percentile=False, norm_percs=None):
     try:
-        if evoked_fname == '':
-            evoked_fname = EVO
+        evoked_fname = get_evo_fname(evoked_fname)
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
@@ -556,41 +551,44 @@ def check_bem(mri_subject, args={}):
         mne.write_bem_solution(BEM, bem)
 
 
-def make_forward_solution(mri_subject, events, sub_corticals_codes_file='', usingMEG=True, usingEEG=True, calc_corticals=True,
-        calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
-        recreate_src_surface='white', overwrite_fwd=False, n_jobs=4, args={}):
+def make_forward_solution(mri_subject, events, evo_fname='', fwd_fname='', sub_corticals_codes_file='',
+                          usingMEG=True, usingEEG=True, calc_corticals=True,
+                          calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
+                          recreate_src_surface='white', overwrite_fwd=False, n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
-    fwd_fname = FWD if usingMEG else FWD_EEG
+    evo_fname = get_evo_fname(evo_fname)
+    fwd_fname = get_fwd_fname(fwd_fname, usingMEG, usingEEG)
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
         check_bem(mri_subject, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
-        if '{cond}' not in EPO:
+        if '{cond}' not in evo_fname:
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
-                    fwd = _make_forward_solution(src, EPO, usingMEG, usingEEG, n_jobs)
+                    fwd = _make_forward_solution(src, evo_fname, usingMEG, usingEEG, n_jobs)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
                 if overwrite_fwd or not op.isfile(FWD_SUB):
                     src_with_subcortical = add_subcortical_volumes(src, sub_corticals)
-                    fwd_with_subcortical = _make_forward_solution(src_with_subcortical, EPO, usingMEG, usingEEG, n_jobs)
+                    fwd_with_subcortical = _make_forward_solution(
+                        src_with_subcortical, evo_fname, usingMEG, usingEEG, n_jobs)
                     mne.write_forward_solution(FWD_SUB, fwd_with_subcortical, overwrite=True)
         else:
             for cond in events.keys():
                 if calc_corticals:
                     fwd_cond_fname = get_cond_fname(fwd_fname, cond)
                     if overwrite_fwd or not op.isfile(fwd_cond_fname):
-                        fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingMEG, usingEEG, n_jobs)
+                        fwd = _make_forward_solution(src, get_cond_fname(evo_fname, cond), usingMEG, usingEEG, n_jobs)
                         mne.write_forward_solution(fwd_cond_fname, fwd, overwrite=True)
                 if calc_subcorticals and len(sub_corticals) > 0:
                     # add a subcortical volumes
                     fwd_cond_fname = get_cond_fname(FWD_SUB, cond)
                     if overwrite_fwd or not op.isfile(fwd_cond_fname):
                         src_with_subcortical = add_subcortical_volumes(src, sub_corticals)
-                        fwd_with_subcortical = _make_forward_solution(src_with_subcortical, get_cond_fname(EPO, cond),
-                                                                      usingMEG, usingEEG, n_jobs)
+                        fwd_with_subcortical = _make_forward_solution(
+                            src_with_subcortical, get_cond_fname(evo_fname, cond), usingMEG, usingEEG, n_jobs)
                         mne.write_forward_solution(fwd_cond_fname, fwd_with_subcortical, overwrite=True)
         flag = True
     except:
@@ -731,20 +729,16 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     return src
 
 
-def calc_noise_cov(epochs, noise_t_min=None, noise_t_max=0, args=None):
+def calc_noise_cov(epochs=None, noise_t_min=None, noise_t_max=0, args=None):
+    if epochs is None:
+        return recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args)
     if len(epochs) > 1:
         # Check if we need to recalc the epoches...
         if epochs.tmin <= noise_t_min and epochs.tmin >= noise_t_max:
             noise_cov = mne.compute_covariance(epochs.crop(noise_t_min, noise_t_max))
         else:
             # Yes, we do...
-            noise_args = utils.Bag(args.copy())
-            noise_args.t_min = noise_t_min
-            noise_args.t_max = noise_t_max
-            noise_args.overwrite_epochs = True
-            noise_args.baseline = (noise_t_min, noise_t_max)
-            _, noise_epochs = calc_epochs_wrapper_args(noise_args.conditions, noise_args)
-            noise_cov = mne.compute_covariance(noise_epochs.crop(noise_t_min, noise_t_max))
+            noise_cov = recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args)
     else:
         if op.isfile(EPO_NOISE):
             demi_epochs = mne.read_epochs(EPO_NOISE)
@@ -753,15 +747,62 @@ def calc_noise_cov(epochs, noise_t_min=None, noise_t_max=0, args=None):
         noise_cov = calc_noise_cov(demi_epochs)
     return noise_cov
 
+def recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args):
+    noise_args = utils.Bag(args.copy())
+    noise_args.t_min = noise_t_min
+    noise_args.t_max = noise_t_max
+    noise_args.overwrite_epochs = True
+    noise_args.baseline = (noise_t_min, noise_t_max)
+    _, noise_epochs = calc_epochs_wrapper_args(noise_args.conditions, noise_args)
+    noise_cov = mne.compute_covariance(noise_epochs.crop(noise_t_min, noise_t_max))
+    return noise_cov
 
-def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0,
+
+def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
+    if inv_fname == '':
+        inv_fname, inv_exist = locating_file(inv_fname, '*inv.fif')
+        if not inv_exist:
+            inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
+    return inv_fname
+
+
+def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
+    if fwd_fname == '':
+        fwd_fname, fwd_exist = locating_file(fwd_fname, '*fwd.fif')
+        if not fwd_exist:
+            fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
+    return fwd_fname
+
+
+def get_epo_fname(epo_fname=''):
+    if epo_fname == '':
+        epo_fname, epo_exist = locating_file(epo_fname, '*epo.fif')
+        if not epo_exist:
+            epo_fname = EPO
+    return epo_fname
+
+
+def get_evo_fname(evo_fname=''):
+    if evo_fname == '':
+        evo_fname, epo_exist = locating_file(evo_fname, '*ave.fif')
+        if not epo_exist:
+            evo_fname = EVO
+    return evo_fname
+
+
+def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
+                          inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0,
                           overwrite_inverse_operator=False, use_empty_room_for_noise_cov=False,
                           overwrite_noise_cov=False, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
                           fwd_usingMEG=True, fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None,
                           subcortical_fwd=None, spec_subcortical_fwd=None, region=None, args=None):
-    conds = ['all'] if '{cond}' not in EPO else events.keys()
-    fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
-    inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
+    fwd_fname = get_fwd_fname(fwd_fname, fwd_usingMEG, fwd_usingEEG)
+    inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    evo_fname = get_evo_fname(evo_fname)
+    epo_fname = get_epo_fname(epo_fname)
+    if noise_cov_fname == '':
+        noise_cov_fname = NOISE_COV
+    conds = ['all'] if '{cond}' not in epo_fname else events.keys()
     flag = True
     for cond in conds:
         if (not overwrite_inverse_operator and
@@ -770,30 +811,31 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, noise_t_min=None
             (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region)))):
                 continue
         try:
-            epo = get_cond_fname(EPO, cond)
-            epochs = mne.read_epochs(epo)
             if use_empty_room_for_noise_cov:
                 raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
                 noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
-                noise_cov.save(NOISE_COV)
-            elif overwrite_noise_cov or not op.isfile(NOISE_COV):
+                noise_cov.save(noise_cov_fname)
+            elif overwrite_noise_cov or not op.isfile(noise_cov_fname):
+                epo = get_cond_fname(epo_fname, cond)
+                epochs = mne.read_epochs(epo)
                 noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, args)
-                noise_cov.save(NOISE_COV)
+                noise_cov.save(noise_cov_fname)
             else:
                 noise_cov = mne.read_cov(NOISE_COV)
             # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
-                _calc_inverse_operator(cortical_fwd, get_cond_fname(inv_fname, cond), epochs, noise_cov, inv_loose, inv_depth)
+                _calc_inverse_operator(
+                    cortical_fwd, get_cond_fname(inv_fname, cond), evo_fname, noise_cov, inv_loose, inv_depth)
             if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
-                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), epochs, noise_cov, None, None)
+                _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), evo_fname, noise_cov, None, None)
             if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
                 if spec_subcortical_fwd is None:
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
-                _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), epochs,
+                _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), evo_fname,
                                        noise_cov, None, None)
             flag = True
         except:
@@ -803,9 +845,9 @@ def calc_inverse_operator(events, inv_loose=0.2, inv_depth=0.8, noise_t_min=None
     return flag
 
 
-def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov, inv_loose=0.2, inv_depth=0.8):
+def _calc_inverse_operator(fwd_name, inv_name, evoked, noise_cov, inv_loose=0.2, inv_depth=0.8):
     fwd = mne.read_forward_solution(fwd_name)
-    inverse_operator = make_inverse_operator(epochs.info, fwd, noise_cov,
+    inverse_operator = make_inverse_operator(evoked.info, fwd, noise_cov,
         loose=inv_loose, depth=inv_depth)
     write_inverse_operator(inv_name, inverse_operator)
 
@@ -822,27 +864,35 @@ def _calc_inverse_operator(fwd_name, inv_name, epochs, noise_cov, inv_loose=0.2,
 
 def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
-                           single_trial_stc=False, save_stc=True, snr=3.0):
+                           single_trial_stc=False, save_stc=True, snr=3.0, stc_template='', stc_hemi_template='',
+                           epo_fname='', evo_fname='', inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
+    epo_fname = get_epo_fname(epo_fname)
+    evo_fname = get_evo_fname(evo_fname)
+    inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    if stc_template == '':
+        stc_template = STC
+    if stc_hemi_template == '':
+        stc_hemi_template = STC_HEMI
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs, stcs_num = {}, {}
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
-    inv_fname, inv_exist = locating_file(INV, '*inv.fif')
-    if not inv_exist:
+    if not op.isfile(inv_fname):
         print('No inverse operator was found!')
         return False, stcs, stcs_num
     if '{cond}' not in inv_fname:
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
     for cond_name in events.keys():
+        stc_fname = stc_template.format(cond=cond_name, method=inverse_method)[:-4]
+        stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
         try:
             if not global_inverse_operator:
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
             if single_trial_stc:
-                epo_fname, epo_found = locating_file(EPO, '*epo.fif')
-                if not epo_found:
+                if not op.isfile(epo_fname):
                     print('single_trial_stc and not epoch file was found!')
                     return False, stcs, stcs_num
                 epo_cond = get_cond_fname(epo_fname, cond_name)
@@ -854,7 +904,8 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 # if save_stc:
                 #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
-                evoked = get_evoked_cond(cond_name, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                evoked = get_evoked_cond(
+                    cond_name, evo_fname, epo_fname, baseline, apply_SSP_projection_vectors, add_eeg_ref)
                 if evoked is None:
                     return False, stcs, stcs_num
                 if not stc_t_min is None and not stc_t_max is None:
@@ -864,7 +915,6 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 except:
                     print('Cannot create EEG average reference projector (no EEG data found)')
                 stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-                stc_fname = STC.format(cond=cond_name, method=inverse_method)[:-4]
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
@@ -882,16 +932,15 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     else:
         print("No ?h.sphere.reg files! You won't be able to plot stc files")
     if all([utils.both_hemi_files_exist(
-            STC_HEMI.format(cond=cond, method=inverse_method, hemi='{hemi}'))
-            for cond in events.keys()]) and \
-            len(glob.glob(STC_HEMI.format(cond='*', method=inverse_method, hemi='?h'))) == 4:
+            stc_hemi_template.format(cond=cond, hemi='{hemi}'))
+            for cond in events.keys()]) and len(glob.glob(stc_hemi_template.format(cond='*', hemi='?h'))) == 4:
         conds = list(events.keys())
-        for hemi in utils.HEMIS:
-            STC_HEMI
-            calc_stc_diff(
-                STC_HEMI.format(cond=conds[0], method=inverse_method, hemi=hemi),
-                STC_HEMI.format(cond=conds[1], method=inverse_method, hemi=hemi),
-                STC_HEMI.format(cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi))
+        if len(conds) == 2:
+            for hemi in utils.HEMIS:
+                calc_stc_diff(
+                    stc_hemi_template.format(cond=conds[0], hemi=hemi),
+                    stc_hemi_template.format(cond=conds[1], hemi=hemi),
+                    stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi))
     return flag, stcs, stcs_num
 
 
@@ -981,10 +1030,11 @@ def save_diploe_loc(dipole, trans):
     print(dipole_xyz, dipole_ori)
 
 
-
-def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=True, add_eeg_ref=True):
-    evo_fname, evo_found = locating_file(EVO, '*ave.fif')
-    if not evo_found:
+def get_evoked_cond(cond_name, evo_fname='', epo_fname='', baseline=(None, 0), apply_SSP_projection_vectors=True,
+                    add_eeg_ref=True):
+    evo_fname = get_evo_fname(evo_fname)
+    epo_fname = get_epo_fname(epo_fname)
+    if not op.isfile(evo_fname):
         print('get_evoked_cond: No evoked file found!')
         return None
     if '{cond}' not in evo_fname:
@@ -999,8 +1049,7 @@ def get_evoked_cond(cond_name, baseline=(None, 0), apply_SSP_projection_vectors=
             evoked = mne.read_evokeds(evo_cond, baseline=baseline)[0]
         else:
             print('No evoked file, trying to use epo file')
-            epo_fname, epo_found = locating_file(EPO, '*epo.fif')
-            if not epo_found:
+            if not op.isfile(epo_fname):
                 print('No epochs were found!')
                 return None
             if '{cond}' not in epo_fname:
@@ -1147,7 +1196,7 @@ def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all
     if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
         make_forward_solution_to_specific_subcortrical(events, region)
     if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
-        calc_inverse_operator(events, inv_loose, inv_depth, False, False, False, False, True, region=region)
+        calc_inverse_operator(events, '', '', '', '', '', inv_loose, inv_depth, False, False, False, False, True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
@@ -1971,12 +2020,14 @@ def get_meg_files(subject, necessary_fnames, args, events):
 def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
     if mri_subject == '':
         mri_subject = subject
-    inv_fname = INV_EEG if args.fwd_usingEEG and not args.fwd_usingMEG else INV
-    inv_fname, _ = locating_file(inv_fname, '*inv.fif')
+    inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+    fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+    epo_fname = get_epo_fname(args.epo_fname)
+    evo_fname = get_evo_fname(args.evo_fname)
+    noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
     get_meg_files(subject, [inv_fname], args, conditions)
-    fwd = None
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
-        if utils.should_run(args, 'make_forward_solution'):
+        if utils.should_run(args, 'make_forward_solution') and (not op.isfile(fwd_fname) or args.overwrite_fwd):
             prepare_subject_folder(
                 mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
                 {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
@@ -1989,51 +2040,55 @@ def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
                     nec_file, args)
                 if file_exist:
                     break
-            get_meg_files(subject, [EPO], args, conditions)
+            get_meg_files(subject, [evo_fname], args, conditions)
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-                mri_subject, conditions, sub_corticals_codes_file, args.fwd_usingMEG, args.fwd_usingEEG,
-                args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
+                mri_subject, conditions, evo_fname, fwd_fname, sub_corticals_codes_file, args.fwd_usingMEG,
+                args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
                 args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.n_jobs, args)
 
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
-            get_meg_files(subject, [EPO, FWD], args, conditions)
+            get_meg_files(subject, [epo_fname, fwd_fname], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
-                conditions, args.inv_loose, args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
-                args.use_empty_room_for_noise_cov, args.overwrite_noise_cov, args.inv_calc_cortical,
-                args.inv_calc_subcorticals, args.fwd_usingMEG, args.fwd_usingEEG, args=args)
+                conditions, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.inv_loose, args.inv_depth,
+                args.noise_t_min, args.noise_t_max, args.overwrite_inv, args.use_empty_room_for_noise_cov,
+                args.overwrite_noise_cov, args.inv_calc_cortical, args.inv_calc_subcorticals,
+                args.fwd_usingMEG, args.fwd_usingEEG, args=args)
     return flags
 
 
-def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, ica=None, mri_subject=''):
+def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subject=''):
     if mri_subject == '':
         mri_subject = subject
     evoked, epochs = None, None
     if utils.should_run(args, 'calc_epochs'):
         necessary_files = calc_epochs_necessary_files(args)
         get_meg_files(subject, necessary_files, args, conditions)
-        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw, ica)
+        flags['calc_epochs'], epochs = calc_epochs_wrapper_args(conditions, args, raw)
     if utils.should_run(args, 'calc_epochs') and not flags['calc_epochs']:
         return flags, evoked, epochs
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
-            epochs, conditions, mri_subject, args.normalize_data, args.evoked_name,
+            epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
             args.norm_by_percentile, args.norm_percs)
 
     return flags, evoked, epochs
 
 
-def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags):
+def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}):
     stcs_conds, stcs_num = None, {}
     if isinstance(inverse_method, Iterable):
         inverse_method = inverse_method[0]
+    inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+    evo_fname = get_evo_fname(args.evo_fname)
     if utils.should_run(args, 'calc_stc_per_condition'):
-        # inv_fname, inv_exist = locating_file(INV, '*inv.fif')
-        get_meg_files(subject, [INV, EVO], args, conditions)
+        get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
-            conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline, args.apply_SSP_projection_vectors,
-            args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc, snr=args.snr)
+            conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
+            args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
+            args.snr, args.stc_template, args.stc_hemi_template, args.epo_fname,
+            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     return flags, stcs_conds, stcs_num
 
 
@@ -2439,10 +2494,12 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
-    parser.add_argument('--epochs_name', help='', required=False, default='')
-    parser.add_argument('--evoked_name', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
+    parser.add_argument('--inv_fname', help='', required=False, default='')
+    parser.add_argument('--fwd_fname', help='', required=False, default='')
+    parser.add_argument('--epo_fname', help='', required=False, default='')
+    parser.add_argument('--noise_cov_fname', help='', required=False, default='')
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
@@ -2498,6 +2555,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--stc_template', help='', required=False, default='')
+    parser.add_argument('--stc_hemi_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')
@@ -2525,10 +2584,6 @@ def read_cmd_args(argv=None):
     args = utils.Bag(au.parse_parser(parser, argv))
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
-    if args.epochs_name != '':
-        args.epochs_name = op.join(SUBJECT_MEG_FOLDER, '{}-epo.fif'.format(args.epochs_name))
-    if args.evoked_name != '':
-        args.evoked_name = op.join(SUBJECT_MEG_FOLDER, '{}-evo.fif'.format(args.evoked_name))
     if not args.mri_subject:
         args.mri_subject = args.subject
     if args.baseline_min is None and args.baseline_max is None:
@@ -2537,10 +2592,12 @@ def read_cmd_args(argv=None):
         args.baseline = (args.baseline_min, args.baseline_max)
     if args.task == 'rest':
         args.single_trial_stc = True
-        calc_epochs_from_raw = True
+        args.calc_epochs_from_raw = True
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0
+    # if args.n_jobs == -1:
+    #     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.function == 'rest_functions':
         args.function = 'calc_epochs,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,' + \
                         'calc_labels_avg_per_condition'

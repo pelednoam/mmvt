@@ -1672,6 +1672,8 @@ def add_str_to_file_name(fname, txt, suf=''):
 
 
 def locating_file(default_fname, glob_pattern, parent_fol):
+    if op.isfile(default_fname):
+        return default_fname, True
     fname = op.join(parent_fol, default_fname)
     if '{cond}' in fname:
         exist = len(glob.glob(fname.replace('{cond}', '*'))) > 1
