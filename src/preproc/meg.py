@@ -2101,32 +2101,53 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
         print('Saveing to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica', remove_from_raw=True,
-                     save_raw=True, raw_fname='', overwrite_ica=False, do_plot=False):
+def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fname='', overwrite_ica=False,
+            do_plot=False, examine_ica=False):
+    from mne.preprocessing import read_ica
     if raw_fname == '':
         raw_fname = RAW
-    ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'artifacts_removal-ica.fif')
+    if ica_fname == '':
+        ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'ica.fif')
     if op.isfile(ica_fname) and not overwrite_ica:
-        from mne.preprocessing import read_ica
         ica = read_ica(ica_fname)
-        return ica
+    else:
+        ica = ICA(n_components=n_components, method=method)
+        raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+                   filter_length='10s', phase='zero-double')
+        picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
+                               stim=False, exclude='bads')
+        ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
+    print(ica)
+    if do_plot:
+        fig = ica.plot_components(picks=range(max(ica.n_components_, 20)), inst=raw)
+        fig_fname = '{}.{}'.format(op.splitext(ica_fname)[0], 'png')
+        if not op.isfile(fig_fname):
+            fig.savefig(fig_fname)
+    if examine_ica:
+        output_fname = op.join(utils.get_parent_fol(ica_fname), 'ica_comps.txt')
+        comp_num = input('Type the ICA component you want to save: ')
+        while not utils.is_int(comp_num):
+            print('Please enter a valid integer')
+        with open(output_fname, 'a') as f:
+            f.write('{},{}\n'.format(utils.namesbase_with_ext(ica_fname), comp_num))
+    return ica
 
-    raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
-               filter_length='10s', phase='zero-double')
+
+def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica',
+                     ecg_inds=[], eog_inds=[], eog_channel=None, remove_from_raw=True,
+                     save_raw=True, raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False):
     # 1) Fit ICA model using the FastICA algorithm.
-    ica = ICA(n_components=n_components, method=method)
+    ica = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot)
     picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                            stim=False, exclude='bads')
-    ica.fit(raw, picks=picks, decim=3, reject=dict(mag=4e-12, grad=4000e-13))
-    print(ica)
-    # if do_plot:
-    #     ica.plot_components(picks=range(max(ica.n_components_, 20)), inst=raw)
-
     ###############################################################################
     # 2) identify bad components by analyzing latent sources.
     # generate ECG epochs use detection via phase statistics
-    ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
-    ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
+    if len(ecg_inds) == 0:
+        ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
+        ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
+    else:
+        scores = [1.0 / len(ecg_inds)] * len(ecg_inds)
     if len(ecg_inds) == 0:
         print('No ECG artifacts!')
     else:
@@ -2136,21 +2157,24 @@ def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='f
             show_picks = np.abs(scores).argsort()[::-1][:5]
             ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
             ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
-
         ecg_inds = ecg_inds[:n_max_ecg]
         ica.exclude += ecg_inds
-
-    # detect EOG by correlation
     try:
-        eog_inds, scores = ica.find_bads_eog(raw)
-        if do_plot:
-            ica.plot_scores(scores, exclude=eog_inds, title=title % 'eog', labels='eog')
-            show_picks = np.abs(scores).argsort()[::-1][:5]
-            ica.plot_sources(raw, show_picks, exclude=eog_inds, title=title % 'eog')
-            ica.plot_components(eog_inds, title=title % 'eog', colorbar=True)
-
-        eog_inds = eog_inds[:n_max_eog]
-        ica.exclude += eog_inds
+        if len(eog_inds) == 0:
+            # detect EOG by correlation
+            eog_inds, scores = ica.find_bads_eog(raw, ch_name=eog_channel)
+        else:
+            scores = [1.0 / len(eog_inds)] * len(eog_inds)
+        if len(eog_inds) == 0:
+            print('No EOG artifacts!')
+        else:
+            if do_plot:
+                ica.plot_scores(scores, exclude=eog_inds, title=title % 'eog', labels='eog')
+                show_picks = np.abs(scores).argsort()[::-1][:5]
+                ica.plot_sources(raw, show_picks, exclude=eog_inds, title=title % 'eog')
+                ica.plot_components(eog_inds, title=title % 'eog', colorbar=True)
+            eog_inds = eog_inds[:n_max_eog]
+            ica.exclude += eog_inds
     except:
         print("Can't remove EOG artifacts!")
     ###############################################################################
@@ -2163,7 +2187,7 @@ def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='f
         ica.plot_sources(ecg_evoked, exclude=ecg_inds)  # plot ECG sources + selection
         ica.plot_overlay(ecg_evoked, exclude=ecg_inds)  # plot ECG cleaning
         try:
-            eog_evoked = create_eog_epochs(raw, tmin=-.5, tmax=.5, picks=picks).average()
+            eog_evoked = create_eog_epochs(raw, tmin=-.5, tmax=.5, picks=picks, ch_name=eog_channel).average()
             print('We found %i EOG events' % eog_evoked.nave)
             ica.plot_sources(eog_evoked, exclude=eog_inds)  # plot EOG sources + selection
             ica.plot_overlay(eog_evoked, exclude=eog_inds)  # plot EOG cleaning
@@ -2185,7 +2209,7 @@ def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='f
 
 
 def remove_artifacts_with_template_matching(ica_subjects='all', meg_root_fol=''):
-    subject_ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'artifacts_removal-ica.fif')
+    subject_ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'ica.fif')
     if not op.isfile(subject_ica_fname):
         print('You should first call remove_artifacts to create an ICA file')
         return False
@@ -2218,7 +2242,7 @@ def find_eog_template(subjects='all', n_components=0.95, meg_root_fol='', method
     valid_raw_files, eog_templates = {}, {}
     template_found = False
     for raw_fname in raw_files:
-        raw_ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'artifacts_removal-ica.fif')
+        raw_ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'ica.fif')
         if not op.isfile(raw_ica_fname) or raw_fname == RAW:
             continue
         try:
@@ -2257,7 +2281,7 @@ def fit_ica_on_subjects(subjects='all', n_components=0.95, method='fastica', ica
     from mne.preprocessing import ICA
 
     if ica_fname == '':
-        ica_fname = 'artifacts_removal-ica.fif'
+        ica_fname = 'ica.fif'
     ica_files_num, raw_files_num = 0, 0
     raw_files = collect_raw_files(subjects, meg_root_fol)
     for raw_fname in raw_files:
