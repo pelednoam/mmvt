@@ -22,7 +22,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     output_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surface_type, hemi))
     utils.make_dir(output_fol)
     vtx, fac = utils.read_ply_file(op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surface_type)))
-    if vertices_labels_ids_lookup is None:
+    if vertices_labels_ids_lookup is None or overwrite_vertices_labels_lookup:
         vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
             subject, atlas, True, overwrite_vertices_labels_lookup)[hemi]
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
@@ -65,12 +65,14 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
             # Update nV for the next loop
             nV = vtx.shape[0]
             # Add the new faces to their respective labels
-            facL[Cidx[0]] += [facnew[0]]
-            facL[Cidx[1]] += [facnew[1]]
-            facL[Cidx[2]] += [facnew[2]]
-            freq_Cidx = mode(Cidx)
-            facL[freq_Cidx] += [facnew[3]] # central face
-
+            try:
+                facL[Cidx[0]] += [facnew[0]]
+                facL[Cidx[1]] += [facnew[1]]
+                facL[Cidx[2]] += [facnew[2]]
+                freq_Cidx = mode(Cidx)
+                facL[freq_Cidx] += [facnew[3]] # central face
+            except:
+                print('asdfasdfsaf')
     # Having defined new faces and assigned all faces to labels, now
     # select the vertices and redefine faces to use the new vertex indices
     # Also, create the file for the indices

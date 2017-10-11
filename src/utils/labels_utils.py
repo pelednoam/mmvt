@@ -109,21 +109,27 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     if overwrite:
         for hemi in HEMIS:
             utils.remove_file(op.join(subject_dir, 'label', '{}.{}.annot'.format(hemi, aparc_name)))
-    mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
-                              subjects_dir=subjects_dir)
-    return len(labels) > 0
+    try:
+        mne.write_labels_to_annot(subject=subject, labels=labels, parc=aparc_name, overwrite=overwrite,
+                                  subjects_dir=subjects_dir)
+    except:
+        print('Error in writing annot file!')
+        return False
+    return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
 def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
-    now = time.time()
+    # now = time.time()
     # print('Read labels')
     # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
     # labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
+
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
         shutil.rmtree(backup_labels_fol)
     shutil.copytree(labels_fol, backup_labels_fol)
+
     # os.rename(labels_fol, backup_labels_fol)
     # utils.make_dir(labels_fol)
     save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol)
@@ -212,40 +218,44 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
             labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         labels_names = [l.name for l in labels]
         # if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
-        create_unknown_label = True
+        # create_unknown_label = True
         verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
-        unknown_verts = set(range(verts.shape[0]))
+        # unknown_verts = set(range(verts.shape[0]))
         for label in labels:
             for vertice in label.vertices:
                 lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
-            if create_unknown_label and label.name != 'unknown-{}'.format(hemi):
-                unknown_verts -= set(label.vertices)
-        if create_unknown_label:
-            for vertice in unknown_verts:
-                lookup[hemi][vertice] = len(labels_names) if save_labels_ids else 'unknown-{}'.format(hemi)
-            if 'unknown-{}'.format(hemi) in labels_names:
-                unknown_label = labels[labels_names.index('unknown-{}'.format(hemi))]
-                recreate_annot = set(unknown_label.vertices) != unknown_verts
-            if recreate_annot:
-                while 'unknown-{}'.format(hemi) in labels_names:
-                    del labels[labels_names.index('unknown-{}'.format(hemi))]
-                    labels_names = [l.name for l in labels]
+            # if create_unknown_label and label.name != 'unknown-{}'.format(hemi):
+            #     unknown_verts -= set(label.vertices)
+        # if create_unknown_label:
+        #     for vertice in unknown_verts:
+        #         lookup[hemi][vertice] = len(labels_names) if save_labels_ids else 'unknown-{}'.format(hemi)
+        #     if 'unknown-{}'.format(hemi) in labels_names:
+        #         unknown_label = labels[labels_names.index('unknown-{}'.format(hemi))]
+        #         recreate_annot = set(unknown_label.vertices) != unknown_verts
+        #     if recreate_annot:
+        #         while 'unknown-{}'.format(hemi) in labels_names:
+        #             del labels[labels_names.index('unknown-{}'.format(hemi))]
+        #             labels_names = [l.name for l in labels]
                     # labels[labels_names.index('unknown-{}'.format(hemi))].vertices = sorted(list(unknown_verts))
                 # else:s
                 #     unknown_label = mne.Label(
                 #         sorted(list(unknown_verts)), hemi=hemi, name='unknown-{}'.format(hemi), subject=subject)
                 #     labels.append(unknown_label)
-                annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
-                shutil.copy(annot_fname, op.join(SUBJECTS_DIR, subject, 'label', '{}.{}_backup.annot'.format(hemi, atlas)))
-                mne.write_labels_to_annot(
-                    labels, subject=subject, parc=atlas, overwrite=True, subjects_dir=SUBJECTS_DIR, hemi=hemi)
-                # labels = mne.read_labels_from_annot(subject, annot_fname=annot_fname)
+                # try:
+                #     mne.write_labels_to_annot(
+                #         labels, subject=subject, parc=atlas, overwrite=True, subjects_dir=SUBJECTS_DIR, hemi=hemi)
+                #     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+                #     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
+                #     shutil.copy(annot_fname, op.join(SUBJECTS_DIR, subject, 'label', '{}.{}_backup.annot'.format(hemi, atlas)))
+                # except:
+                #     print(traceback.format_exc())
+                #     return None
+                    # labels = mne.read_labels_from_annot(subject, annot_fname=annot_fname)
     utils.save(lookup, output_fname)
     return lookup
 
 
 def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=''):
-    # todo: Doens't work on DC, laus250. check that out
     lookup = create_vertices_labels_lookup(subject, atlas, read_labels_from_fol=read_labels_from_fol)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     utils.delete_folder_files(labels_fol)
@@ -256,8 +266,12 @@ def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pi
         for vertice, label in lookup[hemi].items():
             labels_vertices[label].append(vertice)
         for label, vertices in labels_vertices.items():
+            if label == 'unknown-{}'.format(hemi):
+                # Don't save the unknown label, the labales_to_annot will do that, otherwise there will be 2 unknown labels
+                continue
             new_label = mne.Label(sorted(vertices), surf[vertices], hemi=hemi, name=label, subject=subject)
             new_label.save(op.join(labels_fol, label))
+
 
 
 def calc_labels_centroids(labels_hemi, hemis_verts):
@@ -436,7 +450,8 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                         labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
-                labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
+                labels = read_labels_parallel(
+                    subject, subjects_dir, atlas, hemi=hemi, labels_fol=labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
             print("Can't read the {} labels!".format(atlas))
             return []

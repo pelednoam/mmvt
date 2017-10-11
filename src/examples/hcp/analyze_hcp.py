@@ -120,6 +120,7 @@ def analyze_task(subject, task, hcp_params):
 def analyze_rest():
     pass
 
+
 if __name__ == '__main__':
     subject = '100307'
     task = 'task_working_memory'

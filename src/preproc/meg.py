@@ -30,10 +30,10 @@ LOOKUP_TABLE_SUBCORTICAL = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
 STAT_AVG, STAT_DIFF = range(2)
 HEMIS = ['rh', 'lh']
 
-SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
+SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, RAW_ICA, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB, FWD_X,\
 FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH, BEM, STC, \
 STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
-COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 42
+COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 43
 
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
@@ -48,7 +48,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
                  cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False, data_per_task=False):
-    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
+    global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, RAW_ICA, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
         BEM, STC, STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH,\
         ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
@@ -83,6 +83,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     _get_pkl_name_no_cond = partial(_get_pkl_name, cond='')
 
     RAW = _get_fif_name('raw', contrast='', cond='')
+    RAW_ICA = _get_fif_name('ica-raw', contrast='', cond='')
     alt_raw_fname = '{}.fif'.format(RAW[:-len('-raw.fif')])
     if not op.isfile(RAW) and op.isfile(alt_raw_fname):
         RAW = alt_raw_fname
@@ -236,7 +237,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0, ica=None):
+                 windows_num=0):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
 
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
@@ -280,11 +281,6 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     epochs = mne.Epochs(raw, events, conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     print('{} good epochs'.format(len(epochs)))
-    if ica is None and op.isfile(ARTIFACTS_REM_ICA):
-        from mne.preprocessing import read_ica
-        ica = read_ica(ARTIFACTS_REM_ICA)
-    if ica is not None:
-        epochs = ica.apply(epochs)
     save_epochs(epochs, epoches_fname)
     return epochs
 
@@ -321,7 +317,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None, ica=None):
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs, ica)
+        args.windows_num, args.overwrite_epochs, args.epochs_name)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -349,13 +345,15 @@ def calc_epochs_wrapper(
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0, overwrite_epochs=False, ica=None):
+        windows_num=0, overwrite_epochs=False, epo_fname=''):
     # Calc evoked data for averaged data and for each condition
     try:
-        # if not calc_epochs_from_raw:
-        epo_fname, epo_exist = locating_file(EPO, '*epo.fif')
-        if not epo_exist:
-            epo_fname = EPO
+        if epo_fname == '':
+            epo_fname, epo_exist = locating_file(EPO, '*epo.fif')
+            if not epo_exist:
+                epo_fname = EPO
+        else:
+            epo_exist = op.isfile(epo_fname)
         if epo_exist and not overwrite_epochs:
             if '{cond}' in epo_fname:
                 epo_exist = True
@@ -375,7 +373,7 @@ def calc_epochs_wrapper(
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  epo_fname, task, windows_length, windows_shift, windows_num, ica)
+                                  epo_fname, task, windows_length, windows_shift, windows_num)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -389,8 +387,11 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
-def calc_evokes(epochs, events, mri_subject, normalize_data=True, norm_by_percentile=False, norm_percs=None):
+def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='',
+                norm_by_percentile=False, norm_percs=None):
     try:
+        if evoked_fname == '':
+            evoked_fname = EVO
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
@@ -399,21 +400,21 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, norm_by_percen
             return False, None
         evokes = [epochs[event].average() for event in events_keys]
         save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs)
-        if '{cond}' in EVO:
+        if '{cond}' in evoked_fname:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
-                mne.write_evokeds(get_cond_fname(EVO, event), evoked)
+                mne.write_evokeds(get_cond_fname(evoked_fname, event), evoked)
         else:
             # evokes = [epochs[event].average() for event in events_keys]
-            mne.write_evokeds(EVO, evokes)
+            mne.write_evokeds(evoked_fname, evokes)
     except:
         print(traceback.format_exc())
         return False
     else:
-        if '{cond}' in EVO:
-            flag = all([op.isfile(get_cond_fname(EVO, event)) for event in evokes.keys()])
+        if '{cond}' in evoked_fname:
+            flag = all([op.isfile(get_cond_fname(evoked_fname, event)) for event in evokes.keys()])
         else:
-            flag = op.isfile(EVO)
+            flag = op.isfile(evoked_fname)
     return flag, evokes
 
 
@@ -2017,7 +2018,8 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, ica=None,
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
-            epochs, conditions, mri_subject, args.normalize_data, args.norm_by_percentile, args.norm_percs)
+            epochs, conditions, mri_subject, args.normalize_data, args.evoked_name,
+            args.norm_by_percentile, args.norm_percs)
 
     return flags, evoked, epochs
 
@@ -2100,8 +2102,10 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
 
 
 def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica', remove_from_raw=True,
-                     overwrite_ica=False, do_plot=False):
-    ica_fname = '{}-{}'.format(op.splitext(RAW)[0][:-4], 'artifacts_removal-ica.fif')
+                     save_raw=True, raw_fname='', overwrite_ica=False, do_plot=False):
+    if raw_fname == '':
+        raw_fname = RAW
+    ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'artifacts_removal-ica.fif')
     if op.isfile(ica_fname) and not overwrite_ica:
         from mne.preprocessing import read_ica
         ica = read_ica(ica_fname)
@@ -2175,8 +2179,9 @@ def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='f
             ica.save(ica_fname)
         if remove_from_raw:
             raw = ica.apply(raw)
-            raw.save(RAW, overwrite=True)
-    return ica
+            if save_raw:
+                raw.save(RAW_ICA, overwrite=True)
+    return raw
 
 
 def remove_artifacts_with_template_matching(ica_subjects='all', meg_root_fol=''):
@@ -2410,6 +2415,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
+    parser.add_argument('--epochs_name', help='', required=False, default='')
+    parser.add_argument('--evoked_name', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
@@ -2494,6 +2501,10 @@ def read_cmd_args(argv=None):
     args = utils.Bag(au.parse_parser(parser, argv))
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
+    if args.epochs_name != '':
+        args.epochs_name = op.join(SUBJECT_MEG_FOLDER, '{}-epo.fif'.format(args.epochs_name))
+    if args.evoked_name != '':
+        args.evoked_name = op.join(SUBJECT_MEG_FOLDER, '{}-evo.fif'.format(args.evoked_name))
     if not args.mri_subject:
         args.mri_subject = args.subject
     if args.baseline_min is None and args.baseline_max is None:

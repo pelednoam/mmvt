@@ -411,19 +411,16 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
 
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
                     n_jobs=6):
-    labels = []
-    try:
-        labels = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
-    except:
+    annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
+    if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
         # print(traceback.format_exc())
         solve_labels_collisions(subject, atlas, surf_type, n_jobs)
-        try:
-            labels = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
-        except:
+        annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
+        if not annot_was_created:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
-            print(traceback.format_exc())
-    return labels
+            return []
+    return annot_was_created
 
 
 def solve_labels_collisions(subject, atlas, surf_type='inflated', n_jobs=6):
@@ -464,7 +461,8 @@ def _parcelate_cortex_parallel(p):
     from src.preproc import parcelate_cortex
     subject, atlas, hemi, surface_type, vertices_labels_ids_lookup = p
     print('Parcelate the {} {} cortex'.format(hemi, surface_type))
-    return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup)
+    return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup,
+                                      overwrite_vertices_labels_lookup=True)
 
 
 def save_matlab_labels_vertices(subject, atlas):
