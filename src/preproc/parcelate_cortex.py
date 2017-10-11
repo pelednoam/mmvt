@@ -65,14 +65,11 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
             # Update nV for the next loop
             nV = vtx.shape[0]
             # Add the new faces to their respective labels
-            try:
-                facL[Cidx[0]] += [facnew[0]]
-                facL[Cidx[1]] += [facnew[1]]
-                facL[Cidx[2]] += [facnew[2]]
-                freq_Cidx = mode(Cidx)
-                facL[freq_Cidx] += [facnew[3]] # central face
-            except:
-                print('asdfasdfsaf')
+            facL[Cidx[0]] += [facnew[0]]
+            facL[Cidx[1]] += [facnew[1]]
+            facL[Cidx[2]] += [facnew[2]]
+            freq_Cidx = mode(Cidx)
+            facL[freq_Cidx] += [facnew[3]] # central face
     # Having defined new faces and assigned all faces to labels, now
     # select the vertices and redefine faces to use the new vertex indices
     # Also, create the file for the indices
