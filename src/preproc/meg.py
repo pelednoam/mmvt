@@ -866,7 +866,7 @@ def _calc_inverse_operator(fwd_name, inv_name, evoked_fname, noise_cov, inv_loos
 def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
-                           stc_template='', stc_hemi_template='', epo_fname='', evo_fname='', inv_fname='',
+                           stc_template='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     epo_fname = get_epo_fname(epo_fname)
@@ -874,8 +874,9 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     if stc_template == '':
         stc_template = STC
-    if stc_hemi_template == '':
         stc_hemi_template = STC_HEMI
+    else:
+        stc_hemi_template = '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
     if single_trial_stc:
         from mne.minimum_norm import apply_inverse_epochs
     stcs, stcs_num = {}, {}
@@ -1780,14 +1781,14 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             for stc_ind, stc in enumerate(stc_cond):
                 for em in extract_modes:
                     for ind, label in enumerate(labels):
-                        mean_flip = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
-                        mean_flip = np.squeeze(mean_flip)
+                        label_data = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
+                        label_data = np.squeeze(label_data)
                         # Set flip to be always positive
                         # mean_flip *= np.sign(mean_flip[np.argmax(np.abs(mean_flip))])
                         if em not in labels_data:
                             T = len(stc.times)
                             labels_data[em] = np.zeros((len(labels), T, len(stcs), stc_cond_num))
-                        labels_data[em][ind, :, conds_incdices[cond_id], stc_ind] = mean_flip
+                        labels_data[em][ind, :, conds_incdices[cond_id], stc_ind] = label_data
                         if do_plot:
                             plt.plot(labels_data[em][ind, :, conds_incdices[cond_id]], label=label.name)
 
@@ -2107,20 +2108,17 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
-            args.snr, args.overwrite_stc, args.stc_template, args.stc_hemi_template, args.epo_fname,
+            args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
             args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     return flags, stcs_conds, stcs_num
 
 
 def calc_labels_avg_per_condition_wrapper(
-        subject, conditions, atlas, inverse_method, stcs_conds, args, flags, stcs_num={}):
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
-        # if op.isfile(args.inv_fname):
-        #     print('No inverse operator was found!')
-        #     return False
-        if args.stc_hemi_template == '':
-            args.stc_hemi_template = STC_HEMI
+        args.stc_hemi_template = STC_HEMI if args.stc_template == '' else \
+            '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
         stc_fnames = [args.stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [args.inv_fname], args, conditions)
@@ -2582,7 +2580,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_template', help='', required=False, default='')
-    parser.add_argument('--stc_hemi_template', help='', required=False, default='')
     parser.add_argument('--labels_data_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)

@@ -37,7 +37,7 @@ def analyze(subject):
     save_raw = False
     only_examine_ica = False
     plot_evoked = False
-    calc_stc_per_session = False
+    calc_stc_per_session = True
     conditions = dict(left=4, right=8)
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
@@ -83,9 +83,10 @@ def calc_per_session(subject, condition, ctf_raw_data, args, sessions, all_eog_i
     args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format(cond, session))
     args.fwd_fname = op.join(MEG_DIR, subject, '{}-session{}-fwd.fif'.format(cond, session))
     args.noise_cov_fname = op.join(MEG_DIR, subject, '{}-session{}-noise-cov.fif'.format(cond, session))
-    stc_template = op.join(
-        MEG_DIR, subject, '{}-session{}-{}.stc'.format('{cond}', '{session}', '{method}'))
-    if check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_template, sessions, args):
+    args.stc_template = op.join(MEG_DIR, subject, '{cond}-session' + session + '-{method}.stc')
+    stc_hemi_template = '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
+    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + '_{}_{}_{}.npz')
+    if check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_hemi_template, args.labels_data_template, args):
         return
     ica_fname = op.join(MEG_DIR, subject, '{}-session{}-ica.fif'.format(cond, session))
     if len(all_eog_inds) > 0:
@@ -113,20 +114,20 @@ def calc_per_session(subject, condition, ctf_raw_data, args, sessions, all_eog_i
         plt.show()
     if calc_stc_per_session:
         meg.calc_fwd_inv_wrapper(subject, condition, args)
-        args.stc_template = stc_template.format('{cond}', session, '{method}')
-        args.stc_hemi_template = op.join(MEG_DIR, subject, '{}-session{}-{}-{}.stc'.format(
-            '{cond}', session, '{method}', '{hemi}'))
+        # args.stc_hemi_template = stc_hemi_template.format('{cond}', session, '{method}', '{hemi}')
+        stcs_conds = None
         if not op.isfile(args.stc_template.format(cond=cond, method=args.inverse_method)):
-            meg.calc_stc_per_condition_wrapper(subject, condition, args.inverse_method, args)
-            # flags = meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, args.inverse_method, stcs_conds, args, flags)
+            _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, args.inverse_method, args)
+        meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, args.inverse_method[0], stcs_conds, args)
 
 
-def check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_template, sessions, args):
+def check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_template_hemi, labels_data_template, args):
     all_done = False
     if all([op.isfile(f) for f in [new_raw_fname, args.epo_fname, args.evo_fname]]):
         if calc_stc_per_session:
             all_done = all([op.isfile(f) for f in [args.inv_fname, args.fwd_fname]]) and \
-                       all([op.isfile(stc_template.format(cond, session, args.inverse_method)) for session in sessions])
+                       utils.both_hemi_files_exist(stc_template_hemi.format(cond=cond, method=args.inverse_method[0], hemi='{hemi}')) and \
+                       utils.both_hemi_files_exist(labels_data_template.format(cond, args.inverse_method[0], '{hemi}'))
         else:
             all_done = True
     return all_done
@@ -159,6 +160,9 @@ def combine_noise_covs(subject, conditions, sessions, noise_t_min, noise_t_max, 
     noise_cov = meg.calc_noise_cov(None, noise_t_min, noise_t_max, args)
     noise_cov.save(noise_cov_fname)
 
+
+def plot_motor_response():
+    pass
 
 if __name__ == '__main__':
     analyze('DC')
