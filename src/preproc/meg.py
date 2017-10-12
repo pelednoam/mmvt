@@ -942,8 +942,6 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             for hemi in utils.HEMIS:
                 diff_fname = stc_hemi_template.format(
                     cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi)
-                if op.isfile(diff_fname) and not overwrite_stc:
-                    continue
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
@@ -1713,18 +1711,17 @@ def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_modes=('
             np.save(op.join(SUBJECT_MEG_FOLDER, 'labels_ts_{}_{}'.format(cond_name, extract_mode)), np.array(labels_ts))
 
 
-def get_stc_conds(events, inverse_method):
+def get_stc_conds(events, inverse_method, stc_hemi_template):
     stcs = {}
     hemi = 'lh' # both will be loaded
     for cond in events.keys():
-        stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi=hemi)
+        stc_fname = stc_hemi_template.format(cond=cond, method=inverse_method, hemi=hemi)
         if not op.isfile(stc_fname):
             print("Can't find the stc file! {}".format(stc_fname))
-        template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
-        stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
-        if not op.isfile(stc_fname):
-            return False
-        print('Loading {} instead'.format(stc_fname))
+            template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
+            stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
+            if not op.isfile(stc_fname):
+                return None
         stcs[cond] = mne.read_source_estimate(stc_fname)
     return stcs
 
@@ -1754,7 +1751,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
         conditions = []
         labels_data = {}
-
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
+                                labels_fol=labels_fol, read_only_from_annot=True, n_jobs=n_jobs)
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
                 plt.figure()
@@ -1766,9 +1764,6 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                         return False
                     inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
                     src = inverse_operator['src']
-            # labels = lu.read_hemi_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
-            labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
-                                    labels_fol=labels_fol, read_only_from_annot=True, n_jobs=n_jobs)
             if len(labels) == 0:
                 print('No labels were found for {} atlas!'.format(atlas))
                 return False
@@ -1909,7 +1904,7 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
 #                 plt.show()
 
 
-def check_both_hemi_in_stc(events):
+def check_both_hemi_in_stc(events, inverse_method):
     for ind, cond in enumerate(events.keys()):
         stcs = {}
         for hemi in HEMIS:
@@ -2098,6 +2093,13 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}):
+    from itertools import product
+    stc_hemi_template = '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
+    stc_exist = all([utils.both_hemi_files_exist(stc_hemi_template.format(
+        cond=cond, method=im, hemi='{hemi}')) for (im, cond) in product(args.inverse_method, conditions)])
+    if stc_exist and not args.overwrite_stc:
+        return True, None, {}
+
     stcs_conds, stcs_num = None, {}
     if isinstance(inverse_method, Iterable):
         inverse_method = inverse_method[0]
@@ -2116,6 +2118,10 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
 def calc_labels_avg_per_condition_wrapper(
         subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
+        labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
+            args.atlas, me, '{hemi}')) for me in args.extract_mode])
+        if labels_data_exist and not args.labels_data_overwrite:
+            return True
         args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
         args.stc_hemi_template = STC_HEMI if args.stc_template == '' else \
             '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
@@ -2123,7 +2129,9 @@ def calc_labels_avg_per_condition_wrapper(
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [args.inv_fname], args, conditions)
         if stcs_conds is None:
-            stcs_conds = get_stc_conds(conditions, inverse_method)
+            stcs_conds = get_stc_conds(conditions, inverse_method, args.stc_hemi_template)
+            if stcs_conds is None:
+                return False
         data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
         data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
         data_minmax = utils.get_max_abs(data_max, data_min)
@@ -2527,6 +2535,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
+    parser.add_argument('--labels_data_overwrite', help='labels_data_overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)

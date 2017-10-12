@@ -12,16 +12,17 @@ LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 
 
-def analyze(subject):
+def analyze(subject, atlas, extract_method):
     flags = {}
     args = pu.init_args(meg.read_cmd_args(dict(
         subject=subject,
         task='tapping',
         conditions='left',
-        atlas='laus250',
+        atlas=atlas,
         inverse_method='MNE',
         t_min=-2, t_max=2,
         noise_t_min=-2.5, noise_t_max=-1.5,
+        extract_mode=extract_method,
         bad_channels=[],
         stim_channels='STIM',
         pick_ori='normal',
@@ -41,8 +42,6 @@ def analyze(subject):
     conditions = dict(left=4, right=8)
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
-    args.stc_template = op.join(MEG_DIR, subject, '{cond}-{method}.stc')
-    args.stc_hemi_template = op.join(MEG_DIR, subject, '{cond}-{method}-{hemi}.stc')
     args.noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
     if op.isfile(eog_inds_fname):
         all_eog_inds = np.genfromtxt(eog_inds_fname, dtype=np.str, delimiter=',', autostrip=True)
@@ -57,18 +56,26 @@ def analyze(subject):
                 subject, condition, ctf_raw_data, args, sessions, all_eog_inds, eog_channel, calc_stc_per_session,
                 only_examine_ica, overwrite_raw, save_raw, plot_evoked)
         combine_evokes(subject, cond, sessions)
-
-        # combine_noise_covs(subject, conditions, sessions, args.noise_t_min, args.noise_t_max, args)
         args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
         args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
         args.evo_fname = op.join(MEG_DIR, subject, '{}-ave.fif'.format(cond))
         meg.calc_fwd_inv_wrapper(subject, condition, args)
+
+    for session in sessions:
+        args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}-ave.fif'.format('{cond}', session))
+        args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format('{cond}', session))
+        args.stc_template = op.join(MEG_DIR, subject, '{}-session{}-{}.stc'.format('{cond}', session, '{method}'))
+        args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + '_{}_{}_{}.npz')
+        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method[0], None, args)
+
     args.evo_fname = op.join(MEG_DIR, subject, '{cond}-ave.fif')
     args.inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
+    args.stc_template = op.join(MEG_DIR, subject, '{cond}-{method}.stc')
+    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_{}_{}_{}.npz')
     _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args)
-    meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args, flags, {})
+    meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args)
 
-        # dipoles_times = [(0.25, 0.35)]
+    # dipoles_times = [(0.25, 0.35)]
         # dipoles_names =['peak_left_motor']
         # meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
 
@@ -126,8 +133,8 @@ def check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_template_he
     if all([op.isfile(f) for f in [new_raw_fname, args.epo_fname, args.evo_fname]]):
         if calc_stc_per_session:
             all_done = all([op.isfile(f) for f in [args.inv_fname, args.fwd_fname]]) and \
-                       utils.both_hemi_files_exist(stc_template_hemi.format(cond=cond, method=args.inverse_method[0], hemi='{hemi}')) and \
-                       utils.both_hemi_files_exist(labels_data_template.format(cond, args.inverse_method[0], '{hemi}'))
+                       utils.both_hemi_files_exist(
+                           stc_template_hemi.format(cond=cond, method=args.inverse_method[0], hemi='{hemi}'))
         else:
             all_done = True
     return all_done
@@ -161,9 +168,16 @@ def combine_noise_covs(subject, conditions, sessions, noise_t_min, noise_t_max, 
     noise_cov.save(noise_cov_fname)
 
 
-def plot_motor_response():
-    pass
+def plot_motor_response(subject, atlas, extract_method):
+    for session in range(1, 6):
+        for hemi in utils.HEMIS:
+            d = utils.Bag(np.load(op.join(MEG_DIR, subject, 'labels_data_session{}_{}_{}_{}.npz'.format(
+                session, atlas, extract_method, hemi))))
+            print('asdf')
+
 
 if __name__ == '__main__':
-    analyze('DC')
+    subject, atlas, extract_method = 'DC', 'laus250', 'mean_flip'
+    analyze(subject, atlas, extract_method)
+    # plot_motor_response(subject, atlas, extract_method)
     print('Finish!')
