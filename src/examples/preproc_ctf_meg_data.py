@@ -173,10 +173,10 @@ def plot_motor_response(subject, atlas, extract_method):
     sfreq = 625
     fmin, fmax = 1, 15
     for roi in rois:
-        plot_roi(roi, sfreq, fmin, fmax)
+        plot_roi(subject, atlas, extract_method, roi, sfreq, fmin, fmax)
 
 
-def plot_roi(roi, sfreq, fmin, fmax):
+def plot_roi(subject, atlas, extract_method, roi, sfreq, fmin, fmax):
     from collections import defaultdict
     from mne import filter
 
