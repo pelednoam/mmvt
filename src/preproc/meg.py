@@ -821,7 +821,7 @@ def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_
                 noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, args)
                 noise_cov.save(noise_cov_fname)
             else:
-                noise_cov = mne.read_cov(NOISE_COV)
+                noise_cov = mne.read_cov(noise_cov_fname)
             # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
                 if cortical_fwd is None:
@@ -845,8 +845,9 @@ def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_
     return flag
 
 
-def _calc_inverse_operator(fwd_name, inv_name, evoked, noise_cov, inv_loose=0.2, inv_depth=0.8):
+def _calc_inverse_operator(fwd_name, inv_name, evoked_fname, noise_cov, inv_loose=0.2, inv_depth=0.8):
     fwd = mne.read_forward_solution(fwd_name)
+    evoked = mne.read_evokeds(evoked_fname)[0]
     inverse_operator = make_inverse_operator(evoked.info, fwd, noise_cov,
         loose=inv_loose, depth=inv_depth)
     write_inverse_operator(inv_name, inverse_operator)
@@ -864,8 +865,9 @@ def _calc_inverse_operator(fwd_name, inv_name, evoked, noise_cov, inv_loose=0.2,
 
 def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
-                           single_trial_stc=False, save_stc=True, snr=3.0, stc_template='', stc_hemi_template='',
-                           epo_fname='', evo_fname='', inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
+                           single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
+                           stc_template='', stc_hemi_template='', epo_fname='', evo_fname='', inv_fname='',
+                           fwd_usingMEG=True, fwd_usingEEG=True):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     epo_fname = get_epo_fname(epo_fname)
     evo_fname = get_evo_fname(evo_fname)
@@ -879,17 +881,22 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
     stcs, stcs_num = {}, {}
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
-    if not op.isfile(inv_fname):
-        print('No inverse operator was found!')
-        return False, stcs, stcs_num
     if '{cond}' not in inv_fname:
+        if not op.isfile(inv_fname):
+            print('No inverse operator was found!')
+            return False, stcs, stcs_num
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
     for cond_name in events.keys():
         stc_fname = stc_template.format(cond=cond_name, method=inverse_method)[:-4]
-        stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
+        if op.isfile('{}.stc'.format(stc_fname)) and not overwrite_stc:
+            stcs[cond_name] = mne.read_source_estimate(stc_fname)
+            continue
         try:
             if not global_inverse_operator:
+                if not op.isfile(inv_fname.format(cond=cond_name)):
+                    print('No inverse operator was found!')
+                    return False, stcs, stcs_num
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
             if single_trial_stc:
                 if not op.isfile(epo_fname):
@@ -924,6 +931,25 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
+    copy_sphere_reg_files()
+    stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
+    if all([utils.both_hemi_files_exist(
+            stc_hemi_template.format(cond=cond, hemi='{hemi}'))
+            for cond in events.keys()]) and len(glob.glob(stc_hemi_template.format(cond='*', hemi='?h'))) >= 4:
+        conds = list(events.keys())
+        if len(conds) == 2:
+            for hemi in utils.HEMIS:
+                diff_fname = stc_hemi_template.format(
+                    cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi)
+                if op.isfile(diff_fname) and not overwrite_stc:
+                    continue
+                calc_stc_diff(
+                    stc_hemi_template.format(cond=conds[0], hemi=hemi),
+                    stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
+    return flag, stcs, stcs_num
+
+
+def copy_sphere_reg_files():
     # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
     if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format('{hemi}'))):
         for hemi in utils.HEMIS:
@@ -931,17 +957,6 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                         op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)))
     else:
         print("No ?h.sphere.reg files! You won't be able to plot stc files")
-    if all([utils.both_hemi_files_exist(
-            stc_hemi_template.format(cond=cond, hemi='{hemi}'))
-            for cond in events.keys()]) and len(glob.glob(stc_hemi_template.format(cond='*', hemi='?h'))) == 4:
-        conds = list(events.keys())
-        if len(conds) == 2:
-            for hemi in utils.HEMIS:
-                calc_stc_diff(
-                    stc_hemi_template.format(cond=conds[0], hemi=hemi),
-                    stc_hemi_template.format(cond=conds[1], hemi=hemi),
-                    stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi))
-    return flag, stcs, stcs_num
 
 
 def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6):
@@ -1034,10 +1049,10 @@ def get_evoked_cond(cond_name, evo_fname='', epo_fname='', baseline=(None, 0), a
                     add_eeg_ref=True):
     evo_fname = get_evo_fname(evo_fname)
     epo_fname = get_epo_fname(epo_fname)
-    if not op.isfile(evo_fname):
-        print('get_evoked_cond: No evoked file found!')
-        return None
     if '{cond}' not in evo_fname:
+        if not op.isfile(evo_fname):
+            print('get_evoked_cond: No evoked file found!')
+            return None
         try:
             evoked = mne.read_evokeds(evo_fname, condition=cond_name, baseline=baseline)
         except:
@@ -1714,16 +1729,17 @@ def get_stc_conds(events, inverse_method):
 
 
 def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
-        extract_modes=['mean_flip'], positive=False, moving_average_win_size=0,
-        labels_output_fname_template='', src=None,
-        factor=1, do_plot=False, n_jobs=1):
+        extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
+        factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, do_plot=False, n_jobs=1):
     try:
-        inv_fname, inv_exist = locating_file(INV, '*inv.fif')
-        if not inv_exist:
-            print('No inverse operator found!')
-            return False
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+        if labels_data_template == '':
+            labels_data_template = LBL
         global_inverse_operator = False
         if '{cond}' not in inv_fname:
+            if not op.isfile(inv_fname):
+                print('No inverse operator found!')
+                return False
             global_inverse_operator = True
             if src is None:
                 inverse_operator = read_inverse_operator(inv_fname)
@@ -1744,6 +1760,9 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             conditions.append(cond_name)
             if not global_inverse_operator:
                 if src is None:
+                    if not op.isfile(inv_fname.format(cond=cond_name)):
+                        print('No inverse operator found!')
+                        return False
                     inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
                     src = inverse_operator['src']
             # labels = lu.read_hemi_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi, surf_name, labels_fol)
@@ -1786,11 +1805,11 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             if positive or moving_average_win_size > 0:
                 labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
 
-            labels_output_fname = LBL.format(atlas, em, hemi) if labels_output_fname_template == '' else \
-                labels_output_fname_template.format(hemi=hemi)
+            labels_output_fname = labels_data_template.format(atlas, em, hemi)  #if labels_output_fname_template == '' else \
+                # labels_output_fname_template.format(hemi=hemi)
             # labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}_{}.npz'.format(
             #     atlas, em, hemi))
-            lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi)))
+            lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
             print('Saving to {}'.format(labels_output_fname))
 
             np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
@@ -1801,8 +1820,9 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
             # labels_data[em] = labels_data[em] / max_abs
             # np.savez(labels_norm_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
 
-        flag = np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, hemi))))
-                       for em in extract_modes])
+        flag = np.all(
+            [op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
+                labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
     except:
         print(traceback.format_exc())
         print('Error in calc_labels_avg_per_condition inv')
@@ -2087,34 +2107,39 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
-            args.snr, args.stc_template, args.stc_hemi_template, args.epo_fname,
+            args.snr, args.overwrite_stc, args.stc_template, args.stc_hemi_template, args.epo_fname,
             args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     return flags, stcs_conds, stcs_num
 
 
-def calc_labels_avg_per_condition_wrapper(subject, conditions, atlas, inverse_method, stcs_conds, args, flags,
-                                          stcs_num={}):
+def calc_labels_avg_per_condition_wrapper(
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags, stcs_num={}):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
-        inv_fname, inv_exist = locating_file(INV, '*inv.fif')
-        if not inv_exist:
-            print('No inverse operator was found!')
-            return False
-        stc_fnames = [STC_HEMI.format(cond='{cond}', method=inverse_method, hemi=hemi) for hemi in utils.HEMIS]
-        get_meg_files(subject, stc_fnames + [INV], args, conditions)
-
+        args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+        # if op.isfile(args.inv_fname):
+        #     print('No inverse operator was found!')
+        #     return False
+        if args.stc_hemi_template == '':
+            args.stc_hemi_template = STC_HEMI
+        stc_fnames = [args.stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi=hemi)
+                      for hemi in utils.HEMIS]
+        get_meg_files(subject, stc_fnames + [args.inv_fname], args, conditions)
         if stcs_conds is None:
             stcs_conds = get_stc_conds(conditions, inverse_method)
         data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
         data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
         data_minmax = utils.get_max_abs(data_max, data_min)
-        factor = -int(np.round(np.log10(data_minmax)))
+        factor = -int(utils.ceil_floor(np.log10(data_minmax)))
 
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
                 positive=args.evoked_flip_positive,
                 moving_average_win_size=args.evoked_moving_average_win_size,
-                stcs=stcs_conds, factor=factor, stcs_num=stcs_num, n_jobs=args.n_jobs)
+                labels_data_template=args.labels_data_template,
+                stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
+                fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingMEG,
+                stcs_num=stcs_num, n_jobs=args.n_jobs)
             if stcs_conds and isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
@@ -2425,7 +2450,8 @@ def main(tup, remote_subject_dir, args, flags):
     # flags: calc_stc_per_condition
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
-    flags = calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num)
+    flags = calc_labels_avg_per_condition_wrapper(
+        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
@@ -2450,7 +2476,6 @@ def main(tup, remote_subject_dir, args, flags):
         flags['save_activity_map'] = save_activity_map(
             conditions, stat, stcs_conds_smooth, inverse_method, args.save_smoothed_activity, args.morph_to_subject,
             args.stc_t, args.norm_by_percentile, args.norm_percs)
-
 
     if 'print_files_names' in args.function:
         # also called in init_globals
@@ -2503,6 +2528,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)
@@ -2557,6 +2583,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_template', help='', required=False, default='')
     parser.add_argument('--stc_hemi_template', help='', required=False, default='')
+    parser.add_argument('--labels_data_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')

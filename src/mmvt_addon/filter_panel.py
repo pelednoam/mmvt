@@ -102,6 +102,11 @@ def filter_draw(self, context):
         row.operator(PrevFilterItem.bl_idname, text="", icon='PREV_KEYFRAME')
         row.prop(context.scene, 'filter_items', text="")
         row.operator(NextFilterItem.bl_idname, text="", icon='NEXT_KEYFRAME')
+    if len(Filtering.objects_indices) > 0:
+        box = layout.box()
+        col = box.column()
+        for ind in Filtering.objects_indices:
+            mu.add_box_line(col, Filtering.filter_objects[ind], '{:.2f}'.format(Filtering.filter_values[ind]), 0.8)
 
         # bpy.context.area.type = 'GRAPH_EDITOR'
     # filter_to = bpy.context.scence.frame_preview_end
@@ -123,6 +128,8 @@ def clear_filtering():
         if bpy.data.objects.get(parent_name):
             for obj in bpy.data.objects[parent_name].children:
                 de_select_electrode_and_sensor(obj)
+
+    Filtering.filter_objects, Filtering.objects_indices = [], []
 
 
 def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
@@ -409,7 +416,7 @@ class Filtering(bpy.types.Operator):
 
     def filter_electrodes_or_sensors(self, parent_name, data, meta):
         # source_files = [op.join(self.current_activity_path, current_file_to_upload)]
-        objects_indices, names, self.filter_values = self.get_object_to_filter([], data, meta['names'])
+        objects_indices, names, Filtering.filter_values = self.get_object_to_filter([], data, meta['names'])
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         if objects_indices is None:
             return
@@ -440,7 +447,7 @@ class Filtering(bpy.types.Operator):
         print('filter_ROIs')
         source_files = [op.join(self.current_activity_path, current_file_to_upload.format(hemi=hemi)) for hemi
                         in mu.HEMIS]
-        objects_indices, names, self.filter_values = self.get_object_to_filter(source_files)
+        objects_indices, names, Filtering.filter_values = self.get_object_to_filter(source_files)
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         deselect_all_objects()
 
@@ -505,8 +512,6 @@ class Filtering(bpy.types.Operator):
                        'EEG': op.join('eeg', 'eeg_data.npz')}
         current_file_to_upload = files_names[self.type_of_filter]
 
-        # print(self.current_root_path)
-        # source_files = ["/homes/5/npeled/space3/MMVT/mg79/electrodes_data.npz"]
         if self.type_of_filter == 'Electrodes':
             # todo: should be called once (maybe those files are already loaded?
             fol = op.join(mu.get_user_fol(), 'electrodes')

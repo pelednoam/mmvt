@@ -41,11 +41,14 @@ def analyze(subject):
     conditions = dict(left=4, right=8)
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
+    args.stc_template = op.join(MEG_DIR, subject, '{cond}-{method}.stc')
+    args.stc_hemi_template = op.join(MEG_DIR, subject, '{cond}-{method}-{hemi}.stc')
+    args.noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
     if op.isfile(eog_inds_fname):
         all_eog_inds = np.genfromtxt(eog_inds_fname, dtype=np.str, delimiter=',', autostrip=True)
     else:
         all_eog_inds = []
-    for cond in ['right', 'left']:
+    for cond in conditions.keys():
         sessions = [f[-4] for f in glob.glob(op.join(MEG_DIR, subject, 'raw', 'DC_{}Index_day?.ds'.format(cond)))]
         raw_files = glob.glob(op.join(MEG_DIR, subject, 'raw', 'DC_{}Index_day?.ds'.format(cond)))
         args.conditions = condition = {cond:4 if cond == 'left' else 8}
@@ -55,12 +58,15 @@ def analyze(subject):
                 only_examine_ica, overwrite_raw, save_raw, plot_evoked)
         combine_evokes(subject, cond, sessions)
 
-    # combine_noise_covs(subject, conditions, sessions, args.noise_t_min, args.noise_t_max, args)
-    args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif')
-    args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif')
-    args.evo_fname = op.join(MEG_DIR, subject, '{}-ave.fif')
-    meg.calc_fwd_inv_wrapper(subject, condition, args)
-    meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args)
+        # combine_noise_covs(subject, conditions, sessions, args.noise_t_min, args.noise_t_max, args)
+        args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
+        args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
+        args.evo_fname = op.join(MEG_DIR, subject, '{}-ave.fif'.format(cond))
+        meg.calc_fwd_inv_wrapper(subject, condition, args)
+    args.evo_fname = op.join(MEG_DIR, subject, '{cond}-ave.fif')
+    args.inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
+    _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args)
+    meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args, flags, {})
 
         # dipoles_times = [(0.25, 0.35)]
         # dipoles_names =['peak_left_motor']
@@ -135,6 +141,7 @@ def combine_evokes(subject, cond, sessions):
             evoked.apply_baseline()
             all_evokes.append(evoked)
         combined_evoked = mne.combine_evoked(all_evokes, 'nave')
+        combined_evoked.comment = cond
         mne.write_evokeds(combined_evoked_fname, combined_evoked)
 
 
