@@ -169,15 +169,47 @@ def combine_noise_covs(subject, conditions, sessions, noise_t_min, noise_t_max, 
 
 
 def plot_motor_response(subject, atlas, extract_method):
+    rois = ['precentral_{}'.format(ind) for ind in range(1, 12)] # ['precentral_11', 'precentral_5']
+    sfreq = 625
+    fmin, fmax = 1, 15
+    for roi in rois:
+        plot_roi(roi, sfreq, fmin, fmax)
+
+
+def plot_roi(roi, sfreq, fmin, fmax):
+    from collections import defaultdict
+    from mne import filter
+
+    labels_data = defaultdict(list)
     for session in range(1, 6):
         for hemi in utils.HEMIS:
             d = utils.Bag(np.load(op.join(MEG_DIR, subject, 'labels_data_session{}_{}_{}_{}.npz'.format(
                 session, atlas, extract_method, hemi))))
-            print('asdf')
+            for cond_ind, cond in enumerate(d.conditions):
+                ind = np.where(d.names=='{}-{}'.format(roi, hemi))[0]
+                if len(ind) == 0:
+                    return
+                data = d.data[ind, :, cond_ind]
+                data = filter.filter_data(data, sfreq, fmin, fmax)
+                labels_data[(hemi, cond)].append(data)
+    fig, axs = plt.subplots(2,2, True, True, figsize=(8, 8))
+    time = np.arange(-2, 2 + 1/sfreq, 1/sfreq)
+    for cond_ind, cond in enumerate(d.conditions):
+        for hemi_ind, hemi in enumerate(utils.HEMIS):
+            ax = axs[cond_ind, hemi_ind]
+            data = np.array(labels_data[(hemi, cond)]).squeeze().T
+            ax.plot(time, data)
+            ax.set_title('{} hemi, {} index (1-15 Hz)'.format('right' if hemi=='rh' else 'left', cond))
+            ax.set_xlim([-1.5, 0.5])
+            ax.set_ylim([-1, 2.5])
+    plt.suptitle(roi)
+    # plt.tight_layout()
+    # plt.show()
+    plt.savefig(op.join(MEG_DIR, subject, 'figures', '{}.png'.format(roi)))
 
 
 if __name__ == '__main__':
     subject, atlas, extract_method = 'DC', 'laus250', 'mean_flip'
-    analyze(subject, atlas, extract_method)
-    # plot_motor_response(subject, atlas, extract_method)
+    # analyze(subject, atlas, extract_method)
+    plot_motor_response(subject, atlas, extract_method)
     print('Finish!')
