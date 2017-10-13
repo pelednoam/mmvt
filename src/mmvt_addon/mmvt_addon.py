@@ -437,6 +437,11 @@ def fix_scale():
             for label_obj in bpy.data.objects['Cortex-inflated-{}'.format(hemi)].children:
                 for i in range(3):
                     label_obj.scale[i] = 0.1
+        inf_hemi = bpy.data.objects.get('inflated_{}'.format(hemi), None)
+        if inf_hemi is not None:
+            for i in range(3):
+                inf_hemi.scale[i] = 0.1
+
     if bpy.data.objects.get('Subcortical_structures', None) is not None:
         for sub_obj in bpy.data.objects['Subcortical_structures'].children:
             for i in range(3):

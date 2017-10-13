@@ -559,6 +559,7 @@ def get_subfolders(fol):
 
 
 def hemi_files_exists(fname):
+    # return len(glob.glob(fname.format(hemi='rh'))) > 1 and len(glob.glob(fname.format(hemi='rh'))) > 1
     return os.path.isfile(fname.format(hemi='rh')) and \
            os.path.isfile(fname.format(hemi='lh'))
 

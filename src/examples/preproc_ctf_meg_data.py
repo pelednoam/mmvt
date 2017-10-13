@@ -12,7 +12,7 @@ LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 
 
-def analyze(subject, inverse_method, args):
+def analyze(subject, raw_files_template, inverse_method, conditions, sessions, args):
     meg.init(subject, args)
     overwrite_raw = False
     only_examine_ica = False
@@ -20,9 +20,7 @@ def analyze(subject, inverse_method, args):
     calc_stc_per_session = True
     look_for_ica_eog_file = True
     filter_raw_data = True
-    raw_data_filter_freqs = (1, 15)
-    conditions = dict(left=4, right=8)
-    eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
+    raw_data_filter_freqs = (int(args.l_freq), int(args.h_freq))
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
     # args.noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
     freqs_str = '-{}-{}'.format(raw_data_filter_freqs[0], raw_data_filter_freqs[1]) if filter_raw_data else ''
@@ -32,10 +30,10 @@ def analyze(subject, inverse_method, args):
         if look_for_ica_eog_file:
             raise Exception("Can't find the ICA eog file! {}".format(eog_inds_fname))
         all_eog_inds = []
-    for cond in conditions.keys():
-        sessions = [f[-4] for f in glob.glob(op.join(MEG_DIR, subject, 'raw', 'DC_{}Index_day?.ds'.format(cond)))]
-        raw_files = glob.glob(op.join(MEG_DIR, subject, 'raw', 'DC_{}Index_day?.ds'.format(cond)))
-        args.conditions = condition = {cond:4 if cond == 'left' else 8}
+    for cond_key, cond in conditions.items():
+        raw_files_cond = raw_files_template.format(cond=cond)
+        raw_files = glob.glob(raw_files_cond)
+        args.conditions = condition = {cond_key:cond}
         for ctf_raw_data in raw_files:
             calc_per_session(
                 subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel, calc_stc_per_session,
@@ -45,7 +43,7 @@ def analyze(subject, inverse_method, args):
         args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
         args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
         meg.calc_fwd_inv_wrapper(subject, condition, args)
-    return
+
     for session in sessions:
         args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ave.fif'.format('{cond}', session, freqs_str))
         args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format('{cond}', session))
@@ -53,13 +51,13 @@ def analyze(subject, inverse_method, args):
         args.labels_data_template = op.join(
             MEG_DIR, subject, 'labels_data_session' + session + freqs_str + '_{}_{}_{}.npz')
         stc_hemi_template = meg.get_stc_hemi_template(args.stc_template)
-        meg.calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method)
-        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
+        meg.calc_stc_diff_both_hemis(conditions, stc_hemi_template, inverse_method)
+        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, None, args)
 
-    args.evo_fname = op.join(MEG_DIR, subject, '{cond}-ave.fif')
+    args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format('{cond}', freqs_str))
     args.inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
-    args.stc_template = op.join(MEG_DIR, subject, '{cond}-{method}.stc')
-    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_{}_{}_{}.npz')
+    args.stc_template = op.join(MEG_DIR, subject, '{}-{}{}.stc'.format('{cond}', '{method}', freqs_str))
+    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data' + freqs_str + '_{}_{}_{}.npz')
     _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args)
     meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
 
@@ -175,44 +173,44 @@ def combine_evokes(subject, cond, sessions, filter_raw_data, raw_data_filter_fre
 #     noise_cov.save(noise_cov_fname)
 
 
-def plot_motor_response(subject, atlas, extract_method):
-    rois = ['precentral_{}'.format(ind) for ind in range(1, 12)] # ['precentral_11', 'precentral_5']
-    sfreq = 625
-    fmin, fmax = 1, 15
-    for roi in rois:
-        plot_roi(subject, atlas, extract_method, roi, sfreq, fmin, fmax)
+def plot_motor_response(subject, atlas, rois, sfreq, sessions, args):
+    for em in args.extract_mode:
+        for roi in rois:
+            plot_roi(subject, atlas, em, roi, sfreq, sessions, args)
 
 
-def plot_roi(subject, atlas, extract_method, roi, sfreq, fmin, fmax):
+def plot_roi(subject, atlas, extract_method, roi, sfreq, sessions, args):
     from collections import defaultdict
-    from mne import filter
+    data_freqs = '-{}-{}'.format(int(args.l_freq), int(args.h_freq))
 
     labels_data = defaultdict(list)
-    for session in range(1, 6):
+    for session in sessions:
+        labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session{}' + data_freqs + '_{}_{}_{}.npz')
         for hemi in utils.HEMIS:
-            d = utils.Bag(np.load(op.join(MEG_DIR, subject, 'labels_data_session{}_{}_{}_{}.npz'.format(
-                session, atlas, extract_method, hemi))))
+            d = utils.Bag(np.load(labels_data_template.format(session, atlas, extract_method, hemi)))
             for cond_ind, cond in enumerate(d.conditions):
                 ind = np.where(d.names=='{}-{}'.format(roi, hemi))[0]
                 if len(ind) == 0:
                     return
                 data = d.data[ind, :, cond_ind]
-                data = filter.filter_data(data, sfreq, fmin, fmax)
                 labels_data[(hemi, cond)].append(data)
     fig, axs = plt.subplots(2,2, True, True, figsize=(8, 8))
     time = np.arange(-2, 2 + 1/sfreq, 1/sfreq)
     for cond_ind, cond in enumerate(d.conditions):
         for hemi_ind, hemi in enumerate(utils.HEMIS):
-            ax = axs[cond_ind, hemi_ind]
+            ax = axs[hemi_ind, cond_ind]
             data = np.array(labels_data[(hemi, cond)]).squeeze().T
             ax.plot(time, data)
-            ax.set_title('{} hemi, {} index (1-15 Hz)'.format('right' if hemi=='rh' else 'left', cond))
+            ax.set_title('{} hemi, {} index ({} Hz)'.format('right' if hemi=='rh' else 'left', cond, data_freqs))
             ax.set_xlim([-1.5, 0.5])
-            ax.set_ylim([-1, 2.5])
+            ax.set_ylim([-1.5, 2])
     plt.suptitle(roi)
     # plt.tight_layout()
     # plt.show()
-    plt.savefig(op.join(MEG_DIR, subject, 'figures', '{}.png'.format(roi)))
+    utils.make_dir(op.join(MEG_DIR, subject, 'figures'))
+    fig_fname = op.join(MEG_DIR, subject, 'figures', '{}.png'.format(roi))
+    print('Saving {}'.format(fig_fname))
+    plt.savefig(fig_fname)
 
 
 if __name__ == '__main__':
@@ -223,6 +221,7 @@ if __name__ == '__main__':
         inverse_method='MNE',
         t_min=-2, t_max=2,
         noise_t_min=-2.5, noise_t_max=-1.5,
+        l_freq=1, h_freq=15,
         extract_mode='mean_flip',
         bad_channels=[],
         stim_channels='STIM',
@@ -235,7 +234,14 @@ if __name__ == '__main__':
         do_plot_ica=False,
         fwd_usingEEG=False)))
 
-    for subject, inverse_method in product(args.subject, args.inverse_method):
-        analyze(subject, inverse_method, args)
-        # plot_motor_response(args)
+    conditions = dict(left=4, right=8)
+    raw_files_template = op.join(MEG_DIR, args.subject[0], 'raw', 'DC_{cond}Index_day?.ds')
+    sessions = sorted([f[-4] for f in glob.glob(raw_files_template.format(cond=list(conditions.keys())[0]))])
+    motor_rois = ['precentral_{}'.format(ind) for ind in range(1, 12)]  # ['precentral_11', 'precentral_5']
+    sfreq = 625
+    subject = args.subject[0]
+    eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
+    for inverse_method in args.inverse_method:
+        # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
+        plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
     print('Finish!')

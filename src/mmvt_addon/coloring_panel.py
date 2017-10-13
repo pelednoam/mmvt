@@ -1762,7 +1762,7 @@ def draw(self, context):
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
     meg_ext_meth = bpy.context.scene.meg_labels_extract_method
-    meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(
+    meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data*_{}_{}_{}.npz'.format(
         atlas, meg_ext_meth, '{hemi}')))
     meg_labels_data_minmax_exist = op.isfile(
         op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))

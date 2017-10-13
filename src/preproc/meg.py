@@ -945,11 +945,11 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print('Error with {}!'.format(cond_name))
             flag = False
     copy_sphere_reg_files()
-    calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method)
+    calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
 
-def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method):
+def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc=False):
     stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
     if all([utils.both_hemi_files_exist(
             stc_hemi_template.format(cond=cond, hemi='{hemi}'))
@@ -957,8 +957,9 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method):
         conds = list(events.keys())
         if len(conds) == 2:
             for hemi in utils.HEMIS:
-                diff_fname = stc_hemi_template.format(
-                    cond='{}-{}'.format(conds[0], conds[1]), method=inverse_method, hemi=hemi)
+                diff_fname = stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), hemi=hemi)
+                if op.isfile(diff_fname) and not overwrite_stc:
+                    continue
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
@@ -2142,7 +2143,8 @@ def calc_labels_avg_per_condition_wrapper(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
         if labels_data_exist:
             if utils.should_run(args, 'calc_labels_min_max'):
-                flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode, args.labels_data_template)
+                flags['calc_labels_min_max'] = calc_labels_minmax(
+                    atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
             return flags
 
         if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
@@ -2176,16 +2178,19 @@ def calc_labels_avg_per_condition_wrapper(
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode, args.labels_data_template)
+        flags['calc_labels_min_max'] = calc_labels_minmax(
+            atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
     return flags
 
 
-def calc_labels_minmax(atlas, extract_modes, labels_data_template=''):
+def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_labels_data=False):
     if labels_data_template == '':
         labels_data_template = LBL
     min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
+        if op.isfile(min_max_output_fname) and not overwrite_labels_data:
+            continue
         template = labels_data_template.format(atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
             labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
@@ -2571,7 +2576,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
-    parser.add_argument('--labels_data_overwrite', help='labels_data_overwrite', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_data', help='overwrite_labels_data', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)

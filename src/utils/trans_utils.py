@@ -83,9 +83,10 @@ def mni_to_tkras(points, subject, subjects_dir, tal_xfm=None, orig_vox2ras=None,
 def inv(x):
     return np.linalg.inv(x)
 
+
 def mni305_to_mni152_matrix():
     # http://freesurfer.net/fswiki/CoordinateSystems
-    # The foloowing matrix is V152*inv(T152)*R*T305*inv(V305), where V152 and V305 are the vox2ras matrices from the
+    # The folowing matrix is V152*inv(T152)*R*T305*inv(V305), where V152 and V305 are the vox2ras matrices from the
     # 152 and 305 spaces, T152 and T305 are the tkregister-vox2ras matrices from the 152 and 305 spaces,
     # and R is from $FREESURFER_HOME/average/mni152.register.dat
     M = [[0.9975, - 0.0073, 0.0176, -0.0429],
