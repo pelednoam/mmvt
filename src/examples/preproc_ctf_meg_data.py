@@ -121,9 +121,8 @@ def calc_per_session(subject, condition, ctf_raw_data, args, sessions, all_eog_i
         plt.show()
     if calc_stc_per_session:
         meg.calc_fwd_inv_wrapper(subject, condition, args)
-        # args.stc_hemi_template = stc_hemi_template.format('{cond}', session, '{method}', '{hemi}')
         stcs_conds = None
-        if not op.isfile(args.stc_template.format(cond=cond, method=args.inverse_method)):
+        if not utils.both_hemi_files_exist(stc_hemi_template.format(cond=cond, method=args.inverse_method, hemi='{hemi}')):
             _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, args.inverse_method, args)
         meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, args.inverse_method[0], stcs_conds, args)
 
