@@ -45,7 +45,7 @@ def create_lut_file_for_atlas(subject, atlas):
     mmvt_lut_fname = op.join(MMVT_DIR, subject, 'freeview', '{}ColorLUT.txt'.format(atlas))
     # if op.isfile(mmvt_lut_fname) and not args.overwrite_aseg_file:
     #     return
-    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME, get_colors=True)
+    lut = utils.read_freesurfer_lookup_table(get_colors=True)
     lut_new = [[l[0], l[1].astype(str), l[2], l[3], l[4], l[5]] for l in lut if l[0] < 1000]
     for hemi, offset in zip(['lh', 'rh'], [1000, 2000]):
         if hemi == 'lh':

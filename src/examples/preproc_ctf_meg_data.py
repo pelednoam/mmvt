@@ -30,10 +30,10 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
         if look_for_ica_eog_file:
             raise Exception("Can't find the ICA eog file! {}".format(eog_inds_fname))
         all_eog_inds = []
-    for cond_key, cond in conditions.items():
+    for cond, cond_key in conditions.items():
         raw_files_cond = raw_files_template.format(cond=cond)
         raw_files = glob.glob(raw_files_cond)
-        args.conditions = condition = {cond_key:cond}
+        args.conditions = condition = {cond:cond_key}
         for ctf_raw_data in raw_files:
             calc_per_session(
                 subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel, calc_stc_per_session,
@@ -61,9 +61,14 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
     _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args)
     meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
 
-    # dipoles_times = [(0.25, 0.35)]
-        # dipoles_names =['peak_left_motor']
-        # meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
+    dipoles_times = [(-0.1, 0.2)]
+    for cond in conditions.keys():
+        dipoles_names =['peak_{}_motor'.format(cond)]
+        noise_cov_fname = op.join(MEG_DIR, subject, 'right-session1-noise-cov.fif')
+        evo_fname = args.evo_fname.format(cond=cond)
+        meg.find_dipole_cortical_locations(args.atlas, cond, dipoles_names[0])
+        # meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, evo_fname=evo_fname, mask_roi='recentral', do_plot=True,
+        #                 noise_cov_fname=noise_cov_fname, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
 
 
 def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel,
@@ -201,11 +206,11 @@ def plot_roi(subject, atlas, extract_method, roi, sfreq, sessions, args):
             ax = axs[hemi_ind, cond_ind]
             data = np.array(labels_data[(hemi, cond)]).squeeze().T
             ax.plot(time, data)
-            ax.set_title('{} hemi, {} index ({} Hz)'.format('right' if hemi=='rh' else 'left', cond, data_freqs))
+            ax.set_title('{} hemi, {} index ({} Hz)'.format('right' if hemi=='rh' else 'left', cond, data_freqs[1:]))
             ax.set_xlim([-1.5, 0.5])
             ax.set_ylim([-1.5, 2])
     plt.suptitle(roi)
-    # plt.tight_layout()
+
     # plt.show()
     utils.make_dir(op.join(MEG_DIR, subject, 'figures'))
     fig_fname = op.join(MEG_DIR, subject, 'figures', '{}.png'.format(roi))
@@ -237,11 +242,11 @@ if __name__ == '__main__':
     conditions = dict(left=4, right=8)
     raw_files_template = op.join(MEG_DIR, args.subject[0], 'raw', 'DC_{cond}Index_day?.ds')
     sessions = sorted([f[-4] for f in glob.glob(raw_files_template.format(cond=list(conditions.keys())[0]))])
-    motor_rois = ['precentral_{}'.format(ind) for ind in range(1, 12)]  # ['precentral_11', 'precentral_5']
+    motor_rois = ['precentral_{}'.format(ind) for ind in range(1, 20)]  # ['precentral_11', 'precentral_5']
     sfreq = 625
     subject = args.subject[0]
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     for inverse_method in args.inverse_method:
-        # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
-        plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
+        analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
+        # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
     print('Finish!')

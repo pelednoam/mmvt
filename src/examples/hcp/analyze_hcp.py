@@ -118,7 +118,7 @@ def analyze_task(subject, task, hcp_params):
 
 
 def analyze_rest():
-    pass
+    raw = hcp.read_raw(data_type='rest', run_index=0, **hcp_params)
 
 
 if __name__ == '__main__':

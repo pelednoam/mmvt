@@ -654,7 +654,7 @@ def add_subcortical_surfaces(src, seg_labels):
     from mne.source_space import _make_discrete_source_space
 
     # Read the freesurfer lookup table
-    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table()
 
     # Get the indices to the desired labels
     for label in seg_labels:
@@ -975,9 +975,21 @@ def copy_sphere_reg_files():
         print("No ?h.sphere.reg files! You won't be able to plot stc files")
 
 
-def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6):
+def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
+                use_meg=True, use_eeg=False, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
+                n_jobs=6):
     from mne.forward import make_forward_dipole
-    if not op.isfile(NOISE_COV):
+    import nibabel as nib
+
+    if noise_cov_fname == '':
+        noise_cov_fname = NOISE_COV
+    evo_fname = get_evo_fname(evo_fname)
+    if vol_atlas_fname == '':
+        vol_atlas_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas40+aseg.mgz'))
+    if vol_atlas_lut_fname == '':
+        vol_atlas_lut_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas40ColorLUT.txt'))
+
+    if not op.isfile(noise_cov_fname):
         print("The noise covariance cannot be found in {}!".format(NOISE_COV))
         return False
     if not op.isfile(BEM):
@@ -987,7 +999,7 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg
         print("The MEG-to-head-trans matrix cannot be found in {}!".format(COR))
         return False
     if evokes is None:
-        evokes = mne.read_evokeds(EVO)
+        evokes = mne.read_evokeds(evo_fname)
     if not isinstance(evokes, Iterable):
         evokes = [evokes]
 
@@ -1001,16 +1013,26 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg
             if not op.isfile(dipole_fname):
                 evoked_t = evoked.copy()
                 evoked_t.crop(t_min, t_max)
-                dipole, residual = mne.fit_dipole(evoked_t, NOISE_COV, BEM, COR, min_dist, n_jobs)
+                dipole, residual = mne.fit_dipole(evoked_t, noise_cov_fname, BEM, COR, min_dist, n_jobs)
                 utils.save((dipole, residual), dipole_fname)
             else:
                 dipole, residual = utils.load(dipole_fname)
+            if do_plot:
+                dipole.plot_locations(COR, 'DC', SUBJECTS_MRI_DIR, mode='orthoview')
+            dipole_pos_vox = dipole_pos_to_vox(dipole, COR)
+            if op.isfile(vol_atlas_fname) and op.isfile(vol_atlas_lut_fname) and mask_roi != '':
+                mask = nib.load(vol_atlas_fname).get_data()
+                lut = utils.read_freesurfer_lookup_table(lut_fname=vol_atlas_lut_fname, return_dict=True, reverse_dict=True)
+                _lut = utils.read_freesurfer_lookup_table(lut_fname=vol_atlas_lut_fname, return_dict=True)
+                mask_code = lut[mask_roi]
+            #
+            #     print('asdf')
             if not op.isfile(dipole_fix_output_fname):
                 # Estimate the time course of a single dipole with fixed position and orientation
                 # (the one that maximized GOF)over the entire interval
                 best_idx = np.argmax(dipole.gof)
                 dipole_fixed, residual_fixed = mne.fit_dipole(
-                    evoked, NOISE_COV, BEM, COR, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
+                    evoked, noise_cov_fname, BEM, COR, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
                     n_jobs=n_jobs)
                 utils.save((dipole_fixed, residual_fixed), dipole_fix_output_fname)
             else:
@@ -1020,16 +1042,44 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, min_dist=5., use_meg
                 utils.save((dipole_fwd, dipole_stc), dipole_stc_fwd_fname)
             else:
                 dipole_fwd, dipole_stc = utils.load(dipole_stc_fwd_fname)
-            if not op.isfile(dipole_location_figure_fname):
+            if not op.isfile(dipole_location_figure_fname) and do_plot:
                 dipole.plot_locations(COR, MRI_SUBJECT, SUBJECTS_MRI_DIR, mode='orthoview')
                 plt.savefig(dipole_location_figure_fname)
 
-            # save_diploe_loc(dipole, COR)
-            best_idx = np.argmax(dipole.gof)
-            best_time = dipole.times[best_idx]
-            # plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time)
-            dipole_fixed.plot()
-            print('asdf')
+            if do_plot:
+                # save_diploe_loc(dipole, COR)
+                best_idx = np.argmax(dipole.gof)
+                best_time = dipole.times[best_idx]
+                # plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time)
+                dipole_fixed.plot()
+
+
+def find_dipole_cortical_locations(atlas, cond, dipole_title):
+    from mne.transforms import _get_trans, apply_trans
+    from scipy.spatial.distance import cdist
+    dipole_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_{}_{}.pkl'.format(cond, dipole_title))
+    vertices_labels_lookup = lu.create_vertices_labels_lookup(MRI_SUBJECT, atlas)
+    dipole, _ = utils.load(dipole_fname)
+    trans = _get_trans(COR, fro='head', to='mri')[0]
+    scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
+
+    vertices, vertices_dist = {}, {}
+    for hemi_ind, hemi in enumerate(['lh', 'rh']):
+        verts, _ = utils.read_ply_file(op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.pial.ply'.format(hemi)))
+        dists = cdist(scatter_points, verts)
+        vertices[hemi_ind] = np.argmin(dists, 1)
+        vertices_dist[hemi_ind] = np.min(dists, 1)
+    hemis = np.argmin(np.vstack((vertices_dist[0], vertices_dist[1])), 0)
+    sort_inds = np.argsort(dipole.gof)[::-1]
+    for ind in sort_inds:
+        hemi_ind = hemis[ind]
+        hemi = ['lh', 'rh'][hemi_ind]
+        dist = vertices_dist[hemi_ind][ind]
+        vert = vertices[hemi_ind][ind]
+        label = vertices_labels_lookup[hemi][vert]
+        gof = dipole.gof[ind]
+        print(ind, hemi, dist, label, gof)
+
 
 
 def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):
@@ -1047,17 +1097,24 @@ def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):
     print('Comparison of measured and predicted fields at {:.0f} ms'.format(best_time * 1000.))
 
 
-def save_diploe_loc(dipole, trans):
+def dipole_pos_to_vox(dipole, trans):
     from mne.transforms import _get_trans, apply_trans
 
     orig_trans = utils.Bag(np.load(op.join(MMVT_DIR, MRI_SUBJECT, 'orig_trans.npz')))
     trans = _get_trans(trans, fro='head', to='mri')[0]
     scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
-    dipole_ori = apply_trans(trans['trans'], dipole.ori, move=False)
-    dipole_locs = apply_trans(orig_trans.ras_tkr2vox, scatter_points)
+    dipole_locs_vox = apply_trans(orig_trans.ras_tkr2vox, scatter_points)
+    dipole_locs_vox = np.array(dipole_locs_vox).astype(int)
+    return dipole_locs_vox
+
+
+def save_diploe_loc(dipole, trans):
+    from mne.transforms import _get_trans, apply_trans
+
     best_idx = np.argmax(dipole.gof)
     best_point = dipole_locs[best_idx]
     dipole_xyz = np.round(best_point).astype(int)
+    dipole_ori = apply_trans(trans['trans'], dipole.ori, move=False)
     print(dipole_xyz, dipole_ori)
 
 
@@ -1102,7 +1159,7 @@ def get_cond_fname(fname, cond, **kargs):
 
 def calc_sub_cortical_activity(events, sub_corticals_codes_file=None, inverse_method='dSPM', pick_ori=None,
         evoked=None, epochs=None, regions=None, inv_include_hemis=True, n_dipoles=0):
-    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table()
     evoked_given = not evoked is None
     epochs_given = not epochs is None
     if regions is not None:
@@ -1248,7 +1305,7 @@ def x_opertor_exists(operator, region, events):
 
 
 def plot_sub_cortical_activity(events, sub_corticals_codes_file, inverse_method='dSPM', regions=None, all_vertices=False):
-    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table()
     if sub_corticals_codes_file is None:
         sub_corticals = regions
     else:
@@ -1283,7 +1340,7 @@ def save_subcortical_activity_to_blender(sub_corticals_codes_file, events, stat,
     sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
     first_time = True
     names_for_blender = []
-    lut = utils.read_freesurfer_lookup_table(FREESURFER_HOME)
+    lut = utils.read_freesurfer_lookup_table()
     for ind, sub_cortical_ind in enumerate(sub_corticals):
         sub_cortical_name, _ = utils.get_numeric_index_to_label(sub_cortical_ind, lut)
         names_for_blender.append(sub_cortical_name)
@@ -2571,6 +2628,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--inv_fname', help='', required=False, default='')
     parser.add_argument('--fwd_fname', help='', required=False, default='')
     parser.add_argument('--epo_fname', help='', required=False, default='')
+    parser.add_argument('--evo_fname', help='', required=False, default='')
     parser.add_argument('--noise_cov_fname', help='', required=False, default='')
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)

@@ -351,10 +351,10 @@ def calc_stat_data(data, stat, axis=2):
     return stat_data
 
 
-#todo: remove the first parameter
-def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False, return_dict=False):
-    lut_name = 'FreeSurferColorLUT.txt'
-    lut_fname = op.join(mmvt_fol(), lut_name)
+def read_freesurfer_lookup_table(get_colors=False, return_dict=False, reverse_dict=False, lut_fname=''):
+    if lut_fname == '':
+        lut_name = 'FreeSurferColorLUT.txt'
+        lut_fname = op.join(mmvt_fol(), lut_name)
     if not op.isfile(lut_fname):
         resources_lut_fname = op.join(get_resources_fol(), lut_name)
         if op.isfile(resources_lut_fname):
@@ -371,7 +371,11 @@ def read_freesurfer_lookup_table(freesurfer_home='', get_colors=False, return_di
     else:
         lut = np.genfromtxt(lut_fname, dtype=None, usecols=(0, 1), names=['id', 'name'])
     if return_dict:
-        lut = {int(val):name.decode(sys.getfilesystemencoding(), 'ignore') for val, name in lut}
+        if reverse_dict:
+            lut = {name.decode(sys.getfilesystemencoding(), 'ignore'):int(val) for val, name in lut}
+        else:
+            lut = {int(val):name.decode(sys.getfilesystemencoding(), 'ignore') for val, name in lut}
+
     return lut
 
 
