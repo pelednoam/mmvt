@@ -179,11 +179,11 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
     return op.join(root_dir, fname)
 
 
-def load_raw(bad_channels=[], l_freq=None, h_freq=None):
+def load_raw(raw_fname='', bad_channels=[], l_freq=None, h_freq=None):
     # read the data
-    raw_fname, raw_exist = locating_file(RAW, glob_pattern='*raw.fif')
+    raw_fname, raw_exist = locating_file(raw_fname, glob_pattern='*raw.fif')
     if not raw_exist:
-        return None
+        raise Exception("Coulnd't find the raw file! {}".format(raw_fname))
     raw = mne.io.read_raw_fif(raw_fname, preload=True)
     if not op.isfile(INFO):
         utils.save(raw.info, INFO)
@@ -237,9 +237,11 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0):
+                 windows_num=0, overwrite_epochs=False):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
-
+    if op.isfile(epoches_fname) and not overwrite_epochs:
+        epochs = mne.read_epochs(epoches_fname)
+        return epochs
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
     # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
     if reject:
@@ -317,7 +319,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs, args.epo_fname)
+        args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -345,7 +347,7 @@ def calc_epochs_wrapper(
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0, overwrite_epochs=False, epo_fname=''):
+        windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname=''):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -365,11 +367,11 @@ def calc_epochs_wrapper(
                     epochs = mne.read_epochs(epo_fname)
         if not epo_exist or overwrite_epochs:
             if raw is None:
-                raw = load_raw(bad_channels, l_freq, h_freq)
+                raw = load_raw(raw_fname, bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  epo_fname, task, windows_length, windows_shift, windows_num)
+                                  epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -729,32 +731,43 @@ def add_subcortical_volumes(org_src, seg_labels, spacing=5., use_grid=True):
     return src
 
 
-def calc_noise_cov(epochs=None, noise_t_min=None, noise_t_max=0, args=None):
+def calc_noise_cov(epochs=None, noise_t_min=None, noise_t_max=0, noise_cov_fname='', args=None, raw=None):
+    if noise_cov_fname == '':
+        noise_cov_fname = NOISE_COV
+    if op.isfile(noise_cov_fname):
+        noise_cov = mne.read_cov(noise_cov_fname)
+        return noise_cov
     if epochs is None:
-        return recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args)
+        noise_cov = recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args, raw)
+        noise_cov.save(noise_cov_fname)
+        return noise_cov
     if len(epochs) > 1:
         # Check if we need to recalc the epoches...
-        if epochs.tmin <= noise_t_min and epochs.tmin >= noise_t_max:
+        if epochs.tmin <= noise_t_min and epochs.tmax >= noise_t_max:
             noise_cov = mne.compute_covariance(epochs.crop(noise_t_min, noise_t_max))
         else:
             # Yes, we do...
-            noise_cov = recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args)
+            noise_cov = recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args, raw)
     else:
         if op.isfile(EPO_NOISE):
             demi_epochs = mne.read_epochs(EPO_NOISE)
         else:
             raise Exception("You should split first your epochs into small demi epochs, see calc_demi_epoches")
         noise_cov = calc_noise_cov(demi_epochs)
+    noise_cov.save(noise_cov_fname)
     return noise_cov
 
-def recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args):
+
+def recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args, raw=None):
     noise_args = utils.Bag(args.copy())
     noise_args.t_min = noise_t_min
     noise_args.t_max = noise_t_max
-    noise_args.overwrite_epochs = True
+    noise_args.overwrite_epochs = False
     noise_args.baseline = (noise_t_min, noise_t_max)
-    _, noise_epochs = calc_epochs_wrapper_args(noise_args.conditions, noise_args)
-    noise_cov = mne.compute_covariance(noise_epochs.crop(noise_t_min, noise_t_max))
+    epo_fname = get_epo_fname(args.epo_fname)
+    noise_args.epo_fname = '{}noise-epo.fif'.format(epo_fname[:-len('epo.fif')])
+    _, noise_epochs = calc_epochs_wrapper_args(noise_args.conditions, noise_args, raw=raw)
+    noise_cov = mne.compute_covariance(noise_epochs)
     return noise_cov
 
 
@@ -818,8 +831,7 @@ def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_
             elif overwrite_noise_cov or not op.isfile(noise_cov_fname):
                 epo = get_cond_fname(epo_fname, cond)
                 epochs = mne.read_epochs(epo)
-                noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, args)
-                noise_cov.save(noise_cov_fname)
+                noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, noise_cov_fname, args)
             else:
                 noise_cov = mne.read_cov(noise_cov_fname)
             # todo: should use noise_cov = calc_cov(...
@@ -2101,7 +2113,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         return True, None, {}
 
     stcs_conds, stcs_num = None, {}
-    if isinstance(inverse_method, Iterable):
+    if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
         inverse_method = inverse_method[0]
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     evo_fname = get_evo_fname(args.evo_fname)
@@ -2120,8 +2132,13 @@ def calc_labels_avg_per_condition_wrapper(
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
-        if labels_data_exist and not args.labels_data_overwrite:
-            return True
+        if labels_data_exist:
+            if utils.should_run(args, 'calc_labels_min_max'):
+                flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode, args.labels_data_template)
+            return flags
+
+        if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
+            inverse_method = inverse_method[0]
         args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
         args.stc_hemi_template = STC_HEMI if args.stc_template == '' else \
             '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
@@ -2152,14 +2169,17 @@ def calc_labels_avg_per_condition_wrapper(
                     subject, conditions, inverse_method, args, flags)
 
     if utils.should_run(args, 'calc_labels_min_max'):
-        flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode)
+        flags['calc_labels_min_max'] = calc_labels_minmax(atlas, args.extract_mode, args.labels_data_template)
     return flags
 
 
-def calc_labels_minmax(atlas, extract_modes):
+def calc_labels_minmax(atlas, extract_modes, labels_data_template=''):
+    if labels_data_template == '':
+        labels_data_template = LBL
+    min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em))
-        template = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
+        template = labels_data_template.format(atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
             labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
             labels_min = min([np.min(d['data']) for d in labels_data])
@@ -2170,8 +2190,12 @@ def calc_labels_minmax(atlas, extract_modes):
                      labels_diff_minmax=[labels_diff_min, labels_diff_max])
         else:
             print("Can't find {}!".format(template))
-    return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
+    return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em)))
                    for em in extract_modes])
+
+
+def get_labels_minmax_template(labels_data_template):
+    return '{}_minmax.npz'.format(labels_data_template[:-7])
 
 
 def calc_stc_diff(stc1_fname, stc2_fname, output_name):
@@ -2188,7 +2212,7 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
 
 
 def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fname='', overwrite_ica=False,
-            do_plot=False, examine_ica=False):
+            do_plot=False, examine_ica=False, n_jobs=6):
     from mne.preprocessing import read_ica
     if raw_fname == '':
         raw_fname = RAW
@@ -2198,7 +2222,7 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
         ica = read_ica(ica_fname)
     else:
         ica = ICA(n_components=n_components, method=method)
-        raw.filter(1, 45, n_jobs=1, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+        raw.filter(1, 45, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
                    filter_length='10s', phase='zero-double')
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                                stim=False, exclude='bads')
@@ -2220,77 +2244,81 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
 
 
 def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica',
-                     ecg_inds=[], eog_inds=[], eog_channel=None, remove_from_raw=True,
-                     save_raw=True, raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False):
-    # 1) Fit ICA model using the FastICA algorithm.
-    ica = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot)
-    picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
-                           stim=False, exclude='bads')
-    ###############################################################################
-    # 2) identify bad components by analyzing latent sources.
-    # generate ECG epochs use detection via phase statistics
-    if len(ecg_inds) == 0:
-        ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
-        ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
+                     ecg_inds=[], eog_inds=[], eog_channel=None, remove_from_raw=True, save_raw=True, raw_fname='',
+                     new_raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False, n_jobs=6):
+    from mne.preprocessing import read_ica
+    if op.isfile(ica_fname) and not overwrite_ica:
+        ica = read_ica(ica_fname)
     else:
-        scores = [1.0 / len(ecg_inds)] * len(ecg_inds)
-    if len(ecg_inds) == 0:
-        print('No ECG artifacts!')
-    else:
-        if do_plot:
-            title = 'Sources related to %s artifacts (red)'
-            ica.plot_scores(scores, exclude=ecg_inds, title=title % 'ecg', labels='ecg')
-            show_picks = np.abs(scores).argsort()[::-1][:5]
-            ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
-            ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
-        ecg_inds = ecg_inds[:n_max_ecg]
-        ica.exclude += ecg_inds
-    try:
-        if len(eog_inds) == 0:
-            # detect EOG by correlation
-            eog_inds, scores = ica.find_bads_eog(raw, ch_name=eog_channel)
+        # 1) Fit ICA model using the FastICA algorithm.
+        ica = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot, n_jobs=n_jobs)
+        picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
+                               stim=False, exclude='bads')
+        ###############################################################################
+        # 2) identify bad components by analyzing latent sources.
+        # generate ECG epochs use detection via phase statistics
+        if len(ecg_inds) == 0:
+            ecg_epochs = create_ecg_epochs(raw, tmin=-.5, tmax=.5, picks=picks)
+            ecg_inds, scores = ica.find_bads_ecg(ecg_epochs, method='ctps')
         else:
-            scores = [1.0 / len(eog_inds)] * len(eog_inds)
-        if len(eog_inds) == 0:
-            print('No EOG artifacts!')
+            scores = [1.0 / len(ecg_inds)] * len(ecg_inds)
+        if len(ecg_inds) == 0:
+            print('No ECG artifacts!')
         else:
             if do_plot:
-                ica.plot_scores(scores, exclude=eog_inds, title=title % 'eog', labels='eog')
+                title = 'Sources related to %s artifacts (red)'
+                ica.plot_scores(scores, exclude=ecg_inds, title=title % 'ecg', labels='ecg')
                 show_picks = np.abs(scores).argsort()[::-1][:5]
-                ica.plot_sources(raw, show_picks, exclude=eog_inds, title=title % 'eog')
-                ica.plot_components(eog_inds, title=title % 'eog', colorbar=True)
-            eog_inds = eog_inds[:n_max_eog]
-            ica.exclude += eog_inds
-    except:
-        print("Can't remove EOG artifacts!")
-    ###############################################################################
-    # 3) Assess component selection and unmixing quality.
-
-    # estimate average artifact
-    if do_plot:
-        ecg_evoked = ecg_epochs.average()
-        print('We found %i ECG events' % ecg_evoked.nave)
-        ica.plot_sources(ecg_evoked, exclude=ecg_inds)  # plot ECG sources + selection
-        ica.plot_overlay(ecg_evoked, exclude=ecg_inds)  # plot ECG cleaning
+                ica.plot_sources(raw, show_picks, exclude=ecg_inds, title=title % 'ecg')
+                ica.plot_components(ecg_inds, title=title % 'ecg', colorbar=True)
+            ecg_inds = ecg_inds[:n_max_ecg]
+            ica.exclude += ecg_inds
         try:
-            eog_evoked = create_eog_epochs(raw, tmin=-.5, tmax=.5, picks=picks, ch_name=eog_channel).average()
-            print('We found %i EOG events' % eog_evoked.nave)
-            ica.plot_sources(eog_evoked, exclude=eog_inds)  # plot EOG sources + selection
-            ica.plot_overlay(eog_evoked, exclude=eog_inds)  # plot EOG cleaning
+            if len(eog_inds) == 0:
+                # detect EOG by correlation
+                eog_inds, scores = ica.find_bads_eog(raw, ch_name=eog_channel)
+            else:
+                scores = [1.0 / len(eog_inds)] * len(eog_inds)
+            if len(eog_inds) == 0:
+                print('No EOG artifacts!')
+            else:
+                if do_plot:
+                    ica.plot_scores(scores, exclude=eog_inds, title=title % 'eog', labels='eog')
+                    show_picks = np.abs(scores).argsort()[::-1][:5]
+                    ica.plot_sources(raw, show_picks, exclude=eog_inds, title=title % 'eog')
+                    ica.plot_components(eog_inds, title=title % 'eog', colorbar=True)
+                eog_inds = eog_inds[:n_max_eog]
+                ica.exclude += eog_inds
         except:
-            print("Can't create eog epochs, no EEG")
-        # check the amplitudes do not change
-        ica.plot_overlay(raw)  # EOG artifacts remain
+            print("Can't remove EOG artifacts!")
+        ###############################################################################
+        # 3) Assess component selection and unmixing quality.
+        # estimate average artifact
+        if do_plot:
+            ecg_evoked = ecg_epochs.average()
+            print('We found %i ECG events' % ecg_evoked.nave)
+            ica.plot_sources(ecg_evoked, exclude=ecg_inds)  # plot ECG sources + selection
+            ica.plot_overlay(ecg_evoked, exclude=ecg_inds)  # plot ECG cleaning
+            try:
+                eog_evoked = create_eog_epochs(raw, tmin=-.5, tmax=.5, picks=picks, ch_name=eog_channel).average()
+                print('We found %i EOG events' % eog_evoked.nave)
+                ica.plot_sources(eog_evoked, exclude=eog_inds)  # plot EOG sources + selection
+                ica.plot_overlay(eog_evoked, exclude=eog_inds)  # plot EOG cleaning
+            except:
+                print("Can't create eog epochs, no EEG")
+            # check the amplitudes do not change
+            ica.plot_overlay(raw)  # EOG artifacts remain
+        ica.save(ica_fname)
 
     if len(ica.exclude) == 0:
         print("ICA didn't find any artifacts!")
     else:
-        if not op.isfile(ica_fname) or overwrite_ica:
-            ica.save(ica_fname)
         if remove_from_raw:
             raw = ica.apply(raw)
             if save_raw:
-                raw.save(RAW_ICA, overwrite=True)
+                if new_raw_fname == '':
+                    new_raw_fname = RAW_ICA
+                raw.save(new_raw_fname, overwrite=True)
     return raw
 
 
@@ -2525,6 +2553,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
     parser.add_argument('--raw_fname_format', help='', required=False, default='')
+    parser.add_argument('--raw_fname', help='', required=False, default='')
     parser.add_argument('--fwd_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname_format', help='', required=False, default='')
     parser.add_argument('--inv_fname', help='', required=False, default='')

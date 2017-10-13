@@ -12,33 +12,15 @@ LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 
 
-def analyze(subject, atlas, extract_method):
-    flags = {}
-    args = pu.init_args(meg.read_cmd_args(dict(
-        subject=subject,
-        task='tapping',
-        conditions='left',
-        atlas=atlas,
-        inverse_method='MNE',
-        t_min=-2, t_max=2,
-        noise_t_min=-2.5, noise_t_max=-1.5,
-        extract_mode=extract_method,
-        bad_channels=[],
-        stim_channels='STIM',
-        pick_ori='normal',
-        reject=False,
-        overwrite_epochs=False,
-        overwrite_inv=False,
-        overwrite_noise_cov=False,
-        overwrite_ica=True,
-        do_plot_ica=False,
-        fwd_usingEEG=False)))
+def analyze(subject, inverse_method, args):
     meg.init(subject, args)
     overwrite_raw = False
-    save_raw = False
     only_examine_ica = False
     plot_evoked = False
     calc_stc_per_session = True
+    look_for_ica_eog_file = True
+    filter_raw_data = True
+    raw_data_filter_freqs = (1, 15)
     conditions = dict(left=4, right=8)
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
@@ -46,6 +28,8 @@ def analyze(subject, atlas, extract_method):
     if op.isfile(eog_inds_fname):
         all_eog_inds = np.genfromtxt(eog_inds_fname, dtype=np.str, delimiter=',', autostrip=True)
     else:
+        if look_for_ica_eog_file:
+            raise Exception("Can't find the ICA eog file! {}".format(eog_inds_fname))
         all_eog_inds = []
     for cond in conditions.keys():
         sessions = [f[-4] for f in glob.glob(op.join(MEG_DIR, subject, 'raw', 'DC_{}Index_day?.ds'.format(cond)))]
@@ -53,8 +37,9 @@ def analyze(subject, atlas, extract_method):
         args.conditions = condition = {cond:4 if cond == 'left' else 8}
         for ctf_raw_data in raw_files:
             calc_per_session(
-                subject, condition, ctf_raw_data, args, sessions, all_eog_inds, eog_channel, calc_stc_per_session,
-                only_examine_ica, overwrite_raw, save_raw, plot_evoked)
+                subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel, calc_stc_per_session,
+                only_examine_ica, overwrite_raw, plot_evoked, filter_raw_data, raw_data_filter_freqs)
+        return
         combine_evokes(subject, cond, sessions)
         args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
         args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
@@ -66,48 +51,65 @@ def analyze(subject, atlas, extract_method):
         args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format('{cond}', session))
         args.stc_template = op.join(MEG_DIR, subject, '{}-session{}-{}.stc'.format('{cond}', session, '{method}'))
         args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + '_{}_{}_{}.npz')
-        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method[0], None, args)
+        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, None, args)
 
     args.evo_fname = op.join(MEG_DIR, subject, '{cond}-ave.fif')
     args.inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
     args.stc_template = op.join(MEG_DIR, subject, '{cond}-{method}.stc')
     args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_{}_{}_{}.npz')
-    _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, args.inverse_method, args)
-    meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, args.inverse_method, stcs_conds, args)
+    _, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args)
+    meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
 
     # dipoles_times = [(0.25, 0.35)]
         # dipoles_names =['peak_left_motor']
         # meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
 
 
-def calc_per_session(subject, condition, ctf_raw_data, args, sessions, all_eog_inds, eog_channel, calc_stc_per_session,
-                     only_examine_ica, overwrite_raw, save_raw, plot_evoked):
+def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel,
+                     calc_stc_per_session, only_examine_ica, overwrite_raw, plot_evoked, filter_raw_data,
+                     raw_data_filter_freqs):
     session = ctf_raw_data[-4]
     cond = list(condition.keys())[0]
-    new_raw_fname = op.join(MEG_DIR, subject, '{}-session{}-ica-raw.fif'.format(cond, session))
-    args.epo_fname = op.join(MEG_DIR, subject, '{}-session{}-epo.fif'.format(cond, session))
-    args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}-ave.fif'.format(cond, session))
+    freqs_str = '-{}-{}'.format(raw_data_filter_freqs[0], raw_data_filter_freqs[1]) if filter_raw_data else ''
+    args.raw_fname = op.join(MEG_DIR, subject, '{}-session{}-raw.fif'.format(cond, session))
+    new_raw_no_filter_fname = op.join(MEG_DIR, subject, '{}-session{}-ica-raw.fif'.format(cond, session))
+    new_raw_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ica-raw.fif'.format(cond, session, freqs_str))
+    args.epo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-epo.fif'.format(cond, session, freqs_str))
+    args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ave.fif'.format(cond, session, freqs_str))
     args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format(cond, session))
     args.fwd_fname = op.join(MEG_DIR, subject, '{}-session{}-fwd.fif'.format(cond, session))
     args.noise_cov_fname = op.join(MEG_DIR, subject, '{}-session{}-noise-cov.fif'.format(cond, session))
-    args.stc_template = op.join(MEG_DIR, subject, '{cond}-session' + session + '-{method}.stc')
+    args.stc_template = op.join(MEG_DIR, subject, '{cond}-session' + session + '-{method}' + freqs_str + '.stc')
     stc_hemi_template = '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
-    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + '_{}_{}_{}.npz')
-    if check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_hemi_template, args.labels_data_template, args):
+    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + freqs_str + '_{}_{}_{}.npz')
+    if check_if_all_done(new_raw_fname, cond, inverse_method, calc_stc_per_session, stc_hemi_template,
+                         args.labels_data_template, args):
         return
     ica_fname = op.join(MEG_DIR, subject, '{}-session{}-ica.fif'.format(cond, session))
     if len(all_eog_inds) > 0:
         session_ind = np.where(all_eog_inds[:, 0] == utils.namesbase_with_ext(ica_fname))[0][0]
         eog_inds = [int(all_eog_inds[session_ind, 1])]
+    else:
+        eog_inds = []
     if only_examine_ica:
-        meg.fit_ica(ica_fname=ica_fname, do_plot=True, examine_ica=True)
+        meg.fit_ica(ica_fname=ica_fname, do_plot=True, examine_ica=True, n_jobs=args.n_jobs)
         return
     if not op.isfile(new_raw_fname) or overwrite_raw or not op.isfile(ica_fname):
-        raw = mne.io.read_raw_ctf(op.join(MEG_DIR, subject, 'raw', ctf_raw_data), preload=True)
-        raw = meg.remove_artifacts(
-            raw, remove_from_raw=True, overwrite_ica=args.overwrite_ica, save_raw=save_raw,
-            raw_fname=new_raw_fname, ica_fname=ica_fname, do_plot=args.do_plot_ica, eog_inds=eog_inds,
-            eog_channel=eog_channel)
+        if not op.isfile(args.raw_fname):
+            raw = mne.io.read_raw_ctf(op.join(MEG_DIR, subject, 'raw', ctf_raw_data), preload=True)
+            raw.save(args.raw_fname)
+        if not op.isfile(new_raw_no_filter_fname):
+            raw = mne.io.read_raw_fif(args.raw_fname, preload=True)
+            raw = meg.remove_artifacts(
+                raw, remove_from_raw=True, overwrite_ica=args.overwrite_ica, save_raw=True,
+                raw_fname=new_raw_fname, new_raw_fname=new_raw_no_filter_fname, ica_fname=ica_fname,
+                do_plot=args.do_plot_ica, eog_inds=eog_inds, eog_channel=eog_channel, n_jobs=args.n_jobs)
+        else:
+            raw = mne.io.read_raw_fif(new_raw_no_filter_fname, preload=True)
+        meg.calc_noise_cov(None, args.noise_t_min, args.noise_t_max, args.noise_cov_fname, args, raw)
+        if filter_raw_data:
+            raw.filter(raw_data_filter_freqs[0], raw_data_filter_freqs[1],  h_trans_bandwidth='auto',
+                       filter_length='auto', phase='zero')
         print('Saving new raw file in {}'.format(new_raw_fname))
         if overwrite_raw or not op.isfile(new_raw_fname):
             raw.save(new_raw_fname, overwrite=True)
@@ -122,20 +124,22 @@ def calc_per_session(subject, condition, ctf_raw_data, args, sessions, all_eog_i
     if calc_stc_per_session:
         meg.calc_fwd_inv_wrapper(subject, condition, args)
         stcs_conds = None
-        if not utils.both_hemi_files_exist(stc_hemi_template.format(cond=cond, method=args.inverse_method, hemi='{hemi}')):
-            _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, args.inverse_method, args)
-        meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, args.inverse_method[0], stcs_conds, args)
+        if not utils.both_hemi_files_exist(stc_hemi_template.format(cond=cond, method=inverse_method, hemi='{hemi}')):
+            _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, inverse_method, args)
+        meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, inverse_method, stcs_conds, args)
 
 
-def check_if_all_done(new_raw_fname, cond, calc_stc_per_session, stc_template_hemi, labels_data_template, args):
-    all_done = False
-    if all([op.isfile(f) for f in [new_raw_fname, args.epo_fname, args.evo_fname]]):
-        if calc_stc_per_session:
-            all_done = all([op.isfile(f) for f in [args.inv_fname, args.fwd_fname]]) and \
-                       utils.both_hemi_files_exist(
-                           stc_template_hemi.format(cond=cond, method=args.inverse_method[0], hemi='{hemi}'))
-        else:
-            all_done = True
+def check_if_all_done(new_raw_fname, cond, inverse_method, calc_stc_per_session, stc_template_hemi,
+                      labels_data_template, args):
+    all_done = all([op.isfile(f) for f in [new_raw_fname, args.epo_fname, args.evo_fname]])
+    if all_done:
+        all_done = \
+            all([op.isfile(f) for f in [args.inv_fname, args.fwd_fname]]) and \
+            utils.both_hemi_files_exist(stc_template_hemi.format(cond=cond, method=inverse_method, hemi='{hemi}')) and \
+            all([utils.both_hemi_files_exist(labels_data_template.format(args.atlas, em, '{hemi}')) and \
+                 op.isfile(meg.get_labels_minmax_template(labels_data_template).format(args.atlas, em))
+                 for em in args.extract_mode])
+        return all_done if calc_stc_per_session else True
     return all_done
 
 
@@ -151,20 +155,20 @@ def combine_evokes(subject, cond, sessions):
         combined_evoked.comment = cond
         mne.write_evokeds(combined_evoked_fname, combined_evoked)
 
-
-def combine_noise_covs(subject, conditions, sessions, noise_t_min, noise_t_max, args):
-    noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
-    args.epochs_fname = op.join(MEG_DIR, subject, 'epo.fif')
-    if op.isfile(noise_cov_fname):
-        return
-    all_epochs = []
-    for session in sessions:
-        for cond in conditions.keys():
-            all_epochs.append(mne.read_epochs(op.join(MEG_DIR, subject, '{}-session{}-epo.fif'.format(cond, session))))
-    all_epochs = mne.concatenate_epochs(all_epochs)
-    all_epochs.save(args.epochs_fname)
-    noise_cov = meg.calc_noise_cov(None, noise_t_min, noise_t_max, args)
-    noise_cov.save(noise_cov_fname)
+#
+# def combine_noise_covs(subject, conditions, sessions, noise_t_min, noise_t_max, args):
+#     noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
+#     args.epochs_fname = op.join(MEG_DIR, subject, 'epo.fif')
+#     if op.isfile(noise_cov_fname):
+#         return
+#     all_epochs = []
+#     for session in sessions:
+#         for cond in conditions.keys():
+#             all_epochs.append(mne.read_epochs(op.join(MEG_DIR, subject, '{}-session{}-epo.fif'.format(cond, session))))
+#     all_epochs = mne.concatenate_epochs(all_epochs)
+#     all_epochs.save(args.epochs_fname)
+#     noise_cov = meg.calc_noise_cov(None, noise_t_min, noise_t_max, args)
+#     noise_cov.save(noise_cov_fname)
 
 
 def plot_motor_response(subject, atlas, extract_method):
@@ -208,7 +212,26 @@ def plot_roi(subject, atlas, extract_method, roi, sfreq, fmin, fmax):
 
 
 if __name__ == '__main__':
-    subject, atlas, extract_method = 'DC', 'laus250', 'mean_flip'
-    # analyze(subject, atlas, extract_method)
-    plot_motor_response(subject, atlas, extract_method)
+    from itertools import product
+    args = pu.init_args(meg.read_cmd_args(dict(
+        subject='DC',
+        atlas='laus250',
+        inverse_method='MNE',
+        t_min=-2, t_max=2,
+        noise_t_min=-2.5, noise_t_max=-1.5,
+        extract_mode='mean_flip',
+        bad_channels=[],
+        stim_channels='STIM',
+        pick_ori='normal',
+        reject=False,
+        overwrite_epochs=False,
+        overwrite_inv=False,
+        overwrite_noise_cov=False,
+        overwrite_ica=False,
+        do_plot_ica=False,
+        fwd_usingEEG=False)))
+
+    for subject, inverse_method in product(args.subject, args.inverse_method):
+        analyze(subject, inverse_method, args)
+        # plot_motor_response(args)
     print('Finish!')
