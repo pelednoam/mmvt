@@ -945,6 +945,11 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             print('Error with {}!'.format(cond_name))
             flag = False
     copy_sphere_reg_files()
+    calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method)
+    return flag, stcs, stcs_num
+
+
+def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method):
     stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
     if all([utils.both_hemi_files_exist(
             stc_hemi_template.format(cond=cond, hemi='{hemi}'))
@@ -957,7 +962,6 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
-    return flag, stcs, stcs_num
 
 
 def copy_sphere_reg_files():
@@ -2104,9 +2108,13 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
     return flags, evoked, epochs
 
 
+def get_stc_hemi_template(stc_template):
+    return '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
+
+
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}):
     from itertools import product
-    stc_hemi_template = '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
+    stc_hemi_template = get_stc_hemi_template(args.stc_template)
     stc_exist = all([utils.both_hemi_files_exist(stc_hemi_template.format(
         cond=cond, method=im, hemi='{hemi}')) for (im, cond) in product(args.inverse_method, conditions)])
     if stc_exist and not args.overwrite_stc:
@@ -2140,8 +2148,7 @@ def calc_labels_avg_per_condition_wrapper(
         if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
             inverse_method = inverse_method[0]
         args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
-        args.stc_hemi_template = STC_HEMI if args.stc_template == '' else \
-            '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
+        args.stc_hemi_template = STC_HEMI if args.stc_template == '' else get_stc_hemi_template(args.stc_template)
         stc_fnames = [args.stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi=hemi)
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames + [args.inv_fname], args, conditions)
@@ -2208,7 +2215,7 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
     for hemi in utils.HEMIS:
         shutil.copy('{}-{}.stc'.format(output_name, hemi),
                     '{}-{}.stc'.format(mmvt_fname, hemi))
-        print('Saveing to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
+        print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
 def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fname='', overwrite_ica=False,

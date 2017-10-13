@@ -24,7 +24,8 @@ def analyze(subject, inverse_method, args):
     conditions = dict(left=4, right=8)
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     eog_inds_fname = op.join(MEG_DIR, subject, 'ica_eog_comps.txt')
-    args.noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
+    # args.noise_cov_fname = op.join(MEG_DIR, subject, 'noise-cov.fif')
+    freqs_str = '-{}-{}'.format(raw_data_filter_freqs[0], raw_data_filter_freqs[1]) if filter_raw_data else ''
     if op.isfile(eog_inds_fname):
         all_eog_inds = np.genfromtxt(eog_inds_fname, dtype=np.str, delimiter=',', autostrip=True)
     else:
@@ -39,19 +40,21 @@ def analyze(subject, inverse_method, args):
             calc_per_session(
                 subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel, calc_stc_per_session,
                 only_examine_ica, overwrite_raw, plot_evoked, filter_raw_data, raw_data_filter_freqs)
-        return
-        combine_evokes(subject, cond, sessions)
+        combine_evokes(subject, cond, sessions, filter_raw_data, raw_data_filter_freqs)
         args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
         args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
-        args.evo_fname = op.join(MEG_DIR, subject, '{}-ave.fif'.format(cond))
+        args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
         meg.calc_fwd_inv_wrapper(subject, condition, args)
-
+    return
     for session in sessions:
-        args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}-ave.fif'.format('{cond}', session))
+        args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ave.fif'.format('{cond}', session, freqs_str))
         args.inv_fname = op.join(MEG_DIR, subject, '{}-session{}-inv.fif'.format('{cond}', session))
-        args.stc_template = op.join(MEG_DIR, subject, '{}-session{}-{}.stc'.format('{cond}', session, '{method}'))
-        args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + '_{}_{}_{}.npz')
-        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, None, args)
+        args.stc_template = op.join(MEG_DIR, subject, '{}-session{}-{}{}.stc'.format('{cond}', session, '{method}', freqs_str))
+        args.labels_data_template = op.join(
+            MEG_DIR, subject, 'labels_data_session' + session + freqs_str + '_{}_{}_{}.npz')
+        stc_hemi_template = meg.get_stc_hemi_template(args.stc_template)
+        meg.calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method)
+        meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
 
     args.evo_fname = op.join(MEG_DIR, subject, '{cond}-ave.fif')
     args.inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
@@ -80,8 +83,7 @@ def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all
     args.fwd_fname = op.join(MEG_DIR, subject, '{}-session{}-fwd.fif'.format(cond, session))
     args.noise_cov_fname = op.join(MEG_DIR, subject, '{}-session{}-noise-cov.fif'.format(cond, session))
     args.stc_template = op.join(MEG_DIR, subject, '{cond}-session' + session + '-{method}' + freqs_str + '.stc')
-    stc_hemi_template = '{}{}'.format(args.stc_template[:-4], '-{hemi}.stc')
-    args.labels_data_template = op.join(MEG_DIR, subject, 'labels_data_session' + session + freqs_str + '_{}_{}_{}.npz')
+    stc_hemi_template = meg.get_stc_hemi_template(args.stc_template)
     if check_if_all_done(new_raw_fname, cond, inverse_method, calc_stc_per_session, stc_hemi_template,
                          args.labels_data_template, args):
         return
@@ -123,10 +125,10 @@ def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all
         plt.show()
     if calc_stc_per_session:
         meg.calc_fwd_inv_wrapper(subject, condition, args)
-        stcs_conds = None
+        # stcs_conds = None
         if not utils.both_hemi_files_exist(stc_hemi_template.format(cond=cond, method=inverse_method, hemi='{hemi}')):
             _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, inverse_method, args)
-        meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, inverse_method, stcs_conds, args)
+        # meg.calc_labels_avg_per_condition_wrapper(subject, condition, args.atlas, inverse_method, stcs_conds, args)
 
 
 def check_if_all_done(new_raw_fname, cond, inverse_method, calc_stc_per_session, stc_template_hemi,
@@ -135,20 +137,22 @@ def check_if_all_done(new_raw_fname, cond, inverse_method, calc_stc_per_session,
     if all_done:
         all_done = \
             all([op.isfile(f) for f in [args.inv_fname, args.fwd_fname]]) and \
-            utils.both_hemi_files_exist(stc_template_hemi.format(cond=cond, method=inverse_method, hemi='{hemi}')) and \
-            all([utils.both_hemi_files_exist(labels_data_template.format(args.atlas, em, '{hemi}')) and \
-                 op.isfile(meg.get_labels_minmax_template(labels_data_template).format(args.atlas, em))
-                 for em in args.extract_mode])
+            utils.both_hemi_files_exist(stc_template_hemi.format(cond=cond, method=inverse_method, hemi='{hemi}')) # and \
+            # all([utils.both_hemi_files_exist(labels_data_template.format(args.atlas, em, '{hemi}')) and \
+            #      op.isfile(meg.get_labels_minmax_template(labels_data_template).format(args.atlas, em))
+            #      for em in args.extract_mode])
         return all_done if calc_stc_per_session else True
     return all_done
 
 
-def combine_evokes(subject, cond, sessions):
-    combined_evoked_fname = op.join(MEG_DIR, subject, '{}-ave.fif'.format(cond))
+def combine_evokes(subject, cond, sessions, filter_raw_data, raw_data_filter_freqs):
+    freqs_str = '-{}-{}'.format(raw_data_filter_freqs[0], raw_data_filter_freqs[1]) if filter_raw_data else ''
+    combined_evoked_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
     if not op.isfile(combined_evoked_fname):
         all_evokes = []
         for session in sessions:
-            evoked = mne.read_evokeds(op.join(MEG_DIR, subject, '{}-session{}-ave.fif'.format(cond, session)))[0]
+            evo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ave.fif'.format(cond, session, freqs_str))
+            evoked = mne.read_evokeds(evo_fname)[0]
             evoked.apply_baseline()
             all_evokes.append(evoked)
         combined_evoked = mne.combine_evoked(all_evokes, 'nave')
