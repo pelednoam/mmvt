@@ -559,9 +559,10 @@ def get_subfolders(fol):
 
 
 def hemi_files_exists(fname):
-    # return len(glob.glob(fname.format(hemi='rh'))) > 1 and len(glob.glob(fname.format(hemi='rh'))) > 1
-    return os.path.isfile(fname.format(hemi='rh')) and \
-           os.path.isfile(fname.format(hemi='lh'))
+    if '*' in fname or '?' in fname:
+        return len(glob.glob(fname.format(hemi='rh'))) >= 1 and len(glob.glob(fname.format(hemi='rh'))) >= 1
+    else:
+        return os.path.isfile(fname.format(hemi='rh')) and os.path.isfile(fname.format(hemi='lh'))
 
 
 def atoi(text):
@@ -1380,6 +1381,11 @@ def get_fcurves_ordering(obj_name, ch_names):
             ch_ind = fcurve_ind
         ch_inds.append(ch_ind)
     return ch_inds
+
+
+def ceil_floor(x):
+    import math
+    return math.ceil(x) if x > 0 else math.floor(x)
 
 
 def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):

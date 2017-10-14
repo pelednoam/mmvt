@@ -357,7 +357,7 @@ def meg_labels_coloring(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_LABELS)
     init_activity_map_coloring('MEG')
     threshold = bpy.context.scene.coloring_threshold
-    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects['inflated_{}'.format(hemi)].hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.meg_labels_extract_method
     labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
@@ -376,7 +376,7 @@ def color_connections_labels_avg(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_CONN_LABELS_AVG)
     init_activity_map_coloring('MEG')
     threshold = bpy.context.scene.coloring_threshold
-    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects['inflated_{}'.format(hemi)].hide]
     user_fol = mu.get_user_fol()
     # files_names = [mu.namebase(fname).replace('_', ' ').replace('{} '.format(atlas), '') for fname in
     #                conn_labels_avg_files]
@@ -431,7 +431,7 @@ def fmri_labels_coloring(override_current_mat=True):
     if not bpy.context.scene.color_rois_homogeneously:
         init_activity_map_coloring('FMRI')
     threshold = bpy.context.scene.coloring_threshold
-    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects[hemi].hide]
+    hemispheres = [hemi for hemi in HEMIS if not bpy.data.objects['inflated_{}'.format(hemi)].hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.fmri_labels_extract_method
     if _addon().colorbar_values_are_locked():
@@ -583,16 +583,6 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     if bpy.data.objects['inflated_{}'.format(hemi)].hide:
         return
     faces_verts = ColoringMakerPanel.faces_verts[hemi]
-    # if bpy.context.scene.coloring_both_pial_and_inflated:
-    #     for cur_obj in [bpy.data.objects[hemi], bpy.data.objects['inflated_{}'.format(hemi)]]:
-    #         activity_map_obj_coloring(
-    #             cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
-    # else:
-    #     # if _addon().is_pial():
-    #     #     cur_obj = bpy.data.objects[hemi]
-    #     # elif _addon().is_inflated():
-    #     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
-    #     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
 
@@ -813,40 +803,31 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
-    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        # mesh.vertex_colors.active_index = 1
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-        c = mu.get_graph_context()
-        bpy.ops.mesh.vertex_color_remove(c)
-        # except:
-        #     print("Can't remove vertex color!")
-    if mesh.vertex_colors.get('Col') is None:
-        vcol_layer = mesh.vertex_colors.new('Col')
-    # vcol_layer = mesh.vertex_colors["Col"]
+    if override_current_mat:
+        if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+            # mesh.vertex_colors.active_index = 1
+            mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+        if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
+            c = mu.get_graph_context()
+            bpy.ops.mesh.vertex_color_remove(c)
+            # except:
+            #     print("Can't remove vertex color!")
+        if mesh.vertex_colors.get('Col') is None:
+            vcol_layer = mesh.vertex_colors.new('Col')
+        # vcol_layer = mesh.vertex_colors["Col"]
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         # mesh.vertex_colors.active_index = 1
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
         mesh.vertex_colors['Col'].active_render = True
     # else:
-    vcol_layer = mesh.vertex_colors.active
+        vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     vcol_layer = mesh.vertex_colors['Col']
     if colors_picked_from_cm:
         verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert])
     else:
         verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:])
-
-    # for vert in valid_verts:
-    #     x = lookup[vert]
-    #     for loop_ind in x[x > -1]:
-    #         d = vcol_layer.data[loop_ind]
-    #         if vert_values.ndim == 1:  # colors_picked_from_cm:
-    #             colors = verts_colors[vert]
-    #         else:
-    #             colors = vert_values[vert, 1:]
-    #         d.color = colors
 
 
 def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func):
@@ -1075,7 +1056,8 @@ def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
     data_min = mu.min_stc(stc)
     data_max = mu.max_stc(stc)
-    factor = -int(np.round(np.log10(data_max)))
+    data_minmax = mu.get_max_abs(data_max, data_min)
+    factor = -int(mu.ceil_floor(np.log10(data_minmax)))
     if factor > 3:
         # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         ColoringMakerPanel.stc._data *= np.power(10, factor)

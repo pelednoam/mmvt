@@ -1071,6 +1071,7 @@ def find_dipole_cortical_locations(atlas, cond, dipole_title):
         vertices_dist[hemi_ind] = np.min(dists, 1)
     hemis = np.argmin(np.vstack((vertices_dist[0], vertices_dist[1])), 0)
     sort_inds = np.argsort(dipole.gof)[::-1]
+    print('****** {} ********'.format(cond))
     for ind in sort_inds:
         hemi_ind = hemis[ind]
         hemi = ['lh', 'rh'][hemi_ind]
@@ -1078,7 +1079,8 @@ def find_dipole_cortical_locations(atlas, cond, dipole_title):
         vert = vertices[hemi_ind][ind]
         label = vertices_labels_lookup[hemi][vert]
         gof = dipole.gof[ind]
-        print(ind, hemi, dist, label, gof)
+        if label.startswith('precentral'):
+            print(ind, hemi, dist, label, gof)
 
 
 
