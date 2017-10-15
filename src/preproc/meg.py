@@ -1054,9 +1054,13 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
                 dipole_fixed.plot()
 
 
-def find_dipole_cortical_locations(atlas, cond, dipole_title):
+def find_dipole_cortical_locations(atlas, cond, dipole_title, grow_label=True, label_r=5,
+                                   inv_fname='', stc_hemi_template='', extract_mode='mean_flip', n_jobs=6):
     from mne.transforms import _get_trans, apply_trans
     from scipy.spatial.distance import cdist
+
+    if inv_fname == '':
+        inv_fname = INV
     dipole_fname = op.join(SUBJECT_MEG_FOLDER, 'dipole_{}_{}.pkl'.format(cond, dipole_title))
     vertices_labels_lookup = lu.create_vertices_labels_lookup(MRI_SUBJECT, atlas)
     dipole, _ = utils.load(dipole_fname)
@@ -1072,6 +1076,7 @@ def find_dipole_cortical_locations(atlas, cond, dipole_title):
     hemis = np.argmin(np.vstack((vertices_dist[0], vertices_dist[1])), 0)
     sort_inds = np.argsort(dipole.gof)[::-1]
     print('****** {} ********'.format(cond))
+    dipole_vert = -1
     for ind in sort_inds:
         hemi_ind = hemis[ind]
         hemi = ['lh', 'rh'][hemi_ind]
@@ -1081,7 +1086,25 @@ def find_dipole_cortical_locations(atlas, cond, dipole_title):
         gof = dipole.gof[ind]
         if label.startswith('precentral'):
             print(ind, hemi, dist, label, gof)
-
+            if dipole_vert == -1:
+                dipole_vert = vert
+                dipole_hemi = hemi
+                break
+    label_data = None
+    if grow_label and dipole_vert != -1:
+        label_name = 'precentral_dipole_{}'.format(cond)
+        label_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'labels', '{}-{}.label'.format(label_name, dipole_hemi))
+        if not op.isfile(label_fname):
+            dipole_label = lu.grow_label(
+                MRI_SUBJECT, dipole_vert, dipole_hemi, label_name, label_r, n_jobs)
+        else:
+            dipole_label = mne.read_label(label_fname)
+        inverse_operator = read_inverse_operator(inv_fname.format(cond=cond))
+        src = inverse_operator['src']
+        stc = mne.read_source_estimate(stc_hemi_template.format(cond=cond, hemi=dipole_hemi))
+        label_data = stc.extract_label_time_course(dipole_label, src, mode=extract_mode, allow_empty=True)
+        label_data = np.squeeze(label_data)
+    return dipole_vert, label_data, label_fname, dipole_hemi
 
 
 def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):

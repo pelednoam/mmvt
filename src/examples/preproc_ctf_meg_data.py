@@ -61,15 +61,27 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
     meg.calc_labels_avg_per_condition_wrapper(subject, conditions, args.atlas, inverse_method, stcs_conds, args)
 
 
-def dipole_fit(conditions, filter_raw_data, raw_data_filter_freqs):
+def dipole_fit(conditions, filter_raw_data, raw_data_filter_freqs, extract_mode='mean_flip', inverse_method='MNE'):
     dipoles_times = [(-0.3, 0.5)]
     freqs_str = '-{}-{}'.format(raw_data_filter_freqs[0], raw_data_filter_freqs[1]) if filter_raw_data else ''
     evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format('{cond}', freqs_str))
+    inv_fname = op.join(MEG_DIR, subject, '{cond}-inv.fif')
+    stc_hemi_template = op.join(MEG_DIR, subject, '{}-{}{}-{}.stc'.format('{cond}', inverse_method, freqs_str, '{hemi}'))
+
+    plt.figure()
+    sfreq = 625
+    time = np.arange(-2, 2 + 1 / sfreq, 1 / sfreq)
     for cond in conditions.keys():
         dipoles_names =['peak_{}_motor'.format(cond)]
         noise_cov_fname = op.join(MEG_DIR, subject, 'right-session1-noise-cov.fif')
         cond_evo_fname = evo_fname.format(cond=cond)
-        meg.find_dipole_cortical_locations(args.atlas, cond, dipoles_names[0])
+        dipole_vert, label_data, label_fname, dipole_hemi = \
+            meg.find_dipole_cortical_locations(args.atlas, cond, dipoles_names[0], grow_label=True, label_r=5,
+            inv_fname=inv_fname, stc_hemi_template=stc_hemi_template, extract_mode=extract_mode[0], n_jobs=6)
+        plt.plot(time, label_data, label='{} index {}'.format(cond, dipole_hemi))
+    plt.legend()
+    plt.xlim([-1.5, 0.5])
+    plt.savefig(op.join(MEG_DIR, subject, 'figures', 'motor_{}.png'.format(args.inverse_method[0])))
         # meg.dipoles_fit(dipoles_times, dipoles_names, evokes=None, evo_fname=cond_evo_fname, mask_roi='precentral', do_plot=False,
         #                 noise_cov_fname=noise_cov_fname, min_dist=5., use_meg=True, use_eeg=False, n_jobs=6)
 
@@ -252,6 +264,6 @@ if __name__ == '__main__':
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     for inverse_method in args.inverse_method:
         # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
-        dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)))
+        dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
         # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
     print('Finish!')

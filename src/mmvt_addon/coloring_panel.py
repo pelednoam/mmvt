@@ -580,10 +580,15 @@ def color_contours(specific_label='', specific_hemi='both'):
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True):
-    if bpy.data.objects['inflated_{}'.format(hemi)].hide:
+    if hemi in mu.HEMIS:
+        pial_hemi = hemi
+        hemi = 'inflated_{}'.format(hemi)
+    elif hemi.startswith('inflated'):
+        pial_hemi = hemi[len('inflated_'):]
+    if bpy.data.objects[hemi].hide:
         return
-    faces_verts = ColoringMakerPanel.faces_verts[hemi]
-    cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+    faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
+    cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
 
 
@@ -1661,7 +1666,7 @@ def plot_label(label, color=''):
     for label, color in ColoringMakerPanel.labels_plotted:
         data[label.hemi][label.vertices] = [1, *color]
     for hemi in mu.HEMIS:
-        color_hemi_data(hemi, data[hemi], threshold=0.5)
+        color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
     _addon().show_activity()
 
 
