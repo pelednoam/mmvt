@@ -450,10 +450,11 @@ def fix_scale():
     if eeg_helmet is not None:
         for i in range(3):
             eeg_helmet.scale[i] = 0.1
-    inner_skull = bpy.data.objects.get('inner_skull', None)
-    if inner_skull is not None:
-        for i in range(3):
-            inner_skull.scale[i] = 0.1
+    for skull_type in ['inner_skull', 'outer_skull']:
+        inner_skull = bpy.data.objects.get(skull_type, None)
+        if inner_skull is not None:
+            for i in range(3):
+                inner_skull.scale[i] = 0.1
 
 
 

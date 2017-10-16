@@ -551,6 +551,7 @@ def check_bem(mri_subject, args={}):
         model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
         bem = mne.make_bem_solution(model)
         mne.write_bem_solution(BEM, bem)
+    return op.isfile(BEM)
 
 
 def make_forward_solution(mri_subject, events, evo_fname='', fwd_fname='', sub_corticals_codes_file='',

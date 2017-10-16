@@ -367,6 +367,7 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     annotation_fname_template = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     annotations_exist = utils.both_hemi_files_exist(annotation_fname_template)
     if annotations_exist and not overwrite_annotation:
+        # lu.fix_unknown_labels(subject, atlas)
         print('The annotation file is already exist ({})'.format(annotation_fname_template))
         return True
     else:
@@ -963,7 +964,7 @@ def check_bem(subject, remote_subject_dir, args):
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
     args.remote_subject_dir = remote_subject_dir
-    meg.check_bem(subject, meg_args)
+    return meg.check_bem(subject, meg_args)
 
 
 def full_extent(ax, pad=0.0):
@@ -1195,6 +1196,32 @@ def save_images_data_and_header(subject):
     return ret
 
 
+def create_skull_surfaces(subject):
+    skull_fol = op.join(MMVT_DIR, subject, 'skull')
+    utils.make_dir(skull_fol)
+    errors = {}
+    for skull_surf in ['inner_skull', 'outer_skull']:
+        ply_fname = op.join(skull_fol, '{}.ply'.format(skull_surf))
+        surf_fname = op.join(SUBJECTS_DIR, subject, 'bem', '{}.surf'.format(skull_surf))
+        if op.isfile(surf_fname):
+            verts, faces = nib_fs.read_geometry(surf_fname)
+            utils.write_ply_file(verts, faces, ply_fname, True)
+            faces_verts_fname = op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))
+            errors = utils.calc_ply_faces_verts(verts, faces, faces_verts_fname, False, utils.namebase(ply_fname),
+                                                errors)
+        else:
+            print('No {} surface in bem folder'.format(subject))
+            return False
+
+    if len(errors) > 0:
+        for k, message in errors.items():
+            print('{}: {}'.format(k, message))
+
+    return all([op.isfile(op.join(SUBJECTS_DIR, subject, 'bem', '{}.ply'.format(skull_surf))) and \
+                op.isfile(op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))) \
+                for skull_surf in ['inner_skull', 'outer_skull']])
+
+
 def main(subject, remote_subject_dir, args, flags):
     # from src.setup import create_fsaverage_link
     # create_fsaveragge_link()
@@ -1287,6 +1314,8 @@ def main(subject, remote_subject_dir, args, flags):
     if 'calc_3d_atlas' in args.function:
         flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
 
+    if 'create_skull_surfaces' in args.function:
+        flags['create_skull_surfaces'] = create_skull_surfaces(subject)
 
     return flags
 

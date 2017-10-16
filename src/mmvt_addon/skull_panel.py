@@ -5,6 +5,11 @@ import numpy as np
 import mmvt_utils as mu
 
 
+# https://blender.stackexchange.com/questions/7465/create-a-flat-plane-with-beveled-edges
+# x = 5.59mm
+# y = 4.19mm
+# z rot=-90
+
 def _addon():
     return SkullPanel.addon
 
@@ -127,12 +132,12 @@ def plot_distances(from_inner=True):
     distances = np.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts_{}.npy'.format(source_str)))
     faces_verts = np.load(op.join(mu.get_user_fol(), 'skull', 'faces_verts_{}_skull.npy'.format('inner' if from_inner else 'outer')))
     skull_obj = bpy.data.objects['{}_skull'.format('inner' if from_inner else 'outer')]
-    data_max = np.percentile(distances, 75)
+    data_max = 25 #np.percentile(distances, 75)
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         _addon().set_colorbar_max_min(data_max, 0)
-    _addon().set_colorbar_title('Skull thickness (mm)')
+        _addon().set_colormap('hot')
     colors_ratio = 256 / data_max
     _addon().activity_map_obj_coloring(skull_obj, distances, faces_verts, 0, True, 0, colors_ratio)
 
@@ -152,10 +157,16 @@ def plot_distances_from_outer():
 
 
 def find_point_thickness():
+    source_str = 'from_inner' if bpy.context.scene.cast_ray_source == 'inner' else 'from_outer'
+    distances_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts_{}.npy'.format(source_str))
+    ray_info_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts_info_{}.pkl'.format(source_str))
+    if not op.isfile(distances_fname) or not op.isfile(ray_info_fname):
+        print("Can't find distances file! {}".format(distances_fname))
+        return
     vertex_ind, closest_mesh_name = _addon().snap_cursor()
     vertex_co = bpy.data.objects['inner_skull'].data.vertices[vertex_ind].co
-    distances = np.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts.npy'))
-    rays_info = mu.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts_info.pkl'))
+    distances = np.load(distances_fname)
+    rays_info = mu.load(ray_info_fname)
     # closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
     #     objects_names=['inner_skull'])
     # distance = np.linalg.norm(f.intersections[vertex_ind, 0] - f.intersections[vertex_ind, 1])
@@ -175,17 +186,92 @@ def find_point_thickness():
 
 
 def fix_normals():
+    # c = mu.get_view3d_context()
     bpy.ops.object.select_all(action='DESELECT')
-    obj.select = True
-    bpy.context.scene.objects.active = obj
-    # go edit mode
-    bpy.ops.object.mode_set(mode='EDIT')
-    # select al faces
-    bpy.ops.mesh.select_all(action='SELECT')
-    # recalculate outside normals
-    bpy.ops.mesh.normals_make_consistent(inside=False)
-    # go object mode again
-    bpy.ops.object.editmode_toggle()
+
+    for skull_type in ['inner_skull', 'outer_skull']:
+        obj = bpy.context.scene.objects[skull_type]
+        obj.select = True
+        bpy.context.scene.objects.active = obj
+        # go edit mode
+        # bpy.ops.object.mode_set(c, mode='OBJECT')
+        # bpy.ops.object.mode_set(c, mode='EDIT')
+        # select al faces
+        # bpy.ops.mesh.select_all(c, action='SELECT')
+        # recalculate outside normals
+        # bpy.ops.mesh.normals_make_consistent(inside=skull_type == 'outer_skull')
+        select_all_faces(obj.data, skull_type=='outer_skull')
+        # go object mode again
+        # bpy.ops.object.editmode_toggle()
+
+
+def select_all_faces(mesh, reverse=False):
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    # if reverse:
+    #     bmesh.ops.reverse_faces(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.clear()
+    mesh.update()
+    bm.free()
+
+
+def align_plane_to_point(obj, point):
+    dir = point - obj.location
+    return dir.to_track_quat("Z", "X").to_euler()
+
+
+def calc_trans_mat(obj, face, target):
+    from mathutils import Matrix
+
+    #init
+    mat_world = obj.matrix_world
+
+    #transform the face to world space
+    #to take non-uniform scaling into account
+    #which may change the angle of face.normal
+    for index in face.vertices:
+        vert = obj.data.vertices[index]
+        vert.co = mat_world * vert.co
+
+    #get the rotation difference
+    track  = target - face.center
+    q = face.normal.rotation_difference(track)
+
+    #compose the matrix
+    #rotation around face.center in world space
+    mat = Matrix.Translation( face.center) * \
+          q.to_matrix().to_4x4() * \
+          Matrix.Translation(-face.center)
+    #transform the face back to object space afterwards
+    mat_obj = mat_world.inverted() * mat
+    return mat_obj
+    # #apply the matrix to the vertices of the face
+    # for index in face.vertices:
+    #     vert = obj.data.vertices[index]
+    #     vert.co = mat_obj * vert.co
+
+
+def align_plane():
+    # https://blender.stackexchange.com/questions/12314/in-python-rotate-a-polygon-to-face-something/12324#12324
+    # https://blender.stackexchange.com/questions/32649/how-to-rotate-an-object-from-a-reference-plane
+    plane = bpy.data.objects.get('skull_plane', None)
+    if plane is None:
+        print('plane is None!')
+        return
+    skull = bpy.data.objects['outer_skull']
+    closest_mesh_name, vertex_ind, vertex_co, _ = \
+        _addon().find_vertex_index_and_mesh_closest_to_cursor(plane.location, objects_names=['outer_skull'])
+    plane.location = vertex_co
+    # plane.rotation_euler = align_plane_to_point(plane, vertex_co)
+    vert = skull.data.vertices[vertex_ind]
+    # plane.rotation_euler = vert.normal.to_track_quat('Y', 'Z').to_euler()
+    face = plane.data.polygons[0]
+    mat_obj = calc_trans_mat(plane, face, vertex_co)
+    for vert in plane.data.vertices:
+        vert.co = mat_obj * vert.co
 
 
 def check_vert_intersections(vert, skull):
@@ -204,8 +290,7 @@ def ray_cast(from_inner=True):
     layers_array = bpy.context.scene.layers
     from_string = 'from_{}'.format('inner' if from_inner else 'outer')
     emptys_name = 'thickness_arrows_{}'.format(from_string)
-    show_hit = bpy.data.objects.get(emptys_name, None) is None
-    _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
+    show_hit = bpy.data.objects.get(emptys_name, None) is None and bpy.context.scene.create_thickness_arrows
 
     def draw_empty_arrow(vert_ind, loc, dir):
         R = (-dir).to_track_quat('Z', 'X').to_matrix().to_4x4()
@@ -243,7 +328,8 @@ def ray_cast(from_inner=True):
         # n = mat * (face.center + face.normal) - o
         o = mat * vert.co
         n = mat * (vert.co + vert.normal) - o
-
+        if not from_inner:
+            n *= -1
         hit, loc, norm, index = ray_obj.ray_cast(o, n)
         if hit:
             print('{}/{} hit {} on face {}'.format(vert_ind, N, 'outer' if from_inner else 'innner', index))
@@ -262,6 +348,7 @@ def ray_cast(from_inner=True):
         avge_thickness = sum((omw * hit - omw * o).length for vert_ind, o, hit in hits) / len(hits)
         print(avge_thickness)
         if show_hit:
+            _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
             for vert_ind, hit, o in hits:
                 draw_empty_arrow(vert_ind, omw * o, omw * hit - omw * o)
 
@@ -270,15 +357,20 @@ def skull_draw(self, context):
     layout = self.layout
     layout.operator(ImportSkull.bl_idname, text="Import skull", icon='MATERIAL_DATA')
     # layout.operator(CalcThickness.bl_idname, text="calc thickness", icon='MESH_ICOSPHERE')
-    layout.operator(RayCast.bl_idname, text="Calc thickness", icon='MESH_ICOSPHERE')
+    layout.operator(CalcThickness.bl_idname, text="Calc thickness", icon='MESH_ICOSPHERE')
+    layout.prop(context.scene, 'create_thickness_arrows', text='Create thickness arrows')
     layout.operator(PlotThickness.bl_idname, text="Plot thickness", icon='GROUP_VCOL')
+    layout.operator(AlignPlane.bl_idname, text="Align plane", icon='GROUP_VCOL')
     layout.prop(context.scene, 'cast_ray_source', expand=True)
     # layout.operator(FindPointThickness.bl_idname, text="Calc point thickness", icon='MESH_DATA')
     if SkullPanel.vertex_skull_thickness > 0:
         layout.label(text='Thickness: {:.3f}'.format(SkullPanel.vertex_skull_thickness))
 
-    layout.prop(context.scene, 'show_point_arrow', text='Show point thickness vector')
-    layout.prop(context.scene, 'thickness_arrows', text='Thickness arrows')
+    from_string = 'from_{}'.format('inner' if bpy.context.scene.cast_ray_source else 'outer')
+    arrows_empty_name = 'thickness_arrows_{}'.format(from_string)
+    if bpy.data.objects.get(arrows_empty_name):
+        layout.prop(context.scene, 'show_point_arrow', text='Show point thickness vector')
+        layout.prop(context.scene, 'thickness_arrows', text='Thickness arrows')
 
 
 class ImportSkull(bpy.types.Operator):
@@ -297,19 +389,9 @@ class CalcThickness(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        # calc_thickness()
-        # check_intersections()
-        # check_intersections_fron_outer_skull()
-        return {'PASS_THROUGH'}
-
-
-class RayCast(bpy.types.Operator):
-    bl_idname = "mmvt.ray_cast"
-    bl_label = "ray_cast"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        ray_cast(bpy.context.scene.cast_ray_source == 'inner')
+        fix_normals()
+        for inner in [True, False]:
+            ray_cast(inner) #bpy.context.scene.cast_ray_source == 'inner')
         return {'PASS_THROUGH'}
 
 
@@ -319,8 +401,9 @@ class PlotThickness(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        plot_distances(bpy.context.scene.cast_ray_source == 'inner')
-        # plot_distances_from_outer()
+        _addon().set_colorbar_title('Skull thickness (mm)')
+        for inner in [True, False]:
+            plot_distances(inner) #bpy.context.scene.cast_ray_source == 'inner')
         return {'PASS_THROUGH'}
 
 
@@ -334,10 +417,21 @@ class FindPointThickness(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class AlignPlane(bpy.types.Operator):
+    bl_idname = "mmvt.align_plane"
+    bl_label = "align_plane"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        align_plane()
+        return {'PASS_THROUGH'}
+
+
 bpy.types.Scene.thickness_arrows = bpy.props.BoolProperty(default=False, update=thickness_arrows_update)
 bpy.types.Scene.show_point_arrow = bpy.props.BoolProperty(default=False, update=show_point_arrow_update)
 bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner', '', 0), ('outer', 'outer', '', 1)],
                                                          update=cast_ray_source_update)
+bpy.types.Scene.create_thickness_arrows = bpy.props.BoolProperty(default=False)
 
 
 class SkullPanel(bpy.types.Panel):
@@ -357,6 +451,7 @@ class SkullPanel(bpy.types.Panel):
 
 
 def init(addon):
+    import math
     SkullPanel.addon = addon
     user_fol = mu.get_user_fol()
     skull_ply_files_exist = op.isfile(op.join(user_fol, 'skull', 'inner_skull.ply')) and \
@@ -367,6 +462,13 @@ def init(addon):
         return
     for layer_ind in range(len(bpy.context.scene.layers)):
         bpy.context.scene.layers[layer_ind] = layer_ind == _addon().SKULL_LAYER
+    plane = bpy.data.objects.get('skull_plane', None)
+    if plane is not None:
+        plane.scale[0] = 2.90862
+        plane.scale[1] = 2.095
+        # for i in range(3):
+        #     plane.scale *= 0.001
+        plane.rotation_euler[2] = -math.pi / 2
     register()
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False
@@ -381,7 +483,7 @@ def register():
         bpy.utils.register_class(CalcThickness)
         bpy.utils.register_class(PlotThickness)
         bpy.utils.register_class(FindPointThickness)
-        bpy.utils.register_class(RayCast)
+        bpy.utils.register_class(AlignPlane)
     except:
         print("Can't register Skull Panel!")
 
@@ -393,6 +495,6 @@ def unregister():
         bpy.utils.unregister_class(CalcThickness)
         bpy.utils.unregister_class(PlotThickness)
         bpy.utils.unregister_class(FindPointThickness)
-        bpy.utils.unregister_class(RayCast)
+        bpy.utils.unregister_class(AlignPlane)
     except:
         pass

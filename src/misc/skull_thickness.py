@@ -7,6 +7,7 @@ LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
+
 def create_skull_plys(subject):
     for skull_surf in ['inner_skull', 'outer_skull']:
         ply_fname = op.join(SUBJECTS_DIR, subject, 'bem', '{}.ply'.format(skull_surf))
