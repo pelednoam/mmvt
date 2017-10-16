@@ -13,6 +13,15 @@ def thickness_arrows_update(self, context):
     mu.show_hide_hierarchy(bpy.context.scene.thickness_arrows, 'thickness_arrows', also_parent=True, select=False)
 
 
+def cast_ray_source_update(self, context):
+    inner_skull = bpy.data.objects.get('inner_skull', None)
+    outer_skull = bpy.data.objects.get('outer_skull', None)
+    if inner_skull is None or outer_skull is None:
+        return
+    inner_skull.hide = bpy.context.scene.cast_ray_source != 'inner'
+    outer_skull.hide = bpy.context.scene.cast_ray_source == 'inner'
+
+
 def show_point_arrow_update(self, context):
     if SkullPanel.prev_vertex_arrow is not None:
         SkullPanel.prev_vertex_arrow.hide = True
@@ -23,7 +32,7 @@ def import_skull():
     base_path = op.join(mu.get_user_fol(), 'skull')
     emptys_name = 'Skull'
     layers_array = bpy.context.scene.layers
-    _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array)
+    _addon().create_empty_if_doesnt_exists(emptys_name, _addon().SKULL_LAYER, layers_array)
 
     for skull_type in ['inner_skull', 'outer_skull']:
         bpy.ops.object.select_all(action='DESELECT')
@@ -61,62 +70,63 @@ def import_skull():
 #     else:
 #         print("No HIT")
 #
+#
+# def check_intersections():
+#     inner_skull = bpy.data.objects['inner_skull']
+#     outer_skull = bpy.data.objects['outer_skull']
+#     output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections.npz')
+#     N = len(inner_skull.data.vertices)
+#     intersections = np.zeros((N, 2, 3))
+#     verts_faces = np.zeros((N, 1))
+#     for vert_num, vert in enumerate(inner_skull.data.vertices):
+#         outer_skull_hit_point, face_ind = check_vert_intersections(vert, outer_skull)
+#         intersections[vert_num, 0] = np.array(vert.co)
+#         intersections[vert_num, 1] = np.array(outer_skull_hit_point)
+#         verts_faces[vert_num] = face_ind
+#         # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
+#         if vert_num % 100 == 0:
+#             print('{} / {}'.format(vert_num, N))
+#             # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
+#         #     print('Saving in {}!'.format(output_fname))
+#         #     np.save(output_fname, intersections)
+#     np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
+#     print('Finish!!!')
 
-def check_intersections():
-    inner_skull = bpy.data.objects['inner_skull']
-    outer_skull = bpy.data.objects['outer_skull']
-    output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections.npz')
-    N = len(inner_skull.data.vertices)
-    intersections = np.zeros((N, 2, 3))
-    verts_faces = np.zeros((N, 1))
-    for vert_num, vert in enumerate(inner_skull.data.vertices):
-        outer_skull_hit_point, face_ind = check_vert_intersections(vert, outer_skull)
-        intersections[vert_num, 0] = np.array(vert.co)
-        intersections[vert_num, 1] = np.array(outer_skull_hit_point)
-        verts_faces[vert_num] = face_ind
-        # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
-        if vert_num % 100 == 0:
-            print('{} / {}'.format(vert_num, N))
-            # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-        #     print('Saving in {}!'.format(output_fname))
-        #     np.save(output_fname, intersections)
-    np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-    print('Finish!!!')
+#
+# def check_intersections_fron_outer_skull():
+#     inner_skull = bpy.data.objects['inner_skull']
+#     outer_skull = bpy.data.objects['outer_skull']
+#     output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections_from_outer_skull.npz')
+#     N = len(outer_skull.data.vertices)
+#     intersections = np.zeros((N, 2, 3))
+#     verts_faces = np.zeros((N, 1))
+#     for vert_num, vert in enumerate(outer_skull.data.vertices):
+#         inner_skull_hit_point, face_ind = check_vert_intersections(vert, inner_skull)
+#         intersections[vert_num, 0] = np.array(vert.co)
+#         if inner_skull_hit_point is not None:
+#             intersections[vert_num, 1] = np.array(inner_skull_hit_point)
+#             verts_faces[vert_num] = face_ind
+#         else:
+#             intersections[vert_num, 1] = np.array(vert.co)
+#             verts_faces[vert_num] = -1
+#             print('No intersection for {}'.format(vert_num))
+#         # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
+#         if vert_num % 100 == 0:
+#             print('{} / {}'.format(vert_num, N))
+#             # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
+#         #     print('Saving in {}!'.format(output_fname))
+#         #     np.save(output_fname, intersections)
+#     np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
+#     print('Finish!!!')
+#
 
-
-def check_intersections_fron_outer_skull():
-    inner_skull = bpy.data.objects['inner_skull']
-    outer_skull = bpy.data.objects['outer_skull']
-    output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections_from_outer_skull.npz')
-    N = len(outer_skull.data.vertices)
-    intersections = np.zeros((N, 2, 3))
-    verts_faces = np.zeros((N, 1))
-    for vert_num, vert in enumerate(outer_skull.data.vertices):
-        inner_skull_hit_point, face_ind = check_vert_intersections(vert, inner_skull)
-        intersections[vert_num, 0] = np.array(vert.co)
-        if inner_skull_hit_point is not None:
-            intersections[vert_num, 1] = np.array(inner_skull_hit_point)
-            verts_faces[vert_num] = face_ind
-        else:
-            intersections[vert_num, 1] = np.array(vert.co)
-            verts_faces[vert_num] = -1
-            print('No intersection for {}'.format(vert_num))
-        # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
-        if vert_num % 100 == 0:
-            print('{} / {}'.format(vert_num, N))
-            # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-        #     print('Saving in {}!'.format(output_fname))
-        #     np.save(output_fname, intersections)
-    np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-    print('Finish!!!')
-
-
-def plot_distances():
+def plot_distances(from_inner=True):
     # f = mu.Bag(np.load(op.join(mu.get_user_fol(), 'skull', 'intersections.npz')))
     # distances = np.linalg.norm(f.intersections[:, 0] - f.intersections[:, 1], axis=1)
-    distances = np.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts.npy'))
-    faces_verts = np.load(op.join(mu.get_user_fol(), 'skull', 'faces_verts_inner_skull.npy'))
-    inner_skull = bpy.data.objects['inner_skull']
+    source_str = 'from_inner' if from_inner else 'from_outer'
+    distances = np.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts_{}.npy'.format(source_str)))
+    faces_verts = np.load(op.join(mu.get_user_fol(), 'skull', 'faces_verts_{}_skull.npy'.format('inner' if from_inner else 'outer')))
+    skull_obj = bpy.data.objects['{}_skull'.format('inner' if from_inner else 'outer')]
     data_max = np.percentile(distances, 75)
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
@@ -124,7 +134,7 @@ def plot_distances():
         _addon().set_colorbar_max_min(data_max, 0)
     _addon().set_colorbar_title('Skull thickness (mm)')
     colors_ratio = 256 / data_max
-    _addon().activity_map_obj_coloring(inner_skull, distances, faces_verts, 0, True, 0, colors_ratio)
+    _addon().activity_map_obj_coloring(skull_obj, distances, faces_verts, 0, True, 0, colors_ratio)
 
 
 def plot_distances_from_outer():
@@ -188,11 +198,12 @@ def check_vert_intersections(vert, skull):
     return None, -1
 
 
-def ray_cast():
+def ray_cast(from_inner=True):
     context = bpy.context
     scene = context.scene
     layers_array = bpy.context.scene.layers
-    emptys_name = 'thickness_arrows'
+    from_string = 'from_{}'.format('inner' if from_inner else 'outer')
+    emptys_name = 'thickness_arrows_{}'.format(from_string)
     show_hit = bpy.data.objects.get(emptys_name, None) is None
     _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
 
@@ -212,29 +223,30 @@ def ray_cast():
     # select inner and outer obj, make inner active
     inner_obj = bpy.data.objects['inner_skull']
     outer_obj = bpy.data.objects['outer_skull']
-    omwi = outer_obj.matrix_world.inverted()
-
-    output_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts.npy')
-    output_info_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts_info.pkl')
-    N = len(inner_obj.data.vertices)
+    omwi = outer_obj.matrix_world.inverted() if from_inner else inner_obj.matrix_world.inverted()
+    output_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts_{}.npy'.format(from_string))
+    output_info_fname = op.join(mu.get_user_fol(), 'skull', 'ray_casts_info_{}.pkl'.format(from_string))
+    N = len(inner_obj.data.vertices) if from_inner else len(outer_obj.data.vertices)
     vertices_thickness = np.zeros((N, 1))
     thickness_info = {}
 
-    imw = inner_obj.matrix_world
-    omw = outer_obj.matrix_world
+    imw = inner_obj.matrix_world if from_inner else outer_obj.matrix_world
+    omw = outer_obj.matrix_world if from_inner else inner_obj.matrix_world
     mat = omwi * imw
     factor = np.linalg.inv(omw)[0, 0]
+    ray_obj = outer_obj if from_inner else inner_obj
     hits = []  # vectors from inner to outer
     # for face in inner_obj.data.polygons:
-    for vert_ind, vert in enumerate(inner_obj.data.vertices):
+    vertices = inner_obj.data.vertices if from_inner else outer_obj.data.vertices
+    for vert_ind, vert in enumerate(vertices):
         # o = mat * face.center
         # n = mat * (face.center + face.normal) - o
         o = mat * vert.co
         n = mat * (vert.co + vert.normal) - o
 
-        hit, loc, norm, index = outer_obj.ray_cast(o, n)
+        hit, loc, norm, index = ray_obj.ray_cast(o, n)
         if hit:
-            print('{}/{} hit outer on face {}'.format(vert_ind, N, index))
+            print('{}/{} hit {} on face {}'.format(vert_ind, N, 'outer' if from_inner else 'innner', index))
             hits.append((vert_ind, o, loc))
             thickness = (omw * loc - omw * o).length * factor
         else:
@@ -260,6 +272,7 @@ def skull_draw(self, context):
     # layout.operator(CalcThickness.bl_idname, text="calc thickness", icon='MESH_ICOSPHERE')
     layout.operator(RayCast.bl_idname, text="Calc thickness", icon='MESH_ICOSPHERE')
     layout.operator(PlotThickness.bl_idname, text="Plot thickness", icon='GROUP_VCOL')
+    layout.prop(context.scene, 'cast_ray_source', expand=True)
     # layout.operator(FindPointThickness.bl_idname, text="Calc point thickness", icon='MESH_DATA')
     if SkullPanel.vertex_skull_thickness > 0:
         layout.label(text='Thickness: {:.3f}'.format(SkullPanel.vertex_skull_thickness))
@@ -285,7 +298,7 @@ class CalcThickness(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # calc_thickness()
-        check_intersections()
+        # check_intersections()
         # check_intersections_fron_outer_skull()
         return {'PASS_THROUGH'}
 
@@ -296,7 +309,7 @@ class RayCast(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        ray_cast()
+        ray_cast(bpy.context.scene.cast_ray_source == 'inner')
         return {'PASS_THROUGH'}
 
 
@@ -306,7 +319,7 @@ class PlotThickness(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        plot_distances()
+        plot_distances(bpy.context.scene.cast_ray_source == 'inner')
         # plot_distances_from_outer()
         return {'PASS_THROUGH'}
 
@@ -323,6 +336,8 @@ class FindPointThickness(bpy.types.Operator):
 
 bpy.types.Scene.thickness_arrows = bpy.props.BoolProperty(default=False, update=thickness_arrows_update)
 bpy.types.Scene.show_point_arrow = bpy.props.BoolProperty(default=False, update=show_point_arrow_update)
+bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner', '', 0), ('outer', 'outer', '', 1)],
+                                                         update=cast_ray_source_update)
 
 
 class SkullPanel(bpy.types.Panel):
@@ -350,6 +365,8 @@ def init(addon):
                        bpy.data.objects.get('inner_skull', None) is not None
     if not skull_ply_files_exist and not skull_objs_exist:
         return
+    for layer_ind in range(len(bpy.context.scene.layers)):
+        bpy.context.scene.layers[layer_ind] = layer_ind == _addon().SKULL_LAYER
     register()
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False
