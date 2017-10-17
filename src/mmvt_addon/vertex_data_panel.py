@@ -22,7 +22,8 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
     if objects_names is not None:
         hemis = objects_names
     elif hemis is None:
-        hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
+        # hemis = mu.HEMIS if _addon().is_pial() else mu.INF_HEMIS
+        hemis = mu.INF_HEMIS
     if cursor is None:
         cursor = bpy.context.scene.cursor_location
     else:

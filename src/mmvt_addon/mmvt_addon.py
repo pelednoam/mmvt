@@ -449,7 +449,7 @@ def fix_scale():
     _fix_scale('eeg_helmet')
     for skull_type in ['inner_skull', 'outer_skull']:
         _fix_scale(skull_type)
-    _fix_scale('skull_plane')
+    # _fix_scale('skull_plane')
 
 
 def _fix_scale(obj_name):

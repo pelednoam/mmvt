@@ -525,30 +525,24 @@ class SelectionListener(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
-def snap_cursor(flag=None):
-    if bpy.data.objects.get('inner_skull', None) is not None:
+def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_snap_cursor_to_true=True):
+    flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
+    if flag:
         closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-            objects_names=['inner_skull'])
+            use_shape_keys=use_shape_keys, objects_names=objects_names)
         bpy.context.scene.cursor_location = vertex_co
-        set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+        set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
         return vertex_ind, closest_mesh_name
     else:
-        flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
-        if flag:
-            closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-                use_shape_keys=True)
-            bpy.context.scene.cursor_location = vertex_co
-            set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
-            return vertex_ind, closest_mesh_name
-        else:
-            clear_closet_vertex_and_mesh_to_cursor()
-            return None, None
+        clear_closet_vertex_and_mesh_to_cursor()
+        return None, None
 
 
-def set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name):
+def set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true):
     AppearanceMakerPanel.closest_vertex_to_cursor = vertex_ind
     AppearanceMakerPanel.closest_mesh_to_cursor = closest_mesh_name
-    bpy.context.scene.cursor_is_snapped = True
+    if set_snap_cursor_to_true:
+        bpy.context.scene.cursor_is_snapped = True
 
 
 def get_closest_vertex_and_mesh_to_cursor():
