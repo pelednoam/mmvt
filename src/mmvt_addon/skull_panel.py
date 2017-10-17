@@ -424,7 +424,7 @@ def skull_draw(self, context):
     layout.prop(context.scene, 'create_thickness_arrows', text='Create thickness arrows')
     layout.operator(PlotThickness.bl_idname, text="Plot thickness", icon='GROUP_VCOL')
     layout.operator(AlignPlane.bl_idname, text="Align plane", icon='LATTICE_DATA')
-    layout.prop(context.scene, 'align_plane_to_cursor', text='Align to cursor')
+    # layout.prop(context.scene, 'align_plane_to_cursor', text='Align to cursor')
     if SkullPanel.plane_thickness is not None:
         box = layout.box()
         col = box.column()
@@ -543,6 +543,7 @@ def init(addon):
         plane.rotation_euler[2] = -math.pi
         plane.location[0] = plane.location[1] = 0
         plane.location[2] = 10
+    bpy.context.scene.align_plane_to_cursor = False
 
 
     register()
