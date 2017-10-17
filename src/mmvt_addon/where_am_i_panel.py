@@ -649,17 +649,19 @@ def init(addon):
             atlas = mu.namebase(atlas_vol_fname)[:-len('+aseg')]
             WhereAmIPanel.vol_atlas[atlas] = np.load(atlas_vol_fname)
             WhereAmIPanel.vol_atlas_lut[atlas] = np.load(atlas_vol_lut_fname)
-        subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-        annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
-        if len(annot_files) > 0:
-            files_names = [mu.namebase(fname)[3:] for fname in annot_files]
-            items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-            bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
-            bpy.context.scene.subject_annot_files = files_names[0]
-        else:
+        try:
+            subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+            annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
+            if len(annot_files) > 0:
+                files_names = [mu.namebase(fname)[3:] for fname in annot_files]
+                items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
+                bpy.context.scene.subject_annot_files = files_names[0]
+            else:
+                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
+                # bpy.context.scene.subject_annot_files = ''
+        except:
             bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
-            # bpy.context.scene.subject_annot_files = ''
-
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
 
