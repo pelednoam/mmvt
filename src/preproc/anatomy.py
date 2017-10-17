@@ -1200,6 +1200,7 @@ def create_skull_surfaces(subject):
     skull_fol = op.join(MMVT_DIR, subject, 'skull')
     utils.make_dir(skull_fol)
     errors = {}
+    vertices_faces = defaultdict(list)
     for skull_surf in ['inner_skull', 'outer_skull']:
         ply_fname = op.join(skull_fol, '{}.ply'.format(skull_surf))
         surf_fname = op.join(SUBJECTS_DIR, subject, 'bem', '{}.surf'.format(skull_surf))
@@ -1207,8 +1208,12 @@ def create_skull_surfaces(subject):
             verts, faces = nib_fs.read_geometry(surf_fname)
             utils.write_ply_file(verts, faces, ply_fname, True)
             faces_verts_fname = op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))
-            errors = utils.calc_ply_faces_verts(verts, faces, faces_verts_fname, False, utils.namebase(ply_fname),
-                                                errors)
+            errors = utils.calc_ply_faces_verts(
+                verts, faces, faces_verts_fname, False, utils.namebase(ply_fname), errors)
+            for face_ind, face in enumerate(faces):
+                for vert in face:
+                    vertices_faces[vert].append(face_ind)
+            utils.save(vertices_faces, op.join(skull_fol, '{}_vertices_faces.pkl'.format(skull_surf)))
         else:
             print('No {} surface in bem folder'.format(subject))
             return False

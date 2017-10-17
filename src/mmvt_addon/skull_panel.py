@@ -225,10 +225,7 @@ def align_plane_to_point(obj, point):
 
 def calc_trans_mat(obj, face, target):
     from mathutils import Matrix
-
-    #init
     mat_world = obj.matrix_world
-
     #transform the face to world space
     #to take non-uniform scaling into account
     #which may change the angle of face.normal
@@ -237,21 +234,56 @@ def calc_trans_mat(obj, face, target):
         vert.co = mat_world * vert.co
 
     #get the rotation difference
-    track  = target - face.center
+    track = target - face.center
     q = face.normal.rotation_difference(track)
 
     #compose the matrix
     #rotation around face.center in world space
-    mat = Matrix.Translation( face.center) * \
+    mat = Matrix.Translation(face.center) * \
           q.to_matrix().to_4x4() * \
           Matrix.Translation(-face.center)
     #transform the face back to object space afterwards
     mat_obj = mat_world.inverted() * mat
-    return mat_obj
-    # #apply the matrix to the vertices of the face
-    # for index in face.vertices:
-    #     vert = obj.data.vertices[index]
-    #     vert.co = mat_obj * vert.co
+    #apply the matrix to the vertices of the face
+    for index in face.vertices:
+        vert = obj.data.vertices[index]
+        vert.co = mat_obj * vert.co
+
+
+# def rotate_plane(skull_face, plane):
+#     from mathutils import Matrix, Vector
+#
+#     def scale_from_vector(v):
+#         mat = Matrix.Identity(4)
+#         for i in range(3):
+#             mat[i][i] = v[i]
+#         return mat
+#
+#     loc_dst, rot_dst, scale_dst = plane.matrix_world.decompose()
+#     loc_src, rot_src, scale_src = skull_face.matrix_world.decompose()
+#
+#     plane.matrix_world = (
+#         Matrix.Translation(loc_dst) *
+#         rot_src.to_matrix().to_4x4() *
+#         scale_from_vector(scale_dst)
+#     )
+
+
+def track_to_point(obj, point):
+    import mathutils
+    normal = obj.data.polygons[0].normal.xyz
+    mat_obj = obj.matrix_basis
+    mat_scale = mathutils.Matrix.Scale(1, 4, mat_obj.to_scale() )
+    trans = mat_obj.to_translation()
+    mat_trans = mathutils.Matrix.Translation(trans)
+    print( "mat_scale\n" + str(mat_obj.to_scale()))
+    point_trans = point -trans
+    q = normal.rotation_difference( point_trans )
+    mat_rot = q.to_matrix()
+    mat_rot.resize_4x4()
+
+    mat_obj = mat_trans * mat_rot * mat_scale
+    obj.matrix_basis = mat_obj
 
 
 def align_plane():
@@ -261,18 +293,48 @@ def align_plane():
     if plane is None:
         print('plane is None!')
         return
+    # vertices_face = mu.load(op.join(mu.get_user_fol(), 'skull', 'outer_skull_vertices_faces.pkl'))
     skull = bpy.data.objects['outer_skull']
-    closest_mesh_name, vertex_ind, vertex_co, _ = \
+    _, vertex_ind, vertex_co, _ = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(plane.location, objects_names=['outer_skull'])
-    plane.location = vertex_co
+    if bpy.context.scene.align_plane_to_cursor:
+        vertex_co = bpy.context.scene.cursor_location + skull.data.vertices[vertex_ind].normal * 5
+    if np.linalg.norm(plane.location - vertex_co) > 0.001:
+        calc_trans_mat(plane, plane.data.polygons[0], vertex_co)
+        plane.location = vertex_co
+        get_plane_values()
+    # faces = vertices_face[vertex_ind]
+    # face_ind = faces[0]
+    # skull_face = skull.data.polygons[face_ind]
+    # track_to_point(plane, vertex_co)
     # plane.rotation_euler = align_plane_to_point(plane, vertex_co)
-    vert = skull.data.vertices[vertex_ind]
+    # vert = skull.data.vertices[vertex_ind]
     # plane.rotation_euler = vert.normal.to_track_quat('Y', 'Z').to_euler()
-    face = plane.data.polygons[0]
-    mat_obj = calc_trans_mat(plane, face, vertex_co)
-    for vert in plane.data.vertices:
-        vert.co = mat_obj * vert.co
 
+
+def get_plane_values():
+    skull_thickness = np.load(op.join(mu.get_user_fol(), 'skull', 'ray_casts_from_outer.npy'))
+
+    inner_obj = bpy.data.objects['outer_skull']
+    outer_obj = bpy.data.objects['skull_plane']
+    omwi = outer_obj.matrix_world.inverted()
+    imw = inner_obj.matrix_world
+    mat = omwi * imw
+    plane_thikness = []
+    vertices = inner_obj.data.vertices
+    for vert_ind, vert in enumerate(vertices):
+        o = mat * vert.co
+        n = mat * (vert.co + vert.normal) - o
+        hit, _, _, _ = outer_obj.ray_cast(o, n)
+        if hit:
+            plane_thikness.append(skull_thickness[vert_ind])
+
+    # np.save(output_fname, vertices_thickness)
+    # mu.save(thickness_info, output_info_fname)
+
+    if len(plane_thikness) > 0:
+        plane_thikness = np.array(plane_thikness).squeeze()
+        SkullPanel.plane_thickness = (np.min(plane_thikness), np.max(plane_thikness), np.mean(plane_thikness))
 
 def check_vert_intersections(vert, skull):
     for face_ind, face in enumerate(skull.data.polygons):
@@ -291,18 +353,6 @@ def ray_cast(from_inner=True):
     from_string = 'from_{}'.format('inner' if from_inner else 'outer')
     emptys_name = 'thickness_arrows_{}'.format(from_string)
     show_hit = bpy.data.objects.get(emptys_name, None) is None and bpy.context.scene.create_thickness_arrows
-
-    def draw_empty_arrow(vert_ind, loc, dir):
-        R = (-dir).to_track_quat('Z', 'X').to_matrix().to_4x4()
-        mt = bpy.data.objects.new('mt_{}'.format(vert_ind), None)
-        mt.name = 'mt_{}'.format(vert_ind)
-        R.translation = loc + dir
-        # mt.show_name = True
-        mt.matrix_world = R
-        mt.empty_draw_type = 'SINGLE_ARROW'
-        mt.empty_draw_size = dir.length
-        scene.objects.link(mt)
-        mt.parent = bpy.data.objects[emptys_name]
 
     # check thickness by raycasting from inner object out.
     # select inner and outer obj, make inner active
@@ -350,7 +400,20 @@ def ray_cast(from_inner=True):
         if show_hit:
             _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
             for vert_ind, hit, o in hits:
-                draw_empty_arrow(vert_ind, omw * o, omw * hit - omw * o)
+                draw_empty_arrow(scene, emptys_name, vert_ind, omw * o, omw * hit - omw * o)
+
+
+def draw_empty_arrow(scene, empty_name, vert_ind, loc, dir):
+    R = (-dir).to_track_quat('Z', 'X').to_matrix().to_4x4()
+    mt = bpy.data.objects.new('mt_{}'.format(vert_ind), None)
+    mt.name = 'mt_{}'.format(vert_ind)
+    R.translation = loc + dir
+    # mt.show_name = True
+    mt.matrix_world = R
+    mt.empty_draw_type = 'SINGLE_ARROW'
+    mt.empty_draw_size = dir.length
+    scene.objects.link(mt)
+    mt.parent = bpy.data.objects[empty_name]
 
 
 def skull_draw(self, context):
@@ -360,7 +423,15 @@ def skull_draw(self, context):
     layout.operator(CalcThickness.bl_idname, text="Calc thickness", icon='MESH_ICOSPHERE')
     layout.prop(context.scene, 'create_thickness_arrows', text='Create thickness arrows')
     layout.operator(PlotThickness.bl_idname, text="Plot thickness", icon='GROUP_VCOL')
-    layout.operator(AlignPlane.bl_idname, text="Align plane", icon='GROUP_VCOL')
+    layout.operator(AlignPlane.bl_idname, text="Align plane", icon='LATTICE_DATA')
+    layout.prop(context.scene, 'align_plane_to_cursor', text='Align to cursor')
+    if SkullPanel.plane_thickness is not None:
+        box = layout.box()
+        col = box.column()
+        mu.add_box_line(col, 'min', '{:.2f}'.format(SkullPanel.plane_thickness[0]), 0.8)
+        mu.add_box_line(col, 'max', '{:.2f}'.format(SkullPanel.plane_thickness[1]), 0.8)
+        mu.add_box_line(col, 'mean', '{:.2f}'.format(SkullPanel.plane_thickness[2]), 0.8)
+
     layout.prop(context.scene, 'cast_ray_source', expand=True)
     # layout.operator(FindPointThickness.bl_idname, text="Calc point thickness", icon='MESH_DATA')
     if SkullPanel.vertex_skull_thickness > 0:
@@ -432,6 +503,7 @@ bpy.types.Scene.show_point_arrow = bpy.props.BoolProperty(default=False, update=
 bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner', '', 0), ('outer', 'outer', '', 1)],
                                                          update=cast_ray_source_update)
 bpy.types.Scene.create_thickness_arrows = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.align_plane_to_cursor = bpy.props.BoolProperty(default=False)
 
 
 class SkullPanel(bpy.types.Panel):
@@ -444,6 +516,7 @@ class SkullPanel(bpy.types.Panel):
     init = False
     vertex_skull_thickness = 0
     prev_vertex_arrow = None
+    plane_thickness = None
 
     def draw(self, context):
         if SkullPanel.init:
@@ -464,11 +537,14 @@ def init(addon):
         bpy.context.scene.layers[layer_ind] = layer_ind == _addon().SKULL_LAYER
     plane = bpy.data.objects.get('skull_plane', None)
     if plane is not None:
-        plane.scale[0] = 2.90862
-        plane.scale[1] = 2.095
-        # for i in range(3):
-        #     plane.scale *= 0.001
-        plane.rotation_euler[2] = -math.pi / 2
+        # plane.dimensions[0] = 5.59
+        # plane.dimensions[1] = 4.19
+        plane.rotation_euler[0] = plane.rotation_euler[1] = 0
+        plane.rotation_euler[2] = -math.pi
+        plane.location[0] = plane.location[1] = 0
+        plane.location[2] = 10
+
+
     register()
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False

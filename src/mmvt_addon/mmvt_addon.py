@@ -306,6 +306,7 @@ create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
+find_face_closest_to_cursor = vertex_data_panel.find_face_closest_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -446,15 +447,17 @@ def fix_scale():
         for sub_obj in bpy.data.objects['Subcortical_structures'].children:
             for i in range(3):
                 sub_obj.scale[i] = 0.1
-    eeg_helmet = bpy.data.objects.get('eeg_helmet', None)
-    if eeg_helmet is not None:
-        for i in range(3):
-            eeg_helmet.scale[i] = 0.1
+    _fix_scale('eeg_helmet')
     for skull_type in ['inner_skull', 'outer_skull']:
-        inner_skull = bpy.data.objects.get(skull_type, None)
-        if inner_skull is not None:
-            for i in range(3):
-                inner_skull.scale[i] = 0.1
+        _fix_scale(skull_type)
+    _fix_scale('skull_plane')
+
+
+def _fix_scale(obj_name):
+    obj = bpy.data.objects.get(obj_name, None)
+    if obj is not None:
+        for i in range(3):
+            obj.scale[i] = 0.1
 
 
 
