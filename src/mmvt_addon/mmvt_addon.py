@@ -306,7 +306,6 @@ create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
-find_face_closest_to_cursor = vertex_data_panel.find_face_closest_to_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
