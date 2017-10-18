@@ -166,6 +166,7 @@ init_meg_activity_map = coloring_panel.init_meg_activity_map
 color_contours = coloring_panel.color_contours
 plot_label = coloring_panel.plot_label
 plot_fmri_file = coloring_panel.plot_fmri_file
+get_activity_values = coloring_panel.get_activity_values
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -306,11 +307,11 @@ create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
+set_vertex_data = vertex_data_panel.set_vertex_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 clear_slice = slicer_panel.clear_slice
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_point_thickness = skull_panel.find_point_thickness
 

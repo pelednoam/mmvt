@@ -96,6 +96,13 @@ def float_or_none(val):
         return None
 
 
+def int_or_none(val):
+    try:
+        return int(val)
+    except:
+        return None
+
+
 def str_arr_to_markers(args, field_name):
     if args[field_name] and len(args[field_name]) > 0:
         if len(args[field_name]) % 2 != 0:

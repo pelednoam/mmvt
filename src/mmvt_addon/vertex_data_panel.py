@@ -10,6 +10,10 @@ def _addon():
     return DataInVertMakerPanel.addon
 
 
+def set_vertex_data(val):
+    DataInVertMakerPanel.data_in_cursor = '{:.5f}'.format(val)
+
+
 def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_shape_keys=False, objects_names=None):
     # 3d cursor relative to the object data
     # print('cursor at:' + str(bpy.context.scene.cursor_location))
@@ -144,11 +148,14 @@ class DataInVertMakerPanel(bpy.types.Panel):
     bl_label = "Data in vertex"
     addon = None
     init = False
+    data_in_cursor = None
 
     def draw(self, context):
         layout = self.layout
         layout.operator(CreateVertexData.bl_idname, text="Get data in vertex", icon='ROTATE')
         layout.operator(ClearVertexData.bl_idname, text="Clear", icon='PANEL_CLOSE')
+        if DataInVertMakerPanel.data_in_cursor is not None:
+            layout.label(text='Cursor value: {}'.format(DataInVertMakerPanel.data_in_cursor))
         # layout.operator(, text="Get data in vertex", icon='ROTATE')
 
 

@@ -223,18 +223,18 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, task, load_from_an
         return False
     surf_full_input_fname = utils.select_one_file(surf_full_input_fnames, surf_full_input_fname, 'fMRI surf')
     contrast, connectivity, verts = init_clusters(subject, surf_full_input_fname)
-    clusters_labels = dict(threshold=t_val, values=[])
+    clusters_labels = utils.Bag(dict(threshold=t_val, values=[]))
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
         # blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
         # print('Saving blobs: {}'.format(blobs_output_fname))
         # save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
-        clusters_labels_hemi = find_clusters_overlapped_labeles(
-            subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], load_from_annotation, n_jobs)
+        clusters_labels_hemi = lu.find_clusters_overlapped_labeles(
+            subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], n_jobs)
         if clusters_labels_hemi is None:
             print("Can't find clusters in {}!".format(hemi))
         else:
-            clusters_labels['values'].extend(clusters_labels_hemi)
+            clusters_labels.values.extend(clusters_labels_hemi)
 
     name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('fmri_', '')
     if task != '':
@@ -304,45 +304,6 @@ def save_clusters_for_blender(clusters, contrast, output_file):
         cluster_color = np.tile(color, (len(cluster), 1))
         data[cluster, :] = np.hstack((cluster_data, cluster_color))
     np.save(output_file, data)
-
-
-def find_clusters_overlapped_labeles(subject, clusters, contrast, atlas, hemi, verts, load_from_annotation=True,
-                                     n_jobs=1):
-    cluster_labels = []
-    annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
-    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))):
-        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
-        fu.write_surf(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi)), verts, faces)
-    if load_from_annotation and op.isfile(annot_fname):
-        labels = mne.read_labels_from_annot(subject, annot_fname=annot_fname, surf_name='pial')
-    else:
-        # todo: read only the labels from the current hemi
-        labels = lu.read_labels_parallel(subject, SUBJECTS_DIR, atlas, hemi, n_jobs=n_jobs)
-        labels = [l for l in labels if l.hemi == hemi]
-
-    if len(labels) == 0:
-        print('No labels!')
-        return None
-    for cluster in clusters:
-        x = contrast[cluster]
-        cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
-        inter_labels, inter_labels_tups = [], []
-        for label in labels:
-            overlapped_vertices = np.intersect1d(cluster, label.vertices)
-            if len(overlapped_vertices) > 0:
-                if 'unknown' not in label.name:
-                    inter_labels_tups.append((len(overlapped_vertices), label.name))
-                    # inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
-        inter_labels_tups = sorted(inter_labels_tups)[::-1]
-        for inter_labels_tup in inter_labels_tups:
-            inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
-        if len(inter_labels) > 0:
-            # max_inter = max([(il['num'], il['name']) for il in inter_labels])
-            cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
-                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster)))
-        else:
-            print('No intersected labels!')
-    return cluster_labels
 
 
 def create_functional_rois(subject, contrast_name, clusters_labels_fname='', func_rois_folder=''):

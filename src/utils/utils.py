@@ -1849,5 +1849,9 @@ def is_float(x):
         return False
 
 
+def argmax2d(data):
+    return np.unravel_index(np.argmax(data), data.shape)
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

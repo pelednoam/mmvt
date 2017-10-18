@@ -532,6 +532,9 @@ def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_
             use_shape_keys=use_shape_keys, objects_names=objects_names)
         bpy.context.scene.cursor_location = vertex_co
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
+        activity_values = _addon().get_activity_values()
+        if activity_values is not None:
+            _addon().set_vertex_data(activity_values[vertex_ind])
         return vertex_ind, closest_mesh_name
     else:
         clear_closet_vertex_and_mesh_to_cursor()

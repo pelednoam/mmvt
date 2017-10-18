@@ -32,6 +32,10 @@ def _addon():
     return ColoringMakerPanel.addon
 
 
+def get_activity_values():
+    return ColoringMakerPanel.activity_values
+
+
 def plot_meg(t=-1, save_image=False, view_selected=False):
     if t != -1:
         bpy.context.scene.frame_current = t
@@ -793,7 +797,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     mesh = cur_obj.data
     scn = bpy.context.scene
 
-    values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
+    ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     if bigger_or_equall:
         valid_verts = np.where(np.abs(values) >= threshold)[0]
     else:
@@ -1654,20 +1658,19 @@ def plot_label(label, color=''):
             _, _, _ = label.name, label.vertices, label.pos
         except:
             raise Exception('plot_label: label can be label fname or label object!')
-    # hemi_obj_vertices = bpy.data.objects[label.hemi].data.vertices
-    # label_pos = np.array([hemi_obj_vertices[v].co for v in label.vertices])
-    # bpy.context.scene.cursor_location = np.mean(label_pos, 0) / 10
-    # print('new label center of mass: {}'.format(bpy.context.scene.cursor_location * 10))
 
-    color = list(bpy.context.scene.labels_color) if color == '' else color
-    ColoringMakerPanel.labels_plotted.append((label, color))
-    hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
-    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
-    for label, color in ColoringMakerPanel.labels_plotted:
-        data[label.hemi][label.vertices] = [1, *color]
-    for hemi in mu.HEMIS:
-        color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
-    _addon().show_activity()
+    if bpy.context.scene.plot_label_contour:
+        color_contours(specific_label=label.name)
+    else:
+        color = list(bpy.context.scene.labels_color) if color == '' else color
+        ColoringMakerPanel.labels_plotted.append((label, color))
+        hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+        data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+        for label, color in ColoringMakerPanel.labels_plotted:
+            data[label.hemi][label.vertices] = [1, *color]
+        for hemi in mu.HEMIS:
+            color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
+        _addon().show_activity()
 
 
 def plot_labels(labels_names, colors, atlas):
@@ -1826,6 +1829,7 @@ def draw(self, context):
         row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
             mu.get_user_fol(), '*.label')
         row.prop(context.scene, 'labels_color', text='')
+        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
         if len(ColoringMakerPanel.labels_plotted) > 0:
             box = layout.box()
             col = box.column()
@@ -1908,6 +1912,7 @@ bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
     default=0.7, min=0, max=1, description="", update=update_connectivity_degree_threshold)
 bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -1933,6 +1938,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     labels_plotted = []
     static_conn = None
     connectivity_labels = []
+    activity_values = None
 
     stc = None
     stc_file_chosen = False

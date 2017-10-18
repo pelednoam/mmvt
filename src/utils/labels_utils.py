@@ -277,6 +277,22 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
         raise Exception('Error in vertices_labels_lookup!')
 
 
+def find_label_vertices(subject, atlas, hemi, vertices, label_template):
+    import re
+    vertices_labels_lookup = create_vertices_labels_lookup(subject, atlas)
+    label_re_template = re.compile(label_template)
+    label_vertices, label_vertices_indices = [], []
+    for vert_ind, vert in enumerate(vertices):
+        vert_label = vertices_labels_lookup[hemi].get(vert, '')
+        if vert_label == '':
+            print('find_pick_activity: No label for vert {}'.format(vert))
+            continue
+        if label_re_template.search(vert_label) is not None:
+            label_vertices.append(vert)
+            label_vertices_indices.append(vert_ind)
+    return label_vertices, label_vertices_indices
+
+
 def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=''):
     lookup = create_vertices_labels_lookup(subject, atlas, read_labels_from_fol=read_labels_from_fol)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
@@ -749,6 +765,38 @@ def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_j
     new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
     new_label.save(new_label_fname)
     return new_label
+
+
+def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts, n_jobs=6):
+    cluster_labels = []
+    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))):
+        from src.utils import freesurfer_utils as fu
+        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+        fu.write_surf(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi)), verts, faces)
+    labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi, n_jobs=n_jobs)
+    if len(labels) == 0:
+        print('No labels!')
+        return None
+    for cluster in clusters:
+        x = data[cluster]
+        cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
+        inter_labels, inter_labels_tups = [], []
+        for label in labels:
+            overlapped_vertices = np.intersect1d(cluster, label.vertices)
+            if len(overlapped_vertices) > 0:
+                if 'unknown' not in label.name:
+                    inter_labels_tups.append((len(overlapped_vertices), label.name))
+                    # inter_labels.append(dict(name=label.name, num=len(overlapped_vertices)))
+        inter_labels_tups = sorted(inter_labels_tups)[::-1]
+        for inter_labels_tup in inter_labels_tups:
+            inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
+        if len(inter_labels) > 0:
+            # max_inter = max([(il['num'], il['name']) for il in inter_labels])
+            cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
+                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster))))
+        else:
+            print('No intersected labels!')
+    return cluster_labels
 
 
 if __name__ == '__main__':

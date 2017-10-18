@@ -30,6 +30,10 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
             raise Exception("Can't find the ICA eog file! {}".format(eog_inds_fname))
         all_eog_inds = []
     for cond, cond_key in conditions.items():
+        args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
+        args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
+        args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
+        meg.calc_fwd_inv_wrapper(subject, cond, args)
         raw_files_cond = raw_files_template.format(cond=cond)
         raw_files = glob.glob(raw_files_cond)
         args.conditions = condition = {cond:cond_key}
@@ -38,10 +42,6 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
                 subject, condition, ctf_raw_data, inverse_method, args, all_eog_inds, eog_channel, calc_stc_per_session,
                 only_examine_ica, overwrite_raw, plot_evoked, filter_raw_data, raw_data_filter_freqs)
         combine_evokes(subject, cond, sessions, filter_raw_data, raw_data_filter_freqs)
-        args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
-        args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
-        args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
-        meg.calc_fwd_inv_wrapper(subject, condition, args)
 
     for session in sessions:
         args.evo_fname = op.join(MEG_DIR, subject, '{}-session{}{}-ave.fif'.format('{cond}', session, freqs_str))
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     sfreq = 625
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     for inverse_method in args.inverse_method:
-        # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
-        dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
+        analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
+        # dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
         # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
     print('Finish!')
