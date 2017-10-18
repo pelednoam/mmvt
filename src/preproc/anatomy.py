@@ -694,6 +694,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
                  labels=[l.name for l in labels])
     return utils.both_hemi_files_exist(output_fname)
 
+
 @utils.timeit
 def create_verts_faces_lookup(subject, surface_type='pial'):
     output_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}{}.pkl'.format(

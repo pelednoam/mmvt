@@ -1808,7 +1808,11 @@ def morph_labels_from_fsaverage(atlas='aparc250', fs_labels_fol='', sub_labels_f
 
 
 def labels_to_annot(parc_name, labels_fol='', overwrite=True):
-    lu.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
+    ret = lu.labels_to_annot(MRI_SUBJECT, SUBJECTS_MRI_DIR, parc_name, labels_fol, overwrite)
+    if ret:
+        return op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'label', '{}.{}.annot'.format('{hemi}', parc_name))
+    else:
+        return None
 
 
 def calc_single_trial_labels_per_condition(atlas, events, stcs, extract_modes=('mean_flip'), src=None):
@@ -2362,7 +2366,7 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
             print("Can't find clusters in {}!".format(hemi))
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
-                subject, stc, clusters_labels_hemi, clusters_fol, extract_mode[0], src, inv_fname,
+                subject, stc, hemi, clusters_labels_hemi, clusters_fol, extract_mode[0], src, inv_fname,
                 fwd_usingMEG, fwd_usingEEG)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
@@ -2408,21 +2412,34 @@ def load_connectivity(subject):
     return connectivity_per_hemi
 
 
-def extract_time_series_for_cluster(subject, stc, clusters, clusters_fol, extract_mode='mean_flip',
-                                    src=None, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
+def extract_time_series_for_cluster(subject, stc, hemi, clusters, clusters_fol, extract_mode='mean_flip',
+                                    src=None, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, calc_contours=True):
+    from src.preproc import anatomy as anat
+
     utils.make_dir(clusters_fol)
+    time_series_fol = op.join(clusters_fol, 'time_series_{}'.format(extract_mode))
+    utils.make_dir(time_series_fol)
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     if src is None:
         inverse_operator = read_inverse_operator(inv_fname)
         src = inverse_operator['src']
     for cluster in clusters:
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
-        cluster_label = mne.Label(cluster.vertices, cluster.coordinates, hemi=cluster.hemi,
-                                  name=cluster.name, subject=subject)
-        cluster_label.save(op.join(clusters_fol, 'cluster_size_{}_max_{:.2f}_{}.label'.format(
-            cluster.size, cluster.max, cluster.name)))
+        cluster_label = mne.Label(
+            cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
+        cluster_name = 'cluster_size_{}_max_{:.2f}_{}.label'.format(cluster.size, cluster.max, cluster.name)
+        cluster_label.save(op.join(clusters_fol, cluster_name))
         label_data = stc.extract_label_time_course(cluster_label, src, mode=extract_mode, allow_empty=True)
         cluster.label_data = np.squeeze(label_data)
+        np.save(op.join(time_series_fol, '{}.npy'.format(cluster_name)), cluster.label_data)
+    if len(clusters) > 0 and calc_contours:
+        new_atlas_name = 'clusters-{}-{}'.format(utils.namebase(clusters_fol), hemi)
+        annot_files = labels_to_annot(new_atlas_name, clusters_fol)
+        if annot_files is not None:
+            for hemi in utils.HEMIS:
+                annot_fname = annot_files.format(hemi=hemi)
+                shutil.copy(annot_fname, op.join(clusters_fol, utils.namesbase_with_ext(annot_fname)))
+        anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
     return clusters
 
 

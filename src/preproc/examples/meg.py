@@ -173,6 +173,22 @@ def calc_rest(args):
     meg.call_main(args)
 
 
+def calc_functional_rois(args):
+    # -s DC -a laus250 -f find_functional_rois_in_stc --stc_name right-MNE-1-15 --label_name_template "precentral*" --inv_fname right-inv --threshold 99
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        atlas='laus125',
+        function='find_functional_rois_in_stc',
+        inverse_method='MNE',
+        stc_name='right-MNE-1-15',
+        label_name_template='precentral*',
+        inv_fname='right-inv',
+        threshold=99.5
+    ))
+    meg.call_main(args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
