@@ -250,8 +250,8 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
             length = abs((omw * loc - omw * o).length * factor)
             if length > dir_vec_length * 2:
                 continue
-            else:
-                print(length, dir_vec_length)
+            # else:
+            #     print(length, dir_vec_length)
             plane_thikness.append(skull_thickness[vert_ind])
             hits.append((vert_ind, o, loc))
 
