@@ -39,6 +39,16 @@ def show_skull_plane_update(self, context):
         plane.hide = bpy.context.scene.show_skull_plane
 
 
+def rotate_skull_plane(d_ang):
+    from mathutils import Matrix
+    plane = bpy.data.objects.get('skull_plane', None)
+    if plane is not None and SkullPanel.plane_dir_vec is not None:
+        plane.rotation_mode = 'XYZ'
+        vec = SkullPanel.plane_dir_vec
+        ang = math.radians(d_ang)
+        plane.rotation_euler = (Matrix.Rotation(ang, 3, vec) * plane.rotation_euler.to_matrix()).to_euler()
+
+
 def import_skull():
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     base_path = op.join(mu.get_user_fol(), 'skull')
@@ -168,7 +178,7 @@ def plot_distances(from_inner=True):
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         _addon().set_colorbar_max_min(data_max, 0)
-        _addon().set_colormap('hot')
+    _addon().set_colormap('hot')
     colors_ratio = 256 / data_max
     _addon().activity_map_obj_coloring(skull_obj, distances, faces_verts, 0, True, 0, colors_ratio)
 
@@ -356,6 +366,7 @@ def align_plane():
     vert = skull.data.vertices[vertex_ind]
     vert_normal = vert.normal
     dir_vec = mathutils.Vector(vert_normal)
+    SkullPanel.plane_dir_vec = dir_vec
     plane.rotation_mode = 'QUATERNION'
     plane.rotation_quaternion = dir_vec.to_track_quat('Z','Y')
     if not bpy.context.scene.align_plane_to_cursor:
@@ -386,15 +397,16 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
     imw = skull.matrix_world
     mat = omwi * imw
 
-    if plot_directional_arrow:
-        o = mat * direction_vert.co
-        n = mat * (direction_vert.co + direction_vert.normal) - o
-        hit, loc, norm, index = plane.ray_cast(o, n)
-        if hit:
+    o = mat * direction_vert.co
+    n = mat * (direction_vert.co + direction_vert.normal) - o
+    hit, loc, norm, index = plane.ray_cast(o, n)
+    if hit:
+        if plot_directional_arrow:
             draw_empty_arrow(scene, emptys_name, 'direction', omw * loc, omw * o - omw * loc)
-            dir_vec_length = abs((omw * loc - omw * o).length * factor)
-        else:
-            print('No hit from directional vertex!')
+        dir_vec_length = abs((omw * loc - omw * o).length * factor)
+    else:
+        print('No hit from directional vertex!')
+        return
 
     plane_thikness, hits = [], []
     vertices = skull.data.vertices
@@ -423,14 +435,14 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
         print('No hits from outer skull to the plane!')
 
 
-def check_vert_intersections(vert, skull):
-    for face_ind, face in enumerate(skull.data.polygons):
-        face_verts = [skull.data.vertices[vert].co for vert in face.vertices]
-        intersection_point = mathutils.geometry.intersect_ray_tri(
-            face_verts[0], face_verts[1], face_verts[2], vert.normal, vert.co, True)
-        if intersection_point is not None:
-            return intersection_point, face_ind
-    return None, -1
+# def check_vert_intersections(vert, skull):
+#     for face_ind, face in enumerate(skull.data.polygons):
+#         face_verts = [skull.data.vertices[vert].co for vert in face.vertices]
+#         intersection_point = mathutils.geometry.intersect_ray_tri(
+#             face_verts[0], face_verts[1], face_verts[2], vert.normal, vert.co, True)
+#         if intersection_point is not None:
+#             return intersection_point, face_ind
+#     return None, -1
 
 
 def ray_cast(from_inner=True):
@@ -524,6 +536,11 @@ def skull_draw(self, context):
     if plane_exist:
         layout.operator(AlignPlane.bl_idname, text="Align plane", icon='LATTICE_DATA')
         layout.operator(CalcPlaneStat.bl_idname, text="Calc plane stat", icon='PARTICLE_DATA')
+        if SkullPanel.plane_dir_vec is not None:
+            row = layout.row(align=True)
+            row.operator(RotateSkullPlaneNeg.bl_idname, text="", icon='PREV_KEYFRAME')
+            row.prop(context.scene, 'skull_plane_angle', text='Angle delta')
+            row.operator(RotateSkullPlanePos.bl_idname, text="", icon='NEXT_KEYFRAME')
         layout.prop(context.scene, 'align_plane_to_cursor', text='Align to cursor')
         layout.prop(context.scene, 'show_skull_plane', text='Hide plane')
     if SkullPanel.plane_thickness is not None:
@@ -609,6 +626,28 @@ class AlignPlane(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class RotateSkullPlaneNeg(bpy.types.Operator):
+    bl_idname = "mmvt.rotate_skull_plane_neg"
+    bl_label = "rotate_skull_plane_neg"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        rotate_skull_plane(-bpy.context.scene.skull_plane_angle)
+        get_plane_values()
+        return {'PASS_THROUGH'}
+
+
+class RotateSkullPlanePos(bpy.types.Operator):
+    bl_idname = "mmvt.rotate_skull_plane_pos"
+    bl_label = "rotate_skull_plane_pos"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        rotate_skull_plane(bpy.context.scene.skull_plane_angle)
+        get_plane_values()
+        return {'PASS_THROUGH'}
+
+
 class CalcPlaneStat(bpy.types.Operator):
     bl_idname = "mmvt.calc_plane_stat"
     bl_label = "calc_plane_stat"
@@ -619,8 +658,6 @@ class CalcPlaneStat(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
-
-
 bpy.types.Scene.thickness_arrows = bpy.props.BoolProperty(default=False, update=thickness_arrows_update)
 bpy.types.Scene.show_point_arrow = bpy.props.BoolProperty(default=False, update=show_point_arrow_update)
 bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner', '', 0), ('outer', 'outer', '', 1)],
@@ -628,18 +665,21 @@ bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner
 bpy.types.Scene.create_thickness_arrows = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.align_plane_to_cursor = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_skull_plane = bpy.props.BoolProperty(default=False, update=show_skull_plane_update)
+bpy.types.Scene.skull_plane_angle = bpy.props.FloatProperty(default=5, min=1, max=45)
+
 
 class SkullPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
     bl_context = "objectmode"
-    bl_category = "mmvt"
+    bl_category = "skull"
     bl_label = "Skull"
     addon = None
     init = False
     vertex_skull_thickness = 0
     prev_vertex_arrow = None
     plane_thickness = None
+    plane_dir_vec = None
 
     def draw(self, context):
         if SkullPanel.init:
@@ -667,6 +707,7 @@ def init(addon):
         # plane.location[0] = plane.location[1] = 0
         # plane.location[2] = 10
     bpy.context.scene.align_plane_to_cursor = False
+    bpy.context.scene.skull_plane_angle = 5
 
     register()
     SkullPanel.init = True
@@ -685,6 +726,8 @@ def register():
         bpy.utils.register_class(FindPointThickness)
         bpy.utils.register_class(AlignPlane)
         bpy.utils.register_class(CalcPlaneStat)
+        bpy.utils.register_class(RotateSkullPlaneNeg)
+        bpy.utils.register_class(RotateSkullPlanePos)
     except:
         print("Can't register Skull Panel!")
 
@@ -699,5 +742,7 @@ def unregister():
         bpy.utils.unregister_class(FindPointThickness)
         bpy.utils.unregister_class(AlignPlane)
         bpy.utils.unregister_class(CalcPlaneStat)
+        bpy.utils.unregister_class(RotateSkullPlaneNeg)
+        bpy.utils.unregister_class(RotateSkullPlanePos)
     except:
         pass
