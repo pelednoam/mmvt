@@ -28,10 +28,10 @@ def show_point_arrow_update(self, context):
         SkullPanel.prev_vertex_arrow.hide = True
 
 
-def show_skull_plane_update(self, context):
+def hide_skull_plane_update(self, context):
     plane = bpy.data.objects.get('skull_plane', None)
     if plane is not None:
-        plane.hide = bpy.context.scene.show_skull_plane
+        plane.hide = bpy.context.scene.hide_skull_plane
 
 
 def rotate_skull_plane(d_ang):
@@ -68,26 +68,34 @@ def import_skull():
 
 
 def import_plane():
+    # plane.dimensions[0] = 5.59
+    # plane.dimensions[1] = 4.19
     skull_plane = bpy.data.objects.get('skull_plane', None)
     if skull_plane is not None:
+        pass
+        # return skull_plane
+        # skull_plane.select = True
+        # bpy.ops.object.delete()
+    else:
+        mu.change_layer(_addon().SKULL_LAYER)
+        emptys_name = 'Skull'
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.ops.import_mesh.ply(filepath=op.join(mu.get_mmvt_dir(), 'skull_plane.ply'))
+        if len(bpy.context.selected_objects) == 0:
+            return None
+        skull_plane = bpy.context.selected_objects[0]
         skull_plane.select = True
-        bpy.ops.object.delete()
-    mu.change_layer(_addon().SKULL_LAYER)
-    emptys_name = 'Skull'
-    bpy.ops.object.select_all(action='DESELECT')
-    bpy.ops.import_mesh.ply(filepath=op.join(mu.get_mmvt_dir(), 'skull_plane.ply'))
-    if len(bpy.context.selected_objects) == 0:
-        return None
-    cur_obj = bpy.context.selected_objects[0]
-    cur_obj.select = True
-    bpy.ops.object.shade_smooth()
-    cur_obj.active_material = bpy.data.materials['Activity_map_mat']
-    cur_obj.name = 'skull_plane'
-    cur_obj.parent = bpy.data.objects[emptys_name]
-    cur_obj.hide_select = True
-    cur_obj.location[2] = 10
-    cur_obj.rotation_euler[2] = -math.pi / 2
-    return cur_obj
+        bpy.ops.object.shade_smooth()
+        skull_plane.active_material = bpy.data.materials['Activity_map_mat']
+        skull_plane.name = 'skull_plane'
+        skull_plane.parent = bpy.data.objects[emptys_name]
+    skull_plane.hide_select = True
+    skull_plane.location[0] = skull_plane.location[1] = 0
+    skull_plane.location[2] = 10
+    skull_plane.rotation_mode = 'XYZ'
+    skull_plane.rotation_euler[0] = skull_plane.rotation_euler[1] = 0
+    skull_plane.rotation_euler[2] = -math.pi / 2
+    # align_plane(False)
 
 
 def plot_distances(from_inner=True):
@@ -179,10 +187,11 @@ def find_point_thickness(cursor_location=None, skull_type=''):
 #     mesh.update()
 #     bm.free()
 
-def align_plane():
+# https://blender.stackexchange.com/questions/44760/rotate-objects-around-their-origin-along-a-global-axis-scripted-without-bpy-op
+def align_plane(to_cursor):
     plane = bpy.data.objects['skull_plane']
     skull = bpy.data.objects['outer_skull']
-    if bpy.context.scene.align_plane_to_cursor:
+    if to_cursor:
         plane.location = bpy.context.scene.cursor_location
     _, vertex_ind, vertex_co = find_point_thickness(plane.location, skull_type='outer_skull')
     vert = skull.data.vertices[vertex_ind]
@@ -191,9 +200,12 @@ def align_plane():
     SkullPanel.plane_dir_vec = dir_vec
     plane.rotation_mode = 'QUATERNION'
     plane.rotation_quaternion = dir_vec.to_track_quat('Z','Y')
-    if not bpy.context.scene.align_plane_to_cursor:
+    if not to_cursor:
         bpy.context.scene.cursor_location = vertex_co
     plane.location = bpy.context.scene.cursor_location + vert_normal * 0.5
+
+    # for space in mu.get_3d_spaces(only_neuro=True):
+    #     space.region_3d.view_matrix = plane.rotation_quaternion.to_matrix().to_4x4()
 
 
 def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_arrow=False):
@@ -349,7 +361,7 @@ def skull_draw(self, context):
             row.prop(context.scene, 'skull_plane_angle', text='Angle delta')
             row.operator(RotateSkullPlanePos.bl_idname, text="", icon='NEXT_KEYFRAME')
         layout.prop(context.scene, 'align_plane_to_cursor', text='Align to cursor')
-        layout.prop(context.scene, 'show_skull_plane', text='Hide plane')
+        layout.prop(context.scene, 'hide_skull_plane', text='Hide plane')
     if SkullPanel.plane_thickness is not None:
         box = layout.box()
         col = box.column()
@@ -429,7 +441,7 @@ class AlignPlane(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        align_plane()
+        align_plane(bpy.context.scene.align_plane_to_cursor)
         return {'PASS_THROUGH'}
 
 
@@ -471,7 +483,7 @@ bpy.types.Scene.cast_ray_source = bpy.props.EnumProperty(items=[('inner', 'inner
                                                          update=cast_ray_source_update)
 bpy.types.Scene.create_thickness_arrows = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.align_plane_to_cursor = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.show_skull_plane = bpy.props.BoolProperty(default=False, update=show_skull_plane_update)
+bpy.types.Scene.hide_skull_plane = bpy.props.BoolProperty(default=False, update=hide_skull_plane_update)
 bpy.types.Scene.skull_plane_angle = bpy.props.FloatProperty(default=5, min=1, max=45)
 
 
@@ -507,15 +519,6 @@ def init(addon):
     plane = bpy.data.objects.get('skull_plane', None)
     if plane is not None:
         import_plane()
-        # x = 5.59mm
-        # y = 4.19mm
-        # z rot=-90
-        # plane.dimensions[0] = 5.59
-        # plane.dimensions[1] = 4.19
-        # plane.rotation_euler[0] = plane.rotation_euler[1] = 0
-        # plane.rotation_euler[2] = -math.pi
-        # plane.location[0] = plane.location[1] = 0
-        # plane.location[2] = 10
     bpy.context.scene.align_plane_to_cursor = False
     bpy.context.scene.skull_plane_angle = 5
 
@@ -523,7 +526,8 @@ def init(addon):
     SkullPanel.init = True
     bpy.context.scene.thickness_arrows = False
     bpy.context.scene.show_point_arrow = False
-
+    bpy.context.scene.hide_skull_plane = False
+    # bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d
 
 def register():
     try:
