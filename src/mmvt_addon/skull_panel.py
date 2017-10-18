@@ -5,9 +5,6 @@ import os.path as op
 import numpy as np
 import mmvt_utils as mu
 
-# x = 5.59mm
-# y = 4.19mm
-# z rot=-90
 
 def _addon():
     return SkullPanel.addon
@@ -510,6 +507,9 @@ def init(addon):
     plane = bpy.data.objects.get('skull_plane', None)
     if plane is not None:
         import_plane()
+        # x = 5.59mm
+        # y = 4.19mm
+        # z rot=-90
         # plane.dimensions[0] = 5.59
         # plane.dimensions[1] = 4.19
         # plane.rotation_euler[0] = plane.rotation_euler[1] = 0
