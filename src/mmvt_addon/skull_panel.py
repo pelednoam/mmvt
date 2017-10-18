@@ -5,8 +5,6 @@ import os.path as op
 import numpy as np
 import mmvt_utils as mu
 
-
-# https://blender.stackexchange.com/questions/7465/create-a-flat-plane-with-beveled-edges
 # x = 5.59mm
 # y = 4.19mm
 # z rot=-90
@@ -95,77 +93,6 @@ def import_plane():
     return cur_obj
 
 
-# def calc_thickness():
-#     inner_skull = bpy.data.objects['inner_skull']
-#     # inner_skull.data.normals_make_consistent(inside=False)
-#     vert = inner_skull.data.vertices[0]
-#     mw = bpy.data.objects['inner_skull'].matrix_world
-#     mwi = mw.inverted()
-#
-#     # src and dst in local space of cb
-#
-#     origin = mwi * vert.co
-#     direction = vert.normal
-#
-#     hit, loc, norm, face = inner_skull.ray_cast(vert.co + vert.normal / 10, vert.normal / 10)
-#
-#     print('vert loc {}'.format(vert.co))
-#     if hit:
-#         print("Hit at ", loc, " (local)")
-#         bpy.ops.object.empty_add(location=mw * loc)
-#     else:
-#         print("No HIT")
-#
-#
-# def check_intersections():
-#     inner_skull = bpy.data.objects['inner_skull']
-#     outer_skull = bpy.data.objects['outer_skull']
-#     output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections.npz')
-#     N = len(inner_skull.data.vertices)
-#     intersections = np.zeros((N, 2, 3))
-#     verts_faces = np.zeros((N, 1))
-#     for vert_num, vert in enumerate(inner_skull.data.vertices):
-#         outer_skull_hit_point, face_ind = check_vert_intersections(vert, outer_skull)
-#         intersections[vert_num, 0] = np.array(vert.co)
-#         intersections[vert_num, 1] = np.array(outer_skull_hit_point)
-#         verts_faces[vert_num] = face_ind
-#         # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
-#         if vert_num % 100 == 0:
-#             print('{} / {}'.format(vert_num, N))
-#             # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-#         #     print('Saving in {}!'.format(output_fname))
-#         #     np.save(output_fname, intersections)
-#     np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-#     print('Finish!!!')
-
-#
-# def check_intersections_fron_outer_skull():
-#     inner_skull = bpy.data.objects['inner_skull']
-#     outer_skull = bpy.data.objects['outer_skull']
-#     output_fname = op.join(mu.get_user_fol(), 'skull', 'intersections_from_outer_skull.npz')
-#     N = len(outer_skull.data.vertices)
-#     intersections = np.zeros((N, 2, 3))
-#     verts_faces = np.zeros((N, 1))
-#     for vert_num, vert in enumerate(outer_skull.data.vertices):
-#         inner_skull_hit_point, face_ind = check_vert_intersections(vert, inner_skull)
-#         intersections[vert_num, 0] = np.array(vert.co)
-#         if inner_skull_hit_point is not None:
-#             intersections[vert_num, 1] = np.array(inner_skull_hit_point)
-#             verts_faces[vert_num] = face_ind
-#         else:
-#             intersections[vert_num, 1] = np.array(vert.co)
-#             verts_faces[vert_num] = -1
-#             print('No intersection for {}'.format(vert_num))
-#         # print(np.array(vert.co), np.array(outer_skull_hit_point), face_ind)
-#         if vert_num % 100 == 0:
-#             print('{} / {}'.format(vert_num, N))
-#             # np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-#         #     print('Saving in {}!'.format(output_fname))
-#         #     np.save(output_fname, intersections)
-#     np.savez(output_fname, intersections=intersections, verts_faces=verts_faces)
-#     print('Finish!!!')
-#
-
 def plot_distances(from_inner=True):
     # f = mu.Bag(np.load(op.join(mu.get_user_fol(), 'skull', 'intersections.npz')))
     # distances = np.linalg.norm(f.intersections[:, 0] - f.intersections[:, 1], axis=1)
@@ -208,21 +135,10 @@ def find_point_thickness(cursor_location=None, skull_type=''):
         skull_type = '{}_skull'.format(bpy.context.scene.cast_ray_source)
     closest_mesh_name, vertex_ind, vertex_co, _ = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(cursor_location, objects_names=[skull_type])
-    # vertex_ind, closest_mesh_name = _addon().snap_cursor(True, [skull_type], False, False)
     if closest_mesh_name is None:
         return
-    # else:
-    #     vertex_co = bpy.data.objects[skull_type].data.vertices[vertex_ind].co
     distances = np.load(distances_fname)
-    # rays_info = mu.load(ray_info_fname)
-    # closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-    #     objects_names=['inner_skull'])
-    # distance = np.linalg.norm(f.intersections[vertex_ind, 0] - f.intersections[vertex_ind, 1])
     distance = distances[vertex_ind][0]
-    # (hit, loc, norm, index) = rays_info[vertex_ind]
-
-    # bpy.context.scene.cursor_location = vertex_co
-    # print(vertex_ind, vertex_co, distance, loc)
     SkullPanel.vertex_skull_thickness = distance
     if not bpy.context.scene.thickness_arrows and bpy.context.scene.show_point_arrow:
         if SkullPanel.prev_vertex_arrow is not None:
@@ -234,128 +150,37 @@ def find_point_thickness(cursor_location=None, skull_type=''):
     return closest_mesh_name, vertex_ind, vertex_co
 
 
-def fix_normals():
-    # c = mu.get_view3d_context()
-    bpy.ops.object.select_all(action='DESELECT')
-
-    for skull_type in ['inner_skull', 'outer_skull']:
-        obj = bpy.context.scene.objects[skull_type]
-        obj.select = True
-        bpy.context.scene.objects.active = obj
-        # go edit mode
-        # bpy.ops.object.mode_set(c, mode='OBJECT')
-        # bpy.ops.object.mode_set(c, mode='EDIT')
-        # select al faces
-        # bpy.ops.mesh.select_all(c, action='SELECT')
-        # recalculate outside normals
-        # bpy.ops.mesh.normals_make_consistent(inside=skull_type == 'outer_skull')
-        select_all_faces(obj.data, skull_type=='outer_skull')
-        # go object mode again
-        # bpy.ops.object.editmode_toggle()
-
-
-def select_all_faces(mesh, reverse=False):
-    import bmesh
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    # if reverse:
-    #     bmesh.ops.reverse_faces(bm, faces=bm.faces)
-    bm.to_mesh(mesh)
-    bm.clear()
-    mesh.update()
-    bm.free()
-
-
-# def align_plane_to_point(obj, point):
-#     dir = point - obj.location
-#     return dir.to_track_quat("Z", "X").to_euler()
-
-
-def calc_trans_mat(obj, face, target):
-    from mathutils import Matrix
-    mat_world = obj.matrix_world
-    #transform the face to world space
-    #to take non-uniform scaling into account
-    #which may change the angle of face.normal
-    for index in face.vertices:
-        vert = obj.data.vertices[index]
-        vert.co = mat_world * vert.co
-
-    #get the rotation difference
-    track = target - face.center
-    q = face.normal.rotation_difference(track)
-
-    #compose the matrix
-    #rotation around face.center in world space
-    mat = Matrix.Translation(face.center) * \
-          q.to_matrix().to_4x4() * \
-          Matrix.Translation(-face.center)
-    #transform the face back to object space afterwards
-    mat_obj = mat_world.inverted() * mat
-    #apply the matrix to the vertices of the face
-    for index in face.vertices:
-        vert = obj.data.vertices[index]
-        vert.co = mat_obj * vert.co
-
-
-# def rotate_plane(skull_face, plane):
-#     from mathutils import Matrix, Vector
+# def fix_normals():
+#     # c = mu.get_view3d_context()
+#     bpy.ops.object.select_all(action='DESELECT')
 #
-#     def scale_from_vector(v):
-#         mat = Matrix.Identity(4)
-#         for i in range(3):
-#             mat[i][i] = v[i]
-#         return mat
-#
-#     loc_dst, rot_dst, scale_dst = plane.matrix_world.decompose()
-#     loc_src, rot_src, scale_src = skull_face.matrix_world.decompose()
-#
-#     plane.matrix_world = (
-#         Matrix.Translation(loc_dst) *
-#         rot_src.to_matrix().to_4x4() *
-#         scale_from_vector(scale_dst)
-#     )
+#     for skull_type in ['inner_skull', 'outer_skull']:
+#         obj = bpy.context.scene.objects[skull_type]
+#         obj.select = True
+#         bpy.context.scene.objects.active = obj
+#         # go edit mode
+#         # bpy.ops.object.mode_set(c, mode='OBJECT')
+#         # bpy.ops.object.mode_set(c, mode='EDIT')
+#         # select al faces
+#         # bpy.ops.mesh.select_all(c, action='SELECT')
+#         # recalculate outside normals
+#         # bpy.ops.mesh.normals_make_consistent(inside=skull_type == 'outer_skull')
+#         select_all_faces(obj.data, skull_type=='outer_skull')
+#         # go object mode again
+#         # bpy.ops.object.editmode_toggle()
 
 
-# def track_to_point(obj, point):
-#     normal = obj.data.polygons[0].normal.xyz
-#     mat_obj = obj.matrix_basis
-#     mat_scale = mathutils.Matrix.Scale(1, 4, mat_obj.to_scale() )
-#     trans = mat_obj.to_translation()
-#     mat_trans = mathutils.Matrix.Translation(trans)
-#     print( "mat_scale\n" + str(mat_obj.to_scale()))
-#     point_trans = point -trans
-#     q = normal.rotation_difference( point_trans )
-#     mat_rot = q.to_matrix()
-#     mat_rot.resize_4x4()
-#
-#     mat_obj = mat_trans * mat_rot * mat_scale
-#     obj.matrix_basis = mat_obj
-
-
-# https://blender.stackexchange.com/questions/12314/in-python-rotate-a-polygon-to-face-something/12324#12324
-# https://blender.stackexchange.com/questions/32649/how-to-rotate-an-object-from-a-reference-plane
-# def align_plane():
-#     plane = bpy.data.objects['skull_plane']
-#     skull = bpy.data.objects['outer_skull']
-#     if bpy.context.scene.align_plane_to_cursor:
-#         closest_mesh_name, vertex_ind, vertex_co, _ = \
-#             _addon().find_vertex_index_and_mesh_closest_to_cursor(None, objects_names=['outer_skull'])
-#         plane.location = bpy.context.scene.cursor_location + skull.data.vertices[vertex_ind].normal * 10
-#     _align_plane()
-#
-#
-# def _align_plane():
-#     plane = bpy.data.objects['skull_plane']
-#     _, _, vertex_co = find_point_thickness(plane.location, skull_type='outer_skull')
-#     bpy.context.scene.cursor_location = vertex_co
-#     _addon().create_slices()
-#     if np.linalg.norm(plane.location - vertex_co) > 0.001:
-#         calc_trans_mat(plane, plane.data.polygons[0], vertex_co)
-#         plane.location = vertex_co
-#         get_plane_values()
-
+# def select_all_faces(mesh, reverse=False):
+#     import bmesh
+#     bm = bmesh.new()
+#     bm.from_mesh(mesh)
+#     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+#     # if reverse:
+#     #     bmesh.ops.reverse_faces(bm, faces=bm.faces)
+#     bm.to_mesh(mesh)
+#     bm.clear()
+#     mesh.update()
+#     bm.free()
 
 def align_plane():
     plane = bpy.data.objects['skull_plane']
@@ -372,8 +197,6 @@ def align_plane():
     if not bpy.context.scene.align_plane_to_cursor:
         bpy.context.scene.cursor_location = vertex_co
     plane.location = bpy.context.scene.cursor_location + vert_normal * 0.5
-    # get_plane_values(vert, False)
-    # plane.location -= vert_normal * 2
 
 
 def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_arrow=False):
@@ -435,16 +258,6 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
         print('No hits from outer skull to the plane!')
 
 
-# def check_vert_intersections(vert, skull):
-#     for face_ind, face in enumerate(skull.data.polygons):
-#         face_verts = [skull.data.vertices[vert].co for vert in face.vertices]
-#         intersection_point = mathutils.geometry.intersect_ray_tri(
-#             face_verts[0], face_verts[1], face_verts[2], vert.normal, vert.co, True)
-#         if intersection_point is not None:
-#             return intersection_point, face_ind
-#     return None, -1
-
-
 def ray_cast(from_inner=True):
     context = bpy.context
     scene = context.scene
@@ -469,12 +282,9 @@ def ray_cast(from_inner=True):
     mat = omwi * imw
     factor = np.linalg.inv(omw)[0, 0]
     ray_obj = outer_obj if from_inner else inner_obj
-    hits = []  # vectors from inner to outer
-    # for face in inner_obj.data.polygons:
+    hits = []
     vertices = inner_obj.data.vertices if from_inner else outer_obj.data.vertices
     for vert_ind, vert in enumerate(vertices):
-        # o = mat * face.center
-        # n = mat * (face.center + face.normal) - o
         o = mat * vert.co
         n = mat * (vert.co + vert.normal) - o
         if not from_inner:
@@ -588,7 +398,7 @@ class CalcThickness(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        fix_normals()
+        # fix_normals()
         for inner in [True, False]:
             ray_cast(inner) #bpy.context.scene.cast_ray_source == 'inner')
         return {'PASS_THROUGH'}
