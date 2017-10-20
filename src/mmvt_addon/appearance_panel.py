@@ -435,6 +435,8 @@ class SelectionListener(bpy.types.Operator):
         # def show_fcurves(obj):
         #     mu.change_fcurves_colors(obj)
             # mu.view_all_in_graph_editor()
+        # todo: check if the mouse is still in the 3D view. Can be done by using this:
+        # https://blender.stackexchange.com/questions/27813/how-to-get-the-vertices-horizontal-and-vertical-location-in-the-window
         if self.left_clicked:
             self.left_clicked = False
             if bpy.context.scene.cursor_is_snapped:

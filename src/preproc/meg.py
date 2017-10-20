@@ -554,13 +554,14 @@ def check_bem(mri_subject, args={}):
     return op.isfile(BEM)
 
 
-def make_forward_solution(mri_subject, events, evo_fname='', fwd_fname='', sub_corticals_codes_file='',
+def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', sub_corticals_codes_file='',
                           usingMEG=True, usingEEG=True, calc_corticals=True,
                           calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
                           recreate_src_surface='white', overwrite_fwd=False, n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
     evo_fname = get_evo_fname(evo_fname)
     fwd_fname = get_fwd_fname(fwd_fname, usingMEG, usingEEG)
+    events_keys = events.keys() if events is not None else ['all']
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
@@ -579,7 +580,7 @@ def make_forward_solution(mri_subject, events, evo_fname='', fwd_fname='', sub_c
                         src_with_subcortical, evo_fname, usingMEG, usingEEG, n_jobs)
                     mne.write_forward_solution(FWD_SUB, fwd_with_subcortical, overwrite=True)
         else:
-            for cond in events.keys():
+            for cond in events_keys:
                 if calc_corticals:
                     fwd_cond_fname = get_cond_fname(fwd_fname, cond)
                     if overwrite_fwd or not op.isfile(fwd_cond_fname):
@@ -785,6 +786,14 @@ def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     return inv_fname
 
 
+def get_raw_fname(raw_fname=''):
+    if raw_fname == '':
+        raw_fname, raw_exist = locating_file(raw_fname, '*raw.fif')
+        if not raw_exist:
+            epo_fname = RAW
+    return raw_fname
+
+
 def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     if fwd_fname == '':
         fwd_fname, fwd_exist = locating_file(fwd_fname, '*fwd.fif')
@@ -809,7 +818,7 @@ def get_evo_fname(evo_fname=''):
     return evo_fname
 
 
-def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
+def calc_inverse_operator(events=None, epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
                           inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0,
                           overwrite_inverse_operator=False, use_empty_room_for_noise_cov=False,
                           overwrite_noise_cov=False, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
@@ -821,7 +830,10 @@ def calc_inverse_operator(events, epo_fname='', evo_fname='', fwd_fname='', inv_
     epo_fname = get_epo_fname(epo_fname)
     if noise_cov_fname == '':
         noise_cov_fname = NOISE_COV
-    conds = ['all'] if '{cond}' not in epo_fname else events.keys()
+    if events is None:
+        conds = ['all']
+    else:
+        conds = ['all'] if '{cond}' not in epo_fname else events.keys()
     flag = True
     for cond in conds:
         if (not overwrite_inverse_operator and
@@ -881,11 +893,11 @@ def _calc_inverse_operator(fwd_name, inv_name, evoked_fname, noise_cov, inv_loos
 #     stc.save(STC.format('all', inverse_method))
 
 
-def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
+def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
                            stc_template='', epo_fname='', evo_fname='', inv_fname='',
-                           fwd_usingMEG=True, fwd_usingEEG=True):
+                           fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, atlas='', raw=None, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     epo_fname = get_epo_fname(epo_fname)
     evo_fname = get_evo_fname(evo_fname)
@@ -895,8 +907,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
         stc_hemi_template = STC_HEMI
     else:
         stc_hemi_template = '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
-    if single_trial_stc:
-        from mne.minimum_norm import apply_inverse_epochs
+    events_keys = events.keys() if events is not None and isinstance(events, dict) else ['all']
     stcs, stcs_num = {}, {}
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
@@ -906,7 +917,7 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
             return False, stcs, stcs_num
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
-    for cond_name in events.keys():
+    for cond_name in events_keys:
         stc_fname = stc_template.format(cond=cond_name, method=inverse_method)[:-4]
         if op.isfile('{}.stc'.format(stc_fname)) and not overwrite_stc:
             stcs[cond_name] = mne.read_source_estimate(stc_fname)
@@ -924,23 +935,27 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
                 epo_cond = get_cond_fname(epo_fname, cond_name)
                 epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
                 mne.set_eeg_reference(epochs, ref_channels=None)
-                stcs[cond_name] = apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
+                stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                     pick_ori=pick_ori, return_generator=True)
                 stcs_num[cond_name] = epochs.events.shape[0]
                 # if save_stc:
                 #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
             else:
-                evoked = get_evoked_cond(
-                    cond_name, evo_fname, epo_fname, baseline, apply_SSP_projection_vectors, add_eeg_ref)
-                if evoked is None:
-                    return False, stcs, stcs_num
-                if not stc_t_min is None and not stc_t_max is None:
-                    evoked = evoked.crop(stc_t_min, stc_t_max)
-                try:
-                    mne.set_eeg_reference(evoked, ref_channels=None)
-                except:
-                    print('Cannot create EEG average reference projector (no EEG data found)')
-                stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+                if apply_on_raw:
+                    stcs_num[cond_name] = mne.minimum_norm.apply_inverse_raw(
+                        raw, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+                else:
+                    evoked = get_evoked_cond(
+                        cond_name, evo_fname, epo_fname, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                    if evoked is None:
+                        return False, stcs, stcs_num
+                    if not stc_t_min is None and not stc_t_max is None:
+                        evoked = evoked.crop(stc_t_min, stc_t_max)
+                    try:
+                        mne.set_eeg_reference(evoked, ref_channels=None)
+                    except:
+                        print('Cannot create EEG average reference projector (no EEG data found)')
+                    stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
@@ -956,6 +971,8 @@ def calc_stc_per_condition(events, stc_t_min=None, stc_t_max=None, inverse_metho
 
 
 def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc=False):
+    if events is None or (not isinstance(events, dict) and len(events) < 2):
+        return
     stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
     if all([utils.both_hemi_files_exist(
             stc_hemi_template.format(cond=cond, hemi='{hemi}'))
@@ -1918,28 +1935,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
                 # plt.show()
                 plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-        labels_names = [utils.to_str(l.name) for l in labels]
-        for em in extract_modes:
-            labels_data[em] = labels_data[em].squeeze()
-            labels_data[em] *= np.power(10, factor)
-            if positive or moving_average_win_size > 0:
-                labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
-
-            labels_output_fname = labels_data_template.format(atlas, em, hemi)  #if labels_output_fname_template == '' else \
-                # labels_output_fname_template.format(hemi=hemi)
-            # labels_norm_output_fname = op.join(SUBJECT_MEG_FOLDER, 'labels_data_norm_{}_{}_{}.npz'.format(
-            #     atlas, em, hemi))
-            lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
-            print('Saving to {}'.format(labels_output_fname))
-
-            np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-            shutil.copyfile(labels_output_fname, lables_mmvt_fname)
-            # Normalize the data
-            # data_max, data_min = utils.get_data_max_min(labels_data[em], norm_by_percentile, norm_percs)
-            # max_abs = utils.get_max_abs(data_max, data_min)
-            # labels_data[em] = labels_data[em] / max_abs
-            # np.savez(labels_norm_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-
+        save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, factor,
+                         positive, moving_average_win_size)
         flag = np.all(
             [op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
                 labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
@@ -1948,6 +1945,21 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         print('Error in calc_labels_avg_per_condition inv')
         flag = False
     return flag
+
+
+def save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, factor=1, positive=False, moving_average_win_size=0):
+    labels_names = [utils.to_str(l.name) for l in labels]
+    for em in extract_modes:
+        labels_data[em] = labels_data[em].squeeze()
+        labels_data[em] *= np.power(10, factor)
+        if positive or moving_average_win_size > 0:
+            labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
+        labels_output_fname = labels_data_template.format(atlas, em, hemi)  # if labels_output_fname_template == '' else \
+        lables_mmvt_fname = op.join(
+            MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
+        print('Saving to {}'.format(labels_output_fname))
+        np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
+        shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
 def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False):
@@ -2145,19 +2157,20 @@ def prepare_subject_folder(subject, remote_subject_dir, local_subjects_dir, nece
         False, sftp_args.print_traceback)
 
 
-def get_meg_files(subject, necessary_fnames, args, events):
+def get_meg_files(subject, necessary_fnames, args, events=None):
     fnames = []
+    events_keys = events.keys() if events is not None and isinstance(events, dict) else ['all']
     for necessary_fname in necessary_fnames:
         fname = os.path.basename(necessary_fname)
         if '{cond}' in fname:
-            fnames.extend([get_cond_fname(fname, event) for event in events.keys()])
+            fnames.extend([get_cond_fname(fname, event) for event in events_keys])
         else:
             fnames.append(fname)
     local_fol = op.join(MEG_DIR, args.task)
     prepare_subject_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
 
 
-def calc_fwd_inv_wrapper(subject, conditions, args, flags={}, mri_subject=''):
+def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject=''):
     if mri_subject == '':
         mri_subject = subject
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
@@ -2220,9 +2233,11 @@ def get_stc_hemi_template(stc_template):
     return '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
 
 
-def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}):
+def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}, raw=None):
     from itertools import product
     stc_hemi_template = get_stc_hemi_template(args.stc_template)
+    if conditions is None:
+        conditions = ['all']
     stc_exist = all([utils.both_hemi_files_exist(stc_hemi_template.format(
         cond=cond, method=im, hemi='{hemi}')) for (im, cond) in product(args.inverse_method, conditions)])
     if stc_exist and not args.overwrite_stc:
@@ -2239,8 +2254,97 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
             args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
-            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, args.atlas, raw,
+            args.n_jobs)
     return flags, stcs_conds, stcs_num
+
+
+def calc_labels_avg_for_rest_wrapper(args, raw=None):
+    return calc_labels_avg_for_rest(
+        args.atlas, args.inverse_method, raw, args.pick_ori, args.extract_mode, args.snr, args.raw_fname,
+        args.inv_fname, args.labels_data_template, args.overwrite_stc, args.fwd_usingMEG, args.fwd_usingEEG,
+        cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
+
+
+def calc_labels_avg_for_rest(atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=3, raw_fname='',
+                             inv_fname='', labels_data_template='', overwrite_stc=False, fwd_usingMEG=True, fwd_usingEEG=True,
+                             cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=6):
+    inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    if raw is None:
+        raw_fname = get_raw_fname(raw_fname)
+        if op.isfile(raw_fname):
+            mne.io.read_raw_fif(raw_fname)
+        else:
+            raise Exception("Can't find the raw file! ({})".format(raw_fname))
+    if labels_data_template == '':
+        labels_data_template = LBL
+    if not isinstance(inverse_method, str) and isinstance(inverse_method, Iterable):
+        inverse_method = inverse_method[0]
+    min_max_output_template = get_labels_minmax_template(labels_data_template)
+    inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
+    src = inverse_operator['src']
+    lambda2 = 1.0 / snr ** 2
+    labels_data = {}
+    for hemi in utils.HEMIS:
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
+        indices = np.array_split(np.arange(len(labels)), n_jobs)
+        chunks = [([labels[ind] for ind in indices_chunk], indices_chunk, len(labels), raw, src, inverse_operator, lambda2,
+                   inverse_method, extract_modes, pick_ori, save_data_files, overwrite_stc) for indices_chunk in indices]
+        results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
+        labels_data[hemi] = {}
+        for labels_data_chunk in results:
+            for em in extract_modes:
+                if em not in labels_data[hemi]:
+                    labels_data[hemi][em] = np.zeros(labels_data_chunk[em].shape)
+                labels_data[hemi][em] += labels_data_chunk[em]
+
+    for em in extract_modes:
+        data_max = max([np.max(labels_data[hemi][em]) for hemi in utils.HEMIS])
+        data_min = min([np.min(labels_data[hemi][em]) for hemi in utils.HEMIS])
+        data_minmax = utils.get_max_abs(data_max, data_min)
+        factor = -int(utils.ceil_floor(np.log10(data_minmax)))
+        for hemi in utils.HEMIS:
+            save_labels_data(labels_data, hemi, labels, atlas, [cond_name], em, labels_data_template, factor,
+                            positive, moving_average_win_size)
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
+        np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
+
+    from itertools import product
+    output_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'meg')
+    flag = all([op.isfile(op.join(output_fol, op.basename(labels_data_template.format(atlas, em, hemi)))) for \
+        em, hemi in product(extract_modes, utils.HEMIS)]) and \
+        all([op.isfile(op.join(output_fol, min_max_output_template.format(atlas, em))) for em in extract_modes])
+    return flag
+
+
+def calc_stc_labels_parallel(p):
+    (labels, indices, labels_num, raw, src, inverse_operator, lambda2, inverse_method, extract_modes, pick_ori,
+     save_data_files, overwrite) = p
+    labels_data = {}
+    for ind, label in zip(indices, labels):
+        stc = mne.minimum_norm.apply_inverse_raw(
+            raw, inverse_operator, lambda2, inverse_method, label=label, pick_ori=pick_ori)
+        for em in extract_modes:
+            # label_data = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
+            label_data = extract_label_data(label, src, stc)
+            label_data = np.squeeze(label_data)
+            if save_data_files:
+                fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'rest_labels_data_{}'.format(em)))
+                label_fname = op.join(fol, '{}-{}.npy'.format(label.name, em))
+                if not op.isfile(label_fname) and not overwrite:
+                    np.save(label_fname, label_data)
+            if em not in labels_data:
+                T = len(stc.times)
+                labels_data[em] = np.zeros((labels_num, T))
+            labels_data[em][ind, :] = label_data
+    return labels_data
+
+
+def extract_label_data(label, src, stc):
+    label_flip = mne.label_sign_flip(label, src)[:, None].squeeze()
+    label_flip = np.tile(label_flip, (stc.data.shape[1], 1)).T
+    label_tc = np.mean(label_flip * stc.data, axis=0)
+    return label_tc
 
 
 def calc_labels_avg_per_condition_wrapper(
@@ -2712,7 +2816,7 @@ def main(tup, remote_subject_dir, args, flags):
     # flags: calc_evoked
     flags, evoked, epochs = calc_evokes_wrapper(subject, conditions, args, flags, mri_subject=mri_subject)
     # flags: make_forward_solution, calc_inverse_operator
-    flags = calc_fwd_inv_wrapper(subject, conditions, args, flags, mri_subject)
+    flags = calc_fwd_inv_wrapper(subject, args, conditions, flags, mri_subject)
     # flags: calc_stc_per_condition
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
@@ -2727,6 +2831,12 @@ def main(tup, remote_subject_dir, args, flags):
                       for hemi in utils.HEMIS]
         get_meg_files(subject, stc_fnames, args, conditions)
         flags['save_vertex_activity_map'] = save_vertex_activity_map(conditions, stat, stcs_conds_smooth, inverse_method)
+
+    if 'calc_labels_avg_for_rest' in args.function:
+        flags['calc_labels_avg_for_rest'] = calc_labels_avg_for_rest(
+            args.atlas, inverse_method, None, args.pick_ori, args.extract_modes, args.snr, args.raw_fname,
+            args.inv_fname, args.labels_data_template, args.overwrite_stc, args.fwd_usingMEG, args.fwd_usingEEG,
+            cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
 
     # functions that aren't in the main pipeline
     if 'smooth_stc' in args.function:
@@ -2863,6 +2973,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--apply_on_raw', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
@@ -2900,8 +3011,10 @@ def read_cmd_args(argv=None):
     else:
         args.baseline = (args.baseline_min, args.baseline_max)
     if args.task == 'rest':
-        args.single_trial_stc = True
-        args.calc_epochs_from_raw = True
+        if not args.apply_on_raw:
+            # todo: check why it was set to True
+            # args.single_trial_stc = True
+            args.calc_epochs_from_raw = True
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0

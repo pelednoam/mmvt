@@ -6,6 +6,7 @@ import hcp
 import hcp.preprocessing as preproc
 
 from src.utils import utils
+from src.utils import preproc_utils as pu
 from src.preproc import meg
 
 
@@ -88,18 +89,8 @@ def using_preprocessed_epochs(all_events, eventss, baseline, hcp_params):
     return epochs_hcp, evokeds_from_epochs_hcp
 
 
-def analyze_task(subject, task, hcp_params):
+def analyze_task(subject, args, hcp_params):
     flags = {}
-    args = meg.read_cmd_args(dict(
-        subject=subject,
-        task=task,
-        files_includes_cond=True,
-        inverse_method='MNE'))
-
-    fname_format_cond = '{subject}_hcp_{cond}-{ana_type}.{file_type}'
-    fname_format = '{subject}_hcp-{ana_type}.{file_type}'
-    meg.init_globals_args(
-        subject, '', fname_format, fname_format_cond, MEG_DIR, SUBJECTS_DIR, MMVT_DIR, args)
     events = dict(face=1, tools=2)
     baseline = (-0.5, 0)
 
@@ -112,17 +103,71 @@ def analyze_task(subject, task, hcp_params):
             epochs_hcp[event].save(meg.get_cond_fname(meg.EPO, event))
             mne.write_evokeds(meg.get_cond_fname(meg.EVO, event), evokeds_from_epochs_hcp[event])
 
-    flags = meg.calc_fwd_inv_wrapper(subject, events, args, flags)
+    flags = meg.calc_fwd_inv_wrapper(subject, args, events, flags)
     flags, stcs_conds, _ = meg.calc_stc_per_condition_wrapper(subject, events, args.inverse_method, args, flags)
     flags = meg.calc_labels_avg_per_condition_wrapper(subject, events, args.atlas, args.inverse_method, stcs_conds, args, flags)
 
 
-def analyze_rest():
-    raw = hcp.read_raw(data_type='rest', run_index=0, **hcp_params)
+def analyze_rest(subject, args, hcp_params, run_index=0):
+    flags = {}
+    raw = hcp.read_raw(run_index=run_index, **hcp_params)
+    # annots = hcp.read_annot(run_index=run_index, **hcp_params)
+    # epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
+    meg.calc_fwd_inv_wrapper(subject, args)
+    args.snr = 1.0  # use smaller SNR for raw data
+    # args.n_jobs = 1
+    meg.calc_labels_avg_for_rest_wrapper(args, raw)
+    print('sdf')
 
+
+def compute_noise_cov(subject, hcp_path, noise_cov_fname=''):
+    if noise_cov_fname == '':
+        noise_cov_fname = meg.NOISE_COV.format(cond='empty_room')
+    if op.isfile(noise_cov_fname):
+        noise_cov = mne.read_cov(noise_cov_fname)
+        return noise_cov
+    utils.make_dir(utils.get_parent_fol(noise_cov_fname))
+
+    raw_noise = hcp.read_raw(subject=subject, hcp_path=hcp_path, data_type='noise_empty_room')
+    raw_noise.load_data()
+    # apply ref channel correction and drop ref channels
+    preproc.apply_ref_correction(raw_noise)
+    raw_noise.filter(0.50, None, method='iir',
+                     iir_params=dict(order=4, ftype='butter'), n_jobs=1)
+    raw_noise.filter(None, 60, method='iir',
+                     iir_params=dict(order=4, ftype='butter'), n_jobs=1)
+    ##############################################################################
+    # Note that using the empty room noise covariance will inflate the SNR of the
+    # evkoked and renders comparisons  to `baseline` rather uninformative.
+    noise_cov = mne.compute_raw_covariance(raw_noise, method='empirical')
+    noise_cov.save(noise_cov_fname)
+    return noise_cov
+
+
+def init(subject, task):
+    args = pu.init_args(meg.read_cmd_args(dict(
+        subject=subject,
+        atlas='laus125',
+        task=task,
+        files_includes_cond=True,
+        inverse_method='MNE')))
+
+    fname_format_cond = '{subject}_hcp_{cond}-{ana_type}.{file_type}'
+    fname_format = '{subject}_hcp-{ana_type}.{file_type}'
+    meg.init_globals_args(
+        subject, '', fname_format, fname_format_cond, MEG_DIR, SUBJECTS_DIR, MMVT_DIR, args)
+
+    hcp_params = dict(hcp_path=HCP_DIR, subject=subject, data_type=task)
+    return args, hcp_params
 
 if __name__ == '__main__':
+
+
+    # https://db.humanconnectome.org/
     subject = '100307'
-    task = 'task_working_memory'
-    hcp_params = dict(hcp_path=HCP_DIR, subject=subject, data_type=task)
-    analyze_task(subject, task, hcp_params)
+    # task = 'task_working_memory'
+    task = 'rest'
+    args, hcp_params = init(subject, task)
+    # analyze_task(subject, args, hcp_params)
+    analyze_rest(subject, args, hcp_params)
+    # test_apply_ica(dict(hcp_path=HCP_DIR, subject=subject, data_type='rest'))

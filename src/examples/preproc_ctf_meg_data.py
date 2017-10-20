@@ -33,7 +33,7 @@ def analyze(subject, raw_files_template, inverse_method, conditions, sessions, a
         args.inv_fname = op.join(MEG_DIR, subject, '{}-inv.fif'.format(cond))
         args.fwd_fname = op.join(MEG_DIR, subject, '{}-fwd.fif'.format(cond))
         args.evo_fname = op.join(MEG_DIR, subject, '{}{}-ave.fif'.format(cond, freqs_str))
-        meg.calc_fwd_inv_wrapper(subject, cond, args)
+        meg.calc_fwd_inv_wrapper(subject, args, cond)
         raw_files_cond = raw_files_template.format(cond=cond)
         raw_files = glob.glob(raw_files_cond)
         args.conditions = condition = {cond:cond_key}
@@ -142,7 +142,7 @@ def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all
         fig = evoked[0].plot_joint(times=[-0.5, 0.05, 0.150, 0.250, 0.6])
         plt.show()
     if calc_stc_per_session:
-        meg.calc_fwd_inv_wrapper(subject, condition, args)
+        meg.calc_fwd_inv_wrapper(subject, args, condition)
         # stcs_conds = None
         if not utils.both_hemi_files_exist(stc_hemi_template.format(cond=cond, method=inverse_method, hemi='{hemi}')):
             _, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(subject, condition, inverse_method, args)
