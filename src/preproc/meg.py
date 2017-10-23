@@ -118,7 +118,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
-    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
+    # LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
+    LBL = op.join(MMVT_SUBJECT_FOLDER, 'meg', 'labels_data_{}_{}_{}.npz')  # atlas, extract_method, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -790,7 +791,7 @@ def get_raw_fname(raw_fname=''):
     if raw_fname == '':
         raw_fname, raw_exist = locating_file(raw_fname, '*raw.fif')
         if not raw_exist:
-            epo_fname = RAW
+            raw_fname = RAW
     return raw_fname
 
 
@@ -1979,19 +1980,20 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
     return flag
 
 
-def save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, factor=1, positive=False, moving_average_win_size=0):
-    labels_names = [utils.to_str(l.name) for l in labels]
+def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, labels_data_template, factor=1, positive=False, moving_average_win_size=0):
+    if not isinstance(labels_names[0], str):
+        labels_names = [utils.to_str(l.name) for l in labels_names]
     for em in extract_modes:
         labels_data[em] = labels_data[em].squeeze()
         labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
             labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
         labels_output_fname = labels_data_template.format(atlas, em, hemi)  # if labels_output_fname_template == '' else \
-        lables_mmvt_fname = op.join(
-            MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
+        # lables_mmvt_fname = op.join(
+        #     MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
         print('Saving to {}'.format(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-        shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+        # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
 def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False):
@@ -2298,48 +2300,75 @@ def calc_labels_avg_for_rest_wrapper(args, raw=None):
         cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
 
 
-def calc_labels_avg_for_rest(atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=3, raw_fname='',
-                             inv_fname='', labels_data_template='', overwrite_stc=False, fwd_usingMEG=True, fwd_usingEEG=True,
-                             cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=6):
-    inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
-    if raw is None:
-        raw_fname = get_raw_fname(raw_fname)
-        if op.isfile(raw_fname):
-            mne.io.read_raw_fif(raw_fname)
-        else:
-            raise Exception("Can't find the raw file! ({})".format(raw_fname))
+def calc_labels_avg_for_rest(
+        atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=1, raw_fname='', inv_fname='',
+        labels_data_template='', overwrite_stc=False, overwrite_labels_data=False, fwd_usingMEG=True, fwd_usingEEG=True,
+        cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=6):
+    def collect_parallel_results(indices, results, labels_num):
+        labels_data_hemi = {}
+        for indices_chunk, labels_data_chunk in zip(indices, results):
+            for em in extract_modes:
+                if em not in labels_data_hemi:
+                    labels_data_hemi[em] = np.zeros((labels_num, labels_data_chunk[em].shape[1]))
+                labels_data_hemi[em][indices_chunk] = labels_data_chunk[em]
+        return labels_data_hemi
+
+    labels_output_fol_template = utils.make_dir(
+        op.join(SUBJECT_MEG_FOLDER, 'rest_{}_labels_data_{}'.format(atlas, '{extract_mode}')))
     if labels_data_template == '':
         labels_data_template = LBL
-    if not isinstance(inverse_method, str) and isinstance(inverse_method, Iterable):
-        inverse_method = inverse_method[0]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
-    inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
-    src = inverse_operator['src']
-    lambda2 = 1.0 / snr ** 2
-    labels_data = {}
-    for hemi in utils.HEMIS:
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
-        indices = np.array_split(np.arange(len(labels)), n_jobs)
-        chunks = [([labels[ind] for ind in indices_chunk], indices_chunk, len(labels), raw, src, inverse_operator, lambda2,
-                   inverse_method, extract_modes, pick_ori, save_data_files, overwrite_stc) for indices_chunk in indices]
-        results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
-        labels_data[hemi] = {}
-        for labels_data_chunk in results:
-            for em in extract_modes:
-                if em not in labels_data[hemi]:
-                    labels_data[hemi][em] = np.zeros(labels_data_chunk[em].shape)
-                labels_data[hemi][em] += labels_data_chunk[em]
+
+    labels_num = lu.get_labels_num(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
+    labels_files_exist = all([len(glob.glob(op.join(
+        SUBJECT_MEG_FOLDER, labels_output_fol_template.format(extract_mode=em), '*.npy'))) == labels_num \
+        for em in extract_modes])
+    labels_data_exist = all([utils.both_hemi_files_exist(labels_data_template.format(atlas, em, '{hemi}'))\
+                             for em in extract_modes])
+    if (not labels_files_exist and not labels_data_exist) or overwrite_labels_data:
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+        if raw is None:
+            raw_fname = get_raw_fname(raw_fname)
+            if op.isfile(raw_fname):
+                mne.io.read_raw_fif(raw_fname)
+            else:
+                raise Exception("Can't find the raw file! ({})".format(raw_fname))
+        if not isinstance(inverse_method, str) and isinstance(inverse_method, Iterable):
+            inverse_method = inverse_method[0]
+        inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
+        src = inverse_operator['src']
+        lambda2 = 1.0 / snr ** 2
+        labels_data = {}
+        for hemi in utils.HEMIS:
+            labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
+            indices = np.array_split(np.arange(len(labels)), n_jobs)
+            chunks = [([labels[ind] for ind in indices_chunk], raw, src, inverse_operator, lambda2, inverse_method,
+                       extract_modes, pick_ori, save_data_files, labels_output_fol_template, overwrite_stc)
+                      for indices_chunk in indices]
+            results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
+            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
+
+    elif (not labels_data_exist) or overwrite_labels_data:
+        labels_data = {}
+        for hemi in utils.HEMIS:
+            labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
+            indices = np.array_split(np.arange(len(labels_names)), n_jobs)
+            chunks = [([labels_names[ind] for ind in indices_chunk], extract_modes, labels_output_fol_template)
+                      for indices_chunk in indices]
+            results = utils.run_parallel(_load_labels_data_parallel, chunks, n_jobs)
+            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
 
     for em in extract_modes:
         data_max = max([np.max(labels_data[hemi][em]) for hemi in utils.HEMIS])
         data_min = min([np.min(labels_data[hemi][em]) for hemi in utils.HEMIS])
         data_minmax = utils.get_max_abs(data_max, data_min)
         factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-        for hemi in utils.HEMIS:
-            save_labels_data(labels_data, hemi, labels, atlas, [cond_name], em, labels_data_template, factor,
-                            positive, moving_average_win_size)
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
         np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
+        for hemi in utils.HEMIS:
+            labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
+            save_labels_data(labels_data[hemi], hemi, labels_names, atlas, ['all'], extract_modes, labels_data_template,
+                             factor, positive, moving_average_win_size)
 
     from itertools import product
     output_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'meg')
@@ -2350,10 +2379,10 @@ def calc_labels_avg_for_rest(atlas, inverse_method, raw=None, pick_ori=None, ext
 
 
 def calc_stc_labels_parallel(p):
-    (labels, indices, labels_num, raw, src, inverse_operator, lambda2, inverse_method, extract_modes, pick_ori,
-     save_data_files, overwrite) = p
+    (labels, raw, src, inverse_operator, lambda2, inverse_method, extract_modes, pick_ori,
+     save_data_files, labels_output_fol_template, overwrite) = p
     labels_data = {}
-    for ind, label in zip(indices, labels):
+    for ind, label in enumerate(labels):
         stc = mne.minimum_norm.apply_inverse_raw(
             raw, inverse_operator, lambda2, inverse_method, label=label, pick_ori=pick_ori)
         for em in extract_modes:
@@ -2361,13 +2390,28 @@ def calc_stc_labels_parallel(p):
             label_data = extract_label_data(label, src, stc)
             label_data = np.squeeze(label_data)
             if save_data_files:
-                fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'rest_labels_data_{}'.format(em)))
-                label_fname = op.join(fol, '{}-{}.npy'.format(label.name, em))
+                # fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'rest_labels_data_{}'.format(em)))
+                labels_output_fol = labels_output_fol_template.format(extract_mode=em)
+                label_fname = op.join(labels_output_fol, '{}-{}.npy'.format(label.name, em))
                 if not op.isfile(label_fname) and not overwrite:
                     np.save(label_fname, label_data)
             if em not in labels_data:
                 T = len(stc.times)
-                labels_data[em] = np.zeros((labels_num, T))
+                labels_data[em] = np.zeros((len(labels), T))
+            labels_data[em][ind, :] = label_data
+    return labels_data
+
+
+def _load_labels_data_parallel(p):
+    labels, extract_modes, labels_output_fol_template = p
+    labels_data = {}
+    for em in extract_modes:
+        labels_output_fol = labels_output_fol_template.format(extract_mode=em)
+        for ind, label in enumerate(labels):
+            label_fname = op.join(labels_output_fol, '{}-{}.npy'.format(label, em))
+            label_data = np.load(label_fname).squeeze()
+            if em not in labels_data:
+                labels_data[em] = np.zeros((len(labels), len(label_data)))
             labels_data[em][ind, :] = label_data
     return labels_data
 
@@ -2876,9 +2920,10 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'calc_labels_avg_for_rest' in args.function:
         flags['calc_labels_avg_for_rest'] = calc_labels_avg_for_rest(
-            args.atlas, inverse_method, None, args.pick_ori, args.extract_modes, args.snr, args.raw_fname,
-            args.inv_fname, args.labels_data_template, args.overwrite_stc, args.fwd_usingMEG, args.fwd_usingEEG,
-            cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
+            args.atlas, inverse_method, None, args.pick_ori, args.extract_mode, args.snr, args.raw_fname,
+            args.inv_fname, args.labels_data_template, args.overwrite_stc, args.overwrite_labels_data,
+            args.fwd_usingMEG, args.fwd_usingEEG, cond_name='all', positive=False, moving_average_win_size=0,
+            save_data_files=True, n_jobs=args.n_jobs)
 
     # functions that aren't in the main pipeline
     if 'smooth_stc' in args.function:

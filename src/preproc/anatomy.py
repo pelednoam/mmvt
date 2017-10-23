@@ -187,7 +187,7 @@ def convert_and_rename_subcortical_files(fol, new_fol, lookup):
 
 
 def create_surfaces(subject, hemi='both', overwrite=False):
-    for hemi in utils.get_hemis(hemi):
+    for hemi in lu.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
         for surf_type in ['inflated', 'pial']:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
@@ -334,31 +334,31 @@ def check_ply_files(subject):
         ok = ok and verts1.shape[0] == verts2.shape[0] and faces1.shape[0]==faces2.shape[0]
     return ok
 
-
-@utils.timeit
-def convert_perecelated_cortex(subject, atlas, surf_type='pial', overwrite_ply_files=False, hemi='both'):
-    lookup = {}
-    for hemi in utils.get_hemis(hemi):
-        lookup[hemi] = create_labels_lookup(subject, hemi, atlas)
-        if len(lookup[hemi]) == 0:
-            continue
-        mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(atlas, surf_type, hemi))
-        ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(atlas, surf_type, hemi))
-        utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-        blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surf_type, hemi))
-        # utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
-        # rename_cortical(lookup, mat_fol, ply_fol)
-        # if surf_type == 'inflated':
-        #     for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
-        #         verts, faces = utils.read_ply_file(ply_fname)
-        #         verts_offset = 55 if hemi == 'rh' else -55
-        #         verts[:, 0] = verts[:, 0] + verts_offset
-        #         utils.write_ply_file(verts, faces, ply_fname)
-        # utils.rmtree(blender_fol)
-        # shutil.copytree(ply_fol, blender_fol)
-        # utils.rmtree(mat_fol)
-        # utils.rmtree(ply_fol)
-    return lookup
+#
+# @utils.timeit
+# def convert_perecelated_cortex(subject, atlas, surf_type='pial', overwrite_ply_files=False, hemi='both'):
+#     lookup = {}
+#     for hemi in lu.get_hemis(hemi):
+#         lookup[hemi] = create_labels_lookup(subject, hemi, atlas)
+#         if len(lookup[hemi]) == 0:
+#             continue
+#         mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(atlas, surf_type, hemi))
+#         ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(atlas, surf_type, hemi))
+#         utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
+#         blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surf_type, hemi))
+#         # utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
+#         # rename_cortical(lookup, mat_fol, ply_fol)
+#         # if surf_type == 'inflated':
+#         #     for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
+#         #         verts, faces = utils.read_ply_file(ply_fname)
+#         #         verts_offset = 55 if hemi == 'rh' else -55
+#         #         verts[:, 0] = verts[:, 0] + verts_offset
+#         #         utils.write_ply_file(verts, faces, ply_fname)
+#         # utils.rmtree(blender_fol)
+#         # shutil.copytree(ply_fol, blender_fol)
+#         # utils.rmtree(mat_fol)
+#         # utils.rmtree(ply_fol)
+#     return lookup
 
 
 def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_subject_dir='',

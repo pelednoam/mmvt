@@ -468,6 +468,34 @@ def get_hemi_from_name(label_name):
     return hemi
 
 
+def get_labels_num(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _read_annot
+    annot_fnames = get_annot_fnames(subject, subjects_dir, atlas, hemi)
+    return np.concatenate([_read_annot(annot_fname)[2] for annot_fname in annot_fnames]).shape[0]
+
+
+def get_labels_names(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _read_annot
+    annot_fnames = get_annot_fnames(subject, subjects_dir, atlas, hemi)
+    hemis = get_hemis(hemi)
+    labels = []
+    for annot_fname, hemi in zip(annot_fnames, hemis):
+        labels_names = _read_annot(annot_fname)[2]
+        labels_names = fix_labels_names(labels_names, hemi)
+        labels.extend(labels_names)
+    return labels
+
+
+def get_hemis(hemi):
+    return HEMIS if hemi == 'both' else [hemi]
+
+
+def get_annot_fnames(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _get_annot_fname
+    annot_fnames, hemis = _get_annot_fname(None, subject, hemi, atlas, subjects_dir)
+    return annot_fnames
+
+
 @functools.lru_cache(maxsize=None)
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=None, rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,

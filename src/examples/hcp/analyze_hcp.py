@@ -110,7 +110,8 @@ def analyze_task(subject, args, hcp_params):
 
 def analyze_rest(subject, args, hcp_params, run_index=0):
     flags = {}
-    raw = hcp.read_raw(run_index=run_index, **hcp_params)
+    raw = None
+    # raw = hcp.read_raw(run_index=run_index, **hcp_params)
     # annots = hcp.read_annot(run_index=run_index, **hcp_params)
     # epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
     meg.calc_fwd_inv_wrapper(subject, args)

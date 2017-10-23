@@ -904,7 +904,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--identifier', help='', required=False, default='fs')
+    parser.add_argument('--identifier', help='', required=False, default='')
     parser.add_argument('--connectivity_threshold', help='', required=False, default=0.7, type=float)
 
     parser.add_argument('--labels_regex', help='labels regex', required=False, default='post*cingulate*rh')
