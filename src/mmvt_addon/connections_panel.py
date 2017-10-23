@@ -854,8 +854,12 @@ def set_connections_threshold(threshold):
 
 def init(addon):
     import glob
+    conn_keys = set(['conditions', 'labels', 'locations', 'hemis', 'con_indices', 'con_names', 'con_values',
+                     'con_types', 'data_max', 'data_min', 'connectivity_method'])
     conn_files_template = op.join(mu.get_user_fol(), 'connectivity', '*.npz')
-    conn_files = glob.glob(conn_files_template)
+    conn_files = [f for f in glob.glob(conn_files_template) if 'backup' not in mu.namebase(f)]
+    conn_files = [f for f in conn_files if all([k in set(np.load(f).keys()) for k in conn_keys])]
+
     ConnectionsPanel.connections_files_exist = len(conn_files) > 0
     if not ConnectionsPanel.connections_files_exist:
         print('No connectivity files were found in {}'.format(conn_files_template))

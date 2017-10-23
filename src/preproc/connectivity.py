@@ -242,6 +242,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
 
     if windows_num == 1:
         identifier = '{}static_'.format(identifier) if identifier != '' else 'static_'
+    if args.max_windows_num is not None:
+        windows_num = min(args.max_windows_num, windows_num)
     output_fname = get_output_fname(args.connectivity_method[0], labels_extract_mode, identifier)
     output_mat_fname = get_output_mat_fname(args.connectivity_method[0], labels_extract_mode, identifier)
     static_conn = None
@@ -289,8 +291,15 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
-            conn_data = np.transpose(data, [2, 1, 0])
-            chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+            if data.ndim == 3:
+                conn_data = np.transpose(data, [2, 1, 0])
+            elif data.ndim == 2:
+                conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
+                for w in range(windows_num):
+                    conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
+            indices = np.array_split(np.arange(windows_num), args.n_jobs)
+            # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length) for chunk_indices in indices]
             results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
             for chunk in results:
                 for w, con in chunk.items():
@@ -407,27 +416,32 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     return ret
 
 
-def pli(data):
+def pli(data, channels_num, window_length):
     try:
         from scipy.signal import hilbert
-        nch = data.shape[0]
+        # nch = data.shape[0]
         data_hil = hilbert(data)
-        m = np.zeros((nch, nch))
-        for i in range(nch):
-            for j in range(nch):
+        if data_hil.shape != (channels_num, window_length):
+            raise Exception('PLI: Wrong dimentions!')
+        m = np.zeros((channels_num, channels_num))
+        for i in range(channels_num):
+            for j in range(channels_num):
                 if i < j:
-                    m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
+                    m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[i] / data_hil[j]))))
+                    # m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
         return m + m.T
     except:
         print(traceback.format_exc())
         return None
 
 
-def _pli_parallel(windows_chunk):
+def _pli_parallel(p):
     res = {}
-    for window_ind, window in windows_chunk:
+    conn_data, indices, channels_num, window_length = p
+    # for window_ind, window in windows_chunk:
+    for window_ind, window in zip(indices, conn_data):
         print('PLI: Window ind {}'.format(window_ind))
-        pli_val = pli(window)
+        pli_val = pli(window, channels_num, window_length)
         if not pli_val is None:
             res[window_ind] = pli_val
         else:
@@ -878,7 +892,7 @@ def read_cmd_args(argv=None):
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--connectivity_method', help='', required=False, default='corr,cv', type=au.str_arr_type)
-    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
+    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)

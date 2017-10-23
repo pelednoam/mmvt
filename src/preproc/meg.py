@@ -966,7 +966,6 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
-    copy_sphere_reg_files()
     calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
@@ -987,16 +986,6 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrit
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
-
-
-def copy_sphere_reg_files():
-    # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
-    if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format('{hemi}'))):
-        for hemi in utils.HEMIS:
-            shutil.copy(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)),
-                        op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)))
-    else:
-        print("No ?h.sphere.reg files! You won't be able to plot stc files")
 
 
 def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
@@ -2304,6 +2293,7 @@ def calc_labels_avg_for_rest(
         atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=1, raw_fname='', inv_fname='',
         labels_data_template='', overwrite_stc=False, overwrite_labels_data=False, fwd_usingMEG=True, fwd_usingEEG=True,
         cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=6):
+
     def collect_parallel_results(indices, results, labels_num):
         labels_data_hemi = {}
         for indices_chunk, labels_data_chunk in zip(indices, results):

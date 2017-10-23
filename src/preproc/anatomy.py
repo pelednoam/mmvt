@@ -1228,10 +1228,20 @@ def create_skull_surfaces(subject):
                 for skull_surf in ['inner_skull', 'outer_skull']])
 
 
+def copy_sphere_reg_files(subject):
+    # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
+    tempalte = op.join(SUBJECTS_DIR, subject, 'surf', '{}.sphere.reg'.format('{hemi}'))
+    if utils.both_hemi_files_exist(tempalte):
+        for hemi in utils.HEMIS:
+            mmvt_fname = op.join(MMVT_DIR, subject, 'surf', '{}.sphere.reg'.format(hemi))
+            if not op.isfile(mmvt_fname):
+                shutil.copy(tempalte.format(hemi=hemi), mmvt_fname)
+    else:
+        print("No ?h.sphere.reg files! You won't be able to plot stc files")
+
+
 def main(subject, remote_subject_dir, args, flags):
-    # from src.setup import create_fsaverage_link
-    # create_fsaveragge_link()
-    # utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+    copy_sphere_reg_files(subject)
 
     if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
