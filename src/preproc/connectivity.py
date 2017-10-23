@@ -583,7 +583,7 @@ def calc_connectivity(data, labels, hemis, args):
     #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     # import time
     M = data.shape[0]
-    W = data.shape[2] if not 'windows' in args else args.windows
+    W = data.shape[2] if 'windows' not in args or args.windows == 0 else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, len(args.conditions)))
@@ -897,7 +897,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
-    parser.add_argument('--windows', help='', required=False, default=1, type=int)
+    parser.add_argument('--windows', help='', required=False, default=0, type=int)
     parser.add_argument('--t_max', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)

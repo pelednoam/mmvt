@@ -754,7 +754,7 @@ def create_labels_coloring(subject, labels_names, labels_values, coloring_name, 
     ret = False
     try:
         labels_colors = utils.arr_to_colors(
-            labels_values, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile, colors_map=colors_map)
+            labels_values, norm_percs=norm_percs, colors_map=colors_map) # norm_by_percentile=norm_by_percentile
         print('Saving coloring to {}'.format(coloring_fname))
         with open(coloring_fname, 'w') as colors_file:
             for label_name, label_color, label_value in zip(labels_names, labels_colors, labels_values):

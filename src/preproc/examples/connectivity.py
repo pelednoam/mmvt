@@ -100,7 +100,7 @@ def calc_meg_connectivity(args):
         # sfreq=1000.0,
         # fmin=10,
         # fmax=100
-        recalc_connectivity=True,
+        # recalc_connectivity=True,
         max_windows_num=100,
         n_jobs=args.n_jobs
     ))
