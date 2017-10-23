@@ -541,7 +541,7 @@ def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=Tr
 
     unknown_labels = lu.create_unknown_labels(subject, atlas)
     for hemi in utils.HEMIS:
-        d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
+        d = np.load(op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, hemi)))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         bad_vertices_hemi = []
@@ -665,7 +665,7 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
 
 @utils.tryit(False, False)
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
-    output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    output_fname = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
         return True
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
@@ -718,7 +718,7 @@ def calc_faces_contours(subject, atlas):
     create_verts_faces_lookup(subject)
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
-    contours_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    contours_fname = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     # verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format('{hemi}'))
     verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
     output_fname = op.join(MMVT_DIR, subject, 'contours_faces_{}.pkl'.format(atlas))

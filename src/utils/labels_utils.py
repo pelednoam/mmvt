@@ -235,6 +235,8 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
                                  labels_fol=read_labels_from_fol)
         else:
             labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        if len(labels) == 0:
+            raise Exception("Can't read labels from {} {}".format(subject, atlas))
         labels_names = [l.name for l in labels]
         # if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
         # create_unknown_label = True
@@ -477,22 +479,19 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = mne.read_labels_from_annot(
                     subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
             except:
-                try:
-                    labels = read_labels_from_annots(subject, subjects_dir, atlas, hemi)
-                except:
-                    print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
-                        subject, atlas, surf_name, hemi))
-                    print('Trying to read labels files')
-                    if not read_only_from_annot:
-                        labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-                        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
+                print(traceback.format_exc())
+                print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
+                    subject, atlas, surf_name, hemi))
+                print('Trying to read labels files')
+                if not read_only_from_annot:
+                    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
+                    labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
                 labels = read_labels_parallel(
                     subject, subjects_dir, atlas, hemi=hemi, labels_fol=labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
-            print("Can't read the {} labels!".format(atlas))
-            return []
+            raise Exception("Can't read the {} labels!".format(atlas))
         if exclude is None:
             exclude = []
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
@@ -767,7 +766,8 @@ def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_j
     return new_label
 
 
-def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts, n_jobs=6):
+def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts,
+                                     min_cluster_max=0, min_cluster_size=0, clusters_label='', n_jobs=6):
     cluster_labels = []
     if not op.isfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))):
         from src.utils import freesurfer_utils as fu
@@ -790,7 +790,8 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
         inter_labels_tups = sorted(inter_labels_tups)[::-1]
         for inter_labels_tup in inter_labels_tups:
             inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
-        if len(inter_labels) > 0:
+        if len(inter_labels) > 0 and abs(cluster_max) >= min_cluster_max and len(cluster) >= min_cluster_size and \
+                        clusters_label in inter_labels[0]['name']:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
             cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
                 coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster))))

@@ -126,7 +126,7 @@ def contours_coloring_update(self, context):
     d = {}
     items = [('all labels', 'all labels', '', 0)]
     for hemi in mu.HEMIS:
-        d[hemi] = np.load(op.join(user_fol, '{}_contours_{}.npz'.format(
+        d[hemi] = np.load(op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
             bpy.context.scene.contours_coloring, hemi)))
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
         items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
@@ -2089,7 +2089,7 @@ def init_eeg_sensors():
 
 def init_contours_coloring():
     user_fol = mu.get_user_fol()
-    contours_files = glob.glob(op.join(user_fol, '*contours_lh.npz'))
+    contours_files = glob.glob(op.join(user_fol, 'labels', '*contours_lh.npz'))
     if len(contours_files) > 0:
         ColoringMakerPanel.contours_coloring_exist = True
         files_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
