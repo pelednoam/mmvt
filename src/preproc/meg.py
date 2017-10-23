@@ -2365,12 +2365,12 @@ def calc_labels_avg_for_rest(
         factor = -int(utils.ceil_floor(np.log10(data_minmax)))
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
         np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
-        for hemi in utils.HEMIS:
-            labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
-            save_labels_data(labels_data[hemi], hemi, labels_names, atlas, ['all'], extract_modes, labels_data_template,
-                             factor, positive, moving_average_win_size)
+        if (not labels_data_exist) or overwrite_labels_data:
+            for hemi in utils.HEMIS:
+                labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
+                save_labels_data(labels_data[hemi], hemi, labels_names, atlas, ['all'], extract_modes,
+                                 labels_data_template, factor, positive, moving_average_win_size)
 
-    from itertools import product
     output_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'meg')
     flag = all([op.isfile(op.join(output_fol, op.basename(labels_data_template.format(atlas, em, hemi)))) for \
         em, hemi in product(extract_modes, utils.HEMIS)]) and \
@@ -2387,6 +2387,9 @@ def calc_stc_labels_parallel(p):
             raw, inverse_operator, lambda2, inverse_method, label=label, pick_ori=pick_ori)
         for em in extract_modes:
             # label_data = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
+            if em != 'mean_flip':
+                print("{} isn't implemented yet for rest data!".format(em))
+                continue
             label_data = extract_label_data(label, src, stc)
             label_data = np.squeeze(label_data)
             if save_data_files:
