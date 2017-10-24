@@ -808,6 +808,8 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
     for cluster in clusters:
         x = data[cluster]
         cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
+        if abs(cluster_max) < min_cluster_max or len(cluster) < min_cluster_size:
+            continue
         inter_labels, inter_labels_tups = [], []
         for label in labels:
             overlapped_vertices = np.intersect1d(cluster, label.vertices)
@@ -818,8 +820,7 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
         inter_labels_tups = sorted(inter_labels_tups)[::-1]
         for inter_labels_tup in inter_labels_tups:
             inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
-        if len(inter_labels) > 0 and abs(cluster_max) >= min_cluster_max and len(cluster) >= min_cluster_size and \
-                        clusters_label in inter_labels[0]['name']:
+        if len(inter_labels) > 0 and clusters_label in inter_labels[0]['name']:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
             cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
                 coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster))))

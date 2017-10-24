@@ -108,16 +108,61 @@ def analyze_task(subject, args, hcp_params):
     flags = meg.calc_labels_avg_per_condition_wrapper(subject, events, args.atlas, args.inverse_method, stcs_conds, args, flags)
 
 
-def analyze_rest(subject, args, hcp_params, run_index=0):
+def read_raw_data(run_index, hcp_params):
+    raw = hcp.read_raw(run_index=run_index, **hcp_params)
+    raw.load_data()
+    # apply ref channel correction and drop ref channels
+    # preproc.apply_ref_correction(raw)
+
+    annots = hcp.read_annot(run_index=run_index, **hcp_params)
+    # construct MNE annotations
+    bad_seg = (annots['segments']['all']) / raw.info['sfreq']
+    annotations = mne.Annotations(
+        bad_seg[:, 0], (bad_seg[:, 1] - bad_seg[:, 0]),
+        description='bad')
+
+    raw.annotations = annotations
+    raw.info['bads'].extend(annots['channels']['all'])
+    raw.pick_types(meg=True, ref_meg=False)
+
+    #  Note: MNE complains on Python 2.7
+    raw.filter(0.50, None, method='iir',
+               iir_params=dict(order=4, ftype='butter'), n_jobs=1)
+    raw.filter(None, 60, method='iir',
+               iir_params=dict(order=4, ftype='butter'), n_jobs=1)
+
+    # read ICA and remove EOG ECG
+    # note that the HCP ICA assumes that bad channels have already been removed
+    ica_mat = hcp.read_ica(run_index=run_index, **hcp_params)
+
+    # We will select the brain ICs only
+    exclude = annots['ica']['ecg_eog_ic']
+    preproc.apply_ica_hcp(raw, ica_mat=ica_mat, exclude=exclude)
+    return raw
+
+
+def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=False, calc_rest_from_epochs=True):
     flags = {}
-    raw = None
-    # raw = hcp.read_raw(run_index=run_index, **hcp_params)
-    # annots = hcp.read_annot(run_index=run_index, **hcp_params)
-    # epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
+    if not op.isfile(meg.RAW):
+        raw = read_raw_data(run_index, hcp_params)
+        raw.save(meg.RAW)
+    else:
+        raw = mne.io.read_raw_fif(meg.RAW)
     meg.calc_fwd_inv_wrapper(subject, args)
     args.snr = 1.0  # use smaller SNR for raw data
-    # args.n_jobs = 1
-    meg.calc_labels_avg_for_rest_wrapper(args, raw)
+    args.overwrite_labels_data = True
+    args.n_jobs = 1
+    if calc_rest_from_raw:
+        meg.calc_labels_avg_for_rest_wrapper(args, raw)
+    elif calc_rest_from_epochs:
+        epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
+        args.single_trial_stc = True
+        'A210'
+        flags, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(
+            subject, None, args.inverse_method, args, flags, None, epochs)
+        flags = meg.calc_labels_avg_per_condition_wrapper(
+            subject, None, args.atlas, args.inverse_method, stcs_conds, args, flags, stcs_num)
+
     print('sdf')
 
 

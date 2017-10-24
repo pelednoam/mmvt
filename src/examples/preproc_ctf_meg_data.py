@@ -245,14 +245,21 @@ def plot_all_functional_rois(subject, sfreq, time_series_type='precentral', min_
         cluster = utils.load(cluster_fname)
         clusters_info = [info for info in cluster.values if time_series_type in info.name and \
                          info.size > min_cluster_size and info.label_data is not None]
+        if len(clusters_info) == 0:
+            print('No labels where found for {}!'.format(cluster_fname))
+            continue
         for info in clusters_info:
             print('{name}_max_{max:.2f}_size_{size}'.format(**info))
-        clusters_info = flip_to_same_direction(clusters_info)
+            print('max: {}, min: {}'.format(np.max(abs(info.label_data)), np.min(info.label_data)))
+        # clusters_info = flip_to_same_direction(clusters_info)
         plt.figure(figsize=(8, 8))
         for info in clusters_info:
             plt.plot(time, info.label_data, label='{name}_max_{max:.2f}_size_{size}'.format(**info))
+
         plt.xlim([-1.5, 0.5])
-        plt.ylim([-1.5, 2])
+        plt.ylim([-0.15, 0.2])
+        plt.ylabel('[nAmp]')
+        plt.xlabel('[s]')
         plt.title('{} {} {}-{}'.format(cond, inv_method, lfreq, hfreq))
         plt.legend()
         plt.savefig(op.join(figs_fol, '{}_{}_{}-{}.png'.format(cond, inv_method, lfreq, hfreq)))
@@ -281,7 +288,7 @@ def calc_functional_rois(conds, args):
             label_name_template='precentral*',
             inv_fname='{}-inv'.format(cond),
             threshold=99.5,
-            min_cluster_max=2,
+            min_cluster_max=0.2,
             min_cluster_size=100,
             clusters_label='precentral'
         ))
@@ -328,7 +335,7 @@ if __name__ == '__main__':
         # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
         # dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
         # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
-        # calc_functional_rois(conditions, args)
-        # plot_all_functional_rois(subject, sfreq, time_series_type='precentral')
-        calc_labels_avg_per_cluster(conditions, args.extract_mode[0])
+        calc_functional_rois(conditions, args)
+        plot_all_functional_rois(subject, sfreq, time_series_type='precentral')
+        # calc_labels_avg_per_cluster(conditions, args.extract_mode[0])
     print('Finish!')

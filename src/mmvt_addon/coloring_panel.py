@@ -886,7 +886,7 @@ def color_manually():
             continue
         if isinstance(color_name, list) and len(color_name) == 1:
             color_name = color_name[0]
-        if obj_type == '':
+        if not coloring_labels:
             obj_type = mu.check_obj_type(obj_name)
         if obj_type is None:
             delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
@@ -1062,8 +1062,9 @@ def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
     data_min = mu.min_stc(stc)
     data_max = mu.max_stc(stc)
-    data_minmax = mu.get_max_abs(data_max, data_min)
-    factor = -int(mu.ceil_floor(np.log10(data_minmax)))
+    # data_minmax = mu.get_max_abs(data_max, data_min)
+    # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
+    factor = 9 # to get nAmp
     if factor > 3:
         # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         ColoringMakerPanel.stc._data *= np.power(10, factor)

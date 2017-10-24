@@ -189,6 +189,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         f = np.load(labels_input_fname)
         print('Loading {} ({})'.format(labels_input_fname, utils.file_modification_time(labels_input_fname)))
         data[hemi] = np.squeeze(f['data'])
+        zeros_num = len(np.where(np.sum(data[hemi], 1) == 0)[0])
+        if zeros_num > 0:
+            print('{} has {}/{} flat time series!'.format(hemi, zeros_num, data[hemi].shape[0]))
         names[hemi] = f['names']
 
     data = np.concatenate((data['lh'], data['rh']))
@@ -364,7 +367,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
-        if not op.isfile(static_output_mat_fname):
+        # todo: check why if it's not always True, the else fails
+        if True: #not op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             if np.ndim(static_conn) == 2:
@@ -390,7 +394,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
             plt.close()
-        if not op.isfile(static_mean_output_mat_fname):
+        if True: #not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)
