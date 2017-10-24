@@ -75,7 +75,7 @@ def check_connections(stat=STAT_DIFF):
     mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects.get(get_connections_parent_name(), None)
-    if parent_obj:
+    if parent_obj and len(parent_obj.children) > 0:
         bpy.context.scene.connections_num = min(len(parent_obj.children) - 1, len(indices))
     else:
         bpy.context.scene.connections_num = len(indices)
@@ -395,14 +395,15 @@ def plot_connections(d, plot_time, threshold=None):
         _addon().show_hide_connections()
         if threshold is None:
             threshold = bpy.context.scene.coloring_threshold
-        for ind, con_name in enumerate(selected_objects):
-            cur_obj = bpy.data.objects.get(con_name)
+        for ind, cur_obj in enumerate(selected_objects):
+            if isinstance(cur_obj, str):
+                cur_obj = bpy.data.objects.get(cur_obj)
             if bpy.context.scene.hide_connection_under_threshold:
                 if abs(stat_vals[ind]) < threshold:
                     cur_obj.hide = True
                     cur_obj.hide_render = True
             bpy.context.scene.objects.active = cur_obj
-            mu.create_material('{}_mat'.format(con_name), colors[ind], 1, False)
+            mu.create_material('{}_mat'.format(cur_obj.name), colors[ind], 1, False)
         if bpy.context.scene.hide_connection_under_threshold:
             filter_nodes()
         parent_obj_name = get_connections_parent_name()
@@ -423,7 +424,7 @@ def get_all_selected_connections(d):
     objs, inds = [], []
     parent_obj_name = get_connections_parent_name()
     parent_obj = bpy.data.objects[parent_obj_name]
-    con_objs_names = [obj.name for obj in bpy.data.objects[get_connections_parent_name()].children if obj.name != 'connections_vertices']
+    # con_objs_names = [obj.name for obj in bpy.data.objects[get_connections_parent_name()].children if obj.name != 'connections_vertices']
     # all_con_set = set(d.con_names.tolist())
     # indices = [np.where(d.con_names == obj_name)[0][0] for obj_name in con_objs_names]
     if bpy.context.scene.selection_type == 'conds' or parent_obj.animation_data is None:
@@ -764,9 +765,13 @@ def connectivity_files_update(self, context):
     data = ConnectionsPanel.d.con_values
     # data_max = np.percentile(data[ConnectionsPanel.selected_indices], 97)
     # data_min = np.percentile(data[ConnectionsPanel.selected_indices], 3)
-    data_max = np.max(data[ConnectionsPanel.selected_indices])
-    data_min = np.min(data[ConnectionsPanel.selected_indices])
-    if np.sign(data_max) != np.sign(data_min):
+    if len(ConnectionsPanel.selected_indices) > 0:
+        data_max = np.nanmax(data[ConnectionsPanel.selected_indices])
+        data_min = np.nanmin(data[ConnectionsPanel.selected_indices])
+    else:
+        data_max = np.nanmax(data)
+        data_min = np.nanmin(data)
+    if np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
         data_minmax = max(map(abs, [data_max, data_min]))
         data_max, data_min = data_minmax, -data_minmax
     ConnectionsPanel.data_minmax = (data_min, data_max)

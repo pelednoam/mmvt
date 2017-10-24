@@ -1391,18 +1391,20 @@ def ceil_floor(x):
 def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):
     if data_per_hemi:
         if norm_by_percentile:
-            data_max = max([np.percentile(data[hemi], norm_percs[1]) for hemi in hemis])
-            data_min = min([np.percentile(data[hemi], norm_percs[0]) for hemi in hemis])
+            no_nan_data = {hemi:data[hemi][~np.isnan(data[hemi])] for hemi in hemis}
+            data_max = max([np.percentile(no_nan_data[hemi], norm_percs[1]) for hemi in hemis])
+            data_min = min([np.percentile(no_nan_data[hemi], norm_percs[0]) for hemi in hemis])
         else:
-            data_max = max([np.max(data[hemi]) for hemi in hemis])
-            data_min = min([np.min(data[hemi]) for hemi in hemis])
+            data_max = max([np.nanmax(data[hemi]) for hemi in hemis])
+            data_min = min([np.nanmin(data[hemi]) for hemi in hemis])
     else:
         if norm_by_percentile:
-            data_max = np.percentile(data, norm_percs[1])
-            data_min = np.percentile(data, norm_percs[0])
+            no_nan_data = data[~np.isnan(data)]
+            data_max = np.percentile(no_nan_data, norm_percs[1])
+            data_min = np.percentile(no_nan_data, norm_percs[0])
         else:
-            data_max = np.max(data)
-            data_min = np.min(data)
+            data_max = np.nanmax(data)
+            data_min = np.nanmin(data)
     if symmetric:
         data_minmax = get_max_abs(data_max, data_min)
         data_max, data_min = data_minmax, -data_minmax

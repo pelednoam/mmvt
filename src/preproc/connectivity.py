@@ -364,7 +364,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
-        if True: # op.isfile(static_output_mat_fname):
+        if not op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             if np.ndim(static_conn) == 2:
@@ -390,7 +390,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
             plt.close()
-        if True: #not op.isfile(static_mean_output_mat_fname):
+        if not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)
@@ -644,7 +644,7 @@ def calc_connectivity(data, labels, hemis, args):
 
     con_values = np.squeeze(con_values)
     if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
-        if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
+        if args.symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
             data_max, data_min = data_minmax, -data_minmax
     else:
         data_max, data_min = args.data_max, args.data_min
