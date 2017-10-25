@@ -235,6 +235,8 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
                                  labels_fol=read_labels_from_fol)
         else:
             labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        if len(labels) == 0:
+            raise Exception("Can't read labels from {} {}".format(subject, atlas))
         labels_names = [l.name for l in labels]
         # if 'unknown-{}'.format(hemi) not in [l.name for l in labels]:
         # create_unknown_label = True
@@ -466,6 +468,34 @@ def get_hemi_from_name(label_name):
     return hemi
 
 
+def get_labels_num(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _read_annot
+    annot_fnames = get_annot_fnames(subject, subjects_dir, atlas, hemi)
+    return np.concatenate([_read_annot(annot_fname)[2] for annot_fname in annot_fnames]).shape[0]
+
+
+def get_labels_names(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _read_annot
+    annot_fnames = get_annot_fnames(subject, subjects_dir, atlas, hemi)
+    hemis = get_hemis(hemi)
+    labels = []
+    for annot_fname, hemi in zip(annot_fnames, hemis):
+        labels_names = _read_annot(annot_fname)[2]
+        labels_names = fix_labels_names(labels_names, hemi)
+        labels.extend(labels_names)
+    return labels
+
+
+def get_hemis(hemi):
+    return HEMIS if hemi == 'both' else [hemi]
+
+
+def get_annot_fnames(subject, subjects_dir, atlas, hemi='both'):
+    from mne.label import _get_annot_fname
+    annot_fnames, hemis = _get_annot_fname(None, subject, hemi, atlas, subjects_dir)
+    return annot_fnames
+
+
 @functools.lru_cache(maxsize=None)
 def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, only_names=False,
                 output_fname='', exclude=None, rh_then_lh=False, lh_then_rh=False, sorted_according_to_annot_file=False,
@@ -477,22 +507,19 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = mne.read_labels_from_annot(
                     subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
             except:
-                try:
-                    labels = read_labels_from_annots(subject, subjects_dir, atlas, hemi)
-                except:
-                    print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
-                        subject, atlas, surf_name, hemi))
-                    print('Trying to read labels files')
-                    if not read_only_from_annot:
-                        labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-                        labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
+                print(traceback.format_exc())
+                print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
+                    subject, atlas, surf_name, hemi))
+                print('Trying to read labels files')
+                if not read_only_from_annot:
+                    labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
+                    labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
                 labels = read_labels_parallel(
                     subject, subjects_dir, atlas, hemi=hemi, labels_fol=labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
-            print("Can't read the {} labels!".format(atlas))
-            return []
+            raise Exception("Can't read the {} labels!".format(atlas))
         if exclude is None:
             exclude = []
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
@@ -727,7 +754,7 @@ def create_labels_coloring(subject, labels_names, labels_values, coloring_name, 
     ret = False
     try:
         labels_colors = utils.arr_to_colors(
-            labels_values, norm_percs=norm_percs, norm_by_percentile=norm_by_percentile, colors_map=colors_map)
+            labels_values, norm_percs=norm_percs, colors_map=colors_map) # norm_by_percentile=norm_by_percentile
         print('Saving coloring to {}'.format(coloring_fname))
         with open(coloring_fname, 'w') as colors_file:
             for label_name, label_color, label_value in zip(labels_names, labels_colors, labels_values):
@@ -767,7 +794,8 @@ def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_j
     return new_label
 
 
-def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts, n_jobs=6):
+def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts,
+                                     min_cluster_max=0, min_cluster_size=0, clusters_label='', n_jobs=6):
     cluster_labels = []
     if not op.isfile(op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial'.format(hemi))):
         from src.utils import freesurfer_utils as fu
@@ -780,6 +808,8 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
     for cluster in clusters:
         x = data[cluster]
         cluster_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
+        if abs(cluster_max) < min_cluster_max or len(cluster) < min_cluster_size:
+            continue
         inter_labels, inter_labels_tups = [], []
         for label in labels:
             overlapped_vertices = np.intersect1d(cluster, label.vertices)
@@ -790,7 +820,7 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
         inter_labels_tups = sorted(inter_labels_tups)[::-1]
         for inter_labels_tup in inter_labels_tups:
             inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
-        if len(inter_labels) > 0:
+        if len(inter_labels) > 0 and clusters_label in inter_labels[0]['name']:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
             cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
                 coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster))))

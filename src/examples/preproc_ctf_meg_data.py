@@ -10,6 +10,7 @@ from src.utils import preproc_utils as pu
 
 LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
 def analyze(subject, raw_files_template, inverse_method, conditions, sessions, args):
@@ -233,6 +234,74 @@ def plot_roi(subject, atlas, extract_method, roi, sfreq, sessions, args):
     plt.savefig(fig_fname)
 
 
+def plot_all_functional_rois(subject, sfreq, time_series_type='precentral', min_cluster_size=100, figs_fol=''):
+    if figs_fol == '':
+        figs_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters', 'figures')
+    utils.make_dir(figs_fol)
+    time = np.arange(-2, 2 + 1 / sfreq, 1 / sfreq)
+    clusters_fnames = glob.glob(op.join(op.join(MMVT_DIR, subject, 'meg', 'clusters', 'clusters_labels*')))
+    for cluster_fname in clusters_fnames:
+        cond, inv_method, lfreq, hfreq = utils.namebase(cluster_fname)[len('clusters_labels_'):].split('-')
+        cluster = utils.load(cluster_fname)
+        clusters_info = [info for info in cluster.values if time_series_type in info.name and \
+                         info.size > min_cluster_size and info.label_data is not None]
+        if len(clusters_info) == 0:
+            print('No labels where found for {}!'.format(cluster_fname))
+            continue
+        for info in clusters_info:
+            print('{name}_max_{max:.2f}_size_{size}'.format(**info))
+            print('max: {}, min: {}'.format(np.max(abs(info.label_data)), np.min(info.label_data)))
+        # clusters_info = flip_to_same_direction(clusters_info)
+        plt.figure(figsize=(8, 8))
+        for info in clusters_info:
+            plt.plot(time, info.label_data, label='{name}_max_{max:.2f}_size_{size}'.format(**info))
+
+        plt.xlim([-1.5, 0.5])
+        plt.ylim([-0.15, 0.2])
+        plt.ylabel('[nAmp]')
+        plt.xlabel('[s]')
+        plt.title('{} {} {}-{}'.format(cond, inv_method, lfreq, hfreq))
+        plt.legend()
+        plt.savefig(op.join(figs_fol, '{}_{}_{}-{}.png'.format(cond, inv_method, lfreq, hfreq)))
+
+
+def flip_to_same_direction(clusters_info):
+    import copy
+    flipped = copy.deepcopy(clusters_info)
+    for ind in range(len(clusters_info) - 1):
+        r = np.corrcoef(clusters_info[-1].label_data, clusters_info[ind].label_data)[0, 1]
+        if r < 0:
+        # if np.max(clusters_info[ind].label_data) < 0:
+            flipped[ind].label_data *= -1
+    return flipped
+
+
+def calc_functional_rois(conds, args):
+    for cond in conds.keys():
+        _args = meg.read_cmd_args(dict(
+            subject=args.subject,
+            mri_subject=args.mri_subject,
+            atlas='laus250',
+            function='find_functional_rois_in_stc',
+            inverse_method='MNE',
+            stc_name='{}-MNE-1-15'.format(cond),
+            label_name_template='precentral*',
+            inv_fname='{}-inv'.format(cond),
+            threshold=99.5,
+            min_cluster_max=0.2,
+            min_cluster_size=100,
+            clusters_label='precentral'
+        ))
+        meg.call_main(_args)
+
+
+def calc_labels_avg_per_cluster(conditions, extract_method):
+    atlas = 'MNE-1-15-precentral'
+    stc_names = ['left-MNE-1-15', 'right-MNE-1-15']
+    meg.calc_labels_avg_per_cluster(subject, atlas, conditions, stc_names, extract_method)
+    meg.calc_labels_minmax(atlas, extract_method)
+
+
 if __name__ == '__main__':
     from itertools import product
     args = pu.init_args(meg.read_cmd_args(dict(
@@ -263,7 +332,10 @@ if __name__ == '__main__':
     sfreq = 625
     eog_channel = 'MZF01-1410' # Doesn't give good results, so we'll use manuualy pick ICA componenets
     for inverse_method in args.inverse_method:
-        analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
+        # analyze(subject, raw_files_template, inverse_method, conditions, sessions, args)
         # dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
         # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
+        calc_functional_rois(conditions, args)
+        plot_all_functional_rois(subject, sfreq, time_series_type='precentral')
+        # calc_labels_avg_per_cluster(conditions, args.extract_mode[0])
     print('Finish!')

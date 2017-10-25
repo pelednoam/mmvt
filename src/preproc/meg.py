@@ -118,7 +118,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
     STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
-    LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
+    # LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
+    LBL = op.join(MMVT_SUBJECT_FOLDER, 'meg', 'labels_data_{}_{}_{}.npz')  # atlas, extract_method, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -565,7 +566,10 @@ def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', 
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
-        check_bem(mri_subject, args)
+        try:
+            check_bem(mri_subject, args)
+        except:
+            print(traceback.format_exc())
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
@@ -790,7 +794,7 @@ def get_raw_fname(raw_fname=''):
     if raw_fname == '':
         raw_fname, raw_exist = locating_file(raw_fname, '*raw.fif')
         if not raw_exist:
-            epo_fname = RAW
+            raw_fname = RAW
     return raw_fname
 
 
@@ -897,8 +901,9 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
                            stc_template='', epo_fname='', evo_fname='', inv_fname='',
-                           fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, atlas='', raw=None, n_jobs=6):
+                           fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
+    # Other options is to use calc_labels_avg_for_rest
     epo_fname = get_epo_fname(epo_fname)
     evo_fname = get_evo_fname(evo_fname)
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
@@ -929,12 +934,16 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     return False, stcs, stcs_num
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
             if single_trial_stc:
-                if not op.isfile(epo_fname):
-                    print('single_trial_stc and not epoch file was found!')
-                    return False, stcs, stcs_num
-                epo_cond = get_cond_fname(epo_fname, cond_name)
-                epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
-                mne.set_eeg_reference(epochs, ref_channels=None)
+                if epochs is None:
+                    if not op.isfile(epo_fname):
+                        print('single_trial_stc and not epoch file was found!')
+                        return False, stcs, stcs_num
+                    epo_cond = get_cond_fname(epo_fname, cond_name)
+                    epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
+                try:
+                    mne.set_eeg_reference(epochs, ref_channels=None)
+                except:
+                    print('annot create EEG average reference projector (no EEG data found)')
                 stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                     pick_ori=pick_ori, return_generator=True)
                 stcs_num[cond_name] = epochs.events.shape[0]
@@ -965,7 +974,6 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
-    copy_sphere_reg_files()
     calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
@@ -986,16 +994,6 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrit
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
-
-
-def copy_sphere_reg_files():
-    # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
-    if utils.both_hemi_files_exist(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format('{hemi}'))):
-        for hemi in utils.HEMIS:
-            shutil.copy(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)),
-                        op.join(MMVT_DIR, MRI_SUBJECT, 'surf', '{}.sphere.reg'.format(hemi)))
-    else:
-        print("No ?h.sphere.reg files! You won't be able to plot stc files")
 
 
 def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
@@ -1112,6 +1110,7 @@ def find_dipole_cortical_locations(atlas, cond, dipole_title, grow_label=True, l
             if dipole_vert == -1:
                 dipole_vert = vert
                 dipole_hemi = hemi
+                print(cond, gof)
                 break
     label_data = None
     if grow_label and dipole_vert != -1:
@@ -1867,7 +1866,38 @@ def get_stc_conds(events, inverse_method, stc_hemi_template):
     return stcs
 
 
-def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
+def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_method, labels_output_fname_template=''):
+    if labels_output_fname_template == '':
+        labels_output_fname_template = LBL
+    labels_data = {hemi:{} for hemi in utils.HEMIS}
+    labels_names = defaultdict(list)
+    for hemi in utils.HEMIS:
+        labels_data[hemi][extract_method] = None
+    conditions = list(events.keys())
+    for stc_ind, stc_name in enumerate(stc_names):
+        clusters_fname = op.join(
+            MMVT_DIR, subject, 'meg', 'clusters', 'clusters_labels_{}.pkl'.format(stc_name))
+        clusters = utils.load(clusters_fname)
+        cond, inv_method, lfreq, hfreq = utils.namebase(clusters_fname)[len('clusters_labels_'):].split('-')
+        cond_id = conditions.index(cond)
+        clusters_info = [info for info in clusters.values if info.label_data is not None]
+        for hemi in utils.HEMIS:
+            if labels_data[hemi][extract_method] is None:
+                labels_data[hemi][extract_method] = np.zeros(
+                    (len(clusters_info), len(clusters_info[0].label_data), len(stc_names), len(events)))
+        for ind, info in enumerate(clusters_info):
+            labels_data[info.hemi][extract_method][ind, :, cond_id, stc_ind] = info.label_data
+            label_name = '{name}_max_{max:.2f}_size_{size}'.format(**info)
+            labels_names[info.hemi].append(label_name)
+    for hemi in utils.HEMIS:
+        labels_output_fname = labels_output_fname_template.format(atlas, extract_method, hemi)
+        lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_output_fname))
+        np.savez(labels_output_fname, data=labels_data[hemi][extract_method],
+                 names=labels_names, conditions=conditions)
+        shutil.copy(labels_output_fname, lables_mmvt_fname)
+
+
+def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
         factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, do_plot=False, n_jobs=1):
     try:
@@ -1875,6 +1905,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
         if labels_data_template == '':
             labels_data_template = LBL
         global_inverse_operator = False
+        if events is None:
+            events = dict(all=0)
         if '{cond}' not in inv_fname:
             if not op.isfile(inv_fname):
                 print('No inverse operator found!')
@@ -1947,19 +1979,20 @@ def calc_labels_avg_per_condition(atlas, hemi, events, surf_name='pial', labels_
     return flag
 
 
-def save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, factor=1, positive=False, moving_average_win_size=0):
-    labels_names = [utils.to_str(l.name) for l in labels]
+def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, labels_data_template, factor=1, positive=False, moving_average_win_size=0):
+    if not isinstance(labels_names[0], str):
+        labels_names = [utils.to_str(l.name) for l in labels_names]
     for em in extract_modes:
         labels_data[em] = labels_data[em].squeeze()
         labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
             labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
         labels_output_fname = labels_data_template.format(atlas, em, hemi)  # if labels_output_fname_template == '' else \
-        lables_mmvt_fname = op.join(
-            MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
+        # lables_mmvt_fname = op.join(
+        #     MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
         print('Saving to {}'.format(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-        shutil.copyfile(labels_output_fname, lables_mmvt_fname)
+        # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
 def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False):
@@ -2233,7 +2266,7 @@ def get_stc_hemi_template(stc_template):
     return '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
 
 
-def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}, raw=None):
+def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}, raw=None, epochs=None):
     from itertools import product
     stc_hemi_template = get_stc_hemi_template(args.stc_template)
     if conditions is None:
@@ -2254,7 +2287,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
             args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
-            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, args.atlas, raw,
+            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, raw, epochs,
             args.n_jobs)
     return flags, stcs_conds, stcs_num
 
@@ -2262,54 +2295,85 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
 def calc_labels_avg_for_rest_wrapper(args, raw=None):
     return calc_labels_avg_for_rest(
         args.atlas, args.inverse_method, raw, args.pick_ori, args.extract_mode, args.snr, args.raw_fname,
-        args.inv_fname, args.labels_data_template, args.overwrite_stc, args.fwd_usingMEG, args.fwd_usingEEG,
-        cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
+        args.inv_fname, args.labels_data_template, args.overwrite_stc, args.overwrite_labels_data,
+        args.fwd_usingMEG, args.fwd_usingEEG, cond_name='all', positive=False, moving_average_win_size=0,
+        save_data_files=True, n_jobs=args.n_jobs)
 
 
-def calc_labels_avg_for_rest(atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=3, raw_fname='',
-                             inv_fname='', labels_data_template='', overwrite_stc=False, fwd_usingMEG=True, fwd_usingEEG=True,
-                             cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=6):
-    inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
-    if raw is None:
-        raw_fname = get_raw_fname(raw_fname)
-        if op.isfile(raw_fname):
-            mne.io.read_raw_fif(raw_fname)
-        else:
-            raise Exception("Can't find the raw file! ({})".format(raw_fname))
+def calc_labels_avg_for_rest(
+        atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=1, raw_fname='', inv_fname='',
+        labels_data_template='', overwrite_stc=False, overwrite_labels_data=False, fwd_usingMEG=True, fwd_usingEEG=True,
+        cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, do_plot_time_series=True,
+        n_jobs=6):
+
+    def collect_parallel_results(indices, results, labels_num):
+        labels_data_hemi = {}
+        for indices_chunk, labels_data_chunk in zip(indices, results):
+            for em in extract_modes:
+                if em not in labels_data_hemi:
+                    labels_data_hemi[em] = np.zeros((labels_num, labels_data_chunk[em].shape[1]))
+                labels_data_hemi[em][indices_chunk] = labels_data_chunk[em]
+        return labels_data_hemi
+
+    labels_output_fol_template = op.join(
+        SUBJECT_MEG_FOLDER, 'rest_{}_labels_data_{}'.format(atlas, '{extract_mode}'))
     if labels_data_template == '':
         labels_data_template = LBL
-    if not isinstance(inverse_method, str) and isinstance(inverse_method, Iterable):
-        inverse_method = inverse_method[0]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
-    inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
-    src = inverse_operator['src']
-    lambda2 = 1.0 / snr ** 2
-    labels_data = {}
-    for hemi in utils.HEMIS:
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
-        indices = np.array_split(np.arange(len(labels)), n_jobs)
-        chunks = [([labels[ind] for ind in indices_chunk], indices_chunk, len(labels), raw, src, inverse_operator, lambda2,
-                   inverse_method, extract_modes, pick_ori, save_data_files, overwrite_stc) for indices_chunk in indices]
-        results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
-        labels_data[hemi] = {}
-        for labels_data_chunk in results:
-            for em in extract_modes:
-                if em not in labels_data[hemi]:
-                    labels_data[hemi][em] = np.zeros(labels_data_chunk[em].shape)
-                labels_data[hemi][em] += labels_data_chunk[em]
+
+    labels_num = lu.get_labels_num(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
+    labels_files_exist = all([len(glob.glob(op.join(
+        SUBJECT_MEG_FOLDER, labels_output_fol_template.format(extract_mode=em), '*.npy'))) == labels_num
+        for em in extract_modes])
+    labels_data_exist = all([utils.both_hemi_files_exist(labels_data_template.format(atlas, em, '{hemi}'))
+                             for em in extract_modes])
+    if (not labels_files_exist and not labels_data_exist) or overwrite_labels_data:
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+        if raw is None:
+            raw_fname = get_raw_fname(raw_fname)
+            if op.isfile(raw_fname):
+                mne.io.read_raw_fif(raw_fname)
+            else:
+                raise Exception("Can't find the raw file! ({})".format(raw_fname))
+        if not isinstance(inverse_method, str) and isinstance(inverse_method, Iterable):
+            inverse_method = inverse_method[0]
+        inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
+        src = inverse_operator['src']
+        lambda2 = 1.0 / snr ** 2
+        labels_data = {}
+        for hemi in utils.HEMIS:
+            labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi)
+            indices = np.array_split(np.arange(len(labels)), n_jobs)
+            chunks = [([labels[ind] for ind in indices_chunk], raw, src, inverse_operator, lambda2, inverse_method,
+                       extract_modes, pick_ori, save_data_files, labels_output_fol_template, overwrite_stc,
+                       do_plot_time_series) for indices_chunk in indices]
+            results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
+            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
+
+    elif (not labels_data_exist) or overwrite_labels_data:
+        labels_data = {}
+        for hemi in utils.HEMIS:
+            labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
+            indices = np.array_split(np.arange(len(labels_names)), n_jobs)
+            chunks = [([labels_names[ind] for ind in indices_chunk], extract_modes, labels_output_fol_template,
+                       do_plot_time_series) for indices_chunk in indices]
+            results = utils.run_parallel(_load_labels_data_parallel, chunks, n_jobs)
+            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
 
     for em in extract_modes:
         data_max = max([np.max(labels_data[hemi][em]) for hemi in utils.HEMIS])
         data_min = min([np.min(labels_data[hemi][em]) for hemi in utils.HEMIS])
-        data_minmax = utils.get_max_abs(data_max, data_min)
-        factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-        for hemi in utils.HEMIS:
-            save_labels_data(labels_data, hemi, labels, atlas, [cond_name], em, labels_data_template, factor,
-                            positive, moving_average_win_size)
+        # data_minmax = utils.get_max_abs(data_max, data_min)
+        # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
+        factor = 9 # to get nAmp
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
         np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
+        if (not labels_data_exist) or overwrite_labels_data:
+            for hemi in utils.HEMIS:
+                labels_names = lu.get_labels_names(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi)
+                save_labels_data(labels_data[hemi], hemi, labels_names, atlas, ['all'], extract_modes,
+                                 labels_data_template, factor, positive, moving_average_win_size)
 
-    from itertools import product
     output_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'meg')
     flag = all([op.isfile(op.join(output_fol, op.basename(labels_data_template.format(atlas, em, hemi)))) for \
         em, hemi in product(extract_modes, utils.HEMIS)]) and \
@@ -2318,26 +2382,56 @@ def calc_labels_avg_for_rest(atlas, inverse_method, raw=None, pick_ori=None, ext
 
 
 def calc_stc_labels_parallel(p):
-    (labels, indices, labels_num, raw, src, inverse_operator, lambda2, inverse_method, extract_modes, pick_ori,
-     save_data_files, overwrite) = p
+    (labels, raw, src, inverse_operator, lambda2, inverse_method, extract_modes, pick_ori,
+     save_data_files, labels_output_fol_template, overwrite, do_plot_time_series) = p
     labels_data = {}
-    for ind, label in zip(indices, labels):
+    for ind, label in enumerate(labels):
         stc = mne.minimum_norm.apply_inverse_raw(
             raw, inverse_operator, lambda2, inverse_method, label=label, pick_ori=pick_ori)
         for em in extract_modes:
             # label_data = stc.extract_label_time_course(label, src, mode=em, allow_empty=True)
+            if em != 'mean_flip':
+                print("{} isn't implemented yet for rest data!".format(em))
+                continue
+            labels_output_fol = labels_output_fol_template.format(extract_mode=em)
+            utils.make_dir(labels_output_fol)
             label_data = extract_label_data(label, src, stc)
             label_data = np.squeeze(label_data)
+            if do_plot_time_series:
+                plot_label_data(label_data, label.name, em, labels_output_fol)
             if save_data_files:
-                fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'rest_labels_data_{}'.format(em)))
-                label_fname = op.join(fol, '{}-{}.npy'.format(label.name, em))
+                # fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'rest_labels_data_{}'.format(em)))
+                label_fname = op.join(labels_output_fol, '{}-{}.npy'.format(label.name, em))
                 if not op.isfile(label_fname) and not overwrite:
                     np.save(label_fname, label_data)
             if em not in labels_data:
                 T = len(stc.times)
-                labels_data[em] = np.zeros((labels_num, T))
+                labels_data[em] = np.zeros((len(labels), T))
             labels_data[em][ind, :] = label_data
     return labels_data
+
+
+def _load_labels_data_parallel(p):
+    labels, extract_modes, labels_output_fol_template, do_plot_time_series = p
+    labels_data = {}
+    for em in extract_modes:
+        labels_output_fol = labels_output_fol_template.format(extract_mode=em)
+        for ind, label in enumerate(labels):
+            label_fname = op.join(labels_output_fol, '{}-{}.npy'.format(label, em))
+            label_data = np.load(label_fname).squeeze()
+            if do_plot_time_series:
+                plot_label_data(label_data, label, em, labels_output_fol)
+            if em not in labels_data:
+                labels_data[em] = np.zeros((len(labels), len(label_data)))
+            labels_data[em][ind, :] = label_data
+    return labels_data
+
+
+def plot_label_data(label_data, label, em, labels_output_fol):
+    plt.figure()
+    plt.plot(label_data)
+    plt.title('{} {}'.format(label, em))
+    plt.savefig(op.join(labels_output_fol, '{}-{}.png'.format(label, em)))
 
 
 def extract_label_data(label, src, stc):
@@ -2369,11 +2463,11 @@ def calc_labels_avg_per_condition_wrapper(
             stcs_conds = get_stc_conds(conditions, inverse_method, args.stc_hemi_template)
             if stcs_conds is None:
                 return False
-        data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
-        data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
-        data_minmax = utils.get_max_abs(data_max, data_min)
-        factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-
+        # data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
+        # data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
+        # data_minmax = utils.get_max_abs(data_max, data_min)
+        # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
+        factor = 9 # to get nAmp
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
@@ -2397,10 +2491,13 @@ def calc_labels_avg_per_condition_wrapper(
 def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_labels_data=False):
     if labels_data_template == '':
         labels_data_template = LBL
+    if isinstance(extract_modes, str):
+        extract_modes = [extract_modes]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
-        if op.isfile(min_max_output_fname) and not overwrite_labels_data:
+        min_max_output_fname = min_max_output_template.format(atlas, em)
+        min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namesbase_with_ext(min_max_output_fname))
+        if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
         template = labels_data_template.format(atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
@@ -2411,6 +2508,7 @@ def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_
             labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
             np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
                      labels_diff_minmax=[labels_diff_min, labels_diff_max])
+            shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em)))
@@ -2435,7 +2533,8 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
 
 
 def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
-                                label_name_template='', peak_mode='abs', extract_mode='mean_flip', src=None,
+                                label_name_template='', peak_mode='abs', extract_mode='mean_flip',
+                                min_cluster_max=0, min_cluster_size=0, clusters_label='', src=None,
                                 inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, n_jobs=6):
     import mne.stats.cluster_level as mne_clusters
 
@@ -2456,25 +2555,30 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
         threshold = np.percentile(stc_t_smooth.data, threshold)
     clusters_name = '{}-{}'.format(stc_name, label_name_template.replace('*', '').replace('?', ''))
     clusters_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters', clusters_name)
-    data_minmax = utils.get_max_abs(utils.min_stc(stc), utils.max_stc(stc))
-    factor = -int(utils.ceil_floor(np.log10(data_minmax)))
+    # data_minmax = utils.get_max_abs(utils.min_stc(stc), utils.max_stc(stc))
+    # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
+    factor = 9 # to get nAmp
     threshold *= np.power(10, factor)
     clusters_labels = utils.Bag(
         dict(threshold=threshold, time=time_index, label_name_template=label_name_template, values=[]))
     for hemi in utils.HEMIS:
         stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, factor)
         clusters, _ = mne_clusters._find_clusters(stc_data, threshold, connectivity=connectivity[hemi])
+        if len(clusters) == 0:
+            print('No clusters where found for {}-{}!'.format(stc_name, hemi))
+            continue
         clusters_labels_hemi = lu.find_clusters_overlapped_labeles(
-            subject, clusters, stc_data, atlas, hemi, verts[hemi], n_jobs)
-        if clusters_labels_hemi is None:
-            print("Can't find clusters in {}!".format(hemi))
+            subject, clusters, stc_data, atlas, hemi, verts[hemi], min_cluster_max, min_cluster_size, clusters_label,
+            n_jobs)
+        if clusters_labels_hemi is None or len(clusters_labels_hemi) == 0:
+            print("Can't find overlapped_labeles in {}-{}!".format(stc_name, hemi))
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
-                subject, stc, hemi, clusters_labels_hemi, clusters_fol, extract_mode[0], src, inv_fname,
-                fwd_usingMEG, fwd_usingEEG)
+                subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
+                time_index, fwd_usingMEG, fwd_usingEEG)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'clusters_labels_{}.pkl'.format(stc_name, atlas))
+        MMVT_DIR, subject, 'meg', 'clusters', 'clusters_labels_{}.pkl'.format(stc_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
     return op.isfile(clusters_labels_output_fname)
@@ -2516,8 +2620,9 @@ def load_connectivity(subject):
     return connectivity_per_hemi
 
 
-def extract_time_series_for_cluster(subject, stc, hemi, clusters, clusters_fol, extract_mode='mean_flip',
-                                    src=None, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, calc_contours=True):
+def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
+                                    src=None, inv_fname='', time_index=-1, fwd_usingMEG=True, fwd_usingEEG=True,
+                                    calc_contours=True):
     from src.preproc import anatomy as anat
 
     utils.make_dir(clusters_fol)
@@ -2531,18 +2636,28 @@ def extract_time_series_for_cluster(subject, stc, hemi, clusters, clusters_fol, 
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
         cluster_label = mne.Label(
             cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
+        label_data = x = stc.extract_label_time_course(cluster_label, src, mode=extract_mode, allow_empty=True).squeeze()
+        if time_index == -1:
+            cluster.max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
+        else:
+            cluster.max = x[time_index] * np.power(10, factor)
         cluster_name = 'cluster_size_{}_max_{:.2f}_{}.label'.format(cluster.size, cluster.max, cluster.name)
         cluster_label.save(op.join(clusters_fol, cluster_name))
-        label_data = stc.extract_label_time_course(cluster_label, src, mode=extract_mode, allow_empty=True)
-        cluster.label_data = np.squeeze(label_data)
-        np.save(op.join(time_series_fol, '{}.npy'.format(cluster_name)), cluster.label_data)
+        if np.all(label_data == 0):
+            cluster.label_data = None
+        else:
+            cluster.label_data = np.squeeze(label_data)
+            cluster.label_data *= np.power(10, factor)
+            np.save(op.join(time_series_fol, '{}.npy'.format(cluster_name)), cluster.label_data)
     if len(clusters) > 0 and calc_contours:
         new_atlas_name = 'clusters-{}-{}'.format(utils.namebase(clusters_fol), hemi)
         annot_files = labels_to_annot(new_atlas_name, clusters_fol)
         if annot_files is not None:
             for hemi in utils.HEMIS:
                 annot_fname = annot_files.format(hemi=hemi)
-                shutil.copy(annot_fname, op.join(clusters_fol, utils.namesbase_with_ext(annot_fname)))
+                dest_annot_fname = op.join(clusters_fol, utils.namesbase_with_ext(annot_fname))
+                if not op.isfile(dest_annot_fname):
+                    shutil.copy(annot_fname, dest_annot_fname)
         anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
     return clusters
 
@@ -2834,9 +2949,10 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'calc_labels_avg_for_rest' in args.function:
         flags['calc_labels_avg_for_rest'] = calc_labels_avg_for_rest(
-            args.atlas, inverse_method, None, args.pick_ori, args.extract_modes, args.snr, args.raw_fname,
-            args.inv_fname, args.labels_data_template, args.overwrite_stc, args.fwd_usingMEG, args.fwd_usingEEG,
-            cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, n_jobs=args.n_jobs)
+            args.atlas, inverse_method, None, args.pick_ori, args.extract_mode, args.snr, args.raw_fname,
+            args.inv_fname, args.labels_data_template, args.overwrite_stc, args.overwrite_labels_data,
+            args.fwd_usingMEG, args.fwd_usingEEG, cond_name='all', positive=False, moving_average_win_size=0,
+            save_data_files=True, n_jobs=args.n_jobs)
 
     # functions that aren't in the main pipeline
     if 'smooth_stc' in args.function:
@@ -2857,7 +2973,8 @@ def main(tup, remote_subject_dir, args, flags):
         flags['find_functional_rois_in_stc'] = find_functional_rois_in_stc(
             subject, args.atlas, args.stc_name, args.threshold, args.threshold_is_precentile,
             args.peak_stc_time_index, args.label_name_template, args.peak_mode,
-            args.extract_mode, inv_fname=args.inv_fname, fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingEEG,
+            args.extract_mode, args.min_cluster_max, args.min_cluster_size, args.clusters_label,
+            inv_fname=args.inv_fname, fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingEEG,
             n_jobs=args.n_jobs)
 
     if 'print_files_names' in args.function:
@@ -2999,6 +3116,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--peak_stc_time_index', required=False, default=None, type=au.int_or_none)
     parser.add_argument('--label_name_template', required=False, default='')
     parser.add_argument('--peak_mode', required=False, default='abs')
+    parser.add_argument('--min_cluster_max', required=False, default=0, type=float)
+    parser.add_argument('--min_cluster_size', required=False, default=0, type=int)
+    parser.add_argument('--clusters_label', required=False, default='')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
@@ -3040,7 +3160,5 @@ def call_main(args):
 
 if __name__ == '__main__':
     args = read_cmd_args()
-    find_pick_activity('DC', '/homes/5/npeled/space1/mmvt/DC/meg/right-MNE-1-15-lh.stc', 'laus250',
-                       label_name_template='precentral*', hemi='both', peak_mode='abs')
     call_main(args)
     print('finish!')

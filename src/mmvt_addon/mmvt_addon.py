@@ -460,7 +460,6 @@ def _fix_scale(obj_name):
             obj.scale[i] = 0.1
 
 
-
 def fix_cortex_labels_material():
     remove_materials()
     new_mats_list = ['Helmet_map_mat', 'unselected_label_Mat_cortex', 'unselected_label_Mat_subcortical']
@@ -491,6 +490,7 @@ def fix_objects_material(objects, material_name):
     ret = True
     for obj in objects:
         if obj.name + '_Mat' in materials_names:
+            # print(obj.name + '_Mat')
             cur_mat = bpy.data.materials[obj.name + '_Mat']
         else:
             if material_name in materials_names:
@@ -502,7 +502,7 @@ def fix_objects_material(objects, material_name):
             # obj.active_material = cur_mat
         except:
             ret = False
-            pass
+            # pass
             # remove_materials()
             # print('Quit!')
             # bpy.ops.wm.quit_blender()
@@ -527,7 +527,7 @@ def get_panels():
 def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
-    # fix_cortex_labels_material()
+    fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)

@@ -174,7 +174,7 @@ def calc_rest(args):
 
 
 def calc_functional_rois(args):
-    # -s DC -a laus250 -f find_functional_rois_in_stc --stc_name right-MNE-1-15 --label_name_template "precentral*" --inv_fname right-inv --threshold 99
+    # -s DC -a laus250 -f find_functional_rois_in_stc --stc_name right-MNE-1-15 --label_name_template "precentral*" --inv_fname right-inv --threshold 99.5
     args = meg.read_cmd_args(dict(
         subject=args.subject,
         mri_subject=args.mri_subject,

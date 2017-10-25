@@ -187,7 +187,7 @@ def convert_and_rename_subcortical_files(fol, new_fol, lookup):
 
 
 def create_surfaces(subject, hemi='both', overwrite=False):
-    for hemi in utils.get_hemis(hemi):
+    for hemi in lu.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
         for surf_type in ['inflated', 'pial']:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
@@ -334,31 +334,31 @@ def check_ply_files(subject):
         ok = ok and verts1.shape[0] == verts2.shape[0] and faces1.shape[0]==faces2.shape[0]
     return ok
 
-
-@utils.timeit
-def convert_perecelated_cortex(subject, atlas, surf_type='pial', overwrite_ply_files=False, hemi='both'):
-    lookup = {}
-    for hemi in utils.get_hemis(hemi):
-        lookup[hemi] = create_labels_lookup(subject, hemi, atlas)
-        if len(lookup[hemi]) == 0:
-            continue
-        mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(atlas, surf_type, hemi))
-        ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(atlas, surf_type, hemi))
-        utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-        blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surf_type, hemi))
-        # utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
-        # rename_cortical(lookup, mat_fol, ply_fol)
-        # if surf_type == 'inflated':
-        #     for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
-        #         verts, faces = utils.read_ply_file(ply_fname)
-        #         verts_offset = 55 if hemi == 'rh' else -55
-        #         verts[:, 0] = verts[:, 0] + verts_offset
-        #         utils.write_ply_file(verts, faces, ply_fname)
-        # utils.rmtree(blender_fol)
-        # shutil.copytree(ply_fol, blender_fol)
-        # utils.rmtree(mat_fol)
-        # utils.rmtree(ply_fol)
-    return lookup
+#
+# @utils.timeit
+# def convert_perecelated_cortex(subject, atlas, surf_type='pial', overwrite_ply_files=False, hemi='both'):
+#     lookup = {}
+#     for hemi in lu.get_hemis(hemi):
+#         lookup[hemi] = create_labels_lookup(subject, hemi, atlas)
+#         if len(lookup[hemi]) == 0:
+#             continue
+#         mat_fol = op.join(SUBJECTS_DIR, subject, '{}.{}.{}'.format(atlas, surf_type, hemi))
+#         ply_fol = op.join(SUBJECTS_DIR, subject, '{}_{}_{}_ply'.format(atlas, surf_type, hemi))
+#         utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
+#         blender_fol = op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(atlas, surf_type, hemi))
+#         # utils.convert_mat_files_to_ply(mat_fol, overwrite_ply_files)
+#         # rename_cortical(lookup, mat_fol, ply_fol)
+#         # if surf_type == 'inflated':
+#         #     for ply_fname in glob.glob(op.join(ply_fol, '*.ply')):
+#         #         verts, faces = utils.read_ply_file(ply_fname)
+#         #         verts_offset = 55 if hemi == 'rh' else -55
+#         #         verts[:, 0] = verts[:, 0] + verts_offset
+#         #         utils.write_ply_file(verts, faces, ply_fname)
+#         # utils.rmtree(blender_fol)
+#         # shutil.copytree(ply_fol, blender_fol)
+#         # utils.rmtree(mat_fol)
+#         # utils.rmtree(ply_fol)
+#     return lookup
 
 
 def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_subject_dir='',
@@ -541,7 +541,7 @@ def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=Tr
 
     unknown_labels = lu.create_unknown_labels(subject, atlas)
     for hemi in utils.HEMIS:
-        d = np.load(op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, hemi)))
+        d = np.load(op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, hemi)))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         bad_vertices_hemi = []
@@ -665,7 +665,7 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
 
 @utils.tryit(False, False)
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
-    output_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    output_fname = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
         return True
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
@@ -718,7 +718,7 @@ def calc_faces_contours(subject, atlas):
     create_verts_faces_lookup(subject)
     vertices_labels_lookup = lu.create_vertices_labels_lookup(subject, atlas)
     verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
-    contours_fname = op.join(MMVT_DIR, subject, '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    contours_fname = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     # verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_{}.npy'.format('{hemi}'))
     verts_faces_lookup_fname = op.join(MMVT_DIR, subject, 'faces_verts_lookup_{}.pkl'.format('{hemi}'))
     output_fname = op.join(MMVT_DIR, subject, 'contours_faces_{}.pkl'.format(atlas))
@@ -1228,10 +1228,20 @@ def create_skull_surfaces(subject):
                 for skull_surf in ['inner_skull', 'outer_skull']])
 
 
+def copy_sphere_reg_files(subject):
+    # If the user is planning to plot the stc file, it needs also the ?h.sphere.reg files
+    tempalte = op.join(SUBJECTS_DIR, subject, 'surf', '{}.sphere.reg'.format('{hemi}'))
+    if utils.both_hemi_files_exist(tempalte):
+        for hemi in utils.HEMIS:
+            mmvt_fname = op.join(MMVT_DIR, subject, 'surf', '{}.sphere.reg'.format(hemi))
+            if not op.isfile(mmvt_fname):
+                shutil.copy(tempalte.format(hemi=hemi), mmvt_fname)
+    else:
+        print("No ?h.sphere.reg files! You won't be able to plot stc files")
+
+
 def main(subject, remote_subject_dir, args, flags):
-    # from src.setup import create_fsaverage_link
-    # create_fsaveragge_link()
-    # utils.make_dir(op.join(SUBJECTS_DIR, subject, 'mmvt'))
+    copy_sphere_reg_files(subject)
 
     if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply

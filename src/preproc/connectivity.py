@@ -189,6 +189,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         f = np.load(labels_input_fname)
         print('Loading {} ({})'.format(labels_input_fname, utils.file_modification_time(labels_input_fname)))
         data[hemi] = np.squeeze(f['data'])
+        zeros_num = len(np.where(np.sum(data[hemi], 1) == 0)[0])
+        if zeros_num > 0:
+            print('{} has {}/{} flat time series!'.format(hemi, zeros_num, data[hemi].shape[0]))
         names[hemi] = f['names']
 
     data = np.concatenate((data['lh'], data['rh']))
@@ -242,6 +245,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
 
     if windows_num == 1:
         identifier = '{}static_'.format(identifier) if identifier != '' else 'static_'
+    if args.max_windows_num is not None:
+        windows_num = min(args.max_windows_num, windows_num)
     output_fname = get_output_fname(args.connectivity_method[0], labels_extract_mode, identifier)
     output_mat_fname = get_output_mat_fname(args.connectivity_method[0], labels_extract_mode, identifier)
     static_conn = None
@@ -289,8 +294,15 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
         elif 'pli' in args.connectivity_method:
-            conn_data = np.transpose(data, [2, 1, 0])
-            chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+            if data.ndim == 3:
+                conn_data = np.transpose(data, [2, 1, 0])
+            elif data.ndim == 2:
+                conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
+                for w in range(windows_num):
+                    conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
+            indices = np.array_split(np.arange(windows_num), args.n_jobs)
+            # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length) for chunk_indices in indices]
             results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
             for chunk in results:
                 for w, con in chunk.items():
@@ -355,7 +367,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                      conditions=conditions, minmax=[-abs_minmax, abs_minmax])
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
-        if True: # op.isfile(static_output_mat_fname):
+        # todo: check why if it's not always True, the else fails
+        if True: #not op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             if np.ndim(static_conn) == 2:
@@ -407,27 +420,32 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     return ret
 
 
-def pli(data):
+def pli(data, channels_num, window_length):
     try:
         from scipy.signal import hilbert
-        nch = data.shape[0]
+        # nch = data.shape[0]
         data_hil = hilbert(data)
-        m = np.zeros((nch, nch))
-        for i in range(nch):
-            for j in range(nch):
+        if data_hil.shape != (channels_num, window_length):
+            raise Exception('PLI: Wrong dimentions!')
+        m = np.zeros((channels_num, channels_num))
+        for i in range(channels_num):
+            for j in range(channels_num):
                 if i < j:
-                    m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
+                    m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[i] / data_hil[j]))))
+                    # m[i, j] = abs(np.mean(np.sign(np.imag(data_hil[:, i] / data_hil[:, j]))))
         return m + m.T
     except:
         print(traceback.format_exc())
         return None
 
 
-def _pli_parallel(windows_chunk):
+def _pli_parallel(p):
     res = {}
-    for window_ind, window in windows_chunk:
+    conn_data, indices, channels_num, window_length = p
+    # for window_ind, window in windows_chunk:
+    for window_ind, window in zip(indices, conn_data):
         print('PLI: Window ind {}'.format(window_ind))
-        pli_val = pli(window)
+        pli_val = pli(window, channels_num, window_length)
         if not pli_val is None:
             res[window_ind] = pli_val
         else:
@@ -569,7 +587,7 @@ def calc_connectivity(data, labels, hemis, args):
     #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     # import time
     M = data.shape[0]
-    W = data.shape[2] if not 'windows' in args else args.windows
+    W = data.shape[2] if 'windows' not in args or args.windows == 0 else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))
     con_values = np.zeros((L, W, len(args.conditions)))
@@ -630,7 +648,7 @@ def calc_connectivity(data, labels, hemis, args):
 
     con_values = np.squeeze(con_values)
     if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
-        if args.symetric_colors and np.sign(data_max) != np.sign(data_min):
+        if args.symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
             data_max, data_min = data_minmax, -data_minmax
     else:
         data_max, data_min = args.data_max, args.data_min
@@ -878,12 +896,12 @@ def read_cmd_args(argv=None):
                         type=au.str_arr_type)
     parser.add_argument('--bipolar', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--connectivity_method', help='', required=False, default='corr,cv', type=au.str_arr_type)
-    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean', type=au.str_arr_type)
+    parser.add_argument('--labels_extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
-    parser.add_argument('--windows', help='', required=False, default=1, type=int)
+    parser.add_argument('--windows', help='', required=False, default=0, type=int)
     parser.add_argument('--t_max', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold_percentile', help='', required=False, default=0, type=int)
     parser.add_argument('--threshold', help='', required=False, default=0, type=float)
@@ -904,7 +922,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_static_conn', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--backup_existing_files', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--identifier', help='', required=False, default='fs')
+    parser.add_argument('--identifier', help='', required=False, default='')
     parser.add_argument('--connectivity_threshold', help='', required=False, default=0.7, type=float)
 
     parser.add_argument('--labels_regex', help='labels regex', required=False, default='post*cingulate*rh')

@@ -677,10 +677,6 @@ def read_labels_from_annot(subject, aparc_name, subjects_dir):
     return labels
 
 
-def get_hemis(hemi):
-    return HEMIS if hemi == 'both' else [hemi]
-
-
 def rmtree(fol):
     if op.isdir(fol):
         shutil.rmtree(fol)

@@ -77,12 +77,9 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     else:
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
-        # _addon().set_colorbar_prec(abs(int(np.round(np.log10(data_max)))))
-    normalize_data = True
-    # if normalize_data:
-    #     stc_t_smooth.rh_data /= data_max
-    #     stc_t_smooth.lh_data /= data_max
-    #     data_min, data_max = 0, 1
+    if threshold > data_max:
+        print('threshold > data_max!')
+        threshold = bpy.context.scene.coloring_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
     set_default_colormap(data_min, data_max)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
@@ -126,7 +123,7 @@ def contours_coloring_update(self, context):
     d = {}
     items = [('all labels', 'all labels', '', 0)]
     for hemi in mu.HEMIS:
-        d[hemi] = np.load(op.join(user_fol, '{}_contours_{}.npz'.format(
+        d[hemi] = np.load(op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
             bpy.context.scene.contours_coloring, hemi)))
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
         items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
@@ -889,7 +886,7 @@ def color_manually():
             continue
         if isinstance(color_name, list) and len(color_name) == 1:
             color_name = color_name[0]
-        if obj_type == '':
+        if not coloring_labels:
             obj_type = mu.check_obj_type(obj_name)
         if obj_type is None:
             delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
@@ -1065,8 +1062,9 @@ def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
     data_min = mu.min_stc(stc)
     data_max = mu.max_stc(stc)
-    data_minmax = mu.get_max_abs(data_max, data_min)
-    factor = -int(mu.ceil_floor(np.log10(data_minmax)))
+    # data_minmax = mu.get_max_abs(data_max, data_min)
+    # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
+    factor = 9 # to get nAmp
     if factor > 3:
         # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         ColoringMakerPanel.stc._data *= np.power(10, factor)
@@ -2089,7 +2087,7 @@ def init_eeg_sensors():
 
 def init_contours_coloring():
     user_fol = mu.get_user_fol()
-    contours_files = glob.glob(op.join(user_fol, '*contours_lh.npz'))
+    contours_files = glob.glob(op.join(user_fol, 'labels', '*contours_lh.npz'))
     if len(contours_files) > 0:
         ColoringMakerPanel.contours_coloring_exist = True
         files_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]

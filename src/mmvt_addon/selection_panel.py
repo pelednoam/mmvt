@@ -37,7 +37,7 @@ def deselect_all():
 def get_selected_fcurves_and_data():
     # todo: support more than one type in selection
     all_fcurves, all_data = [], []
-    for selction_type, parent_obj in zip([SEL_ELECTRODES, SEL_ROIS], [electrodes_panel.PARENT_OBJ, 'Brain']):
+    for selction_type, parent_obj in zip([SEL_ELECTRODES, SEL_ROIS], [electrodes_panel.PARENT_OBJ, '']):
         if selction_type not in SelectionMakerPanel.get_data:
             continue
         # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
@@ -46,13 +46,14 @@ def get_selected_fcurves_and_data():
         if fcurves is None or len(fcurves) == 0:
             continue
         fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
-        if mu.if_cond_is_diff(parent_obj):
-            if data.ndim == 3:
-                data = np.diff(data, axis=2)
-            selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
-        else:
-            selected_indices = [ind for ind, name in enumerate(names)
-                                if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
+        # todo: fix that for rois!
+        # if mu.if_cond_is_diff(parent_obj):
+        #     if data.ndim == 3:
+        #         data = np.diff(data, axis=2)
+        #     selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
+        # else:
+        selected_indices = [ind for ind, name in enumerate(names)
+                            if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
         data = data[selected_indices]
         all_fcurves.extend(fcurves)
         all_data = data if all_data == [] else np.concatenate((all_data, data))
