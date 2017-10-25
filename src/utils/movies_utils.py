@@ -98,6 +98,13 @@ def add_text_example(movie):
     final.subclip(0, 5).write_videofile("../../ukulele.avi", fps=24, codec='libx264')
 
 
+# import tempfile, os
+# tempfile_fd, tempfilename = tempfile.mkstemp(suffix='.png', dir='/home/npeled/temp')
+# os.close(tempfile_fd)
+# temptxt_fd, temptxt = tempfile.mkstemp(suffix='.txt', dir='/home/npeled/temp')
+# os.write(temptxt_fd, bytes(txt, 'UTF8'))
+# os.close(temptxt_fd)
+
 def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold'):
     # Should install ImageMagick
     # For centos6: https://www.vultr.com/docs/install-imagemagick-on-centos-6
@@ -106,13 +113,10 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, 
 
     def annotate(clip, txt, txt_color=txt_color, fontsize=fontsize, font=font):
         """ Writes a text at the bottom of the clip. """
-        # import tempfile, os
-        # tempfile_fd, tempfilename = tempfile.mkstemp(suffix='.png', dir='/home/npeled/temp')
-        # os.close(tempfile_fd)
-        # temptxt_fd, temptxt = tempfile.mkstemp(suffix='.txt', dir='/home/npeled/temp')
-        # os.write(temptxt_fd, bytes(txt, 'UTF8'))
-        # os.close(temptxt_fd)
-        # txtclip = editor.TextClip(txt, fontsize=fontsize, color=txt_color, tempfilename=tempfilename, temptxt=temptxt, print_cmd=True) # font=font
+        # To make this code works the policy.xml should be editted
+        #  identify -list policy
+        # sudo gedit /etc/ImageMagick/policy.xml &
+        # Put under comment the TEXT and LABEL lines
         txtclip = editor.TextClip(txt, fontsize=fontsize, color=txt_color)  # font=font
         # txtclip = txtclip.on_color((clip.w, txtclip.h + 6), color=(0, 0, 255), pos=(6, 'center'))
         cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
