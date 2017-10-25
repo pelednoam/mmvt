@@ -148,6 +148,14 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
         raw.save(meg.RAW)
     else:
         raw = mne.io.read_raw_fif(meg.RAW)
+    meg.COR = op.join(op.join(HCP_DIR, 'hcp-meg', subject, '{}-head_mri-trans.fif'.format(subject)))
+    epo_fname = meg.EPO.format(cond='all')
+    evo_fname = meg.EVO.format(cond='all')
+    if not op.isfile(epo_fname) or not op.isfile(evo_fname):
+        epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
+        evoked = epochs.average()
+        epochs.save(epo_fname)
+        mne.write_evokeds(evo_fname, evoked)
     meg.calc_fwd_inv_wrapper(subject, args)
     args.snr = 1.0  # use smaller SNR for raw data
     args.overwrite_labels_data = True
@@ -155,7 +163,6 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
     if calc_rest_from_raw:
         meg.calc_labels_avg_for_rest_wrapper(args, raw)
     elif calc_rest_from_epochs:
-        epochs = hcp.read_epochs(run_index=run_index, **hcp_params)
         args.single_trial_stc = True
         'A210'
         flags, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(

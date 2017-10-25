@@ -566,7 +566,10 @@ def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', 
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
-        check_bem(mri_subject, args)
+        try:
+            check_bem(mri_subject, args)
+        except:
+            print(traceback.format_exc())
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
