@@ -3,6 +3,9 @@ import glob
 from src.utils import movies_utils as mu
 from src.utils import utils
 
+LINKS_DIR = utils.get_links_dir()
+MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+
 
 def edit_movie_example():
     movie_fol = '/cluster/neuromind/npeled/Documents/brain-map'
@@ -66,16 +69,17 @@ def edit_movie_example4():
 
 
 def edit_skull_movie():
-    movie_fol = '/homes/5/npeled/space1/mmvt/DC/movies'
+    movie_fol = op.join(MMVT_DIR, 'DC', 'movies')
     subs = [
-        ((0, 5),'Skull thickness is plotted on top of the skull according to the colormap (in mm)'),
+        ((0, 5),'Skull thickness (mm) is plotted on the skull'),
         ((5, 10), 'Picking the thickness in specific coordinates'),
         ((10, 17), 'Using the MRI to pick a point on the skull'),
         ((17, 20), 'Adding the implantable device'),
-        ((20, 26), 'Aligning and rotating the device. The min, max and avg thickness under the device is calculated'),
+        ((20, 23), 'Aligning and rotating the device'),
+        ((23, 26), 'The thickness under the device is calculated'),
         ((26, 32), 'Aligning the device to the cursor position')
     ]
-    mu.add_text_to_movie(movie_fol, 'skull.mp4', 'skull_sbus.mp4', subs, fontsize=60)
+    mu.add_text_to_movie(movie_fol, 'skull.mp4', 'skull_subs.mp4', subs, fontsize=60)
 
 
 def ski_movie():
