@@ -65,6 +65,19 @@ def edit_movie_example4():
     mu.cut_movie(movie_fol, movie_name, out_movie_name, subclips_times)
 
 
+def edit_skull_movie():
+    movie_fol = '/homes/5/npeled/space1/mmvt/DC/movies'
+    subs = [
+        ((0, 5),'Skull thickness is plotted on top of the skull according to the colormap (in mm)'),
+        ((5, 10), 'Picking the thickness in specific coordinates'),
+        ((10, 17), 'Using the MRI to pick a point on the skull'),
+        ((17, 20), 'Adding the implantable device'),
+        ((20, 26), 'Aligning and rotating the device. The min, max and avg thickness under the device is calculated'),
+        ((26, 32), 'Aligning the device to the cursor position')
+    ]
+    mu.add_text_to_movie(movie_fol, 'skull.mp4', 'skull_sbus.mp4', subs, fontsize=60)
+
+
 def ski_movie():
     do_merge_images = False
     do_cut = False
@@ -116,6 +129,7 @@ def image_in_image():
 
 
 if __name__ == '__main__':
-    image_in_image()
+    # image_in_image()
     # ski_movie()
     # edit_movie_example3()
+    edit_skull_movie()
