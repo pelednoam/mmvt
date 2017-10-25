@@ -156,6 +156,8 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
         evoked = epochs.average()
         epochs.save(epo_fname)
         mne.write_evokeds(evo_fname, evoked)
+    else:
+        epochs = mne.read_epochs(epo_fname)
     meg.calc_fwd_inv_wrapper(subject, args)
     args.snr = 1.0  # use smaller SNR for raw data
     args.overwrite_labels_data = True
@@ -164,13 +166,32 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
         meg.calc_labels_avg_for_rest_wrapper(args, raw)
     elif calc_rest_from_epochs:
         args.single_trial_stc = True
-        'A210'
         flags, stcs_conds, stcs_num = meg.calc_stc_per_condition_wrapper(
             subject, None, args.inverse_method, args, flags, None, epochs)
         flags = meg.calc_labels_avg_per_condition_wrapper(
-            subject, None, args.atlas, args.inverse_method, stcs_conds, args, flags, stcs_num)
+            subject, None, args.atlas, args.inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs)
 
     print('sdf')
+
+
+def calc_meg_connectivity(args):
+    from src.preproc import connectivity as con
+    args = con.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        atlas='laus125',
+        function='calc_lables_connectivity',
+        connectivity_modality='meg',
+        connectivity_method='pli,cv',
+        windows_length=500,
+        windows_shift=100,
+        # sfreq=1000.0,
+        # fmin=10,
+        # fmax=100
+        # recalc_connectivity=True,
+        max_windows_num=100,
+        n_jobs=args.n_jobs
+    ))
+    pu.run_on_subjects(args, con.main)
 
 
 def compute_noise_cov(subject, hcp_path, noise_cov_fname=''):
@@ -222,5 +243,5 @@ if __name__ == '__main__':
     task = 'rest'
     args, hcp_params = init(subject, task)
     # analyze_task(subject, args, hcp_params)
-    analyze_rest(subject, args, hcp_params)
+    analyze_rest(subject, args, hcp_params, calc_rest_from_raw=True, calc_rest_from_epochs=False)
     # test_apply_ica(dict(hcp_path=HCP_DIR, subject=subject, data_type='rest'))

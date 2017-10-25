@@ -94,7 +94,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     EVO = _get_fif_name('ave')
     COV = _get_fif_name('cov')
     DATA_COV = _get_fif_name('data-cov')
-    NOISE_COV = _get_fif_name('noise-cov')
+    NOISE_COV = _get_fif_name_no_cond('noise-cov')
     DATA_CSD = _get_pkl_name('data-csd')
     NOISE_CSD = _get_pkl_name('noise-csd')
     EPO = _get_fif_name('epo')
@@ -846,14 +846,15 @@ def calc_inverse_operator(events=None, epo_fname='', evo_fname='', fwd_fname='',
             (not calc_for_spec_sub_cortical or op.isfile(get_cond_fname(INV_X, cond, region=region)))):
                 continue
         try:
-            if use_empty_room_for_noise_cov:
-                raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
-                noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
-                noise_cov.save(noise_cov_fname)
-            elif overwrite_noise_cov or not op.isfile(noise_cov_fname):
-                epo = get_cond_fname(epo_fname, cond)
-                epochs = mne.read_epochs(epo)
-                noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, noise_cov_fname, args)
+            if overwrite_noise_cov or not op.isfile(noise_cov_fname):
+                if use_empty_room_for_noise_cov:
+                    raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
+                    noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
+                    noise_cov.save(noise_cov_fname)
+                else:
+                    epo = get_cond_fname(epo_fname, cond)
+                    epochs = mne.read_epochs(epo)
+                    noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, noise_cov_fname, args)
             else:
                 noise_cov = mne.read_cov(noise_cov_fname)
             # todo: should use noise_cov = calc_cov(...
@@ -861,7 +862,7 @@ def calc_inverse_operator(events=None, epo_fname='', evo_fname='', fwd_fname='',
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
                 _calc_inverse_operator(
-                    cortical_fwd, get_cond_fname(inv_fname, cond), evo_fname, noise_cov, inv_loose, inv_depth)
+                    cortical_fwd, get_cond_fname(inv_fname, cond), get_cond_fname(evo_fname, cond), noise_cov, inv_loose, inv_depth)
             if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
@@ -935,6 +936,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
             if single_trial_stc:
                 if epochs is None:
+                    epo_fname = epo_fname.format(cond=cond_name)
                     if not op.isfile(epo_fname):
                         print('single_trial_stc and not epoch file was found!')
                         return False, stcs, stcs_num
@@ -1900,10 +1902,15 @@ def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_metho
 def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
         factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, do_plot=False, n_jobs=1):
+    def _check_all_files_exist():
+        return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
+            labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
+    if labels_data_template == '':
+        labels_data_template = LBL
+    if _check_all_files_exist():
+        return True
     try:
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
-        if labels_data_template == '':
-            labels_data_template = LBL
         global_inverse_operator = False
         if events is None:
             events = dict(all=0)
@@ -1969,9 +1976,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
 
         save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, factor,
                          positive, moving_average_win_size)
-        flag = np.all(
-            [op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
-                labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
+        flag = _check_all_files_exist()
     except:
         print(traceback.format_exc())
         print('Error in calc_labels_avg_per_condition inv')
@@ -2442,7 +2447,7 @@ def extract_label_data(label, src, stc):
 
 
 def calc_labels_avg_per_condition_wrapper(
-        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}):
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
@@ -2452,6 +2457,7 @@ def calc_labels_avg_per_condition_wrapper(
                     atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
             return flags
 
+        conditions_keys = conditions.keys() if conditions is not None else ['all']
         if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
             inverse_method = inverse_method[0]
         args.inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
@@ -2477,10 +2483,10 @@ def calc_labels_avg_per_condition_wrapper(
                 stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
                 fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingMEG,
                 stcs_num=stcs_num, n_jobs=args.n_jobs)
-            if stcs_conds and isinstance(stcs_conds[list(conditions.keys())[0]], types.GeneratorType) and hemi_ind == 0:
+            if stcs_conds and isinstance(stcs_conds[conditions_keys[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
-                    subject, conditions, inverse_method, args, flags)
+                    subject, conditions, inverse_method, args, flags, raw=raw, epochs=epochs)
 
     if utils.should_run(args, 'calc_labels_min_max'):
         flags['calc_labels_min_max'] = calc_labels_minmax(
@@ -2508,7 +2514,7 @@ def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_
             labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
             np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
                      labels_diff_minmax=[labels_diff_min, labels_diff_max])
-            shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
+            # shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em)))
@@ -2936,7 +2942,7 @@ def main(tup, remote_subject_dir, args, flags):
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
     flags = calc_labels_avg_per_condition_wrapper(
-        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num)
+        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
