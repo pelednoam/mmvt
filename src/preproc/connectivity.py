@@ -195,6 +195,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         names[hemi] = f['names']
 
     data = np.concatenate((data['lh'], data['rh']))
+    tmin = args.tmin if args.tmin is not None else 0
+    tmax = args.tmax if args.tmax is not None else data.shape[1]
+    data = data[:, tmin:tmax]
     labels_names = np.concatenate((names['lh'], names['rh']))
     labels_fname = op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy')
     np.save(labels_fname, labels_names)
@@ -911,7 +914,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
     parser.add_argument('--windows_length', help='', required=False, default=0, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
-    parser.add_argument('--max_windows_num', help='', required=False, default=0, type=int)
+    parser.add_argument('--max_windows_num', help='', required=False, default=None, type=au.int_or_none)
+    parser.add_argument('--tmin', help='', required=False, default=None, type=au.int_or_none)
+    parser.add_argument('--tmax', help='', required=False, default=None, type=au.int_or_none)
 
     parser.add_argument('--sfreq', help='', required=False, default=1000, type=float)
     parser.add_argument('--fmin', help='', required=False, default=5, type=float)
@@ -931,8 +936,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_seed_data', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
-
     args = utils.Bag(au.parse_parser(parser, argv))
+    if args.max_windows_num is None:
+        args.max_windows_num = np.inf
     if len(args.conditions) == 1:
         args.stat = STAT_AVG
     # print(args)

@@ -108,7 +108,7 @@ def analyze_task(subject, args, hcp_params):
     flags = meg.calc_labels_avg_per_condition_wrapper(subject, events, args.atlas, args.inverse_method, stcs_conds, args, flags)
 
 
-def read_raw_data(run_index, hcp_params):
+def read_raw_data(run_index, hcp_params, lfreq=0.5, hfreq=60):
     raw = hcp.read_raw(run_index=run_index, **hcp_params)
     raw.load_data()
     # apply ref channel correction and drop ref channels
@@ -125,10 +125,9 @@ def read_raw_data(run_index, hcp_params):
     raw.info['bads'].extend(annots['channels']['all'])
     raw.pick_types(meg=True, ref_meg=False)
 
-    #  Note: MNE complains on Python 2.7
-    raw.filter(0.50, None, method='iir',
+    raw.filter(lfreq, None, method='iir',
                iir_params=dict(order=4, ftype='butter'), n_jobs=1)
-    raw.filter(None, 60, method='iir',
+    raw.filter(None, hfreq, method='iir',
                iir_params=dict(order=4, ftype='butter'), n_jobs=1)
 
     # read ICA and remove EOG ECG
@@ -144,7 +143,7 @@ def read_raw_data(run_index, hcp_params):
 def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=False, calc_rest_from_epochs=True):
     flags = {}
     if not op.isfile(meg.RAW):
-        raw = read_raw_data(run_index, hcp_params)
+        raw = read_raw_data(run_index, hcp_params, 1, 60)
         raw.save(meg.RAW)
     else:
         raw = mne.io.read_raw_fif(meg.RAW)
@@ -160,8 +159,8 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
         epochs = mne.read_epochs(epo_fname)
     meg.calc_fwd_inv_wrapper(subject, args)
     args.snr = 1.0  # use smaller SNR for raw data
-    args.overwrite_labels_data = True
-    args.n_jobs = 1
+    # args.overwrite_labels_data = True
+    # args.n_jobs = 1
     if calc_rest_from_raw:
         meg.calc_labels_avg_for_rest_wrapper(args, raw)
     elif calc_rest_from_epochs:
@@ -174,21 +173,24 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
     print('sdf')
 
 
-def calc_meg_connectivity(args):
+def calc_meg_connectivity(args,):
     from src.preproc import connectivity as con
+    raw = mne.io.read_raw_fif(meg.RAW)
+    sfreq = raw.info['sfreq']
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
         atlas='laus125',
         function='calc_lables_connectivity',
         connectivity_modality='meg',
         connectivity_method='pli,cv',
-        windows_length=500,
-        windows_shift=100,
+        windows_length=int(sfreq * 0.5), # 0.5s
+        windows_shift=int(sfreq * 0.1), # 0.1s,
         # sfreq=1000.0,
-        # fmin=10,
-        # fmax=100
-        # recalc_connectivity=True,
-        max_windows_num=100,
+        tmin=300000,
+        tmax=int(300000 + sfreq * 60 * 8), # 8min, 4800 time points
+        recalc_connectivity=True,
+        # max_windows_num=100,
+        # n_jobs=1,
         n_jobs=args.n_jobs
     ))
     pu.run_on_subjects(args, con.main)
@@ -243,5 +245,6 @@ if __name__ == '__main__':
     task = 'rest'
     args, hcp_params = init(subject, task)
     # analyze_task(subject, args, hcp_params)
-    analyze_rest(subject, args, hcp_params, calc_rest_from_raw=True, calc_rest_from_epochs=False)
+    # analyze_rest(subject, args, hcp_params, calc_rest_from_raw=True, calc_rest_from_epochs=False)
+    calc_meg_connectivity(args)
     # test_apply_ica(dict(hcp_path=HCP_DIR, subject=subject, data_type='rest'))

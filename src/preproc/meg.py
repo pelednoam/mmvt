@@ -2353,7 +2353,7 @@ def calc_labels_avg_for_rest(
                        extract_modes, pick_ori, save_data_files, labels_output_fol_template, overwrite_stc,
                        do_plot_time_series) for indices_chunk in indices]
             results = utils.run_parallel(calc_stc_labels_parallel, chunks, n_jobs)
-            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
+            labels_data[hemi] = collect_parallel_results(indices, results, len(labels))
 
     elif (not labels_data_exist) or overwrite_labels_data:
         labels_data = {}
@@ -2363,7 +2363,7 @@ def calc_labels_avg_for_rest(
             chunks = [([labels_names[ind] for ind in indices_chunk], extract_modes, labels_output_fol_template,
                        do_plot_time_series) for indices_chunk in indices]
             results = utils.run_parallel(_load_labels_data_parallel, chunks, n_jobs)
-            labels_data[hemi] = collect_parallel_results(indices, results, labels_num)
+            labels_data[hemi] = collect_parallel_results(indices, results, len(labels))
 
     for em in extract_modes:
         data_max = max([np.max(labels_data[hemi][em]) for hemi in utils.HEMIS])
@@ -2428,7 +2428,11 @@ def _load_labels_data_parallel(p):
                 plot_label_data(label_data, label, em, labels_output_fol)
             if em not in labels_data:
                 labels_data[em] = np.zeros((len(labels), len(label_data)))
-            labels_data[em][ind, :] = label_data
+            try:
+                labels_data[em][ind, :] = label_data
+            except:
+                print('error in {}'.format(label))
+                raise Exception(traceback.format_exc())
     return labels_data
 
 
@@ -2437,6 +2441,7 @@ def plot_label_data(label_data, label, em, labels_output_fol):
     plt.plot(label_data)
     plt.title('{} {}'.format(label, em))
     plt.savefig(op.join(labels_output_fol, '{}-{}.png'.format(label, em)))
+    plt.close()
 
 
 def extract_label_data(label, src, stc):
