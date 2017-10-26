@@ -8,7 +8,7 @@ import hcp.preprocessing as preproc
 from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.preproc import meg
-
+from src.preproc import connectivity as con
 
 links_dir = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
@@ -173,8 +173,7 @@ def analyze_rest(subject, args, hcp_params, run_index=0, calc_rest_from_raw=Fals
     print('sdf')
 
 
-def calc_meg_connectivity(args,):
-    from src.preproc import connectivity as con
+def calc_meg_connectivity(args):
     raw = mne.io.read_raw_fif(meg.RAW)
     sfreq = raw.info['sfreq']
     args = con.read_cmd_args(utils.Bag(
@@ -188,7 +187,7 @@ def calc_meg_connectivity(args,):
         # sfreq=1000.0,
         tmin=300000,
         tmax=int(300000 + sfreq * 60 * 8), # 8min, 4800 time points
-        recalc_connectivity=True,
+        # recalc_connectivity=True,
         # max_windows_num=100,
         # n_jobs=1,
         n_jobs=args.n_jobs

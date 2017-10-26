@@ -1769,7 +1769,7 @@ def draw(self, context):
         mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
                                     len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
-    static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*_static_*.npy'))) > 0
+    static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*.npy'))) > 0
     # manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
     #                                                '{}_groups.csv'.format(bpy.context.scene.atlas)))
     if _addon() is None:
@@ -2144,7 +2144,8 @@ def init_static_conn():
     conn_labels_names_fname = op.join(mu.get_user_fol(), 'connectivity', 'labels_names.npy')
     if op.isfile(conn_labels_names_fname):
         ColoringMakerPanel.connectivity_labels = np.load(conn_labels_names_fname)
-    static_conn_files = glob.glob(op.join(user_fol, 'connectivity', '*_static_*.npy'))
+    static_conn_files = glob.glob(op.join(user_fol, 'connectivity', '*mean*.npy')) + \
+                        glob.glob(op.join(user_fol, 'connectivity', '*statics*.npy'))
     if len(static_conn_files) > 0:
         files_names = [mu.namebase(fname) for fname in static_conn_files]
         files_names = [name for name in files_names if 'backup' not in name]

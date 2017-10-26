@@ -105,7 +105,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
         windows_num = d.con_values.shape[1]
     else:
         windows_num = 1
-    T = ConnectionsPanel.addon.get_max_time_steps()
+    T = ConnectionsPanel.addon.get_max_time_steps(windows_num)
     if T == 0:
         T = windows_num
     norm_fac = T / windows_num
@@ -844,6 +844,7 @@ class ConnectionsPanel(bpy.types.Panel):
     do_filter = True
     connections_files_exist = False
     conn_names = []
+    selected_indices = []
 
     def draw(self, context):
         connections_draw(self, context)
@@ -866,6 +867,7 @@ def init(addon):
     conn_files = [f for f in conn_files if all([k in set(np.load(f).keys()) for k in conn_keys])]
 
     ConnectionsPanel.connections_files_exist = len(conn_files) > 0
+    addon.set_connection_files_exist(ConnectionsPanel.connections_files_exist)
     if not ConnectionsPanel.connections_files_exist:
         print('No connectivity files were found in {}'.format(conn_files_template))
         ConnectionsPanel.init = False

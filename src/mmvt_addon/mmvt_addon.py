@@ -124,6 +124,7 @@ fit_selection = selection_panel.fit_selection
 select_roi = selection_panel.select_roi
 curves_sep_update = selection_panel.curves_sep_update
 calc_best_curves_sep = selection_panel.calc_best_curves_sep
+set_connection_files_exist = selection_panel.set_connection_files_exist
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 color_objects = coloring_panel.color_objects
@@ -316,7 +317,7 @@ clear_slice = slicer_panel.clear_slice
 find_point_thickness = skull_panel.find_point_thickness
 
 
-def get_max_time_steps():
+def get_max_time_steps(default_val=2500):
     # Check if there is animation data in MEG
     # try:
     #     return bpy.context.scene.maximal_time_steps
@@ -355,14 +356,13 @@ def get_max_time_steps():
             print('No deep electrodes data')
 
     try:
-        if found:
-            print('max time steps: {}'.format(bpy.types.Scene.maximal_time_steps))
-            return bpy.types.Scene.maximal_time_steps
+        if not found:
+            bpy.types.Scene.maximal_time_steps = default_val
+        print('max time steps: {}'.format(bpy.types.Scene.maximal_time_steps))
+        return bpy.types.Scene.maximal_time_steps
     except:
-        print('No preperty maximal_time_steps in bpy.types.Scene')
-
-    # Bad fallback...
-    return 2500
+        print('No property maximal_time_steps in bpy.types.Scene')
+        return default_val
 
 
 _listener_in_queue, _listener_out_queue = None, None
@@ -527,7 +527,7 @@ def get_panels():
 def load_all_panels(addon_prefs=None):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
-    fix_cortex_labels_material()
+    # fix_cortex_labels_material()
     for panel in get_panels():
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)

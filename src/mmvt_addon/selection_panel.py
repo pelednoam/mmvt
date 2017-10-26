@@ -590,14 +590,18 @@ def init(addon):
         modalities_itesm.append(('fMRI', 'fMRI', '', 1))
     SelectionMakerPanel.modalities_num = len(modalities_itesm)
     bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
-    SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
-                bpy.data.objects[_addon().get_connections_parent_name()].animation_data
+    # SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
+    #             bpy.data.objects[_addon().get_connections_parent_name()].animation_data
     bpy.context.scene.fit_graph_on_selection = False
     bpy.context.scene.graph_max_min = True
     bpy.context.scene.find_curves_sep_auto = True
     get_data()
     SelectionMakerPanel.init = True
     register()
+
+
+def set_connection_files_exist(val=True):
+    SelectionMakerPanel.connection_files_exist = val
 
 
 def get_rois_fcruves():

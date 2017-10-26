@@ -157,6 +157,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
         static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_cv_mean_{}.npz'.format(
             args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
+    conn_mean_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_mean.npy'.format(
+            args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
     labels_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_{}_labels_avg.npz'.format(
         args.connectivity_modality, identifier, args.connectivity_method[0], args.atlas, '{hemi}'))
     con_vertices_fname = op.join(
@@ -371,7 +373,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     if 'cv' in args.connectivity_method:
         no_wins_connectivity_method = '{} CV'.format(args.connectivity_method)
         # todo: check why if it's not always True, the else fails
-        if True: #not op.isfile(static_output_mat_fname):
+        if True:#not op.isfile(static_output_mat_fname):
             conn_std = np.nanstd(conn, 2)
             static_conn = conn_std / np.mean(np.abs(conn), 2)
             if np.ndim(static_conn) == 2:
@@ -397,7 +399,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             plt.title('{} Cv'.format(connectivity_method))
             plt.savefig(static_con_fig_fname)
             plt.close()
-        if True: #not op.isfile(static_mean_output_mat_fname):
+        if not op.isfile(static_mean_output_mat_fname):
             dFC = np.nanmean(static_conn, 1)
             std_mean = np.nanmean(conn_std, 1)
             stat_conn = np.nanmean(np.abs(conn), 1)
@@ -407,7 +409,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             lu.create_labels_coloring(subject, labels_names, dFC, '{}_{}_cv_mean'.format(
                 args.connectivity_modality, args.connectivity_method[0]), norm_percs=(1, 99), norm_by_percentile=True,
                 colors_map='YlOrRd')
-
+    if windows_num > 1 and conn.ndim == 3 and not op.isfile(conn_mean_mat_fname):
+        mean_conn = np.mean(conn, 2)
+        np.save(conn_mean_mat_fname, mean_conn)
     if not args.save_mmvt_connectivity:
         return True
     conn = conn[:, :, :, np.newaxis]
@@ -846,7 +850,7 @@ def calc_fmri_corr_degree(subject, identifier='', threshold=0.7, connectivity_me
     if not op.isfile(corr_fname):
         print("Can't find the connectivity fname ({})!".format(corr_fname))
         print("You should call calc_lables_connectivity first, like in " +
-              "src.preproc.examples.fmri.calc_fmri_static_connectivity with windows_length=0")
+              "src.preproc.examples.connectivity.calc_fmri_static_connectivity with windows_length=0")
         return False
     corr = np.load(corr_fname)
     np.fill_diagonal(corr, 0)
