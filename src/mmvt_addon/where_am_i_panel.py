@@ -241,7 +241,7 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 def find_closest_label():
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    closest_mesh_name, vertex_ind, vertex_co, _ = \
+    closest_mesh_name, vertex_ind, vertex_co = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
@@ -282,7 +282,7 @@ def build_new_label_name():
 
 
 def grow_a_label():
-    closest_mesh_name, vertex_ind, _, _ = \
+    closest_mesh_name, vertex_ind, _ = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     subject, atlas = mu.get_user(), bpy.context.scene.subject_annot_files
@@ -360,8 +360,15 @@ def init_listener():
 def create_slices(modalities='mri', pos=None):
     if WhereAmIPanel.slicer_state is None:
         return
+    pos_was_none = pos is None
     if pos is None:
         pos = bpy.context.scene.cursor_location
+    if bpy.context.scene.cursor_is_snapped and pos_was_none:
+        vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+        if obj_name != '' and ('rh' in obj_name or 'lh' in obj_name):
+            obj_name = 'rh' if 'rh' in obj_name else 'lh'
+            ob = bpy.data.objects[obj_name]
+            pos = ob.data.vertices[vert].co / 10
     if WhereAmIPanel.run_slices_listener:
         init_listener()
         xyz = ','.join(map(str, pos * 10))
@@ -405,7 +412,7 @@ def slices_were_clicked():
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             active_image = area.spaces.active.image
-            if active_image is not None:
+            if active_image is not None and active_image.name in WhereAmIPanel.slices_cursor_pos:
                 pos = tuple(area.spaces.active.cursor_location)
                 if pos != WhereAmIPanel.slices_cursor_pos[active_image.name]:
                     print(active_image.name, pos)

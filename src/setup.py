@@ -239,23 +239,19 @@ def install_blender_reqs():
     try:
         blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
+        blender_parent_fol = utils.get_parent_fol(blender_fol)
         # Get pip
-        blender_bin_fol = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.78', 'python', 'bin') if utils.is_osx() else \
-            glob.glob(op.join(blender_fol, '2.7?', 'python'))[0]
+        blender_bin_fol = op.join(blender_parent_fol, 'Resources', '2.78', 'python', 'bin') if \
+            utils.is_osx() else glob.glob(op.join(blender_fol, '2.7?', 'python'))[0]
         python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
         current_dir = os.getcwd()
         os.chdir(blender_bin_fol)
         # if utils.is_osx():
         cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
-        # elif utils.is_linux():
-        #     cmd = '{} {}'.format(op.join(blender_bin_fol, 'python3.5m'), op.join(resource_fol, 'get-pip.py'))
-        # else:
-        #     print('No pizco for windows yet...')
-        #     return
         utils.run_script(cmd)
         # install blender reqs:
         if not utils.is_windows():
-            cmd = '{} install zmq pizco scipy mne joblib tqdm nibabel matplotlib'.format(op.join('bin', 'pip'))
+            cmd = '{} install zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('bin', 'pip'))
             utils.run_script(cmd)
         else:
             print('Sorry, installing external python libs in python will be implemented in the future')

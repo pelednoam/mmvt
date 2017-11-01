@@ -203,16 +203,17 @@ def inflating_update(self, context):
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
                 # print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
-        #todo: only in snapping?
-        # vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
-        # if obj_name != '':
-        #     if 'inflated' not in obj_name:
-        #         obj_name = 'inflated_{}'.format(obj_name)
-        #     ob = bpy.data.objects[obj_name]
-        #     scene = bpy.context.scene
-        #     me = ob.to_mesh(scene, True, 'PREVIEW')
-        #     bpy.context.scene.cursor_location = me.vertices[vert].co / 10
-        #     bpy.data.meshes.remove(me)
+
+        if bpy.context.scene.cursor_is_snapped:
+            vert, obj_name = get_closest_vertex_and_mesh_to_cursor()
+            if obj_name != '':
+                if 'inflated' not in obj_name:
+                    obj_name = 'inflated_{}'.format(obj_name)
+                ob = bpy.data.objects[obj_name]
+                scene = bpy.context.scene
+                me = ob.to_mesh(scene, True, 'PREVIEW')
+                bpy.context.scene.cursor_location = me.vertices[vert].co / 10
+                bpy.data.meshes.remove(me)
     except:
         print('Error in inflating update!')
         print(traceback.format_exc())
@@ -404,7 +405,7 @@ def appearance_draw(self, context):
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
+    # layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
@@ -449,11 +450,7 @@ class SelectionListener(bpy.types.Operator):
                 self.cursor_pos = tuple(bpy.context.scene.cursor_location)
                 _addon().create_slices()
                 _addon().save_cursor_position()
-                if bpy.context.scene.is_sliced_ind > -1:
-                    tmp_new = bpy.context.scene.cursor_location[bpy.context.scene.is_sliced_ind]
-                    tmp_old = bpy.context.scene.last_cursor_location[bpy.context.scene.is_sliced_ind]
-                    if abs(tmp_new-tmp_old) > 0.005:
-                        _addon().clear_slice()
+                clear_slice()
                 if bpy.data.objects.get('inner_skull', None) is not None:
                     _addon().find_point_thickness()
             _addon().slices_were_clicked()
@@ -527,23 +524,32 @@ class SelectionListener(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
+def clear_slice():
+    if bpy.context.scene.is_sliced_ind > -1:
+        tmp_new = bpy.context.scene.cursor_location[bpy.context.scene.is_sliced_ind]
+        tmp_old = bpy.context.scene.last_cursor_location[bpy.context.scene.is_sliced_ind]
+        if abs(tmp_new - tmp_old) > 0.005:
+            _addon().clear_slice()
+
+
 def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_snap_cursor_to_true=True):
     flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
     if flag:
-        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=use_shape_keys, objects_names=objects_names)
         bpy.context.scene.cursor_location = vertex_co
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
         activity_values = _addon().get_activity_values()
         if activity_values is not None:
             _addon().set_vertex_data(activity_values[vertex_ind])
+        # print(closest_mesh_name, vertex_ind, vertex_co)
         return vertex_ind, closest_mesh_name
     else:
         clear_closet_vertex_and_mesh_to_cursor()
         return None, None
 
 
-def set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true):
+def set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true=True):
     AppearanceMakerPanel.closest_vertex_to_cursor = vertex_ind
     AppearanceMakerPanel.closest_mesh_to_cursor = closest_mesh_name
     if set_snap_cursor_to_true:
@@ -718,7 +724,7 @@ def init(addon):
             bpy.data.objects['rh'].location[0] = 0
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0 #-5
-    bpy.context.scene.cursor_is_snapped = False
+    bpy.context.scene.cursor_is_snapped = True
     set_inflated_ratio(0)
     appearance_show_rois_activity_update()
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()

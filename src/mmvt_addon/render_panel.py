@@ -93,9 +93,9 @@ def load_camera(camera_fname=''):
         bpy.context.scene.X_location = X_location
         bpy.context.scene.Y_location = Y_location
         bpy.context.scene.Z_location = Z_location
-        print('Camera loaded: rotation: {},{},{} locatioin: {},{},{}'.format(
-            X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location))
-        print('Camera loaded: {}'.format(camera_fname))
+        # print('Camera loaded: rotation: {},{},{} locatioin: {},{},{}'.format(
+        #     X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location))
+        # print('Camera loaded: {}'.format(camera_fname))
         RenderFigure.update_camera = True
         update_camera()
     else:

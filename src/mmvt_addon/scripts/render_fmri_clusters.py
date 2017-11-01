@@ -22,11 +22,11 @@ def wrap_blender_call():
 
 def check_if_all_figures_were_rendered(args):
     from src.utils import figures_utils as fu
-    from src.mmvt_addon import fMRI_panel as fmri
+    from src.mmvt_addon import clusters_utils as cu
 
     subject_fol = op.join(su.get_mmvt_dir(), args.subject)
     figures_fol = op.join(subject_fol, 'figures')
-    clusters_file_names, _, _ = fmri.get_clusters_files(subject_fol)
+    clusters_file_names, _, _ = cu.get_clusters_files('fmri', subject_fol)
     clusters_names = [f for f in clusters_file_names if args.clusters_type in f]
     render_figures = False
     all_figures = []
@@ -90,12 +90,12 @@ def run_script(subject_fname):
 
 def post_script(args):
     from src.utils import figures_utils as fu
-    from src.mmvt_addon import fMRI_panel as fmri
     from src.utils import utils
+    from src.mmvt_addon import clusters_utils as cu
 
     subject_fol = op.join(su.get_mmvt_dir(), args.subject)
     figures_fol = op.join(subject_fol, 'figures')
-    clusters_file_names, _, _ = fmri.get_clusters_files(subject_fol)
+    clusters_file_names, _, _ = cu.get_clusters_files('fmri', subject_fol)
     clusters_names = [f for f in clusters_file_names if args.clusters_type in f]
     print('clusters_names: {}'.format(clusters_names))
     fmri_files_minmax_fname = op.join(subject_fol, 'fmri', 'fmri_files_minmax_cm.pkl')

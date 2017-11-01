@@ -14,6 +14,36 @@ def set_vertex_data(val):
     DataInVertMakerPanel.data_in_cursor = '{:.5f}'.format(val)
 
 
+def snap_ray():
+    # https://blender.stackexchange.com/questions/92720/snappping-the-3d-cursor-to-the-surface-and-find-the-surfaces-face-it-was-snappe
+    from mathutils import Vector
+    context = bpy.context
+    screen = context.screen
+    scene = context.scene
+    areas3d = [a for a in screen.areas if a.type == 'VIEW_3D']
+    for a in areas3d:
+        r3d = a.spaces.active.region_3d
+        vm = r3d.view_matrix.transposed().to_3x3().to_4x4()
+        norm = vm * Vector((0, 0, 1))
+        norm.normalize()
+        ray = scene.ray_cast(scene.cursor_location, norm)
+        hit, loc, norm, face, obj, matrix = ray
+        if hit:
+            if obj.name in ['inflated_rh', 'inflated_lh']:
+                me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+                vertex_ind = obj.data.polygons[face].vertices[0]
+                vertex_co = me.vertices[vertex_ind].co * obj.matrix_world
+                bpy.data.meshes.remove(me)
+                # print("hit object", obj, "on face:", face)
+                # print([v for v in obj.data.polygons[face].vertices])
+                # print([me.vertices[v].co * obj.matrix_world for v in obj.data.polygons[face].vertices])
+                return obj.name, vertex_ind, vertex_co
+            else:
+                print('snap ray hit {}'.format(obj.name))
+    return None, None, None
+
+
+# @mu.timeit
 def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_shape_keys=False, objects_names=None):
     # 3d cursor relative to the object data
     # print('cursor at:' + str(bpy.context.scene.cursor_location))
@@ -23,6 +53,12 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
     # base_obj = bpy.data.objects['Functional maps']
     # meshes = HEMIS
     #        for obj in base_obj.children:
+    if cursor is None and hemis is None and use_shape_keys is True and (objects_names is None or objects_names == mu.INF_HEMIS):
+        closest_mesh_name, vertex_ind, vertex_co = snap_ray()
+        if closest_mesh_name is not None:
+            return closest_mesh_name, vertex_ind, vertex_co
+        else:
+            print('snap_ray didnt work...')
     if objects_names is not None:
         hemis = objects_names
     elif hemis is None:
@@ -67,7 +103,7 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
     # print('vertex_co', vertex_co)
     # print(closest_mesh_name, bpy.data.objects[closest_mesh_name].data.vertices[vertex_ind].co)
     # print(closest_mesh_name.replace('inflated_', ''), bpy.data.objects[closest_mesh_name.replace('inflated_', '')].data.vertices[vertex_ind].co)
-    return closest_mesh_name, vertex_ind, vertex_co, distance
+    return closest_mesh_name, vertex_ind, vertex_co #, distance
 
 
 class ClearVertexData(bpy.types.Operator):
@@ -132,7 +168,7 @@ class CreateVertexData(bpy.types.Operator):
         mod = fcurves.modifiers.new(type='LIMITS')
 
     def invoke(self, context, event=None):
-        closest_mesh_name, vertex_ind, vertex_co, _ = find_vertex_index_and_mesh_closest_to_cursor()
+        closest_mesh_name, vertex_ind, vertex_co = find_vertex_index_and_mesh_closest_to_cursor()
         print(vertex_co)
         self.create_empty_in_vertex_location(vertex_co)
         data_path = mu.get_user_fol()

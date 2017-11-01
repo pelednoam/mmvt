@@ -1254,6 +1254,14 @@ def get_3d_spaces(only_neuro=False):
                         yield space
 
 
+def get_3d_areas(only_neuro=True):
+    for screen in bpy.data.screens:
+        areas = bpy.data.screens['Neuro'].areas if only_neuro else screen.areas
+        for area in areas:
+            if area.type == 'VIEW_3D':
+                yield area
+
+
 def filter_graph_editor(filter):
     ge = get_the_graph_editor()
     ge.dopesheet.filter_fcurve_name = filter

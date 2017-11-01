@@ -19,6 +19,7 @@ bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=Fa
 
 
 def save_cursor_position(pos=None):
+    _addon().create_slices(pos=pos)
     pos = mathutils.Vector(pos) if not pos is None else bpy.context.scene.cursor_location
     root = mu.get_user_fol()
     point = pos * 10.0
@@ -43,7 +44,7 @@ def goto_cursor_position():
 
 def freeview_save_cursor():
     if _addon().is_inflated():  # and _addon().get_inflated_ratio() == 1:
-        closest_mesh_name, vertex_ind, vertex_co, _ = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=True)
         bpy.context.scene.cursor_location = vertex_co
         pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
