@@ -34,7 +34,7 @@ def init(modality, modality_data=None, colormap=None):
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
     self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
-                       colors_ratio=colors_ratio, colormap=colormap))
+                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[]))
     return self
 
 
@@ -138,6 +138,7 @@ def on_click(ii, xy, state):
     idxs[ii] = state.coordinates[ii]
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
+    # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))
     create_slices(idxs, state) # np.dot(state.affine, idxs)[:3]
     return idxs
 

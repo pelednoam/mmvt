@@ -540,8 +540,11 @@ def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=Tr
     bad_vertices = {}
 
     unknown_labels = lu.create_unknown_labels(subject, atlas)
+    contours_tempalte = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    if not utils.both_hemi_files_exist(contours_tempalte):
+        calc_labeles_contours(subject, atlas)
     for hemi in utils.HEMIS:
-        d = np.load(op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, hemi)))
+        d = np.load(contours_tempalte.format(hemi=hemi))
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
         bad_vertices_hemi = []
@@ -665,6 +668,7 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
 
 @utils.tryit(False, False)
 def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
+    utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
     output_fname = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
     if utils.both_hemi_files_exist(output_fname) and not overwrite:
         return True

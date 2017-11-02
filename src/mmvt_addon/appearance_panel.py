@@ -4,7 +4,7 @@ import mmvt_utils as mu
 import time
 import sys
 import traceback
-
+import numpy as np
 
 def _addon():
     return AppearanceMakerPanel.addon
@@ -324,16 +324,17 @@ def surface_type_update(self, context):
 
     if bpy.context.scene.cursor_is_snapped:
         vertex_ind, closest_mesh_name = get_closest_vertex_and_mesh_to_cursor()
-        mesh_name = 'inflated_{}'.format(closest_mesh_name) if 'inflated' not in closest_mesh_name else \
-            closest_mesh_name.replace('inflated_', '')
-        if 'inflated' in mesh_name:
-            me = bpy.data.objects[mesh_name].to_mesh(bpy.context.scene, True, 'PREVIEW')
-            vert = me.vertices[vertex_ind]
-            bpy.data.meshes.remove(me)
-        else:
-            vert = bpy.data.objects[mesh_name].data.vertices[vertex_ind]
-        set_closest_vertex_and_mesh_to_cursor(vertex_ind, mesh_name)
-        bpy.context.scene.cursor_location = vert.co / 10.0
+        if closest_mesh_name != '':
+            mesh_name = 'inflated_{}'.format(closest_mesh_name) if 'inflated' not in closest_mesh_name else \
+                closest_mesh_name.replace('inflated_', '')
+            if 'inflated' in mesh_name:
+                me = bpy.data.objects[mesh_name].to_mesh(bpy.context.scene, True, 'PREVIEW')
+                vert = me.vertices[vertex_ind]
+                bpy.data.meshes.remove(me)
+            else:
+                vert = bpy.data.objects[mesh_name].data.vertices[vertex_ind]
+            set_closest_vertex_and_mesh_to_cursor(vertex_ind, mesh_name)
+            bpy.context.scene.cursor_location = vert.co / 10.0
 
     _addon().update_camera_files()
 
@@ -430,7 +431,7 @@ class SelectionListener(bpy.types.Operator):
     press_time = time.time()
     running = False
     right_clicked, left_clicked = False, False
-    cursor_pos = None
+    cursor_pos = bpy.context.scene.cursor_location.copy()
 
     def modal(self, context, event):
         # def show_fcurves(obj):
@@ -440,20 +441,26 @@ class SelectionListener(bpy.types.Operator):
         # https://blender.stackexchange.com/questions/27813/how-to-get-the-vertices-horizontal-and-vertical-location-in-the-window
         if self.left_clicked:
             self.left_clicked = False
+            cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
             if bpy.context.scene.cursor_is_snapped:
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)
             if _addon().is_pial():
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
-            if self.cursor_pos != tuple(bpy.context.scene.cursor_location):
-                self.cursor_pos = tuple(bpy.context.scene.cursor_location)
+            if cursor_moved:
+                SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+                # print('cursor position was changed by the user!')
                 _addon().create_slices()
                 _addon().save_cursor_position()
                 clear_slice()
                 if bpy.data.objects.get('inner_skull', None) is not None:
                     _addon().find_point_thickness()
-            _addon().slices_were_clicked()
+            xyz = _addon().slices_were_clicked()
+            if xyz is not None:
+                bpy.context.scene.cursor_location = tuple(xyz)
+                SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+
 
         if self.right_clicked:
             self.right_clicked = False
@@ -538,6 +545,7 @@ def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=use_shape_keys, objects_names=objects_names)
         bpy.context.scene.cursor_location = vertex_co
+        SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
         activity_values = _addon().get_activity_values()
         if activity_values is not None:

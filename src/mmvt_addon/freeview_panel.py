@@ -19,7 +19,7 @@ bpy.types.Scene.freeview_listener_is_running = bpy.props.BoolProperty(default=Fa
 
 
 def save_cursor_position(pos=None):
-    _addon().create_slices(pos=pos)
+    # _addon().create_slices(pos=pos) # Don't call here create_slices!!!
     pos = mathutils.Vector(pos) if not pos is None else bpy.context.scene.cursor_location
     root = mu.get_user_fol()
     point = pos * 10.0

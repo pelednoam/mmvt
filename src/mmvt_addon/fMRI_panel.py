@@ -386,13 +386,22 @@ def find_fmri_files_min_max():
     abs_values = []
     for constrast_name in fMRIPanel.clusters_labels_file_names:
         constrast = {}
+        constrasts_found = True
         for hemi in mu.HEMIS:
             contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(constrast_name, hemi))
+            if not op.isfile(contrast_fname):
+                # Remove the atlas from the contrast name
+                new_constrast_name = '_'.join(constrast_name.split[:-1])
+                contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(new_constrast_name, hemi))
+            if not op.isfile(contrast_fname):
+                constrasts_found = False
+                print("Can't find find_fmri_files_min_max for constrast_name!")
             constrast[hemi] = np.load(contrast_fname)
-        clusters_labels_filtered = filter_clusters(constrast_name)
-        blobs_activity, _ = calc_blobs_activity(constrast, clusters_labels_filtered)
-        data_max, data_min = get_activity_max_min(blobs_activity)
-        abs_values.extend([abs(data_max), abs(data_min)])
+        if constrasts_found:
+            clusters_labels_filtered = filter_clusters(constrast_name)
+            blobs_activity, _ = calc_blobs_activity(constrast, clusters_labels_filtered)
+            data_max, data_min = get_activity_max_min(blobs_activity)
+            abs_values.extend([abs(data_max), abs(data_min)])
     data_max = max(abs_values)
     _addon().set_colorbar_max_min(data_max, -data_max)
     cm_name = _addon().get_colormap_name()

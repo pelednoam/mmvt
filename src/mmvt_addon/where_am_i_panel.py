@@ -390,6 +390,7 @@ def create_slices(modalities='mri', pos=None):
     pos = np.array(pos) * 10
     x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
     xyz = [x, y, z]
+    # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
     images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, 'mri')
     update_slices(modality='mri', ratio=1, images=images)
 
@@ -409,19 +410,39 @@ def slices_were_clicked():
         return
     screen = bpy.data.screens['Neuro']
     images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
-    for area in screen.areas:
-        if area.type == 'IMAGE_EDITOR':
-            active_image = area.spaces.active.image
-            if active_image is not None and active_image.name in WhereAmIPanel.slices_cursor_pos:
-                pos = tuple(area.spaces.active.cursor_location)
-                if pos != WhereAmIPanel.slices_cursor_pos[active_image.name]:
-                    print(active_image.name, pos)
-                    image_ind = images_names.index(active_image.name)
-                    new_pos = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
-                    x, y, z = apply_trans(_trans().vox2ras_tkr, np.array([new_pos])).astype(np.int)[0] / 10
-                    bpy.context.scene.cursor_location = (x, y, z)
-                    _addon().save_cursor_position()
-    save_slices_cursor_pos()
+    images_areas = [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
+    image_found = False
+    for area in images_areas:
+        active_image = area.spaces.active.image
+        if active_image is not None and active_image.name in WhereAmIPanel.slices_cursor_pos:
+            pos = tuple(area.spaces.active.cursor_location)
+            if pos != WhereAmIPanel.slices_cursor_pos[active_image.name]:
+                WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
+                # print(active_image.name, pos)
+                image_ind = images_names.index(active_image.name)
+                new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
+                new_pos_pial = apply_trans(_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
+                # Find the closest vertex on the pial brain, and convert it to the current inflation
+                new_pos = pos_to_current_inflation(new_pos_pial) / 10
+                bpy.context.scene.cursor_location = new_pos
+                _addon().save_cursor_position()
+                image_found = True
+                break
+    if image_found:
+        return new_pos
+    else:
+        return None
+    # print('image_found: {}'.format(image_found))
+    # save_slices_cursor_pos()
+
+
+def pos_to_current_inflation(pos):
+    closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(pos / 10, mu.HEMIS)
+    obj = bpy.data.objects['inflated_{}'.format(closest_mesh_name)]
+    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+    new_pos = me.vertices[vertex_ind].co
+    bpy.data.meshes.remove(me)
+    return new_pos
 
 
 class WaitForSlices(bpy.types.Operator):
