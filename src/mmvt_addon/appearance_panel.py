@@ -167,6 +167,8 @@ def inflating_update(self, context):
 
             bpy.data.objects['inflated_rh'].location[0] = 10 * bpy.context.scene.inflating
             bpy.data.objects['inflated_lh'].location[0] = -10 * bpy.context.scene.inflating
+            # bpy.data.objects['inflated_rh'].location[0] = bpy.context.scene.inflating
+            # bpy.data.objects['inflated_lh'].location[0] = bpy.context.scene.inflating
 
             use_masking = True
         else: #deflating

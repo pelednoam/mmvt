@@ -50,12 +50,12 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
     # co_find = context.scene.cursor_location * obj.matrix_world.inverted()
     distances, names, vertices_idx, vertices_co = [], [], [], []
 
-    # if cursor is None and hemis is None and use_shape_keys is True and (objects_names is None or objects_names == mu.INF_HEMIS):
-    #     closest_mesh_name, vertex_ind, vertex_co = snap_ray()
-    #     if closest_mesh_name is not None:
-    #         return closest_mesh_name, vertex_ind, vertex_co
-    #     else:
-    #         print('snap_ray didnt work...')
+    if cursor is None and hemis is None and use_shape_keys is True and (objects_names is None or objects_names == mu.INF_HEMIS):
+        closest_mesh_name, vertex_ind, vertex_co = snap_ray()
+        if closest_mesh_name is not None:
+            return closest_mesh_name, vertex_ind, vertex_co
+        else:
+            print('snap_ray didnt work...')
     if objects_names is not None:
         hemis = objects_names
     elif hemis is None:

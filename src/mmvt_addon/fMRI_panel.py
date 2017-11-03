@@ -64,6 +64,7 @@ def _clusters_update():
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             plot_blob(fMRIPanel.cluster_labels, faces_verts, True)
     _addon().save_cursor_position(cluster_centroid)
+    _addon().create_slices()
 
 
 def fmri_blobs_percentile_min_update(self, context):
