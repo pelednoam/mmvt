@@ -6,11 +6,9 @@ from queue import Empty
 try:
     import bpy
     import mmvt_utils as mu
-    import clusters_utils as cu
     BLENDER_EMBEDDED = True
 except:
     from src.mmvt_addon import mmvt_utils as mu
-    from src.mmvt_addon import clusters_utils as cu
     bpy = mu.dummy_bpy()
     BLENDER_EMBEDDED = False
 
@@ -278,7 +276,7 @@ def update_clusters(val_threshold=None, size_threshold=None):
     clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
-    clusters_items = [(c, c, '', ind) for ind, c in enumerate(fMRIPanel.clusters)]
+    clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(fMRIPanel.clusters)]
     bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(
         items=clusters_items, description="fmri clusters", update=clusters_update)
     if len(fMRIPanel.clusters) > 0:
@@ -366,6 +364,13 @@ def cluster_name(x):
 def _cluster_name(x, sort_mode):
     return '{}_{:.2f}'.format(x['name'], x['max']) if sort_mode == 'tval' else\
         '{}_{:.2f}'.format(x['name'], x['size'])
+
+
+def get_clusters_files(user_fol=''):
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_*.pkl'))
+    files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
+    clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(list(set(files_names)))]
+    return files_names, clusters_labels_files, clusters_labels_items
 
 
 def support_old_verions(clusters_labels):
@@ -641,7 +646,7 @@ def init(addon):
     fMRIPanel.addon = addon
     fMRIPanel.lookup, fMRIPanel.clusters_labels = {}, {}
     fMRIPanel.cluster_labels = {}
-    files_names, clusters_labels_files, clusters_labels_items = cu.get_clusters_files('fmri', user_fol)
+    files_names, clusters_labels_files, clusters_labels_items = get_clusters_files(user_fol)
     fMRIPanel.fMRI_clusters_files_exist = len(files_names) > 0 # and len(fmri_blobs) > 0
     if not fMRIPanel.fMRI_clusters_files_exist:
         return None

@@ -20,6 +20,7 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 from src.utils import args_utils as au
+from src.preproc import anatomy as anat
 
 SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
@@ -2570,8 +2571,10 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
     # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
     factor = 9 # to get nAmp
     threshold *= np.power(10, factor)
+    min_cluster_max = max(threshold, min_cluster_max)
     clusters_labels = utils.Bag(
-        dict(threshold=threshold, time=time_index, label_name_template=label_name_template, values=[]))
+        dict(threshold=threshold, time=time_index, label_name_template=label_name_template, values=[],
+             min_cluster_max=min_cluster_max, min_cluster_size=min_cluster_size, clusters_label=clusters_label))
     for hemi in utils.HEMIS:
         stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, factor)
         clusters, _ = mne_clusters._find_clusters(stc_data, threshold, connectivity=connectivity[hemi])
@@ -2586,11 +2589,16 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
                 subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
-                time_index, fwd_usingMEG, fwd_usingEEG)
+                time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(
         MMVT_DIR, subject, 'meg', 'clusters', 'clusters_labels_{}.pkl'.format(stc_name, atlas))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'clusters'))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
+    # Change Bag to regular dict because we want to load the pickle file in Blender (argggg)
+    for ind in range(len(clusters_labels.values)):
+        clusters_labels.values[ind] = dict(**clusters_labels.values[ind])
+    clusters_labels = dict(**clusters_labels)
     utils.save(clusters_labels, clusters_labels_output_fname)
     return op.isfile(clusters_labels_output_fname)
 
@@ -2632,10 +2640,8 @@ def load_connectivity(subject):
 
 
 def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
-                                    src=None, inv_fname='', time_index=-1, fwd_usingMEG=True, fwd_usingEEG=True,
-                                    calc_contours=True):
-    from src.preproc import anatomy as anat
-
+                                    src=None, inv_fname='', time_index=-1, cluster_max_min=0, fwd_usingMEG=True,
+                                    fwd_usingEEG=True, calc_contours=True):
     utils.make_dir(clusters_fol)
     time_series_fol = op.join(clusters_fol, 'time_series_{}'.format(extract_mode))
     utils.make_dir(time_series_fol)
@@ -2643,15 +2649,15 @@ def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, cluste
     if src is None:
         inverse_operator = read_inverse_operator(inv_fname)
         src = inverse_operator['src']
-    for cluster in clusters:
+    for cluster_ind, cluster in enumerate(clusters):
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
         cluster_label = mne.Label(
             cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
         label_data = x = stc.extract_label_time_course(cluster_label, src, mode=extract_mode, allow_empty=True).squeeze()
         if time_index == -1:
-            cluster.max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
+            cluster.ts_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
         else:
-            cluster.max = x[time_index] * np.power(10, factor)
+            cluster.ts_max = x[time_index] * np.power(10, factor)
         cluster_name = 'cluster_size_{}_max_{:.2f}_{}.label'.format(cluster.size, cluster.max, cluster.name)
         cluster_label.save(op.join(clusters_fol, cluster_name))
         if np.all(label_data == 0):

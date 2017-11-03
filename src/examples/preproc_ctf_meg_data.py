@@ -336,6 +336,6 @@ if __name__ == '__main__':
         # dipole_fit(conditions, True, (int(args.l_freq), int(args.h_freq)), extract_mode=args.extract_mode)
         # plot_motor_response(subject, args.atlas, motor_rois,  sfreq, sessions, args)
         calc_functional_rois(conditions, args)
-        plot_all_functional_rois(subject, sfreq, time_series_type='precentral')
+        # plot_all_functional_rois(subject, sfreq, time_series_type='precentral')
         # calc_labels_avg_per_cluster(conditions, args.extract_mode[0])
     print('Finish!')

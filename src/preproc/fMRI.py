@@ -209,7 +209,7 @@ def init_clusters(subject, input_fname):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, surf_template_fname, t_val, atlas, task, load_from_annotation=True, n_jobs=1):
+def find_clusters(subject, surf_template_fname, t_val, atlas, task, n_jobs=1):
     # contrast_name = contrast_name if volume_name == '' else volume_name
     # volume_name = volume_name if volume_name != '' else contrast_name
     # if input_fol == '':
@@ -1438,7 +1438,7 @@ def fmri_pipeline(subject, atlas, contrast_file_template, task='', contrast='', 
                     contrast_name=contrast)
         # todo: save clusters also for morphed_from_subject
         # todo: we should send a template for the surf fname instead of contrast
-        find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, load_labels_from_annotation, n_jobs)
+        find_clusters(subject, contrast, t_val, atlas, task, '', fmri_files_fol, n_jobs)
     # todo: check what to return
     return True
 
@@ -1707,7 +1707,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(
-            subject, args.fmri_file_template, args.threshold, args.atlas, args.task)
+            subject, args.fmri_file_template, args.threshold, args.atlas, args.task, args.n_jobs)
 
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)

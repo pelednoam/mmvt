@@ -560,9 +560,10 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
-def color_contours(specific_label='', specific_hemi='both'):
-    d = ColoringMakerPanel.labels_contures
-    contour_max = max([d[hemi]['max'] for hemi in mu.HEMIS])
+def color_contours(specific_label='', specific_hemi='both', labels_contures=None):
+    if labels_contures is None:
+        labels_contures = ColoringMakerPanel.labels_contures
+    contour_max = max([labels_contures[hemi]['max'] for hemi in mu.HEMIS])
     if not _addon().colorbar_values_are_locked():
         _addon().set_colormap('jet')
         _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
@@ -570,11 +571,11 @@ def color_contours(specific_label='', specific_hemi='both'):
         _addon().set_colorbar_prec(0)
     _addon().show_activity()
     for hemi in mu.HEMIS:
-        contours = d[hemi]['contours']
+        contours = labels_contures[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
             contours = np.zeros(contours.shape)
         elif specific_label != '':
-            label_ind = np.where(d[hemi]['labels'] == specific_label)
+            label_ind = np.where(labels_contures[hemi]['labels'] == specific_label)
             if len(label_ind) > 0:
                 contours[np.where(contours != label_ind[0][0] + 1)] = 0
         color_hemi_data(hemi, contours, 0.1, 256 / contour_max, override_current_mat=False)
