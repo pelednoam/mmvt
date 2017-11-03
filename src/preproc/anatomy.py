@@ -636,11 +636,13 @@ def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
 
 def _flat_brain_parallel(p):
     subject, hemi, print_only = p
-    flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR, print_only)
-    return read_flat_brain_patch(subject, hemi, flat_patch_fname)
+    flat_patch_fname = fu.get_flat_patch_fname(subject, hemi, SUBJECTS_DIR)
+    if not op.isfile(flat_patch_fname):
+        flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR, print_only)
+    return write_flat_brain_patch(subject, hemi, flat_patch_fname)
 
 
-def read_flat_brain_patch(subject, hemi, flat_patch_fname):
+def write_flat_brain_patch(subject, hemi, flat_patch_fname):
     ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.flat.pial.ply'.format(hemi))
     flat_verts, flat_faces = fu.read_patch(
         subject, hemi, SUBJECTS_DIR, surface_type='inflated', patch_fname=flat_patch_fname)
@@ -655,9 +657,10 @@ def read_flat_brain_patch(subject, hemi, flat_patch_fname):
 
     # flat_verts = np.roll(flat_verts, -1, 1)
     flat_verts = flat_verts[:, [1, 2, 0]]
-    flat_verts[:, 0] *= -0.5  # * (10 if hemi == 'rh' else -10)
-    flat_verts[:, 1] = 0
+    flat_verts[:, 0] *= -0.5 #* (10 if hemi == 'rh' else -10)
+    flat_verts[:, 1] = 0 #100 if hemi == 'rh' else -100
     flat_verts[:, 2] *= -0.5
+
 
     # for vert in cur_obj.data.vertices:
         # shapekey.data[vert.index].co = (flat_verts[vert.index, 1] * -10 + 200 * flatmap_orientation, 0, flat_verts[vert.index, 0] * -10)

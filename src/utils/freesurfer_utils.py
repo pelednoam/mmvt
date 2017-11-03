@@ -562,6 +562,11 @@ def flat_brain(subject, hemi, subjects_dir, print_only=False):
     surf_dir = op.join(subjects_dir, subject, 'surf')
     rs = utils.partial_run_script(locals(), cwd=surf_dir, print_only=print_only)
     rs(mris_flatten)
+    return get_flat_patch_fname(subject, hemi, subjects_dir)
+
+
+def get_flat_patch_fname(subject, hemi, subjects_dir):
+    surf_dir = op.join(subjects_dir, subject, 'surf')
     return op.join(surf_dir, '{}.flat.patch'.format(hemi))
 
 
