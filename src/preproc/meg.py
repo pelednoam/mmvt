@@ -2573,7 +2573,7 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
     threshold *= np.power(10, factor)
     min_cluster_max = max(threshold, min_cluster_max)
     clusters_labels = utils.Bag(
-        dict(threshold=threshold, time=time_index, label_name_template=label_name_template, values=[],
+        dict(stc_name=stc_name, threshold=threshold, time=time_index, label_name_template=label_name_template, values=[],
              min_cluster_max=min_cluster_max, min_cluster_size=min_cluster_size, clusters_label=clusters_label))
     for hemi in utils.HEMIS:
         stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, factor)

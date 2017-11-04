@@ -687,6 +687,7 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
         vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
         # labels = lu.read_hemi_labels(subject, SUBJECTS_DIR, atlas, hemi)
         labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        labels = [l for l in labels if 'unknown' not in l.name]
         for label_ind, label in enumerate(labels):
             if verbose:
                 label_nei = np.zeros((len(label.vertices)))

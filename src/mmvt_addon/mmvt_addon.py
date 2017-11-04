@@ -170,6 +170,7 @@ color_contours = coloring_panel.color_contours
 plot_label = coloring_panel.plot_label
 plot_fmri_file = coloring_panel.plot_fmri_file
 get_activity_values = coloring_panel.get_activity_values
+color_prev_colors = coloring_panel.color_prev_colors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

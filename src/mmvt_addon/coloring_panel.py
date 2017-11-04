@@ -47,7 +47,8 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 # @mu.dump_args
-def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', n_jobs=-1):
+def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
+             n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
     n_jobs = mu.get_n_jobs(n_jobs)
@@ -82,7 +83,8 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
         threshold = bpy.context.scene.coloring_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
     set_default_colormap(data_min, data_max)
-    fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio, threshold, save_image, view_selected)
+    fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio,
+                       threshold, save_image, view_selected, save_prev_colors=save_prev_colors)
     return fname, stc_t_smooth
 
 
@@ -95,14 +97,15 @@ def set_default_colormap(data_min, data_max):
             _addon().set_colormap('BuPu-YlOrRd')
 
 
-def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False, view_selected=False):
+def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False,
+               view_selected=False, save_prev_colors=False):
     if data_min is None or colors_ratio is None:
         data_min = min([np.min(rh_data), np.min(lh_data)])
         data_max = max([np.max(rh_data), np.max(lh_data)])
         colors_ratio = 256 / (data_max - data_min)
     for hemi in mu.HEMIS:
         data = rh_data if hemi == 'rh' else lh_data
-        color_hemi_data(hemi, data, data_min, colors_ratio, threshold)
+        color_hemi_data(hemi, data, data_min, colors_ratio, threshold, save_prev_colors=save_prev_colors)
     if save_image:
         return _addon().save_image('stc', view_selected, t)
     else:
@@ -560,7 +563,9 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
-def color_contours(specific_label='', specific_hemi='both', labels_contures=None):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contures=None, cumulate=True):
+    if isinstance(specific_labels, str):
+        specific_labels = [specific_labels]
     if labels_contures is None:
         labels_contures = ColoringMakerPanel.labels_contures
     contour_max = max([labels_contures[hemi]['max'] for hemi in mu.HEMIS])
@@ -573,15 +578,20 @@ def color_contours(specific_label='', specific_hemi='both', labels_contures=None
     for hemi in mu.HEMIS:
         contours = labels_contures[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
-            contours = np.zeros(contours.shape)
-        elif specific_label != '':
-            label_ind = np.where(labels_contures[hemi]['labels'] == specific_label)
-            if len(label_ind) > 0:
-                contours[np.where(contours != label_ind[0][0] + 1)] = 0
-        color_hemi_data(hemi, contours, 0.1, 256 / contour_max, override_current_mat=False)
+            selected_contours = np.zeros(contours.shape)
+        elif len(specific_labels) > 0:
+            selected_contours = np.zeros(contours.shape)
+            for specific_label in specific_labels:
+                label_ind = np.where(np.array(labels_contures[hemi]['labels']) == specific_label)
+                if len(label_ind) > 0 and len(label_ind[0]) > 0:
+                    selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
+        else:
+            selected_contours = labels_contures[hemi]['contours']
+        color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate)
 
 
-def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True):
+def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
+                    save_prev_colors=False):
     if hemi in mu.HEMIS:
         pial_hemi = hemi
         hemi = 'inflated_{}'.format(hemi)
@@ -591,7 +601,8 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
         return
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
-    activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min, colors_ratio)
+    activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min,
+                              colors_ratio, save_prev_colors=save_prev_colors)
 
 
 @mu.timeit
@@ -791,7 +802,7 @@ def calc_colors(vert_values, data_min, colors_ratio, cm=None):
 
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
-                              colors_ratio=None, bigger_or_equall=False):
+                              colors_ratio=None, bigger_or_equall=False, save_prev_colors=False):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
@@ -828,21 +839,55 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
         mesh.vertex_colors['Col'].active_render = True
     # else:
-        vcol_layer = mesh.vertex_colors.active
+    #     vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
     vcol_layer = mesh.vertex_colors['Col']
+    if save_prev_colors:
+        ColoringMakerPanel.prev_colors[cur_obj.name] = {'lookup':lookup, 'vcol_layer':vcol_layer, 'colors':{}}
     if colors_picked_from_cm:
-        verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert])
+        verts_lookup_loop_coloring(
+            valid_verts, lookup, vcol_layer, lambda vert:verts_colors[vert], cur_obj.name, save_prev_colors)
     else:
-        verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:])
+        verts_lookup_loop_coloring(
+            valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:], cur_obj.name, save_prev_colors)
 
 
-def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func):
+def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur_obj_name, save_prev_colors=False):
+    if save_prev_colors:
+        ColoringMakerPanel.prev_colors[cur_obj_name]['colors'] = defaultdict(dict)
     for vert in valid_verts:
         x = lookup[vert]
         for loop_ind in x[x > -1]:
             d = vcol_layer.data[loop_ind]
+            if save_prev_colors:
+                ColoringMakerPanel.prev_colors[cur_obj_name]['colors'][vert][loop_ind] = d.color.copy()
             d.color = colors_func(vert)
+
+
+def color_prev_colors(verts, obj_name):
+    cur_obj = bpy.data.objects[obj_name]
+    mesh = cur_obj.data
+    scn = bpy.context.scene
+    scn.objects.active = cur_obj
+    cur_obj.select = True
+    lookup = ColoringMakerPanel.prev_colors[obj_name]['lookup']
+    hemi = 'rh' if 'rh' in obj_name else 'lh'
+
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+        mesh.vertex_colors['Col'].active_render = True
+    vcol_layer = mesh.vertex_colors['Col']
+    for vert in verts:
+        x = lookup[vert]
+        for loop_ind in x[x > -1]:
+            d = vcol_layer.data[loop_ind]
+            if vert in ColoringMakerPanel.prev_colors[obj_name]['colors']:
+                prev_color = ColoringMakerPanel.prev_colors[obj_name]['colors'][vert][loop_ind]
+                if d.color != prev_color:
+                    d.color = prev_color
+            else:
+                default_color = [1, 1, 1] if ColoringMakerPanel.curvs[hemi][vert] == 0 else [0.55, 0.55, 0.55]
+                d.color = default_color
 
 
 def color_groups_manually():
@@ -1938,7 +1983,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     static_conn = None
     connectivity_labels = []
     activity_values = None
-
+    prev_colors = {}
     stc = None
     stc_file_chosen = False
     activity_map_chosen = False
@@ -1952,6 +1997,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     conn_labels_avg_files_exit = False
     contours_coloring_exist = False
     stc = None
+    curvs = {}
 
     activity_map_coloring = activity_map_coloring
 
@@ -1988,6 +2034,8 @@ def init(addon):
         mesh = bpy.data.objects['inflated_{}'.format(hemi)].data
         if mesh.vertex_colors.get('Col') is None:
             mesh.vertex_colors.new('Col')
+        curv_fname = op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi))
+        ColoringMakerPanel.curvs[hemi] = np.load(curv_fname)
 
 
 def init_labels_vertices():
