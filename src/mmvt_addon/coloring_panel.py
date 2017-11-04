@@ -865,6 +865,8 @@ def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur
 
 
 def color_prev_colors(verts, obj_name):
+    if obj_name not in ColoringMakerPanel.prev_colors:
+        return
     cur_obj = bpy.data.objects[obj_name]
     mesh = cur_obj.data
     scn = bpy.context.scene

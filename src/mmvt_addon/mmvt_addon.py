@@ -244,6 +244,7 @@ set_closest_vertex_and_mesh_to_cursor = appearance_panel.set_closest_vertex_and_
 get_closest_vertex_and_mesh_to_cursor = appearance_panel.get_closest_vertex_and_mesh_to_cursor
 clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_and_mesh_to_cursor
 snap_cursor = appearance_panel.snap_cursor
+set_cursor_pos = appearance_panel.set_cursor_pos
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from

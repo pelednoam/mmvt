@@ -1,4 +1,5 @@
 import bpy
+import bpy_extras.view3d_utils
 import electrodes_panel
 import mmvt_utils as mu
 import time
@@ -443,6 +444,9 @@ class SelectionListener(bpy.types.Operator):
         # https://blender.stackexchange.com/questions/27813/how-to-get-the-vertices-horizontal-and-vertical-location-in-the-window
         if self.left_clicked:
             self.left_clicked = False
+            # todo: Not sure this is the right solution
+            if event.mouse_region_x < 0 or event.mouse_region_y < 0:
+                return {'PASS_THROUGH'}
             cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
             if bpy.context.scene.cursor_is_snapped:
                 snap_cursor(True)
@@ -451,7 +455,7 @@ class SelectionListener(bpy.types.Operator):
             if _addon().is_pial():
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
             if cursor_moved:
-                SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+                set_cursor_pos()
                 # print('cursor position was changed by the user!')
                 _addon().create_slices()
                 _addon().save_cursor_position()
@@ -461,7 +465,7 @@ class SelectionListener(bpy.types.Operator):
             xyz = _addon().slices_were_clicked()
             if xyz is not None:
                 bpy.context.scene.cursor_location = tuple(xyz)
-                SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+                set_cursor_pos()
 
 
         if self.right_clicked:
@@ -533,6 +537,10 @@ class SelectionListener(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
+def set_cursor_pos():
+    SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+
+
 def clear_slice():
     if bpy.context.scene.is_sliced_ind > -1:
         tmp_new = bpy.context.scene.cursor_location[bpy.context.scene.is_sliced_ind]
@@ -547,7 +555,7 @@ def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_
         closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
             use_shape_keys=use_shape_keys, objects_names=objects_names)
         bpy.context.scene.cursor_location = vertex_co
-        SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
+        set_cursor_pos()
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
         activity_values = _addon().get_activity_values()
         if activity_values is not None:

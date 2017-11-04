@@ -37,6 +37,8 @@ def snap_ray():
                 # print("hit object", obj, "on face:", face)
                 # print([v for v in obj.data.polygons[face].vertices])
                 # print([me.vertices[v].co * obj.matrix_world for v in obj.data.polygons[face].vertices])
+                distance = (loc - scene.cursor_location).length
+                # print('cast ray dist: {}'.format(distance))
                 return obj.name, vertex_ind, vertex_co
             else:
                 print('snap ray hit {}'.format(obj.name))

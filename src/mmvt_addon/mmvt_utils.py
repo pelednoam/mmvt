@@ -1540,6 +1540,14 @@ def get_view3d_context():
             return override
 
 
+# def get_view3d_region():
+#     area = bpy.data.screens['Neuro'].areas[1]
+#     for region in area.regions:
+#         if region.type == 'WINDOW':
+#             return region
+#     return None
+
+
 def get_image_context():
     for screen in bpy.data.screens:
         for area in screen.areas:

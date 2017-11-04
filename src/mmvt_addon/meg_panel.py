@@ -20,13 +20,19 @@ def clusters_update(self, context):
         _clusters_update()
 
 
+def get_cluster_name(cluster):
+    return 'cluster_size_{}_max_{:.2f}_{}'.format(cluster.size, cluster.max, cluster.name)
+
+
 def _clusters_update():
     cluster = MEGPanel.clustser_lookup[bpy.context.scene.meg_clusters]
-    cluster_name = 'cluster_size_{}_max_{:.2f}_{}'.format(cluster.size, cluster.max, cluster.name)
+    create_empty_and_insert_time_series(cluster)
+    cluster_name = get_cluster_name(cluster)
     max_vert_ind = cluster.max_vert
     inflated_mesh = 'inflated_{}'.format(cluster.hemi)
     me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
     bpy.context.scene.cursor_location = me.vertices[max_vert_ind].co / 10.0
+    _addon().set_cursor_pos()
     bpy.data.meshes.remove(me)
     _addon().set_closest_vertex_and_mesh_to_cursor(max_vert_ind, inflated_mesh)
     _addon().save_cursor_position()
@@ -43,6 +49,35 @@ def _clusters_update():
             _addon().color_prev_colors(prev_clustes_contour_vertices, 'inflated_{}'.format(prev_cluster.hemi))
     MEGPanel.prev_cluster = bpy.context.scene.meg_clusters
 
+
+def create_empty_and_insert_time_series(cluster):
+    cluster_uid_name = '{}_{}_{:.2f}'.format(cluster.name, cluster.size, cluster.max)
+    _addon().create_empty_if_doesnt_exists('meg_clusters', _addon().EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
+    # _addon().create_empty_if_doesnt_exists(cluster_uid_name, _addon().EMPTY_LAYER, bpy.context.scene.layers, 'meg_clusters')
+    # cur_obj = bpy.data.objects[cluster_uid_name]
+    parent_obj = bpy.data.objects['meg_clusters']
+    T = len(cluster.label_data)
+    fcurves_num = mu.count_fcurves(parent_obj)
+    cluster.label_data = np.array(cluster.label_data, dtype=np.float64)
+    if fcurves_num == 0:
+        # Set the values to zeros in the first and last frame for current object(current label)
+        mu.insert_keyframe_to_custom_prop(parent_obj, cluster_uid_name, 0, 1)
+        mu.insert_keyframe_to_custom_prop(parent_obj, cluster_uid_name, 0, T + 2)
+
+        # For every time point insert keyframe to current object
+        for ind, t_data in enumerate(cluster.label_data):
+            mu.insert_keyframe_to_custom_prop(parent_obj, cluster_uid_name, t_data, ind + 2)
+
+        # remove the orange keyframe sign in the fcurves window
+        fcurves = parent_obj.animation_data.action.fcurves[0]
+        mod = fcurves.modifiers.new(type='LIMITS')
+    else:
+        fcurve = parent_obj.animation_data.action.fcurves[0]
+        fcurve.keyframe_points[0].co[1] = 0
+        fcurve.keyframe_points[-1].co[1] = 0
+        for t in range(T):
+            fcurve.keyframe_points[t + 1].co[1] = cluster.label_data[t]
+    mu.view_all_in_graph_editor()
 
 def filter_clusters(val_threshold=None, size_threshold=None, clusters_label=None):
     if val_threshold is None:
