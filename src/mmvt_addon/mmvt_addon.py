@@ -127,6 +127,7 @@ select_roi = selection_panel.select_roi
 curves_sep_update = selection_panel.curves_sep_update
 calc_best_curves_sep = selection_panel.calc_best_curves_sep
 set_connection_files_exist = selection_panel.set_connection_files_exist
+ClearSelection = selection_panel.ClearSelection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
 color_objects = coloring_panel.color_objects
@@ -171,6 +172,9 @@ plot_label = coloring_panel.plot_label
 plot_fmri_file = coloring_panel.plot_fmri_file
 get_activity_values = coloring_panel.get_activity_values
 color_prev_colors = coloring_panel.color_prev_colors
+get_prev_colors = coloring_panel.get_prev_colors
+get_activity_colors = coloring_panel.get_activity_colors
+ClearColors = coloring_panel.ClearColors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

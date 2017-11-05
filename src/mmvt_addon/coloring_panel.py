@@ -815,7 +815,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     # cm = _addon().get_cm()
     if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
         vert_values = vert_values.squeeze()
-    if vert_values.ndim == 1 and not data_min is None:
+    if vert_values.ndim == 1 and data_min is not None:
         verts_colors = calc_colors(vert_values, data_min, colors_ratio)
         colors_picked_from_cm = True
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
@@ -864,9 +864,25 @@ def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur
             d.color = colors_func(vert)
 
 
+def get_activity_colors(vert_values, threshold, data_min, colors_ratio, bigger_or_equall=False):
+    values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
+    if bigger_or_equall:
+        valid_verts = np.where(np.abs(values) >= threshold)[0]
+    else:
+        valid_verts = np.where(np.abs(values) > threshold)[0]
+    if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
+        vert_values = vert_values.squeeze()
+    verts_colors = calc_colors(vert_values[valid_verts], data_min, colors_ratio)
+    return verts_colors, valid_verts
+
+
+def get_prev_colors():
+    return ColoringMakerPanel.prev_colors
+
+
 def color_prev_colors(verts, obj_name):
     if obj_name not in ColoringMakerPanel.prev_colors:
-        return
+        return False
     cur_obj = bpy.data.objects[obj_name]
     mesh = cur_obj.data
     scn = bpy.context.scene
@@ -890,6 +906,7 @@ def color_prev_colors(verts, obj_name):
             else:
                 default_color = [1, 1, 1] if ColoringMakerPanel.curvs[hemi][vert] == 0 else [0.55, 0.55, 0.55]
                 d.color = default_color
+    return True
 
 
 def color_groups_manually():
