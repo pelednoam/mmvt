@@ -1012,7 +1012,10 @@ def min_cdist(X, Y):
     for y in Y:
         res.append(kd.find_n(y, 1)[0])
     # co, index, dist
-    return res
+    if len(Y) == 1:
+        return res[0]
+    else:
+        return res
 
 
 # def cdist(x, y):
@@ -1260,6 +1263,20 @@ def get_3d_areas(only_neuro=True):
         for area in areas:
             if area.type == 'VIEW_3D':
                 yield area
+
+
+def mouse_coo_to_3d_loc(event, context):
+    from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
+    try:
+        coord = event.mouse_region_x, event.mouse_region_y
+        region = context.region
+        rv3d = context.space_data.region_3d
+        vec = region_2d_to_vector_3d(region, rv3d, coord)
+        pos = region_2d_to_location_3d(region, rv3d, coord, vec)
+    except:
+        pos = None
+        print("Couldn't convert mouse coo to 3d loc!")
+    return pos
 
 
 def filter_graph_editor(filter):

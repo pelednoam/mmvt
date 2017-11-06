@@ -323,6 +323,8 @@ save_cursor_position = freeview_panel.save_cursor_position
 clear_slice = slicer_panel.clear_slice
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_point_thickness = skull_panel.find_point_thickness
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+select_meg_cluster = meg_panel.select_meg_cluster
 
 
 def get_max_time_steps(default_val=2500):

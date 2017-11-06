@@ -447,6 +447,7 @@ class SelectionListener(bpy.types.Operator):
             # todo: Not sure this is the right solution
             if event.mouse_region_x < 0 or event.mouse_region_y < 0:
                 return {'PASS_THROUGH'}
+            _addon().select_meg_cluster(event, context, bpy.context.scene.cursor_location )
             cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
             if bpy.context.scene.cursor_is_snapped:
                 snap_cursor(True)
@@ -471,6 +472,7 @@ class SelectionListener(bpy.types.Operator):
         if self.right_clicked:
             self.right_clicked = False
             # print(bpy.context.selected_objects)
+            _addon().select_meg_cluster(event, context)
             if len(bpy.context.selected_objects):
                 mu.unfilter_graph_editor()
                 if bpy.context.scene.fit_graph_on_selection:

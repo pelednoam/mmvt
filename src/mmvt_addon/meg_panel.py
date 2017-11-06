@@ -28,17 +28,39 @@ def get_cluster_fcurve_name(cluster):
     return '{}_{}_{:.2f}'.format(cluster.name, cluster.size, cluster.max)
 
 
-def _clusters_update():
-    MEGPanel.current_cluster = cluster = MEGPanel.clustser_lookup[bpy.context.scene.meg_clusters]
-    # set_cluster_time_series(cluster)
-    cluster_name = get_cluster_name(cluster)
+def get_cluster_max_vert_co(cluster):
     max_vert_ind = cluster.max_vert
     inflated_mesh = 'inflated_{}'.format(cluster.hemi)
     me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
-    bpy.context.scene.cursor_location = me.vertices[max_vert_ind].co / 10.0
-    _addon().set_cursor_pos()
+    vertex_co = me.vertices[max_vert_ind].co
     bpy.data.meshes.remove(me)
-    _addon().set_closest_vertex_and_mesh_to_cursor(max_vert_ind, inflated_mesh)
+    return vertex_co
+
+
+def get_cluster_verts_co(cluster):
+    inflated_mesh = 'inflated_{}'.format(cluster.hemi)
+    me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
+    vertex_cos = np.zeros((len(cluster.vertices), 3))
+    for vert_ind, vert in enumerate(cluster.vertices):
+        vertex_cos[vert_ind] = tuple(me.vertices[vert].co)
+    bpy.data.meshes.remove(me)
+    return vertex_cos
+
+
+def _clusters_update():
+    MEGPanel.current_cluster = cluster = MEGPanel.clusters_lookup[bpy.context.scene.meg_clusters]
+    # set_cluster_time_series(cluster)
+    cluster_name = get_cluster_name(cluster)
+    cluster_max_vert_co = get_cluster_max_vert_co(cluster)
+    bpy.context.scene.cursor_location = cluster_max_vert_co
+    _addon().set_cursor_pos()
+    # max_vert_ind = cluster.max_vert
+    # inflated_mesh = 'inflated_{}'.format(cluster.hemi)
+    # me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
+    # bpy.context.scene.cursor_location = me.vertices[max_vert_ind].co / 10.0
+    # _addon().set_cursor_pos()
+    # bpy.data.meshes.remove(me)
+    _addon().set_closest_vertex_and_mesh_to_cursor(cluster.max_vert, 'inflated_{}'.format(cluster.hemi))
     _addon().save_cursor_position()
     _addon().create_slices()
     if bpy.context.scene.plot_current_meg_cluster:
@@ -63,15 +85,14 @@ def _clusters_update():
 
 def clear_cluster(cluster):
     if isinstance(cluster, str):
-        cluster = MEGPanel.clustser_lookup[cluster]
+        cluster = MEGPanel.clusters_lookup[cluster]
     cluster_name = get_cluster_name(cluster)
     contures = MEGPanel.contours[cluster.hemi]
     label_ind = np.where(np.array(contures['labels']) == cluster_name)[0][0] + 1
     clustes_contour_vertices = np.where(contures['contours'] == label_ind)[0]
     hemi_obj_name = 'inflated_{}'.format(cluster.hemi)
     if hemi_obj_name not in _addon().get_prev_colors():
-
-    _addon().color_prev_colors(clustes_contour_vertices, hemi_obj_name)
+        _addon().color_prev_colors(clustes_contour_vertices, hemi_obj_name)
 
 
 def set_cluster_time_series(cluster):
@@ -203,7 +224,7 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_label=''):
     clusters_tup = sorted([(sort_func(x), cluster_name(x)) for x in MEGPanel.clusters_labels_filtered])[::-1]
     MEGPanel.clusters = [x_name for x_size, x_name in clusters_tup]
     clusters_names = [cluster_name(x) for x in MEGPanel.clusters_labels_filtered]
-    MEGPanel.clustser_lookup = {x_name:cluster for x_name, cluster in
+    MEGPanel.clusters_lookup = {x_name:cluster for x_name, cluster in
                                 zip(clusters_names, MEGPanel.clusters_labels_filtered)}
     # MEGPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(MEGPanel.clusters)]
@@ -239,6 +260,34 @@ def get_max_stc_t(stc, t):
     stc_rh_data = stc.rh_data[:, t:t + 1] if stc.rh_data.shape[0] > 0 else np.zeros((C, 1))
     data = np.concatenate([stc_lh_data, stc_rh_data])
     return np.max(np.abs(data))
+
+@mu.timeit
+def select_meg_cluster(event, context, pos=None):
+    if not MEGPanel.init:
+        return
+    if pos is None:
+        poss = mu.mouse_coo_to_3d_loc(event, context)
+    if pos is None:
+        return
+    # closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+    #     pos, use_shape_keys=True)
+    # bpy.context.scene.cursor_location = pos
+    for cluster in MEGPanel.clusters_labels.values:
+        cluster_hemi_mesh_name = 'inflated_{}'.format(cluster.hemi)
+        cluster_hemi_obj = bpy.data.objects[cluster_hemi_mesh_name]
+        cluster_pos = pos * cluster_hemi_obj.matrix_world.inverted()
+
+        cluster_vertices_co = get_cluster_verts_co(cluster)
+        # dist = np.linalg.norm(cluster_max_vert_co - cluster_pos)
+        # print(cluster.name, dist, cluster_max_vert_co, cluster_pos)
+        co, index, dist = mu.min_cdist(cluster_vertices_co, [cluster_pos])
+        # print(cluster.name, co, index, dist, cluster_pos)
+        if dist < 1:
+        # if cluster_hemi_mesh_name == closest_mesh_name and vertex_ind in cluster.vertices:
+            bpy.context.scene.meg_clusters = cluster_name(cluster)
+            break
+    else:
+        print("Couldn't find the clusters")
 
 
 def select_all_clusters():
