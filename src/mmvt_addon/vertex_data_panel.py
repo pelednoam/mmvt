@@ -26,7 +26,10 @@ def snap_ray():
         vm = r3d.view_matrix.transposed().to_3x3().to_4x4()
         norm = vm * Vector((0, 0, 1))
         norm.normalize()
-        ray = scene.ray_cast(scene.cursor_location, norm)
+        try:
+            ray = scene.ray_cast(scene.cursor_location, norm)
+        except:
+            return None, None, None
         hit, loc, norm, face, obj, matrix = ray
         if hit:
             if obj.name in ['inflated_rh', 'inflated_lh']:

@@ -444,9 +444,9 @@ class SelectionListener(bpy.types.Operator):
         # https://blender.stackexchange.com/questions/27813/how-to-get-the-vertices-horizontal-and-vertical-location-in-the-window
         if self.left_clicked:
             self.left_clicked = False
-            # todo: Not sure this is the right solution
-            if event.mouse_region_x < 0 or event.mouse_region_y < 0:
+            if click_outside_3d_view(event):
                 return {'PASS_THROUGH'}
+
             _addon().select_meg_cluster(event, context, bpy.context.scene.cursor_location )
             cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
             if bpy.context.scene.cursor_is_snapped:
@@ -468,9 +468,10 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
 
-
         if self.right_clicked:
             self.right_clicked = False
+            if click_outside_3d_view(event):
+                return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
             _addon().select_meg_cluster(event, context)
             if len(bpy.context.selected_objects):
@@ -537,6 +538,12 @@ class SelectionListener(bpy.types.Operator):
             self._timer = context.window_manager.event_timer_add(0.1, context.window)
             self.running = True
         return {'RUNNING_MODAL'}
+
+
+def click_outside_3d_view(event):
+    area, viewport = mu.get_3d_area_region()
+    # print((event.mouse_region_x, event.mouse_region_y), (viewport.width, viewport.height))
+    return not (0 < event.mouse_region_x < viewport.width and 0 < event.mouse_region_y < viewport.height)
 
 
 def set_cursor_pos():

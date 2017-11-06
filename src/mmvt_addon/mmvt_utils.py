@@ -1538,6 +1538,15 @@ def get_graph_context():
     print("Couldn't find the graph editor!")
 
 
+def get_3d_area_region():
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'VIEW_3D':
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        return area, region
+
+
 def set_graph_att(att, val):
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:

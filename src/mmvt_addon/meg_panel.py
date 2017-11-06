@@ -30,9 +30,10 @@ def get_cluster_fcurve_name(cluster):
 
 def get_cluster_max_vert_co(cluster):
     max_vert_ind = cluster.max_vert
-    inflated_mesh = 'inflated_{}'.format(cluster.hemi)
-    me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
-    vertex_co = me.vertices[max_vert_ind].co
+    obj_name = 'inflated_{}'.format(cluster.hemi)
+    obj = bpy.data.objects[obj_name]
+    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+    vertex_co = me.vertices[max_vert_ind].co * obj.matrix_world
     bpy.data.meshes.remove(me)
     return vertex_co
 
@@ -54,12 +55,6 @@ def _clusters_update():
     cluster_max_vert_co = get_cluster_max_vert_co(cluster)
     bpy.context.scene.cursor_location = cluster_max_vert_co
     _addon().set_cursor_pos()
-    # max_vert_ind = cluster.max_vert
-    # inflated_mesh = 'inflated_{}'.format(cluster.hemi)
-    # me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
-    # bpy.context.scene.cursor_location = me.vertices[max_vert_ind].co / 10.0
-    # _addon().set_cursor_pos()
-    # bpy.data.meshes.remove(me)
     _addon().set_closest_vertex_and_mesh_to_cursor(cluster.max_vert, 'inflated_{}'.format(cluster.hemi))
     _addon().save_cursor_position()
     _addon().create_slices()
@@ -261,12 +256,12 @@ def get_max_stc_t(stc, t):
     data = np.concatenate([stc_lh_data, stc_rh_data])
     return np.max(np.abs(data))
 
-@mu.timeit
+
 def select_meg_cluster(event, context, pos=None):
     if not MEGPanel.init:
         return
     if pos is None:
-        poss = mu.mouse_coo_to_3d_loc(event, context)
+        pos = mu.mouse_coo_to_3d_loc(event, context)
     if pos is None:
         return
     # closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(

@@ -155,7 +155,11 @@ def object_coloring(obj, rgb):
     # obj.select = True
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
-    cur_mat.diffuse_color = new_color[:3]
+    try:
+        cur_mat.diffuse_color = new_color[:3]
+    except:
+        print('object_coloring: No diffuse_color')
+        return False
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
     # else:
@@ -218,6 +222,10 @@ def clear_object_vertex_colors(cur_obj):
     cur_obj.select = True
     # bpy.ops.mesh.vertex_color_remove()
     # vcol_layer = mesh.vertex_colors.new()
+    recreate_coloring_layers(cur_obj, mesh, 'Col')
+
+
+def recreate_coloring_layers(cur_obj, mesh, active_layer='Col'):
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         # mesh.vertex_colors.active_index = 1
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
@@ -225,6 +233,10 @@ def clear_object_vertex_colors(cur_obj):
         bpy.ops.mesh.vertex_color_remove()
     if mesh.vertex_colors.get('Col') is None:
         vcol_layer = mesh.vertex_colors.new('Col')
+    if mesh.vertex_colors.get('contours') is not None:
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
+        bpy.ops.mesh.vertex_color_remove()
+        mesh.vertex_colors.new('contours')
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         # mesh.vertex_colors.active_index = 1
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
@@ -587,11 +599,12 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contures=Non
                     selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
         else:
             selected_contours = labels_contures[hemi]['contours']
-        color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate)
+        color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate)#,
+                        #coloring_layer='contours')#
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
-                    save_prev_colors=False):
+                    save_prev_colors=False, coloring_layer='Col'):
     if hemi in mu.HEMIS:
         pial_hemi = hemi
         hemi = 'inflated_{}'.format(hemi)
@@ -602,7 +615,7 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min,
-                              colors_ratio, save_prev_colors=save_prev_colors)
+                              colors_ratio, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer)
 
 
 @mu.timeit
@@ -802,7 +815,7 @@ def calc_colors(vert_values, data_min, colors_ratio, cm=None):
 
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
-                              colors_ratio=None, bigger_or_equall=False, save_prev_colors=False):
+                              colors_ratio=None, bigger_or_equall=False, save_prev_colors=False, coloring_layer='Col'):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
@@ -822,26 +835,19 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     scn.objects.active = cur_obj
     cur_obj.select = True
     if override_current_mat:
-        if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-            # mesh.vertex_colors.active_index = 1
-            mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-        if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-            c = mu.get_graph_context()
-            bpy.ops.mesh.vertex_color_remove(c)
-            # except:
-            #     print("Can't remove vertex color!")
-        if mesh.vertex_colors.get('Col') is None:
-            vcol_layer = mesh.vertex_colors.new('Col')
+        create_coloring_layers(cur_obj, mesh)
+        if mesh.vertex_colors.get(coloring_layer) is None:
+            vcol_layer = mesh.vertex_colors.new(coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
         # mesh.vertex_colors.active_index = 1
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-        mesh.vertex_colors['Col'].active_render = True
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index(coloring_layer)
+        mesh.vertex_colors[coloring_layer].active_render = True
     # else:
     #     vcol_layer = mesh.vertex_colors.active
     # print('cur_obj: {}, max vert in lookup: {}, vcol_layer len: {}'.format(cur_obj.name, np.max(lookup), len(vcol_layer.data)))
-    vcol_layer = mesh.vertex_colors['Col']
+    vcol_layer = mesh.vertex_colors[coloring_layer]
     if save_prev_colors:
         ColoringMakerPanel.prev_colors[cur_obj.name] = {'lookup':lookup, 'vcol_layer':vcol_layer, 'colors':{}}
     if colors_picked_from_cm:
@@ -864,6 +870,17 @@ def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur
             d.color = colors_func(vert)
 
 
+def create_coloring_layers(cur_obj, mesh):
+    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+        # mesh.vertex_colors.active_index = 1
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
+        c = mu.get_graph_context()
+        bpy.ops.mesh.vertex_color_remove(c)
+        # except:
+        #     print("Can't remove vertex color!")
+
+
 def get_activity_colors(vert_values, threshold, data_min, colors_ratio, bigger_or_equall=False):
     values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     if bigger_or_equall:
@@ -880,7 +897,7 @@ def get_prev_colors():
     return ColoringMakerPanel.prev_colors
 
 
-def color_prev_colors(verts, obj_name):
+def color_prev_colors(verts, obj_name, coloring_layer='Col'):
     if obj_name not in ColoringMakerPanel.prev_colors:
         return False
     cur_obj = bpy.data.objects[obj_name]
@@ -892,9 +909,9 @@ def color_prev_colors(verts, obj_name):
     hemi = 'rh' if 'rh' in obj_name else 'lh'
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-        mesh.vertex_colors['Col'].active_render = True
-    vcol_layer = mesh.vertex_colors['Col']
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index(coloring_layer)
+        mesh.vertex_colors[coloring_layer].active_render = True
+    vcol_layer = mesh.vertex_colors[coloring_layer]
     for vert in verts:
         x = lookup[vert]
         for loop_ind in x[x > -1]:
