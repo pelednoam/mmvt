@@ -885,7 +885,8 @@ def recreate_coloring_layers(mesh, coloring_layer='Col'):
     for cl in coloring_layers:
         if mesh.vertex_colors.get(cl) is not None:
             mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index(cl)
-            bpy.ops.mesh.vertex_color_remove()
+            mesh.vertex_colors.remove(mesh.vertex_colors.get(cl))
+            # bpy.ops.mesh.vertex_color_remove()
     for cl in coloring_layers:
         if mesh.vertex_colors.get(cl) is None:
             mesh.vertex_colors.new(cl)
@@ -938,7 +939,10 @@ def color_prev_colors(verts, obj_name, coloring_layer='Col'):
                 if d.color != prev_color:
                     d.color = prev_color
             else:
-                default_color = [1, 1, 1] if ColoringMakerPanel.curvs[hemi][vert] == 0 else [0.55, 0.55, 0.55]
+                if ColoringMakerPanel.curvs is not None:
+                    default_color = [1, 1, 1] if ColoringMakerPanel.curvs[hemi][vert] == 0 else [0.55, 0.55, 0.55]
+                else:
+                    default_color = [1, 1, 1]
                 d.color = default_color
     return True
 
@@ -2050,7 +2054,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     conn_labels_avg_files_exit = False
     contours_coloring_exist = False
     stc = None
-    curvs = {}
+    curvs = {hemi:None for hemi in mu.HEMIS}
 
     activity_map_coloring = activity_map_coloring
 
@@ -2090,8 +2094,12 @@ def init(addon):
         if mesh.vertex_colors.get('contours') is None:
             mesh.vertex_colors.new('contours')
         curv_fname = op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi))
-        ColoringMakerPanel.curvs[hemi] = np.load(curv_fname)
-
+        if op.isfile(curv_fname):
+            ColoringMakerPanel.curvs[hemi] = np.load(curv_fname)
+    if any([ColoringMakerPanel.curvs[hemi] is None for hemi in mu.HEMIS]):
+        print('No curv.npy files! To create them run')
+        print('python -m src.preproc.anatomy -s {} -a {} -f save_hemis_curv'.format(
+            bpy.context.scene.atlas, mu.get_user))
 
 def init_labels_vertices():
     user_fol = mu.get_user_fol()
