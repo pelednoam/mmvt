@@ -1268,15 +1268,38 @@ def get_3d_areas(only_neuro=True):
 def mouse_coo_to_3d_loc(event, context):
     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
     try:
-        coord = event.mouse_region_x, event.mouse_region_y
-        region = context.region
-        rv3d = context.space_data.region_3d
+        # coord = event.mouse_region_x, event.mouse_region_y
+        area, region = get_3d_area_region()
+        coord = (event.mouse_x - area.x, event.mouse_y - area.y)
+        # region = context.region
+        # rv3d = context.space_data.region_3d
+        rv3d = area.spaces.active.region_3d
         vec = region_2d_to_vector_3d(region, rv3d, coord)
         pos = region_2d_to_location_3d(region, rv3d, coord, vec)
     except:
         pos = None
+        print(traceback.format_exc())
         print("Couldn't convert mouse coo to 3d loc!")
     return pos
+#
+
+# def mouse_coo_to_3d_loc(event, context):
+#     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
+#
+#     mouse_pos = [event.mouse_region_x, event.mouse_region_y]
+#
+#     # Contextual active object, 2D and 3D regions
+#     object = bpy.data.objects['inflated_rh']
+#     region = bpy.context.region
+#     region3D = bpy.context.space_data.region_3d
+#
+#     # The direction indicated by the mouse position from the current view
+#     view_vector = region_2d_to_vector_3d(region, region3D, mouse_pos)
+#     # The 3D location in this direction
+#     loc = region_2d_to_location_3d(region, region3D, mouse_pos, view_vector)
+#     # The 3D location converted in object local coordinates
+#     loc = object.matrix_world.inverted() * loc
+#     return loc
 
 
 def filter_graph_editor(filter):

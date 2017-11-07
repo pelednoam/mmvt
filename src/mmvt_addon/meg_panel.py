@@ -11,6 +11,8 @@ except:
     MNE_EXIST = False
 
 
+PARENT_OBJ_NAME = 'meg_clusters'
+
 def _addon():
     return MEGPanel.addon
 
@@ -61,11 +63,9 @@ def _clusters_update():
     if bpy.context.scene.plot_current_meg_cluster:
         _addon().color_contours(
             [cluster_name], cluster.hemi, MEGPanel.contours, bpy.context.scene.cumulate_meg_cluster)
-        # if not bpy.context.scene.cumulate_meg_cluster and MEGPanel.prev_cluster not in ['', bpy.context.scene.meg_clusters]:
-        #     clear_cluster(MEGPanel.prev_cluster)
-    bpy.data.objects['meg_clusters'].select = True
-    mu.view_all_in_graph_editor()
-    fcurves = mu.get_fcurves('meg_clusters')
+    bpy.data.objects[PARENT_OBJ_NAME].select = True
+    # mu.view_all_in_graph_editor()
+    fcurves = mu.get_fcurves(PARENT_OBJ_NAME)
     cluster_fcurve_name = get_cluster_fcurve_name(cluster)
     if bpy.context.scene.cumulate_meg_cluster:
         fcurve_ind = [mu.get_fcurve_name(f) for f in fcurves].index(cluster_fcurve_name)
@@ -76,6 +76,11 @@ def _clusters_update():
             fcurve.hide = fcurve_name != cluster_fcurve_name
 
     MEGPanel.prev_cluster = bpy.context.scene.meg_clusters
+
+
+def plot_all_clusters():
+    for cluster in MEGPanel.clusters_labels_filtered:
+        _addon().color_contours([get_cluster_name(cluster)], cluster.hemi, MEGPanel.contours, True)
 
 
 # def clear_cluster(cluster):
@@ -92,8 +97,8 @@ def _clusters_update():
 
 def set_cluster_time_series(cluster):
     cluster_uid_name = get_cluster_fcurve_name(cluster)
-    _addon().create_empty_if_doesnt_exists('meg_clusters', _addon().EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
-    parent_obj = bpy.data.objects['meg_clusters']
+    _addon().create_empty_if_doesnt_exists(PARENT_OBJ_NAME, _addon().EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
+    parent_obj = bpy.data.objects[PARENT_OBJ_NAME]
     T = len(cluster.label_data)
     cluster.label_data = np.array(cluster.label_data, dtype=np.float64)
     fcurves_names = mu.get_fcurves_names(parent_obj)
@@ -135,14 +140,30 @@ def filter_clusters(val_threshold=None, size_threshold=None, clusters_label=None
 
 def meg_clusters_labels_files_update(self, context):
     if MEGPanel.init:
-        fname = MEGPanel.clusters_labels_fnames[bpy.context.scene.meg_clusters_labels_files]
-        MEGPanel.clusters_labels = mu.load(fname)
-        MEGPanel.clusters_labels = mu.Bag(MEGPanel.clusters_labels)
-        for ind in range(len(MEGPanel.clusters_labels.values)):
-            MEGPanel.clusters_labels.values[ind] = mu.Bag(MEGPanel.clusters_labels.values[ind])
-        load_contours()
-        update_clusters()
-        load_stc()
+        # fname = MEGPanel.clusters_labels_fnames[bpy.context.scene.meg_clusters_labels_files]
+        # MEGPanel.clusters_labels = mu.load(fname)
+        # MEGPanel.clusters_labels = mu.Bag(MEGPanel.clusters_labels)
+        # for ind in range(len(MEGPanel.clusters_labels.values)):
+        #     MEGPanel.clusters_labels.values[ind] = mu.Bag(MEGPanel.clusters_labels.values[ind])
+        _meg_clusters_labels_files_update()
+
+
+def _meg_clusters_labels_files_update():
+    if MEGPanel.should_load_clusters_file:
+        MEGPanel.clusters_labels = load_clusters_file()
+    load_contours()
+    update_clusters()
+    load_stc()
+
+
+def load_clusters_file(clusters_name=''):
+    if clusters_name == '':
+        clusters_name = bpy.context.scene.meg_clusters_labels_files
+    fname = MEGPanel.clusters_labels_fnames[clusters_name]
+    c = mu.Bag(mu.load(fname))
+    for ind in range(len(c.values)):
+        c.values[ind] = mu.Bag(c.values[ind])
+    return c
 
 
 def load_stc():
@@ -262,34 +283,54 @@ def select_meg_cluster(event, context, pos=None):
         return
     if pos is None:
         pos = mu.mouse_coo_to_3d_loc(event, context)
+        # print('pos, ', pos)
+    # else:
+        # print('cursor, ', pos)
     if pos is None:
         return
-    # closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-    #     pos, use_shape_keys=True)
-    # bpy.context.scene.cursor_location = pos
-    for cluster in MEGPanel.clusters_labels.values:
-        cluster_hemi_mesh_name = 'inflated_{}'.format(cluster.hemi)
-        cluster_hemi_obj = bpy.data.objects[cluster_hemi_mesh_name]
-        cluster_pos = pos * cluster_hemi_obj.matrix_world.inverted()
+    # bpy.context.scene.cumulate_meg_cluster = event.shift
+    for clusters_name in MEGPanel.clusters_labels_fnames.keys():
+        clusters = load_clusters_file(clusters_name)
+        for cluster in clusters.values: #MEGPanel.clusters_labels.values:
+            cluster_hemi_mesh_name = 'inflated_{}'.format(cluster.hemi)
+            cluster_hemi_obj = bpy.data.objects[cluster_hemi_mesh_name]
+            cluster_pos = pos * cluster_hemi_obj.matrix_world.inverted()
 
-        cluster_vertices_co = get_cluster_verts_co(cluster)
-        # dist = np.linalg.norm(cluster_max_vert_co - cluster_pos)
-        # print(cluster.name, dist, cluster_max_vert_co, cluster_pos)
-        co, index, dist = mu.min_cdist(cluster_vertices_co, [cluster_pos])
-        # print(cluster.name, co, index, dist, cluster_pos)
-        if dist < 1:
-        # if cluster_hemi_mesh_name == closest_mesh_name and vertex_ind in cluster.vertices:
-            bpy.context.scene.meg_clusters = cluster_name(cluster)
-            break
-    else:
-        print("Couldn't find the clusters")
+            cluster_vertices_co = get_cluster_verts_co(cluster)
+            # dist = np.linalg.norm(cluster_max_vert_co - cluster_pos)
+            # print(cluster.name, dist, cluster_max_vert_co, cluster_pos)
+            co, index, dist = mu.min_cdist(cluster_vertices_co, [cluster_pos])
+            # print(cluster.name, co, index, dist, cluster_pos)
+            if dist < 1:
+            # if cluster_hemi_mesh_name == closest_mesh_name and vertex_ind in cluster.vertices:
+                if bpy.context.scene.meg_clusters_labels_files != clusters_name:
+                    MEGPanel.should_load_clusters_file = False
+                    MEGPanel.clusters_labels = clusters
+                    bpy.context.scene.meg_clusters_labels_files = clusters_name
+                    MEGPanel.should_load_clusters_file = True
+                bpy.context.scene.meg_clusters = cluster_name(cluster)
+                return cluster
+    return None
 
 
 def select_all_clusters():
-    parent_obj = bpy.data.objects.get('meg_clusters', None)
+    parent_obj = bpy.data.objects.get(PARENT_OBJ_NAME, None)
     if parent_obj is not None:
         parent_obj.select = True
-        mu.view_all_in_graph_editor()
+
+    fcurves = mu.get_fcurves(PARENT_OBJ_NAME)
+    filtered_fcurves_names = [get_cluster_fcurve_name(c) for c in MEGPanel.clusters_labels_filtered]
+    for fcurve in fcurves:
+        fcurve_name = mu.get_fcurve_name(fcurve)
+        fcurve.hide = fcurve_name not in filtered_fcurves_names
+    plot_all_clusters()
+    mu.view_all_in_graph_editor()
+
+
+def deselect_all_clusters():
+    for fcurve in mu.get_fcurves(PARENT_OBJ_NAME):
+        fcurve.hide = True
+    clear_all_clusters()
 
 
 def clear_all_clusters():
@@ -333,9 +374,9 @@ def meg_draw(self, context):
         if labels_num_to_show < len(MEGPanel.current_cluster['intersects']):
             layout.label(text='Out of {} labels'.format(len(MEGPanel.current_cluster['intersects'])))
     layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
-    layout.operator(_addon().ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
+    layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
     layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
-    layout.operator(_addon().ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+    layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
 
 
 bpy.types.Scene.meg_clusters_labels_files = bpy.props.EnumProperty(
@@ -384,6 +425,16 @@ class SelectAllClusters(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class DeselecAllClusters(bpy.types.Operator):
+    bl_idname = "mmvt.deselect_all_meg_clusters"
+    bl_label = "Deselect all meg clusters"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        deselect_all_clusters()
+        return {'PASS_THROUGH'}
+
+
 class ClearClusters(bpy.types.Operator):
     bl_idname = "mmvt.clear_all_meg_clusters"
     bl_label = "Clear all meg clusters"
@@ -428,6 +479,7 @@ class MEGPanel(bpy.types.Panel):
     stc = None
     prev_cluster = ''
     current_cluster = {}
+    should_load_clusters_file = True
 
     def draw(self, context):
         if MEGPanel.init:
@@ -473,6 +525,7 @@ def register():
         bpy.utils.register_class(PrevMEGCluster)
         bpy.utils.register_class(FilterMEGClusters)
         bpy.utils.register_class(SelectAllClusters)
+        bpy.utils.register_class(DeselecAllClusters)
         bpy.utils.register_class(ClearClusters)
     except:
         print("Can't register MEG Panel!")
@@ -486,6 +539,7 @@ def unregister():
         bpy.utils.unregister_class(PrevMEGCluster)
         bpy.utils.unregister_class(FilterMEGClusters)
         bpy.utils.unregister_class(SelectAllClusters)
+        bpy.utils.unregister_class(DeselecAllClusters)
         bpy.utils.unregister_class(ClearClusters)
     except:
         pass

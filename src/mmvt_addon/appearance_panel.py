@@ -436,6 +436,8 @@ class SelectionListener(bpy.types.Operator):
     right_clicked, left_clicked = False, False
     cursor_pos = bpy.context.scene.cursor_location.copy()
 
+    # Add info: https://blender.stackexchange.com/questions/76464/how-to-get-the-mouse-coordinates-in-3space-relative-to-the-local-coordinates-of
+
     def modal(self, context, event):
         if self.left_clicked:
             self.left_clicked = False
@@ -447,8 +449,9 @@ class SelectionListener(bpy.types.Operator):
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
-
-            _addon().select_meg_cluster(event, context, bpy.context.scene.cursor_location )
+            cluster = _addon().select_meg_cluster(event, context, bpy.context.scene.cursor_location)
+            if cluster is not None:
+                return {'PASS_THROUGH'}
             cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
             if bpy.context.scene.cursor_is_snapped:
                 snap_cursor(True)
@@ -470,7 +473,9 @@ class SelectionListener(bpy.types.Operator):
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
-            _addon().select_meg_cluster(event, context)
+            # cluster = _addon().select_meg_cluster(event, context)
+            # if cluster is not None:
+            #     return {'PASS_THROUGH'}
             if len(bpy.context.selected_objects):
                 mu.unfilter_graph_editor()
                 if bpy.context.scene.fit_graph_on_selection:
