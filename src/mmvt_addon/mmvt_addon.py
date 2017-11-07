@@ -174,6 +174,7 @@ get_activity_values = coloring_panel.get_activity_values
 color_prev_colors = coloring_panel.color_prev_colors
 get_prev_colors = coloring_panel.get_prev_colors
 get_activity_colors = coloring_panel.get_activity_colors
+recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val

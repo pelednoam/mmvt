@@ -445,7 +445,7 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 return {'PASS_THROUGH'}
-            if click_outside_3d_view(event):
+            if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
 
             _addon().select_meg_cluster(event, context, bpy.context.scene.cursor_location )
@@ -467,7 +467,7 @@ class SelectionListener(bpy.types.Operator):
 
         if self.right_clicked:
             self.right_clicked = False
-            if click_outside_3d_view(event):
+            if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
             _addon().select_meg_cluster(event, context)
@@ -537,25 +537,26 @@ class SelectionListener(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
-def click_outside_3d_view(event):
-    area, viewport = mu.get_3d_area_region()
-    # print((event.mouse_region_x, event.mouse_region_y), (viewport.width, viewport.height))
-    return not (0 < event.mouse_region_x < viewport.width and 0 < event.mouse_region_y < viewport.height)
+def click_inside_3d_view(event):
+    for area in mu.get_3d_areas():
+        if 0 < event.mouse_x-area.x < area.width and 0 < event.mouse_y-area.y < area.height:
+            return True
+    return False
 
 
 def click_inside_images_view(event):
-    # for area, region in mu.get_images_area_regions():
-    #     if (0 < event.mouse_region_x < region.width and 0 < event.mouse_region_y < region.height):
-    #         return True
-    screen = bpy.data.screens['Neuro']
-    images_areas = [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
-    slices_cursor_pos = _addon().get_slices_cursor_pos()
-    for area in images_areas:
-        active_image = area.spaces.active.image
-        if active_image is not None and active_image.name in slices_cursor_pos:
-            pos = tuple(area.spaces.active.cursor_location)
-            if pos != slices_cursor_pos[active_image.name]:
-                return active_image, pos
+    for area, region in mu.get_images_area_regions():
+        if 0 < event.mouse_x-area.x < area.width and 0 < event.mouse_y-area.y < area.height:
+            return area.spaces.active.image, tuple(area.spaces.active.cursor_location)
+    # screen = bpy.data.screens['Neuro']
+    # images_areas = [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
+    # slices_cursor_pos = _addon().get_slices_cursor_pos()
+    # for area in images_areas:
+    #     active_image = area.spaces.active.image
+    #     if active_image is not None and active_image.name in slices_cursor_pos:
+    #         pos = tuple(area.spaces.active.cursor_location)
+    #         if pos != slices_cursor_pos[active_image.name]:
+    #             return active_image, pos
     return None, None
 
 

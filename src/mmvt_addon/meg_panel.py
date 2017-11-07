@@ -60,9 +60,9 @@ def _clusters_update():
     _addon().create_slices()
     if bpy.context.scene.plot_current_meg_cluster:
         _addon().color_contours(
-            [cluster_name], cluster.hemi, MEGPanel.contours)
-        if not bpy.context.scene.cumulate_meg_cluster and MEGPanel.prev_cluster not in ['', bpy.context.scene.meg_clusters]:
-            clear_cluster(MEGPanel.prev_cluster)
+            [cluster_name], cluster.hemi, MEGPanel.contours, bpy.context.scene.cumulate_meg_cluster)
+        # if not bpy.context.scene.cumulate_meg_cluster and MEGPanel.prev_cluster not in ['', bpy.context.scene.meg_clusters]:
+        #     clear_cluster(MEGPanel.prev_cluster)
     bpy.data.objects['meg_clusters'].select = True
     mu.view_all_in_graph_editor()
     fcurves = mu.get_fcurves('meg_clusters')
@@ -78,16 +78,16 @@ def _clusters_update():
     MEGPanel.prev_cluster = bpy.context.scene.meg_clusters
 
 
-def clear_cluster(cluster):
-    if isinstance(cluster, str):
-        cluster = MEGPanel.clusters_lookup[cluster]
-    cluster_name = get_cluster_name(cluster)
-    contures = MEGPanel.contours[cluster.hemi]
-    label_ind = np.where(np.array(contures['labels']) == cluster_name)[0][0] + 1
-    clustes_contour_vertices = np.where(contures['contours'] == label_ind)[0]
-    hemi_obj_name = 'inflated_{}'.format(cluster.hemi)
-    if hemi_obj_name not in _addon().get_prev_colors():
-        _addon().color_prev_colors(clustes_contour_vertices, hemi_obj_name)
+# def clear_cluster(cluster):
+#     if isinstance(cluster, str):
+#         cluster = MEGPanel.clusters_lookup[cluster]
+#     cluster_name = get_cluster_name(cluster)
+#     contours = MEGPanel.contours[cluster.hemi]
+#     label_ind = np.where(np.array(contours['labels']) == cluster_name)[0][0] + 1
+#     clustes_contour_vertices = np.where(contours['contours'] == label_ind)[0]
+#     hemi_obj_name = 'inflated_{}'.format(cluster.hemi)
+#     if hemi_obj_name not in _addon().get_prev_colors():
+#         _addon().color_prev_colors(clustes_contour_vertices, hemi_obj_name)
 
 
 def set_cluster_time_series(cluster):
@@ -293,8 +293,11 @@ def select_all_clusters():
 
 
 def clear_all_clusters():
-    for cluster in MEGPanel.clusters:
-        clear_cluster(cluster)
+    for obj_name in mu.INF_HEMIS:
+        mesh = bpy.data.objects[obj_name].data
+        _addon().recreate_coloring_layers(mesh, 'contours')
+    # for cluster in MEGPanel.clusters:
+    #     clear_cluster(cluster)
 
 
 def meg_draw(self, context):

@@ -130,19 +130,19 @@ def contours_coloring_update(self, context):
             bpy.context.scene.contours_coloring, hemi)))
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
         items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
-    bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=items, update=labels_contures_update)
-    bpy.context.scene.labels_contures = 'all labels' #d[hemi]['labels'][0]
-    ColoringMakerPanel.labels_contures = d
+    bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
+    bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
+    ColoringMakerPanel.labels_contours = d
 
 
-def labels_contures_update(self, context):
+def labels_contours_update(self, context):
     if not ColoringMakerPanel.init:
         return
-    if bpy.context.scene.labels_contures == 'all labels':
+    if bpy.context.scene.labels_contours == 'all labels':
         color_contours()
     else:
-        hemi = 'rh' if bpy.context.scene.labels_contures in ColoringMakerPanel.labels['rh'] else 'lh'
-        color_contours(bpy.context.scene.labels_contures, hemi)
+        hemi = 'rh' if bpy.context.scene.labels_contours in ColoringMakerPanel.labels['rh'] else 'lh'
+        color_contours(bpy.context.scene.labels_contours, hemi)
 
 
 def object_coloring(obj, rgb):
@@ -222,26 +222,27 @@ def clear_object_vertex_colors(cur_obj):
     cur_obj.select = True
     # bpy.ops.mesh.vertex_color_remove()
     # vcol_layer = mesh.vertex_colors.new()
-    recreate_coloring_layers(cur_obj, mesh, 'Col')
+    # rerecreate_coloring_layers(cur_obj, mesh, 'Col')
+    recreate_coloring_layers(mesh)
 
 
-def recreate_coloring_layers(cur_obj, mesh, active_layer='Col'):
-    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        # mesh.vertex_colors.active_index = 1
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-        bpy.ops.mesh.vertex_color_remove()
-    if mesh.vertex_colors.get('Col') is None:
-        vcol_layer = mesh.vertex_colors.new('Col')
-    if mesh.vertex_colors.get('contours') is not None:
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
-        bpy.ops.mesh.vertex_color_remove()
-        mesh.vertex_colors.new('contours')
-    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        # mesh.vertex_colors.active_index = 1
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-        mesh.vertex_colors['Col'].active_render = True
-
+# def rerecreate_coloring_layers(cur_obj, mesh, active_layer='Col'):
+#     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+#         # mesh.vertex_colors.active_index = 1
+#         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+#     if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
+#         bpy.ops.mesh.vertex_color_remove()
+#     if mesh.vertex_colors.get('Col') is None:
+#         vcol_layer = mesh.vertex_colors.new('Col')
+#     if mesh.vertex_colors.get('contours') is not None:
+#         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
+#         bpy.ops.mesh.vertex_color_remove()
+#         mesh.vertex_colors.new('contours')
+#     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+#         # mesh.vertex_colors.active_index = 1
+#         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+#         mesh.vertex_colors['Col'].active_render = True
+#
 
 # todo: do something with the threshold parameter
 # @mu.timeit
@@ -575,12 +576,12 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contures=None, cumulate=True):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
-    if labels_contures is None:
-        labels_contures = ColoringMakerPanel.labels_contures
-    contour_max = max([labels_contures[hemi]['max'] for hemi in mu.HEMIS])
+    if labels_contours is None:
+        labels_contours = ColoringMakerPanel.labels_contours
+    contour_max = max([labels_contours[hemi]['max'] for hemi in mu.HEMIS])
     if not _addon().colorbar_values_are_locked():
         _addon().set_colormap('jet')
         _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
@@ -588,19 +589,19 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contures=Non
         _addon().set_colorbar_prec(0)
     _addon().show_activity()
     for hemi in mu.HEMIS:
-        contours = labels_contures[hemi]['contours']
+        contours = labels_contours[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
             selected_contours = np.zeros(contours.shape)
         elif len(specific_labels) > 0:
             selected_contours = np.zeros(contours.shape)
             for specific_label in specific_labels:
-                label_ind = np.where(np.array(labels_contures[hemi]['labels']) == specific_label)
+                label_ind = np.where(np.array(labels_contours[hemi]['labels']) == specific_label)
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
                     selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
         else:
-            selected_contours = labels_contures[hemi]['contours']
-        color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate)#,
-                        #coloring_layer='contours')#
+            selected_contours = labels_contours[hemi]['contours']
+        color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate,
+                        coloring_layer='contours')
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
@@ -835,9 +836,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     scn.objects.active = cur_obj
     cur_obj.select = True
     if override_current_mat:
-        create_coloring_layers(cur_obj, mesh)
-        if mesh.vertex_colors.get(coloring_layer) is None:
-            vcol_layer = mesh.vertex_colors.new(coloring_layer)
+        recreate_coloring_layers(mesh, coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]
 
     if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
@@ -870,15 +869,33 @@ def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur
             d.color = colors_func(vert)
 
 
-def create_coloring_layers(cur_obj, mesh):
-    if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-        # mesh.vertex_colors.active_index = 1
-        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-    if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-        c = mu.get_graph_context()
-        bpy.ops.mesh.vertex_color_remove(c)
-        # except:
-        #     print("Can't remove vertex color!")
+def recreate_coloring_layers(mesh, coloring_layer='Col'):
+    # if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
+    #     # mesh.vertex_colors.active_index = 1
+    #     mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+    # if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
+    #     c = mu.get_graph_context()
+    #     bpy.ops.mesh.vertex_color_remove(c)
+    #     # except:
+    #     #     print("Can't remove vertex color!")
+    # if mesh.vertex_colors.get('Col') is None:
+    #     vcol_layer = mesh.vertex_colors.new('Col')
+
+    coloring_layers = ['Col', 'contours'] if coloring_layer == 'Col' else ['contours']
+    for cl in coloring_layers:
+        if mesh.vertex_colors.get(cl) is not None:
+            mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index(cl)
+            bpy.ops.mesh.vertex_color_remove()
+    for cl in coloring_layers:
+        if mesh.vertex_colors.get(cl) is None:
+            mesh.vertex_colors.new(cl)
+    # if mesh.vertex_colors.get('Col') is None:
+    #     vcol_layer = mesh.vertex_colors.new('Col')
+    # if mesh.vertex_colors.get('Col') is None:
+    #     mesh.vertex_colors.new('contours')
+    mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
+    mesh.vertex_colors['Col'].active_render = True
+    # return vcol_layer
 
 
 def get_activity_colors(vert_values, threshold, data_min, colors_ratio, bigger_or_equall=False):
@@ -1599,11 +1616,11 @@ class PrevLabelConture(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
-        if bpy.context.scene.labels_contures == 'all labels':
-            bpy.context.scene.labels_contures = all_labels[-1]
+        if bpy.context.scene.labels_contours == 'all labels':
+            bpy.context.scene.labels_contours = all_labels[-1]
         else:
-            label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
-            bpy.context.scene.labels_contures = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
+            label_ind = np.where(all_labels == bpy.context.scene.labels_contours)[0][0]
+            bpy.context.scene.labels_contours = all_labels[label_ind - 1] if label_ind > 0 else all_labels[-1]
         return {"FINISHED"}
 
 
@@ -1615,11 +1632,11 @@ class NextLabelConture(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         all_labels = np.concatenate((ColoringMakerPanel.labels['rh'], ColoringMakerPanel.labels['lh']))
-        if bpy.context.scene.labels_contures == 'all labels':
-            bpy.context.scene.labels_contures = all_labels[0]
+        if bpy.context.scene.labels_contours == 'all labels':
+            bpy.context.scene.labels_contours = all_labels[0]
         else:
-            label_ind = np.where(all_labels == bpy.context.scene.labels_contures)[0][0]
-            bpy.context.scene.labels_contures = all_labels[label_ind + 1] \
+            label_ind = np.where(all_labels == bpy.context.scene.labels_contours)[0][0]
+            bpy.context.scene.labels_contours = all_labels[label_ind + 1] \
                 if label_ind < len(all_labels) else all_labels[0]
         return {"FINISHED"}
 
@@ -1898,7 +1915,7 @@ def draw(self, context):
             col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
             row = col.row(align=True)
             row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
-            row.prop(context.scene, 'labels_contures', '')
+            row.prop(context.scene, 'labels_contours', '')
             row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
         if manually_color_files_exist:
             col = layout.box().column()
@@ -1984,7 +2001,7 @@ bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=True, 
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
-bpy.types.Scene.labels_contures = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
     name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
 bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(items=[])
@@ -2070,6 +2087,8 @@ def init(addon):
         mesh = bpy.data.objects['inflated_{}'.format(hemi)].data
         if mesh.vertex_colors.get('Col') is None:
             mesh.vertex_colors.new('Col')
+        if mesh.vertex_colors.get('contours') is None:
+            mesh.vertex_colors.new('contours')
         curv_fname = op.join(mu.get_user_fol(), 'surf', '{}.curv.npy'.format(hemi))
         ColoringMakerPanel.curvs[hemi] = np.load(curv_fname)
 
