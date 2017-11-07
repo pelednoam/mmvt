@@ -314,6 +314,7 @@ set_tkreg_ras_coo = where_am_i_panel.set_tkreg_ras_coo
 find_closest_obj = where_am_i_panel.find_closest_obj
 create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
+get_slices_cursor_pos = where_am_i_panel.get_slices_cursor_pos
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data

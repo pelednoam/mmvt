@@ -1538,13 +1538,28 @@ def get_graph_context():
     print("Couldn't find the graph editor!")
 
 
-def get_3d_area_region():
-    for window in bpy.context.window_manager.windows:
-        for area in window.screen.areas:
+def get_3d_area_region(only_neuro=True):
+    # for window in bpy.context.window_manager.windows:
+    for screen in bpy.data.screens:
+        areas = bpy.data.screens['Neuro'].areas if only_neuro else screen.areas
+        # for area in window.screen.areas:
+        for area in areas:
             if area.type == 'VIEW_3D':
                 for region in area.regions:
                     if region.type == 'WINDOW':
                         return area, region
+
+
+def get_images_area_regions(only_neuro=True):
+    # for window in bpy.context.window_manager.windows:
+    for screen in bpy.data.screens:
+        areas = bpy.data.screens['Neuro'].areas if only_neuro else screen.areas
+        # for area in window.screen.areas:
+        for area in areas:
+            if area.type == 'IMAGE_EDITOR':
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        yield area, region
 
 
 def set_graph_att(att, val):

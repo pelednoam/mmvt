@@ -405,33 +405,24 @@ def save_slices_cursor_pos():
                 WhereAmIPanel.slices_cursor_pos[active_image.name] = tuple(pos)
 
 
-def slices_were_clicked():
+def get_slices_cursor_pos():
+    return WhereAmIPanel.slices_cursor_pos
+
+
+def slices_were_clicked(active_image, pos):
     if WhereAmIPanel.slicer_state is None:
         return
-    screen = bpy.data.screens['Neuro']
     images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
-    images_areas = [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
-    image_found = False
-    for area in images_areas:
-        active_image = area.spaces.active.image
-        if active_image is not None and active_image.name in WhereAmIPanel.slices_cursor_pos:
-            pos = tuple(area.spaces.active.cursor_location)
-            if pos != WhereAmIPanel.slices_cursor_pos[active_image.name]:
-                WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
-                # print(active_image.name, pos)
-                image_ind = images_names.index(active_image.name)
-                new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
-                new_pos_pial = apply_trans(_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
-                # Find the closest vertex on the pial brain, and convert it to the current inflation
-                new_pos = pos_to_current_inflation(new_pos_pial) / 10
-                bpy.context.scene.cursor_location = new_pos
-                _addon().save_cursor_position()
-                image_found = True
-                break
-    if image_found:
-        return new_pos
-    else:
-        return None
+    WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
+    # print(active_image.name, pos)
+    image_ind = images_names.index(active_image.name)
+    new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
+    new_pos_pial = apply_trans(_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
+    # Find the closest vertex on the pial brain, and convert it to the current inflation
+    new_pos = pos_to_current_inflation(new_pos_pial) / 10
+    bpy.context.scene.cursor_location = new_pos
+    _addon().save_cursor_position()
+    return new_pos
     # print('image_found: {}'.format(image_found))
     # save_slices_cursor_pos()
 

@@ -437,13 +437,14 @@ class SelectionListener(bpy.types.Operator):
     cursor_pos = bpy.context.scene.cursor_location.copy()
 
     def modal(self, context, event):
-        # def show_fcurves(obj):
-        #     mu.change_fcurves_colors(obj)
-            # mu.view_all_in_graph_editor()
-        # todo: check if the mouse is still in the 3D view. Can be done by using this:
-        # https://blender.stackexchange.com/questions/27813/how-to-get-the-vertices-horizontal-and-vertical-location-in-the-window
         if self.left_clicked:
             self.left_clicked = False
+            active_image, pos = click_inside_images_view(event)
+            if active_image is not None:
+                xyz = _addon().slices_were_clicked(active_image, pos)
+                bpy.context.scene.cursor_location = tuple(xyz)
+                set_cursor_pos()
+                return {'PASS_THROUGH'}
             if click_outside_3d_view(event):
                 return {'PASS_THROUGH'}
 
@@ -463,10 +464,6 @@ class SelectionListener(bpy.types.Operator):
                 clear_slice()
                 if bpy.data.objects.get('inner_skull', None) is not None:
                     _addon().find_point_thickness()
-            xyz = _addon().slices_were_clicked()
-            if xyz is not None:
-                bpy.context.scene.cursor_location = tuple(xyz)
-                set_cursor_pos()
 
         if self.right_clicked:
             self.right_clicked = False
@@ -544,6 +541,22 @@ def click_outside_3d_view(event):
     area, viewport = mu.get_3d_area_region()
     # print((event.mouse_region_x, event.mouse_region_y), (viewport.width, viewport.height))
     return not (0 < event.mouse_region_x < viewport.width and 0 < event.mouse_region_y < viewport.height)
+
+
+def click_inside_images_view(event):
+    # for area, region in mu.get_images_area_regions():
+    #     if (0 < event.mouse_region_x < region.width and 0 < event.mouse_region_y < region.height):
+    #         return True
+    screen = bpy.data.screens['Neuro']
+    images_areas = [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
+    slices_cursor_pos = _addon().get_slices_cursor_pos()
+    for area in images_areas:
+        active_image = area.spaces.active.image
+        if active_image is not None and active_image.name in slices_cursor_pos:
+            pos = tuple(area.spaces.active.cursor_location)
+            if pos != slices_cursor_pos[active_image.name]:
+                return active_image, pos
+    return None, None
 
 
 def set_cursor_pos():
