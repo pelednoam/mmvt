@@ -135,7 +135,8 @@ def filter_clusters(val_threshold=None, size_threshold=None, clusters_label=None
         clusters_label = bpy.context.scene.meg_clusters_label
     return [c for c in MEGPanel.clusters_labels.values
             if abs(c.max) >= val_threshold and c.size >= size_threshold and \
-            any([clusters_label in inter_label['name'] for inter_label in c.intersects])]
+            clusters_label in c.name]
+            # any([clusters_label in inter_label['name'] for inter_label in c.intersects])]
 
 
 def meg_clusters_labels_files_update(self, context):
@@ -268,6 +269,7 @@ def plot_clusters():
             bpy.context.scene.coloring_threshold = 0
         _addon().plot_stc(MEGPanel.stc, MEGPanel.clusters_labels.time,
                  threshold=bpy.context.scene.coloring_threshold, save_image=False, save_prev_colors=True)
+        bpy.context.scene.frame_current = MEGPanel.clusters_labels.time
 
 
 def get_max_stc_t(stc, t):
@@ -343,10 +345,9 @@ def clear_all_clusters():
 
 def meg_draw(self, context):
     layout = self.layout
-    user_fol = mu.get_user_fol()
     layout.prop(context.scene, 'meg_clusters_labels_files', text='')
     if MNE_EXIST:
-        layout.operator(PlotMEGClusters.bl_idname, text="Plot STC", icon='POTATO')
+        layout.operator(PlotMEGClusters.bl_idname, text='Plot STC', icon='POTATO')
     row = layout.row(align=True)
     row.operator(PrevMEGCluster.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, 'meg_clusters', text='')

@@ -290,7 +290,7 @@ def calc_functional_rois(conds, args):
             threshold=99.5,
             min_cluster_max=0.2,
             min_cluster_size=100,
-            clusters_label='precentral'
+            # clusters_label='precentral'
         ))
         meg.call_main(_args)
 
