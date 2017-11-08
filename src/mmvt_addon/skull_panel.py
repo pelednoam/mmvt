@@ -142,6 +142,7 @@ def find_point_thickness(cursor_location=None, skull_type=''):
         _addon().find_vertex_index_and_mesh_closest_to_cursor(cursor_location, objects_names=[skull_type])
     if closest_mesh_name is None:
         return
+    _addon().create_slices(pos=vertex_co)
     distances = np.load(distances_fname)
     distance = distances[vertex_ind][0]
     SkullPanel.vertex_skull_thickness = distance

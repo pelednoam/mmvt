@@ -453,6 +453,9 @@ class SelectionListener(bpy.types.Operator):
             if cluster is not None:
                 return {'PASS_THROUGH'}
             cursor_moved = np.linalg.norm(SelectionListener.cursor_pos - bpy.context.scene.cursor_location) > 1e-3
+            if cursor_moved and bpy.data.objects.get('inner_skull', None) is not None:
+                _addon().find_point_thickness()
+                return {'PASS_THROUGH'}
             if bpy.context.scene.cursor_is_snapped:
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
@@ -465,8 +468,6 @@ class SelectionListener(bpy.types.Operator):
                 _addon().create_slices()
                 _addon().save_cursor_position()
                 clear_slice()
-                if bpy.data.objects.get('inner_skull', None) is not None:
-                    _addon().find_point_thickness()
 
         if self.right_clicked:
             self.right_clicked = False
