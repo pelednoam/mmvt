@@ -1166,7 +1166,7 @@ def count_fcurves(objs, recursive=False):
     return curves_num
 
 
-def get_fcurves(obj, recursive=False, only_selected=True):
+def get_fcurves(obj, recursive=False, only_selected=True, only_not_hiden=False):
     if isinstance(obj, str):
         obj = bpy.data.objects.get(obj)
         if obj is None:
@@ -1174,7 +1174,10 @@ def get_fcurves(obj, recursive=False, only_selected=True):
     fcurves, fcurves_inds = [], []
     if not obj is None and not obj.animation_data is None:
         if not only_selected or obj.select:
-            fcurves.extend(obj.animation_data.action.fcurves)
+            if only_not_hiden:
+                fcurves.extend([f for f in obj.animation_data.action.fcurves if not f.hide])
+            else:
+                fcurves.extend(obj.animation_data.action.fcurves)
     if recursive:
         for obj in obj.children:
             if not only_selected or obj.select:

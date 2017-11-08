@@ -78,6 +78,7 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     else:
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
         _addon().set_colorbar_max_min(data_max, data_min)
+        _addon().set_colorbar_prec(2)
     if threshold > data_max:
         print('threshold > data_max!')
         threshold = bpy.context.scene.coloring_threshold = 0
@@ -576,13 +577,13 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True, change_colorbar=True):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if labels_contours is None:
         labels_contours = ColoringMakerPanel.labels_contours
     contour_max = max([labels_contours[hemi]['max'] for hemi in mu.HEMIS])
-    if not _addon().colorbar_values_are_locked():
+    if not _addon().colorbar_values_are_locked() and change_colorbar:
         _addon().set_colormap('jet')
         _addon().set_colorbar_title('{} labels contours'.format(bpy.context.scene.contours_coloring))
         _addon().set_colorbar_max_min(contour_max, 1)
@@ -600,6 +601,9 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
                     selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
         else:
             selected_contours = labels_contours[hemi]['contours']
+        mesh = bpy.data.objects['inflated_{}'.format(hemi)].data
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
+        mesh.vertex_colors['contours'].active_render = True
         color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate,
                         coloring_layer='contours')
 

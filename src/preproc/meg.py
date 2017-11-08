@@ -2550,6 +2550,10 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
                                 inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, n_jobs=6):
     import mne.stats.cluster_level as mne_clusters
 
+    clusters_root_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters')
+    # todo: Should check for an overwrite flag. Not sure why, if the folder isn't being deleted, the code doesn't work
+    # utils.delete_folder_files(clusters_root_fol)
+    utils.make_dir(clusters_root_fol)
     stc_fname = op.join(MMVT_DIR, subject, 'meg', '{}-lh.stc'.format(stc_name))
     stc = mne.read_source_estimate(stc_fname)
     if time_index is None:
@@ -2566,7 +2570,7 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
     if threshold_is_precentile:
         threshold = np.percentile(stc_t_smooth.data, threshold)
     clusters_name = '{}-{}'.format(stc_name, label_name_template.replace('*', '').replace('?', ''))
-    clusters_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters', clusters_name)
+    clusters_fol = op.join(clusters_root_fol, clusters_name)
     # data_minmax = utils.get_max_abs(utils.min_stc(stc), utils.max_stc(stc))
     # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
     factor = 9 # to get nAmp
@@ -2591,9 +2595,7 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
                 subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
                 time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG)
             clusters_labels.values.extend(clusters_labels_hemi)
-    clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'clusters', 'clusters_labels_{}.pkl'.format(stc_name, atlas))
-    utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'clusters'))
+    clusters_labels_output_fname = op.join(clusters_root_fol, 'clusters_labels_{}.pkl'.format(stc_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     # Change Bag to regular dict because we want to load the pickle file in Blender (argggg)
     for ind in range(len(clusters_labels.values)):

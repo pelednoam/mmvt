@@ -1,6 +1,4 @@
 import bpy
-import bpy_extras.view3d_utils
-import electrodes_panel
 import mmvt_utils as mu
 import time
 import sys
@@ -400,7 +398,7 @@ def appearance_draw(self, context):
     #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
     #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
-    if bpy.data.objects.get(electrodes_panel.PARENT_OBJ):
+    if bpy.data.objects.get(_addon().electrodes_panel_parent):
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
     if bpy.data.objects.get('MEG_sensors'):
         show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')

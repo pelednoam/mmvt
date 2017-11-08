@@ -13,6 +13,7 @@ except:
 
 PARENT_OBJ_NAME = 'meg_clusters'
 
+
 def _addon():
     return MEGPanel.addon
 
@@ -62,7 +63,7 @@ def _clusters_update():
     _addon().create_slices()
     if bpy.context.scene.plot_current_meg_cluster:
         _addon().color_contours(
-            [cluster_name], cluster.hemi, MEGPanel.contours, bpy.context.scene.cumulate_meg_cluster)
+            [cluster_name], cluster.hemi, MEGPanel.contours, bpy.context.scene.cumulate_meg_cluster, False)
     bpy.data.objects[PARENT_OBJ_NAME].select = True
     # mu.view_all_in_graph_editor()
     fcurves = mu.get_fcurves(PARENT_OBJ_NAME)
@@ -79,8 +80,31 @@ def _clusters_update():
 
 
 def plot_all_clusters():
+    for hemi in mu.INF_HEMIS:
+        # Not sure why, but this is needed, otherwise the coloring layer is being erased
+        _addon().recreate_coloring_layers(bpy.data.objects[hemi].data, 'contours')
     for cluster in MEGPanel.clusters_labels_filtered:
-        _addon().color_contours([get_cluster_name(cluster)], cluster.hemi, MEGPanel.contours, True)
+        _addon().color_contours([get_cluster_name(cluster)], cluster.hemi, MEGPanel.contours, True, False)
+
+
+def get_selected_clusters_data():
+    names = []
+    data = None
+    fcurves = mu.get_fcurves(PARENT_OBJ_NAME)
+    filtered_fcurves_names = [get_cluster_fcurve_name(c) for c in MEGPanel.clusters_labels_filtered]
+    filtered_clusters = {fcurve_name:cluster for fcurve_name,cluster in zip(
+        filtered_fcurves_names, MEGPanel.clusters_labels_filtered)}
+    data_ind = 0
+    for fcurve in fcurves:
+        fcurve_name = mu.get_fcurve_name(fcurve)
+        if fcurve_name in filtered_fcurves_names:
+            x = filtered_clusters[fcurve_name].label_data
+            if data is None:
+                data = np.zeros((len(filtered_fcurves_names), len(x)))
+            data[data_ind] = x
+            names.append(fcurve_name)
+            data_ind += 1
+    return data, names, ['all']
 
 
 # def clear_cluster(cluster):
@@ -269,6 +293,7 @@ def plot_clusters():
             bpy.context.scene.coloring_threshold = 0
         _addon().plot_stc(MEGPanel.stc, MEGPanel.clusters_labels.time,
                  threshold=bpy.context.scene.coloring_threshold, save_image=False, save_prev_colors=True)
+        _addon().set_colorbar_title('MEG activity (nA)')
         bpy.context.scene.frame_current = MEGPanel.clusters_labels.time
 
 
@@ -329,6 +354,15 @@ def select_all_clusters():
     mu.view_all_in_graph_editor()
 
 
+def flip_meg_clusters_ts():
+    fcurves = mu.get_fcurves(PARENT_OBJ_NAME, only_not_hiden=True)
+    for fcurve, cluster in zip(fcurves, MEGPanel.clusters_labels_filtered):
+        if cluster.ts_max < 0:
+            for t in range(len(cluster.label_data)):
+                fcurve.keyframe_points[t].co[1] = -fcurve.keyframe_points[t].co[1]
+    MEGPanel.data_is_flipped = not MEGPanel.data_is_flipped
+
+
 def deselect_all_clusters():
     for fcurve in mu.get_fcurves(PARENT_OBJ_NAME):
         fcurve.hide = True
@@ -375,6 +409,8 @@ def meg_draw(self, context):
         if labels_num_to_show < len(MEGPanel.current_cluster['intersects']):
             layout.label(text='Out of {} labels'.format(len(MEGPanel.current_cluster['intersects'])))
     layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
+    text = 'Flip time series' if not MEGPanel.data_is_flipped else 'Unflip time series'
+    layout.operator(FlipMEGClustersTS.bl_idname, text=text, icon='FORCE_MAGNETIC')
     layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
     layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
     layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
@@ -414,6 +450,16 @@ class PrevMEGCluster(bpy.types.Operator):
     def invoke(self, context, event=None):
         prev_cluster()
         return {'FINISHED'}
+
+
+class FlipMEGClustersTS(bpy.types.Operator):
+    bl_idname = "mmvt.flip_meg_clusters_ts"
+    bl_label = "Flip meg clusters ts"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        flip_meg_clusters_ts()
+        return {'PASS_THROUGH'}
 
 
 class SelectAllClusters(bpy.types.Operator):
@@ -481,6 +527,7 @@ class MEGPanel(bpy.types.Panel):
     prev_cluster = ''
     current_cluster = {}
     should_load_clusters_file = True
+    data_is_flipped = False
 
     def draw(self, context):
         if MEGPanel.init:
@@ -526,6 +573,7 @@ def register():
         bpy.utils.register_class(PrevMEGCluster)
         bpy.utils.register_class(FilterMEGClusters)
         bpy.utils.register_class(SelectAllClusters)
+        bpy.utils.register_class(FlipMEGClustersTS)
         bpy.utils.register_class(DeselecAllClusters)
         bpy.utils.register_class(ClearClusters)
     except:
@@ -540,6 +588,7 @@ def unregister():
         bpy.utils.unregister_class(PrevMEGCluster)
         bpy.utils.unregister_class(FilterMEGClusters)
         bpy.utils.unregister_class(SelectAllClusters)
+        bpy.utils.unregister_class(FlipMEGClustersTS)
         bpy.utils.unregister_class(DeselecAllClusters)
         bpy.utils.unregister_class(ClearClusters)
     except:

@@ -277,6 +277,8 @@ def flip_to_same_direction(clusters_info):
 
 
 def calc_functional_rois(conds, args):
+    clusters_root_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters')
+    utils.delete_folder_files(clusters_root_fol)
     for cond in conds.keys():
         _args = meg.read_cmd_args(dict(
             subject=args.subject,

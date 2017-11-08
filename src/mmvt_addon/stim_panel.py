@@ -3,13 +3,13 @@ import os.path as op
 import glob
 import numpy as np
 import mmvt_utils as mu
-import electrodes_panel
 import data_panel
 import selection_panel
 import play_panel
 
-PARENT_OBJ = electrodes_panel.PARENT_OBJ
 
+def _adoon():
+    return StimPanel.addon
 
 def stim_files_update(self, context):
     play_panel.init_stim()
@@ -44,7 +44,7 @@ def stim_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'stim_files', text='')
     # layout.operator(ImportStimElectrodes.bl_idname, text="Import the electrodes", icon='RNA_ADD')
-    if bpy.data.objects.get(PARENT_OBJ, None):
+    if bpy.data.objects.get(_addon().electrodes_panel_parent, None):
         layout.operator(LoadStim.bl_idname, text="Load the data", icon='RNA_ADD')
         layout.operator(LoadStimConditions.bl_idname, text="Load the frequencies", icon='RNA_ADD')
 

@@ -7,7 +7,7 @@ import time
 import numpy as np
 from collections import defaultdict
 
-PARENT_OBJ = 'Deep_electrodes'
+PARENT_OBJ_NAME = 'Deep_electrodes'
 
 
 def _addon():

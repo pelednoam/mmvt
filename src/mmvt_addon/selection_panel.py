@@ -2,9 +2,8 @@ import bpy
 import mmvt_utils as mu
 import numpy as np
 from functools import partial
-import electrodes_panel
 
-SEL_ROIS, SEL_SUBS, SEL_ELECTRODES, SEL_MEG_SENSORS, SEL_EEG_SENSORS, SEL_CONNECTIONS = range(6)
+SEL_ROIS, SEL_FUNC_ROIS, SEL_SUBS, SEL_ELECTRODES, SEL_MEG_SENSORS, SEL_EEG_SENSORS, SEL_CONNECTIONS = range(7)
 
 def _addon():
     return SelectionMakerPanel.addon
@@ -37,7 +36,8 @@ def deselect_all():
 def get_selected_fcurves_and_data():
     # todo: support more than one type in selection
     all_fcurves, all_data = [], []
-    for selction_type, parent_obj in zip([SEL_ELECTRODES, SEL_ROIS], [electrodes_panel.PARENT_OBJ, '']):
+    for selction_type, parent_obj in zip([SEL_ELECTRODES, SEL_ROIS, SEL_FUNC_ROIS],
+                                         [_addon().electrodes_panel_parent, '', _addon().meg_panel_parent]):
         if selction_type not in SelectionMakerPanel.get_data:
             continue
         # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
@@ -52,9 +52,10 @@ def get_selected_fcurves_and_data():
         #         data = np.diff(data, axis=2)
         #     selected_indices = [ind for ind, name in enumerate(names) if name in fcurves_names]
         # else:
-        selected_indices = [ind for ind, name in enumerate(names)
-                            if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
-        data = data[selected_indices]
+        if selction_type != SEL_FUNC_ROIS:
+            selected_indices = [ind for ind, name in enumerate(names)
+                                if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
+            data = data[selected_indices]
         all_fcurves.extend(fcurves)
         all_data = data if all_data == [] else np.concatenate((all_data, data))
     return all_fcurves, all_data
@@ -69,6 +70,7 @@ def curves_sep_update(self=None, context=None):
     else:
         N, T = data.shape
         C = 1
+    get_data = lambda ind, t, c : data[data_ind, t, c] if data.ndim == 3 else data[data_ind, t]
     sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()
     fcurve_ind = 0
     for data_ind in range(N):
@@ -80,7 +82,7 @@ def curves_sep_update(self=None, context=None):
                 continue
             for t in range(T):
                 fcurve.keyframe_points[t].co[1] = \
-                    data[data_ind, t, c] - data_mean + (N / 2 - 0.5 - sep_inds[fcurve_ind]) * bpy.context.scene.curves_sep
+                    get_data(data_ind, t, c) - data_mean + (N / 2 - 0.5 - sep_inds[fcurve_ind]) * bpy.context.scene.curves_sep
             fcurve_ind += 1
             if bpy.context.scene.curves_sep == 0:
                 fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[T].co[1] = 0
@@ -102,14 +104,15 @@ def minimize_graph():
     bpy.ops.screen.back_to_previous(context)
 
 
-def calc_best_curves_sep():
+def calc_best_curves_sep(norm_percs=[3, 97]):
     fcurves, data = get_selected_fcurves_and_data()
-    bpy.context.scene.curves_sep = _calc_best_curves_sep(data)
+    bpy.context.scene.curves_sep = _calc_best_curves_sep(data, norm_percs)
 
 
-def _calc_best_curves_sep(data):
+def _calc_best_curves_sep(data, norm_percs=[3, 97]):
     try:
-        return max([np.diff(mu.calc_min_max(data[k], norm_percs=[3, 97]))[0] for k in range(data.shape[0])]) * 1.1
+        max_diff = max([np.diff(mu.calc_min_max(data[k], norm_percs=norm_percs))[0] for k in range(data.shape[0])])
+        return max_diff * 1.1
     except:
         print('Error in _calc_best_curves_sep')
         return 0
@@ -145,8 +148,13 @@ def fmri_data_loaded():
 
 
 def electrodes_data_loaded():
-    electrodes_obj = bpy.data.objects.get(electrodes_panel.PARENT_OBJ)
+    electrodes_obj = bpy.data.objects.get(_addon().electrodes_panel_parent)
     return electrodes_obj is not None and mu.count_fcurves(electrodes_obj, recursive=True) > 0
+
+
+def meg_clusters_data_loaded():
+    meg_clusters_obj = bpy.data.objects.get(_addon().meg_panel_parent)
+    return meg_clusters_obj is not None and mu.count_fcurves(meg_clusters_obj, recursive=True) > 0
 
 
 def select_roi(roi_name):
@@ -391,6 +399,17 @@ class FitSelection(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ResetCurvesSep(bpy.types.Operator):
+    bl_idname = "mmvt.reset_curves_sep"
+    bl_label = "reset_curves_sep"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.curves_sep = 0
+        return {"FINISHED"}
+
+
 class CalcBestCurvesSep(bpy.types.Operator):
     bl_idname = "mmvt.calc_best_curves_sep"
     bl_label = "calc_best_curves_sep"
@@ -558,6 +577,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(context.scene, 'curves_sep', text='curves separation')
         row.operator(CalcBestCurvesSep.bl_idname, text="Calc best curves sep", icon='RNA_ADD')
+        row.operator(ResetCurvesSep.bl_idname, text="", icon='PANEL_CLOSE')
         layout.prop(context.scene, 'fit_graph_on_selection', text='Fit graph on selection')
         layout.prop(context.scene, 'find_curves_sep_auto', text='Always find the best curves separation')
         layout.operator(MaxMinGraphPanel.bl_idname,
@@ -624,7 +644,12 @@ def get_data():
     if electrodes_data_loaded():
         SelectionMakerPanel.get_data[SEL_ELECTRODES] = _addon().load_electrodes_data
         SelectionMakerPanel.fcurves[SEL_ELECTRODES] = \
-            partial(mu.get_fcurves, obj=electrodes_panel.PARENT_OBJ, recursive=True, only_selected=True)
+            partial(mu.get_fcurves, obj=_addon().electrodes_panel_parent, recursive=True, only_selected=True)
+    if meg_clusters_data_loaded():
+        SelectionMakerPanel.get_data[SEL_FUNC_ROIS] = _addon().get_selected_clusters_data
+        SelectionMakerPanel.fcurves[SEL_FUNC_ROIS] = \
+            partial(mu.get_fcurves, obj=_addon().meg_panel_parent, recursive=True, only_selected=True, only_not_hiden=True)
+
     if bpy.data.objects.get('MEG_sensors'):
         pass
     if bpy.data.objects.get('EEG_sensors'):
@@ -644,6 +669,7 @@ def register():
         bpy.utils.register_class(SelectAllSubcorticals)
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(CalcBestCurvesSep)
+        bpy.utils.register_class(ResetCurvesSep)
         bpy.utils.register_class(MaxMinGraphPanel)
         bpy.utils.register_class(NextWindow)
         bpy.utils.register_class(PrevWindow)
@@ -665,6 +691,7 @@ def unregister():
         bpy.utils.unregister_class(SelectAllSubcorticals)
         bpy.utils.unregister_class(SelectAllRois)
         bpy.utils.unregister_class(CalcBestCurvesSep)
+        bpy.utils.unregister_class(ResetCurvesSep)
         bpy.utils.unregister_class(MaxMinGraphPanel)
         bpy.utils.unregister_class(NextWindow)
         bpy.utils.unregister_class(PrevWindow)

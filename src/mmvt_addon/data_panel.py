@@ -20,8 +20,7 @@ bpy.types.Scene.eeg_data_exist = False
 
 def bipolar_update(self, context):
     try:
-        import electrodes_panel
-        electrodes_panel.init_electrodes_labeling(DataMakerPanel.addon)
+        _addon().init_electrodes_labeling(DataMakerPanel.addon)
     except:
         pass
 

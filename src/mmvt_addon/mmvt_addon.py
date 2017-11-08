@@ -94,6 +94,9 @@ print("mmvt addon started!")
 
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
 settings = None
+
+electrodes_panel_parent = electrodes_panel.PARENT_OBJ_NAME
+meg_panel_parent = meg_panel.PARENT_OBJ_NAME
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import_brain = data_panel.import_brain
 add_data_to_parent_obj = data_panel.add_data_to_parent_obj
@@ -270,6 +273,7 @@ is_current_electrode_marked = electrodes_panel.is_current_electrode_marked
 get_electrodes_names = electrodes_panel.get_electrodes_names
 electode_was_manually_selected = electrodes_panel.electode_was_manually_selected
 clear_electrodes_selection = electrodes_panel.clear_electrodes_selection
+init_electrodes_labeling = electrodes_panel.init_electrodes_labeling
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
@@ -327,6 +331,7 @@ clear_slice = slicer_panel.clear_slice
 find_point_thickness = skull_panel.find_point_thickness
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_meg_cluster = meg_panel.select_meg_cluster
+get_selected_clusters_data = meg_panel.get_selected_clusters_data
 
 
 def get_max_time_steps(default_val=2500):
