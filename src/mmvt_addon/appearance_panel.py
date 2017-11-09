@@ -149,16 +149,10 @@ def inflating_update(self, context):
     try:
         if bpy.data.objects.get('rh', None) is None:
             return
-        try:
-            _ = bpy.data.shape_keys['Key'].key_blocks["flat"].value
-            _ = bpy.data.shape_keys['Key.001'].key_blocks["flat"].value
-            flat_exist = True
-        except:
-            flat_exist = False
         if bpy.context.scene.inflating > 0: #flattening
             _addon().show_coronal(True)
             # _addon().view_all()
-            if flat_exist:
+            if AppearanceMakerPanel.flat_map_exists:
                 bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
                 bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = bpy.context.scene.inflating
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
@@ -171,9 +165,9 @@ def inflating_update(self, context):
 
             use_masking = True
         else: #deflating
-            bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
-            bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating+1
-            if flat_exist:
+            bpy.data.shape_keys['Key'].key_blocks["inflated"].value = bpy.context.scene.inflating + 1
+            bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = bpy.context.scene.inflating + 1
+            if AppearanceMakerPanel.flat_map_exists:
                 bpy.data.shape_keys['Key'].key_blocks["flat"].value = 0
                 bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
 
@@ -198,7 +192,7 @@ def inflating_update(self, context):
                 bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = True
         AppearanceMakerPanel.no_surface_type_update = False
 
-        if flat_exist:
+        if AppearanceMakerPanel.flat_map_exists:
             for hemi in ['rh', 'lh']:
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
                 bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
@@ -213,7 +207,15 @@ def inflating_update(self, context):
                 ob = bpy.data.objects[obj_name]
                 scene = bpy.context.scene
                 me = ob.to_mesh(scene, True, 'PREVIEW')
-                bpy.context.scene.cursor_location = me.vertices[vert].co / 10
+                try:
+                    bpy.context.scene.cursor_location = me.vertices[vert].co * ob.matrix_world # / 10
+                except:
+                    pass
+                # if 0 < infl <= 1.0:
+                #     if obj_name == 'inflated_rh':
+                #         bpy.context.scene.cursor_location[0] +=  bpy.context.scene.inflating
+                #     elif obj_name == 'inflated_lh':
+                #         bpy.context.scene.cursor_location[0] -=  bpy.context.scene.inflating
                 bpy.data.meshes.remove(me)
     except:
         print('Error in inflating update!')
@@ -611,6 +613,10 @@ def clear_closet_vertex_and_mesh_to_cursor():
     bpy.context.scene.cursor_is_snapped = False
 
 
+def flat_map_exists():
+    return AppearanceMakerPanel.flat_map_exists
+
+
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
     items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
     update=appearance_show_rois_activity_update)
@@ -740,6 +746,7 @@ def init(addon):
     change_to_solid_brain()
     # show_rois()
     loc_val = 0 #5
+    AppearanceMakerPanel.flat_map_exists = True
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
             bpy.data.objects['inflated_rh'].location[0] = loc_val
@@ -750,10 +757,12 @@ def init(addon):
             bpy.data.shape_keys['Key.001'].key_blocks["flat"].value = 0
         except:
             print('No flat mapping.')
+            AppearanceMakerPanel.flat_map_exists = False
         try:
             bpy.data.shape_keys['Key'].key_blocks["inflated"].value = 1
             bpy.data.shape_keys['Key.001'].key_blocks["inflated"].value = 1
         except:
+            AppearanceMakerPanel.flat_map_exists = False
             print('No inflated mapping.')
 
         for hemi in ['lh', 'rh']:

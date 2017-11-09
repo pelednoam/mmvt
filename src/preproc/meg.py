@@ -1535,9 +1535,14 @@ def morph_stc(events, morph_to_subject, inverse_method='dSPM', n_jobs=6):
     for ind, cond in enumerate(events.keys()):
         output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
         utils.make_dir(utils.get_parent_fol(output_fname))
-        stc = mne.read_source_estimate(STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'))
-        stc_morphed = mne.morph_data(MRI_SUBJECT, morph_to_subject, stc, grade=5, n_jobs=n_jobs)
-        stc_morphed.save(output_fname)
+        _morph_stc(MRI_SUBJECT, morph_to_subject, STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'),
+                   output_fname, n_jobs=n_jobs)
+
+
+def _morph_stc(from_subject, to_subject, stc_fname, output_fname, grade=5, n_jobs=6):
+    stc = mne.read_source_estimate(stc_fname)
+    stc_morphed = mne.morph_data(from_subject, to_subject, stc, grade=grade, n_jobs=n_jobs)
+    stc_morphed.save(output_fname)
 
 
 # @utils.timeit

@@ -253,6 +253,7 @@ get_closest_vertex_and_mesh_to_cursor = appearance_panel.get_closest_vertex_and_
 clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_and_mesh_to_cursor
 snap_cursor = appearance_panel.snap_cursor
 set_cursor_pos = appearance_panel.set_cursor_pos
+flat_map_exists = appearance_panel.flat_map_exists
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
@@ -327,6 +328,7 @@ set_vertex_data = vertex_data_panel.set_vertex_data
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 clear_slice = slicer_panel.clear_slice
+slice_brain = slicer_panel.slice_brain
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_point_thickness = skull_panel.find_point_thickness
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

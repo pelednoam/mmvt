@@ -4,8 +4,7 @@ def _addon():
     return SlicerPanel.addon
 
 
-def slice_brain():
-    import glob
+def slice_brain(cut_pos=None, save_image=False):
     coordinate = bpy.context.scene.cursor_location
     cut_type = bpy.context.scene.slicer_cut_type
     create_joint_brain_obj()
@@ -15,9 +14,11 @@ def slice_brain():
     option_ind = optional_cut_types.index(cut_type)
     bpy.context.scene.is_sliced_ind = option_ind
     bpy.context.scene.last_cursor_location = coordinate
-    cut_pos = [0.0, 0.0, 0.0]
-    cut_pos[option_ind] = coordinate[option_ind]
-    print('rot={}'.format(optional_rots[option_ind]))
+    if cut_pos is None:
+        cut_pos = [0.0, 0.0, 0.0]
+        cut_pos[option_ind] = coordinate[option_ind]
+    print('slice_brain: cut pos {}'.format(cut_pos))
+    # print('rot={}'.format(optional_rots[option_ind]))
     if bpy.data.objects.get('{}_plane'.format(cut_type)) is None:
         bpy.ops.mesh.primitive_plane_add(radius=25.7 / 2.0, location=tuple(cut_pos))
         bpy.context.object.name = '{}_plane'.format(cut_type)
@@ -31,7 +32,6 @@ def slice_brain():
         if bpy.data.objects.get('{}_plane'.format(cut)):
             bpy.data.objects['{}_plane'.format(cut)].hide = True
             bpy.data.objects['{}_plane'.format(cut)].hide_render = True
-
 
     cur_plane_obj = bpy.data.objects['{}_plane'.format(cut_type)]
     cur_plane_obj.location = tuple(cut_pos)
@@ -63,6 +63,8 @@ def slice_brain():
         cur_plane_obj.modifiers['Boolean'].object = bpy.data.objects['joint_brain']
         cur_plane_obj.modifiers['Boolean'].operation = 'INTERSECT'
     cur_plane_obj.hide_select = True
+    if save_image:
+        _addon().save_image('slicing', bpy.context.scene.save_selected_view)
 
 
 def clear_slice():

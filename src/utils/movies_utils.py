@@ -128,10 +128,10 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, 
     final_clip.write_videofile(op.join(movie_fol, out_movie_name))
 
 
-def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=10):
+def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=None):
     from moviepy import editor
     video = editor.VideoFileClip(op.join(movie_fol, movie_name))
-    video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)
+    video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)#, program='ImageMagick', opt='OptimizeTransparency')
 
 
 def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
@@ -161,7 +161,7 @@ def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
                    images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=False,
-                   copy_files=False, **kwargs):
+                   copy_files=False, add_reverse_frames=False, **kwargs):
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     if movie_name == '' and images_prefix != '':
@@ -171,6 +171,8 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     org_fol = fol
     if utils.is_windows() or copy_files:
         fol = change_frames_names(fol, images_prefix, images_type, images_format_len)
+    if add_reverse_frames:
+        add_reverse_frames_fol(fol, images_prefix, images_type)
     images_prefix = op.join(fol, images_prefix)
     if not movie_name_full_path:
         movie_name = op.join(fol, movie_name)
@@ -192,6 +194,17 @@ def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefi
     with open(op.join(org_fol, 'combine_images_cmd.txt'), 'w') as f:
         f.write(combine_images_cmd.format(**locals()))
     return '{}.mp4'.format(movie_name)
+
+
+def add_reverse_frames_fol(fol, images_prefix, images_type):
+    images = sorted(glob.glob(op.join(fol, '*.{}'.format(images_type))), key=utils.natural_keys)
+    last_frame = int(utils.find_num_in_str(utils.namebase(images[-1]))[0])
+    for org_frame_ind, new_frame_ind in zip(range(last_frame, -1, -1),
+                                            range(last_frame + 1, len(images) + last_frame + 1)):
+        org_image_fname = op.join(fol, '{}{}.{}'.format(images_prefix, org_frame_ind, images_type))
+        new_image_fname = op.join(fol, '{}{}.{}'.format(images_prefix, new_frame_ind, images_type))
+        if not utils.is_link(org_image_fname):
+            utils.make_link(org_image_fname, new_image_fname)
 
 
 def video_to_frames():
@@ -248,6 +261,7 @@ if __name__ == '__main__':
     parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
     parser.add_argument('--frame_rate', required=False, default=10)
     parser.add_argument('--copy_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--add_reverse_frames', required=False, default=0, type=au.is_true)
     parser.add_argument('--debug', required=False, default=0, type=au.is_true)
 
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')

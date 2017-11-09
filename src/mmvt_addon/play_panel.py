@@ -40,6 +40,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Type pf data to play')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description="frames num")
+bpy.types.Scene.play_miscs = bpy.props.EnumProperty(
+    items=[('inflating', 'inflating', '', 1), ('slicing', 'slicing', '', 2)])
 
 def _addon():
     return PlayPanel.addon
@@ -490,6 +492,25 @@ def init_stim():
         # PlayPanel.stim_names = [elc.astype(str) for elc in d['names']]
 
 
+def inflating_movie():
+    _addon().hide_subcorticals()
+    if _addon().flat_map_exists():
+        for inflating in np.arange(-1, 1, 0.01):
+            bpy.context.scene.inflating = inflating
+            _addon().save_image('inflating', bpy.context.scene.save_selected_view)
+
+
+def slicing_movie():
+    coordinates = bpy.context.scene.cursor_location
+    _addon().create_slices()
+    for z in np.arange(7.3, -3.6, -0.1):
+        cut_pos = [0, 0 , z]
+        coordinates[2] = z
+        _addon().slice_brain(cut_pos, save_image=True)
+        _addon().clear_slice()
+        _addon().create_slices(pos=coordinates)
+
+
 def set_play_from(play_from):
     bpy.context.scene.frame_current = play_from
     bpy.context.scene.play_from = play_from
@@ -558,6 +579,9 @@ def play_panel_draw(context, layout):
     layout.prop(context.scene, 'render_movie', text="Render to a movie")
     layout.prop(context.scene, 'save_images', text="Save images")
     layout.prop(context.scene, 'rotate_brain_while_playing', text='Rotate the brain while playing')
+    row = layout.row(align=0)
+    row.prop(context.scene, 'play_miscs', text='')
+    row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
     layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
     files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
@@ -658,6 +682,21 @@ class GrabToPlay(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class InflatingMovie(bpy.types.Operator):
+    bl_idname = "mmvt.inflating_movie"
+    bl_label = "mmvt inflating movie"
+    bl_options = {"UNDO"}
+    uuid = mu.rand_letters(5)
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        if bpy.context.scene.play_miscs == 'inflating':
+            inflating_movie()
+        elif bpy.context.scene.play_miscs == 'slicing':
+            slicing_movie()
+        return {"FINISHED"}
+
+
 class ExportGraph(bpy.types.Operator):
     bl_idname = "mmvt.export_graph"
     bl_label = "mmvt export_graph"
@@ -727,6 +766,7 @@ def register():
         bpy.utils.register_class(ModalTimerOperator)
         bpy.utils.register_class(ExportGraph)
         bpy.utils.register_class(CreateMovie)
+        bpy.utils.register_class(InflatingMovie)
         # print('PlayPanel was registered!')
     except:
         print("Can't register PlayPanel!")
@@ -746,6 +786,7 @@ def unregister():
         bpy.utils.unregister_class(ModalTimerOperator)
         bpy.utils.unregister_class(ExportGraph)
         bpy.utils.unregister_class(CreateMovie)
+        bpy.utils.unregister_class(InflatingMovie)
     except:
         pass
         # print("Can't unregister PlayPanel!")
