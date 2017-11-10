@@ -474,7 +474,7 @@ class SelectionListener(bpy.types.Operator):
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
-            # cluster = _addon().select_meg_cluster(event, context)
+            cluster = _addon().select_meg_cluster(event, context)
             # if cluster is not None:
             #     return {'PASS_THROUGH'}
             if len(bpy.context.selected_objects):

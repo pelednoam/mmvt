@@ -308,11 +308,21 @@ def get_max_stc_t(stc, t):
 def select_meg_cluster(event, context, pos=None):
     if not MEGPanel.init:
         return
-    if pos is None:
-        pos = mu.mouse_coo_to_3d_loc(event, context)
-        # print('pos, ', pos)
+
+    area = mu.get_click_area(event, context)
+    if area.type != 'VIEW_3D':
+        return
+
+    # if pos is None:    #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
+    #     region = [r for r in area.regions if r.type == 'WINDOW'][0]
+    #     rv3d = area.spaces.active.region_3d
+    #     coord = (event.mouse_x - area.x, event.mouse_y - area.y)
+    #     vec = region_2d_to_vector_3d(region, rv3d, coord)
+    #     pos = region_2d_to_location_3d(region, rv3d, coord, vec)
+    #     # pos = mu.mouse_coo_to_3d_loc(event, context)
+    #     print('pos, ', pos)
     # else:
-        # print('cursor, ', pos)
+    #     print('cursor, ', pos)
     if pos is None:
         return
     # bpy.context.scene.cumulate_meg_cluster = event.shift

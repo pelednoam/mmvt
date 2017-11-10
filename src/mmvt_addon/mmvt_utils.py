@@ -2101,3 +2101,11 @@ def remove_file(fname, raise_error_if_does_not_exist=False):
             raise Exception(traceback.format_exc())
         else:
             print(traceback.format_exc())
+
+
+def get_click_area(event, context):
+    screen = context.window.screen  # or context.screen
+    for a in screen.areas:
+        if (a.x < event.mouse_x < a.x + a.width
+                and a.y < event.mouse_y < a.y + a.height):
+            return a
