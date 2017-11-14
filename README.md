@@ -43,6 +43,8 @@ sensor and source-space analysis of MEG and EEG data).
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif)
 <!-- * MEG & Electrodes & Coherence
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341742/03e0af80-58c4-11e6-8587-125cde58e6b8.gif "MEG & Electrodes & Coherence") -->
+<!--* Inflating Brain
+![inflating_meg](https://user-images.githubusercontent.com/1643819/32626655-f58758be-c55d-11e7-94c6-de246c291905.gif) -->
 
 <!--## Tutorials
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
