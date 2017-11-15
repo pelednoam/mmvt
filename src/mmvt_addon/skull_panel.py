@@ -25,7 +25,7 @@ def cast_ray_source_update(self, context):
 
 def show_point_arrow_update(self, context):
     if SkullPanel.prev_vertex_arrow is not None:
-        SkullPanel.prev_vertex_arrow.hide = True
+        SkullPanel.prev_vertex_arrow.hide = not SkullPanel.prev_vertex_arrow.hide
 
 
 def hide_skull_plane_update(self, context):
@@ -150,6 +150,8 @@ def find_point_thickness(cursor_location=None, skull_type=''):
         if SkullPanel.prev_vertex_arrow is not None:
             SkullPanel.prev_vertex_arrow.hide = True
         vertex_arrow = bpy.data.objects.get('mt_{}'.format(vertex_ind), None)
+        if vertex_arrow.parent.name == 'thickness_arrows_from_outer':
+            vertex_arrow = bpy.data.objects.get('mt_{}.001'.format(vertex_ind), None)
         if vertex_arrow is not None:
             vertex_arrow.hide = False
             SkullPanel.prev_vertex_arrow = vertex_arrow
@@ -268,13 +270,15 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
         print('No hits from outer skull to the plane!')
 
 
-def ray_cast(from_inner=True):
+def ray_cast(from_inner=True, create_thickness_arrows=None):
     context = bpy.context
     scene = context.scene
     layers_array = bpy.context.scene.layers
     from_string = 'from_{}'.format('inner' if from_inner else 'outer')
     emptys_name = 'thickness_arrows_{}'.format(from_string)
-    show_hit = bpy.data.objects.get(emptys_name, None) is None and bpy.context.scene.create_thickness_arrows
+    if create_thickness_arrows is None:
+        create_thickness_arrows = bpy.context.scene.create_thickness_arrows
+    show_hit = bpy.data.objects.get(emptys_name, None) is None and create_thickness_arrows
 
     # check thickness by raycasting from inner object out.
     # select inner and outer obj, make inner active
@@ -301,7 +305,7 @@ def ray_cast(from_inner=True):
             n *= -1
         hit, loc, norm, index = ray_obj.ray_cast(o, n)
         if hit:
-            print('{}/{} hit {} on face {}'.format(vert_ind, N, 'outer' if from_inner else 'innner', index))
+            # print('{}/{} hit {} on face {}'.format(vert_ind, N, 'outer' if from_inner else 'innner', index))
             hits.append((vert_ind, o, loc))
             thickness = (omw * loc - omw * o).length * factor
         else:
@@ -319,12 +323,16 @@ def ray_cast(from_inner=True):
         if show_hit:
             _addon().create_empty_if_doesnt_exists(emptys_name, _addon().BRAIN_EMPTY_LAYER, layers_array, 'Skull')
             for vert_ind, hit, o in hits:
-                draw_empty_arrow(scene, emptys_name, vert_ind, omw * o, omw * hit - omw * o)
+                draw_empty_arrow(scene, emptys_name, vert_ind, omw * o, omw * hit - omw * o, from_inner)
 
 
-def draw_empty_arrow(scene, empty_name, vert_ind, loc, dir):
+def draw_empty_arrow(scene, empty_name, vert_ind, loc, dir, from_inner=None):
     R = (-dir).to_track_quat('Z', 'X').to_matrix().to_4x4()
-    mt = bpy.data.objects.new('mt_{}'.format(vert_ind), None)
+    if from_inner is not None:
+        arr_prefix = 'from_inner_' if from_inner else 'from_outer_'
+    else:
+        arr_prefix = ''
+    mt = bpy.data.objects.new('{}mt_{}'.format(arr_prefix, vert_ind), None)
     mt.name = 'mt_{}'.format(vert_ind)
     R.translation = loc + dir
     # mt.show_name = True
@@ -347,7 +355,8 @@ def skull_draw(self, context):
     if not skull_exist:
         layout.operator(ImportSkull.bl_idname, text="Import skull", icon='MATERIAL_DATA')
     # layout.operator(CalcThickness.bl_idname, text="calc thickness", icon='MESH_ICOSPHERE')
-    if not dists_exist:
+    debug = True
+    if not dists_exist or debug:
         layout.operator(CalcThickness.bl_idname, text="Calc thickness", icon='MESH_ICOSPHERE')
         layout.prop(context.scene, 'create_thickness_arrows', text='Create thickness arrows')
     layout.operator(PlotThickness.bl_idname, text="Plot thickness", icon='GROUP_VCOL')
@@ -410,7 +419,7 @@ class CalcThickness(bpy.types.Operator):
     def invoke(self, context, event=None):
         # fix_normals()
         for inner in [True, False]:
-            ray_cast(inner) #bpy.context.scene.cast_ray_source == 'inner')
+            ray_cast(inner, inner and bpy.context.scene.create_thickness_arrows)
         return {'PASS_THROUGH'}
 
 

@@ -7,7 +7,6 @@ import traceback
 from collections import Counter
 import os.path as op
 import os
-import time
 import mmvt_utils as mu
 import slicer
 importlib.reload(slicer)
@@ -19,6 +18,20 @@ def _addon():
 
 def _trans():
     return WhereAmIPanel.subject_orig_trans
+
+
+def _ct_trans():
+    return WhereAmIPanel.subject_ct_trans
+
+
+def get_trans(modality):
+    if modality == 'mri':
+        return _trans()
+    elif modality == 'ct':
+        return _ct_trans()
+    else:
+        print('get_trans: {} is not supported!'.format(modality))
+        return None
 
 
 def where_i_am_draw(self, context):
@@ -39,6 +52,12 @@ def where_i_am_draw(self, context):
         row.prop(context.scene, "voxel_x", text="x")
         row.prop(context.scene, "voxel_y", text="y")
         row.prop(context.scene, "voxel_z", text="z")
+    if not _ct_trans() is None:
+        layout.label(text='CT:')
+        row = layout.row(align=0)
+        row.prop(context.scene, "ct_voxel_x", text="x")
+        row.prop(context.scene, "ct_voxel_y", text="y")
+        row.prop(context.scene, "ct_voxel_z", text="z")
     for atlas, name in WhereAmIPanel.atlas_ids.items():
         row = layout.row(align=0)
         row.label(text='{}: {}'.format(atlas, name))
@@ -82,6 +101,9 @@ def tkras_coo_update(self, context):
         WhereAmIPanel.update = False
         set_ras_coo(ras[0])
         set_voxel_coo(vox[0])
+        if not _ct_trans() is None:
+            ct_vox = apply_trans(_ct_trans().ras2vox, [ras])
+            set_ct_coo(ct_vox[0])
         WhereAmIPanel.update = True
 
 
@@ -97,6 +119,9 @@ def ras_coo_update(self, context):
         WhereAmIPanel.update = False
         set_tkreg_ras_coo(ras_tkr[0])
         set_voxel_coo(vox[0])
+        if not _ct_trans() is None:
+            ct_vox = apply_trans(_ct_trans().ras2vox, np.array([coo]))
+            set_ct_coo(ct_vox[0])
         WhereAmIPanel.update = True
 
 
@@ -113,9 +138,30 @@ def voxel_coo_update(self, context):
         WhereAmIPanel.update = False
         set_tkreg_ras_coo(ras_tkr[0])
         set_ras_coo(ras[0])
+        if not _ct_trans() is None:
+            ct_vox = apply_trans(_ct_trans().ras2vox, np.array([ras]))
+            set_ct_coo(ct_vox[0])
         WhereAmIPanel.update = True
     get_3d_atlas_name()
     # create_slices()
+
+
+def ct_voxel_coo_update(self, context):
+    if not WhereAmIPanel.call_update:
+        return
+
+    # print('voxel_coo_update')
+    vox_x, vox_y, vox_z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
+    if not _trans() is None and _ct_trans() is None and WhereAmIPanel.update:
+        ct_vox = [vox_x, vox_y, vox_z]
+        ras = apply_trans(_ct_trans().vox2ras, np.array([ct_vox]))
+        vox = apply_trans(_trans().ras2vox([ras]))
+        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
+        WhereAmIPanel.update = False
+        set_tkreg_ras_coo(ras_tkr[0])
+        set_ras_coo(ras[0])
+        WhereAmIPanel.update = True
+    get_3d_atlas_name()
 
 
 def get_3d_atlas_name():
@@ -180,6 +226,14 @@ def set_voxel_coo(coo):
     bpy.context.scene.voxel_y = int(np.round(coo[1]))
     WhereAmIPanel.call_update = True
     bpy.context.scene.voxel_z = int(np.round(coo[2]))
+
+
+def set_ct_coo(coo):
+    WhereAmIPanel.call_update = False
+    bpy.context.scene.ct_voxel_x = int(np.round(coo[0]))
+    bpy.context.scene.ct_voxel_y = int(np.round(coo[1]))
+    WhereAmIPanel.call_update = True
+    bpy.context.scene.ct_voxel_z = int(np.round(coo[2]))
 
 
 def apply_trans(trans, points):
@@ -301,7 +355,8 @@ def update_slices(modality='mri', ratio=1, images=None):
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
     extra_images = set([img.name for img in bpy.data.images]) - \
-                   set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
+                   set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png',
+                        'ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
     for area in screen.areas:
@@ -357,7 +412,7 @@ def init_listener():
     return ret
 
 
-def create_slices(modalities='mri', pos=None):
+def create_slices(modality='mri', pos=None):
     if WhereAmIPanel.slicer_state is None:
         return
     pos_was_none = pos is None
@@ -373,9 +428,9 @@ def create_slices(modalities='mri', pos=None):
         init_listener()
         xyz = ','.join(map(str, pos * 10))
         ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
-            subject=mu.get_user(), xyz=xyz, modalities=modalities, coordinates_system='tk_ras')))
+            subject=mu.get_user(), xyz=xyz, modalities=modality, coordinates_system='tk_ras')))
         flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
-            '_'.join(modalities.split(','))))
+            '_'.join(modality.split(','))))
         bpy.ops.mmvt.wait_for_slices()
         return
 
@@ -388,11 +443,12 @@ def create_slices(modalities='mri', pos=None):
         return
 
     pos = np.array(pos) * 10
-    x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    trans = get_trans(modality)
+    x, y, z = apply_trans(trans.vox2ras_tkr, np.array([pos])).astype(np.int)[0]
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
-    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, 'mri')
-    update_slices(modality='mri', ratio=1, images=images)
+    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality)
+    update_slices(modality=modality, ratio=1, images=images)
 
 
 def save_slices_cursor_pos():
@@ -412,11 +468,16 @@ def get_slices_cursor_pos():
 def slices_were_clicked(active_image, pos):
     if WhereAmIPanel.slicer_state is None:
         return
-    images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
+    modality = bpy.context.scene.slices_modality
+    images_names = ['{}_{}.png'.format(modality, persp) for persp in ['sagital', 'coronal', 'axial']]
+    # images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
     WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
     # print(active_image.name, pos)
     image_ind = images_names.index(active_image.name)
-    new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state)
+    new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state, modality)
+    if modality == 'ct':
+        new_pial_ras = apply_trans(_ct_trans().vox2ras, np.array([new_pos_vox]))[0]
+        new_pos_vox = apply_trans(_trans().ras2vox, np.array([new_pial_ras]))[0]
     new_pos_pial = apply_trans(_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
     # Find the closest vertex on the pial brain, and convert it to the current inflation
     new_pos = pos_to_current_inflation(new_pos_pial) / 10
@@ -434,6 +495,11 @@ def pos_to_current_inflation(pos):
     new_pos = me.vertices[vertex_ind].co
     bpy.data.meshes.remove(me)
     return new_pos
+
+
+def set_slicer_state(modality):
+    if WhereAmIPanel.slicer_state is None or WhereAmIPanel.slicer_state.modality != modality:
+        WhereAmIPanel.slicer_state = slicer.init(modality)
 
 
 class WaitForSlices(bpy.types.Operator):
@@ -623,6 +689,9 @@ bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update)
 bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
+bpy.types.Scene.ct_voxel_x = bpy.props.IntProperty(update=ct_voxel_coo_update)
+bpy.types.Scene.ct_voxel_y = bpy.props.IntProperty(update=ct_voxel_coo_update)
+bpy.types.Scene.ct_voxel_z = bpy.props.IntProperty(update=ct_voxel_coo_update)
 bpy.types.Scene.where_am_i_str = bpy.props.StringProperty()
 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.closest_label_output = bpy.props.StringProperty()
@@ -642,6 +711,7 @@ class WhereAmIPanel(bpy.types.Panel):
     addon = None
     init = False
     subject_orig_trans = None
+    subject_ct_trans = None
     vol_atlas = {}
     vol_atlas_lut = {}
     atlas_ids = {}
@@ -660,10 +730,13 @@ class WhereAmIPanel(bpy.types.Panel):
 def init(addon):
     try:
         trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
+        ct_trans_fname = op.join(mu.get_user_fol(), 'ct_trans.npz')
         volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))
         luts = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*ColorLUT.npz'))
         if op.isfile(trans_fname):
             WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(trans_fname))
+        if op.isfile(ct_trans_fname):
+            WhereAmIPanel.subject_ct_trans = mu.Bag(np.load(ct_trans_fname))
         for atlas_vol_fname, atlas_vol_lut_fname in zip(volumes, luts):
             atlas = mu.namebase(atlas_vol_fname)[:-len('+aseg')]
             WhereAmIPanel.vol_atlas[atlas] = np.load(atlas_vol_fname)

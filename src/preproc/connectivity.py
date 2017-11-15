@@ -775,7 +775,7 @@ def calc_electrodes_rest_connectivity(subject, args):
     return ret
 
 
-def calc_fmri_seed_corr(subject, atlas, identifier, labels_regex, new_label_name, new_label_r=5, overwrite=False,
+def calc_seed_corr(subject, atlas, identifier, labels_regex, new_label_name, new_label_r=5, overwrite=False,
                         n_jobs=6):
     new_label, hemi = get_new_label(
         subject, atlas, labels_regex, new_label_name, new_label_r, overwrite, n_jobs)
@@ -877,8 +877,8 @@ def main(subject, remote_subject_dir, args, flags):
         for labels_extract_mode in args.labels_extract_mode:
             flags['calc_lables_connectivity'] = calc_lables_connectivity(subject, labels_extract_mode, args)
 
-    if utils.should_run(args, 'calc_fmri_seed_corr'):
-        flags['calc_fmri_seed_corr'] = calc_fmri_seed_corr(
+    if utils.should_run(args, 'calc_seed_corr'):
+        flags['calc_seed_corr'] = calc_seed_corr(
             subject, args.atlas, args.identifier, args.labels_regex, args.seed_label_name, args.seed_label_r,
             args.overwrite_seed_data, args.n_jobs)
 

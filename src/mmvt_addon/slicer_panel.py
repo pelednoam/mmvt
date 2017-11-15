@@ -1,7 +1,15 @@
 import bpy
+import os.path as op
+import mmvt_utils as mu
+
 
 def _addon():
     return SlicerPanel.addon
+
+
+def slices_modality_update(self, context):
+    _addon().set_slicer_state(bpy.context.scene.slices_modality)
+    _addon().create_slices(modality=bpy.context.scene.slices_modality)
 
 
 def slice_brain(cut_pos=None, save_image=False):
@@ -312,6 +320,7 @@ bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, descriptio
 #     default=True, description="slice_using_left_click", update=show_cb_in_render_update)
 bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update)
 # bpy.types.Scene.show_full_slice = bpy.props.BoolProperty()
+bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=[('mri', 'mri', '', 1)])
 
 
 def slicer_draw(self, context):
@@ -320,6 +329,8 @@ def slicer_draw(self, context):
     layout.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
     layout.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
     layout.prop(context.scene, 'show_full_slice', text='Show full slice')
+    if SlicerPanel.ct_exist:
+        layout.prop(context.scene, 'slices_modality', expand=True)
 
 
 class SlicerPanel(bpy.types.Panel):
@@ -329,6 +340,7 @@ class SlicerPanel(bpy.types.Panel):
     bl_category = "mmvt"
     bl_label = "Slicer"
     addon = None
+    ct_exist = False
     init = False
 
     def draw(self, context):
@@ -347,6 +359,12 @@ def init(addon):
     bpy.types.Scene.is_sliced_ind = bpy.props.IntProperty(default=-1)
     bpy.context.scene.last_cursor_location = (0.0, 0.0, 0.0)
     bpy.context.scene.is_sliced_ind = -1
+    ct_trans_fname = op.join(mu.get_user_fol(), 'ct_trans.npz')
+    if op.isfile(ct_trans_fname):
+        SlicerPanel.ct_exist = True
+        bpy.types.Scene.slices_modality = bpy.props.EnumProperty(
+            items=[('mri', 'mri', '', 1), ('ct', 'ct', '', 2)], update=slices_modality_update)
+    bpy.context.scene.slices_modality = 'mri'
     SlicerPanel.init = True
     register()
 

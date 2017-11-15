@@ -362,6 +362,7 @@ def select_all_clusters():
         fcurve.hide = fcurve_name not in filtered_fcurves_names
     plot_all_clusters()
     mu.view_all_in_graph_editor()
+    # mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
 
 
 def flip_meg_clusters_ts():

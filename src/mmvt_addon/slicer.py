@@ -34,15 +34,18 @@ def init(modality, modality_data=None, colormap=None):
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
     self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
-                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[]))
+                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
     return self
 
 
 def create_slices(xyz, state=None, modality='mri', modality_data=None, colormap=None):
-    if state is None:
-        self = init(modality_data, modality, colormap)
+    if state is None or state.modality != modality:
+        self = init(modality, modality_data, colormap)
     else:
         self = state
+    if self is None:
+        return None
+
     x, y, z = xyz[:3]
     state.coordinates = np.array([x, y, z])[self.order].astype(int)
     cross_vert, cross_horiz = calc_cross(state.coordinates, self.sizes, self.flips)
@@ -50,8 +53,8 @@ def create_slices(xyz, state=None, modality='mri', modality_data=None, colormap=
     for ii, xax, yax, ratio, prespective, label in zip(
             [0, 1, 2], [1, 0, 0], [2, 2, 1], self.r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
         d = get_image_data(self.data, self.order, self.flips, ii, state.coordinates)
-        if modality == 'ct':
-            d[np.where(d == 0)] = -200
+        # if modality == 'ct':
+        #     d[np.where(d == 0)] = -200
         image = create_image(d, d.shape, self.clim, self.colors_ratio, prespective, modality, self.colormap,
                              int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
         if image is not None:
@@ -104,7 +107,7 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
     else:
         image = bpy.data.images[image_name]
-
+    print([im.name for im in bpy.data.images])
     try:
         colors = calc_colors(data, clim[0], colors_ratio, colormap)
         # add alpha value
@@ -126,7 +129,7 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         return None
 
 
-def on_click(ii, xy, state):
+def on_click(ii, xy, state, modality='mri'):
     x, y = xy
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
     trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
@@ -139,7 +142,7 @@ def on_click(ii, xy, state):
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
     # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))
-    create_slices(idxs, state) # np.dot(state.affine, idxs)[:3]
+    create_slices(idxs, state, modality) # np.dot(state.affine, idxs)[:3]
     return idxs
 
 

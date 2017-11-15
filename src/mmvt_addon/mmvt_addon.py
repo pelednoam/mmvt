@@ -321,6 +321,7 @@ find_closest_obj = where_am_i_panel.find_closest_obj
 create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
 get_slices_cursor_pos = where_am_i_panel.get_slices_cursor_pos
+set_slicer_state = where_am_i_panel.set_slicer_state
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data
@@ -540,7 +541,7 @@ def get_panels():
     return (appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel, pizco_panel)
+            slicer_panel, skull_panel)#, pizco_panel)
 
 
 def load_all_panels(addon_prefs=None):

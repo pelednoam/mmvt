@@ -882,13 +882,16 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
 
 
 @utils.tryit()
-def save_subject_orig_trans(subject):
+def save_subject_orig_trans(subject, modality='mri'):
     from src.utils import trans_utils as tu
     output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
     ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
     np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    return op.isfile(output_fname)
+    if modality == 'mri':
+        return op.isfile(output_fname)
+    elif modality == 'ct':
+        return save_subject_ct_trans(subject)
 
 
 def save_subject_ct_trans(subject):
@@ -1242,6 +1245,7 @@ def copy_sphere_reg_files(subject):
     if utils.both_hemi_files_exist(tempalte):
         for hemi in utils.HEMIS:
             mmvt_fname = op.join(MMVT_DIR, subject, 'surf', '{}.sphere.reg'.format(hemi))
+            utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
             if not op.isfile(mmvt_fname):
                 shutil.copy(tempalte.format(hemi=hemi), mmvt_fname)
     else:
@@ -1302,7 +1306,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['save_labels_coloring'] = lu.create_atlas_coloring(subject, args.atlas, args.n_jobs)
 
     if utils.should_run(args, 'save_subject_orig_trans'):
-        flags['save_subject_orig_trans'] = save_subject_orig_trans(subject)
+        flags['save_subject_orig_trans'] = save_subject_orig_trans(subject, args.slices_modality)
 
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject)

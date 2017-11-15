@@ -166,7 +166,7 @@ if __name__ == '__main__':
         # x, y, z = 151, 106, 139
         # x, y, z = 166, 118, 113
         p = [133, 122, 84]
-        open_slicer(mri_fname, 0.9862712 , -45.62893867,  12.2588706)
+        open_slicer(ct_fname, 0.9862712 , -45.62893867,  12.2588706)
 
         # ct_header = nib.load(ct_fname).get_header()
         # ct_vox2ras_tkr = ct_header.get_vox2ras_tkr()

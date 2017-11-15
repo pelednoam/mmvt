@@ -124,9 +124,9 @@ def calc_electrodes_rest_connectivity(args):
     pu.run_on_subjects(args, con.main)
 
 
-def calc_fmri_seed_corr(args):
+def calc_seed_corr(args):
     args = con.read_cmd_args(dict(
-        function='calc_fmri_seed_corr',
+        function='calc_seed_corr',
         subject=args.subject, atlas=args.atlas,
         identifier='freesurfer', labels_regex='precentral-rh',#''post*cingulate*rh',
         seed_label_name='post_cingulate_rh', seed_label_r=5, overwrite_seed_data=True,
