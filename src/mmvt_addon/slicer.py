@@ -107,7 +107,7 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
         image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
     else:
         image = bpy.data.images[image_name]
-    print([im.name for im in bpy.data.images])
+    # print([im.name for im in bpy.data.images])
     try:
         colors = calc_colors(data, clim[0], colors_ratio, colormap)
         # add alpha value

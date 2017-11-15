@@ -354,9 +354,11 @@ def update_slices(modality='mri', ratio=1, images=None):
     images_names = ['{}_{}.png'.format(modality, pres) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
-    extra_images = set([img.name for img in bpy.data.images]) - \
-                   set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png',
-                        'ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
+    if modality == 'mri':
+        necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
+    elif modality == 'ct':
+        necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
+    extra_images = set([img.name for img in bpy.data.images]) - necessary_images
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
     for area in screen.areas:
@@ -412,9 +414,11 @@ def init_listener():
     return ret
 
 
-def create_slices(modality='mri', pos=None):
+def create_slices(modality=None, pos=None):
     if WhereAmIPanel.slicer_state is None:
         return
+    if modality is None:
+        modality = bpy.context.scene.slices_modality
     pos_was_none = pos is None
     if pos is None:
         pos = bpy.context.scene.cursor_location
@@ -772,7 +776,7 @@ def init(addon):
             start_slicer_server()
         else:
             WhereAmIPanel.slicer_state = slicer.init('mri')
-            create_slices('mri', bpy.context.scene.cursor_location)
+            create_slices(None, bpy.context.scene.cursor_location)
         save_slices_cursor_pos()
         register()
     except:
