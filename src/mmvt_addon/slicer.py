@@ -38,30 +38,36 @@ def init(modality, modality_data=None, colormap=None):
     return self
 
 
-def create_slices(xyz, state=None, modality='mri', modality_data=None, colormap=None):
-    if state is None or state.modality != modality:
-        self = init(modality, modality_data, colormap)
-    else:
-        self = state
-    if self is None:
+def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None):
+    self = mu.Bag({})
+    if isinstance(modalities, str):
+        modalities = [modalities]
+    for modality in modalities:
+        if state is None or modality not in state:
+            self[modality] = init(modality, modality_data, colormap)
+        else:
+            self[modality] = state[modality]
+    mri = state['mri']
+    if mri is None:
         return None
 
     x, y, z = xyz[:3]
-    state.coordinates = np.array([x, y, z])[self.order].astype(int)
-    cross_vert, cross_horiz = calc_cross(state.coordinates, self.sizes, self.flips)
+    for modality in modalities:
+        self[modality].coordinates = np.array([x, y, z])[self[modality].order].astype(int)
+    cross_vert, cross_horiz = calc_cross(mri.coordinates, mri.sizes, mri.flips)
     images = {}
-    for ii, xax, yax, ratio, prespective, label in zip(
-            [0, 1, 2], [1, 0, 0], [2, 2, 1], self.r, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
-        d = get_image_data(self.data, self.order, self.flips, ii, state.coordinates)
-        # if modality == 'ct':
-        #     d[np.where(d == 0)] = -200
-        # image = create_image(d, d.shape, self.clim, self.colors_ratio, prespective, modality, self.colormap,
-        #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
-        sizes = (self.sizes[xax], self.sizes[yax])
-        image = create_image(d, sizes , self.clim, self.colors_ratio, prespective, modality, self.colormap,
-                             int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
-        if image is not None:
-            images[prespective] = image
+    for ii, xax, yax, prespective, label in zip(
+            [0, 1, 2], [1, 0, 0], [2, 2, 1], ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
+        for modality in modalities:
+            s = self[modality]
+            d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates)
+            # if modality == 'ct':
+            #     d[np.where(d == 0)] = -200
+            sizes = (s.sizes[xax], s.sizes[yax])
+            image = create_image(d, sizes , s.clim, s.colors_ratio, prespective, s.colormap,
+                                 int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
+            if image is not None:
+                images[prespective] = image
     return images
 
 
@@ -91,6 +97,7 @@ def get_image_data(image_data, order, flips, ii, pos):
     try:
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
+        print(traceback.format_exc())
         data = np.zeros(np.rollaxis(image_data, axis=order[ii])[0].shape)
         return data
     xax = [1, 0, 0][ii]
@@ -104,8 +111,8 @@ def get_image_data(image_data, order, flips, ii, pos):
     return data
 
 
-def create_image(data, sizes, clim, colors_ratio, prespective, modality, colormap, horz_cross, vert_corss):
-    image_name = '{}_{}.png'.format(modality, prespective)
+def create_image(data, sizes, clim, colors_ratio, prespective, colormap, horz_cross, vert_corss):
+    image_name = '{}.png'.format(prespective)
     if image_name not in bpy.data.images:
         image = bpy.data.images.new(image_name, width=sizes[0], height=sizes[1])
     else:
@@ -125,6 +132,7 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
             for y in range(data.shape[1]):
                 pixels[horz_cross, y] = [0, 1, 0, 1]
 
+        # pixels[:, :, 3] = 0.5
         image.pixels = pixels.ravel()
         return image
     except:
@@ -133,6 +141,7 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
 
 
 def on_click(ii, xy, state, modality='mri'):
+    s = state[modality]
     x, y = xy
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
     if modality == 'mri':
@@ -142,13 +151,13 @@ def on_click(ii, xy, state, modality='mri'):
     else:
         print('The trans should be first calculated for {}!'.format(modality))
         trans = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
-    x = state.sizes[xax] - x if state.flips[xax] else x
-    y = state.sizes[yax] - y if state.flips[yax] else y
+    x = s.sizes[xax] - x if s.flips[xax] else x
+    y = s.sizes[yax] - y if s.flips[yax] else y
     idxs = [None, None, None]
     idxs[xax] = y
     idxs[yax] = x
-    idxs[ii] = state.coordinates[ii]
-    print(ii, xax, yax, x, y, state.sizes, idxs)
+    idxs[ii] = s.coordinates[ii]
+    print(ii, xax, yax, x, y, s.sizes, idxs)
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
     # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))

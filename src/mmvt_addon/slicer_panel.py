@@ -43,7 +43,7 @@ def slice_brain(cut_pos=None, save_image=False):
 
     cur_plane_obj = bpy.data.objects['{}_plane'.format(cut_type)]
     cur_plane_obj.location = tuple(cut_pos)
-    images_path = 'mri_{}.png'.format(cut_type)
+    images_path = '{}_{}.png'.format(bpy.context.scene.slices_modality, cut_type)
     # slice_image_path = glob.glob('{}*{}*'.format(images_path, cut_type))
     slice_image = bpy.data.images[images_path]
     cur_plane_obj.data.uv_textures['UVMap'].data[0].image = slice_image

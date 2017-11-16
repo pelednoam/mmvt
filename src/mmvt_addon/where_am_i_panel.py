@@ -353,13 +353,14 @@ def grow_a_label():
 def update_slices(modality='mri', ratio=1, images=None):
     screen = bpy.data.screens['Neuro']
     perspectives = ['sagital', 'coronal', 'axial']
-    images_names = ['{}_{}.png'.format(modality, pres) for pres in perspectives]
+    images_names = ['{}.png'.format(pres) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
-    if modality == 'mri':
-        necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
-    elif modality == 'ct':
-        necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
+    # if modality == 'mri':
+    #     necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
+    # elif modality == 'ct':
+    #     necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
+    necessary_images = set(['axial.png', 'coronal.png', 'sagital.png', 'Render Result'])
     extra_images = set([img.name for img in bpy.data.images]) - necessary_images
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])
@@ -417,7 +418,7 @@ def init_listener():
 
 
 def create_slices(modality=None, pos=None):
-    if WhereAmIPanel.slicer_state is None:
+    if WhereAmIPanel.slicer_state.mri is None:
         return
     if modality is None:
         modality = bpy.context.scene.slices_modality
@@ -476,10 +477,10 @@ def get_slices_cursor_pos():
 
 
 def slices_were_clicked(active_image, pos):
-    if WhereAmIPanel.slicer_state is None:
+    if WhereAmIPanel.slicer_state.mri is None:
         return
     modality = bpy.context.scene.slices_modality
-    images_names = ['{}_{}.png'.format(modality, persp) for persp in ['sagital', 'coronal', 'axial']]
+    images_names = ['{}.png'.format(persp) for persp in ['sagital', 'coronal', 'axial']]
     # images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
     WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
     print('Image {} was click in {}'.format(active_image.name, pos))
@@ -509,8 +510,8 @@ def pos_to_current_inflation(pos):
 
 
 def set_slicer_state(modality):
-    if WhereAmIPanel.slicer_state is None or WhereAmIPanel.slicer_state.modality != modality:
-        WhereAmIPanel.slicer_state = slicer.init(modality)
+    if WhereAmIPanel.slicer_state is None or modality not in WhereAmIPanel.slicer_state:
+        WhereAmIPanel.slicer_state[modality] = slicer.init(modality)
 
 
 class WaitForSlices(bpy.types.Operator):
@@ -782,7 +783,8 @@ def init(addon):
         if WhereAmIPanel.run_slices_listener:
             start_slicer_server()
         else:
-            WhereAmIPanel.slicer_state = slicer.init('mri')
+            WhereAmIPanel.slicer_state = mu.Bag({})
+            WhereAmIPanel.slicer_state['mri'] = slicer.init('mri')
             create_slices(None, bpy.context.scene.cursor_location)
         save_slices_cursor_pos()
         register()

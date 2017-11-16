@@ -62,6 +62,7 @@ def set_render_quality(quality):
 
 def set_render_output_path(output_path):
     bpy.context.scene.output_path = output_path
+    bpy.context.scene.render.filepath = op.join(output_path, 'screencast')
     
 
 def set_render_smooth_figure(smooth_figure):
