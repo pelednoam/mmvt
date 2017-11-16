@@ -28,7 +28,7 @@ Analysis Stream) and SPM (Statistical Parametric Mapping) for fMRI, MNE (a
 software package for processing MEG and EEG) raw data for MEG and
 FieldTrip (MATLAB software toolbox for neuroimaging analysis) data
 structures for the invasive electrodes. The users can also reprocess raw
-data using a wrappers for FaFast and mne-python (a python package for
+data using wrappers for FaFast and mne-python (a python package for
 sensor and source-space analysis of MEG and EEG data).
 
 <a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
