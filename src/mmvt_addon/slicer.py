@@ -34,7 +34,7 @@ def init(modality, modality_data=None, colormap=None):
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
     self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
-                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
+                           colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
     return self
 
 
@@ -55,7 +55,10 @@ def create_slices(xyz, state=None, modality='mri', modality_data=None, colormap=
         d = get_image_data(self.data, self.order, self.flips, ii, state.coordinates)
         # if modality == 'ct':
         #     d[np.where(d == 0)] = -200
-        image = create_image(d, d.shape, self.clim, self.colors_ratio, prespective, modality, self.colormap,
+        # image = create_image(d, d.shape, self.clim, self.colors_ratio, prespective, modality, self.colormap,
+        #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
+        sizes = (self.sizes[xax], self.sizes[yax])
+        image = create_image(d, sizes , self.clim, self.colors_ratio, prespective, modality, self.colormap,
                              int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
         if image is not None:
             images[prespective] = image

@@ -150,8 +150,9 @@ if __name__ == '__main__':
             update_slicer(x, y, z)
     else:
         # open_slicer('/home/noam/mmvt/mg78/freeview/orig.mgz', 0.9862712 , -45.62893867,  12.2588706)
-        subject = 'nmr00979'
+        # subject = 'nmr00979'
         # subject = '100307'
+        subject = 'mg102'
         trans_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
         d = utils.Bag(np.load(trans_fname))
         ras_tkr2vox = np.linalg.inv(d.vox2ras_tkr)
