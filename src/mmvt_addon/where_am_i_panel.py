@@ -93,6 +93,7 @@ def tkras_coo_update(self, context):
         bpy.context.scene.cursor_location[0] = bpy.context.scene.tkreg_ras_x / 10
         bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
         bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
+        _addon().create_slices()
 
     if not _trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]
@@ -152,14 +153,15 @@ def ct_voxel_coo_update(self, context):
 
     # print('voxel_coo_update')
     vox_x, vox_y, vox_z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
-    if not _trans() is None and _ct_trans() is None and WhereAmIPanel.update:
+    if _trans() is not None and _ct_trans() is not None and WhereAmIPanel.update:
         ct_vox = [vox_x, vox_y, vox_z]
-        ras = apply_trans(_ct_trans().vox2ras, np.array([ct_vox]))
-        vox = apply_trans(_trans().ras2vox([ras]))
-        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
+        ras = apply_trans(_ct_trans().vox2ras, np.array([ct_vox]))[0]
+        vox = apply_trans(_trans().ras2vox, [ras])[0]
+        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])[0]
         WhereAmIPanel.update = False
-        set_tkreg_ras_coo(ras_tkr[0])
-        set_ras_coo(ras[0])
+        set_tkreg_ras_coo(ras_tkr)
+        set_ras_coo(ras)
+        set_voxel_coo(vox)
         WhereAmIPanel.update = True
     get_3d_atlas_name()
 
@@ -447,8 +449,12 @@ def create_slices(modality=None, pos=None):
         return
 
     pos = np.array(pos) * 10
-    trans = get_trans(modality)
-    x, y, z = apply_trans(trans.vox2ras_tkr, np.array([pos])).astype(np.int)[0]
+    if modality == 'mri':
+        x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+    elif modality == 'ct':
+        vox = apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]
+        ras = apply_trans(_trans().vox2ras, np.array([vox]))[0]
+        x, y, z = apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
     images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality)
@@ -476,6 +482,7 @@ def slices_were_clicked(active_image, pos):
     images_names = ['{}_{}.png'.format(modality, persp) for persp in ['sagital', 'coronal', 'axial']]
     # images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
     WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
+    print('Image {} was click in {}'.format(active_image.name, pos))
     # print(active_image.name, pos)
     image_ind = images_names.index(active_image.name)
     new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state, modality)

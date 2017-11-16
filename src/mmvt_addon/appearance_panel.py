@@ -409,7 +409,7 @@ def appearance_draw(self, context):
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    # layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
+    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
@@ -446,6 +446,7 @@ class SelectionListener(bpy.types.Operator):
                 xyz = _addon().slices_were_clicked(active_image, pos)
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
+                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
@@ -461,6 +462,7 @@ class SelectionListener(bpy.types.Operator):
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)
             if _addon().is_pial():
+                # todo: should work also on the inflated
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
             if cursor_moved:
                 set_cursor_pos()

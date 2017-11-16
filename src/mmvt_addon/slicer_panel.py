@@ -363,7 +363,7 @@ def init(addon):
     if op.isfile(ct_trans_fname):
         SlicerPanel.ct_exist = True
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(
-            items=[('mri', 'mri', '', 1), ('ct', 'ct', '', 2)], update=slices_modality_update)
+            items=[('mri', 'MRI', '', 1), ('ct', 'CT', '', 2)], update=slices_modality_update)
     bpy.context.scene.slices_modality = 'mri'
     SlicerPanel.init = True
     register()

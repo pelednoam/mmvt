@@ -34,7 +34,7 @@ def init(modality, modality_data=None, colormap=None):
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
     self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
-                           colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
+                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
     return self
 
 
@@ -135,13 +135,20 @@ def create_image(data, sizes, clim, colors_ratio, prespective, modality, colorma
 def on_click(ii, xy, state, modality='mri'):
     x, y = xy
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
-    trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
+    if modality == 'mri':
+        trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
+    elif modality == 'ct':
+        trans = [[2, 1, 0], [1, 0, 2], [0, 2, 1]][ii]
+    else:
+        print('The trans should be first calculated for {}!'.format(modality))
+        trans = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
     x = state.sizes[xax] - x if state.flips[xax] else x
     y = state.sizes[yax] - y if state.flips[yax] else y
     idxs = [None, None, None]
     idxs[xax] = y
     idxs[yax] = x
     idxs[ii] = state.coordinates[ii]
+    print(ii, xax, yax, x, y, state.sizes, idxs)
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
     # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))

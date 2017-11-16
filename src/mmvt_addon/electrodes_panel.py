@@ -187,6 +187,9 @@ def update_cursor():
     current_electrode_obj = bpy.data.objects[ElecsPanel.current_electrode]
     bpy.context.scene.cursor_location = current_electrode_obj.location
     _addon().freeview_panel.save_cursor_position()
+    _addon().set_cursor_pos()
+    _addon().create_slices(pos=current_electrode_obj.location)
+    _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
 
 
 def show_lh_update(self, context):
