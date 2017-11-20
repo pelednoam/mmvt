@@ -514,6 +514,10 @@ def set_slicer_state(modality):
         WhereAmIPanel.slicer_state[modality] = slicer.init(modality)
 
 
+def get_slicer_state(modality):
+    return WhereAmIPanel.slicer_state[modality]
+
+
 class WaitForSlices(bpy.types.Operator):
     bl_idname = "mmvt.wait_for_slices"
     bl_label = "wait_for_slices"

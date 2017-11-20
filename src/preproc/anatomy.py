@@ -888,10 +888,11 @@ def save_subject_orig_trans(subject, modality='mri'):
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
     ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
     np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    if modality == 'mri':
-        return op.isfile(output_fname)
-    elif modality == 'ct':
-        return save_subject_ct_trans(subject)
+    # if modality == 'mri':
+    ret = op.isfile(output_fname)
+    # elif modality == 'ct':
+    ct_ret = save_subject_ct_trans(subject)
+    return ret
 
 
 def save_subject_ct_trans(subject):
@@ -1389,7 +1390,7 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     existing_freesurfer_annotations = ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
-    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz', 'rawavg.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
                  'lh.sphere.reg', 'rh.sphere.reg'],
