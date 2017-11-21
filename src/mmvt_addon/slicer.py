@@ -16,7 +16,7 @@ def init(modality, modality_data=None, colormap=None):
         else:
             print('To see the slices the following command is being called:'.format(modality))
             print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
-            cmd = '{} -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(
+            cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header'.format(
                 bpy.context.scene.python_cmd, mu.get_user())
             mu.run_command_in_new_thread(cmd, False)
             return None
@@ -50,7 +50,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         modalities = [modalities]
     # modalities = set(modalities)
     # if 'mri' not in modalities:
-    #     modalities.add('mri')
+    #     modalities.append('mri')
     for modality in modalities:
         if state is None or modality not in state:
             self[modality] = init(modality, modality_data, colormap)
@@ -69,19 +69,31 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in zip(xaxs, modalities)])
     max_yaxs_size = max([self[modality].sizes[yax] for yax, modality in zip(yaxs, modalities)])
     max_sizes = (max_xaxs_size, max_yaxs_size)
+
     for ii, xax, yax, prespective, label in zip(
             [0, 1, 2], xaxs, yaxs, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
+        pixels = {}
+        cross = (int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
         for modality in modalities:
             s = self[modality]
             d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates)
+            # todo: Should do that step in the state init
             if modality == 'ct':
                 d[np.where(d == 0)] = -200
             sizes = (s.sizes[xax], s.sizes[yax])
             self[modality].extras[ii] = (int((max_sizes[0] - sizes[0])/2), int((max_sizes[1] - sizes[1])/2))
-            image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
-                                 int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
-            if image is not None:
-                images[prespective] = image
+            pixels[modality] = calc_slice_pixels(d, sizes, max_sizes, s.clim, s.colors_ratio, s.colormap)
+        # image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
+        #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]),
+        #                      state[modality].extras[ii])
+        if 'mri' in modalities and 'ct' in modalities:
+            ct_ratio = bpy.context.scene.slices_modality_mix
+            pixels = (1 - ct_ratio) * pixels['mri'] + ct_ratio * pixels['ct']
+        else:
+            pixels = pixels[modality]
+        image = create_image(pixels, max_sizes, prespective, cross, state[modality].extras[ii])
+        if image is not None:
+            images[prespective] = image
     return images
 
 
@@ -125,7 +137,21 @@ def get_image_data(image_data, order, flips, ii, pos):
     return data
 
 
-def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colormap, horz_cross, vert_corss):
+def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap):
+    colors = calc_colors(data, clim[0], colors_ratio, colormap)
+    pixels = np.ones((colors.shape[0], colors.shape[1], 4))
+    pixels[:, :, :3] = colors
+    # todo: check all the other cases
+    extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
+    if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
+        dark = np.zeros((colors.shape[0], extra[0], 4))
+        dark[:, :, 3] = 1
+        pixels = np.concatenate((dark, pixels, dark), axis=1)
+    return pixels
+
+
+# def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colormap, horz_cross, vert_corss, extra):
+def create_image(pixels, max_sizes, prespective, cross, extra):
     image_name = '{}.png'.format(prespective)
     if image_name not in bpy.data.images:
         image = bpy.data.images.new(image_name, width=max_sizes[0], height=max_sizes[1])
@@ -133,23 +159,14 @@ def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colorm
         image = bpy.data.images[image_name]
     # print([im.name for im in bpy.data.images])
     try:
-        colors = calc_colors(data, clim[0], colors_ratio, colormap)
-        pixels = np.ones((colors.shape[0], colors.shape[1], 4))
-        pixels[:, :, :3] = colors
-        # todo: check all the other cases
-        if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
-            extra = int((max_sizes[0] - sizes[0])/2)
-            dark = np.zeros((colors.shape[0], extra, 4))
-            dark[:, :, 3] = 1
-            pixels = np.concatenate((dark, pixels, dark), axis=1)
-
+        # pixels = calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap)
         # print(prespective, horz_cross, vert_corss)
-        if 0 <= vert_corss < max_sizes[1]: # data.shape[1]:
+        if 0 <= cross[1] < max_sizes[1]: # data.shape[1]:
             for x in range(max_sizes[0]): #data.shape[0]):
-                pixels[x, vert_corss] = [0, 1, 0, 1]
-        if 0 <= horz_cross < max_sizes[0]: #data.shape[0]:
+                pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
+        if 0 <= cross[0] < max_sizes[0]: #data.shape[0]:
             for y in range(max_sizes[1]): #data.shape[1]):
-                pixels[horz_cross, y] = [0, 1, 0, 1]
+                pixels[cross[0], y] = [0, 1, 0, 1]
 
         # pixels[:, :, 3] = 0.5
         image.pixels = pixels.ravel()

@@ -9,8 +9,77 @@ def _addon():
 
 def slices_modality_update(self, context):
     _addon().set_slicer_state(bpy.context.scene.slices_modality)
+    if bpy.context.scene.slices_modality == 'ct':
+        bpy.context.scene.slices_modality_mix = 1
     if _addon().get_slicer_state(bpy.context.scene.slices_modality) is not None:
-        def_addon().create_slices(modality=bpy.context.scene.slices_modality)
+        _addon().create_slices(modality=bpy.context.scene.slices_modality)
+    slices_zoom()
+
+
+def ct_exist():
+    return SlicerPanel.ct_exist
+
+
+def slices_modality_mix_update(self, context):
+    pass
+
+
+def slices_zoom_update(self, context):
+    slices_zoom()
+
+
+def slices_zoom():
+    for area, region in mu.get_images_area_regions():
+        override = bpy.context.copy()
+        override['area'] = area
+        override['region'] = region
+        bpy.ops.image.view_zoom_ratio(override, ratio=bpy.context.scene.slices_zoom)
+
+
+def create_new_electrode(elc_name):
+    electrode_size = bpy.context.scene.electrodes_radius
+    parent_name = _addon().electrodes_panel_parent
+    mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, root_fol=parent_name)
+    layers_array = [False] * 20
+    layers_array[_addon().ELECTRODES_LAYER] = True
+    x, y, z = bpy.context.scene.cursor_location
+    if not bpy.data.objects.get(elc_name) is None:
+        elc_obj = bpy.data.objects[elc_name]
+        elc_obj.location = [x, y, z]
+    else:
+        print('creating {}: {}'.format(elc_name, (x, y, z)))
+        mu.create_sphere((x, y, z), electrode_size, layers_array, elc_name)
+        cur_obj = bpy.data.objects[elc_name]
+        cur_obj.select = True
+        cur_obj.parent = bpy.data.objects[parent_name]
+        mu.create_and_set_material(cur_obj)
+    _addon().show_hide_electrodes(True)
+
+
+def find_nearest_electrde_in_ct():
+    from itertools import product
+    x, y, z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
+    ct_data = _addon().get_slicer_state('ct').data
+    bpy.context.scene.ct_intensity = ct_data[x, y, z]
+    peak_found, iter_num = True, 0
+    while peak_found or iter_num > 50:
+        max_ct_data = ct_data[x, y, z]
+        max_diffs = (0, 0, 0)
+        for dx, dy, dz in product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]):
+            print(x+dx, y+dy, z+dz, ct_data[x+dx, y+dy, z+dz], max_ct_data)
+            if ct_data[x+dx, y+dy, z+dz] > max_ct_data:
+                max_ct_data = ct_data[x+dx, y+dy, z+dz]
+                max_diffs = (dx, dy, dz)
+        peak_found = max_diffs == (0, 0, 0)
+        if not peak_found:
+            x, y, z = x+max_diffs[0], y+max_diffs[1], z+max_diffs[2]
+            print(max_ct_data, x, y, z)
+        iter_num += 1
+    if not peak_found:
+        print('Peak was not found!')
+    bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z = x, y, z
+    _addon().create_slices_from_vox_coordinates((x, y, z), 'ct')
+
 
 
 def slice_brain(cut_pos=None, save_image=False):
@@ -314,6 +383,28 @@ class SliceBrainClearButton(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class CreateNewElectrode(bpy.types.Operator):
+    bl_idname = "mmvt.create_new_electrode"
+    bl_label = "Create new electrode"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        new_elc_name = '{}{}'.format(bpy.context.scene.new_electrode_lead, bpy.context.scene.new_electrode_num)
+        create_new_electrode(new_elc_name)
+        bpy.context.scene.new_electrode_num += 1
+        return {'FINISHED'}
+
+
+class FindNearestElectrodeInCT(bpy.types.Operator):
+    bl_idname = "mmvt.find_nearest_electrde_in_ct"
+    bl_label = "find_nearest_electrde_in_ct"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        find_nearest_electrde_in_ct()
+        return {'FINISHED'}
+
+
 items_names = [("axial", "Axial"), ("coronal", "Coronal"), ("sagital", 'Sagital')]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Type of slice')
@@ -322,6 +413,11 @@ bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, descriptio
 bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update)
 # bpy.types.Scene.show_full_slice = bpy.props.BoolProperty()
 bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=[('mri', 'mri', '', 1)])
+bpy.types.Scene.slices_modality_mix = bpy.props.FloatProperty(min=0, max=1, default=0, update=slices_modality_mix_update)
+bpy.types.Scene.new_electrode_lead = bpy.props.StringProperty()
+bpy.types.Scene.new_electrode_num = bpy.props.IntProperty(default=1, min=1)
+bpy.types.Scene.slices_zoom = bpy.props.FloatProperty(default=1, min=1, update=slices_zoom_update)
+bpy.types.Scene.ct_intensity = bpy.props.FloatProperty()
 
 
 def slicer_draw(self, context):
@@ -332,6 +428,14 @@ def slicer_draw(self, context):
     layout.prop(context.scene, 'show_full_slice', text='Show full slice')
     if SlicerPanel.ct_exist:
         layout.prop(context.scene, 'slices_modality', expand=True)
+        layout.label(text='CT intensity: {:.2f}'.format(bpy.context.scene.ct_intensity))
+        # layout.prop(context.scene, 'slices_modality_mix')
+    layout.prop(context.scene, 'slices_zoom', text='Slices zoom')
+    col = layout.box().column()
+    col.prop(context.scene, 'new_electrode_lead', text='Lead')
+    col.prop(context.scene, 'new_electrode_num', text='Number')
+    col.operator(FindNearestElectrodeInCT.bl_idname, text="Find nearest electrodes", icon='MESH_CUBE')
+    col.operator(CreateNewElectrode.bl_idname, text="Create electrode", icon='MESH_CUBE')
 
 
 class SlicerPanel(bpy.types.Panel):
@@ -366,6 +470,9 @@ def init(addon):
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(
             items=[('mri', 'MRI', '', 1), ('ct', 'CT', '', 2)], update=slices_modality_update)
     bpy.context.scene.slices_modality = 'mri'
+    bpy.context.scene.slices_modality_mix = 0
+    bpy.context.scene.slices_zoom = 1
+    bpy.context.scene.new_electrode_num = 1
     SlicerPanel.init = True
     register()
 
@@ -376,6 +483,8 @@ def register():
         bpy.utils.register_class(SlicerPanel)
         bpy.utils.register_class(SliceBrainButton)
         bpy.utils.register_class(SliceBrainClearButton)
+        bpy.utils.register_class(CreateNewElectrode)
+        bpy.utils.register_class(FindNearestElectrodeInCT)
         # print('SlicerPanel was registered')
         # print('SliceBrainButton was registered')
         # print('SliceBrainClearButton was registered')
@@ -388,5 +497,7 @@ def unregister():
         bpy.utils.unregister_class(SlicerPanel)
         bpy.utils.unregister_class(SliceBrainButton)
         bpy.utils.unregister_class(SliceBrainClearButton)
+        bpy.utils.unregister_class(CreateNewElectrode)
+        bpy.utils.unregister_class(FindNearestElectrodeInCT)
     except:
         pass

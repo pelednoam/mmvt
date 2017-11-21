@@ -2103,7 +2103,8 @@ def init(addon):
     if any([ColoringMakerPanel.curvs[hemi] is None for hemi in mu.HEMIS]):
         print('No curv.npy files! To create them run')
         print('python -m src.preproc.anatomy -s {} -a {} -f save_hemis_curv'.format(
-            bpy.context.scene.atlas, mu.get_user))
+            bpy.context.scene.atlas, mu.get_user()))
+
 
 def init_labels_vertices():
     user_fol = mu.get_user_fol()

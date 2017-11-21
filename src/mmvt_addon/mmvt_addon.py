@@ -323,6 +323,8 @@ slices_were_clicked = where_am_i_panel.slices_were_clicked
 get_slices_cursor_pos = where_am_i_panel.get_slices_cursor_pos
 set_slicer_state = where_am_i_panel.set_slicer_state
 get_slicer_state = where_am_i_panel.get_slicer_state
+set_ct_intensity = where_am_i_panel.set_ct_intensity
+create_slices_from_vox_coordinates = where_am_i_panel.create_slices_from_vox_coordinates
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data
@@ -331,6 +333,8 @@ save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 clear_slice = slicer_panel.clear_slice
 slice_brain = slicer_panel.slice_brain
+ct_exist = slicer_panel.ct_exist
+slices_zoom = slicer_panel.slices_zoom
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_point_thickness = skull_panel.find_point_thickness
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

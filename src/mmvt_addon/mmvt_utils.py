@@ -262,9 +262,9 @@ def cylinder_between(p1, p2, r, layers_array):
 
 
 def create_empty_if_doesnt_exists(name, brain_layer, layers_array=None, root_fol='Brain'):
-    if not bpy.data.objects.get(root_fol):
-        print('root fol, {}, does not exist'.format(root_fol))
-        return
+    # if not bpy.data.objects.get(root_fol):
+    #     print('root fol, {}, does not exist'.format(root_fol))
+    #     return
     if layers_array is None:
         # layers_array = bpy.context.scene.layers
         layers_array = [False] * 20

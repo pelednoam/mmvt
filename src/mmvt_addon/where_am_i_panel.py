@@ -34,6 +34,15 @@ def get_trans(modality):
         return None
 
 
+def set_ct_intensity():
+    if get_slicer_state('ct') is not None:
+        x, y, z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
+        ct_data = _addon().get_slicer_state('ct').data
+        bpy.context.scene.ct_intensity = ct_data[x, y, z]
+    else:
+        bpy.context.scene.ct_intensity = 0
+
+
 def where_i_am_draw(self, context):
     layout = self.layout
     layout.label(text='tkreg RAS (surface):')
@@ -94,6 +103,7 @@ def tkras_coo_update(self, context):
         bpy.context.scene.cursor_location[1] = bpy.context.scene.tkreg_ras_y / 10
         bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
         _addon().create_slices()
+        _addon().slices_zoom()
 
     if not _trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]
@@ -164,6 +174,7 @@ def ct_voxel_coo_update(self, context):
         set_voxel_coo(vox)
         WhereAmIPanel.update = True
     get_3d_atlas_name()
+    _addon().set_ct_intensity()
 
 
 def get_3d_atlas_name():
@@ -236,6 +247,7 @@ def set_ct_coo(coo):
     bpy.context.scene.ct_voxel_y = int(np.round(coo[1]))
     WhereAmIPanel.call_update = True
     bpy.context.scene.ct_voxel_z = int(np.round(coo[2]))
+    _addon().set_ct_intensity()
 
 
 def apply_trans(trans, points):
@@ -458,8 +470,13 @@ def create_slices(modality=None, pos=None):
         x, y, z = apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
+    create_slices_from_vox_coordinates(xyz, modality)
+
+
+def create_slices_from_vox_coordinates(xyz, modality):
     images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality)
     update_slices(modality=modality, ratio=1, images=images)
+    _addon().slices_zoom()
 
 
 def save_slices_cursor_pos():
@@ -495,6 +512,7 @@ def slices_were_clicked(active_image, pos):
     new_pos = pos_to_current_inflation(new_pos_pial) / 10
     bpy.context.scene.cursor_location = new_pos
     _addon().save_cursor_position()
+    _addon().set_ct_intensity()
     return new_pos
     # print('image_found: {}'.format(image_found))
     # save_slices_cursor_pos()
@@ -515,7 +533,7 @@ def set_slicer_state(modality):
 
 
 def get_slicer_state(modality):
-    return WhereAmIPanel.slicer_state[modality]
+    return WhereAmIPanel.slicer_state.get(modality, None)
 
 
 class WaitForSlices(bpy.types.Operator):
