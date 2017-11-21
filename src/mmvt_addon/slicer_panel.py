@@ -10,7 +10,7 @@ def _addon():
 def slices_modality_update(self, context):
     _addon().set_slicer_state(bpy.context.scene.slices_modality)
     if _addon().get_slicer_state(bpy.context.scene.slices_modality) is not None:
-        _addon().create_slices(modality=bpy.context.scene.slices_modality)
+        def_addon().create_slices(modality=bpy.context.scene.slices_modality)
 
 
 def slice_brain(cut_pos=None, save_image=False):

@@ -29,6 +29,7 @@ def init(modality, modality_data=None, colormap=None):
     colors_ratio = modality_data.colors_ratio
     codes = axcodes2ornt(aff2axcodes(affine))
     order = np.argsort([c[0] for c in codes])
+    print(modality, order)
     flips = np.array([c[1] < 0 for c in codes])[order]
     flips[0] = not flips[0]
     sizes = [data.shape[order] for order in order]
@@ -36,8 +37,10 @@ def init(modality, modality_data=None, colormap=None):
     r = [scalers[order[2]] / scalers[order[1]],
          scalers[order[2]] / scalers[order[0]],
          scalers[order[1]] / scalers[order[0]]]
-    self = mu.Bag(dict(data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r,
-                       colors_ratio=colors_ratio, colormap=colormap, coordinates=[], modality=modality))
+    extras = [0] * 3
+    self = mu.Bag(dict(
+        data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r, colors_ratio=colors_ratio,
+        colormap=colormap, coordinates=[], modality=modality, extras=extras))
     return self
 
 
@@ -45,6 +48,9 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     self = mu.Bag({})
     if isinstance(modalities, str):
         modalities = [modalities]
+    # modalities = set(modalities)
+    # if 'mri' not in modalities:
+    #     modalities.add('mri')
     for modality in modalities:
         if state is None or modality not in state:
             self[modality] = init(modality, modality_data, colormap)
@@ -57,7 +63,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     x, y, z = xyz[:3]
     for modality in modalities:
         self[modality].coordinates = np.array([x, y, z])[self[modality].order].astype(int)
-    cross_vert, cross_horiz = calc_cross(mri.coordinates, mri.sizes, mri.flips)
+    cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
     images = {}
     xaxs, yaxs = [1, 0, 0], [2, 2, 1]
     max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in zip(xaxs, modalities)])
@@ -71,7 +77,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             if modality == 'ct':
                 d[np.where(d == 0)] = -200
             sizes = (s.sizes[xax], s.sizes[yax])
-            self[modality].extras = (int((max_sizes[0] - sizes[0])/2), int((max_sizes[1] - sizes[1])/2))
+            self[modality].extras[ii] = (int((max_sizes[0] - sizes[0])/2), int((max_sizes[1] - sizes[1])/2))
             image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
                                  int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
             if image is not None:
@@ -154,9 +160,12 @@ def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colorm
 
 
 def on_click(ii, xy, state, modality='mri'):
+    # if 'mri' in state:
+    #     org_modality = modality
+    #     modality = 'mri'
     s = state[modality]
-    x = xy[0] + state[modality].extras[1]
-    y = xy[1] + state[modality].extras[0]
+    x = xy[0] - state[modality].extras[ii][0]
+    y = xy[1] - state[modality].extras[ii][1]
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
     if modality == 'mri':
         trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
