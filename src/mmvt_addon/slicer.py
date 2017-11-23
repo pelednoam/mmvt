@@ -94,6 +94,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         image = create_image(pixels, max_sizes, prespective, cross, state[modality].extras[ii])
         if image is not None:
             images[prespective] = image
+    # print(np.dot(state[modality].affine, [x, y, z, 1])[:3])
     return images
 
 
@@ -123,7 +124,7 @@ def get_image_data(image_data, order, flips, ii, pos):
     try:
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
-        print(traceback.format_exc())
+        print('get_image_data: No data for {}'.format(pos))
         data = np.zeros(np.rollaxis(image_data, axis=order[ii])[0].shape)
         return data
     xax = [1, 0, 0][ii]

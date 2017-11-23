@@ -56,13 +56,13 @@ def create_new_electrode(elc_name):
     _addon().show_hide_electrodes(True)
 
 
-def find_nearest_electrde_in_ct():
+def find_nearest_electrde_in_ct(max_iters=100):
     from itertools import product
     x, y, z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
     ct_data = _addon().get_slicer_state('ct').data
     bpy.context.scene.ct_intensity = ct_data[x, y, z]
     peak_found, iter_num = True, 0
-    while peak_found or iter_num > 50:
+    while peak_found and iter_num < max_iters:
         max_ct_data = ct_data[x, y, z]
         max_diffs = (0, 0, 0)
         for dx, dy, dz in product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]):
@@ -77,9 +77,21 @@ def find_nearest_electrde_in_ct():
         iter_num += 1
     if not peak_found:
         print('Peak was not found!')
+    print(iter_num, max_ct_data, x, y, z)
     bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z = x, y, z
     _addon().create_slices_from_vox_coordinates((x, y, z), 'ct')
 
+
+def export_electrodes():
+    import csv
+    mu.make_dir(op.join(mu.get_user_fol(), 'electrodes'))
+    csv_fname = op.join(mu.get_user_fol(), 'electrodes', '{}_RAS.csv'.format(mu.get_user()))
+    electrodes = [e for e in bpy.data.objects[_addon().electrodes_panel_parent].children]
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        wr.writerow(['Electrode Name','R','A','S'])
+        for elc in electrodes:
+            wr.writerow([elc.name, *['{:.2f}'.format(loc * 10) for loc in elc.location]])
 
 
 def slice_brain(cut_pos=None, save_image=False):
@@ -405,6 +417,16 @@ class FindNearestElectrodeInCT(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ExportElectrodes(bpy.types.Operator):
+    bl_idname = "mmvt.export_electrodes"
+    bl_label = "export_electrodes"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        export_electrodes()
+        return {'FINISHED'}
+
+
 items_names = [("axial", "Axial"), ("coronal", "Coronal"), ("sagital", 'Sagital')]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Type of slice')
@@ -436,6 +458,7 @@ def slicer_draw(self, context):
     col.prop(context.scene, 'new_electrode_num', text='Number')
     col.operator(FindNearestElectrodeInCT.bl_idname, text="Find nearest electrodes", icon='MESH_CUBE')
     col.operator(CreateNewElectrode.bl_idname, text="Create electrode", icon='MESH_CUBE')
+    col.operator(ExportElectrodes.bl_idname, text="Export electrodes", icon='MESH_CUBE')
 
 
 class SlicerPanel(bpy.types.Panel):
@@ -485,6 +508,7 @@ def register():
         bpy.utils.register_class(SliceBrainClearButton)
         bpy.utils.register_class(CreateNewElectrode)
         bpy.utils.register_class(FindNearestElectrodeInCT)
+        bpy.utils.register_class(ExportElectrodes)
         # print('SlicerPanel was registered')
         # print('SliceBrainButton was registered')
         # print('SliceBrainClearButton was registered')
@@ -499,5 +523,6 @@ def unregister():
         bpy.utils.unregister_class(SliceBrainClearButton)
         bpy.utils.unregister_class(CreateNewElectrode)
         bpy.utils.unregister_class(FindNearestElectrodeInCT)
+        bpy.utils.unregister_class(ExportElectrodes)
     except:
         pass
