@@ -50,19 +50,52 @@ def write_freeview_points(centroids):
         writer.writerow(['useRealRAS', '0'])
 
 
-def clustering(data, ct_data, n_components=52):
+def clustering(data, ct_data, n_components, n_items_to_remove=0, covariance_type='full'):
+    from collections import Counter
     cv_types = ['spherical', 'tied', 'diag', 'full']
-    gmm = mixture.GaussianMixture(n_components=n_components, covariance_type='full')
+    gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
     gmm.fit(data)
-    # utils.plot_3d_scatter(gmm.means_)
     # print(gmm)
     Y = gmm.predict(data)
+    # utils.plot_3d_scatter(data, Y)
+    # plot_3d(gmm, data, Y)
+    # if n_items_to_remove > 0:
+    #     tuples_to_remove = sorted([(v, k) for k, v in Counter(Y).items()])[:n_items_to_remove]
+    #     labels_to_remove = [v for v, k in tuples_to_remove]
+    #     items_to_remove = np.concatenate((data[Y==label] for label in labels_to_remove))
+    #     print('sdff')
     centroids = np.zeros(gmm.means_.shape)
     for ind, label in enumerate(np.unique(Y)):
         voxels = data[Y==label]
         centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
     # utils.plot_3d_scatter(centroids, [len(data[Y==label]) for label in np.unique(Y)])
     return centroids
+
+
+def plot_3d(clf, X, Y_):
+    import itertools
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+
+    fig, splot = plt.subplots(1,1)
+    color_iter = itertools.cycle(['navy', 'turquoise', 'cornflowerblue',
+                                  'darkorange'])
+    for i, (mean, cov, color) in enumerate(zip(clf.means_, clf.covariances_,
+                                               color_iter)):
+        v, w = np.linalg.eigh(cov)
+        if not np.any(Y_ == i):
+            continue
+        plt.scatter(X[Y_ == i, 0], X[Y_ == i, 1], .8, color=color)
+
+        # Plot an ellipse to show the Gaussian component
+        angle = np.arctan2(w[0][1], w[0][0])
+        angle = 180. * angle / np.pi  # convert to degrees
+        v = 2. * np.sqrt(2.) * np.sqrt(v)
+        ell = mpl.patches.Ellipse(mean, v[0], v[1], 180. + angle, color=color)
+        ell.set_clip_box(splot.bbox)
+        ell.set_alpha(.5)
+        splot.add_artist(ell)
+    plt.show()
 
 
 def mask_ct(voxels, ct_header, brain):
@@ -88,7 +121,18 @@ def run_freeview():
     utils.run_script('freeview -v T1.mgz:opacity=0.3 ct.mgz brain.mgz -c electrodes.dat')
 
 
-def main(ct_fname, brain_mask_fname, threshold=2000):
+def export_electrodes(subject, centroids_t1_ras_tkr):
+    import csv
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    csv_fname = op.join(fol, '{}_RAS.csv'.format(subject))
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        wr.writerow(['Electrode Name','R','A','S'])
+        for ind, elc_pos in enumerate(centroids_t1_ras_tkr):
+            wr.writerow(['UN{}'.format(ind), *['{:.2f}'.format(loc) for loc in elc_pos]])
+
+
+def main(ct_fname, brain_mask_fname, n_components, n_groups, threshold=2000):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
     ct_data = ct.get_data()
@@ -100,12 +144,14 @@ def main(ct_fname, brain_mask_fname, threshold=2000):
     voxels = np.array(voxels).T
     voxels = mask_ct(voxels, ct_header, brain)
     # utils.plot_3d_scatter(voxels)
-    centroids = clustering(voxels, ct_data)
+    # groups = clustering(voxels, ct_data, n_groups+2, 0, 'spherical')
+    centroids = clustering(voxels, ct_data, n_components, 0)
     centroids_ras = tu.apply_trans(ct_vox2ras, centroids)
     centroids_t1_vox = tu.apply_trans(ras2t1_vox, centroids_ras).astype(int)
     centroids_t1_ras_tkr = tu.apply_trans(vox2t1_ras_tkr, centroids_t1_vox)
     write_freeview_points(centroids_t1_ras_tkr)
-    run_freeview()
+    export_electrodes(subject, centroids_t1_ras_tkr)
+    # run_freeview()
 
 
 if __name__ == '__main__':
@@ -115,4 +161,4 @@ if __name__ == '__main__':
 
     import os
     os.chdir(op.join(MMVT_DIR, subject, 'freeview'))
-    main(ct_fname, brain_mask_fname)
+    main(ct_fname, brain_mask_fname, n_components=52, n_groups=6, threshold=2000)

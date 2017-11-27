@@ -712,7 +712,6 @@ def find_elecrode_labeling_files():
     return files
 
 
-
 def create_lookup_table(electrodes_locs, electrodes):
     lookup = {}
     if electrodes_locs is None:
