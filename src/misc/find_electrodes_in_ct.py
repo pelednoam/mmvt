@@ -6,6 +6,7 @@ import os.path as op
 from src.utils import utils
 from src.utils import trans_utils as tu
 import csv
+import matplotlib.pyplot as plt
 
 links_dir = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
@@ -50,7 +51,7 @@ def write_freeview_points(centroids):
         writer.writerow(['useRealRAS', '0'])
 
 
-def clustering(data, ct_data, n_components, n_items_to_remove=0, covariance_type='full'):
+def clustering(data, ct_data, n_components, covariance_type='full'):
     from collections import Counter
     cv_types = ['spherical', 'tied', 'diag', 'full']
     gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
@@ -59,11 +60,6 @@ def clustering(data, ct_data, n_components, n_items_to_remove=0, covariance_type
     Y = gmm.predict(data)
     # utils.plot_3d_scatter(data, Y)
     # plot_3d(gmm, data, Y)
-    # if n_items_to_remove > 0:
-    #     tuples_to_remove = sorted([(v, k) for k, v in Counter(Y).items()])[:n_items_to_remove]
-    #     labels_to_remove = [v for v, k in tuples_to_remove]
-    #     items_to_remove = np.concatenate((data[Y==label] for label in labels_to_remove))
-    #     print('sdff')
     centroids = np.zeros(gmm.means_.shape)
     for ind, label in enumerate(np.unique(Y)):
         voxels = data[Y==label]
@@ -121,36 +117,142 @@ def run_freeview():
     utils.run_script('freeview -v T1.mgz:opacity=0.3 ct.mgz brain.mgz -c electrodes.dat')
 
 
-def export_electrodes(subject, centroids_t1_ras_tkr):
+def export_electrodes(subject, electrodes, groups, groups_hemis):
     import csv
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     csv_fname = op.join(fol, '{}_RAS.csv'.format(subject))
     with open(csv_fname, 'w') as csv_file:
         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
         wr.writerow(['Electrode Name','R','A','S'])
-        for ind, elc_pos in enumerate(centroids_t1_ras_tkr):
-            wr.writerow(['UN{}'.format(ind), *['{:.2f}'.format(loc) for loc in elc_pos]])
+        groups_inds = {'R':0, 'L':0}
+        for group, group_hemi in zip(groups, groups_hemis):
+            group_hemi = 'R' if group_hemi == 'rh' else 'L'
+            group_name = 'G{}'.format(chr(ord('A') + groups_inds[group_hemi]))
+            elcs_names = ['{}{}{}'.format(group_hemi, group_name, k+1) for k in range(len(group))]
+            for ind, elc_ind in enumerate(group):
+                wr.writerow([elcs_names[ind], *['{:.2f}'.format(loc) for loc in electrodes[elc_ind]]])
+            utils.plot_3d_scatter(electrodes, names=elcs_names, labels_indices=group)
+            groups_inds[group_hemi] += 1
 
 
-def main(ct_fname, brain_mask_fname, n_components, n_groups, threshold=2000):
+def left_or_right(subject, electrodes, groups):
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import svm
+    from sklearn.externals import joblib
+    from collections import Counter
+    utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_hemis_model.pkl')
+    if not op.isfile(output_fname):
+        vertices_rh, _ = utils.read_pial(subject, MMVT_DIR, 'rh')
+        vertices_lh, _ = utils.read_pial(subject, MMVT_DIR, 'lh')
+        vertices = np.concatenate((vertices_rh, vertices_lh))
+        hemis = np.array([0] * len(vertices_rh) + [1] * len(vertices_lh))
+        scaler = StandardScaler()
+        vertices = scaler.fit_transform(vertices)
+        electrodes = scaler.fit_transform(electrodes)
+        clf = svm.SVC(kernel='linear')
+        clf.fit(vertices, hemis)
+        joblib.dump(clf, output_fname, compress=9)
+    else:
+        clf = joblib.load(output_fname)
+    elctrodes_hemis = clf.predict(electrodes)
+    hemis = ['rh' if elc_hemi == 0 else 'lh' for elc_hemi in elctrodes_hemis]
+    groups_hemis = [Counter([hemis[elc] for elc in group]).most_common()[0][0] for group in groups]
+    return groups_hemis
+
+
+def find_electrodes_groups(electrodes, error_radius=3, min_elcs_for_lead=4, threshold_dist_between_electrodes=20):
+    from src.utils import trig_utils as tu
+    groups = []
+    for i in range(len(electrodes)):
+        for j in range(i+1, len(electrodes)):
+            points_inside = tu.point_in_cylinder(electrodes[i], electrodes[j], electrodes, error_radius)
+            if len(points_inside) > min_elcs_for_lead:
+                elcs_inside = electrodes[points_inside]
+                elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
+                dists = [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(elcs_inside[:-1], elcs_inside[1:])]
+                if max(dists) > threshold_dist_between_electrodes:
+                    continue
+                # utils.plot_3d_scatter(electrodes, names=points_inside, labels_indices=points_inside)
+                groups.append(set(points_inside.tolist()))
+
+    final_groups = []
+    for group in groups:
+        for final_group in final_groups:
+            if intersects(group, final_group):
+                final_groups.remove(final_group)
+                final_groups.append(group | final_group)
+                break
+        else:
+            final_groups.append(group)
+
+
+    non_electrodes = [k for k in range(len(electrodes)) if all([k not in g for g in final_groups])]
+    # utils.plot_3d_scatter(electrodes, names=non_electrodes, labels_indices=non_electrodes)
+    if len(non_electrodes) > 0:
+        electrodes = np.delete(electrodes, non_electrodes, axis=0)
+        return find_electrodes_groups(electrodes, error_radius, min_elcs_for_lead, threshold_dist_between_electrodes)
+    else:
+        plot_groups(electrodes, final_groups)
+    # Sort the electrodes for each group
+    groups, first_indices = [], []
+    for group in final_groups:
+        group = list(group)
+        # find the most inner electrode
+        ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[group]])
+        first_indices.append(group[ind0])
+        sort_indices = [t[0] for t in sorted(enumerate(electrodes[group]), key=lambda x: np.linalg.norm(electrodes[group[ind0]] - x[1]))]
+        group = [group[ind] for ind in sort_indices]
+        groups.append(group)
+    # utils.plot_3d_scatter(electrodes, names=first_indices, labels_indices=first_indices)
+    return electrodes, groups
+
+
+def plot_groups(electrodes, final_groups):
+    electrodes_groups = [[group_num for group_num, group in enumerate(final_groups) if elc_ind in group][0] for
+                         elc_ind in range(len(electrodes))]
+    groups_num = len(set(electrodes_groups))
+    groups_colors = dist_colors(groups_num)
+    electrodes_colors = [groups_colors[electrodes_groups[elc_ind]] for elc_ind in range(len(electrodes))]
+    utils.plot_3d_scatter(electrodes, colors=electrodes_colors)
+
+
+def dist_colors(colors_num):
+    import colorsys
+    Hs = np.linspace(0, 360, colors_num + 1)[:-1] / 360
+    Ls = 0.5
+    return [colorsys.hls_to_rgb(Hs[ind], Ls, 1) for ind in range(colors_num)]
+
+
+def intersects(g1, g2):
+    return len(g1 & g2) > 0 or len(g1 & g2) > 0
+
+
+def ct_voxels_to_t1_ras_tkr(centroids, ct_header, brain_header):
+    ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
+    centroids_ras = tu.apply_trans(ct_vox2ras, centroids)
+    centroids_t1_vox = tu.apply_trans(ras2t1_vox, centroids_ras).astype(int)
+    centroids_t1_ras_tkr = tu.apply_trans(vox2t1_ras_tkr, centroids_t1_vox)
+    return centroids_t1_ras_tkr
+
+
+def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
     ct_data = ct.get_data()
     brain = nib.load(brain_mask_fname)
     brain_header = brain.get_header()
-    ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
 
     voxels = np.where(ct_data > threshold)
     voxels = np.array(voxels).T
     voxels = mask_ct(voxels, ct_header, brain)
     # utils.plot_3d_scatter(voxels)
-    # groups = clustering(voxels, ct_data, n_groups+2, 0, 'spherical')
-    centroids = clustering(voxels, ct_data, n_components, 0)
-    centroids_ras = tu.apply_trans(ct_vox2ras, centroids)
-    centroids_t1_vox = tu.apply_trans(ras2t1_vox, centroids_ras).astype(int)
-    centroids_t1_ras_tkr = tu.apply_trans(vox2t1_ras_tkr, centroids_t1_vox)
-    write_freeview_points(centroids_t1_ras_tkr)
-    export_electrodes(subject, centroids_t1_ras_tkr)
+    electrodes = clustering(voxels, ct_data, n_components)
+    electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
+    electrodes, groups = find_electrodes_groups(electrodes)
+    groups_hemis = left_or_right(subject, electrodes, groups)
+    write_freeview_points(electrodes)
+    export_electrodes(subject, electrodes, groups, groups_hemis)
     # run_freeview()
 
 
@@ -161,4 +263,4 @@ if __name__ == '__main__':
 
     import os
     os.chdir(op.join(MMVT_DIR, subject, 'freeview'))
-    main(ct_fname, brain_mask_fname, n_components=52, n_groups=6, threshold=2000)
+    main(ct_fname, brain_mask_fname, n_components=52)

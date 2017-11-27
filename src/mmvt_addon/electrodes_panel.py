@@ -622,7 +622,9 @@ def init(addon):
     ElecsPanel.groups_first_electrode = find_first_electrode_per_group(ElecsPanel.all_electrodes)
     ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.all_electrodes)
     init_leads_list()
-    init_electrodes_list()
+    ret = init_electrodes_list()
+    if not ret:
+        return
     ret = init_electrodes_labeling(addon)
     if not ret:
         print('No electrodes labeling files.')
@@ -664,18 +666,25 @@ def init_leads_list(leads=None):
 
 def init_electrodes_list():
     ElecsPanel.electrodes = ElecsPanel.groups_electrodes[ElecsPanel.current_lead]
+    if len(ElecsPanel.electrodes) == 0:
+        print('init_electrodes_list: No electrodes found for {}!'.format(ElecsPanel.current_lead))
+        return False
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
         items=electrodes_items, description="electrodes", update=electrodes_update)
-    lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
-    last_obj_name = bpy.context.active_object.name if bpy.context.active_object is not None else ''
-    # mu.print_traceback()
-    if last_obj_name != '' and last_obj_name in ElecsPanel.groups and ElecsPanel.groups[last_obj_name] == lead:
-        bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
+    if ElecsPanel.electrodes[0] in ElecsPanel.groups:
+        lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
+        last_obj_name = bpy.context.active_object.name if bpy.context.active_object is not None else ''
+        # mu.print_traceback()
+        if last_obj_name != '' and last_obj_name in ElecsPanel.groups and ElecsPanel.groups[last_obj_name] == lead:
+            bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
+        else:
+            bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
+        return True
     else:
-        bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
-
+        print('{} not in groups!'.format(ElecsPanel.electrodes[0]))
+        return False
 
 def init_electrodes_labeling(addon):
     #todo: this panel should work also without labeling file

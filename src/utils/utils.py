@@ -1058,11 +1058,14 @@ def calc_PCA(X, n_components=3):
     return X
 
 
-def plot_3d_scatter(X, names=None, labels=None, classifier=None):
+def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=[]):
     from mpl_toolkits.mplot3d import Axes3D, proj3d
     fig = plt.figure()
     ax = Axes3D(fig)
-    ax.scatter(X[:, 0], X[:, 1], X[:, 2])
+    if len(colors) == 0:
+        ax.scatter(X[:, 0], X[:, 1], X[:, 2])
+    else:
+        ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=colors)
 
     if not names is None:
         if not labels is None:
@@ -1070,8 +1073,12 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None):
                 ind = names.index(label)
                 add_annotation(ax, label, X[ind, 0], X[ind, 1], X[ind, 2])
         else:
-            for x,y,z,name in zip(X[:, 0], X[:, 1], X[:, 2], names):
-                add_annotation(ax, name, x, y, z)
+            if len(labels_indices) > 0:
+                for name, ind in zip(names, labels_indices):
+                    add_annotation(ax, name, X[ind, 0], X[ind, 1], X[ind, 2])
+            else:
+                for x,y,z,name in zip(X[:, 0], X[:, 1], X[:, 2], names):
+                    add_annotation(ax, name, x, y, z)
 
     if not classifier is None:
         make_ellipses(classifier, ax)

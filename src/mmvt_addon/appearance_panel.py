@@ -573,7 +573,7 @@ def set_cursor_pos():
 
 
 def clear_slice():
-    if bpy.context.scene.is_sliced_ind > -1:
+    if AppearanceMakerPanel.init and bpy.context.scene.is_sliced_ind > -1:
         tmp_new = bpy.context.scene.cursor_location[bpy.context.scene.is_sliced_ind]
         tmp_old = bpy.context.scene.last_cursor_location[bpy.context.scene.is_sliced_ind]
         if abs(tmp_new - tmp_old) > 0.005:
