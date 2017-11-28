@@ -1154,7 +1154,7 @@ def dipole_pos_to_vox(dipole, trans):
     trans = _get_trans(trans, fro='head', to='mri')[0]
     scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
     dipole_locs_vox = apply_trans(orig_trans.ras_tkr2vox, scatter_points)
-    dipole_locs_vox = np.array(dipole_locs_vox).astype(int)
+    dipole_locs_vox = np.rint(np.array(dipole_locs_vox)).astype(int)
     return dipole_locs_vox
 
 
@@ -1163,7 +1163,7 @@ def save_diploe_loc(dipole, trans):
 
     best_idx = np.argmax(dipole.gof)
     best_point = dipole_locs[best_idx]
-    dipole_xyz = np.round(best_point).astype(int)
+    dipole_xyz = np.rint(best_point).astype(int)
     dipole_ori = apply_trans(trans['trans'], dipole.ori, move=False)
     print(dipole_xyz, dipole_ori)
 

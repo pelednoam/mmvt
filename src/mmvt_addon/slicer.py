@@ -62,7 +62,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
 
     x, y, z = xyz[:3]
     for modality in modalities:
-        self[modality].coordinates = np.array([x, y, z])[self[modality].order].astype(int)
+        self[modality].coordinates = np.rint(np.array([x, y, z])[self[modality].order]).astype(int)
     cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
     images = {}
     xaxs, yaxs = [1, 0, 0], [2, 2, 1]

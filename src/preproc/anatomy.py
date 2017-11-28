@@ -1046,7 +1046,7 @@ def create_slices(subject, xyz, modality='mri', header=None, data=None):
     sizes = [data.shape[order] for order in order]
     scalers = voxel_sizes(affine)
     x, y, z = xyz #.split(',')
-    coordinates = np.array([x, y, z])[order].astype(int)
+    coordinates = np.rint(np.array([x, y, z])[order]).astype(int)
     # print('Creating slices for {}'.format(coordinates))
 
     r = [scalers[order[2]] / scalers[order[1]],

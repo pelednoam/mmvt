@@ -99,7 +99,7 @@ def mask_ct(voxels, ct_header, brain):
     brain_mask = brain.get_data()
     ct_vox2ras, ras2t1_vox, _ = get_trans(ct_header, brain_header)
     ct_ras = tu.apply_trans(ct_vox2ras, voxels)
-    t1_vox = tu.apply_trans(ras2t1_vox, ct_ras).astype(int)
+    t1_vox = np.rint(tu.apply_trans(ras2t1_vox, ct_ras)).astype(int)
     # voxels = voxels[np.where(brain_mask[t1_vox] > 0)]
     voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0])
     return voxels
@@ -256,7 +256,7 @@ def t1_ras_tkr_to_ct_voxels(centroids, ct_header, brain_header):
     ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
     centroids_t1_vox = tu.apply_trans(np.linalg.inv(vox2t1_ras_tkr), centroids)
     centroids_ras = tu.apply_trans(brain_header.get_vox2ras(), centroids_t1_vox)
-    centroids_ct_vox = tu.apply_trans(np.linalg.inv(ct_vox2ras), centroids_ras).astype(int)
+    centroids_ct_vox = np.rint(tu.apply_trans(np.linalg.inv(ct_vox2ras), centroids_ras)).astype(int)
     return centroids_ct_vox
 
 
@@ -265,8 +265,8 @@ def sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=2000):
     ct_values = [ct_data[tuple(vox)] for vox in ct_voxels]
     plt.hist(ct_values)
     plt.show()
-    if len(np.where(ct_values < threshold)[0]) > 0:
-        print('asdf')
+    # if len(np.where(ct_values < threshold)[0]) > 0:
+    #     print('asdf')
 
 
 def check_ct_voxels(ct_data, voxels):
@@ -286,6 +286,14 @@ def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
     voxels = mask_ct(voxels, ct_header, brain)
     # utils.plot_3d_scatter(voxels)
     electrodes = clustering(voxels, ct_data, n_components)
+
+    # ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
+    # centroids_ras = tu.apply_trans(ct_vox2ras, electrodes)
+    # ct_voxels = np.rint(tu.apply_trans(np.linalg.inv(ct_vox2ras), centroids_ras)).astype(int)
+    # plt.hist([ct_data[tuple(vox)] for vox in ct_voxels])
+    # plt.show()
+
+
     electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
     sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=threshold)
     electrodes, groups = find_electrodes_groups(electrodes)
