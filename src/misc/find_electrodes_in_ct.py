@@ -7,6 +7,7 @@ from src.utils import utils
 from src.utils import trans_utils as tu
 import csv
 import matplotlib.pyplot as plt
+from itertools import product
 
 links_dir = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
@@ -19,7 +20,6 @@ MMVT_DIR = utils.get_link_dir(links_dir, 'mmvt')
 
 
 def find_nearest_electrde_in_ct(ct_data, x, y, z, max_iters=100):
-    from itertools import product
     peak_found, iter_num = True, 0
     while peak_found and iter_num < max_iters:
         max_ct_data = ct_data[x, y, z]
@@ -52,20 +52,19 @@ def write_freeview_points(centroids):
 
 
 def clustering(data, ct_data, n_components, covariance_type='full'):
-    from collections import Counter
     cv_types = ['spherical', 'tied', 'diag', 'full']
     gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
     gmm.fit(data)
-    # print(gmm)
     Y = gmm.predict(data)
     # utils.plot_3d_scatter(data, Y)
     # plot_3d(gmm, data, Y)
     centroids = np.zeros(gmm.means_.shape, dtype=np.int)
     for ind, label in enumerate(np.unique(Y)):
-        voxels = data[Y==label]
+        voxels = data[Y == label]
         centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
     # utils.plot_3d_scatter(centroids, [len(data[Y==label]) for label in np.unique(Y)])
-    return centroids
+    # utils.plot_3d_scatter(centroids)
+    return centroids, Y
 
 
 def plot_3d(clf, X, Y_):
@@ -114,6 +113,8 @@ def get_trans(ct_header, brain_header):
 
 @utils.check_for_freesurfer
 def run_freeview():
+    import os
+    os.chdir(op.join(MMVT_DIR, subject, 'freeview'))
     utils.run_script('freeview -v T1.mgz:opacity=0.3 ct.mgz brain.mgz -c electrodes.dat')
 
 
@@ -186,31 +187,52 @@ def find_electrodes_groups(electrodes, error_radius=3, min_elcs_for_lead=4, thre
         else:
             final_groups.append(group)
 
-
     non_electrodes = [k for k in range(len(electrodes)) if all([k not in g for g in final_groups])]
     # utils.plot_3d_scatter(electrodes, names=non_electrodes, labels_indices=non_electrodes)
     if len(non_electrodes) > 0:
-        electrodes = np.delete(electrodes, non_electrodes, axis=0)
-        return find_electrodes_groups(electrodes, error_radius, min_elcs_for_lead, threshold_dist_between_electrodes)
-    else:
-        plot_groups(electrodes, final_groups)
+        # electrodes = np.delete(electrodes, non_electrodes, axis=0)
+        # return find_electrodes_groups(electrodes, error_radius, min_elcs_for_lead, threshold_dist_between_electrodes)
+        utils.plot_3d_scatter(electrodes, names=non_electrodes, labels_indices=non_electrodes)
+        return electrodes, electrodes[non_electrodes], final_groups
+
+    plot_groups(electrodes, final_groups)
     # Sort the electrodes for each group
-    groups, first_indices = [], []
-    for group in final_groups:
+    groups = sort_groups(electrodes, final_groups)
+    # utils.plot_3d_scatter(electrodes, names=first_indices, labels_indices=first_indices)
+    # find_extra_missing_electrodes(electrodes, groups)
+    return electrodes, [], groups
+
+
+def sort_groups(electrodes, groups):
+    sorted_groups, first_indices = [], []
+    for group in groups:
         group = list(group)
         # find the most inner electrode
         ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[group]])
         first_indices.append(group[ind0])
-        sort_indices = [t[0] for t in sorted(enumerate(electrodes[group]), key=lambda x: np.linalg.norm(electrodes[group[ind0]] - x[1]))]
+        sort_indices = [t[0] for t in sorted(enumerate(electrodes[group]),
+                                             key=lambda x: np.linalg.norm(electrodes[group[ind0]] - x[1]))]
         group = [group[ind] for ind in sort_indices]
-        groups.append(group)
-    # utils.plot_3d_scatter(electrodes, names=first_indices, labels_indices=first_indices)
-    # find_extra_missing_electrodes(electrodes, groups)
-    return electrodes, groups
+        sorted_groups.append(group)
+    return sorted_groups
 
 
 def calc_group_dists(electrodes_group):
     return [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(electrodes_group[:-1], electrodes_group[1:])]
+
+
+def erase_voxels_from_ct(non_electrodes, ct_voxels, clusters, ct_data, ct_header, brain_header):
+    if len(non_electrodes) == 0:
+        return ct_data
+    non_electrodes = t1_ras_tkr_to_ct_voxels(non_electrodes, ct_header, brain_header)
+    for ind, label in enumerate(np.unique(clusters)):
+        voxels = ct_voxels[clusters == label]
+        max_voxel = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
+        inds = np.where(np.all(non_electrodes == max_voxel, axis=1))[0]
+        if len(inds) > 0:
+            for voxel in voxels:
+                ct_data[tuple(voxel)] = 0
+    return ct_data
 
 
 def plot_groups(electrodes, final_groups):
@@ -275,28 +297,22 @@ def check_ct_voxels(ct_data, voxels):
     plt.show()
 
 
-def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
+def main(ct_fname, brain_mask_fname, n_components, threshold=2000, max_iters=5):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
     ct_data = ct.get_data()
     brain = nib.load(brain_mask_fname)
     brain_header = brain.get_header()
+    first_run, non_electrodes, iters_num = True, [None], 0
 
-    voxels = np.where(ct_data > threshold)
-    voxels = np.array(voxels).T
-    voxels = mask_ct(voxels, ct_header, brain)
-    # utils.plot_3d_scatter(voxels)
-    electrodes = clustering(voxels, ct_data, n_components)
-
-    # ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
-    # centroids_ras = tu.apply_trans(ct_vox2ras, electrodes)
-    # ct_voxels = np.rint(tu.apply_trans(np.linalg.inv(ct_vox2ras), centroids_ras)).astype(int)
-    # plt.hist([ct_data[tuple(vox)] for vox in ct_voxels])
-    # plt.show()
-
-
-    electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
-    electrodes, groups = find_electrodes_groups(electrodes)
+    while len(non_electrodes) > 0 and iters_num < max_iters:
+        ct_voxels = np.array(np.where(ct_data > threshold)).T
+        ct_voxels = mask_ct(ct_voxels, ct_header, brain)
+        electrodes, clusters = clustering(ct_voxels, ct_data, n_components)
+        electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
+        electrodes, non_electrodes, groups = find_electrodes_groups(electrodes)
+        ct_data = erase_voxels_from_ct(non_electrodes, ct_voxels, clusters, ct_data, ct_header, brain_header)
+        iters_num += 1
     sanity_check(electrodes, ct_header, brain_header, ct_data, groups)
     groups_hemis = left_or_right(subject, electrodes, groups)
     write_freeview_points(electrodes)
@@ -306,9 +322,16 @@ def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
 
 if __name__ == '__main__':
     subject = 'nmr01183'
-    ct_fname = '/home/npeled/mmvt/nmr01183/freeview/ct.mgz'
-    brain_mask_fname = '/home/npeled/mmvt/nmr01183/freeview/brain.mgz'
+    ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
+    if not op.isfile(ct_fname):
+        ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
+    if not op.isfile(ct_fname):
+        raise Exception("Can't find ct.mgz!")
 
-    import os
-    os.chdir(op.join(MMVT_DIR, subject, 'freeview'))
+    brain_mask_fname = op.join(MMVT_DIR, subject, 'freeview', 'brain.mgz')
+    if not op.isfile(brain_mask_fname):
+        brain_mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'brain.mgz')
+    if not op.isfile(brain_mask_fname):
+        raise Exception("Can't find brain.mgz!")
+
     main(ct_fname, brain_mask_fname, n_components=52, threshold=2000)
