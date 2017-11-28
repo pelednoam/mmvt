@@ -260,11 +260,12 @@ def t1_ras_tkr_to_ct_voxels(centroids, ct_header, brain_header):
     return centroids_ct_vox
 
 
-def sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=2000):
+def sanity_check(electrodes, ct_header, brain_header, ct_data, groups):
     ct_voxels = t1_ras_tkr_to_ct_voxels(electrodes, ct_header, brain_header)
     ct_values = [ct_data[tuple(vox)] for vox in ct_voxels]
     plt.hist(ct_values)
     plt.show()
+    print('asdf')
     # if len(np.where(ct_values < threshold)[0]) > 0:
     #     print('asdf')
 
@@ -295,8 +296,8 @@ def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
 
 
     electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
-    sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=threshold)
     electrodes, groups = find_electrodes_groups(electrodes)
+    sanity_check(electrodes, ct_header, brain_header, ct_data, groups)
     groups_hemis = left_or_right(subject, electrodes, groups)
     write_freeview_points(electrodes)
     export_electrodes(subject, electrodes, groups, groups_hemis)
@@ -310,4 +311,4 @@ if __name__ == '__main__':
 
     import os
     os.chdir(op.join(MMVT_DIR, subject, 'freeview'))
-    main(ct_fname, brain_mask_fname, n_components=52)
+    main(ct_fname, brain_mask_fname, n_components=52, threshold=2000)
