@@ -60,7 +60,7 @@ def clustering(data, ct_data, n_components, covariance_type='full'):
     Y = gmm.predict(data)
     # utils.plot_3d_scatter(data, Y)
     # plot_3d(gmm, data, Y)
-    centroids = np.zeros(gmm.means_.shape)
+    centroids = np.zeros(gmm.means_.shape, dtype=np.int)
     for ind, label in enumerate(np.unique(Y)):
         voxels = data[Y==label]
         centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
@@ -131,7 +131,7 @@ def export_electrodes(subject, electrodes, groups, groups_hemis):
             elcs_names = ['{}{}{}'.format(group_hemi, group_name, k+1) for k in range(len(group))]
             for ind, elc_ind in enumerate(group):
                 wr.writerow([elcs_names[ind], *['{:.2f}'.format(loc) for loc in electrodes[elc_ind]]])
-            utils.plot_3d_scatter(electrodes, names=elcs_names, labels_indices=group)
+            # utils.plot_3d_scatter(electrodes, names=elcs_names, labels_indices=group)
             groups_inds[group_hemi] += 1
 
 
@@ -170,7 +170,7 @@ def find_electrodes_groups(electrodes, error_radius=3, min_elcs_for_lead=4, thre
             if len(points_inside) > min_elcs_for_lead:
                 elcs_inside = electrodes[points_inside]
                 elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
-                dists = [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(elcs_inside[:-1], elcs_inside[1:])]
+                dists = calc_group_dists(elcs_inside) # [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(elcs_inside[:-1], elcs_inside[1:])]
                 if max(dists) > threshold_dist_between_electrodes:
                     continue
                 # utils.plot_3d_scatter(electrodes, names=points_inside, labels_indices=points_inside)
@@ -205,7 +205,12 @@ def find_electrodes_groups(electrodes, error_radius=3, min_elcs_for_lead=4, thre
         group = [group[ind] for ind in sort_indices]
         groups.append(group)
     # utils.plot_3d_scatter(electrodes, names=first_indices, labels_indices=first_indices)
+    # find_extra_missing_electrodes(electrodes, groups)
     return electrodes, groups
+
+
+def calc_group_dists(electrodes_group):
+    return [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(electrodes_group[:-1], electrodes_group[1:])]
 
 
 def plot_groups(electrodes, final_groups):
@@ -215,6 +220,17 @@ def plot_groups(electrodes, final_groups):
     groups_colors = dist_colors(groups_num)
     electrodes_colors = [groups_colors[electrodes_groups[elc_ind]] for elc_ind in range(len(electrodes))]
     utils.plot_3d_scatter(electrodes, colors=electrodes_colors)
+
+
+def find_extra_missing_electrodes(electrodes, groups):
+    groups_dists = [calc_group_dists(electrodes[group]) for group in groups]
+    groups_dists_flat = utils.flat_list_of_lists(groups_dists)
+    # dists_threshold = np.median(groups_dists_flat) * np.std(groups_dists_flat)
+    for group, group_dists in zip(groups, groups_dists):
+        missing_electrodes = np.where(group_dists > np.median(groups_dists_flat) * 1.9)[0]
+        if len(missing_electrodes) > 0:
+            print(group_dists)
+            utils.plot_3d_scatter(electrodes, names=missing_electrodes, labels_indices=missing_electrodes)
 
 
 def dist_colors(colors_num):
@@ -231,9 +247,31 @@ def intersects(g1, g2):
 def ct_voxels_to_t1_ras_tkr(centroids, ct_header, brain_header):
     ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
     centroids_ras = tu.apply_trans(ct_vox2ras, centroids)
-    centroids_t1_vox = tu.apply_trans(ras2t1_vox, centroids_ras).astype(int)
+    centroids_t1_vox = tu.apply_trans(ras2t1_vox, centroids_ras)
     centroids_t1_ras_tkr = tu.apply_trans(vox2t1_ras_tkr, centroids_t1_vox)
     return centroids_t1_ras_tkr
+
+
+def t1_ras_tkr_to_ct_voxels(centroids, ct_header, brain_header):
+    ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
+    centroids_t1_vox = tu.apply_trans(np.linalg.inv(vox2t1_ras_tkr), centroids)
+    centroids_ras = tu.apply_trans(brain_header.get_vox2ras(), centroids_t1_vox)
+    centroids_ct_vox = tu.apply_trans(np.linalg.inv(ct_vox2ras), centroids_ras).astype(int)
+    return centroids_ct_vox
+
+
+def sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=2000):
+    ct_voxels = t1_ras_tkr_to_ct_voxels(electrodes, ct_header, brain_header)
+    ct_values = [ct_data[tuple(vox)] for vox in ct_voxels]
+    plt.hist(ct_values)
+    plt.show()
+    if len(np.where(ct_values < threshold)[0]) > 0:
+        print('asdf')
+
+
+def check_ct_voxels(ct_data, voxels):
+    plt.hist([ct_data[tuple(vox)] for vox in voxels])
+    plt.show()
 
 
 def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
@@ -249,6 +287,7 @@ def main(ct_fname, brain_mask_fname, n_components, threshold=2000):
     # utils.plot_3d_scatter(voxels)
     electrodes = clustering(voxels, ct_data, n_components)
     electrodes = ct_voxels_to_t1_ras_tkr(electrodes, ct_header, brain_header)
+    sanity_check(electrodes, ct_header, brain_header, ct_data, threshold=threshold)
     electrodes, groups = find_electrodes_groups(electrodes)
     groups_hemis = left_or_right(subject, electrodes, groups)
     write_freeview_points(electrodes)
