@@ -250,6 +250,19 @@ def change_frames_names(fol, images_prefix, images_type, images_format_len, new_
         shutil.copy(image_fname, new_image_fname)
     return new_fol
 
+
+def convert_to_xvid():
+    '''
+    ffmpeg -y -i yourvid.mp4 -f avi -r 29.97 \
+          -vcodec libxvid -vtag XVID \
+          -vf scale=1920:1080 -b 1500k -qmin 3 -qmax 8 -bufsize 4096 \
+          -mbd 2 -bf 2 -trellis 1 -flags +aic -cmp 2 -subcmp 2 -g 300 \
+          -acodec libmp3lame -ar 48000 -ab 128k -ac 2 \
+          yourvid.avi
+    '''
+    pass
+
+
 if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
