@@ -148,7 +148,7 @@ def find_electrodes_hemis(subject, electrodes, groups, overwrite=False):
     return groups_hemis
 
 
-def plot_hemis_sep_plane(clf, electrodes):
+def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
     from mpl_toolkits.mplot3d import Axes3D
 
     d = clf.intercept_
@@ -165,6 +165,8 @@ def plot_hemis_sep_plane(clf, electrodes):
     fig = plt.figure()
     ax = Axes3D(fig)
     ax.scatter(electrodes[:, 0], electrodes[:, 1], electrodes[:, 2])
+    if len(vertices) > 0:
+        ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], c='0.7', s=3)
     ax.plot_wireframe(xx, yy, zz, rcount=5, ccount=5, color='purple')
     plt.show()
 
@@ -492,8 +494,11 @@ def find_depth_electrodes_in_ct(
 def load_objects_and_plot_hemis_sep(subject, input_fol):
     electrodes, groups, groups_hemis = utils.load(op.join(input_fol, 'objects.pkl'))
     model_fname = op.join(MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', 'hemis_model.pkl')
+    vertices_rh, _ = utils.read_pial(subject, MMVT_DIR, 'rh')
+    vertices_lh, _ = utils.read_pial(subject, MMVT_DIR, 'lh')
+    vertices = np.concatenate((vertices_rh, vertices_lh))
     clf = joblib.load(model_fname)
-    plot_hemis_sep_plane(clf, electrodes)
+    plot_hemis_sep_plane(clf, electrodes, vertices)
 
 
 if __name__ == '__main__':
@@ -516,5 +521,6 @@ if __name__ == '__main__':
     #     ct_fname, brain_mask_fname, n_components=52, output_fol=output_fol, threshold=2000, max_iters=5,
     #     cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)
 
-    # load_object_and_export(subject, '/homes/5/npeled/space1/Documents/finding_electrodes_in_ct/a1cae')
-    load_objects_and_plot_hemis_sep(subject, '/homes/5/npeled/space1/Documents/finding_electrodes_in_ct/a1cae')
+    input_fol = '/home/npeled/Documents/finding_electrodes_in_ct/a1cae'
+    # load_object_and_export(subject, input_fol)
+    load_objects_and_plot_hemis_sep(subject, input_fol)
