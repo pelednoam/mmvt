@@ -453,9 +453,23 @@ def find_voxels_above_threshold(ct_data, threshold):
     return np.array(np.where(ct_data > threshold)).T
 
 
-def load_object_and_export(subject, output_fol):
+def load_objects_and_export(subject, output_fol):
     electrodes, groups, groups_hemis = utils.load(op.join(output_fol, 'objects.pkl'))
     export_electrodes(subject, electrodes, groups, groups_hemis, output_fol)
+
+
+def load_objects_and_plot_specific_electrode():
+    electrodes, groups, groups_hemis = utils.load(op.join(output_fol, 'objects.pkl'))
+    groups_inds = {'R': 0, 'L': 0}
+    electrodes_colors = get_electrodes_colors(electrodes, groups)
+    for group, group_hemi in zip(groups, groups_hemis):
+        group_hemi = 'R' if group_hemi == 'rh' else 'L'
+        group_name = '{}G{}'.format(group_hemi, chr(ord('A') + groups_inds[group_hemi]))
+        elcs_names = ['{}{}'.format(group_name, k + 1) for k in range(len(group))]
+        if group_name == 'LGE':
+            utils.plot_3d_scatter(electrodes, names=[elcs_names[1]], labels_indices=[group[1]], fname=op.join(
+                output_fol, '{}.png'.format(group_name)), colors=electrodes_colors)
+        groups_inds[group_hemi] += 1
 
 
 def find_depth_electrodes_in_ct(
@@ -517,10 +531,10 @@ if __name__ == '__main__':
 
     output_fol = utils.make_dir(op.join(
         MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', utils.rand_letters(5)))
-    # find_depth_electrodes_in_ct(
-    #     ct_fname, brain_mask_fname, n_components=52, output_fol=output_fol, threshold=2000, max_iters=5,
-    #     cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)
+    find_depth_electrodes_in_ct(
+        ct_fname, brain_mask_fname, n_components=52, output_fol=output_fol, threshold=2000, max_iters=5,
+        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)
 
-    input_fol = '/home/npeled/Documents/finding_electrodes_in_ct/a1cae'
-    # load_object_and_export(subject, input_fol)
-    load_objects_and_plot_hemis_sep(subject, input_fol)
+    # input_fol = '/home/npeled/Documents/finding_electrodes_in_ct/a1cae'
+    # load_objects_and_export(subject, input_fol)
+    # load_objects_and_plot_hemis_sep(subject, input_fol)
