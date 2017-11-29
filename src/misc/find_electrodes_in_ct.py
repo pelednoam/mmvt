@@ -164,9 +164,9 @@ def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
     # plt3d = plt.figure().gca(projection='3d')
     fig = plt.figure()
     ax = Axes3D(fig)
-    ax.scatter(electrodes[:, 0], electrodes[:, 1], electrodes[:, 2])
     if len(vertices) > 0:
-        ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], c='0.7', s=3)
+        ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], c='0.7', s=1, alpha=0.1)
+    ax.scatter(electrodes[:, 0], electrodes[:, 1], electrodes[:, 2])
     ax.plot_wireframe(xx, yy, zz, rcount=5, ccount=5, color='purple')
     plt.show()
 
