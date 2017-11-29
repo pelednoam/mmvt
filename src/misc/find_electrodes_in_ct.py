@@ -21,8 +21,25 @@ MMVT_DIR = utils.get_link_dir(links_dir, 'mmvt')
 
 
 def clustering(data, ct_data, n_components, covariance_type='full'):
-    gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
+    from collections import defaultdict
+    bics = defaultdict(list)
+    cts = ['spherical', 'tied', 'diag', 'full']
+    for n in range(1, n_components * 2):
+        for covariance_type in cts:
+            gmm = mixture.GaussianMixture(n_components=n, covariance_type=covariance_type)
+            gmm.fit(data)
+            bics[covariance_type].append(gmm.bic(data))
+    mins_bic = [(min(bics[ct]), np.argmin(bics[ct])) for ct in cts]
+    ct = np.argmin([t[0] for t in mins_bic])
+    n_components = mins_bic[ct][1]
+    gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=cts[ct])
     gmm.fit(data)
+
+    # plt.figure()
+    # for covariance_type in ['spherical', 'tied', 'diag', 'full']:
+    #     plt.plot(range(1, n_components * 2), bics[covariance_type], label=covariance_type)
+    # plt.legend()
+
     Y = gmm.predict(data)
     centroids = np.zeros(gmm.means_.shape, dtype=np.int)
     for ind, label in enumerate(np.unique(Y)):
@@ -214,7 +231,7 @@ def find_missing_electrodes(electrodes, groups, ct_data, ct_header, brain_header
             if len(missing_electrodes_indices) > 0:
                 print(group_dists)
                 me_indices = [group[ms] for ms in missing_electrodes_indices]
-                utils.plot_3d_scatter(electrodes, names=me_indices, labels_indices=me_indices)
+                # utils.plot_3d_scatter(electrodes, names=me_indices, labels_indices=me_indices)
                 for mis_elc in missing_electrodes_indices:
                     new_electrode = (electrodes[group[mis_elc]] + electrodes[group[mis_elc + 1]]) / 2
                     new_electrode_ct_voxel = t1_ras_tkr_to_ct_voxels([new_electrode], ct_header, brain_header)[0]
@@ -224,7 +241,7 @@ def find_missing_electrodes(electrodes, groups, ct_data, ct_header, brain_header
                     new_electrode = ct_voxels_to_t1_ras_tkr([new_electrode_ct_voxel], ct_header, brain_header)[0]
                     electrodes = np.vstack((electrodes, new_electrode))
                     groups[group_ind].insert(mis_elc + 1, electrodes_num)
-                    utils.plot_3d_scatter(electrodes, names=[electrodes_num], labels_indices=[electrodes_num])
+                    # utils.plot_3d_scatter(electrodes, names=[electrodes_num], labels_indices=[electrodes_num])
                     # print(calc_group_dists(electrodes[groups[group_ind]]))
                     electrodes_num += 1
                     electrodes_added += 1
@@ -268,8 +285,9 @@ def find_extra_electrodes(electrodes, groups, med_dist_ratio=0.3, max_iters_num=
 
 def fix_groups_after_deleting_electrode(groups, item_removed_ind):
     for group_ind in range(len(groups)):
-        if groups[group_ind] > item_removed_ind:
-            groups[group_ind] -= 1
+        groups[group_ind] = [g-1 if g > item_removed_ind else g for g in groups[group_ind]]
+        # if groups[group_ind] > item_removed_ind:
+        #     groups[group_ind] -= 1
     return groups
 
 
@@ -359,9 +377,9 @@ def find_depth_electrodes_in_ct(
             electrodes, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes, do_plot)
         ct_data = erase_voxels_from_ct(non_electrodes, ct_voxels_in_brain, clusters, ct_data, ct_header, brain_header)
         if len(non_electrodes) == 0:
+            electrodes, groups = find_extra_electrodes(electrodes, groups, med_dist_ratio=0.3, max_iters_num=10)
             electrodes, groups = find_missing_electrodes(
                 electrodes, groups, ct_data, ct_header, brain_header, threshold, med_dist_ratio=1.9, max_iters_num=10)
-            find_extra_electrodes(electrodes, groups, med_dist_ratio=0.3, max_iters_num=10)
         iters_num += 1
     if iters_num == max_iters:
         print("The algorithm didn't converge, non electrodes couldn't be cleaned.")
