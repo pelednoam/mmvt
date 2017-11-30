@@ -505,9 +505,23 @@ def find_voxels_above_threshold(ct_data, threshold):
     return np.array(np.where(ct_data > threshold)).T
 
 
-def load_object_and_export(subject, output_fol):
+def load_objects_and_export(subject, output_fol):
     electrodes, groups, groups_hemis = utils.load(op.join(output_fol, 'objects.pkl'))
     export_electrodes(subject, electrodes, groups, groups_hemis, output_fol)
+
+
+def load_objects_and_plot_specific_electrode():
+    electrodes, groups, groups_hemis = utils.load(op.join(output_fol, 'objects.pkl'))
+    groups_inds = {'R': 0, 'L': 0}
+    electrodes_colors = get_electrodes_colors(electrodes, groups)
+    for group, group_hemi in zip(groups, groups_hemis):
+        group_hemi = 'R' if group_hemi == 'rh' else 'L'
+        group_name = '{}G{}'.format(group_hemi, chr(ord('A') + groups_inds[group_hemi]))
+        elcs_names = ['{}{}'.format(group_name, k + 1) for k in range(len(group))]
+        if group_name == 'LGE':
+            utils.plot_3d_scatter(electrodes, names=[elcs_names[1]], labels_indices=[group[1]], fname=op.join(
+                output_fol, '{}.png'.format(group_name)), colors=electrodes_colors)
+        groups_inds[group_hemi] += 1
 
 
 def find_depth_electrodes_in_ct(
