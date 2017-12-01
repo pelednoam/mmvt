@@ -51,6 +51,32 @@ def dist3d(a, b):
     return np.linalg.norm(a-b)
 
 
+# def two_points_angle(pt1, pt2):
+#     return np.arccos(np.dot(pt1,pt2) / (np.linalg.norm(pt1) * np.linalg.norm(pt2)))
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+        https://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    ang1 = np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    ang2 = 2 * np.pi - ang1
+    return min(ang1, ang2)
+
+
 def point_in_cylinder(pt1, pt2, points, radius_sq):
     from scipy.spatial.distance import cdist
     dist = np.linalg.norm(pt1-pt2)

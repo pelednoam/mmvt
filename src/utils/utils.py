@@ -1087,6 +1087,7 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=
         plt.show()
     else:
         plt.savefig(fname)
+        plt.close()
 
 
 def plot_2d_scatter(X, names=None, labels=None, classifier=None):
