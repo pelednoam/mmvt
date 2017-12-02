@@ -224,6 +224,8 @@ def find_electrodes_groups(electrodes, output_fol, error_radius=3, min_elcs_for_
         electrodes, min_elcs_for_lead, max_dist_between_electrodes, error_radius)
     groups = join_electrodes_sub_groups(
         electrodes, sub_groups, max_dist_between_electrodes, error_radius, min_cylinders_ang)
+    if len(groups) == 0:
+        return None, electrodes, []
     groups = sort_groups(electrodes, groups)
     something_is_wrong = check_groups_cylinders(electrodes, groups, error_radius)
     if something_is_wrong:
@@ -333,15 +335,17 @@ def find_electrodes_sub_groups(electrodes, min_elcs_for_lead, max_dist_between_e
 
 
 def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, error_radius,
-                               min_cylinders_ang, debug=False):
+                               min_cylinders_ang, min_joined_items_num=1, debug=False):
     final_groups = []
     cylinders_angs = []
     ind = 0
     utils.make_dir(op.join(output_fol, 'sub_groups'))
     for group, i, j in groups:
+        groups_were_joined = False
         for final_group, k, l in final_groups:
-            if intersects(group, final_group, min_joined_items_num=1):
+            if intersects(group, final_group, min_joined_items_num):
                 cylinders_ang = trig.angle_between(electrodes[i] - electrodes[j], electrodes[k] - electrodes[l])
+                # We don't care if it's alpha or pie-alpha
                 cylinders_ang = min(np.pi - cylinders_ang, cylinders_ang)
                 if cylinders_ang < min_cylinders_ang:
                     cylinders_angs.append(cylinders_ang)
@@ -356,8 +360,11 @@ def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, 
                             join_electrodes_sub_groups_debug(
                                 electrodes, group, final_group, dists, cylinders_ang, error_radius, ind)
                             ind += 1
+                        groups_were_joined = True
                         break
-        else:
+        # check if the new group doesn't intersect with any of the final groups
+        if not groups_were_joined and \
+                all([not intersects(group, final_group, min_joined_items_num) for final_group,  k, l in final_groups]):
             ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[list(group)]])
             elcs = sorted(group, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
             dists = calc_group_dists(elcs)
@@ -588,8 +595,8 @@ def find_voxels_above_threshold(ct_data, threshold):
 def remove_too_close_electrodes(electrodes, ct_data, min_distance):
     dists = cdist(electrodes, electrodes)
     dists += np.eye(len(electrodes)) * min_distance * 2
-    inds = np.where(dists <= min_distance)[0]
-    if len(inds) > 0:
+    inds = np.where(dists <= min_distance)
+    if len(inds[0]) > 0:
         print('asdfsadf')
     return electrodes
 
@@ -622,7 +629,7 @@ def find_depth_electrodes_in_ct(
     brain = nib.load(brain_mask_fname)
     brain_header = brain.get_header()
     non_electrodes, iter_num = [None], 0
-    thresholds = [99.99, 99.995, 99.999] # 99, 99.9, 99.95,
+    thresholds = [99, 99.9, 99.95, 99.99, 99.995, 99.999] #
     thresholds_ind = 0
     threshold = np.percentile(ct_data, thresholds[thresholds_ind])
     print('Threshold: {}'.format(threshold))
