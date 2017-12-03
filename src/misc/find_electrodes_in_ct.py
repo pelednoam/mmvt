@@ -592,12 +592,22 @@ def find_voxels_above_threshold(ct_data, threshold):
     return np.array(np.where(ct_data > threshold)).T
 
 
-def remove_too_close_electrodes(electrodes, ct_data, min_distance):
+def remove_too_close_electrodes(electrodes, ct_data, ct_header, brain_header, min_distance):
     dists = cdist(electrodes, electrodes)
     dists += np.eye(len(electrodes)) * min_distance * 2
     inds = np.where(dists <= min_distance)
     if len(inds[0]) > 0:
-        print('asdfsadf')
+        pass
+        # pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+        # pairs = [[electrodes[p[k]] for k in range(2)] for p in pairs]
+        # pairs_ct = [([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        # lower_ct = [np.argmin([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        # higher_ct = [np.argmax([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        # elecs_to_remove = [p[h] for p, h in zip(pairs, lower_ct)]
+        # elecs_to_stay = [p[h] for p, h in zip(pairs, higher_ct)]
+        # colors = ['r' if k in elecs_to_remove else 'g' if k in elecs_to_stay else 'b' for k in range(len(electrodes))]
+        # utils.plot_3d_scatter(electrodes, colors=colors)
+        # electrodes = np.delete(electrodes, (elecs_to_remove), axis=0)
     return electrodes
 
 
@@ -621,8 +631,8 @@ def load_objects_and_plot_specific_electrode():
 
 
 def find_depth_electrodes_in_ct(
-        ct_fname, brain_mask_fname, n_components, output_fol, clustering_method='gmm', max_iters=5, cylinder_error_radius=3,
-        min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False):
+        ct_fname, brain_mask_fname, n_components, n_groups, output_fol, clustering_method='gmm', max_iters=5,
+        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
     ct_data = ct.get_data()
@@ -642,10 +652,10 @@ def find_depth_electrodes_in_ct(
             return
         ct_electrodes, clusters = clustering(ct_voxels, ct_data, n_components, output_fol, clustering_method)
         electrodes = ct_voxels_to_t1_ras_tkr(ct_electrodes, ct_header, brain_header)
-        electrodes = remove_too_close_electrodes(electrodes, ct_data, min_distance=2)
+        # electrodes = remove_too_close_electrodes(ct_electrodes, ct_data, ct_header, brain_header, min_distance=2)
         electrodes, non_electrodes, groups = find_electrodes_groups(
             electrodes, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes)
-        if electrodes is None or len(non_electrodes) == n_components:
+        if electrodes is None or len(non_electrodes) == n_components or len(groups) != n_groups:
             thresholds_ind += 1
             threshold = np.percentile(ct_data, thresholds[thresholds_ind])
             print('Threshold: {}'.format(threshold))
@@ -697,7 +707,7 @@ if __name__ == '__main__':
     output_fol = utils.make_dir(op.join(
         MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', utils.rand_letters(5)))
     find_depth_electrodes_in_ct(
-        ct_fname, brain_mask_fname, n_components=52, output_fol=output_fol, clustering_method='knn', max_iters=5,
+        ct_fname, brain_mask_fname, n_components=52, n_groups=6, output_fol=output_fol, clustering_method='knn', max_iters=5,
         cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)
 
     # input_fol = '/home/npeled/Documents/finding_electrodes_in_ct/a1cae'
