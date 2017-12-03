@@ -218,14 +218,17 @@ def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
     plt.show()
 
 
-def find_electrodes_groups(electrodes, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
+def find_electrodes_groups(electrodes, n_groups, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                            min_cylinders_ang=0.2):
     sub_groups = find_electrodes_sub_groups(
         electrodes, min_elcs_for_lead, max_dist_between_electrodes, error_radius)
     groups = join_electrodes_sub_groups(
         electrodes, sub_groups, max_dist_between_electrodes, error_radius, min_cylinders_ang)
     if len(groups) == 0:
+        print("Couldn't find any groups!")
         return None, electrodes, []
+    if len(groups) != n_groups:
+        print('number of groups ({}) != {}'.format(len(groups), n_groups))
     groups = sort_groups(electrodes, groups)
     something_is_wrong = check_groups_cylinders(electrodes, groups, error_radius)
     if something_is_wrong:
@@ -654,7 +657,7 @@ def find_depth_electrodes_in_ct(
         electrodes = ct_voxels_to_t1_ras_tkr(ct_electrodes, ct_header, brain_header)
         # electrodes = remove_too_close_electrodes(ct_electrodes, ct_data, ct_header, brain_header, min_distance=2)
         electrodes, non_electrodes, groups = find_electrodes_groups(
-            electrodes, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes)
+            electrodes, n_groups, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes)
         if electrodes is None or len(non_electrodes) == n_components or len(groups) != n_groups:
             thresholds_ind += 1
             threshold = np.percentile(ct_data, thresholds[thresholds_ind])
