@@ -43,6 +43,17 @@ def darpa(args):
         pu.run_on_subjects(args, anat.main)
 
 
+def darpa_prep(args):
+    for subject in args.subject:
+        darpa_subject = subject[:2].upper() + subject[2:]
+        args = anat.read_cmd_args(utils.Bag(
+            subject=subject,
+            function='prepare_subject_folder',
+            remote_subject_dir=op.join('/space/huygens/1/users/kara/{}_SurferOutput/'.format(darpa_subject))
+        ))
+        pu.run_on_subjects(args, anat.main)
+
+
 def darpa_sftp(args):
     for subject in args.subject:
         darpa_subject = subject[:2].upper() + subject[2:]

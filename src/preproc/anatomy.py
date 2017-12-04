@@ -24,7 +24,7 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 HEMIS = ['rh', 'lh']
 
 
-def cerebellum_segmentation(subject, remote_subject_dir, args, model='Buckner2011_7Networks', subregions_num=7):
+def cerebellum_segmentation(subject, remote_subject_dir, args, subregions_num=7, model='Buckner2011_7Networks'):
     # For cerebellum parcellation
     # http://www.freesurfer.net/fswiki/CerebellumParcellation_Buckner2011
     # First download the mask file and put it in the subject's mri folder
@@ -1318,7 +1318,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'cerebellum_segmentation' in args.function:
         flags['save_cerebellum_coloring'] = save_cerebellum_coloring(subject)
-        flags['cerebellum_segmentation'] = cerebellum_segmentation(subject, remote_subject_dir, args)
+        flags['cerebellum_segmentation'] = cerebellum_segmentation(
+            subject, remote_subject_dir, args, args.cerebellum_subregions_num)
 
     if 'transform_coordinates' in args.function:
         flags['transform_coordinates'] = transform_coordinates(subject, args)
@@ -1377,6 +1378,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--no_fs', help='no_fs', required=False, default=0, type=au.is_true)
     parser.add_argument('--matlab_cmd', help='matlab cmd', required=False, default='matlab')
     parser.add_argument('--solve_labels_collision_surf_type', help='', required=False, default='inflated')
+    parser.add_argument('--cerebellum_subregions_num', help='', required=False, default=7, type=int)
     parser.add_argument('--print_only', help='', required=False, default=False)
 
     parser.add_argument('--vertice_indice', help='', required=False, default=0, type=int)
