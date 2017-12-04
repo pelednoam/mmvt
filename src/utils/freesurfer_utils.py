@@ -354,8 +354,12 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname
         print("Error in warp_buckner_atlas, can't find the file {}".format(trans_fname))
         return False
     wrap_map_name = op.basename(wrap_map_fname)
+    # todo: check why we need to chage directory here
+    current_dir = os.getcwd()
+    os.chdir(op.join(subjects_dir, subject, 'mri') )
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(warp_buckner_atlas_cmd)
+    os.chdir(current_dir)
     if not op.isfile(wrap_map_fname):
         raise Exception('Error in warp_buckner_atlas!')
     else:
