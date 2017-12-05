@@ -1,8 +1,11 @@
 # http://hdbscan.readthedocs.io/en/latest/performance_and_scalability.html
 import os.path as op
 # import hdbscan
-import debacl
-import fastcluster
+try:
+    import debacl
+    import fastcluster
+except:
+    pass
 import sklearn.cluster
 import scipy.cluster
 import sklearn.datasets
@@ -12,6 +15,7 @@ import numpy as np
 import sklearn.cluster as cluster
 from sklearn import mixture
 import traceback
+import inspect
 
 from src.misc.dell import find_electrodes_in_ct as dell
 from src.utils import utils
@@ -51,12 +55,15 @@ def benchmark_algorithm(dataset_sizes, cluster_function, function_args, function
 
 def plot_clusters(electrodes, algorithm, algorithm_name, output_fol, args, kwds):
     try:
-        if algorithm_name.startswith('GMM'):
-            gmm = algorithm(*args, **kwds)
-            gmm.fit(electrodes)
-            electrodes_groups = gmm.predict(electrodes)
-        else:
-            electrodes_groups = algorithm(*args, **kwds).fit_predict(electrodes)
+        if inspect.isclass(algorithm):
+            if algorithm_name.startswith('GMM'):
+                gmm = algorithm(*args, **kwds)
+                gmm.fit(electrodes)
+                electrodes_groups = gmm.predict(electrodes)
+            else:
+                electrodes_groups = algorithm(*args, **kwds).fit_predict(electrodes)
+        elif inspect.isfunction(algorithm):
+            groups_centroids, _ = algorithm(electrodes, *args, **kwds)
     except:
         err = traceback.format_exc()
         print(err)
@@ -92,7 +99,7 @@ def init_algs(clusters_num):
 
 
 def compare(data, n_groups, output_fol):
-    # plot_clusters(data, scipy.cluster.vq.kmeans, 'scipy.cluster.vq.kmeans', output_fol, (n_groups,), {})
+    # plot_clusters(data.astype(np.float), scipy.cluster.vq.kmeans, 'scipy.cluster.vq.kmeans', output_fol, (n_groups,), {})
     plot_clusters(data, cluster.KMeans, 'KMeans', output_fol, (), {'n_clusters': n_groups})
     for ct in ['spherical', 'tied', 'diag', 'full']:
         plot_clusters(data, mixture.GaussianMixture, 'GMM_{}'.format(ct), output_fol, (),
@@ -106,11 +113,12 @@ def compare(data, n_groups, output_fol):
 
 
 if __name__ == '__main__':
-    root = '/homes/5/npeled/space1/Documents/finding_electrodes_in_ct/comparisson'
-    data_fname = op.join(root, 'af452', 'objects.pkl')
+    root = [f for f in ['/home/npeled/Documents', '/homes/5/npeled/space1/Documents'] if op.isdir(f)][0]
+    fol = op.join(root, 'finding_electrodes_in_ct', 'comparisson')
+    data_fname = op.join(fol, 'af452', 'objects.pkl')
     (subject, electrodes, groups, org_groups, groups_hemis, ct_electrodes, ct_voxels, threshold, n_components,
      n_groups) = utils.load(data_fname)
-    compare(ct_electrodes, n_groups, root)
+    compare(ct_electrodes, n_groups, fol)
     print('Cylinders: {} leads were found, with {} electrodes'.format(len(groups), [len(g) for g in groups]))
-    dell.plot_groups(electrodes, org_groups, output_fol=root, image_name='Cylinders')
+    dell.plot_groups(electrodes, org_groups, output_fol=fol, image_name='Cylinders')
     print('finish!')
