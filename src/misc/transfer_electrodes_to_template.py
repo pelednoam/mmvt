@@ -15,12 +15,12 @@ mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/m
 def register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
-        rs = utils.partial_run_script(locals(), print_only=print_only)
         cmd = mri_robust_register
         lta_name = 't1_to_{}'.format(subject_to)
         if vox2vox:
             cmd += ' --vox2vox'
             lta_name += '_vox2vox'
+        rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(cmd)
 
 
