@@ -95,7 +95,7 @@ if __name__ == '__main__':
     save_as_bipolar = False
     template_system = 'mni' # 'hc029' #''mni'
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=True)
+    register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
