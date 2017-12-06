@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 from collections import defaultdict
+import nibabel as nib
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -24,17 +25,67 @@ def register_to_template(subjects, template_system, subjects_dir, vox2vox=False,
         rs(cmd)
 
 
-def transfer_electrodes_to_template_system(electrodes, template_system):
+def apply_trans(trans, points):
+    if isinstance(points, list):
+        points = np.array(points)
+    ndim = points.ndim
+    if ndim == 1:
+        points = [points]
+    points = np.hstack((points, np.ones((len(points), 1))))
+    points = np.dot(trans, points.T).T
+    points = points[:, :3]
+    if ndim == 1:
+        points = points[0]
+    return points
+
+
+def lta_transfer_ras2ras(subject, coords):
+    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
+    if not op.isfile(lta_fname):
+        return None
+    lta = fu.get_lta(lta_fname)
+    subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+    template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
+    print('vox2ras:')
+    print(subject_header.get_vox2ras())
+    vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
+    ras = apply_trans(subject_header.get_vox2ras(), vox)
+    template_ras = apply_trans(lta, ras)
+    template_vox = apply_trans(template_header.get_ras2vox(), template_ras)
+    template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
+    return template_cords
+
+
+def lta_transfer_vox2vox(subject, coords):
+    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
+    if not op.isfile(lta_fname):
+        return None
+    lta = fu.get_lta(lta_fname)
+    subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+    template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
+    vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
+    template_vox = apply_trans(lta, vox)
+    template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
+    return template_cords
+
+
+def transfer_electrodes_to_template_system(electrodes, template_system, vox2vox=False):
     teamplte_electrodes = defaultdict(list)
     for subject in electrodes.keys():
+        if subject != 'mg101':
+            continue
         for elc_name, coords in electrodes[subject]:
-            if template_system == 'ras':
-                template_cords = fu.transform_subject_to_ras_coordinates(subject, coords, SUBJECTS_DIR)
-            elif template_system == 'mni':
-                template_cords = fu.transform_subject_to_mni_coordinates(subject, coords, SUBJECTS_DIR)
+            if vox2vox:
+                template_cords = lta_transfer_vox2vox(subject, coords)
             else:
-                template_cords = fu.transform_subject_to_subject_coordinates(
-                    subject, template_system, coords, SUBJECTS_DIR)
+                template_cords = lta_transfer_ras2ras(subject, coords)
+            # elif template_system == 'ras':
+            #     template_cords = fu.transform_subject_to_ras_coordinates(subject, coords, SUBJECTS_DIR)
+            # elif template_system == 'mni':
+            #     template_cords = fu.transform_subject_to_mni_coordinates(subject, coords, SUBJECTS_DIR)
+            # else:
+            #     template_cords = fu.transform_subject_to_subject_coordinates(
+            #         subject, template_system, coords, SUBJECTS_DIR)
             if template_cords is not None:
                 teamplte_electrodes[subject].append((elc_name, template_cords))
     return teamplte_electrodes
@@ -90,14 +141,39 @@ def export_into_csv(template_electrodes, template_system, prefix=''):
                 wr.writerow(['{}_{}'.format(subject, elc_name), *['{:.2f}'.format(x) for x in elc_coords]])
 
 
-
 if __name__ == '__main__':
-    root = '/homes/5/npeled/space1/Angelique/misc'
+    roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
+    root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
     template_system = 'hc029' #''mni'
+
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
+    # register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
+
+    subject = 'mg101'
+    tk_ras = [7.3, 37.9, 59]
+    ras = [6.08, 73.07, 17.80]
+    vox = [121, 69, 166]
+
+    template_tk_ras = [6.18, 52.26, 21.46]
+    template_vox = [122, 107, 180]
+
+    print(lta_transfer_ras2ras(subject, tk_ras))
+    print(lta_transfer_vox2vox(subject, tk_ras))
+
+    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
+    lta = fu.get_lta(lta_fname)
+    template_vox = apply_trans(lta, vox)
+    print(template_vox)
+
+    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
+    lta = fu.get_lta(lta_fname)
+    template_ras = apply_trans(lta, ras)
+    print(template_ras)
+
+
+    print('finish')

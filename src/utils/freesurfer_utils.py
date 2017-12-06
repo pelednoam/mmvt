@@ -604,6 +604,19 @@ def test_patch(subject):
     print('Finish!')
 
 
+def get_lta(lta_fame):
+    # https://github.com/pelednoam/ielu/blob/master/ielu/geometry.py#L182
+    affine = np.zeros((4,4))
+    with open(lta_fame) as fd:
+        for i,ln in enumerate(fd):
+            if i < 8:
+                continue
+            elif i > 11:
+                break
+            affine[i-8,:] = np.array(list(map(float, ln.strip().split())))
+    return affine
+
+
 if __name__ == '__main__':
     test_patch('sample')
 
