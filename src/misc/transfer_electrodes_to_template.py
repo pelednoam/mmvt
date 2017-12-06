@@ -2,6 +2,7 @@ import os.path as op
 import numpy as np
 from collections import defaultdict
 import nibabel as nib
+import glob
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -69,23 +70,25 @@ def lta_transfer_vox2vox(subject, coords):
     return template_cords
 
 
-def transfer_electrodes_to_template_system(electrodes, template_system, vox2vox=False):
+def transfer_electrodes_to_template_system(electrodes, template_system, use_mri_robust_lta=False, vox2vox=False):
     teamplte_electrodes = defaultdict(list)
     for subject in electrodes.keys():
-        if subject != 'mg101':
-            continue
+        # if subject != 'mg101':
+        #     continue
         for elc_name, coords in electrodes[subject]:
-            if vox2vox:
-                template_cords = lta_transfer_vox2vox(subject, coords)
+            if use_mri_robust_lta:
+                if vox2vox:
+                    template_cords = lta_transfer_vox2vox(subject, coords)
+                else:
+                    template_cords = lta_transfer_ras2ras(subject, coords)
             else:
-                template_cords = lta_transfer_ras2ras(subject, coords)
-            # elif template_system == 'ras':
-            #     template_cords = fu.transform_subject_to_ras_coordinates(subject, coords, SUBJECTS_DIR)
-            # elif template_system == 'mni':
-            #     template_cords = fu.transform_subject_to_mni_coordinates(subject, coords, SUBJECTS_DIR)
-            # else:
-            #     template_cords = fu.transform_subject_to_subject_coordinates(
-            #         subject, template_system, coords, SUBJECTS_DIR)
+                if template_system == 'ras':
+                    template_cords = fu.transform_subject_to_ras_coordinates(subject, coords, SUBJECTS_DIR)
+                elif template_system == 'mni':
+                    template_cords = fu.transform_subject_to_mni_coordinates(subject, coords, SUBJECTS_DIR)
+                else:
+                    template_cords = fu.transform_subject_to_subject_coordinates(
+                        subject, template_system, coords, SUBJECTS_DIR)
             if template_cords is not None:
                 teamplte_electrodes[subject].append((elc_name, template_cords))
     return teamplte_electrodes
@@ -141,20 +144,74 @@ def export_into_csv(template_electrodes, template_system, prefix=''):
                 wr.writerow(['{}_{}'.format(subject, elc_name), *['{:.2f}'.format(x) for x in elc_coords]])
 
 
-if __name__ == '__main__':
-    roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
-    root = [d for d in roots if op.isdir(d)][0]
-    csv_name = 'StimLocationsPatientList.csv'
-    save_as_bipolar = False
-    template_system = 'hc029' #''mni'
+def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas40'):
+    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template_elab_files = glob.glob(op.join(
+        MMVT_DIR, template, 'electrodes', f'{template}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
+    if len(template_elab_files) == 0:
+        print(f'No electrodes labeling file for {template}!')
+        return
+    elab_template = utils.load(template_elab_files[0])
+    errors = defaultdict(list)
+    for subject in electrodes.keys():
+        elab_files = glob.glob(op.join(
+            MMVT_DIR, subject, 'electrodes', f'{subject}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
+        if len(elab_files) == 0:
+            errors[subject].append(f'No electrodes labeling file for {subject}!')
+            print(f'No electrodes labeling file for {subject}!')
+            continue
+        errors[subject] = []
+        electrodes_names = [e[0] for e in electrodes[subject]]
+        elab = utils.load(elab_files[0])
+        elab = [e for e in elab if e['name'] in electrodes_names]
+        for elc in electrodes_names:
+            no_erros = True
+            elc_labeling = [e for e in elab if e['name'] == elc][0]
+            elc_labeling_template = [e for e in elab_template if e['name'] == f'{subject}_{elc}'][0]
+            for roi, prob in zip(elc_labeling['cortical_rois'], elc_labeling['cortical_probs']):
+                no_erros = no_erros and compare_rois_and_probs(
+                    subject, template, elc, roi, prob, elc_labeling['cortical_rois'],
+                    elc_labeling_template['cortical_rois'], elc_labeling_template['cortical_probs'])
+            for roi, prob in zip(elc_labeling['subcortical_rois'], elc_labeling['subcortical_probs']):
+                no_erros = no_erros and compare_rois_and_probs(
+                    subject, template, elc, roi, prob, elc_labeling['subcortical_rois'],
+                    elc_labeling_template['subcortical_rois'], elc_labeling_template['subcortical_probs'])
+            if no_erros:
+                print(f'{subject},{elc},Good!')
+    # print(errors)
 
-    electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    # register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
-    # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
-    # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
-    # export_into_csv(template_electrodes, template_system, 'stim_')
 
+def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
+                           elc_labeling_template_rois_probs):
+    no_erros = True
+    if roi not in elc_labeling_template_rois:
+        if prob > 0.05:
+            err = f'{subject},{elc},{roi} ({prob}) not in {template}'
+            print(err)
+            no_erros = False
+    else:
+        roi_ind = elc_labeling_template_rois.index(roi)
+        template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
+        if abs(prob - template_roi_prob) > 0.05:
+            err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
+            print(err)
+            no_erros = False
+    for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
+        if roi not in elc_labeling_rois and prob > 0.05:
+            err = f'{subject},{elc},{roi} ({prob}) only in {template}'
+            print(err)
+            no_erros = False
+    return no_erros
+
+
+def sanity_check():
     subject = 'mg101'
+    tk_ras = [-12.7,  36.8,  53.6]
+    ras = [-13.92, 71.97, 12.40]
+    vox = [141, 74, 165]
+    template_tk_ras = [-13.82, 51.16, 16.06]
+    template_vox = [142, 112, 179]
+
     tk_ras = [7.3, 37.9, 59]
     ras = [6.08, 73.07, 17.80]
     vox = [121, 69, 166]
@@ -168,12 +225,30 @@ if __name__ == '__main__':
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
     lta = fu.get_lta(lta_fname)
     template_vox = apply_trans(lta, vox)
-    print(template_vox)
+    print('template_vox', template_vox)
 
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
     lta = fu.get_lta(lta_fname)
-    template_ras = apply_trans(lta, ras)
-    print(template_ras)
+    template_tk_ras = apply_trans(lta, tk_ras)
+    print('template_tk_ras', template_tk_ras)
+
+
+if __name__ == '__main__':
+    roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
+    root = [d for d in roots if op.isdir(d)][0]
+    csv_name = 'StimLocationsPatientList.csv'
+    save_as_bipolar = False
+    template_system = 'hc029' #''mni'
+    atlas = 'aparc.DKTatlas40'
+
+    electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
+    print(','.join(electrodes.keys()))
+    # register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
+    # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
+    # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
+    # export_into_csv(template_electrodes, template_system, 'stim_')
+    compare_electrodes_labeling(electrodes, template_system, atlas)
+
 
 
     print('finish')

@@ -74,12 +74,12 @@ def where_i_am_draw(self, context):
     layout.operator(WhereAmI.bl_idname, text="Find closest object", icon='SNAP_SURFACE')
     if bpy.context.scene.where_am_i_str != '':
         layout.label(text=bpy.context.scene.where_am_i_str)
-    # if bpy.context.scene.subject_annot_files != '':
-    #     col = layout.box().column()
-    #     col.prop(context.scene, 'subject_annot_files', text='')
-    #     col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
-    #     if bpy.context.scene.closest_label_output != '':
-    #         col.label(text=bpy.context.scene.closest_label_output)
+    if bpy.context.scene.subject_annot_files != '':
+        col = layout.box().column()
+        col.prop(context.scene, 'subject_annot_files', text='')
+        col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
+        if bpy.context.scene.closest_label_output != '':
+            col.label(text=bpy.context.scene.closest_label_output)
 
     col = layout.box().column()
     if not GrowLabel.running:

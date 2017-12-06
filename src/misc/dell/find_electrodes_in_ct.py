@@ -223,6 +223,73 @@ def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
     plt.show()
 
 
+def find_frontal_points(subject, output_fol, atlas='aparc.DKTatlas40', debug=False):
+    from src.preproc import anatomy as anat
+    from src.utils import labels_utils as lu
+
+    output_fname = op.join(output_fol, 'frontal_points.pkl')
+    if op.isfile(output_fol):
+        return utils.load(output_fname)
+
+    verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if not utils.both_hemi_files_exist(verts_neighbors_fname):
+        print('calc_labeles_contours: You should first run create_spatial_connectivity')
+        anat.create_spatial_connectivity(subject)
+
+    contours = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    if not utils.both_hemi_files_exist(contours):
+        anat.calc_labeles_contours(subject, atlas)
+
+    rois = ['superiorfrontal','rostralmiddlefrontal', 'lateralorbitofrontal']
+    frontal_points = {}
+    for hemi in utils.HEMIS:
+        d = np.load(contours.format(hemi=hemi))
+        hemi_contours = d['contours']
+        surf, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+        vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        labels_names = [label.name for label in labels]
+        labels_contoures_inds = [set(np.where(hemi_contours == labels_names.index('{}-{}'.format(roi, hemi)) + 1)[0]) \
+                                 for roi in rois]
+        # _get_intersected_labels = partial(
+        #     get_intersected_labels, labels_contoures_inds=labels_contoures_inds, vertices_neighbors=vertices_neighbors)
+        # vertices_in_between = _get_intersected_labels(0, 1, 2) | _get_intersected_labels(1, 2, 0) | _get_intersected_labels(2, 1, 0)
+        vertices_in_between = \
+            (get_vertices_between_labels(labels_contoures_inds[0], labels_contoures_inds[1], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[0], labels_contoures_inds[2], vertices_neighbors)) | \
+            (get_vertices_between_labels(labels_contoures_inds[1], labels_contoures_inds[2], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[1], labels_contoures_inds[0], vertices_neighbors)) | \
+            (get_vertices_between_labels(labels_contoures_inds[2], labels_contoures_inds[1], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[2], labels_contoures_inds[0], vertices_neighbors))
+        vertices_coords = np.array([surf[verts] for verts in vertices_in_between])
+        # dists = cdist(vertices_coords, vertices_coords)
+        frontal_points[hemi] = np.mean(vertices_coords, axis=0)
+        if debug:
+            for vert in vertices_in_between:
+                new_label_name = f'frontal_{vert}_{hemi}'
+                new_label = lu.grow_label(subject, vert, hemi, new_label_name, 3, 4)
+                utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
+                new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
+                new_label.save(new_label_fname)
+
+    utils.save(frontal_points, output_fname)
+    return frontal_points
+
+
+def get_intersected_labels(labels_contoures_inds, vertices_neighbors, i, j, k):
+    return get_vertices_between_labels(labels_contoures_inds[i], labels_contoures_inds[j], vertices_neighbors) & \
+        get_vertices_between_labels(labels_contoures_inds[i], labels_contoures_inds[k], vertices_neighbors)
+
+
+def get_vertices_between_labels(label1_contours_verts_inds, label2_contours_verts_inds, vertices_neighbros):
+    vertices = []
+    for vert_ind in label1_contours_verts_inds:
+        for neighbor_vert in vertices_neighbros[vert_ind]:
+            if neighbor_vert in label2_contours_verts_inds:
+                vertices.append(vert_ind)
+    return set(vertices)
+
+
 def find_electrodes_groups(electrodes, n_groups, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                            min_cylinders_ang=0.2):
     sub_groups = find_electrodes_sub_groups(
@@ -654,7 +721,7 @@ def find_depth_electrodes_in_ct(
     brain = nib.load(brain_mask_fname)
     brain_header = brain.get_header()
     non_electrodes, iter_num = [None], 0
-    thresholds = [99, 99.9, 99.95, 99.99, 99.995, 99.999] #
+    thresholds = [99.99, 99.995, 99.999] # 99, 99.9, 99.95
     thresholds_ind = 0
     threshold = np.percentile(ct_data, thresholds[thresholds_ind])
     print('Threshold: {}'.format(threshold))
@@ -677,9 +744,6 @@ def find_depth_electrodes_in_ct(
         else:
             ct_data = erase_voxels_from_ct(non_electrodes, ct_voxels, clusters, ct_data, ct_header, brain_header)
             iter_num += 1
-        # ind = len(glob.glob(op.join(output_fol, 'objects_?.pk'))) + 1
-        # output_fname = op.join(output_fol, 'objects_{}.pkl'.format(ind))
-        # utils.save((subject, ct_data, electrodes), output_fname)
 
     org_groups = groups.copy()
     if iter_num == max_iters:
@@ -722,9 +786,11 @@ if __name__ == '__main__':
 
     output_fol = utils.make_dir(op.join(
         MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', utils.rand_letters(5)))
+    frontal_points = find_frontal_points(subject, output_fol)
     find_depth_electrodes_in_ct(
         ct_fname, brain_mask_fname, n_components=52, n_groups=6, output_fol=output_fol, clustering_method='knn',
         max_iters=5, cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)
+
 
     # input_fol = '/home/npeled/Documents/finding_electrodes_in_ct/a1cae'
     # input_fol = '/homes/5/npeled/space1/Documents/finding_electrodes_in_ct/a1cae'

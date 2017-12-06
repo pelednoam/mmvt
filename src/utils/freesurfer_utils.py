@@ -244,14 +244,58 @@ def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
     # TalXFM: subject/orig/transforms/talairach.xfm Norig: mri_info --vox2ras orig.mgz Torig: mri_info --vox2ras-tkr orig.mgz
 
 
+def transform_subject_to_ras_coordinates(subject, coords, subjects_dir):
+    t1_fname = op.join(subjects_dir, subject, 'mri', 'T1.mgz')
+    if op.isfile(t1_fname):
+        ndim = coords.ndim
+        if ndim == 1:
+            coords = np.array([coords])
+        t1_header = nib.load(t1_fname).get_header()
+        vox = apply_trans(np.linalg.inv(t1_header.get_vox2ras_tkr()), coords)
+        ras = apply_trans(t1_header.get_vox2ras(), vox)
+        if ndim == 1:
+            ras = ras[0]
+        return ras
+    else:
+        print('transform_subject_to_ras_coordinates: No {}!'.format(t1_fname))
+        return None
+
+
+def apply_trans(trans, points):
+    points = np.hstack((points, np.ones((len(points), 1))))
+    points = np.dot(trans, points.T).T
+    return points[:, :3]
+
+
+# def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir):
+#     import mne.transforms
+#     xfm_from = mne.source_space._read_talxfm(from_subject, subjects_dir, 'nibabel')
+#     xfm_to = mne.source_space._read_talxfm(to_subject, subjects_dir, 'nibabel')
+#     xfm_to_inv = mne.transforms.invert_transform(xfm_to)
+#     mni_coords = mne.transforms.apply_trans(xfm_from['trans'], coords)
+#     to_subject_coords = mne.transforms.apply_trans(xfm_to_inv['trans'], mni_coords)
+#     return to_subject_coords
+
+
 def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir):
-    import mne.transforms
-    xfm_from = mne.source_space._read_talxfm(from_subject, subjects_dir, 'nibabel')
-    xfm_to = mne.source_space._read_talxfm(to_subject, subjects_dir, 'nibabel')
-    xfm_to_inv = mne.transforms.invert_transform(xfm_to)
-    mni_coords = mne.transforms.apply_trans(xfm_from['trans'], coords)
-    to_subject_coords = mne.transforms.apply_trans(xfm_to_inv['trans'], mni_coords)
-    return to_subject_coords
+    t1_from_fname = op.join(subjects_dir, from_subject, 'mri', 'T1.mgz')
+    t1_to_fname = op.join(subjects_dir, to_subject, 'mri', 'T1.mgz')
+    if op.isfile(t1_from_fname) and op.isfile(t1_to_fname):
+        ndim = coords.ndim
+        if ndim == 1:
+            coords = np.array([coords])
+        t1_from_header = nib.load(t1_from_fname).get_header()
+        t1_to_header = nib.load(t1_to_fname).get_header()
+        vox_from = apply_trans(np.linalg.inv(t1_from_header.get_vox2ras_tkr()), coords)
+        ras = apply_trans(t1_from_header.get_vox2ras(), vox_from)
+        vox_to = apply_trans(t1_to_header.get_ras2vox(), ras)
+        tk_ras_to = apply_trans(t1_to_header.get_vox2ras_tkr(), vox_to)
+        if ndim == 1:
+            tk_ras_to = tk_ras_to[0]
+    else:
+        print('Both {} and {} should exist!'.format(t1_from_fname, t1_from_fname))
+        return None
+    return tk_ras_to
 
 
 @utils.check_for_freesurfer

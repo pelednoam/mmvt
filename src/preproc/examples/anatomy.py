@@ -54,6 +54,24 @@ def darpa_prep(args):
         pu.run_on_subjects(args, anat.main)
 
 
+def darpa_prep_angelique(args):
+    import glob
+    for subject in args.subject:
+        darpa_subject = subject[:2].upper() + subject[2:]
+        root = op.join('/homes/5/npeled/space1/Angelique/recon-alls', darpa_subject)
+        recon_all_dirs = glob.glob(op.join(root, '**', '*SurferOutput*'), recursive=True)
+        if len(recon_all_dirs) == 0:
+            print("Can't find the recon-all folder for {}!".format(subject))
+            continue
+        args = anat.read_cmd_args(utils.Bag(
+            subject=subject,
+            function='prepare_subject_folder',
+            remote_subject_dir=recon_all_dirs[0]
+        ))
+        pu.run_on_subjects(args, anat.main)
+
+
+
 def darpa_sftp(args):
     for subject in args.subject:
         darpa_subject = subject[:2].upper() + subject[2:]
