@@ -95,7 +95,7 @@ if __name__ == '__main__':
     root = '/homes/5/npeled/space1/Angelique/misc'
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'mni' # 'hc029' #''mni'
+    template_system = 'hc029' #''mni'
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
