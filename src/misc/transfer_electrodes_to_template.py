@@ -9,7 +9,7 @@ from src.utils import freesurfer_utils as fu
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
-mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/t1_to_{subject_to}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
+mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
 
 
 def register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
@@ -17,8 +17,10 @@ def register_to_template(subjects, template_system, subjects_dir, vox2vox=False,
     for subject_from in subjects:
         rs = utils.partial_run_script(locals(), print_only=print_only)
         cmd = mri_robust_register
+        lta_name = 't1_to_{}'.format(subject_to)
         if vox2vox:
             cmd += ' --vox2vox'
+            lta_name += '_vox2vox'
         rs(cmd)
 
 
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     save_as_bipolar = False
     template_system = 'mni' # 'hc029' #''mni'
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
+    register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=True)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
