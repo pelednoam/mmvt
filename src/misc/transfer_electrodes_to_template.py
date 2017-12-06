@@ -19,7 +19,7 @@ def register_to_template(subjects, template_system, subjects_dir, vox2vox=False,
         cmd = mri_robust_register
         if vox2vox:
             cmd += ' --vox2vox'
-        rs(mri_robust_register)
+        rs(cmd)
 
 
 def transfer_electrodes_to_template_system(electrodes, template_system):
