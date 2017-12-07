@@ -727,6 +727,7 @@ def load_objects_and_plot_hemis_sep(subject, input_fol):
 
 if __name__ == '__main__':
     subject = 'nmr01183'
+    subject = 'mg113'
     ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
     if not op.isfile(ct_fname):
         ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
