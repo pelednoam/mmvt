@@ -180,10 +180,13 @@ class CreateFreeviewFiles(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {} --ignore_missing 1'.format(
+        electrodes_pos_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes{}_positions.npz'.format(
+            '_bipolar' if bpy.context.scene.bipolar else ''))
+        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {} --electrodes_pos_fname {} --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas,
-            bpy.context.scene.bipolar)
+            bpy.context.scene.bipolar, electrodes_pos_fname)
         mu.run_command_in_new_thread(cmd, False)
+        bpy.context.scene.freeview_messages = 'Preparing...'
         return {"FINISHED"}
 
 
@@ -287,25 +290,25 @@ class FreeviewPanel(bpy.types.Panel):
         if bpy.data.objects.get('Deep_electrodes'):
             all_electrodes_exist = all([op.isfile(op.join(root, 'freeview', '{}.dat'.format(group)))
                                         for group in FreeviewPanel.electrodes_groups])
-        if all_electrodes_exist:
-            layout.operator(FreeviewOpen.bl_idname, text='Freeview', icon='PARTICLES')
-        else:
+        if not all_electrodes_exist:
             layout.operator(CreateFreeviewFiles.bl_idname, text='Create Freeview files', icon='PARTICLES')
-            return
-        if bpy.data.objects.get('Deep_electrodes'):
-            layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
-        fmri_files_template = op.join(mu.get_user_fol(),
-                'freeview','*{}*.{}'.format(bpy.context.scene.fmri_files, '{format}'))
-        fmri_vol_files = glob.glob(fmri_files_template.format(format='mgz')) + \
-                         glob.glob(fmri_files_template.format(format='nii'))
-        if bpy.context.scene.fMRI_files_exist and len(fmri_vol_files) > 0:
-            layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
-        if FreeviewPanel.CT_files_exist:
-            layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
+        else:
+            layout.operator(FreeviewOpen.bl_idname, text='Freeview', icon='PARTICLES')
+            if bpy.data.objects.get('Deep_electrodes'):
+                layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
+            fmri_files_template = op.join(mu.get_user_fol(),
+                    'freeview','*{}*.{}'.format(bpy.context.scene.fmri_files, '{format}'))
+            fmri_vol_files = glob.glob(fmri_files_template.format(format='mgz')) + \
+                             glob.glob(fmri_files_template.format(format='nii'))
+            if bpy.context.scene.fMRI_files_exist and len(fmri_vol_files) > 0:
+                layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
+            if FreeviewPanel.CT_files_exist:
+                layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
 
-        row = layout.row(align=0)
-        row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
-        row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
+            row = layout.row(align=0)
+            row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
+            row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
+
         if bpy.context.scene.freeview_messages != '':
             layout.label(text=context.scene.freeview_messages)
         # row = layout.row(align=0)

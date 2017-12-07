@@ -288,6 +288,7 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
             coords = np.array([coords])
         t1_from_header = nib.load(t1_from_fname).get_header()
         t1_to_header = nib.load(t1_to_fname).get_header()
+        # apply_trans(t1_to_header.get_vox2ras_tkr() @ t1_to_header.get_ras2vox() @ t1_from_header.get_vox2ras() @ np.linalg.inv(t1_from_header.get_vox2ras_tkr()), coords)
         vox_from = apply_trans(np.linalg.inv(t1_from_header.get_vox2ras_tkr()), coords)
         ras = apply_trans(t1_from_header.get_vox2ras(), vox_from)
         vox_to = apply_trans(t1_to_header.get_ras2vox(), ras)

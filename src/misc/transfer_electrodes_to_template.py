@@ -218,19 +218,13 @@ def sanity_check():
         subject, template_system, tk_ras, SUBJECTS_DIR)
     assert(all(np.isclose(template_tk_ras_true, template_tk_ras, rtol=1e-3)))
 
-    # print(lta_transfer_ras2ras(subject, tk_ras))
-    # print(lta_transfer_vox2vox(subject, vox))
-    #
-    # lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
-    # lta = fu.get_lta(lta_fname)
-    # template_vox = apply_trans(lta, vox)
-    # print('template_vox', template_vox)
-    #
-    # lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
-    # lta = fu.get_lta(lta_fname)
-    # template_tk_ras = apply_trans(lta, tk_ras)
-    # print('template_tk_ras', template_tk_ras)
-
+    subject = 'mg112'
+    # ROF1 - 2
+    tk_ras = [2.00, 29.00, 8.00]
+    ras = [-6.88, 50.40, -7.31]
+    template_tk_ras = fu.transform_subject_to_subject_coordinates(
+        subject, template_system, tk_ras, SUBJECTS_DIR)
+    print('asdf')
 
 if __name__ == '__main__':
     roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
