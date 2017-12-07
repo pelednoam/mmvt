@@ -708,6 +708,7 @@ def find_depth_electrodes_in_ct(
         med_dist_ratio=1.9, max_iter_num=10)
     sanity_check(electrodes, ct_header, brain_header, ct_data, threshold, output_fol)
     groups_hemis = find_electrodes_hemis(subject, electrodes, groups, overwrite)
+    groups, groups_hemis = sort_groups_in_hemis(subject, electrodes, groups, groups_hemis)
     export_electrodes(subject, electrodes, groups, groups_hemis, output_fol)
     utils.save((subject, electrodes, groups, org_groups, groups_hemis, ct_electrodes, ct_voxels, threshold, n_components, n_groups),
                op.join(output_fol, 'objects.pkl'))

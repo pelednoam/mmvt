@@ -40,21 +40,43 @@ def apply_trans(trans, points):
     return points
 
 
-def lta_transfer_ras2ras(subject, coords):
+def lta_transfer_ras2ras(subject, coords, return_trans=False):
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
     if not op.isfile(lta_fname):
         return None
     lta = fu.get_lta(lta_fname)
+    lta[np.isclose(lta, np.zeros(lta.shape))] = 0
     subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
     template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
-    print('vox2ras:')
-    print(subject_header.get_vox2ras())
     vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
     ras = apply_trans(subject_header.get_vox2ras(), vox)
     template_ras = apply_trans(lta, ras)
     template_vox = apply_trans(template_header.get_ras2vox(), template_ras)
     template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
-    return template_cords
+    if return_trans:
+        return template_cords, lta
+    else:
+        return template_cords
+
+
+def lta_transfer_ras2ras(subject, coords, return_trans=False):
+    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
+    if not op.isfile(lta_fname):
+        return None
+    lta = fu.get_lta(lta_fname)
+    lta[np.isclose(lta, np.zeros(lta.shape))] = 0
+    subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+    template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
+    vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
+    ras = apply_trans(subject_header.get_vox2ras(), vox)
+    template_ras = apply_trans(lta, ras)
+    template_vox = apply_trans(template_header.get_ras2vox(), template_ras)
+    template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
+    if return_trans:
+        return template_cords, lta
+    else:
+        return template_cords
+
 
 
 def lta_transfer_vox2vox(subject, coords):
@@ -214,9 +236,15 @@ def sanity_check():
     template_tk_ras_true = np.array([6.18, 52.26, 21.46])
     template_vox_true = np.array([122, 107, 180])
 
-    template_tk_ras = fu.transform_subject_to_subject_coordinates(
-        subject, template_system, tk_ras, SUBJECTS_DIR)
-    assert(all(np.isclose(template_tk_ras_true, template_tk_ras, rtol=1e-3)))
+    template_tk_ras, trans = fu.transform_subject_to_subject_coordinates(
+        subject, template_system, tk_ras, SUBJECTS_DIR, return_trans=True)
+    template_tk_ras2 = apply_trans(trans, tk_ras)
+    assert (all(np.isclose(template_tk_ras, template_tk_ras2, rtol=1e-3)))
+    lta = fu.get_lta(op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system)))
+    lta[np.isclose(trans, np.zeros(lta.shape))] = 0
+    print(lta-trans)
+    # template_lta_tk_ras = lta_transfer_ras2ras(subject, tk_ras)
+    # assert(all(np.isclose(template_tk_ras_true, template_tk_ras, rtol=1e-3)))
 
     subject = 'mg112'
     # ROF1 - 2
@@ -244,4 +272,12 @@ if __name__ == '__main__':
 
     sanity_check()
 
+    # mri_cvs_data_copy
+    # mri_cvs_check
+    # mri_cvs_register
+    '''
+    mri_vol2vol --mov $folder/w_MniNick.nii --targ $folder/MniNick.nii - --o 
+        $folder/outvol.mgz --m3z $folder/final_CVSmorph_toSynthF.m3z --noDefM3zPath 
+        --no-save-reg.
+    '''
     print('finish')

@@ -277,7 +277,7 @@ def apply_trans(trans, points):
 #     return to_subject_coords
 
 
-def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir):
+def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir, return_trans=False):
     t1_from_fname = op.join(subjects_dir, from_subject, 'mri', 'T1.mgz')
     t1_to_fname = op.join(subjects_dir, to_subject, 'mri', 'T1.mgz')
     if op.isfile(t1_from_fname) and op.isfile(t1_to_fname):
@@ -288,7 +288,10 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
             coords = np.array([coords])
         t1_from_header = nib.load(t1_from_fname).get_header()
         t1_to_header = nib.load(t1_to_fname).get_header()
-        # apply_trans(t1_to_header.get_vox2ras_tkr() @ t1_to_header.get_ras2vox() @ t1_from_header.get_vox2ras() @ np.linalg.inv(t1_from_header.get_vox2ras_tkr()), coords)
+        trans = t1_to_header.get_vox2ras_tkr() @ t1_to_header.get_ras2vox() @ t1_from_header.get_vox2ras() @ \
+                np.linalg.inv(t1_from_header.get_vox2ras_tkr())
+        trans[np.isclose(trans, np.zeros(trans.shape))] = 0
+        # apply_trans(trans, coords)
         vox_from = apply_trans(np.linalg.inv(t1_from_header.get_vox2ras_tkr()), coords)
         ras = apply_trans(t1_from_header.get_vox2ras(), vox_from)
         vox_to = apply_trans(t1_to_header.get_ras2vox(), ras)
@@ -298,7 +301,10 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
     else:
         print('Both {} and {} should exist!'.format(t1_from_fname, t1_from_fname))
         return None
-    return tk_ras_to
+    if return_trans:
+        return tk_ras_to, trans
+    else:
+        return tk_ras_to
 
 
 @utils.check_for_freesurfer
