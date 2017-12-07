@@ -67,7 +67,7 @@ def load_surf_files(nii_fname):
         if nii_fol != op.join(user_fol, 'fmri'):
             mu.make_link(other_hemi_fname, local_other_hemi_fname, True)
         fmri_file_template = mu.get_template_hemi_label_name(mu.namesbase_with_ext(local_fname))
-        cmd = '{} -m src.preproc.fMRI -s {} -f load_surf_files --fmri_file_template "{}"'.format(
+        cmd = '{} -m src.preproc.fMRI -s {} -f load_surf_files --fmri_file_template "{}" --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)
         mu.run_command_in_new_thread(cmd, False)
     return fmri_file_template, hemi

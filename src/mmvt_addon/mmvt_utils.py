@@ -2047,7 +2047,7 @@ def _read_annot(fname):
 
 def create_labels_contours():
     subject, atlas = get_user(), bpy.context.scene.subject_annot_files
-    cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours'.format(
+    cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours --ignore_missing 1'.format(
         bpy.context.scene.python_cmd, subject, atlas)
     run_command_in_new_thread(cmd, False)
 

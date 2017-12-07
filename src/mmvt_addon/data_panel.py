@@ -183,7 +183,7 @@ class AnatomyPreproc(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        cmd = '{} -m src.preproc.anatomy_preproc -s {} -a {}'.format(
+        cmd = '{} -m src.preproc.anatomy_preproc -s {} -a {} --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
         print('Running {}'.format(cmd))
         mu.run_command_in_new_thread(cmd, False)

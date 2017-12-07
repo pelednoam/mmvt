@@ -82,16 +82,20 @@ def open_freeview():
     if not op.isfile(T1):
         print('No T1 / orig files in freeview folder. Running preproc.freeview')
         bpy.context.scene.freeview_messages = 'Preparing... Try to run again'
-        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {}'.format(
+        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {} --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas, bpy.context.scene.bipolar)
         mu.run_command_in_new_thread(cmd, False)
         return {'RUNNING_MODAL'}
     bpy.context.scene.freeview_messages = ''
     aseg = op.join(root, 'freeview', '{}+aseg.mgz'.format(bpy.context.scene.atlas))
-    lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
+    if op.isfile(aseg):
+        lut = op.join(root, 'freeview', '{}ColorLUT.txt'.format(bpy.context.scene.atlas))
+        aseg_cmd = '"{}":opacity=0.05:colormap=lut:lut="{}"'.format(aseg, lut)
+    else:
+        aseg_cmd = ''
     electrodes_cmd = get_electrodes_command(root)
-    cmd = '{} "{}":opacity=0.5 "{}":opacity=0.05:colormap=lut:lut="{}"{}{}{}{}{}'.format(
-        FreeviewPanel.addon_prefs.freeview_cmd, T1, aseg, lut, electrodes_cmd, sig_cmd, ct_cmd,
+    cmd = '{} "{}":opacity=0.5 {}{}{}{}{}{}'.format(
+        FreeviewPanel.addon_prefs.freeview_cmd, T1, aseg_cmd, electrodes_cmd, sig_cmd, ct_cmd,
         ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
         ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
     print(cmd)
@@ -101,8 +105,9 @@ def open_freeview():
 def get_electrodes_command(root):
     if bpy.data.objects.get('Deep_electrodes') and bpy.context.scene.freeview_load_electrodes:
         cmd = ' -c '
-        groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar) for obj in bpy.data.objects['Deep_electrodes'].children])
-        for group in groups:
+        # groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar)
+        #               for obj in bpy.data.objects['Deep_electrodes'].children])
+        for group in FreeviewPanel.electrodes_groups:
             cmd += '"{}" '.format(op.join(root, 'freeview', '{}.dat'.format(group)))
     else:
         cmd = ''
@@ -166,6 +171,19 @@ class SliceViewerOpen(bpy.types.Operator):
             mri_fname=mri_fname, position=cursor_position)))
         if not ret:
             mu.message(self, 'Listener was stopped! Try to restart')
+        return {"FINISHED"}
+
+
+class CreateFreeviewFiles(bpy.types.Operator):
+    bl_idname = "mmvt.create_freeview_files"
+    bl_label = "CreateFreeviewFiles"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {} --ignore_missing 1'.format(
+            bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas,
+            bpy.context.scene.bipolar)
+        mu.run_command_in_new_thread(cmd, False)
         return {"FINISHED"}
 
 
@@ -263,8 +281,17 @@ class FreeviewPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        root = mu.get_user_fol()
         # row = layout.row(align=0)
-        layout.operator(FreeviewOpen.bl_idname, text="Freeview", icon='PARTICLES')
+        all_electrodes_exist = True
+        if bpy.data.objects.get('Deep_electrodes'):
+            all_electrodes_exist = all([op.isfile(op.join(root, 'freeview', '{}.dat'.format(group)))
+                                        for group in FreeviewPanel.electrodes_groups])
+        if all_electrodes_exist:
+            layout.operator(FreeviewOpen.bl_idname, text='Freeview', icon='PARTICLES')
+        else:
+            layout.operator(CreateFreeviewFiles.bl_idname, text='Create Freeview files', icon='PARTICLES')
+            return
         if bpy.data.objects.get('Deep_electrodes'):
             layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
         fmri_files_template = op.join(mu.get_user_fol(),
@@ -290,7 +317,6 @@ class FreeviewPanel(bpy.types.Panel):
 
 
 def init(addon, addon_prefs=None):
-    import shutil
     FreeviewPanel.addon = addon
     # print('freeview command: {}'.format(addon_prefs.freeview_cmd))
     # print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
@@ -300,7 +326,12 @@ def init(addon, addon_prefs=None):
     bpy.context.scene.freeview_listener_is_running = False
     bpy.context.scene.fMRI_files_exist = len(glob.glob(op.join(mu.get_user_fol(), 'fmri', '*_lh.npy'))) > 0
         #mu.hemi_files_exists(op.join(mu.get_user_fol(), 'fmri_{hemi}.npy'))
-    bpy.context.scene.electrodes_exist = not bpy.data.objects.get('Deep_electrodes', None) is None
+    bpy.context.scene.electrodes_exist = bpy.data.objects.get('Deep_electrodes', None) is not None
+    if bpy.context.scene.electrodes_exist:
+        FreeviewPanel.electrodes_groups = set([mu.elec_group(obj.name, bpy.context.scene.bipolar)
+                      for obj in bpy.data.objects['Deep_electrodes'].children])
+    else:
+        FreeviewPanel.electrodes_groups = []
     bpy.context.scene.freeview_messages = ''
     root = mu.get_user_fol()
     mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
@@ -319,6 +350,7 @@ def register():
         bpy.utils.register_class(FreeviewGotoCursor)
         bpy.utils.register_class(FreeviewSaveCursor)
         bpy.utils.register_class(FreeviewOpen)
+        bpy.utils.register_class(CreateFreeviewFiles)
         bpy.utils.register_class(FreeviewPanel)
         bpy.utils.register_class(SliceViewerOpen)
         # bpy.utils.register_class(FreeviewKeyboardListener)
@@ -332,6 +364,7 @@ def unregister():
         bpy.utils.unregister_class(FreeviewGotoCursor)
         bpy.utils.unregister_class(FreeviewSaveCursor)
         bpy.utils.unregister_class(FreeviewOpen)
+        bpy.utils.unregister_class(CreateFreeviewFiles)
         bpy.utils.unregister_class(FreeviewPanel)
         bpy.utils.unregister_class(SliceViewerOpen)
         # bpy.utils.unregister_class(FreeviewKeyboardListener)

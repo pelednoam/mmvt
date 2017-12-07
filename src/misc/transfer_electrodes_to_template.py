@@ -206,31 +206,30 @@ def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois,
 
 def sanity_check():
     subject = 'mg101'
-    tk_ras = [-12.7,  36.8,  53.6]
-    ras = [-13.92, 71.97, 12.40]
-    vox = [141, 74, 165]
-    template_tk_ras = [-13.82, 51.16, 16.06]
-    template_vox = [142, 112, 179]
-
+    template_system = 'hc029'
+    # mg101 RMF3 to hc029
     tk_ras = [7.3, 37.9, 59]
     ras = [6.08, 73.07, 17.80]
     vox = [121, 69, 166]
+    template_tk_ras_true = np.array([6.18, 52.26, 21.46])
+    template_vox_true = np.array([122, 107, 180])
 
-    template_tk_ras = [6.18, 52.26, 21.46]
-    template_vox = [122, 107, 180]
+    template_tk_ras = fu.transform_subject_to_subject_coordinates(
+        subject, template_system, tk_ras, SUBJECTS_DIR)
+    assert(all(np.isclose(template_tk_ras_true, template_tk_ras, rtol=1e-3)))
 
-    print(lta_transfer_ras2ras(subject, tk_ras))
-    print(lta_transfer_vox2vox(subject, tk_ras))
-
-    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
-    lta = fu.get_lta(lta_fname)
-    template_vox = apply_trans(lta, vox)
-    print('template_vox', template_vox)
-
-    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
-    lta = fu.get_lta(lta_fname)
-    template_tk_ras = apply_trans(lta, tk_ras)
-    print('template_tk_ras', template_tk_ras)
+    # print(lta_transfer_ras2ras(subject, tk_ras))
+    # print(lta_transfer_vox2vox(subject, vox))
+    #
+    # lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
+    # lta = fu.get_lta(lta_fname)
+    # template_vox = apply_trans(lta, vox)
+    # print('template_vox', template_vox)
+    #
+    # lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
+    # lta = fu.get_lta(lta_fname)
+    # template_tk_ras = apply_trans(lta, tk_ras)
+    # print('template_tk_ras', template_tk_ras)
 
 
 if __name__ == '__main__':
@@ -241,14 +240,14 @@ if __name__ == '__main__':
     template_system = 'hc029' #''mni'
     atlas = 'aparc.DKTatlas40'
 
-    electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    print(','.join(electrodes.keys()))
+    # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
+    # print(','.join(electrodes.keys()))
     # register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
-    compare_electrodes_labeling(electrodes, template_system, atlas)
+    # compare_electrodes_labeling(electrodes, template_system, atlas)
 
-
+    sanity_check()
 
     print('finish')

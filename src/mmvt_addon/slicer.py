@@ -16,7 +16,7 @@ def init(modality, modality_data=None, colormap=None):
         else:
             print('To see the slices the following command is being called:'.format(modality))
             print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
-            cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header'.format(
+            cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header --ignore_missing 1'.format(
                 bpy.context.scene.python_cmd, mu.get_user())
             mu.run_command_in_new_thread(cmd, False)
             return None

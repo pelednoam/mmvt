@@ -123,7 +123,7 @@ def vox_to_ras(points, subject_orig_header=None, subject='', subjects_dir=''):
 
 def get_subject_orig_header(subject, subjects_dir):
     if op.isdir(op.join(subjects_dir, subject)):
-        d = nib.load(op.join(subjects_dir, subject, 'mri', 'orig.mgz'))
+        d = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz'))# 'orig.mgz'))
         subject_orig_header = d.get_header()
     else:
         raise Exception('subject_orig_header is None and subjects_dir/subject is not a dir')

@@ -1030,7 +1030,7 @@ def color_manually():
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
 
     if op.isfile(op.join(subject_fol, 'coloring', '{}_legend.jpg'.format(bpy.context.scene.coloring_files))):
-        cmd = '{} -m src.preproc.electrodes_preproc -s {} -a {} -f show_labeling_coloring'.format(
+        cmd = '{} -m src.preproc.electrodes_preproc -s {} -a {} -f show_labeling_coloring --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
         print('Running {}'.format(cmd))
         mu.run_command_in_new_thread(cmd, False)

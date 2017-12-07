@@ -281,6 +281,8 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
     t1_from_fname = op.join(subjects_dir, from_subject, 'mri', 'T1.mgz')
     t1_to_fname = op.join(subjects_dir, to_subject, 'mri', 'T1.mgz')
     if op.isfile(t1_from_fname) and op.isfile(t1_to_fname):
+        if isinstance(coords, list):
+            coords = np.array(coords)
         ndim = coords.ndim
         if ndim == 1:
             coords = np.array([coords])

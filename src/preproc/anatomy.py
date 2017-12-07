@@ -519,6 +519,68 @@ def create_spatial_connectivity(subject):
     return success
 
 
+def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', atlas='aparc.DKTatlas40', debug=False,
+                                 overwrite=False):
+
+    def get_vertices_between_labels(label1_contours_verts_inds, label2_contours_verts_inds, vertices_neighbros):
+        vertices = []
+        for vert_ind in label1_contours_verts_inds:
+            for neighbor_vert in vertices_neighbros[vert_ind]:
+                if neighbor_vert in label2_contours_verts_inds:
+                    vertices.append(vert_ind)
+        return set(vertices)
+
+    if output_fol != '':
+        output_fol = utils.make_dir(output_fol)
+        if model_name == '':
+            model_name = '{}_intersection.pkl'.format('_'.join(rois))
+        output_fname = op.join(output_fol, model_name)
+        if op.isfile(output_fname) and not overwrite:
+            return utils.load(output_fname)
+
+    verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
+    if not utils.both_hemi_files_exist(verts_neighbors_fname):
+        print('calc_labeles_contours: You should first run create_spatial_connectivity')
+        create_spatial_connectivity(subject)
+
+    contours = op.join(MMVT_DIR, subject, 'labels', '{}_contours_{}.npz'.format(atlas, '{hemi}'))
+    if not utils.both_hemi_files_exist(contours):
+        calc_labeles_contours(subject, atlas)
+
+    intesection_points = {}
+    for hemi in utils.HEMIS:
+        d = np.load(contours.format(hemi=hemi))
+        hemi_contours = d['contours']
+        surf, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+        vertices_neighbors = np.load(verts_neighbors_fname.format(hemi=hemi))
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+        labels_names = [label.name for label in labels]
+        labels_contoures_inds = [set(np.where(hemi_contours == labels_names.index('{}-{}'.format(roi, hemi)) + 1)[0]) \
+                                 for roi in rois]
+        vertices_in_between = \
+            (get_vertices_between_labels(labels_contoures_inds[0], labels_contoures_inds[1], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[0], labels_contoures_inds[2], vertices_neighbors)) | \
+            (get_vertices_between_labels(labels_contoures_inds[1], labels_contoures_inds[2], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[1], labels_contoures_inds[0], vertices_neighbors)) | \
+            (get_vertices_between_labels(labels_contoures_inds[2], labels_contoures_inds[1], vertices_neighbors) & \
+            get_vertices_between_labels(labels_contoures_inds[2], labels_contoures_inds[0], vertices_neighbors))
+        vertices_coords = np.array([surf[verts] for verts in vertices_in_between])
+        # dists = cdist(vertices_coords, vertices_coords)
+        intesection_points[hemi] = np.mean(vertices_coords, axis=0)
+        if debug:
+            prefix = '_'.join(rois)
+            for vert in vertices_in_between:
+                new_label_name = f'{prefix}_{vert}_{hemi}'
+                new_label = lu.grow_label(subject, vert, hemi, new_label_name, 3, 4)
+                utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
+                new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
+                new_label.save(new_label_fname)
+
+    if output_fol != '':
+        utils.save(intesection_points, output_fname)
+    return intesection_points
+
+
 def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=True):
     output_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
     if op.isfile(output_fname) and not overwrite:
@@ -584,7 +646,7 @@ def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=Tr
 
 
 def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros, contours):
-    bad_vertices = []
+    vertices_between_labels = []
     label1_code = [label.name for label in labels].index('{}-{}'.format(label1, hemi))+1
     label2_code = [label.name for label in labels].index('{}-{}'.format(label2, hemi))+1
 
@@ -594,11 +656,11 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
     for vert_ind in label1_contours_verts_inds[0]:
         for neighbor_vert in vertices_neighbros[vert_ind]:
             if neighbor_vert in label2_contours_verts_inds[0]:
-                bad_vertices.append(vert_ind)
+                vertices_between_labels.append(vert_ind)
                 break
-    if len(bad_vertices)==0:
-        print('empty bad vertices for pair {} and {}'.format(label1, label2))
-    return bad_vertices
+    if len(vertices_between_labels)==0:
+        print('empty vertices_between_labels for pair {} and {}'.format(label1, label2))
+    return vertices_between_labels
 
 
 # def get_neighbros_of_seems(all_verts,seem_verts,vertices_neighbors,output_fname,hemi):

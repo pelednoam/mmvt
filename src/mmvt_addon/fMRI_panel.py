@@ -543,7 +543,7 @@ class RefinefMRIClusters(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         self._timer = context.window_manager.event_timer_add(0.1, context.window)
         mu.change_fol_to_mmvt_root()
-        cmd = '{} -m src.preproc.fMRI_preproc -s {} -T {} -c {} -t {} -a {} -f find_clusters'.format(
+        cmd = '{} -m src.preproc.fMRI_preproc -s {} -T {} -c {} -t {} -a {} -f find_clusters --ignore_missing 1'.format(
             bpy.context.scene.python_cmd, subject, task, contrast, threshold, atlas)
         print('Running {}'.format(cmd))
         self.in_q, self.out_q = mu.run_command_in_new_thread(cmd)

@@ -357,7 +357,7 @@ def grow_a_label():
     label_name, label_r = bpy.context.scene.new_label_name, bpy.context.scene.new_label_r
     cmd = '{} -m src.preproc.anatomy -s {} -a {} -f grow_label '.format(
         bpy.context.scene.python_cmd, subject, atlas)
-    cmd += '--vertice_indice {} --hemi {} --label_name {} --label_r {}'.format(vertex_ind, hemi, label_name, label_r)
+    cmd += '--vertice_indice {} --hemi {} --label_name {} --label_r {} --ignore_missing 1'.format(vertex_ind, hemi, label_name, label_r)
     mu.run_command_in_new_thread(cmd, False)
 
 
