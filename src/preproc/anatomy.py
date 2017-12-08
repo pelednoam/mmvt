@@ -950,26 +950,6 @@ def save_subject_orig_trans(subject, modality='mri'):
     header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
     ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
     np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    # if modality == 'mri':
-    ret = op.isfile(output_fname)
-    # elif modality == 'ct':
-    ct_ret = save_subject_ct_trans(subject)
-    return ret
-
-
-def save_subject_ct_trans(subject):
-    output_fname = op.join(MMVT_DIR, subject, 'ct_trans.npz')
-    ct_fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
-    if not op.isfile(ct_fname):
-        subjects_ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
-        if op.isfile(subjects_ct_fname):
-            shutil.copy(subjects_ct_fname, ct_fname)
-        else:
-            print("Can't find subject's CT! ({})".format(ct_fname))
-            return False
-    header = nib.load(ct_fname).header
-    ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
-    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
     return op.isfile(output_fname)
 
 
@@ -1228,46 +1208,32 @@ def get_image_data(image_data, order, flips, ii, pos):
 
 
 def save_images_data_and_header(subject):
-    def get_data_and_header(subject, modality):
+    def get_data_and_header(subject):
         # print('Loading header and data for {}, {}'.format(subject, modality))
         utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-        if modality == 'mri':
-            fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
-            if not op.isfile(fname):
-                subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
-                if op.isfile(subjects_fname):
-                    shutil.copy(subjects_fname, fname)
-                else:
-                    print("Can't find subject's T1.mgz!")
-                    return None, None
-        elif modality == 'ct':
-            fname = op.join(MMVT_DIR, subject, 'freeview', 'ct.mgz')
-            if not op.isfile(fname):
-                subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'ct.mgz')
-                if op.isfile(subjects_fname):
-                    shutil.copy(subjects_fname, fname)
-                else:
-                    print("Can't find subject's CT! ({})".format(fname))
-                    return None, None
-        else:
-            print('create_slices: The modality {} is not supported!')
-            return None, None
+        fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
+        if not op.isfile(fname):
+            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+            if op.isfile(subjects_fname):
+                shutil.copy(subjects_fname, fname)
+            else:
+                print("Can't find subject's T1.mgz!")
+                return None, None
         header = nib.load(fname)
         data = header.get_data()
         return data, header
 
     ret = True
-    for modality in ['mri', 'ct']:
-        data, header = get_data_and_header(subject, modality)
-        if data is None or header is None:
-            continue
-        affine = header.affine
-        precentiles = np.percentile(data, (1, 99))
-        colors_ratio = 256 / (precentiles[1] - precentiles[0])
-        output_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_data.npz'.format(modality))
-        if not op.isfile(output_fname):
-            np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
-        ret = ret and op.isfile(output_fname)
+    data, header = get_data_and_header(subject)
+    if data is None or header is None:
+        return False
+    affine = header.affine
+    precentiles = np.percentile(data, (1, 99))
+    colors_ratio = 256 / (precentiles[1] - precentiles[0])
+    output_fname = op.join(MMVT_DIR, subject, 'freeview', 'mri_data.npz')
+    if not op.isfile(output_fname):
+        np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
+    ret = ret and op.isfile(output_fname)
     return ret
 
 

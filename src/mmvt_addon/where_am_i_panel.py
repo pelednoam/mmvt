@@ -764,7 +764,7 @@ class WhereAmIPanel(bpy.types.Panel):
 def init(addon):
     try:
         trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
-        ct_trans_fname = op.join(mu.get_user_fol(), 'ct_trans.npz')
+        ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
         volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))
         luts = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*ColorLUT.npz'))
         if op.isfile(trans_fname):

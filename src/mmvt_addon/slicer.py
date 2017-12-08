@@ -10,7 +10,10 @@ from coloring_panel import calc_colors
 
 def init(modality, modality_data=None, colormap=None):
     if modality_data is None:
-        fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))
+        if modality == 'ct':
+            fname = op.join(mu.get_user_fol(), 'ct', 'ct_data.npz'.format(modality))
+        else:
+            fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))
         if op.isfile(fname):
             modality_data = mu.Bag(np.load(fname))
         else:

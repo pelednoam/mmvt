@@ -487,7 +487,7 @@ def init(addon):
     bpy.types.Scene.is_sliced_ind = bpy.props.IntProperty(default=-1)
     bpy.context.scene.last_cursor_location = (0.0, 0.0, 0.0)
     bpy.context.scene.is_sliced_ind = -1
-    ct_trans_fname = op.join(mu.get_user_fol(), 'ct_trans.npz')
+    ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
     if op.isfile(ct_trans_fname):
         SlicerPanel.ct_exist = True
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(

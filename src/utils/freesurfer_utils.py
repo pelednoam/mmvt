@@ -42,6 +42,10 @@ mri_aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.
 
 mris_flatten = 'mris_flatten {hemi}.inflated.patch {hemi}.flat.patch'
 
+mri_robust_register = 'mri_robust_register --mov {source_fname} --dst {target_fname} --lta {lta_fname} ' + \
+                      '--satit --vox2vox --mapmov {output_fname} --cost {cost_function}'
+
+
 @utils.check_for_freesurfer
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
     temp_output = output_fname is None
@@ -657,7 +661,7 @@ def test_patch(subject):
     print('Finish!')
 
 
-def get_lta(lta_fame):
+def read_lta_file(lta_fame):
     # https://github.com/pelednoam/ielu/blob/master/ielu/geometry.py#L182
     affine = np.zeros((4,4))
     with open(lta_fame) as fd:
@@ -668,6 +672,17 @@ def get_lta(lta_fame):
                 break
             affine[i-8,:] = np.array(list(map(float, ln.strip().split())))
     return affine
+
+
+@utils.check_for_freesurfer
+def robust_register(subject, subjects_dir, source_fname, target_fname, output_fname, lta_name,
+                    cost_function='nmi', print_only=False):
+    xfms_dir = op.join(subjects_dir, subject, 'mri', 'transforms')
+    utils.make_dir(xfms_dir)
+    lta_fname = op.join(xfms_dir, lta_name)
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(mri_robust_register)
+    return read_lta_file(lta_fname)
 
 
 if __name__ == '__main__':

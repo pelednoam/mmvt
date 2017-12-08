@@ -51,7 +51,8 @@ def get_modality_trans_file(subject, modality):
         if not op.isfile(trans_fname):
             anat.save_subject_orig_trans(subject)
     elif modality == 'ct':
-        trans_fname = op.join(MMVT_DIR, subject, 'ct_trans.npz')
+        utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+        trans_fname = op.join(MMVT_DIR, subject, 'ct', 'ct_trans.npz')
         if not op.isfile(trans_fname):
             anat.save_subject_ct_trans(subject)
     else:

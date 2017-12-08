@@ -44,7 +44,7 @@ def lta_transfer_ras2ras(subject, coords, return_trans=False):
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
     if not op.isfile(lta_fname):
         return None
-    lta = fu.get_lta(lta_fname)
+    lta = fu.read_lta_file(lta_fname)
     lta[np.isclose(lta, np.zeros(lta.shape))] = 0
     subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
     template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
@@ -63,7 +63,7 @@ def lta_transfer_ras2ras(subject, coords, return_trans=False):
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
     if not op.isfile(lta_fname):
         return None
-    lta = fu.get_lta(lta_fname)
+    lta = fu.read_lta_file(lta_fname)
     lta[np.isclose(lta, np.zeros(lta.shape))] = 0
     subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
     template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
@@ -83,7 +83,7 @@ def lta_transfer_vox2vox(subject, coords):
     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}_vox2vox.lta'.format(template_system))
     if not op.isfile(lta_fname):
         return None
-    lta = fu.get_lta(lta_fname)
+    lta = fu.read_lta_file(lta_fname)
     subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
     template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
     vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
@@ -240,7 +240,7 @@ def sanity_check():
         subject, template_system, tk_ras, SUBJECTS_DIR, return_trans=True)
     template_tk_ras2 = apply_trans(trans, tk_ras)
     assert (all(np.isclose(template_tk_ras, template_tk_ras2, rtol=1e-3)))
-    lta = fu.get_lta(op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system)))
+    lta = fu.read_lta_file(op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system)))
     lta[np.isclose(trans, np.zeros(lta.shape))] = 0
     print(lta-trans)
     # template_lta_tk_ras = lta_transfer_ras2ras(subject, tk_ras)
