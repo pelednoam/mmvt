@@ -74,7 +74,7 @@ def register_ct_to_mr_using_mutual_information(
     if op.isfile(lta_fname) and op.isfile(output_fname) and not overwrite:
         return fu.read_lta_file(lta_fname)
 
-    rawavg = op.join(subjects_dir, subject, 'mri', 'rawavg.mgz')
+    rawavg = op.join(subjects_dir, subject, 'mri', 'T1.mgz') #''rawavg.mgz')
     if output_fname == '':
         output_fname = op.join(utils.get_parent_fol(ct_fname), 'ct_reg_to_mr.mgz')
 
