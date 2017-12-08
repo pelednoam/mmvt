@@ -442,9 +442,13 @@ def get_tr(fmri_fname):
 
 
 @utils.check_for_freesurfer
-def mri_convert(org_fname, new_fname, overwrite=False):
+def mri_convert(org_fname, new_fname, overwrite=False, print_only=False):
+    cmd = 'mri_convert {} {}'.format(org_fname, new_fname)
+    if print_only:
+        print(cmd)
+        return
     if not op.isfile(new_fname) or overwrite:
-        utils.run_script('mri_convert {} {}'.format(org_fname, new_fname))
+        utils.run_script(cmd)
     if op.isfile(new_fname):
         return new_fname
     else:
@@ -682,7 +686,7 @@ def robust_register(subject, subjects_dir, source_fname, target_fname, output_fn
     lta_fname = op.join(xfms_dir, lta_name)
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(mri_robust_register)
-    return read_lta_file(lta_fname)
+    return True if print_only else op.isfile(lta_fname)
 
 
 if __name__ == '__main__':

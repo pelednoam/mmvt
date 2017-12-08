@@ -40,6 +40,7 @@ def init_args(args):
     os.environ['SUBJECTS_DIR'] = SUBJECTS_DIR
     return args
 
+
 def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
     if subjects_itr is None:
         subjects_itr = args.subject

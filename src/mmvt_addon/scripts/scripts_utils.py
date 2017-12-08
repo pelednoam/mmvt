@@ -445,18 +445,18 @@ def read_list_from_file(fname):
     return arr
 
 
-def select_one_file(files, template='', files_desc='', print_title=True):
+def select_one_file(files, template='', files_desc='', print_title=True, is_dir=False):
     if len(files) == 1:
         return files[0]
     elif len(files) == 0:
-        print('No file was found ({})'.format(template))
+        print('No {} was found ({})'.format('file' if not is_dir else 'dir', template))
         return None
     if print_title:
-        print('More than one {} files were found {}, please pick one.'.format(
-            files_desc, 'in {}'.format(template) if template != '' else ''))
+        print('More than one {} {} were found {}, please pick one.'.format(
+            files_desc, 'files' if not is_dir else 'dirs',  'in {}'.format(template) if template != '' else ''))
     for ind, fname in enumerate(files):
         print('{}) {}'.format(ind + 1, fname))
-    input_str = 'Which one do you want to load (1, 2, ...)? Press 0 to cancel'
+    input_str = 'Which one do you want to pick (1, 2, ...)? Press 0 to cancel'
     file_num = input(input_str)
     while not is_int(file_num):
         print('Please enter a valid integer')

@@ -46,9 +46,9 @@ def gmm_optimization(data, n_components):
 
 def clustering(data, ct_data, n_components, output_fol='', clustering_method='gmm', covariance_type='full'):
     if clustering_method == 'gmm':
-        centroids, Y = gmm_clustering(data, n_components, covariance_type)
+        centroids, Y = gmm_clustering(data, n_components, covariance_type, output_fol)
     elif clustering_method == 'knn':
-        centroids, Y = knn_clustering(data, n_components)
+        centroids, Y = knn_clustering(data, n_components, output_fol)
     centroids = np.zeros(centroids.shape, dtype=np.int)
     labels = np.unique(Y)
     centroid_inds = []
@@ -63,7 +63,7 @@ def clustering(data, ct_data, n_components, output_fol='', clustering_method='gm
     return centroids, Y
 
 
-def knn_clustering(data, n_components):
+def knn_clustering(data, n_components, output_fol=''):
     kmeans = KMeans(n_clusters=n_components, random_state=0).fit(data)
     if output_fol != '':
         ind = len(glob.glob(op.join(output_fol, 'kmeans_model_?.pk'))) + 1
@@ -74,7 +74,7 @@ def knn_clustering(data, n_components):
     return centroids, Y
 
 
-def gmm_clustering(data, n_components, covariance_type='full'):
+def gmm_clustering(data, n_components, covariance_type='full', output_fol=''):
     gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
     gmm.fit(data)
     if output_fol != '':
@@ -224,11 +224,11 @@ def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
 
 
 def find_electrodes_groups(electrodes, n_groups, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
-                           min_cylinders_ang=0.2):
+                           min_cylinders_ang=0.2, debug=False):
     sub_groups = find_electrodes_sub_groups(
         electrodes, min_elcs_for_lead, max_dist_between_electrodes, error_radius)
     groups = join_electrodes_sub_groups(
-        electrodes, sub_groups, max_dist_between_electrodes, error_radius, min_cylinders_ang, output_fol)
+        electrodes, sub_groups, max_dist_between_electrodes, error_radius, min_cylinders_ang, output_fol, debug=debug)
     if len(groups) == 0:
         print("Couldn't find any groups!")
         return None, electrodes, []
@@ -668,20 +668,22 @@ def load_objects_and_plot_specific_electrode():
 
 def find_depth_electrodes_in_ct(
         ct_fname, brain_mask_fname, n_components, n_groups, output_fol='', clustering_method='gmm', max_iters=5,
-        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False):
+        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20,
+        thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999), overwrite=False, debug=False):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
     ct_data = ct.get_data()
     brain = nib.load(brain_mask_fname)
     brain_header = brain.get_header()
     non_electrodes, iter_num = [None], 0
-    thresholds = [99.99, 99.995, 99.999] # 99, 99.9, 99.95
     thresholds_ind = 0
     threshold = np.percentile(ct_data, thresholds[thresholds_ind])
-    print('Threshold: {}'.format(threshold))
+    threshold = 3500
+    print('Threshold: {}, output_fol: {}'.format(threshold, output_fol))
 
     while len(non_electrodes) > 0 and iter_num < max_iters:
         ct_voxels = find_voxels_above_threshold(ct_data, threshold)
+        # todo: if len(ct_voxels) > ~5000 maybe we should increase the threshold, otherwise the masking will take forever
         ct_voxels = mask_voxels_outside_brain(ct_voxels, ct_header, brain)
         if len(ct_voxels) < n_components:
             print("There aren't enough voxels above the threshold inside the brain! The threshold is too high!")
@@ -690,7 +692,8 @@ def find_depth_electrodes_in_ct(
         electrodes = ct_voxels_to_t1_ras_tkr(ct_electrodes, ct_header, brain_header)
         # electrodes = remove_too_close_electrodes(ct_electrodes, ct_data, ct_header, brain_header, min_distance=2)
         electrodes, non_electrodes, groups = find_electrodes_groups(
-            electrodes, n_groups, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes)
+            electrodes, n_groups, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes,
+            debug=debug)
         if electrodes is None or len(non_electrodes) == n_components or len(groups) != n_groups:
             thresholds_ind += 1
             threshold = np.percentile(ct_data, thresholds[thresholds_ind])
@@ -710,8 +713,8 @@ def find_depth_electrodes_in_ct(
     groups_hemis = find_electrodes_hemis(subject, electrodes, groups, overwrite)
     groups, groups_hemis = sort_groups_in_hemis(subject, electrodes, groups, groups_hemis)
     export_electrodes(subject, electrodes, groups, groups_hemis, output_fol)
-    utils.save((subject, electrodes, groups, org_groups, groups_hemis, ct_electrodes, ct_voxels, threshold, n_components, n_groups),
-               op.join(output_fol, 'objects.pkl'))
+    utils.save((subject, electrodes, groups, org_groups, groups_hemis, ct_electrodes, ct_voxels, threshold,
+                n_components, n_groups), op.join(output_fol, 'objects.pkl'))
     return electrodes, groups, groups_hemis
 
 

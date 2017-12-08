@@ -1,3 +1,4 @@
+import os
 import os.path as op
 import glob
 import shutil
@@ -14,23 +15,41 @@ from src.preproc import anatomy as anat
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
-def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.mgz', overwrite=False):
+def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.mgz', overwrite=False, print_only=False,
+                      ask_before=False):
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     output_fname = op.join(ct_fol, output_name)
-    if op.isfile(output_fname) and not overwrite:
-        return True
+    if op.isfile(output_fname):
+        if not overwrite:
+            return True
+        else:
+            os.remove(output_fname)
     if not op.isdir(ct_raw_input_fol):
         print(f'{ct_fol} does not exist!')
-        return
+        return False
     ct_files = glob.glob(op.join(ct_raw_input_fol, '*.dcm'))
+    if len(ct_files) == 0:
+        sub_folders = [d for d in glob.glob(op.join(ct_raw_input_fol, '*')) if op.isdir(d)]
+        if len(sub_folders) == 0:
+            print(f'Cannot find CT files in {ct_raw_input_fol}!')
+            return False
+        fol = utils.select_one_file(sub_folders, '', 'CT', is_dir=True)
+        ct_files = glob.glob(op.join(fol, '*.dcm'))
+        if len(ct_files) == 0:
+            print(f'Cannot find CT files in {fol}!')
+            return False
     ct_files.sort(key=op.getmtime)
-    fu.mri_convert(ct_files[0], output_fname)
-    return op.isfile(output_fname)
+    if ask_before:
+        ret = input(f'convert {ct_files[0]} to {output_fname}? ')
+        if not au.is_true(ret):
+            return False
+    fu.mri_convert(ct_files[0], output_fname, print_only=print_only)
+    return True if print_only else op.isfile(output_fname)
 
 
 def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_name='', threshold=-200,
-                   cost_function='nmi', overwrite=False):
+                   cost_function='nmi', overwrite=False, print_only=False):
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     if ct_name == '':
@@ -39,14 +58,17 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         nnv_ct_name = 'ct_no_large_negative_values.mgz'
     if register_ct_name == '':
         register_ct_name = 'ct_reg_to_mr.mgz'
-    ctu.remove_large_negative_values_from_ct(
-        op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name) , threshold, overwrite)
+    if print_only:
+        print(f'Removign large negative values: {op.join(ct_fol, ct_name)} -> {op.join(ct_fol, nnv_ct_name)}')
+    else:
+        ctu.remove_large_negative_values_from_ct(
+            op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name), threshold, overwrite)
     ctu.register_ct_to_mr_using_mutual_information(
         subject, SUBJECTS_DIR, op.join(ct_fol, nnv_ct_name), op.join(ct_fol, register_ct_name), lta_name='',
-        overwrite=overwrite, cost_function=cost_function)
+        overwrite=overwrite, cost_function=cost_function, print_only=print_only)
     t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
     print(f'freeview -v {t1_fname} {op.join(ct_fol, register_ct_name)}')
-    return op.isfile(op.join(ct_fol, register_ct_name))
+    return True if print_only else op.isfile(op.join(ct_fol, register_ct_name))
 
 
 def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz'):
@@ -80,15 +102,42 @@ def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz'):
     return ret
 
 
+def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fname='', output_fol=None,
+                    clustering_method='knn', max_iters=5, cylinder_error_radius=3, min_elcs_for_lead=4,
+                    max_dist_between_electrodes=20, thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999),
+                    overwrite=False, debug=True):
+    from src.misc.dell import find_electrodes_in_ct
+    if n_components <= 0 or n_groups <= 0:
+        print('Both n_components and n_groups should be > 0!')
+        return False
+    if ct_name == '':
+        ct_name = 'ct_reg_to_mr.mgz'
+    ct_fname = op.join(MMVT_DIR, subject, 'ct', ct_name)
+    if brain_mask_fname == '':
+        brain_mask_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'brain.mgz')
+    if output_fol is None:
+        output_fol = utils.make_dir(op.join(
+            MMVT_DIR, subject, 'ct', 'finding_electrodes_in_ct', utils.rand_letters(5)))
+    electrodes, groups, groups_hemis = find_electrodes_in_ct.find_depth_electrodes_in_ct(
+        ct_fname, brain_mask_fname, n_components, n_groups, output_fol, clustering_method,
+        max_iters, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes,
+        thresholds, overwrite, debug)
+    if output_fol == '':
+        return all(x is not None for x in [electrodes, groups, groups_hemis])
+    else:
+        return op.isfile(op.join(output_fol, 'objects.pkl'))
+
+
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'convert_ct_to_mgz'):
         flags['convert_ct_to_mgz'] = convert_ct_to_mgz(
-            subject, args.ct_raw_input_fol, args.ct_fol, args.ct_org_name, args.overwrite)
+            subject, args.ct_raw_input_fol, args.ct_fol, args.ct_org_name, args.overwrite, args.print_only,
+            args.ask_before)
 
     if utils.should_run(args, 'register_to_mr'):
         flags['register_to_mr'] = register_to_mr(
             subject, args.ct_fol, args.ct_org_name, args.nnv_ct_name, args.register_ct_name, args.negative_threshold,
-            args.register_cost_function, args.overwrite)
+            args.register_cost_function, args.overwrite, args.print_only)
 
     if utils.should_run(args, 'save_subject_ct_trans'):
         flags['save_subject_ct_trans'] = save_subject_ct_trans(subject, args.register_ct_name)
@@ -96,6 +145,11 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject, args.register_ct_name)
 
+    if 'find_electrodes' in args.function:
+        flags['find_electrodes'] = find_electrodes(
+            subject, args.n_components, args.n_groups, args.register_ct_name, args.brain_mask_fname,
+            args.output_fol, args.clustering_method, args.max_iters, args.cylinder_error_radius,
+            args.min_elcs_for_lead, args.max_dist_between_electrodes, args.ct_thresholds, args.overwrite)
 
     return flags
 
@@ -111,12 +165,25 @@ def read_cmd_args(argv=None):
     parser.add_argument('--negative_threshold', help='', required=False, default=-200, type=int)
     parser.add_argument('--register_cost_function', help='', required=False, default='nmi')
     parser.add_argument('--overwrite', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--print_only', help='', required=False, default=False, type=au.is_true)
+    parser.add_argument('--ask_before', help='', required=False, default=False, type=au.is_true)
+
+    # find_electrodes:
+    parser.add_argument('--n_components', help='', required=False, default=0, type=int)
+    parser.add_argument('--n_groups', help='', required=False, default=0, type=int)
+    parser.add_argument('--brain_mask_fname', help='', required=False, default='')
+    parser.add_argument('--output_fol', help='', required=False, default=None, type=au.str_or_none)
+    parser.add_argument('--clustering_method', help='', required=False, default='knn')
+    parser.add_argument('--max_iters', help='', required=False, default=5, type=int)
+    parser.add_argument('--cylinder_error_radius', help='', required=False, default=3, type=float)
+    parser.add_argument('--min_elcs_for_lead', help='', required=False, default=4, type=int)
+    parser.add_argument('--max_dist_between_electrodes', help='', required=False, default=20, type=float)
+    parser.add_argument('--ct_thresholds', help='', required=False, default='99,99.9,99.95,99.99,99.995,99.999',
+                        type=au.float_arr_type)
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    args.necessary_files = {'mri': ['rawavg.mgz']}
-    if args.ct_fol == '':
-        for sub in args.subject:
-            args.ct_fol = utils.make_dir(op.join(MMVT_DIR, sub, 'ct'))
+    args.necessary_files = {'mri': ['brain.mgz']}
     return args
 
 

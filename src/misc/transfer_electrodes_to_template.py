@@ -254,6 +254,7 @@ def sanity_check():
         subject, template_system, tk_ras, SUBJECTS_DIR)
     print('asdf')
 
+
 if __name__ == '__main__':
     roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
     root = [d for d in roots if op.isdir(d)][0]
@@ -276,8 +277,9 @@ if __name__ == '__main__':
     # mri_cvs_check
     # mri_cvs_register
     '''
-    mri_vol2vol --mov $folder/w_MniNick.nii --targ $folder/MniNick.nii - --o 
-        $folder/outvol.mgz --m3z $folder/final_CVSmorph_toSynthF.m3z --noDefM3zPath 
-        --no-save-reg.
+    mri_cvs_register --mov mg112 --template colin27 --outdir $SUBJECTS_DIR/mg112/mri_cvs_register --step3
+    mri_vol2vol --mov $SUBJECTS_DIR/mg112/mri/T1.mgz --o $SUBJECTS_DIR/mg112/mri/T1_to_colin_csv_register.mgz --m3z
+     $SUBJECTS_DIR/mg112/mri_cvs_register/final_CVSmorph_tocolin27.m3z --noDefM3zPath --no-save-reg --targ $SUBJECTS_DIR/colin27/mri/T1.mgz
+
     '''
     print('finish')

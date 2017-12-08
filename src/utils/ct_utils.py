@@ -1,3 +1,4 @@
+import os
 import os.path as op
 import nibabel as nib
 import shutil
@@ -22,11 +23,14 @@ def remove_large_negative_values_from_ct(ct_fname, new_ct_fname='', threshold=-2
     '''
     if not op.isfile(ct_fname):
         print(f'The CT could not be found in {ct_fname}!')
-        return
+        return ''
     if new_ct_fname == '':
         new_ct_fname = op.join(utils.get_parent_fol(ct_fname), 'ct_no_large_negative_values.mgz')
-    if op.isfile(new_ct_fname) and not overwrite:
-        return new_ct_fname
+    if op.isfile(new_ct_fname):
+        if overwrite:
+            os.remove(new_ct_fname)
+        else:
+            return new_ct_fname
     h = nib.load(ct_fname)
     ct_data = h.get_data()
     ct_data[ct_data < threshold] = threshold
@@ -36,7 +40,8 @@ def remove_large_negative_values_from_ct(ct_fname, new_ct_fname='', threshold=-2
 
 
 def register_ct_to_mr_using_mutual_information(
-        subject, subjects_dir, ct_fname, output_fname='', lta_name='', overwrite=False, cost_function='nmi'):
+        subject, subjects_dir, ct_fname, output_fname='', lta_name='', overwrite=False, cost_function='nmi',
+        print_only=False):
     '''
     Performs the registration between CT and MR using the normalized mutual
     information cost option in freesurfer's mri_robust_register. Saves the
@@ -71,18 +76,22 @@ def register_ct_to_mr_using_mutual_information(
     if lta_name == '':
         lta_name = 'ct2mr.lta'
     lta_fname = op.join(xfms_dir, lta_name)
-    if op.isfile(lta_fname) and op.isfile(output_fname) and not overwrite:
-        return fu.read_lta_file(lta_fname)
+    if op.isfile(lta_fname) and op.isfile(output_fname):
+        if overwrite:
+            os.remove(lta_fname)
+            os.remove(output_fname)
+        else:
+            return True
 
     rawavg = op.join(subjects_dir, subject, 'mri', 'T1.mgz') #''rawavg.mgz')
     if output_fname == '':
         output_fname = op.join(utils.get_parent_fol(ct_fname), 'ct_reg_to_mr.mgz')
 
-    fu.robust_register(subject, subjects_dir, ct_fname, rawavg, output_fname, lta_name, cost_function)
-    if op.isfile(lta_fname) and op.isfile(output_fname):
-        return fu.read_lta_file(lta_fname)
+    fu.robust_register(subject, subjects_dir, ct_fname, rawavg, output_fname, lta_name, cost_function, print_only)
+    if print_only:
+        return True
     else:
-        return None
+        return op.isfile(lta_fname) and op.isfile(output_fname)
 
 
 def get_data_and_header(subject, mmvt_dir, subjects_dir, ct_name='ct_reg_to_mr.mgz'):
