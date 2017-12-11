@@ -1894,13 +1894,16 @@ def read_label_file(label_fname):
     - ``values``: values at the vertices (column 5)
     """
     # read the file
-    with open(label_fname, 'r') as fid:
-        comment = fid.readline().replace('\n', '')[1:]
-        nv = int(fid.readline())
-        data = np.empty((5, nv))
-        for i, line in enumerate(fid):
-            data[:, i] = line.split()
-
+    try:
+        with open(label_fname, 'r') as fid:
+            comment = fid.readline().replace('\n', '')[1:]
+            nv = int(fid.readline())
+            data = np.empty((5, nv))
+            for i, line in enumerate(fid):
+                data[:, i] = line.split()
+    except:
+        print('Error reading {}!'.format(label_fname))
+        return None
     # let's make sure everything is ordered correctly
     vertices = np.array(data[0], dtype=np.int32)
     pos = 1e-3 * data[1:4].T
@@ -1918,7 +1921,14 @@ def read_labels_from_annots(subject, subjects_dir, atlas, hemi='both'):
     labels = []
     for hemi in check_hemi(hemi):
         hemi_annot_fname = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
-        labels.extend(read_labels_from_annot(hemi_annot_fname))
+        if op.isfile(hemi_annot_fname):
+            labels.extend(read_labels_from_annot(hemi_annot_fname))
+        else:
+            labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+            for label_fname in labels_files:
+                new_label = read_label_file(label_fname)
+                if new_label is not None:
+                    labels.append(new_label)
     return sorted(labels, key=lambda l: l.name)
 
 

@@ -1784,6 +1784,7 @@ def plot_labels(labels_names, colors, atlas):
     labels_names_fix = []
     for label_name in labels_names:
         delim, pos, label, label_hemi = mu.get_hemi_delim_and_pos(label_name)
+        label = mu.get_label_hemi_invariant_name(label_name)
         label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
         labels_names_fix.append(label_fix)
     labels = [l for l in atlas_labels if l.name in labels_names_fix]

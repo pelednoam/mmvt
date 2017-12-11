@@ -77,14 +77,17 @@ def angle_between(v1, v2):
     return min(ang1, ang2)
 
 
-def point_in_cylinder(pt1, pt2, points, radius_sq):
+def point_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False):
     from scipy.spatial.distance import cdist
-    dist = np.linalg.norm(pt1-pt2)
-    elc_ori = (pt2-pt1) / dist # norm(elc_ori)=1mm
+    dist = np.linalg.norm(pt1 - pt2)
+    elc_ori = (pt2 - pt1) / dist # norm(elc_ori)=1mm
     elc_line = np.array([pt1 + elc_ori*t for t in np.linspace(0, dist, 100)])
     dists = np.min(cdist(elc_line, points), 0)
     # inside = dists <= radius_sq
-    return np.where(dists <= radius_sq)[0]
+    if return_cylinder:
+        return np.where(dists <= radius_sq)[0], elc_line
+    else:
+        return np.where(dists <= radius_sq)[0]
 
 
 def point_in_cylinder2(pt1, pt2, testpt, radius_sq):

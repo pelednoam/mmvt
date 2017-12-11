@@ -180,9 +180,10 @@ def run_freeview(subject):
     utils.run_script('freeview -v T1.mgz:opacity=0.3 ct.mgz -c {}'.format(' '.join(electrodes_files)))
 
 
-def find_electrodes_hemis(subject, electrodes, groups, overwrite=False):
-    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', 'hemis_model.pkl')
+def find_electrodes_hemis(subject, electrodes, groups=None, overwrite=False):
+    output_fname = op.join(MMVT_DIR, subject, 'ct', 'finding_electrodes_in_ct', 'hemis_model.pkl')
     if not op.isfile(output_fname) or overwrite:
+        print('Loading pial vertices for finding electrodes hemis')
         vertices_rh, _ = utils.read_pial(subject, MMVT_DIR, 'rh')
         vertices_lh, _ = utils.read_pial(subject, MMVT_DIR, 'lh')
         vertices = np.concatenate((vertices_rh, vertices_lh))
@@ -191,14 +192,18 @@ def find_electrodes_hemis(subject, electrodes, groups, overwrite=False):
         vertices = scaler.fit_transform(vertices)
         electrodes = scaler.fit_transform(electrodes)
         clf = svm.SVC(kernel='linear')
+        print('Fitting the vertices...')
         clf.fit(vertices, hemis)
         joblib.dump(clf, output_fname, compress=9)
     else:
         clf = joblib.load(output_fname)
     elctrodes_hemis = clf.predict(electrodes)
     hemis = ['rh' if elc_hemi == 0 else 'lh' for elc_hemi in elctrodes_hemis]
-    groups_hemis = [Counter([hemis[elc] for elc in group]).most_common()[0][0] for group in groups]
-    return groups_hemis
+    if groups is not None:
+        groups_hemis = [Counter([hemis[elc] for elc in group]).most_common()[0][0] for group in groups]
+    else:
+        groups_hemis = []
+    return elctrodes_hemis, groups_hemis
 
 
 def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
@@ -223,12 +228,12 @@ def plot_hemis_sep_plane(clf, electrodes, vertices=[]):
     plt.show()
 
 
-def find_electrodes_groups(electrodes, n_groups, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
-                           min_cylinders_ang=0.2, debug=False):
+def find_electrodes_groups(electrodes, n_groups, elctrodes_hemis, output_fol, error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
+                           min_cylinders_ang=0.1, debug=False):
     sub_groups = find_electrodes_sub_groups(
         electrodes, min_elcs_for_lead, max_dist_between_electrodes, error_radius)
     groups = join_electrodes_sub_groups(
-        electrodes, sub_groups, max_dist_between_electrodes, error_radius, min_cylinders_ang, output_fol, debug=debug)
+        electrodes, sub_groups, elctrodes_hemis, max_dist_between_electrodes, error_radius, min_cylinders_ang, output_fol, debug=debug)
     if len(groups) == 0:
         print("Couldn't find any groups!")
         return None, electrodes, []
@@ -266,7 +271,7 @@ def check_groups_cylinders(electrodes, groups, error_radius, output_fol=''):
     for group in groups:
         electrodes_inside = trig.point_in_cylinder(
             electrodes[group[0]], electrodes[group[-1]], electrodes, error_radius)
-        if len(electrodes_inside) != len(group):
+        if len(electrodes_inside) > len(group):
             something_is_wrong = True
             print('electrodes_inside: {}'.format(electrodes_inside))
             print('group: {}'.format(group))
@@ -274,8 +279,8 @@ def check_groups_cylinders(electrodes, groups, error_radius, output_fol=''):
             dists = calc_group_dists(elcs_inside)
             print('wrong_groups dists: {}'.format(dists))
             if output_fol != '':
-                ind = len(glob.glob(op.join(output_fol, 'wrong_groups_?.png'))) + 1
-                colors = ['r' if elc_ind in group else 'b' for elc_ind in range(len(electrodes))]
+                ind = len(glob.glob(op.join(output_fol, 'wrong_groups_?_electrodes.png'))) + 1
+                colors = ['r' if elc_ind in electrodes_inside else 'g' if elc_ind in group else 'b' for elc_ind in range(len(electrodes))]
                 utils.plot_3d_scatter(electrodes, colors=colors,
                                       fname=op.join(output_fol, 'wrong_groups_{}_electrodes.png'.format(ind)))
                 plot_cylinder([(electrodes[group[0]], electrodes[group[-1]])], error_radius, electrodes,
@@ -334,25 +339,43 @@ def find_electrodes_sub_groups(electrodes, min_elcs_for_lead, max_dist_between_e
     groups = []
     for i in range(len(electrodes)):
         for j in range(i+1, len(electrodes)):
-            points_inside = trig.point_in_cylinder(electrodes[i], electrodes[j], electrodes, error_radius)
-            if len(points_inside) > min_elcs_for_lead:
+            points_inside, cylinder = trig.point_in_cylinder(electrodes[i], electrodes[j], electrodes, error_radius, return_cylinder=True)
+            points_to_remove = []
+            if len(points_inside) >= min_elcs_for_lead:
                 elcs_inside = electrodes[points_inside]
+
+                min_distance = 2
+                dists = cdist(elcs_inside, elcs_inside)
+                dists += np.eye(len(elcs_inside)) * min_distance * 2
+                inds = np.where(dists <= min_distance)
+                if len(inds[0]) > 0:
+                    pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+                    pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
+                    for pair_electrode, pair in zip(pairs_electrodes, pairs):
+                        ind = np.argmin(np.min(cdist(np.array(pair_electrode), cylinder), axis=1))
+                        points_to_remove.append(pair[ind])
+
+                points_inside = np.delete(points_inside, points_to_remove, axis=0)
+                if len(points_inside) < min_elcs_for_lead:
+                    continue
                 elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
                 dists = calc_group_dists(elcs_inside)
-                if max(dists) > max_dist_between_electrodes:
+                if max(dists) > 50: # max_dist_between_electrodes:
                     continue
                 groups.append((set(points_inside.tolist()), i, j))
     return groups
 
 
-def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, error_radius,
+def join_electrodes_sub_groups(electrodes, groups, elctrodes_hemis, max_dist_between_electrodes, error_radius,
                                min_cylinders_ang, output_fol='', min_joined_items_num=1, debug=False):
     final_groups = []
     cylinders_angs = []
     ind = 0
     if output_fol != '':
         utils.make_dir(op.join(output_fol, 'sub_groups'))
-    for group, i, j in groups:
+    groups_dists = get_groups_inner_dists(groups, electrodes)
+    max_inner_dist = np.percentile(utils.flat_list_of_lists(groups_dists), 90)
+    for (group, i, j), dists in zip(groups, groups_dists):
         groups_were_joined = False
         for final_group, k, l in final_groups:
             if intersects(group, final_group, min_joined_items_num):
@@ -362,10 +385,24 @@ def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, 
                 if cylinders_ang < min_cylinders_ang:
                     cylinders_angs.append(cylinders_ang)
                     new_group = group | final_group
-                    ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[list(new_group)]])
-                    elcs = sorted(new_group, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
-                    dists = calc_group_dists(elcs)
-                    if max(dists) < max_dist_between_electrodes:
+                    same_hemi = utils.all_items_equall([elctrodes_hemis[g_ind] for g_ind in new_group])
+
+                    # g = list(new_group)
+                    # all_dists = cdist(electrodes[g], electrodes[g])
+                    # ind0, _ = utils.argmax2d(all_dists)
+                    # elcs = sorted(new_group, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
+                    # dists = calc_group_dists(elcs)
+                    # colors = ['r' if elc_ind in g else 'b' for elc_ind in range(len(electrodes))]
+                    # utils.plot_3d_scatter(electrodes, names=[np.max(dists)], labels_indices=[g[np.argmax(dists)]],
+                    #                       colors=colors)
+                    min_distance = 2
+                    dists = cdist(electrodes[list(new_group)], electrodes[list(new_group)])
+                    dists += np.eye(len(new_group)) * min_distance * 2
+                    inds = np.where(dists <= 2)
+                    if len(inds) > 0:
+                        print('sdf')
+
+                    if same_hemi: # and max(dists) < max_dist_between_electrodes:
                         final_groups.remove((final_group, k, l))
                         final_groups.append((new_group, i, j))
                         if debug and output_fol != '':
@@ -377,19 +414,37 @@ def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, 
         # check if the new group doesn't intersect with any of the final groups
         if not groups_were_joined and \
                 all([not intersects(group, final_group, min_joined_items_num) for final_group,  k, l in final_groups]):
-            ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[list(group)]])
-            elcs = sorted(group, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
-            dists = calc_group_dists(elcs)
+            same_hemi = utils.all_items_equall([elctrodes_hemis[g_ind] for g_ind in group])
+            if not same_hemi:
+                continue
+            min_distance = 2
+            dists = cdist(electrodes[list(group)], electrodes[list(group)])
+            dists += np.eye(len(group)) * min_distance * 2
+            inds = np.where(dists <= min_distance)
+            if len(inds[0]) > 0:
+                print('sdf')
+
+            # elcs = sorted(group, key=lambda x: np.linalg.norm(x - electrodes[i]))
+            # dists = calc_group_dists(elcs)
             if debug:
-                join_electrodes_sub_group_debug(electrodes, group, error_radius, ind, output_fol)
-            if max(dists) < max_dist_between_electrodes:
-                final_groups.append((group, i, j))
+                join_electrodes_sub_group_debug(electrodes, group, i, j, error_radius, ind, output_fol)
+            # if max(dists) < max_inner_dist:
+            final_groups.append((group, i, j))
     final_groups = [g for (g, k, l) in final_groups]
     if output_fol != '':
         plt.figure()
         plt.hist(cylinders_angs, bins=50)
         plt.savefig(op.join(output_fol, 'cylinders_angs.png'))
     return final_groups
+
+
+def get_groups_inner_dists(groups, electrodes):
+    groups_dists = []
+    for group, i, j in groups:
+        elcs = sorted(group, key=lambda x: np.linalg.norm(x - electrodes[i]))
+        dists = calc_group_dists(elcs)
+        groups_dists.append(dists)
+    return groups_dists
 
 
 def join_electrodes_sub_groups_debug(electrodes, group, final_group, dists, cylinders_ang, error_radius, ind, output_fol):
@@ -408,28 +463,28 @@ def join_electrodes_sub_groups_debug(electrodes, group, final_group, dists, cyli
         wr.writerow(['dists', dists])
 
 
-def join_electrodes_sub_group_debug(electrodes, group, error_radius, ind, output_fol):
+def join_electrodes_sub_group_debug(electrodes, group, i, j, error_radius, ind, output_fol):
     colors = ['r' if elc_ind in group else 'b' for elc_ind in range(len(electrodes))]
     g = list(group)
     utils.plot_3d_scatter(electrodes, colors=colors, fname=op.join(output_fol, 'sub_groups', '{}.png'.format(ind)))
-    inds = (electrodes[g[np.argmin([np.linalg.norm(elc) for elc in electrodes[g]])]],
-            electrodes[g[np.argmax([np.linalg.norm(elc) for elc in electrodes[g]])]])
-    # inds = [electrodes[group[func([np.linalg.norm(elc) for elc in electrodes[list(group)]])]]
-    #         for func in [np.argmin, np.argmax]]
-    plot_cylinder([inds], error_radius, electrodes, colors=colors,
+    plot_cylinder([[electrodes[i], electrodes[j]]], error_radius, electrodes, colors=colors,
                   fname=op.join(output_fol, 'sub_groups', 'cylinders_{}.png'.format(ind)))
 
 
 def sort_groups(electrodes, groups):
-    sorted_groups, first_indices = [], []
+    sorted_groups = []
     for group in groups:
-        group = list(group)
+        g = list(group)
         # find the most inner electrode
-        ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[group]])
-        first_indices.append(group[ind0])
-        sort_indices = [t[0] for t in sorted(enumerate(electrodes[group]),
-                                             key=lambda x: np.linalg.norm(electrodes[group[ind0]] - x[1]))]
-        group = [group[ind] for ind in sort_indices]
+        # ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[g]])
+        # sort_indices = [t[0] for t in sorted(enumerate(electrodes[g]),
+        #                                      key=lambda x: np.linalg.norm(electrodes[g[ind0]] - x[1]))]
+        all_dists = cdist(electrodes[g], electrodes[g])
+        ind0, _ = utils.argmax2d(all_dists)
+        dists = [np.linalg.norm(x - electrodes[ind0]) for x in electrodes[g]]
+        # elcs = sorted(g, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
+        sort_indices = np.argsort(dists)
+        group = [g[ind] for ind in sort_indices]
         sorted_groups.append(group)
     return sorted_groups
 
@@ -626,17 +681,16 @@ def remove_too_close_electrodes(electrodes, ct_data, ct_header, brain_header, mi
     dists += np.eye(len(electrodes)) * min_distance * 2
     inds = np.where(dists <= min_distance)
     if len(inds[0]) > 0:
-        pass
-        # pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
-        # pairs = [[electrodes[p[k]] for k in range(2)] for p in pairs]
-        # pairs_ct = [([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
-        # lower_ct = [np.argmin([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
-        # higher_ct = [np.argmax([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
-        # elecs_to_remove = [p[h] for p, h in zip(pairs, lower_ct)]
-        # elecs_to_stay = [p[h] for p, h in zip(pairs, higher_ct)]
-        # colors = ['r' if k in elecs_to_remove else 'g' if k in elecs_to_stay else 'b' for k in range(len(electrodes))]
-        # utils.plot_3d_scatter(electrodes, colors=colors)
-        # electrodes = np.delete(electrodes, (elecs_to_remove), axis=0)
+        pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+        pairs = [[electrodes[p[k]] for k in range(2)] for p in pairs]
+        pairs_ct = [([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        lower_ct = [np.argmin([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        higher_ct = [np.argmax([ct_data[tuple(electrodes[p[k]])] for k in range(2)]) for p in pairs]
+        elecs_to_remove = [p[h] for p, h in zip(pairs, lower_ct)]
+        elecs_to_stay = [p[h] for p, h in zip(pairs, higher_ct)]
+        colors = ['r' if k in elecs_to_remove else 'g' if k in elecs_to_stay else 'b' for k in range(len(electrodes))]
+        utils.plot_3d_scatter(electrodes, colors=colors)
+        electrodes = np.delete(electrodes, (elecs_to_remove), axis=0)
     return electrodes
 
 
@@ -653,7 +707,7 @@ def sort_groups_in_hemis(subject, electrodes, groups, groups_hemis):
 
 def calc_frontal_points(subject):
     from src.preproc import anatomy as anat
-    output_fol = op.join(MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct')
+    output_fol = op.join(MMVT_DIR, subject, 'ct', 'finding_electrodes_in_ct')
     rois = ['superiorfrontal','medialorbitofrontal', 'lateralorbitofrontal']
     frontal_points = anat.calc_three_rois_intersection(subject, rois, output_fol)
     return frontal_points
@@ -681,8 +735,8 @@ def load_objects_and_plot_specific_electrode():
 
 
 def find_depth_electrodes_in_ct(
-        ct_fname, brain_mask_fname, n_components, n_groups, output_fol='', clustering_method='gmm', max_iters=5,
-        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20,
+        subject, ct_fname, brain_mask_fname, n_components, n_groups, output_fol='', clustering_method='gmm', max_iters=5,
+        cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, min_cylinders_ang=0.1,
         thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999), overwrite=False, debug=False):
     ct = nib.load(ct_fname)
     ct_header = ct.get_header()
@@ -703,18 +757,19 @@ def find_depth_electrodes_in_ct(
             print("There aren't enough voxels above the threshold inside the brain! The threshold is too high!")
             return
         ct_electrodes, clusters = clustering(ct_voxels, ct_data, n_components, output_fol, clustering_method)
-        electrodes = ct_voxels_to_t1_ras_tkr(ct_electrodes, ct_header, brain_header)
         # electrodes = remove_too_close_electrodes(ct_electrodes, ct_data, ct_header, brain_header, min_distance=2)
+        electrodes = ct_voxels_to_t1_ras_tkr(ct_electrodes, ct_header, brain_header)
+        elctrodes_hemis, _ = find_electrodes_hemis(subject, electrodes, overwrite=overwrite)
         electrodes, non_electrodes, groups = find_electrodes_groups(
-            electrodes, n_groups, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes,
-            debug=debug)
-        if electrodes is None or len(non_electrodes) == n_components or len(groups) != n_groups:
-            thresholds_ind += 1
-            threshold = np.percentile(ct_data, thresholds[thresholds_ind])
-            print('Threshold: {}'.format(threshold))
-        else:
-            ct_data = erase_voxels_from_ct(non_electrodes, ct_voxels, clusters, ct_data, ct_header, brain_header)
-            iter_num += 1
+            electrodes, n_groups, elctrodes_hemis, output_fol, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes,
+            min_cylinders_ang, debug)
+        # if electrodes is None or len(non_electrodes) == n_components or len(groups) != n_groups:
+        #     thresholds_ind += 1
+        #     threshold = np.percentile(ct_data, thresholds[thresholds_ind])
+        #     print('Threshold: {}'.format(threshold))
+        # else:
+        ct_data = erase_voxels_from_ct(non_electrodes, ct_voxels, clusters, ct_data, ct_header, brain_header)
+        iter_num += 1
 
     org_groups = groups.copy()
     if iter_num == max_iters:
@@ -724,7 +779,7 @@ def find_depth_electrodes_in_ct(
         electrodes, groups, ct_data, ct_header, brain_header, threshold, output_fol,
         med_dist_ratio=1.9, max_iter_num=10)
     sanity_check(electrodes, ct_header, brain_header, ct_data, threshold, output_fol)
-    groups_hemis = find_electrodes_hemis(subject, electrodes, groups, overwrite)
+    _, groups_hemis = find_electrodes_hemis(subject, electrodes, groups, overwrite)
     groups, groups_hemis = sort_groups_in_hemis(subject, electrodes, groups, groups_hemis)
     export_electrodes(subject, electrodes, groups, groups_hemis, output_fol)
     utils.save((subject, electrodes, groups, org_groups, groups_hemis, ct_electrodes, ct_voxels, threshold,
@@ -734,7 +789,7 @@ def find_depth_electrodes_in_ct(
 
 def load_objects_and_plot_hemis_sep(subject, input_fol):
     electrodes, groups, groups_hemis = utils.load(op.join(input_fol, 'objects.pkl'))
-    model_fname = op.join(MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', 'hemis_model.pkl')
+    model_fname = op.join(MMVT_DIR, subject, 'ct', 'finding_electrodes_in_ct', 'hemis_model.pkl')
     vertices_rh, _ = utils.read_pial(subject, MMVT_DIR, 'rh')
     vertices_lh, _ = utils.read_pial(subject, MMVT_DIR, 'lh')
     vertices = np.concatenate((vertices_rh, vertices_lh))
@@ -758,7 +813,7 @@ if __name__ == '__main__':
         raise Exception("Can't find brain.mgz!")
 
     output_fol = utils.make_dir(op.join(
-        MMVT_DIR, subject, 'electrodes', 'finding_electrodes_in_ct', utils.rand_letters(5)))
+        MMVT_DIR, subject, 'ct', 'finding_electrodes_in_ct', utils.rand_letters(5)))
     # find_depth_electrodes_in_ct(
     #     ct_fname, brain_mask_fname, n_components=52, n_groups=6, output_fol=output_fol, clustering_method='knn',
     #     max_iters=5, cylinder_error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=20, overwrite=False)

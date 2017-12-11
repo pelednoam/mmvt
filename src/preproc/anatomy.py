@@ -1003,11 +1003,12 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_
     if not op.isfile(empty_subject_fname):
         resources_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
         shutil.copy(op.join(resources_dir, 'empty_subject.blend'), empty_subject_fname)
-    if op.isfile(new_fname) and not overwrite_blend and args.ask_if_overwrite_blend:
-        overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
-        if au.is_true(overwrite):
-           os.remove(new_fname)
-           shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
+    if op.isfile(new_fname) and not overwrite_blend:
+        if ask_if_overwrite_blend:
+            overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
+            if au.is_true(overwrite):
+               os.remove(new_fname)
+               shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
     else:
         shutil.copy(empty_subject_fname, new_fname)
     return op.isfile(new_fname)
