@@ -105,7 +105,7 @@ def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz'):
 def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fname='', output_fol=None,
                     clustering_method='knn', max_iters=5, cylinder_error_radius=3, min_elcs_for_lead=4,
                     max_dist_between_electrodes=20, thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999),
-                    overwrite=False, debug=True):
+                    overwrite=False, debug=False):
     from src.misc.dell import find_electrodes_in_ct
     if n_components <= 0 or n_groups <= 0:
         print('Both n_components and n_groups should be > 0!')
@@ -149,7 +149,8 @@ def main(subject, remote_subject_dir, args, flags):
         flags['find_electrodes'] = find_electrodes(
             subject, args.n_components, args.n_groups, args.register_ct_name, args.brain_mask_fname,
             args.output_fol, args.clustering_method, args.max_iters, args.cylinder_error_radius,
-            args.min_elcs_for_lead, args.max_dist_between_electrodes, args.ct_thresholds, args.overwrite)
+            args.min_elcs_for_lead, args.max_dist_between_electrodes, args.ct_thresholds, args.overwrite,
+            args.debug)
 
     return flags
 
@@ -167,6 +168,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--print_only', help='', required=False, default=False, type=au.is_true)
     parser.add_argument('--ask_before', help='', required=False, default=False, type=au.is_true)
+    parser.add_argument('--debug', help='', required=False, default=False, type=au.is_true)
 
     # find_electrodes:
     parser.add_argument('--n_components', help='', required=False, default=0, type=int)

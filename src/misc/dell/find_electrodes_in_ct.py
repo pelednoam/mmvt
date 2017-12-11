@@ -380,6 +380,8 @@ def join_electrodes_sub_groups(electrodes, groups, max_dist_between_electrodes, 
             ind0 = np.argmin([np.linalg.norm(elc) for elc in electrodes[list(group)]])
             elcs = sorted(group, key=lambda x: np.linalg.norm(x - electrodes[ind0]))
             dists = calc_group_dists(elcs)
+            if debug:
+                join_electrodes_sub_group_debug(electrodes, group, error_radius, ind, output_fol)
             if max(dists) < max_dist_between_electrodes:
                 final_groups.append((group, i, j))
     final_groups = [g for (g, k, l) in final_groups]
@@ -404,6 +406,18 @@ def join_electrodes_sub_groups_debug(electrodes, group, final_group, dists, cyli
         wr.writerow(['final_group', final_group])
         wr.writerow(['cylinders_ang', cylinders_ang])
         wr.writerow(['dists', dists])
+
+
+def join_electrodes_sub_group_debug(electrodes, group, error_radius, ind, output_fol):
+    colors = ['r' if elc_ind in group else 'b' for elc_ind in range(len(electrodes))]
+    g = list(group)
+    utils.plot_3d_scatter(electrodes, colors=colors, fname=op.join(output_fol, 'sub_groups', '{}.png'.format(ind)))
+    inds = (electrodes[g[np.argmin([np.linalg.norm(elc) for elc in electrodes[g]])]],
+            electrodes[g[np.argmax([np.linalg.norm(elc) for elc in electrodes[g]])]])
+    # inds = [electrodes[group[func([np.linalg.norm(elc) for elc in electrodes[list(group)]])]]
+    #         for func in [np.argmin, np.argmax]]
+    plot_cylinder([inds], error_radius, electrodes, colors=colors,
+                  fname=op.join(output_fol, 'sub_groups', 'cylinders_{}.png'.format(ind)))
 
 
 def sort_groups(electrodes, groups):
