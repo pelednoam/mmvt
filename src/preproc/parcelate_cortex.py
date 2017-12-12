@@ -1,6 +1,8 @@
 import numpy as np
 import os.path as op
 import glob
+import time
+import traceback
 
 from src.utils import utils
 from src.utils import labels_utils as lu
@@ -37,7 +39,9 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     vtxL = [[] for _ in range(nL)]
     facL = [[] for _ in range(nL)]
 
-    for f in range (nF):
+    now = time.time()
+    for f in range(nF):
+        utils.time_to_go(now, f, nF, runs_num_to_print=1000)
         # Current face & labels
         Cfac = fac[f]
         Cidx = [vertices_labels_ids_lookup[vert_ind] for vert_ind in Cfac]
@@ -84,16 +88,20 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     #     params.append((facL_lab, vtxL_lab, vidx, nV, labels[lab].name, hemi, output_fol))
     # utils.run_parallel(writing_ply_files_parallel, params, njobs=n_jobs)
     #
+    ret = True
     for lab in range(nL):
-        writing_ply_files(lab, facL[lab], vtx, vtxL, labels, hemi, output_fol)
+        ret = ret and writing_ply_files(subject, lab, facL[lab], vtx, vtxL, labels, hemi, output_fol)
 
-    labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
-        atlas, surface_type, hemi), '*.ply')))
-    # print(atlas, surface_type, hemi, labels_files_num, len(labels))
-    return labels_files_num == len(labels)
+    if ret:
+        labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
+            atlas, surface_type, hemi), '*.ply')))
+        # print(atlas, surface_type, hemi, labels_files_num, len(labels))
+        return labels_files_num == len(labels)
+    else:
+        return False
 
 
-def writing_ply_files(lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
+def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
     # Vertices for the current label
     nV = vtx.shape[0]
     facL_lab_flat = utils.list_flatten(facL_lab)
@@ -105,11 +113,17 @@ def writing_ply_files(lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
     try:
         facL_lab = np.reshape(tmp[facL_lab_flat], (len(facL_lab), len(facL_lab[0])))
     except:
-        print('asdf')
+        print(traceback.format_exc())
+        dumps_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'dumps'))
+        utils.save((lab, facL_lab, vtx, vtxL, labels, hemi, output_fol),
+                   op.join(dumps_fol, 'parcelate_cortex_writing_ply_files.pkl'))
+        return False
+
     # Save the resulting surface
     label_name = '{}-{}.ply'.format(lu.get_label_hemi_invariant_name(labels[lab].name), hemi)
     # print('Writing {}'.format(op.join(output_fol, label_name)))
     utils.write_ply_file(vtxL[lab], facL_lab, op.join(output_fol, label_name), True)
+    return op.isfile(op.join(output_fol, label_name))
 
 
 def writing_ply_files_parallel(p):

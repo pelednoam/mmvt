@@ -1058,7 +1058,7 @@ def calc_PCA(X, n_components=3):
     return X
 
 
-def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=[], fname=''):
+def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=[], title='', fname=''):
     from mpl_toolkits.mplot3d import Axes3D, proj3d
     fig = plt.figure()
     ax = Axes3D(fig)
@@ -1082,6 +1082,9 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=
 
     if not classifier is None:
         make_ellipses(classifier, ax)
+
+    if title != '':
+        plt.title(title)
 
     if fname == '':
         plt.show()

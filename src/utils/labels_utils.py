@@ -97,7 +97,6 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
         return True
     if len(labels) == 0:
         labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
-        labels = []
         labels_files = glob.glob(op.join(labels_fol, '*.label'))
         if len(labels_files) == 0:
             raise Exception('labels_to_annot: No labels files!')
@@ -117,6 +116,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
                                   subjects_dir=subjects_dir)
     except:
         print('Error in writing annot file!')
+        print(traceback.format_exc())
         return False
     return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
@@ -246,16 +246,24 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
             # add the unknown label
             # todo: this code is needed to be debugged!
             annot_fname = get_annot_fnames(subject, SUBJECTS_DIR, atlas, hemi=hemi)[0]
-            backup_fname = utils.add_str_to_file_name(annot_fname, '_backup')
-            shutil.copy(annot_fname, backup_fname)
-            mne.write_labels_to_annot(subject=subject, labels=labels, parc=atlas, overwrite=True,
-                                      subjects_dir=SUBJECTS_DIR)
+            if op.isfile(annot_fname):
+                backup_fname = utils.add_str_to_file_name(annot_fname, '_backup')
+                shutil.copy(annot_fname, backup_fname)
+            try:
+                mne.write_labels_to_annot(subject=subject, labels=labels, parc=atlas, overwrite=True,
+                                          subjects_dir=SUBJECTS_DIR)
+            except:
+                print('create_vertices_labels_lookup: Error writing labels to annot file!')
+                print('Creating unknown label manually')
+                create_unknown_labels(subject, atlas)
             labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
             labels_names = [l.name for l in labels]
         verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
+        verts_indices = set(range(len(verts)))
         for label in labels:
             for vertice in label.vertices:
-                lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
+                if vertice in verts_indices:
+                    lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
 
     loopup_is_ok, err = check_loopup_is_ok(lookup)
     if loopup_is_ok:
@@ -294,7 +302,8 @@ def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pi
         for vertice, label in lookup[hemi].items():
             labels_vertices[label].append(vertice)
         for label, vertices in labels_vertices.items():
-            if label == 'unknown-{}'.format(hemi):
+            label = get_label_hemi_invariant_name(label)
+            if 'unknown' in label.lower():
                 # Don't save the unknown label, the labales_to_annot will do that, otherwise there will be 2 unknown labels
                 continue
             new_label = mne.Label(sorted(vertices), surf[vertices], hemi=hemi, name=label, subject=subject)
@@ -495,7 +504,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = mne.read_labels_from_annot(
                     subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
             except:
-                print(traceback.format_exc())
+                # print(traceback.format_exc())
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
                     subject, atlas, surf_name, hemi))
                 print('Trying to read labels files')
@@ -558,7 +567,10 @@ def read_labels_parallel(subject, subjects_dir, atlas, hemi='', labels_fol='', n
 def _read_labels_parallel(files_chunk):
     labels = []
     for label_fname in files_chunk:
+        delim, pos, label_name, label_hemi = mu.get_hemi_delim_and_pos(utils.namebase(label_fname))
+        label_name = get_label_hemi_invariant_name(label_name)
         label = mne.read_label(label_fname)
+        label.name = mu.build_label_name(delim, pos, label_name, label_hemi)
         labels.append(label)
     return labels
 

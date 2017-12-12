@@ -1755,6 +1755,20 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         return {'FINISHED'}
 
 
+class PlotLabelsFolder(bpy.types.Operator):
+    bl_idname = "mmvt.plot_labels_folder"
+    bl_label = "mmvt plot labels folder"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        labels_files = glob.glob(op.join(bpy.context.scene.labels_folder, '*.label'))
+        colors = cu.get_distinct_colors_hs(len(label_files))
+        # todo: same color for each hemi
+        for label_fname, color in zip(labels_files, colors):
+            plot_label(label_fname)
+
+
 def plot_label(label, color=''):
     if isinstance(label, str):
         label = mu.read_label_file(label)
@@ -1772,6 +1786,7 @@ def plot_label(label, color=''):
         hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
         data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
         for label, color in ColoringMakerPanel.labels_plotted:
+            label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
             data[label.hemi][label.vertices] = [1, *color]
         for hemi in mu.HEMIS:
             color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
@@ -1941,6 +1956,10 @@ def draw(self, context):
             col = box.column()
             for label, color in ColoringMakerPanel.labels_plotted:
                 mu.add_box_line(col, label.name, percentage=1)
+        layout.label(text="Choose labels' folder")
+        row = layout.row(align=True)
+        row.prop(context.scene, 'labels_folder', text='')
+        row.operator(PlotLabelsFolder.bl_idname, text='', icon='GAME')
 
             # if manually_groups_file_exist:
         #     col = layout.box().column()
@@ -2019,6 +2038,7 @@ bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
 bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
 
 
 class ColoringMakerPanel(bpy.types.Panel):
@@ -2357,6 +2377,7 @@ def register():
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
         bpy.utils.register_class(ChooseLabelFile)
+        bpy.utils.register_class(PlotLabelsFolder)
         bpy.utils.register_class(ColorStaticConnectionsDegree)
         # print('Freeview Panel was registered!')
     except:
@@ -2390,6 +2411,7 @@ def unregister():
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
         bpy.utils.unregister_class(ChooseLabelFile)
+        bpy.utils.unregister_class(PlotLabelsFolder)
         bpy.utils.unregister_class(ColorStaticConnectionsDegree)
     except:
         pass

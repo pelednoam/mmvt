@@ -105,7 +105,8 @@ def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz'):
 def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fname='', output_fol=None,
                     clustering_method='knn', max_iters=5, cylinder_error_radius=3, min_elcs_for_lead=4,
                     max_dist_between_electrodes=20, min_cylinders_ang=0.1,
-                    thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999), overwrite=False, debug=False):
+                    thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999), min_joined_items_num=1,
+                    min_distance_beteen_electrodes=2, overwrite=False, debug=False):
     from src.misc.dell import find_electrodes_in_ct
     if n_components <= 0 or n_groups <= 0:
         print('Both n_components and n_groups should be > 0!')
@@ -121,7 +122,7 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
     electrodes, groups, groups_hemis = find_electrodes_in_ct.find_depth_electrodes_in_ct(
         subject, ct_fname, brain_mask_fname, n_components, n_groups, output_fol, clustering_method,
         max_iters, cylinder_error_radius, min_elcs_for_lead, max_dist_between_electrodes,
-        min_cylinders_ang, thresholds, overwrite, debug)
+        min_cylinders_ang, thresholds, min_joined_items_num, min_distance_beteen_electrodes, overwrite, debug)
     if output_fol == '':
         return all(x is not None for x in [electrodes, groups, groups_hemis])
     else:
@@ -150,7 +151,7 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.n_components, args.n_groups, args.register_ct_name, args.brain_mask_fname,
             args.output_fol, args.clustering_method, args.max_iters, args.cylinder_error_radius,
             args.min_elcs_for_lead, args.max_dist_between_electrodes, args.min_cylinders_ang, args.ct_thresholds,
-            args.overwrite, args.debug)
+            args.min_joined_items_num, args.min_distance_beteen_electrodes, args.overwrite, args.debug)
 
     return flags
 
@@ -183,6 +184,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--min_cylinders_ang', help='', required=False, default=0.1, type=float)
     parser.add_argument('--ct_thresholds', help='', required=False, default='99,99.9,99.95,99.99,99.995,99.999',
                         type=au.float_arr_type)
+    parser.add_argument('--min_joined_items_num', help='', required=False, default=1, type=int)
+    parser.add_argument('--min_distance_beteen_electrodes', help='', required=False, default=2, type=float)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

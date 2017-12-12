@@ -368,24 +368,30 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     annotations_exist = utils.both_hemi_files_exist(annotation_fname_template)
     if annotations_exist and not overwrite_annotation:
         # lu.fix_unknown_labels(subject, atlas)
-        print('The annotation file is already exist ({})'.format(annotation_fname_template))
-        return True
-    else:
-        labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
-        # If there are only 2 files, most likely it's the unknowns
-        if len(labels_files) > 3:
-            if save_annot_file:
-                labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
-            if not overwrite_annotation:
-                return True
-        utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
-        remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
-            hemi, atlas))) for hemi in HEMIS])
-        if remote_annotations_exist:
-            for hemi in HEMIS:
-                shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas)),
-                            op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        # check the annot files:
+        annot_ok = True
+        for hemi in utils.HEMIS:
+            labels = lu.read_labels_from_annot(annotation_fname_template.format(hemi=hemi))
+            annot_ok = annot_ok and len(labels) > 1
+        if annot_ok:
+            print('The annotation file is already exist ({})'.format(annotation_fname_template))
             return True
+
+    labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
+    # If there are only 2 files, most likely it's the unknowns
+    if len(labels_files) > 3:
+        if save_annot_file:
+            annot_was_written = labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
+        if not overwrite_annotation and annot_was_written:
+            return True
+    utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
+    remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
+        hemi, atlas))) for hemi in HEMIS])
+    if remote_annotations_exist:
+        for hemi in HEMIS:
+            shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas)),
+                        op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+        return True
     existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
     if '{}.annot'.format(atlas) in existing_freesurfer_annotations:
         morph_labels_from_fsaverage = False
@@ -420,7 +426,7 @@ def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='infla
         annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
         if not annot_was_created:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
-            return []
+            return False
     return annot_was_created
 
 
@@ -446,7 +452,8 @@ def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False
             files_exist = files_exist and op.isdir(blender_labels_fol) and \
                 len(glob.glob(op.join(blender_labels_fol, '*.ply'))) >= len(labels)
             if overwrite or not files_exist:
-                params.append((subject, atlas, hemi, surface_type, vertices_labels_ids_lookup[hemi]))
+                params.append((subject, atlas, hemi, surface_type, vertices_labels_ids_lookup[hemi],
+                               overwrite_vertices_labels_lookup))
 
     if len(params) > 0:
         if n_jobs > 1:
@@ -460,10 +467,10 @@ def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False
 
 def _parcelate_cortex_parallel(p):
     from src.preproc import parcelate_cortex
-    subject, atlas, hemi, surface_type, vertices_labels_ids_lookup = p
+    subject, atlas, hemi, surface_type, vertices_labels_ids_lookup, overwrite_vertices_labels_lookup = p
     print('Parcelate the {} {} cortex'.format(hemi, surface_type))
     return parcelate_cortex.parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup,
-                                      overwrite_vertices_labels_lookup=True)
+                                      overwrite_vertices_labels_lookup)
 
 
 def save_matlab_labels_vertices(subject, atlas):
@@ -1422,7 +1429,7 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     existing_freesurfer_annotations = ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
-    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz', 'rawavg.mgz'],
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
                  'lh.sphere.reg', 'rh.sphere.reg'],
