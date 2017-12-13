@@ -12,9 +12,9 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
+mri_cvs_register  = 'mri_cvs_register --mov {subject_from} --template {subject_to} --outdir ${subjects_dir}/{subject_from}/mri_cvs_register --step3'
 
-
-def register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
+def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
         cmd = mri_robust_register
@@ -22,6 +22,14 @@ def register_to_template(subjects, template_system, subjects_dir, vox2vox=False,
         if vox2vox:
             cmd += ' --vox2vox'
             lta_name += '_vox2vox'
+        rs = utils.partial_run_script(locals(), print_only=print_only)
+        rs(cmd)
+
+
+def cvs_register_to_template(subjects, template_system, subjects_dir, print_only=False):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    for subject_from in subjects:
+        cmd = mri_cvs_register
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(cmd)
 
@@ -260,18 +268,18 @@ if __name__ == '__main__':
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'hc029' #''mni'
+    template_system = 'mni'
     atlas = 'aparc.DKTatlas40'
 
-    # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
+    electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # print(','.join(electrodes.keys()))
-    # register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR, vox2vox=True, print_only=False)
+    cvs_register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
 
-    sanity_check()
+    # sanity_check()
 
     # mri_cvs_data_copy
     # mri_cvs_check

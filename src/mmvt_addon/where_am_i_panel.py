@@ -312,6 +312,7 @@ def find_closest_label():
     closest_mesh_name, vertex_ind, vertex_co = \
         _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
     hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    hemi = 'rh' if 'rh' in hemi else 'lh'
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
     labels = mu.read_labels_from_annot(annot_fname)

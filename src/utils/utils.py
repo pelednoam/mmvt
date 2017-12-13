@@ -233,6 +233,24 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
+def load_surf(subject, mmvt_dir, subjects_dir):
+    verts = {}
+    for hemi in HEMIS:
+        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
+            hemi_verts, _ = read_pial(subject, mmvt_dir, hemi)
+        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
+            hemi_verts, _ = read_ply_file(
+                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
+        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial'.format(hemi))):
+            import nibabel as nib
+            hemi_verts, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', '{}.pial'.format(hemi)))
+        else:
+            print("Can't find {} pial ply/npz files!".format(hemi))
+            return False
+        verts[hemi] = hemi_verts
+    return verts
+
+
 # def read_pial_npz(subject, mmvt_dir, hemi):
 #     d = np.load(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi)))
 #     return d['verts'], d['faces']

@@ -363,7 +363,8 @@ def check_ply_files(subject):
 
 def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_subject_dir='',
         overwrite_annotation=False, overwrite_morphing=False, do_solve_labels_collisions=False,
-        morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated', n_jobs=6):
+        morph_labels_from_fsaverage=True, fs_labels_fol='', save_annot_file=True, surf_type='inflated',
+        overwrite_vertices_labels_lookup=False, n_jobs=6):
     annotation_fname_template = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))
     annotations_exist = utils.both_hemi_files_exist(annotation_fname_template)
     if annotations_exist and not overwrite_annotation:
@@ -381,9 +382,10 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     # If there are only 2 files, most likely it's the unknowns
     if len(labels_files) > 3:
         if save_annot_file:
-            annot_was_written = labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
-        if not overwrite_annotation and annot_was_written:
-            return True
+            annot_was_written = labels_to_annot(subject, atlas, overwrite_annotation, surf_type,
+                                                overwrite_vertices_labels_lookup, n_jobs)
+            if annot_was_written:
+                return True
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
     remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
         hemi, atlas))) for hemi in HEMIS])
@@ -406,9 +408,9 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
         if not ret:
             return False
     if do_solve_labels_collisions:
-        solve_labels_collisions(subject, atlas, surf_type, n_jobs)
+        solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, n_jobs)
+        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, n_jobs)
     if save_annot_file:
         return utils.both_hemi_files_exist(op.join(
             SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas)))
@@ -417,12 +419,12 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
 
 
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
-                    n_jobs=6):
+                    overwrite_vertices_labels_lookup=False, n_jobs=6):
     annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
     if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
         # print(traceback.format_exc())
-        solve_labels_collisions(subject, atlas, surf_type, n_jobs)
+        solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
         annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
         if not annot_was_created:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
@@ -430,17 +432,19 @@ def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='infla
     return annot_was_created
 
 
-def solve_labels_collisions(subject, atlas, surf_type='inflated', n_jobs=6):
+def solve_labels_collisions(subject, atlas, surf_type='inflated', overwrite_vertices_labels_lookup=False, n_jobs=6):
     backup_labels_fol = '{}_before_solve_collision'.format(atlas)
-    lu.solve_labels_collision(subject, SUBJECTS_DIR, atlas, backup_labels_fol, surf_type, n_jobs)
+    lu.solve_labels_collision(subject, atlas, SUBJECTS_DIR, MMVT_DIR, backup_labels_fol,
+                              overwrite_vertices_labels_lookup, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, atlas)
 
 
 @utils.timeit
 def parcelate_cortex(subject, atlas, overwrite=False, overwrite_annotation=False,
-                     overwrite_vertices_labels_lookup=False, n_jobs=6):
+                     overwrite_vertices_labels_lookup=False, surf_type='inflated', n_jobs=6):
     utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-    labels_to_annot(subject, atlas, overwrite_annotation, n_jobs=n_jobs)
+    labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup,
+                    n_jobs=n_jobs)
     vertices_labels_ids_lookup = lu.create_vertices_labels_lookup(
         subject, atlas, True, overwrite_vertices_labels_lookup)
     params = []
@@ -1289,6 +1293,16 @@ def copy_sphere_reg_files(subject):
         print("No ?h.sphere.reg files! You won't be able to plot stc files")
 
 
+def check_labels(subject, atlas):
+    return lu.check_labels_with_surf(subject, atlas, SUBJECTS_DIR, MMVT_DIR)
+
+
+def morph_labels_from_fsaverage(subject, atlas, fsaverage, overwrite_morphing, fs_labels_fol, n_jobs):
+    return lu.morph_labels_from_fsaverage(
+        subject, SUBJECTS_DIR, MMVT_DIR, atlas, fsaverage=fsaverage, overwrite=overwrite_morphing,
+        fs_labels_fol=fs_labels_fol, n_jobs=n_jobs)
+
+
 def main(subject, remote_subject_dir, args, flags):
     copy_sphere_reg_files(subject)
 
@@ -1301,12 +1315,13 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_annotation'] = create_annotation(
             subject, args.atlas, args.template_subject, remote_subject_dir, args.overwrite_annotation,
             args.overwrite_morphing_labels, args.solve_labels_collisions, args.morph_labels_from_fsaverage,
-            args.fs_labels_fol, args.save_annot_file, args.solve_labels_collision_surf_type, args.n_jobs)
+            args.fs_labels_fol, args.save_annot_file, args.solve_labels_collision_surf_type,
+            args.overwrite_vertices_labels_lookup, args.n_jobs)
 
     if utils.should_run(args, 'parcelate_cortex'):
         flags['parcelate_cortex'] = parcelate_cortex(
             subject, args.atlas, args.overwrite_labels_ply_files, args.overwrite_annotation,
-            args.overwrite_vertices_labels_lookup, args.n_jobs)
+            args.overwrite_vertices_labels_lookup, args.solve_labels_collision_surf_type, args.n_jobs)
 
     if utils.should_run(args, 'subcortical_segmentation'):
         # *) Create srf files for subcortical structures
@@ -1382,6 +1397,14 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'create_skull_surfaces' in args.function:
         flags['create_skull_surfaces'] = create_skull_surfaces(subject)
+
+    if 'check_labels' in args.function:
+        flags['check_labels'] = check_labels(subject, args.atlas)
+
+    if 'morph_labels_from_fsaverage' in args.function:
+        flags['morph_labels_from_fsaverage'] = morph_labels_from_fsaverage(
+            subject, args.atlas, args.template_subject, args.overwrite_morphing_labels, args.fs_labels_fol,
+            args.n_jobs)
 
     return flags
 

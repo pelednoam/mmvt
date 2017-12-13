@@ -41,7 +41,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
 
     now = time.time()
     for f in range(nF):
-        utils.time_to_go(now, f, nF, runs_num_to_print=1000)
+        utils.time_to_go(now, f, nF, runs_num_to_print=5000)
         # Current face & labels
         Cfac = fac[f]
         Cidx = [vertices_labels_ids_lookup[vert_ind] for vert_ind in Cfac]

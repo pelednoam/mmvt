@@ -44,21 +44,6 @@ def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir):
         return fsaverage
 
 
-def load_surf(subject, mmvt_dir, subjects_dir):
-    verts = {}
-    for hemi in HEMIS:
-        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
-            hemi_verts, _ = utils.read_pial(subject, mmvt_dir, hemi)
-        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
-            hemis_verts, _ = utils.read_ply_file(
-                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        else:
-            print("Can't find {} pial ply/npz files!".format(hemi))
-            return False
-        verts[hemi] = hemi_verts
-    return verts
-
-
 def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='aparc250', fs_labels_fol='',
             sub_labels_fol='', n_jobs=6, fsaverage='fsaverage', overwrite=False):
     fsaverage = find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir)
@@ -72,7 +57,20 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
     if not op.isdir(sub_labels_fol):
         os.makedirs(sub_labels_fol)
     labels = read_labels(fsaverage, subjects_dir, aparc_name, n_jobs=n_jobs)
-    verts = load_surf(subject, mmvt_dir, subjects_dir)
+    verts = utils.load_surf(subject, mmvt_dir, subjects_dir)
+
+    # Make sure we have a morph map, and if not, create it here, and not in the parallel function
+    mne.surface.read_morph_map(subject, fsaverage, subjects_dir=subjects_dir)
+    indices = np.array_split(np.arange(len(labels)), n_jobs)
+    chunks = [([labels[ind] for ind in chunk_indices], subject, fsaverage, labels_fol, sub_labels_fol, verts,
+               subjects_dir, overwrite) for chunk_indices in indices]
+    results = utils.run_parallel(_morph_labels_parallel, chunks, n_jobs)
+    return all(results)
+
+
+def _morph_labels_parallel(p):
+    labels, subject, fsaverage, labels_fol, sub_labels_fol, verts, subjects_dir, overwrite = p
+    ok = True
     for fs_label in labels:
         label_file = op.join(labels_fol, '{}.label'.format(fs_label.name))
         local_label_name = op.join(sub_labels_fol, '{}.label'.format(op.splitext(op.split(label_file)[1])[0]))
@@ -83,12 +81,13 @@ def morph_labels_from_fsaverage(subject, subjects_dir, mmvt_dir, aparc_name='apa
             if np.all(sub_label.pos == 0):
                 sub_label.pos = verts[sub_label.hemi][sub_label.vertices]
             sub_label.save(local_label_name)
-    return True
+            ok = ok and op.isfile(local_label_name)
+    return ok
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=[],
                     fix_unknown=True):
-    from src.utils import labels_utils as lu
+
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = op.join(subjects_dir, subject)
@@ -105,7 +104,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
                 continue
             label = mne.read_label(label_file)
             # print(label.name)
-            label.name = lu.get_label_hemi_invariant_name(label.name)
+            label.name = get_label_hemi_invariant_name(label.name)
             labels.append(label)
         labels.sort(key=lambda l: l.name)
     if overwrite:
@@ -121,7 +120,27 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
-def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type='inflated', n_jobs=1):
+def check_labels_with_surf(subject, atlas, subjects_dir, mmvt_dir):
+    labels = read_labels(subject, subjects_dir, atlas)
+    verts = utils.load_surf(subject, mmvt_dir, subjects_dir)
+    verts = {hemi:range(len(verts[hemi])) for hemi in utils.HEMIS}
+    ok = True
+    for hemi in utils.HEMIS:
+        labels_indices = []
+        for l in labels:
+            if l.hemi != hemi:
+                continue
+            labels_indices.extend(l.vertices.tolist())
+        print('{}: labels vertices len: {}, verts len: {}'.format(hemi, len(labels_indices), len(verts[hemi])))
+    for label in labels:
+        if not all(np.in1d(label.vertices, verts[label.hemi])):
+            print('Not all {} vertices are in {} verts!'.format(label.name, label.hemi))
+            ok = False
+    return ok
+
+
+def solve_labels_collision(subject, atlas, subjects_dir, mmvt_dir, backup_atlas, overwrite_vertices_labels_lookup=False,
+                           surf_type='inflated', n_jobs=1):
     # now = time.time()
     # print('Read labels')
     # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
@@ -135,8 +154,10 @@ def solve_labels_collision(subject, subjects_dir, atlas, backup_atlas, surf_type
 
     # os.rename(labels_fol, backup_labels_fol)
     # utils.make_dir(labels_fol)
-    save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol)
-    return
+    return save_labels_from_vertices_lookup(
+        subject, atlas, subjects_dir, mmvt_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol,
+        overwrite_vertices_labels_lookup=overwrite_vertices_labels_lookup, n_jobs=n_jobs)
+
 
     # hemis_verts, labels_hemi, pia_verts = {}, {}, {}
     # print('Read surface ({:.2f}s)'.format(time.time() - now))
@@ -242,7 +263,7 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
         if len(labels) == 0:
             raise Exception("Can't read labels from {} {}".format(subject, atlas))
         labels_names = [l.name for l in labels]
-        if len([l for l in labels_names if 'unknown' in l]) == 0:
+        if len([l for l in labels_names if 'unknown' in l.lower()]) == 0:
             # add the unknown label
             # todo: this code is needed to be debugged!
             annot_fname = get_annot_fnames(subject, SUBJECTS_DIR, atlas, hemi=hemi)[0]
@@ -264,7 +285,8 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
             for vertice in label.vertices:
                 if vertice in verts_indices:
                     lookup[hemi][vertice] = labels_names.index(label.name) if save_labels_ids else label.name
-
+                else:
+                    print('vertice {} of label {} not in verts! ({}, {})'.format(vertice, label.name, subject, hemi))
     loopup_is_ok, err = check_loopup_is_ok(lookup)
     if loopup_is_ok:
         utils.save(lookup, output_fname)
@@ -291,24 +313,48 @@ def find_label_vertices(subject, atlas, hemi, vertices, label_template):
     return label_vertices, label_vertices_indices
 
 
-def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, surf_type='pial', read_labels_from_fol=''):
-    lookup = create_vertices_labels_lookup(subject, atlas, read_labels_from_fol=read_labels_from_fol)
+def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, mmvt_dir, surf_type='pial', read_labels_from_fol='',
+                                     overwrite_vertices_labels_lookup=False, n_jobs=6):
+    lookup = create_vertices_labels_lookup(
+        subject, atlas, read_labels_from_fol=read_labels_from_fol, overwrite=overwrite_vertices_labels_lookup)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
+    surf = utils.load_surf(subject, mmvt_dir, subjects_dir)
     utils.delete_folder_files(labels_fol)
+    ok = True
     for hemi in utils.HEMIS:
         labels_vertices = defaultdict(list)
-        surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
-        surf, _ = mne.surface.read_surface(surf_fname)
+        # surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
+        # surf, _ = mne.surface.read_surface(surf_fname)
         for vertice, label in lookup[hemi].items():
             labels_vertices[label].append(vertice)
-        for label, vertices in labels_vertices.items():
-            label = get_label_hemi_invariant_name(label)
-            if 'unknown' in label.lower():
-                # Don't save the unknown label, the labales_to_annot will do that, otherwise there will be 2 unknown labels
-                continue
-            new_label = mne.Label(sorted(vertices), surf[vertices], hemi=hemi, name=label, subject=subject)
-            new_label.save(op.join(labels_fol, label))
+        chunks_indices = np.array_split(np.arange(len(labels_vertices)), n_jobs)
+        labels_vertices_items = list(labels_vertices.items())
+        chunks = [([labels_vertices_items[ind] for ind in chunk_indices], subject, labels_vertices, surf, hemi,
+                   labels_fol) for chunk_indices in chunks_indices]
+        results = utils.run_parallel(_save_labels_from_vertices_lookup_hemi, chunks, n_jobs)
+        ok = ok and all(results)
+        # for label, vertices in labels_vertices.items():
+        #     label = get_label_hemi_invariant_name(label)
+        #     if 'unknown' in label.lower():
+        #         # Don't save the unknown label, the labales_to_annot will do that, otherwise there will be 2 unknown labels
+        #         continue
+        #     new_label = mne.Label(sorted(vertices), surf[hemi][vertices], hemi=hemi, name=label, subject=subject)
+        #     new_label.save(op.join(labels_fol, label))
+    return ok
 
+
+def _save_labels_from_vertices_lookup_hemi(p):
+    labels_vertices_items, subject, labels_vertices, surf, hemi, labels_fol = p
+    ok = True
+    for label, vertices in labels_vertices_items:
+        label = get_label_hemi_invariant_name(label)
+        if 'unknown' in label.lower():
+            # Don't save the unknown label, the labels_to_annot will do that, otherwise there will be 2 unknown labels
+            continue
+        new_label = mne.Label(sorted(vertices), surf[hemi][vertices], hemi=hemi, name=label, subject=subject)
+        new_label.save(op.join(labels_fol, label))
+        ok = ok and op.isfile(op.join(labels_fol, '{}.label'.format(label)))
+    return ok
 
 
 def calc_labels_centroids(labels_hemi, hemis_verts):
@@ -832,14 +878,15 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
 
 
 if __name__ == '__main__':
-    subject = 'DC'
-    atlas = 'laus250'
-    # label_name = 'bankssts_1-lh'
-    n_jobs = 6
-    # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
-    save_labels_from_vertices_lookup(
-        subject, atlas, SUBJECTS_DIR, surf_type='pial',
-        read_labels_from_fol=op.join(SUBJECTS_DIR, subject, 'label', '{}_before_solve_collision'.format(atlas)))
     pass
+    # subject = 'DC'
+    # atlas = 'laus250'
+    # # label_name = 'bankssts_1-lh'
+    # n_jobs = 6
+    # # check_labels(subject, SUBJECTS_DIR, atlas, label_name)
+    # save_labels_from_vertices_lookup(
+    #     subject, atlas, SUBJECTS_DIR, surf_type='pial',
+    #     read_labels_from_fol=op.join(SUBJECTS_DIR, subject, 'label', '{}_before_solve_collision'.format(atlas)))
+    # pass
 
 
