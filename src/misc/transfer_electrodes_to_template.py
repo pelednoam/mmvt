@@ -269,6 +269,9 @@ def prepare_files(subjects, template_system):
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
     for subject in subjects:
+        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR)
+        if files_exist:
+            continue
         darpa_subject = subject[:2].upper() + subject[2:]
         remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
         if not op.isdir(remote_subject_dir):
