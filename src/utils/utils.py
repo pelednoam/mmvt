@@ -939,7 +939,7 @@ def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_d
             file_name = file_name.replace('{subject}', subject)
             if not op.isfile(op.join(local_subject_dir, fol, file_name)):
                 if trace:
-                    print("The file {} doesn't exist in the local subjects folder!!!".format(file_name))
+                    print("{}: the file {} doesn't exist in the local subjects folder!!!".format(subject, file_name))
                 all_files_exists = False
     return all_files_exists
 
