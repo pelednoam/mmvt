@@ -272,8 +272,9 @@ def prepare_files(subjects, template_system):
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
     goods, bads = [], []
-    for subject in subjects:
-        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR, trace=True)
+    for subject in [template]:
+        files_exist = utils.check_if_all_necessary_files_exist(
+            subject, necessary_files, op.join(SUBJECTS_DIR, subject), trace=True)
         if files_exist:
             goods.append(subject)
             continue
@@ -285,7 +286,8 @@ def prepare_files(subjects, template_system):
                 recursive=True)
             remote_subject_dir = fols[0] if len(fols) == 1 else ''
         if op.isdir(remote_subject_dir):
-            files_exist = utils.prepare_subject_folder(necessary_files, subject, remote_subject_dir, SUBJECTS_DIR)
+            files_exist = utils.prepare_subject_folder(
+                necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=True)
             if files_exist:
                 goods.append(subject)
                 continue

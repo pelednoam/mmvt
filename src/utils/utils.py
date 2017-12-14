@@ -933,8 +933,8 @@ def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_d
     all_files_exists = True
     for fol, files in necessary_files.items():
         fol = fol.replace(':', op.sep)
-        if fol == 'label':
-            continue
+        # if fol == 'label':
+        #     continue
         for file_name in files:
             file_name = file_name.replace('{subject}', subject)
             if not op.isfile(op.join(local_subject_dir, fol, file_name)):
