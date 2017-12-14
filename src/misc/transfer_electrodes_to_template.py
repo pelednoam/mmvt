@@ -268,9 +268,11 @@ def prepare_files(subjects, template_system):
     necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
+    goods, bads = [], []
     for subject in subjects:
-        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR)
+        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR, trace=False)
         if files_exist:
+            goods.append(subject)
             continue
         darpa_subject = subject[:2].upper() + subject[2:]
         remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
@@ -280,9 +282,13 @@ def prepare_files(subjects, template_system):
                 recursive=True)
             remote_subject_dir = fols[0] if len(fols) == 1 else ''
         if op.isdir(remote_subject_dir):
-            utils.prepare_subject_folder(necessary_files, subject, remote_subject_dir, SUBJECTS_DIR)
-        else:
-            print(f"Couldn't find {subject} FS folder!")
+            files_exist = utils.prepare_subject_folder(necessary_files, subject, remote_subject_dir, SUBJECTS_DIR)
+            if files_exist:
+                goods.append(subject)
+                continue
+        bads.append(subject)
+    print(f'goods: {goods}')
+    print(f'bads: {bads}')
 
 
 if __name__ == '__main__':
