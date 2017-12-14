@@ -273,7 +273,7 @@ def prepare_files(subjects, template_system):
     subjects = list(subjects) + [template]
     goods, bads = [], []
     for subject in subjects:
-        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR, trace=False)
+        files_exist = utils.check_if_all_necessary_files_exist(subject, necessary_files, SUBJECTS_DIR, trace=True)
         if files_exist:
             goods.append(subject)
             continue
