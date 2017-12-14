@@ -12,7 +12,7 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
-mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} --outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to} --step3'
+mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} --outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}' # --step3'
 
 
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
@@ -36,7 +36,6 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, print_only
         cmd = mri_cvs_register
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(cmd)
-        return
 
 
 def apply_trans(trans, points):
