@@ -267,7 +267,7 @@ def prepare_files(subjects, template_system):
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
-    subjects += template
+    subjects = list(subjects) + [template]
     for subject in subjects:
         darpa_subject = subject[:2].upper() + subject[2:]
         remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
