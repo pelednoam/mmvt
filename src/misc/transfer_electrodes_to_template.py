@@ -29,6 +29,7 @@ def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox
 def cvs_register_to_template(subjects, template_system, subjects_dir, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
+        utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         cmd = mri_cvs_register
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(cmd)
