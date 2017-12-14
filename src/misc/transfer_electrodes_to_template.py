@@ -263,17 +263,36 @@ def sanity_check():
     print('asdf')
 
 
+def prepare_files(subjects, template_system):
+    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere'],
+                       'label': ['lh.aparc.annot', 'rh.aparc.annot']}
+    subjects += template
+    for subject in subjects:
+        darpa_subject = subject[:2].upper() + subject[2:]
+        remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
+        if not op.isdir(remote_subject_dir):
+            fols = glob.glob(op.join(
+                f'/homes/5/npeled/space1/Angelique/recon-alls/{darpa_subject}/', '**', f'{darpa_subject}_SurferOutput'),
+                recursive=True)
+            remote_subject_dir = fols[0] if len(fols) == 1 else ''
+        if op.isdir(remote_subject_dir):
+            utils.prepare_subject_folder(necessary_files, subject, remote_subject_dir, SUBJECTS_DIR)
+        else:
+            print(f"Couldn't find {subject} FS folder!")
+
+
 if __name__ == '__main__':
     roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'mni'
+    template_system = 'mni' # 'mni'
     atlas = 'aparc.DKTatlas40'
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # print(','.join(electrodes.keys()))
-    cvs_register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR)
+    # cvs_register_to_template(electrodes.keys(), template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
@@ -284,8 +303,10 @@ if __name__ == '__main__':
     # mri_cvs_data_copy
     # mri_cvs_check
     # mri_cvs_register
+    # cvs_register_to_template(['mg105'], template_system, SUBJECTS_DIR)
+    prepare_files(electrodes.keys(), template_system)
     '''
-    mri_cvs_register --mov mg112 --template colin27 --outdir $SUBJECTS_DIR/mg112/mri_cvs_register --step3
+    mri_cvs_register --mov mg112 --template colin27 c
     mri_vol2vol --mov $SUBJECTS_DIR/mg112/mri/T1.mgz --o $SUBJECTS_DIR/mg112/mri/T1_to_colin_csv_register.mgz --m3z
      $SUBJECTS_DIR/mg112/mri_cvs_register/final_CVSmorph_tocolin27.m3z --noDefM3zPath --no-save-reg --targ $SUBJECTS_DIR/colin27/mri/T1.mgz
 
