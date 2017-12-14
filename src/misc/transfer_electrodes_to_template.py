@@ -305,7 +305,7 @@ if __name__ == '__main__':
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'hc029' #''mni' # 'mni'
+    template_system = 'mni' # hc029
     atlas = 'aparc.DKTatlas40'
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
