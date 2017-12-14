@@ -272,7 +272,7 @@ def prepare_files(subjects, template_system):
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
     goods, bads = [], []
-    for subject in [template]:
+    for subject in subjects:
         files_exist = utils.check_if_all_necessary_files_exist(
             subject, necessary_files, op.join(SUBJECTS_DIR, subject), trace=True)
         if files_exist:
