@@ -322,7 +322,7 @@ if __name__ == '__main__':
     # mri_cvs_check
     # mri_cvs_register
     # cvs_register_to_template(['mg105'], template_system, SUBJECTS_DIR)
-    prepare_files(electrodes.keys(), template_system)
+    # prepare_files(electrodes.keys(), template_system)
     '''
     mri_cvs_register --mov mg112 --template colin27 c
     mri_vol2vol --mov $SUBJECTS_DIR/mg112/mri/T1.mgz --o $SUBJECTS_DIR/mg112/mri/T1_to_colin_csv_register.mgz --m3z
