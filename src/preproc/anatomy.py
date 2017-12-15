@@ -765,6 +765,8 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
             if verbose:
                 label_nei = np.zeros((len(label.vertices)))
             for vert_ind, vert in enumerate(label.vertices):
+                if vert >= len(verts):
+                    continue
                 nei = set([vertices_labels_lookup[hemi].get(v, '') for v in vertices_neighbors[vert]]) - set([''])
                 contours[vert] = label_ind + 1 if len(nei) > 1 else 0
                 if verbose:
@@ -1294,7 +1296,7 @@ def copy_sphere_reg_files(subject):
 
 
 def check_labels(subject, atlas):
-    return lu.check_labels_with_surf(subject, atlas, SUBJECTS_DIR, MMVT_DIR)
+    return lu.check_labels(subject, atlas, SUBJECTS_DIR, MMVT_DIR)
 
 
 def morph_labels_from_fsaverage(subject, atlas, fsaverage, overwrite_morphing, fs_labels_fol, n_jobs):
@@ -1347,7 +1349,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['connectivity'] = create_spatial_connectivity(subject)
 
     if utils.should_run(args, 'calc_labeles_contours'):
-        flags['calc_labeles_contours'] = calc_labeles_contours(subject, args.atlas)
+        flags['calc_labeles_contours'] = calc_labeles_contours(subject, args.atlas, args.overwrite_labels_contours)
 
     if utils.should_run(args, 'calc_labels_center_of_mass'):
         # *) Calc the labels center of mass
@@ -1425,6 +1427,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_labels_ply_files', help='overwrite_labels_ply_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_faces_verts', help='overwrite_faces_verts', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_ply_files', help='overwrite_ply_files', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_contours', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_blend', help='overwrite_blend', required=False, default=0, type=au.is_true)
     parser.add_argument('--ask_if_overwrite_blend', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite_flat_surf', help='overwrite_flat_surf', required=False, default=0, type=au.is_true)

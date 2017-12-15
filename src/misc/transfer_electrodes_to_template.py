@@ -27,12 +27,13 @@ def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox
         rs(cmd)
 
 
-def cvs_register_to_template(subjects, template_system, subjects_dir, print_only=False):
+def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
         if subject_from == subject_to:
             continue
-        utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
+        if overwrite:
+            utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         cmd = mri_cvs_register
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(cmd)
@@ -299,6 +300,12 @@ def prepare_files(subjects, template_system):
     print(f'goods: {goods}')
     print(f'bads: {bads}')
     return goods, bads
+
+
+def create_volume_with_electrodes(electrodes):
+    for subject in subjects:
+        t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+
 
 
 if __name__ == '__main__':

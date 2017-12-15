@@ -120,7 +120,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
 
-def check_labels_with_surf(subject, atlas, subjects_dir, mmvt_dir):
+def check_labels(subject, atlas, subjects_dir, mmvt_dir):
     labels = read_labels(subject, subjects_dir, atlas)
     verts = utils.load_surf(subject, mmvt_dir, subjects_dir)
     verts = {hemi:range(len(verts[hemi])) for hemi in utils.HEMIS}
@@ -131,6 +131,7 @@ def check_labels_with_surf(subject, atlas, subjects_dir, mmvt_dir):
             if l.hemi != hemi:
                 continue
             labels_indices.extend(l.vertices.tolist())
+        labels_indices = set(labels_indices)
         print('{}: labels vertices len: {}, verts len: {}'.format(hemi, len(labels_indices), len(verts[hemi])))
     for label in labels:
         if not all(np.in1d(label.vertices, verts[label.hemi])):
@@ -556,7 +557,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 print('Trying to read labels files')
                 if not read_only_from_annot:
                     labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-                    labels = read_labels_parallel(subject, subjects_dir, atlas, labels_fol=labels_fol, n_jobs=n_jobs)
+                    labels = read_labels_parallel(subject, subjects_dir, atlas, hemi, labels_fol=labels_fol, n_jobs=n_jobs)
         else:
             if not read_only_from_annot:
                 labels = read_labels_parallel(

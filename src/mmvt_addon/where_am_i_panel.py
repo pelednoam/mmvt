@@ -402,7 +402,8 @@ def update_slices(modality='mri', ratio=1, images=None):
 def init_slices():
     extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
     for img_name in extra_images:
-        bpy.data.images.remove(bpy.data.images[img_name])
+        if img_name in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images[img_name])
     # save_slices_cursor_pos()
 
 
