@@ -424,7 +424,10 @@ def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='infla
     if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
         # print(traceback.format_exc())
-        solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
+        ret = solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
+        if not ret:
+            print('An error occurred in solve_labels_collisions!')
+            return False
         annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
         if not annot_was_created:
             print("Can't write labels to annotation! Solving the labels collision didn't help...")
@@ -434,9 +437,10 @@ def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='infla
 
 def solve_labels_collisions(subject, atlas, surf_type='inflated', overwrite_vertices_labels_lookup=False, n_jobs=6):
     backup_labels_fol = '{}_before_solve_collision'.format(atlas)
-    lu.solve_labels_collision(subject, atlas, SUBJECTS_DIR, MMVT_DIR, backup_labels_fol,
+    ret = lu.solve_labels_collision(subject, atlas, SUBJECTS_DIR, MMVT_DIR, backup_labels_fol,
                               overwrite_vertices_labels_lookup, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, atlas)
+    return ret
 
 
 @utils.timeit
@@ -1459,9 +1463,9 @@ def read_cmd_args(argv=None):
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
                  'lh.sphere.reg', 'rh.sphere.reg'],
-        'mri:transforms' : ['talairach.xfm', 'talairach.m3z'],
-        'label':['rh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations] +
-                ['lh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations]}
+        'mri:transforms' :['talairach.xfm', 'talairach.m3z'],
+        'label': ['rh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations] +
+                 ['lh.{}.annot'.format(annot_name) for annot_name in existing_freesurfer_annotations]}
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True

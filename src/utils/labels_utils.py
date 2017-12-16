@@ -142,51 +142,15 @@ def check_labels(subject, atlas, subjects_dir, mmvt_dir):
 
 def solve_labels_collision(subject, atlas, subjects_dir, mmvt_dir, backup_atlas, overwrite_vertices_labels_lookup=False,
                            surf_type='inflated', n_jobs=1):
-    # now = time.time()
-    # print('Read labels')
-    # utils.read_labels_parallel(subject, subjects_dir, atlas, labels_fol='', n_jobs=n_jobs)
-    # labels = read_labels(subject, subjects_dir, atlas, n_jobs=n_jobs)
-
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
     labels_fol = op.join(subjects_dir, subject, 'label', atlas)
     if op.isdir(backup_labels_fol):
         shutil.rmtree(backup_labels_fol)
     shutil.copytree(labels_fol, backup_labels_fol)
-
-    # os.rename(labels_fol, backup_labels_fol)
-    # utils.make_dir(labels_fol)
     return save_labels_from_vertices_lookup(
         subject, atlas, subjects_dir, mmvt_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol,
         overwrite_vertices_labels_lookup=overwrite_vertices_labels_lookup, n_jobs=n_jobs)
 
-
-    # hemis_verts, labels_hemi, pia_verts = {}, {}, {}
-    # print('Read surface ({:.2f}s)'.format(time.time() - now))
-    # for hemi in HEMIS:
-    #     surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
-    #     hemis_verts[hemi], _ = mne.surface.read_surface(surf_fname)
-    #     labels_hemi[hemi] = [l for l in labels if l.hemi == hemi]
-    # print('Calc centroids ({:.2f}s)'.format(time.time() - now))
-    # centroids = calc_labels_centroids(labels_hemi, hemis_verts)
-    # for hemi in HEMIS:
-    #     print('Calc vertices labeling for {} ({:.2f}s)'.format(hemi, time.time() - now))
-    #     hemi_centroids_dist = cdist(hemis_verts[hemi], centroids[hemi])
-    #     vertices_labels_indices = np.argmin(hemi_centroids_dist, axis=1)
-    #     labels_hemi_chunks = utils.chunks(list(enumerate(labels_hemi[hemi])), len(labels_hemi[hemi]) / n_jobs)
-    #     params = [(labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol) for labels_hemi_chunk in labels_hemi_chunks]
-    #     print('Save labels for {} ({:.2f}s)'.format(hemi, time.time() - now))
-    #     utils.run_parallel(_save_new_labels_parallel, params, n_jobs)
-
-
-# def _save_new_labels_parallel(params_chunk):
-#     labels_hemi_chunk, atlas, vertices_labels_indices, hemis_verts, labels_fol = params_chunk
-#     for ind, label in labels_hemi_chunk:
-#         vertices = np.where(vertices_labels_indices == ind)[0]
-#         pos = hemis_verts[label.hemi][vertices]
-#         new_label = mne.Label(vertices, pos, hemi=label.hemi, name=label.name, filename=None,
-#             subject=label.subject, color=label.color, verbose=None)
-#         if not op.isfile(op.join(labels_fol, new_label.name)):
-#             new_label.save(op.join(labels_fol, new_label.name))
 
 def create_unknown_labels(subject, atlas):
     labels_fol = op.join(SUBJECTS_DIR, subject, 'label', atlas)
@@ -334,13 +298,6 @@ def save_labels_from_vertices_lookup(subject, atlas, subjects_dir, mmvt_dir, sur
                    labels_fol) for chunk_indices in chunks_indices]
         results = utils.run_parallel(_save_labels_from_vertices_lookup_hemi, chunks, n_jobs)
         ok = ok and all(results)
-        # for label, vertices in labels_vertices.items():
-        #     label = get_label_hemi_invariant_name(label)
-        #     if 'unknown' in label.lower():
-        #         # Don't save the unknown label, the labales_to_annot will do that, otherwise there will be 2 unknown labels
-        #         continue
-        #     new_label = mne.Label(sorted(vertices), surf[hemi][vertices], hemi=hemi, name=label, subject=subject)
-        #     new_label.save(op.join(labels_fol, label))
     return ok
 
 
@@ -354,7 +311,7 @@ def _save_labels_from_vertices_lookup_hemi(p):
             continue
         new_label = mne.Label(sorted(vertices), surf[hemi][vertices], hemi=hemi, name=label, subject=subject)
         new_label.save(op.join(labels_fol, label))
-        ok = ok and op.isfile(op.join(labels_fol, '{}.label'.format(label)))
+        ok = ok and op.isfile(op.join(labels_fol, '{}-{}.label'.format(label, hemi)))
     return ok
 
 

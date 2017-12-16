@@ -5,6 +5,9 @@ import sys
 import traceback
 import numpy as np
 
+import coloring_panel
+
+
 def _addon():
     return AppearanceMakerPanel.addon
 
@@ -470,6 +473,9 @@ class SelectionListener(bpy.types.Operator):
                 _addon().create_slices()
                 _addon().save_cursor_position()
                 clear_slice()
+            if coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
+                _addon().find_closest_label()
+
 
         if self.right_clicked:
             self.right_clicked = False

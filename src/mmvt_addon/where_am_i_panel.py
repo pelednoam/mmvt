@@ -498,6 +498,10 @@ def get_slices_cursor_pos():
     return WhereAmIPanel.slices_cursor_pos
 
 
+def get_annot_files():
+    return WhereAmIPanel.annot_files
+
+
 def slices_were_clicked(active_image, pos):
     if WhereAmIPanel.slicer_state.mri is None:
         return
@@ -761,6 +765,7 @@ class WhereAmIPanel(bpy.types.Panel):
     gray_colormap = None
     slices_cursor_pos = {}
     slicer_state = None
+    annot_files = []
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -784,7 +789,7 @@ def init(addon):
             subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
             annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
             if len(annot_files) > 0:
-                files_names = [mu.namebase(fname)[3:] for fname in annot_files]
+                WhereAmIPanel.annot_files = files_names = [mu.namebase(fname)[3:] for fname in annot_files]
                 items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
                 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
                 bpy.context.scene.subject_annot_files = files_names[0]

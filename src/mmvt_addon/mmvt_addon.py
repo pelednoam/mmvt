@@ -179,6 +179,7 @@ get_prev_colors = coloring_panel.get_prev_colors
 get_activity_colors = coloring_panel.get_activity_colors
 recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
+what_is_colored = coloring_panel.what_is_colored
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -325,6 +326,8 @@ set_slicer_state = where_am_i_panel.set_slicer_state
 get_slicer_state = where_am_i_panel.get_slicer_state
 set_ct_intensity = where_am_i_panel.set_ct_intensity
 create_slices_from_vox_coordinates = where_am_i_panel.create_slices_from_vox_coordinates
+find_closest_label = where_am_i_panel.find_closest_label
+get_annot_files = where_am_i_panel.get_annot_files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data

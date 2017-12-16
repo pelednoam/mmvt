@@ -25,7 +25,7 @@ except:
 HEMIS = mu.HEMIS
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
 WIC_ELECTRODES, WIC_ELECTRODES_DISTS, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
- WIC_CONN_LABELS_AVG) = range(16)
+ WIC_CONN_LABELS_AVG, WIC_CONTOURS) = range(17)
 
 
 def _addon():
@@ -132,18 +132,18 @@ def contours_coloring_update(self, context):
         ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
         items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
-    bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
     ColoringMakerPanel.labels_contours = d
+    bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
 
 
 def labels_contours_update(self, context):
     if not ColoringMakerPanel.init:
         return
     if bpy.context.scene.labels_contours == 'all labels':
-        color_contours()
+        color_contours(cumulate=False)
     else:
         hemi = 'rh' if bpy.context.scene.labels_contours in ColoringMakerPanel.labels['rh'] else 'lh'
-        color_contours(bpy.context.scene.labels_contours, hemi)
+        color_contours(bpy.context.scene.labels_contours, hemi, cumulate=False)
 
 
 def object_coloring(obj, rgb):
@@ -574,7 +574,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
     activity_map_obj_coloring(
         cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
-    print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time()-now))
+    print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True, change_colorbar=True):
@@ -606,6 +606,9 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
         mesh.vertex_colors['contours'].active_render = True
         color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate,
                         coloring_layer='contours')
+    ColoringMakerPanel.what_is_colored.add(WIC_CONTOURS)
+    if bpy.context.scene.contours_coloring in _addon().get_annot_files():
+        bpy.context.scene.subject_annot_files = bpy.context.scene.contours_coloring
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
@@ -1400,6 +1403,10 @@ def color_electrodes():
 
     # deselect_all()
     # mu.select_hierarchy('Deep_electrodes', False)
+
+
+def what_is_colored():
+    return ColoringMakerPanel.what_is_colored
 
 
 def color_electrodes_stim():
