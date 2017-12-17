@@ -42,4 +42,4 @@ def data_deep(times):
 
 
 stc_cort = mne.simulation.simulate_sparse_stc(fwd['src'], n_dipoles=1, times=times,
-                               random_state=42, labels=cort_labels, data_fun=data_cort)  # cortical label
+                               random_state=42, labels=[cort_labels], data_fun=data_cort)  # cortical label
