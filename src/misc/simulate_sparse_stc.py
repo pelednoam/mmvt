@@ -1,6 +1,7 @@
 import mne
 import numpy as np
 import os.path as op
+import traceback
 
 # Noam's healthy control subject
 subjects_dir = '/autofs/cluster/fusion/data/john-noam/'
@@ -10,9 +11,12 @@ trans_fname = '/autofs/cluster/fusion/data/john-noam/hc029/mri/T1-neuromag/sets/
 
 bem = mne.read_bem_solution(bem_fname)
 
-src = mne.setup_source_space(subject, spacing='ico5',
-                             subjects_dir=subjects_dir,
-                             add_dist=False)
+try:
+    src = mne.setup_source_space(subject, spacing='ico5',
+                                 subjects_dir=subjects_dir,
+                                 add_dist=False)
+except:
+    print(traceback.format_exc())
 
 raw_fname = '/autofs/cluster/fusion/data/john-noam/hc029/MEG/hc029_tsss-rest-raw.fif'
 
