@@ -302,14 +302,38 @@ def prepare_files(subjects, template_system):
     return goods, bads
 
 
-def create_volume_with_electrodes(electrodes):
-    for subject in subjects:
+def create_volume_with_electrodes(root, electrodes):
+    for subject in electrodes.keys():
+        if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
+            print(f'No T1 file for {subject}')
+            continue
         t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+        data = np.zeros((256, 256, 256), dtype=np.int16)
+        for elc_name, coords in electrodes[subject]:
+            vox = np.rint(fu.apply_trans(np.linalg.inv(t1_header.get_vox2ras_tkr()), coords)).astype(int)[0]
+            data[tuple(vox)] = 1
+        img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
+        output_fname = op.join(root, '{}_electrodes.nii.gz'.format(subject))
+        print(f'Saving {output_fname}')
+        nib.save(img, output_fname)
+        tkreg = get_tkreg_from_volume(subject, output_fname)
+        print()
 
+
+def get_tkreg_from_volume(subject, data_fname):
+    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
+        print(f'No T1 file for {subject}')
+        return None
+    t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+    data = nib.load(data_fname).get_data()
+    indices = np.where(data > 0)
+    vox = np.array(indices).T
+    tkreg = fu.apply_trans(t1_header.get_vox2ras_tkr(), vox)
+    return tkreg
 
 
 if __name__ == '__main__':
-    roots = ['/home/npeled/Documents/', '/homes/5/npeled/space1/Angelique/misc']
+    roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
@@ -319,12 +343,12 @@ if __name__ == '__main__':
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
     # print(','.join(electrodes.keys()))
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR)
+    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
-
+    create_volume_with_electrodes(root, electrodes)
     # sanity_check()
 
     # mri_cvs_data_copy
