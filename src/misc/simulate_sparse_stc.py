@@ -11,12 +11,13 @@ trans_fname = '/autofs/cluster/fusion/data/john-noam/hc029/mri/T1-neuromag/sets/
 
 bem = mne.read_bem_solution(bem_fname)
 
-try:
+src_fname = SRC = op.join(subjects_dir, subject, 'bem', '{}-oct-6p-src.fif'.format(subject))
+if not op.isfile(src_fname):
     src = mne.setup_source_space(subject, spacing='ico5',
                                  subjects_dir=subjects_dir,
                                  add_dist=False)
-except:
-    print(traceback.format_exc())
+else:
+    src = mne.read_source_spaces(src_fname)
 
 raw_fname = '/autofs/cluster/fusion/data/john-noam/hc029/MEG/hc029_tsss-rest-raw.fif'
 
