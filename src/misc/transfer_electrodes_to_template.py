@@ -13,6 +13,14 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
 mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} --outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}' # --step3'
+mri_vol2vol = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/T1.mgz ' + \
+    '--o {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz --m3z ' + \
+    '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
+    '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
+mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/stim_electrodes.nii.gz ' + \
+    '--o {subjects_dir}/{subject}/electrodes/stim_electrodes_to_colin27.nii.gz --m3z ' + \
+    '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
+    '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
 
 
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
@@ -34,9 +42,49 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
             continue
         if overwrite:
             utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
-        cmd = mri_cvs_register
         rs = utils.partial_run_script(locals(), print_only=print_only)
-        rs(cmd)
+        rs(mri_cvs_register)
+
+
+def morph_electrodes(subjects, template_system, subjects_dir):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+
+
+def morph_t1(subjects, template_system, subjects_dir, print_only=False):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    for subject in subjects:
+        if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
+            print(f'The m3z morph matrix does not exist for subject {subject}!')
+            continue
+        output_fname = op.join(subjects_dir, subject, 'mri', 'T1_to_colin_csv_register.mgz')
+        if not op.isfile(output_fname):
+            rs = utils.partial_run_script(locals(), print_only=print_only)
+            rs(mri_vol2vol)
+        print(f'freeview -v $SUBJECTS_DIR/colin27/mri/T1.mgz $SUBJECTS_DIR/{subject}/mri/T1_to_colin_csv_register.mgz')
+
+
+def morph_electrodes(electrodes, template_system, subjects_dir, print_only=False):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    for subject in electrodes.keys():
+        if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
+            # print(f'The m3z morph matrix does not exist for subject {subject}!')
+            continue
+        electrodes_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes.nii.gz')
+        if not op.isfile(electrodes_fname):
+            # print(f"Can't find volumetric electrodes file for {subject}")
+            continue
+        output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
+        if not op.isfile(output_fname):
+            rs = utils.partial_run_script(locals(), print_only=print_only)
+            rs(mri_elcs2elcs)
+        if not op.isfile(output_fname):
+            print('Error in morphing the electrodes volumetric file!')
+            continue
+        tkreg = get_tkreg_from_volume(subject, output_fname)
+        elecs = [coords for _, coords in electrodes[subject]]
+        print(f'{subject} has {len(elecs)} electrodes')
+        print(f'{subject} after morphing as {len(tkreg)} electrodes:')
+        print(f'freeview -v $SUBJECTS_DIR/{subject}/electrodes/stim_electrodes.nii.gz $SUBJECTS_DIR/colin27/mri/T1.mgz')
 
 
 def apply_trans(trans, points):
@@ -302,32 +350,37 @@ def prepare_files(subjects, template_system):
     return goods, bads
 
 
-def create_volume_with_electrodes(root, electrodes):
+def create_volume_with_electrodes(electrodes, subjects_dir):
     for subject in electrodes.keys():
+        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
+        output_fname = op.join(fol, 'stim_electrodes.nii.gz')
+        if op.isfile(output_fname):
+            print(f'{output_fname} already exist')
+            continue
         if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
             print(f'No T1 file for {subject}')
             continue
-        t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+        t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
         data = np.zeros((256, 256, 256), dtype=np.int16)
         for elc_name, coords in electrodes[subject]:
             vox = np.rint(fu.apply_trans(np.linalg.inv(t1_header.get_vox2ras_tkr()), coords)).astype(int)[0]
             data[tuple(vox)] = 1
         img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
-        output_fname = op.join(root, '{}_electrodes.nii.gz'.format(subject))
         print(f'Saving {output_fname}')
         nib.save(img, output_fname)
-        tkreg = get_tkreg_from_volume(subject, output_fname)
-        print()
+        # tkreg = get_tkreg_from_volume(subject, output_fname)
+
 
 
 def get_tkreg_from_volume(subject, data_fname):
     if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
         print(f'No T1 file for {subject}')
         return None
-    t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+    t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
     data = nib.load(data_fname).get_data()
     indices = np.where(data > 0)
     vox = np.array(indices).T
+    print(vox)
     tkreg = fu.apply_trans(t1_header.get_vox2ras_tkr(), vox)
     return tkreg
 
@@ -348,7 +401,9 @@ if __name__ == '__main__':
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
-    create_volume_with_electrodes(root, electrodes)
+    # create_volume_with_electrodes(electrodes, SUBJECTS_DIR)
+    # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
+    morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
     # sanity_check()
 
     # mri_cvs_data_copy

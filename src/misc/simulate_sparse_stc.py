@@ -21,6 +21,7 @@ else:
 
 raw_fname = '/autofs/cluster/fusion/data/john-noam/hc029/MEG/hc029_tsss-rest-raw.fif'
 
+
 fwd = mne.make_forward_solution(info=raw_fname, trans=trans_fname, src=src, bem=bem, meg=True, eeg=False, n_jobs=2)
 
 cov = '/autofs/cluster/fusion/data/john-noam/hc029/MEG/hc029_tsss-rest-noise-cov.fif'

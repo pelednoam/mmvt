@@ -266,7 +266,8 @@ def transform_subject_to_ras_coordinates(subject, coords, subjects_dir):
 
 
 def apply_trans(trans, points):
-    points = points.reshape((1, 3))
+    if points.ndim == 1:
+        points = points.reshape((1, 3))
     points = np.hstack((points, np.ones((len(points), 1))))
     points = np.dot(trans, points.T).T
     return points[:, :3]
