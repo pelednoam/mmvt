@@ -3,6 +3,7 @@ import numpy as np
 from collections import defaultdict
 import nibabel as nib
 import glob
+from scipy.spatial.distance import cdist
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -46,10 +47,6 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
         rs(mri_cvs_register)
 
 
-def morph_electrodes(subjects, template_system, subjects_dir):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-
-
 def morph_t1(subjects, template_system, subjects_dir, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject in subjects:
@@ -65,6 +62,7 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
 
 def morph_electrodes(electrodes, template_system, subjects_dir, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template_electrodes = defaultdict(list)
     for subject in electrodes.keys():
         if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
             # print(f'The m3z morph matrix does not exist for subject {subject}!')
@@ -73,19 +71,44 @@ def morph_electrodes(electrodes, template_system, subjects_dir, print_only=False
         if not op.isfile(electrodes_fname):
             # print(f"Can't find volumetric electrodes file for {subject}")
             continue
-        output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
-        if not op.isfile(output_fname):
+        morphed_output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
+        if not op.isfile(morphed_output_fname):
             rs = utils.partial_run_script(locals(), print_only=print_only)
             rs(mri_elcs2elcs)
-        if not op.isfile(output_fname):
+        if not op.isfile(morphed_output_fname):
             print('Error in morphing the electrodes volumetric file!')
             continue
-        tkreg = get_tkreg_from_volume(subject, output_fname)
-        elecs = [coords for _, coords in electrodes[subject]]
-        print(f'{subject} has {len(elecs)} electrodes')
-        print(f'{subject} after morphing as {len(tkreg)} electrodes:')
-        print(f'freeview -v $SUBJECTS_DIR/{subject}/electrodes/stim_electrodes.nii.gz $SUBJECTS_DIR/colin27/mri/T1.mgz')
+        elecs = get_tkreg_from_volume(subject, electrodes_fname)
+        tkreg, pairs, dists = get_electrodes_from_morphed_volume(template_system, morphed_output_fname, len(elecs), subjects_dir, 0)
+        print([dists[p[0],p[1]] for p in pairs])
+        utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
+        # print(f'{subject} has {len(elecs)} electrodes')
+        # print(f'{subject} after morphing as {len(tkreg)} electrodes:')
+        # print(f'freeview -v $SUBJECTS_DIR/{subject}/electrodes/stim_electrodes.nii.gz $SUBJECTS_DIR/colin27/mri/T1.mgz')
+        for ind, pair in enumerate(pairs):
+            pair_name = chr(ord('A') + ind)
+            for elc_ind in range(2):
+                template_electrodes[subject].append((f'{subject}_{pair_name}{elc_ind + 1}', tkreg[pair[elc_ind]]))
+    return template_electrodes
 
+
+def get_electrodes_from_morphed_volume(template_system, morphed_output_fname, electrodes_num, subjects_dir, threshold=0):
+    from src.misc.dell import find_electrodes_in_ct
+    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+
+    morphed_data = nib.load(morphed_output_fname).get_data()
+    header = nib.load(op.join(subjects_dir, template, 'mri', 'T1.mgz'))
+    opt_voxels = np.array(np.where(morphed_data > threshold)).T
+    vol, _ = find_electrodes_in_ct.clustering(opt_voxels, morphed_data, electrodes_num, clustering_method='knn')
+    tkreg = fu.apply_trans(header.header.get_vox2ras_tkr(), vol)
+    dists = cdist(tkreg, tkreg)
+    inds = np.where((dists < 7) & (dists > 3))
+    pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+    return tkreg, pairs, dists
+
+
+def get_electrodes_from_morphed_dists(dists):
+    pass
 
 def apply_trans(trans, points):
     if isinstance(points, list):
@@ -326,18 +349,20 @@ def prepare_files(subjects, template_system):
     subjects = list(subjects) + [template]
     goods, bads = [], []
     for subject in subjects:
+        if subject != 'mg96':
+            continue
         files_exist = utils.check_if_all_necessary_files_exist(
             subject, necessary_files, op.join(SUBJECTS_DIR, subject), trace=True)
         if files_exist:
             goods.append(subject)
             continue
         darpa_subject = subject[:2].upper() + subject[2:]
-        remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
+        fols = glob.glob(op.join(
+            f'/homes/5/npeled/space1/Angelique/recon-alls/{darpa_subject}/', '**', f'{darpa_subject}_SurferOutput'),
+            recursive=True)
+        remote_subject_dir = fols[0] if len(fols) == 1 else ''
         if not op.isdir(remote_subject_dir):
-            fols = glob.glob(op.join(
-                f'/homes/5/npeled/space1/Angelique/recon-alls/{darpa_subject}/', '**', f'{darpa_subject}_SurferOutput'),
-                recursive=True)
-            remote_subject_dir = fols[0] if len(fols) == 1 else ''
+            remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
         if op.isdir(remote_subject_dir):
             files_exist = utils.prepare_subject_folder(
                 necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, print_traceback=True)
@@ -350,26 +375,30 @@ def prepare_files(subjects, template_system):
     return goods, bads
 
 
-def create_volume_with_electrodes(electrodes, subjects_dir):
+def create_volume_with_electrodes(electrodes, subjects_dir, overwrite=False):
     for subject in electrodes.keys():
-        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
-        output_fname = op.join(fol, 'stim_electrodes.nii.gz')
-        if op.isfile(output_fname):
-            print(f'{output_fname} already exist')
-            continue
         if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
             print(f'No T1 file for {subject}')
             continue
         t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
+        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
+        output_fname = op.join(fol, 'stim_electrodes.nii.gz')
         data = np.zeros((256, 256, 256), dtype=np.int16)
         for elc_name, coords in electrodes[subject]:
             vox = np.rint(fu.apply_trans(np.linalg.inv(t1_header.get_vox2ras_tkr()), coords)).astype(int)[0]
-            data[tuple(vox)] = 1
-        img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
-        print(f'Saving {output_fname}')
-        nib.save(img, output_fname)
+            data[tuple(vox)] = 1000
+            elc_output_fname = op.join(fol, f'stim_{elc_name}.nii.gz')
+            if not op.isfile(elc_output_fname) or overwrite:
+                elc_data = np.zeros((256, 256, 256), dtype=np.int16)
+                elc_data[tuple(vox)] = 1000
+                elc_img = nib.Nifti1Image(elc_data, t1_header.get_affine(), t1_header)
+                print(f'Saving {elc_output_fname}')
+                nib.save(elc_img, elc_output_fname)
+        if not op.isfile(output_fname) or overwrite:
+            img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
+            print(f'Saving {output_fname}')
+            nib.save(img, output_fname)
         # tkreg = get_tkreg_from_volume(subject, output_fname)
-
 
 
 def get_tkreg_from_volume(subject, data_fname):
@@ -399,11 +428,14 @@ if __name__ == '__main__':
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
-    # export_into_csv(template_electrodes, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
-    # create_volume_with_electrodes(electrodes, SUBJECTS_DIR)
+
+    create_volume_with_electrodes(electrodes, SUBJECTS_DIR, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
-    morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
+    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
+    # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
+    # export_into_csv(template_electrodes, template_system, 'stim_')
+
     # sanity_check()
 
     # mri_cvs_data_copy
