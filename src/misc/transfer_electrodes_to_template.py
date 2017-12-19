@@ -18,8 +18,8 @@ mri_vol2vol = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/T1.mgz ' + \
     '--o {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
     '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
-mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/stim_electrodes.nii.gz ' + \
-    '--o {subjects_dir}/{subject}/electrodes/stim_electrodes_to_colin27.nii.gz --m3z ' + \
+mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/{elcs_file_name} ' + \
+    '--o {subjects_dir}/{subject}/electrodes/{output_name}_to_colin27.nii.gz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
     '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
 
@@ -72,7 +72,14 @@ def morph_electrodes(electrodes, template_system, subjects_dir, print_only=False
             # print(f"Can't find volumetric electrodes file for {subject}")
             continue
         morphed_output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
+        stim_files = glob.glob(op.join(subjects_dir, subject, 'electrodes', '*.nii.gz'))
+        for stim_file in stim_files:
+            elcs_file_name = utils.namesbase_with_ext(stim_file)
+            output_name = utils.namebase(stim_file)
+            rs = utils.partial_run_script(locals(), print_only=print_only)
+            rs(mri_elcs2elcs)
         if not op.isfile(morphed_output_fname):
+            elcs_file_name = 'stim_electrodes.nii.gz'
             rs = utils.partial_run_script(locals(), print_only=print_only)
             rs(mri_elcs2elcs)
         if not op.isfile(morphed_output_fname):
@@ -81,7 +88,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, print_only=False
         elecs = get_tkreg_from_volume(subject, electrodes_fname)
         tkreg, pairs, dists = get_electrodes_from_morphed_volume(template_system, morphed_output_fname, len(elecs), subjects_dir, 0)
         print([dists[p[0],p[1]] for p in pairs])
-        utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
+        # utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
         # print(f'{subject} has {len(elecs)} electrodes')
         # print(f'{subject} after morphing as {len(tkreg)} electrodes:')
         # print(f'freeview -v $SUBJECTS_DIR/{subject}/electrodes/stim_electrodes.nii.gz $SUBJECTS_DIR/colin27/mri/T1.mgz')
@@ -432,7 +439,7 @@ if __name__ == '__main__':
 
     create_volume_with_electrodes(electrodes, SUBJECTS_DIR, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
-    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
+    template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
 
