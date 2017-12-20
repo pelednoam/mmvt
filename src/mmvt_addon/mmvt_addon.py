@@ -549,7 +549,7 @@ def get_panels():
     return (appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel)#, pizco_panel)
+            slicer_panel, skull_panel, pizco_panel)
 
 
 def load_all_panels(addon_prefs=None):
