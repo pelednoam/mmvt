@@ -388,7 +388,7 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         if op.isfile(csv_fname) and not overwrite:
             continue
         with open(csv_fname, 'w') as csv_file:
-            wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE)
+            wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE, delimiter=' ')
             for _, coords in electrodes[subject]:
                 wr.writerow([*['{:.2f}'.format(x) for x in coords]])
 
