@@ -442,7 +442,7 @@ if __name__ == '__main__':
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
-    create_electrodes_files(electrodes, SUBJECTS_DIR)
+    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # print(','.join(electrodes.keys()))
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
