@@ -4,19 +4,44 @@ import csv
 import os
 import os.path as op
 import glob
-import matplotlib.pyplot as plt
-from scipy.spatial.distance import cdist
 from collections import Counter
 import traceback
-from sklearn.preprocessing import StandardScaler
-from sklearn import svm
-from sklearn.externals import joblib
-from sklearn import mixture
-from sklearn.cluster import KMeans
 
-from src.utils import utils
-from src.utils import trans_utils as tu
-from src.utils import trig_utils as trig
+try:
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import svm
+    from sklearn.externals import joblib
+    from sklearn import mixture
+    from sklearn.cluster import KMeans
+except:
+    print('Dell: No sklearn!')
+
+try:
+    from src.utils import utils
+    from src.utils import trans_utils as tu
+    from src.utils import trig_utils as trig
+except:
+    try:
+        import mmvt_utils as mu
+        current_dir = os.getcwd()
+        mu.change_fol_to_mmvt_root()
+        from src.utils import utils
+        from src.utils import trans_utils as tu
+        from src.utils import trig_utils as trig
+    except:
+        print('Dell: No src.utils!')
+
+
+try:
+    from scipy.spatial.distance import cdist
+except:
+    print('Dell: No scipy')
+
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
+
 
 links_dir = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
@@ -232,7 +257,7 @@ def find_electrodes_groups(electrodes, n_groups, elctrodes_hemis, output_fol, er
                            min_cylinders_ang=0.1, min_joined_items_num=1, min_distance=2, debug=False):
     sub_groups = find_electrodes_sub_groups(
         electrodes, min_elcs_for_lead, max_dist_between_electrodes, error_radius)
-    print(f'{len(sub_groups)} sub-groups were found. Joining...')
+    print('{} sub-groups were found. Joining...'.format(len(sub_groups)))
     # groups_dists = get_groups_inner_dists(sub_groups, electrodes)
     groups, points_too_close = join_electrodes_sub_groups(
         electrodes, sub_groups, elctrodes_hemis, max_dist_between_electrodes, error_radius, min_cylinders_ang,

@@ -17,14 +17,12 @@ import subprocess
 import functools
 from functools import partial
 import warnings
-from decorator import decorator
 import glob
 import mne
 import colorsys
 # import math
 import os.path as op
 # import types
-from sklearn.datasets.base import Bunch
 import traceback
 import multiprocessing
 import getpass
@@ -33,6 +31,11 @@ try:
     import scipy.io as sio
 except:
     print('No scipy!')
+
+try:
+    from decorator import decorator
+except:
+    pass
 
 from src.mmvt_addon import mmvt_utils as mu
 # links to mmvt_utils
@@ -845,6 +848,7 @@ def get_labels_vertices(labels, vertno):
 
 
 def dic2bunch(dic):
+    from sklearn.datasets.base import Bunch
     return Bunch(**dic)
 
 
