@@ -4,6 +4,7 @@ from collections import defaultdict
 import nibabel as nib
 import glob
 from scipy.spatial.distance import cdist
+import csv
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -244,7 +245,6 @@ def save_template_electrodes_to_template(template_electrodes, bipolar, template_
 
 
 def export_into_csv(template_electrodes, template_system, prefix=''):
-    import csv
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     fol = utils.make_dir(op.join(MMVT_DIR, template, 'electrodes'))
     csv_fname = op.join(fol, '{}{}_RAS.csv'.format(prefix, template))
@@ -382,6 +382,17 @@ def prepare_files(subjects, template_system):
     return goods, bads
 
 
+def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
+    for subject in electrodes.keys():
+        csv_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes.txt')
+        if op.isfile(csv_fname) and not overwrite:
+            continue
+        with open(csv_fname, 'w') as csv_file:
+            wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+            for _, coords in electrodes[subject]:
+                wr.writerow([*['{:.2f}'.format(x) for x in coords]])
+
+
 def create_volume_with_electrodes(electrodes, subjects_dir, overwrite=False):
     for subject in electrodes.keys():
         if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
@@ -431,15 +442,16 @@ if __name__ == '__main__':
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
+    create_electrodes_files(electrodes, SUBJECTS_DIR)
     # print(','.join(electrodes.keys()))
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR)
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
 
-    create_volume_with_electrodes(electrodes, SUBJECTS_DIR, False)
+    # create_volume_with_electrodes(electrodes, SUBJECTS_DIR, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
-    template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
+    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # export_into_csv(template_electrodes, template_system, 'stim_')
 
