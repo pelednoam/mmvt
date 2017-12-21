@@ -2,6 +2,7 @@ import bpy
 import os.path as op
 import glob
 import mmvt_utils as mu
+from scripts import scripts_utils as su
 from dell import find_electrodes_in_ct as fect
 
 try:
@@ -84,11 +85,12 @@ def init_ct():
     if not NIBABEL_EXIST:
         return False
     user_fol = mu.get_user_fol()
-    ct_fname = op.join(user_fol, 'freeview', 'ct.mgz')
+    ct_fname = op.join(user_fol, 'ct', 'ct_reg_to_mr.mgz')
     if not op.isfile(ct_fname):
         print("Dell: Can't find the ct!")
         return False
-    brain_mask_fname = op.join(user_fol, 'freeview', 'brain.mgz')
+    subjects_dir = su.get_subjects_dir()
+    brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', 'brain.mgz')
     if not op.isfile(brain_mask_fname):
         print("Dell: Can't find brain.mgz!")
         return False
