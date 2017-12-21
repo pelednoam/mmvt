@@ -17,7 +17,7 @@ from sklearn import mixture
 import traceback
 import inspect
 
-from src.mmvt_addon.dell import find_electrodes_in_ct as dell
+from src.misc.dell import find_electrodes_in_ct as dell
 from src.utils import utils
 
 def benchmark_algorithm(dataset_sizes, cluster_function, function_args, function_kwds,

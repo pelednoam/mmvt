@@ -107,7 +107,7 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
                     max_dist_between_electrodes=20, min_cylinders_ang=0.1,
                     thresholds=(99, 99.9, 99.95, 99.99, 99.995, 99.999), min_joined_items_num=1,
                     min_distance_beteen_electrodes=2, overwrite=False, debug=False):
-    from src.mmvt_addon.dell import find_electrodes_in_ct
+    from src.misc.dell import find_electrodes_in_ct
     if n_components <= 0 or n_groups <= 0:
         print('Both n_components and n_groups should be > 0!')
         return False

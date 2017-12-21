@@ -2,9 +2,13 @@ import bpy
 import os.path as op
 import glob
 import mmvt_utils as mu
-import nibabel as nib
-
 from dell import find_electrodes_in_ct as fect
+
+try:
+    import nibabel as nib
+    NIBABEL_EXIST = True
+except:
+    NIBABEL_EXIST = False
 
 
 def _addon():
@@ -77,6 +81,8 @@ def init(addon):
 
 
 def init_ct():
+    if not NIBABEL_EXIST:
+        return False
     user_fol = mu.get_user_fol()
     ct_fname = op.join(user_fol, 'freeview', 'ct.mgz')
     if not op.isfile(ct_fname):

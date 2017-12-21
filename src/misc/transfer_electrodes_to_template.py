@@ -122,7 +122,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
 
 
 def get_electrodes_from_morphed_volume(template_system, morphed_output_fname, electrodes_num, subjects_dir, threshold=0):
-    from src.mmvt_addon.dell import find_electrodes_in_ct
+    from src.misc.dell import find_electrodes_in_ct
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
 
     morphed_data = nib.load(morphed_output_fname).get_data()
