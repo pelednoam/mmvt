@@ -1,3 +1,4 @@
+import colorsys
 # Blender and addon libs
 try:
     import bpy
@@ -2121,3 +2122,16 @@ def get_click_area(event, context):
         if (a.x < event.mouse_x < a.x + a.width
                 and a.y < event.mouse_y < a.y + a.height):
             return a
+
+
+def flat_list_of_lists(l):
+    return sum(l, [])
+
+
+def get_distinct_colors_hs(colors_num=0):
+    return np.linspace(0, 360, colors_num + 1)[:-1] / 360
+
+
+def get_distinct_colors(colors_num=0):
+    hs = get_distinct_colors_hs(colors_num)
+    return [colorsys.hls_to_rgb(hs[ind], 0.5, 1) for ind in range(colors_num)]

@@ -400,28 +400,6 @@ def elecs_draw(self, context):
     # row.label(text='             ')
 
 
-
-class ElectrodesViewOne(bpy.types.Operator):
-    bl_idname = 'mmvt.electrodes_view_onw'
-    bl_label = 'elecetrodes view one'
-    bl_options = {'UNDO'}
-
-    def invoke(self, context, event=None):
-        for elc in bpy.data.objects['Deep_electrodes'].children:
-            elc.hide =  elc.name not in ['RPI1', 'RPI2', 'RAT6', 'RAT7', 'RAT8', 'RAT8']
-        return {'FINISHED'}
-
-class ElectrodesViewTwo(bpy.types.Operator):
-    bl_idname = 'mmvt.electrodes_view_two'
-    bl_label = 'elecetrodes view two'
-    bl_options = {'UNDO'}
-
-    def invoke(self, context, event=None):
-        for elc in bpy.data.objects['Deep_electrodes'].children:
-            elc.hide = elc.name[:3] not in ['RPI', 'RAT', 'RAI', 'RMT', 'RPT', 'LAI', 'LPI', 'LAT', 'LMT', 'LPT']
-        return {'FINISHED'}
-
-
 class ClearElectrodes(bpy.types.Operator):
     bl_idname = 'mmvt.electrodes_clear'
     bl_label = 'clearElectrodes'
@@ -572,8 +550,6 @@ bpy.types.Scene.electrodes_what_to_color = bpy.props.EnumProperty(
     update=what_to_color_update)
 
 bpy.types.Scene.elc_size = bpy.props.FloatProperty(description="", update=elc_size_update)
-
-
 
 
 class ElecsPanel(bpy.types.Panel):

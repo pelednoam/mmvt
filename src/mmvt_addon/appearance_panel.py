@@ -476,7 +476,6 @@ class SelectionListener(bpy.types.Operator):
             if coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
                 _addon().find_closest_label()
 
-
         if self.right_clicked:
             self.right_clicked = False
             if not click_inside_3d_view(event):

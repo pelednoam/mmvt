@@ -355,7 +355,8 @@ def import_meg_sensors():
     print('MEG sensors importing is Finished ')
 
 
-def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_size=None, parnet_name='Deep_electrodes'):
+def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrode_size=None,
+                      parnet_name='Deep_electrodes', elecs_pos=None, elecs_names=None):
     if electrodes_layer is None:
         electrodes_layer = _addon().ELECTRODES_LAYER
     if not electrode_size is None:
@@ -363,7 +364,13 @@ def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_s
     if bipolar != '':
         bpy.context.scene.bipolar = bool(bipolar)
     mu.delete_hierarchy(parnet_name)
-    f = np.load(input_file)
+    if input_file != '':
+        if op.isfile(input_file):
+            f = np.load(input_file)
+            elecs_pos, elecs_names = f['pos'], f['names']
+        else:
+            print("Can't find electrodes input file! {}".format(input_file))
+            return False
 
     electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
@@ -372,8 +379,9 @@ def import_electrodes(input_file, electrodes_layer=None, bipolar='', electrode_s
     layers_array = [False] * 20
     layers_array[electrodes_layer] = True
 
-    for (x, y, z), name in zip(f['pos'], f['names']):
-        elc_name = name.astype(str)
+    for (x, y, z), elc_name in zip(elecs_pos, elecs_names):
+        if not isinstance(elc_name, str):
+            elc_name = elc_name.astype(str)
         if not bpy.data.objects.get(elc_name) is None:
             elc_obj = bpy.data.objects[elc_name]
             elc_obj.location = [x * 0.1, y * 0.1, z * 0.1]
