@@ -37,19 +37,20 @@ def get_electrodes_above_threshold():
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
     print('mask_voxels_outside_brain...')
-    ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain)
+    ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain, DellPanel.aseg)
     print('clustering...')
     ct_electrodes, clusters = fect.clustering(
-        ct_voxels, DellPanel.ct_data, bpy.context.scene.dell_ct_n_components, 'knn', DellPanel.output_fol,
-        bpy.context.scene.dell_ct_threshold)
-    DellPanel.pos = pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
+        ct_voxels, DellPanel.ct_data, bpy.context.scene.dell_ct_n_components, 'knn', #DellPanel.output_fol,
+        threshold=bpy.context.scene.dell_ct_threshold)
+    DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
-    DellPanel.hemis = hemis, _ = fect.find_electrodes_hemis(user_fol, pos)
-    DellPanel.names = names = name_electrodes(hemis)
+    DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
+    DellPanel.names = name_electrodes(DellPanel.hemis)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
     print('import_electrodes...')
-    _addon().import_electrodes(elecs_pos=pos, elecs_names=names, bipolar=False, parnet_name='Deep_electrodes')
+    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
+                               parnet_name='Deep_electrodes')
     _addon().show_electrodes()
 
 
@@ -62,7 +63,7 @@ def find_electrode_lead():
             print('{} is already in a group!'.format(selected_elc))
             return
         group = fect.find_electrode_group(
-            elc_ind, DellPanel.pos, DellPanel.groups, error_radius=3, min_elcs_for_lead=4,
+            elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, error_radius=3, min_elcs_for_lead=4,
             max_dist_between_electrodes=15, min_distance=2)
         if group is None:
             print('No group was found for {}!'.format(selected_elc))
@@ -102,6 +103,10 @@ def clear_groups():
         int(bpy.context.scene.dell_ct_threshold)))
     shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
     os.remove(groups_fname)
+    clear_electrodes_color()
+
+
+def clear_electrodes_color():
     for elc_name in DellPanel.names:
         _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
 
@@ -128,10 +133,13 @@ def dell_draw(self, context):
     row = layout.row(align=0)
     row.prop(context.scene, 'dell_ct_threshold_percentile', text='')
     row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
-    layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
-    layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
-    layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
-    layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+    parent = bpy.data.objects.get('Deep_electrodes', None)
+    if parent is None or len(parent.children) == 0:
+        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
+    else:
+        layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
+        layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
+        layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
 
 
 class FindElectrodeLead(bpy.types.Operator):
@@ -254,6 +262,7 @@ def init_ct():
     DellPanel.ct_data = DellPanel.ct.get_data()
     DellPanel.brain = nib.load(brain_mask_fname)
     DellPanel.brain_mask = DellPanel.brain.get_data()
+    DellPanel.aseg = nib.load(op.join(subjects_dir, mu.get_user(), 'mri', 'aseg.mgz')).get_data()
     return True
 
 
@@ -276,6 +285,8 @@ def init_groups():
         color = DellPanel.colors[ind]
         for elc_ind in group:
             _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
+    if len(DellPanel.groups) == 0:
+        clear_electrodes_color()
 
 
 def register():

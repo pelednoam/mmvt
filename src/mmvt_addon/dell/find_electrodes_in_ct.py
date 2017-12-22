@@ -14,13 +14,17 @@ def find_voxels_above_threshold(ct_data, threshold):
     return np.array(np.where(ct_data > threshold)).T
 
 
-def mask_voxels_outside_brain(voxels, ct_header, brain):
+def mask_voxels_outside_brain(voxels, ct_header, brain, aseg=None):
     brain_header = brain.get_header()
     brain_mask = brain.get_data()
     ct_vox2ras, ras2t1_vox, _ = get_trans(ct_header, brain_header)
     ct_ras = apply_trans(ct_vox2ras, voxels)
     t1_vox = np.rint(apply_trans(ras2t1_vox, ct_ras)).astype(int)
-    voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0])
+    if aseg is None:
+        voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0])
+    else:
+        voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0 and
+                           aseg[tuple(t1_v)] not in [0, 7, 8]])
     return voxels
 
 
@@ -44,38 +48,43 @@ def clustering(data, ct_data, n_components, clustering_method='knn', output_fol=
         centroids, Y = knn_clustering(data, n_components, output_fol, threshold)
     centroids = np.zeros(centroids.shape, dtype=np.int)
     labels = np.unique(Y)
-    centroid_inds = []
+    # centroid_inds = []
     for ind, label in enumerate(labels):
         voxels = data[Y == label]
         centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
-        centroid_inds.append(np.where(np.all(data == centroids[ind], axis=1))[0][0])
+        # centroid_inds.append(np.where(np.all(data == centroids[ind], axis=1))[0][0])
     return centroids, Y
 
 
 def knn_clustering(data, n_components, output_fol='', threshold=0):
+    kmeans = KMeans(n_clusters=n_components, random_state=0)
     if output_fol != '':
         output_fname = op.join(output_fol, 'kmeans_model_{}.pkl'.format(int(threshold)))
         if not op.isfile(output_fname):
-            kmeans = KMeans(n_clusters=n_components, random_state=0).fit(data)
+            kmeans.fit(data)
             print('Saving knn model to {}'.format(output_fname))
             joblib.dump(kmeans, output_fname, compress=9)
         else:
             kmeans = joblib.load(output_fname)
+    else:
+        kmeans.fit(data)
     Y = kmeans.predict(data)
     centroids = kmeans.cluster_centers_
     return centroids, Y
 
 
 def gmm_clustering(data, n_components, covariance_type='full', output_fol='', threshold=0):
+    gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
     if output_fol != '':
         output_fname = op.join(output_fol, 'gmm_model_{}.pkl'.format(int(threshold)))
         if not op.isfile(output_fname):
-            gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=covariance_type)
             gmm.fit(data)
             print('Saving gmm model to {}'.format(output_fname))
             joblib.dump(gmm, output_fname, compress=9)
         else:
             gmm = joblib.load(output_fname)
+    else:
+        gmm.fit(data)
     Y = gmm.predict(data)
     centroids = gmm.means_
     return centroids, Y
@@ -129,7 +138,7 @@ def read_pial_verts(user_fol):
     return verts
 
 
-def find_electrode_group(elc_ind, electrodes, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
+def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                          min_distance=2):
     max_electrodes_inside = 0
     best_group = None
@@ -146,6 +155,9 @@ def find_electrode_group(elc_ind, electrodes, groups=[], error_radius=3, min_elc
             if len(set(points_inside) & elcs_already_in_groups) > 0:
                 continue
             if len(points_inside) < min_elcs_for_lead:
+                continue
+            same_hemi = all_items_equall([elctrodes_hemis[p] for p in points_inside])
+            if not same_hemi:
                 continue
             elcs_inside = electrodes[points_inside]
             elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
@@ -285,3 +297,7 @@ def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
 
 def flat_list_of_lists(l):
     return sum(l, [])
+
+
+def all_items_equall(arr):
+    return all([x == arr[0] for x in arr])
