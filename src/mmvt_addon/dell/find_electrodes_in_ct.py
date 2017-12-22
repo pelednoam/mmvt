@@ -135,20 +135,12 @@ def find_electrode_group(elc_ind, electrodes, groups=[], error_radius=3, min_elc
     best_group = None
     elcs_already_in_groups = set(flat_list_of_lists(groups))
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
-    # now = time.time()
-    # run = -1
-    # N = len(np.triu_indices(len(electrodes_list), 1)[0])
     for i in electrodes_list:
         for j in electrodes_list[i+1:]:
-            # run += 1
-            # time_to_go(now, run, N, runs_num_to_print=1000)
             if not point_in_cube(electrodes[i], electrodes[j], electrodes[elc_ind]):
                 continue
             points_inside, cylinder = points_in_cylinder(
                 electrodes[i], electrodes[j], electrodes, error_radius, return_cylinder=True)
-            # Slower
-            # points_inside = [p for p in electrodes_list if point_in_cube(electrodes[i], electrodes[j], electrodes[p]) and
-            #                  point_in_cylinder(electrodes[i], electrodes[j], error_radius, electrodes[p])]
             if elc_ind not in points_inside:
                 continue
             if len(set(points_inside) & elcs_already_in_groups) > 0:
