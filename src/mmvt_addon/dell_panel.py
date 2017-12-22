@@ -3,6 +3,8 @@ import os.path as op
 import glob
 import numpy as np
 import importlib
+import shutil
+import os
 
 import mmvt_utils as mu
 from scripts import scripts_utils as su
@@ -94,6 +96,16 @@ def calc_threshold_precentile():
         DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
 
 
+def clear_groups():
+    DellPanel.groups = []
+    groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
+        int(bpy.context.scene.dell_ct_threshold)))
+    shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
+    os.remove(groups_fname)
+    for elc_name in DellPanel.names:
+        _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
+
+
 def install_dell_reqs():
     from scripts import scripts_utils as su
     from scripts import call_script_utils as sutils
@@ -108,7 +120,7 @@ def install_dell_reqs():
 def dell_draw(self, context):
     layout = self.layout
     if not NIBABEL_EXIST or not DELL_EXIST:
-        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Install reqs", icon='ROTATE')
+        layout.operator(InstallReqs.bl_idname, text="Install reqs", icon='ROTATE')
         return
     layout.prop(context.scene, 'dell_ct_n_components', text="n_components")
     layout.prop(context.scene, 'dell_ct_n_groups', text="n_groups")
@@ -118,6 +130,7 @@ def dell_draw(self, context):
     row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
     layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
+    layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
 
 
@@ -168,6 +181,16 @@ class CalcThresholdPercentile(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         calc_threshold_precentile()
+        return {'PASS_THROUGH'}
+
+
+class ClearGroups(bpy.types.Operator):
+    bl_idname = "mmvt.clear_groups"
+    bl_label = "clear_groups"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        clear_groups()
         return {'PASS_THROUGH'}
 
 
@@ -263,6 +286,7 @@ def register():
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
         bpy.utils.register_class(FindElectrodeLead)
+        bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(DeleteElectrodes)
     except:
         print("Can't register Dell Panel!")
@@ -275,6 +299,7 @@ def unregister():
         bpy.utils.unregister_class(CalcThresholdPercentile)
         bpy.utils.unregister_class(GetElectrodesAboveThrshold)
         bpy.utils.unregister_class(FindElectrodeLead)
+        bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(DeleteElectrodes)
     except:
         pass

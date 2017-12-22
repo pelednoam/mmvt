@@ -135,17 +135,20 @@ def find_electrode_group(elc_ind, electrodes, groups=[], error_radius=3, min_elc
     best_group = None
     elcs_already_in_groups = set(flat_list_of_lists(groups))
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
-    now = time.time()
-    run = -1
-    N = len(np.triu_indices(len(electrodes_list), 1)[0])
+    # now = time.time()
+    # run = -1
+    # N = len(np.triu_indices(len(electrodes_list), 1)[0])
     for i in electrodes_list:
         for j in electrodes_list[i+1:]:
-            run += 1
-            time_to_go(now, run, N, runs_num_to_print=1000)
-            points_inside, cylinder = point_in_cylinder(
+            # run += 1
+            # time_to_go(now, run, N, runs_num_to_print=1000)
+            if not point_in_cube(electrodes[i], electrodes[j], electrodes[elc_ind]):
+                continue
+            points_inside, cylinder = points_in_cylinder(
                 electrodes[i], electrodes[j], electrodes, error_radius, return_cylinder=True)
-            # for p in points_inside:
-            #     point_in_cylinder2(electrodes[i], electrodes[j], electrodes[p], error_radius)
+            # Slower
+            # points_inside = [p for p in electrodes_list if point_in_cube(electrodes[i], electrodes[j], electrodes[p]) and
+            #                  point_in_cylinder(electrodes[i], electrodes[j], error_radius, electrodes[p])]
             if elc_ind not in points_inside:
                 continue
             if len(set(points_inside) & elcs_already_in_groups) > 0:
@@ -166,7 +169,18 @@ def find_electrode_group(elc_ind, electrodes, groups=[], error_radius=3, min_elc
     return best_group
 
 
-def point_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False, N=100):
+def point_in_cube(pt1, pt2, r):
+    # return all([p_in_the_middle(pt1[k], pt2[k], r[k]) for k in range(3)])
+    # faster:
+    return p_in_the_middle(pt1[0], pt2[0], r[0]) and p_in_the_middle(pt1[1], pt2[1], r[1]) and \
+           p_in_the_middle(pt1[2], pt2[2], r[2])
+
+
+def p_in_the_middle(x, y, z):
+    return x >= z >= y if x > y else x <= z <= y
+
+
+def points_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False, N=100):
     dist = np.linalg.norm(pt1 - pt2)
     elc_ori = (pt2 - pt1) / dist # norm(elc_ori)=1mm
     # elc_line = np.array([pt1 + elc_ori*t for t in np.linspace(0, dist, N)])
@@ -176,6 +190,12 @@ def point_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False, N=100)
         return np.where(dists <= radius_sq)[0], elc_line
     else:
         return np.where(dists <= radius_sq)[0]
+
+
+def point_in_cylinder(pt1, pt2, r, q):
+    vec = pt2 - pt1
+    const = r * np.linalg.norm(vec)
+    return np.dot(q - pt1, vec) >= 0 and np.dot(q - pt2, vec) <= 0 and np.linalg.norm(np.cross(q - pt1, vec)) <= const
 
 
 def point_in_cylinder2(pt1, pt2, testpt, radius_sq):
