@@ -413,7 +413,8 @@ def get_subject_files(subject, necessary_files, remote_subject_dir):
 
 def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
     for subject in electrodes.keys():
-        csv_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes.txt')
+        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
+        csv_fname = op.join(fol, 'stim_electrodes.txt')
         if op.isfile(csv_fname) and not overwrite:
             continue
         with open(csv_fname, 'w') as csv_file:
