@@ -51,7 +51,7 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
 def _mri_cvs_register_parallel(p):
     subjects, subject_to, subjects_dir, overwrite, print_only = p
     for subject_from in subjects:
-        if overwrite:
+        if overwrite and not print_only:
             utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(mri_cvs_register)
@@ -493,7 +493,7 @@ if __name__ == '__main__':
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # print(','.join(electrodes.keys()))
     # good_subjects = ['mg96']
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=1, print_only=True, overwrite=True) #
+    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=1, print_only=False, overwrite=True) #
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
