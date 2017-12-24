@@ -1,10 +1,13 @@
 import bpy
+import bpy_extras
 import os.path as op
 import glob
 import numpy as np
 import importlib
 import shutil
 import os
+import random
+import traceback
 
 import mmvt_utils as mu
 from scripts import scripts_utils as su
@@ -54,29 +57,50 @@ def get_electrodes_above_threshold():
     _addon().show_electrodes()
 
 
-@mu.profileit('cumtime', op.join(mu.get_user_fol()))
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrode_lead():
     if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
         selected_elc = bpy.context.selected_objects[0].name
         elc_ind = DellPanel.names.index(selected_elc)
         if elc_ind in set(mu.flat_list_of_lists(DellPanel.groups)):
-            print('{} is already in a group!'.format(selected_elc))
-            return
-        group = fect.find_electrode_group(
-            elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, error_radius=3, min_elcs_for_lead=4,
-            max_dist_between_electrodes=15, min_distance=2)
-        if group is None:
-            print('No group was found for {}!'.format(selected_elc))
-            return
-        DellPanel.groups.append(group)
-        mu.save(DellPanel.groups, op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
-            int(bpy.context.scene.dell_ct_threshold))))
-        color = DellPanel.colors[len(DellPanel.groups)]
-        for elc_ind in group:
-            _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
-        print(group)
+            print('{} is already in a group!'.format(DellPanel.names[elc_ind]))
+        else:
+            group = _find_electrode_lead(elc_ind)
+            if len(group) > 0:
+                print(group)
     else:
         print("You should first select an electrode")
+
+
+def _find_electrode_lead(elc_ind):
+    group, noise, DellPanel.dists = fect.find_electrode_group(
+        elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
+        bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
+        bpy.context.scene.dell_ct_min_distance)
+    if len(group) == 0:
+        print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
+        DellPanel.noise.add(elc_ind)
+        return []
+    DellPanel.groups.append(group)
+    for p in noise:
+        DellPanel.noise.add(p)
+    mu.save(DellPanel.groups, op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
+        int(bpy.context.scene.dell_ct_threshold))))
+    color = DellPanel.colors[len(DellPanel.groups) - 1]
+    for elc_ind in group:
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
+    return group
+
+
+def find_random_group():
+    elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
+    group, run_num = [], 0
+    while len(elcs) > 0 and len(group) == 0 and run_num < 10:
+        elc_ind = random.choice(elcs)
+        group = _find_electrode_lead(elc_ind)
+        if len(group) == 0:
+            elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
+        run_num += 1
 
 
 def name_electrodes(elctrodes_hemis):
@@ -101,14 +125,22 @@ def clear_groups():
     DellPanel.groups = []
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold)))
-    shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
-    os.remove(groups_fname)
+    if op.isfile(groups_fname):
+        shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
+        os.remove(groups_fname)
     clear_electrodes_color()
 
 
 def clear_electrodes_color():
     for elc_name in DellPanel.names:
-        _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
+        if bpy.data.objects.get(elc_name) is not None:
+            _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
+
+
+def run_ct_preproc():
+    cmd = '{} -m src.preproc.ct -s {} -f save_subject_ct_trans,save_images_data_and_header --ignore_missing 1'.format(
+        bpy.context.scene.python_cmd, mu.get_user())
+    mu.run_command_in_new_thread(cmd, False)
 
 
 def install_dell_reqs():
@@ -124,22 +156,61 @@ def install_dell_reqs():
 
 def dell_draw(self, context):
     layout = self.layout
+    parent = bpy.data.objects.get('Deep_electrodes', None)
     if not NIBABEL_EXIST or not DELL_EXIST:
         layout.operator(InstallReqs.bl_idname, text="Install reqs", icon='ROTATE')
-        return
-    layout.prop(context.scene, 'dell_ct_n_components', text="n_components")
-    layout.prop(context.scene, 'dell_ct_n_groups', text="n_groups")
-    layout.prop(context.scene, 'dell_ct_threshold', text="Threshold")
-    row = layout.row(align=0)
-    row.prop(context.scene, 'dell_ct_threshold_percentile', text='')
-    row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
-    parent = bpy.data.objects.get('Deep_electrodes', None)
-    if parent is None or len(parent.children) == 0:
+    elif not DellPanel.ct_found:
+        layout.operator(ChooseCTFile.bl_idname, text="Load CT", icon='PLUGIN').filepath=op.join(
+            mu.get_user_fol(), 'ct', '*.mgz')
+    elif parent is None or len(parent.children) == 0:
+        row = layout.row(align=0)
+        row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
+        row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
+        row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
+        row = layout.row(align=0)
+        row.prop(context.scene, 'dell_ct_n_components', text="n_components")
+        row.prop(context.scene, 'dell_ct_n_groups', text="n_groups")
+        row = layout.row(align=0)
+        row.prop(context.scene, 'dell_ct_error_radius', text="Error radius")
+        row.prop(context.scene, 'dell_ct_min_elcs_for_lead', text="Min for lead")
+        row = layout.row(align=0)
+        row.prop(context.scene, 'dell_ct_max_dist_between_electrodes', text="Max dist between")
+        row.prop(context.scene, 'dell_ct_min_distance', text="Min dist between")
+        layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
         layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
+        layout.operator(FindRandomLead.bl_idname, text="I feel lucky", icon='LAMP_SUN')
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
+    if parent is not None and len(parent.children) > 0:
         layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+    if len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
+        layout.label(text='Group inner distances:')
+        box = layout.box()
+        col = box.column()
+        last_group = DellPanel.groups[-1]
+        for elc1, elc2, dist in zip([DellPanel.names[k] for k in last_group[:-1]], [DellPanel.names[k] for k in last_group[1:]], DellPanel.dists):
+            mu.add_box_line(col, '{}-{}'.format(elc1, elc2), '{:.2f}'.format(dist), 0.8)
+
+
+class ChooseCTFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.choose_ct_file"
+    bl_label = "Choose CT file"
+
+    filename_ext = '.mgz'
+    filter_glob = bpy.props.StringProperty(default='*.mgz', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        ct_fname = self.filepath
+        ct_name = 'ct_reg_to_mr.mgz' # mu.namesbase_with_ext(ct_fname)
+        user_fol = mu.get_user_fol()
+        ct_fol = mu.get_fname_folder(ct_fname)
+        if ct_fol != op.join(user_fol, 'ct'):
+            mu.make_dir(op.join(user_fol, 'ct'))
+            shutil.copy(ct_fname, op.join(user_fol, 'ct', ct_name))
+        run_ct_preproc()
+        init(_addon(), ct_name)
+        return {'FINISHED'}
 
 
 class FindElectrodeLead(bpy.types.Operator):
@@ -149,6 +220,16 @@ class FindElectrodeLead(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         find_electrode_lead()
+        return {'PASS_THROUGH'}
+
+
+class FindRandomLead(bpy.types.Operator):
+    bl_idname = "mmvt.find_random_lead"
+    bl_label = "find_random_lead"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        find_random_group()
         return {'PASS_THROUGH'}
 
 
@@ -206,6 +287,10 @@ bpy.types.Scene.dell_ct_threshold = bpy.props.FloatProperty(default=0.5, min=0, 
 bpy.types.Scene.dell_ct_threshold_percentile = bpy.props.FloatProperty(default=99.9, min=0, max=100, description="")
 bpy.types.Scene.dell_ct_n_components = bpy.props.IntProperty(min=0, description='')
 bpy.types.Scene.dell_ct_n_groups = bpy.props.IntProperty(min=0, description='', update=dell_ct_n_groups_update)
+bpy.types.Scene.dell_ct_error_radius = bpy.props.FloatProperty(min=1, max=8, default=2)
+bpy.types.Scene.dell_ct_min_elcs_for_lead = bpy.props.IntProperty(min=2, max=20, default=4)
+bpy.types.Scene.dell_ct_max_dist_between_electrodes = bpy.props.FloatProperty(default=15, min=1, max=100)
+bpy.types.Scene.dell_ct_min_distance = bpy.props.FloatProperty(default=3, min=0, max=100)
 
 
 class DellPanel(bpy.types.Panel):
@@ -216,45 +301,58 @@ class DellPanel(bpy.types.Panel):
     bl_label = "Dell"
     addon = None
     init = False
+    ct_found = False
     ct = None
     brain = None
     output_fol = ''
     colors = []
     groups = []
+    noise = set()
+    dists = []
 
     def draw(self, context):
         if DellPanel.init:
             dell_draw(self, context)
 
 
-def init(addon):
+def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz'):
     DellPanel.addon = addon
-    if not init_ct():
-        return
-    init_electrodes()
-    if bpy.context.scene.dell_ct_n_groups > 0:
-        DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
-    DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
-    files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
-    if len(files) > 0:
-        (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])
-    else:
-        bpy.context.scene.dell_ct_threshold_percentile = 99.9
-    bpy.context.scene.dell_ct_threshold = np.percentile(
-        DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
-    init_groups()
-    register()
-    DellPanel.init = True
+    try:
+        DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
+        DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
+        if DellPanel.ct_found:
+            init_electrodes()
+            if bpy.context.scene.dell_ct_n_groups > 0:
+                DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
+            files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
+            if len(files) > 0:
+                (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])
+            else:
+                bpy.context.scene.dell_ct_threshold_percentile = 99.9
+            bpy.context.scene.dell_ct_threshold = np.percentile(
+                DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
+            init_groups()
+        bpy.context.scene.dell_ct_error_radius = 2
+        bpy.context.scene.dell_ct_min_elcs_for_lead = 4
+        bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
+        bpy.context.scene.dell_ct_min_distance = 3
+        if not DellPanel.init:
+            DellPanel.init = True
+            register()
+    except:
+        print(traceback.format_exc())
+        DellPanel.init = False
 
 
-def init_ct():
+def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz'):
     user_fol = mu.get_user_fol()
-    ct_fname = op.join(user_fol, 'ct', 'ct_reg_to_mr.mgz')
+    mu.make_dir(op.join(user_fol, 'ct', 'finding_electrodes_in_ct'))
+    ct_fname = op.join(user_fol, 'ct', ct_name)
     if not op.isfile(ct_fname):
         print("Dell: Can't find the ct!")
         return False
     subjects_dir = su.get_subjects_dir()
-    brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', 'brain.mgz')
+    brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', brain_mask_name)
     if not op.isfile(brain_mask_fname):
         print("Dell: Can't find brain.mgz!")
         return False
@@ -262,7 +360,8 @@ def init_ct():
     DellPanel.ct_data = DellPanel.ct.get_data()
     DellPanel.brain = nib.load(brain_mask_fname)
     DellPanel.brain_mask = DellPanel.brain.get_data()
-    DellPanel.aseg = nib.load(op.join(subjects_dir, mu.get_user(), 'mri', 'aseg.mgz')).get_data()
+    aseg_fname = op.join(subjects_dir, mu.get_user(), 'mri', aseg_name)
+    DellPanel.aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     return True
 
 
@@ -281,6 +380,9 @@ def init_groups():
         int(bpy.context.scene.dell_ct_threshold)))
     DellPanel.groups = mu.load(groups_fname) if op.isfile(groups_fname) else []
     DellPanel.groups = [list(l) for l in DellPanel.groups]
+    parent = bpy.data.objects.get('Deep_electrodes', None)
+    if parent is None or len(parent.children) == 0:
+        return
     for ind, group in enumerate(DellPanel.groups):
         color = DellPanel.colors[ind]
         for elc_ind in group:
@@ -294,9 +396,11 @@ def register():
         unregister()
         bpy.utils.register_class(DellPanel)
         bpy.utils.register_class(InstallReqs)
+        bpy.utils.register_class(ChooseCTFile)
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
         bpy.utils.register_class(FindElectrodeLead)
+        bpy.utils.register_class(FindRandomLead)
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(DeleteElectrodes)
     except:
@@ -307,9 +411,11 @@ def unregister():
     try:
         bpy.utils.unregister_class(DellPanel)
         bpy.utils.unregister_class(InstallReqs)
+        bpy.utils.unregister_class(ChooseCTFile)
         bpy.utils.unregister_class(CalcThresholdPercentile)
         bpy.utils.unregister_class(GetElectrodesAboveThrshold)
         bpy.utils.unregister_class(FindElectrodeLead)
+        bpy.utils.unregister_class(FindRandomLead)
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(DeleteElectrodes)
     except:

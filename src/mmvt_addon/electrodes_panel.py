@@ -140,6 +140,8 @@ def select_electrode(current_electrode):
 
 def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init:
+        ElecsPanel.current_electrode = selected_electrode_name
+        update_cursor()
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]

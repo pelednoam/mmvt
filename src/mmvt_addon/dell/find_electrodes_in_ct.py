@@ -141,7 +141,7 @@ def read_pial_verts(user_fol):
 def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                          min_distance=2):
     max_electrodes_inside = 0
-    best_group = None
+    best_group, best_group_too_close_points, best_group_dists = [], [], []
     elcs_already_in_groups = set(flat_list_of_lists(groups))
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
     for i in electrodes_list:
@@ -159,18 +159,23 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
             same_hemi = all_items_equall([elctrodes_hemis[p] for p in points_inside])
             if not same_hemi:
                 continue
+            sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[i]) for p in points_inside])
+            points_inside = [points_inside[ind] for ind in sort_indices]
             elcs_inside = electrodes[points_inside]
-            elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
+            # elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
             dists = calc_group_dists(elcs_inside)
-            if max(dists) > max_dist_between_electrodes:  # max_dist_between_electrodes:
+            if max(dists) > max_dist_between_electrodes:
                 continue
-            points_inside = remove_too_close_points(electrodes, points_inside, cylinder, min_distance)
+            points_inside, too_close_points = remove_too_close_points(
+                electrodes, points_inside, cylinder, min_distance)
             if len(points_inside) < min_elcs_for_lead:
                 continue
             if len(points_inside) > max_electrodes_inside:
                 max_electrodes_inside = len(points_inside)
-                best_group = points_inside.tolist()
-    return best_group
+                best_group = points_inside.tolist() if not isinstance(points_inside, list) else points_inside.copy()
+                best_group_too_close_points = too_close_points.copy()
+                best_group_dists = calc_group_dists(electrodes[points_inside])
+    return best_group, best_group_too_close_points, best_group_dists
 
 
 def point_in_cube(pt1, pt2, r):
@@ -202,65 +207,6 @@ def point_in_cylinder(pt1, pt2, r, q):
     return np.dot(q - pt1, vec) >= 0 and np.dot(q - pt2, vec) <= 0 and np.linalg.norm(np.cross(q - pt1, vec)) <= const
 
 
-def point_in_cylinder2(pt1, pt2, testpt, radius_sq):
-    # Name: CylTest_CapsFirst
-    # Orig: Greg James - gjames@NVIDIA.com
-    # Lisc: Free code - no warranty & no money back.  Use it all you want
-    #
-    # This function tests if the 3D point 'testpt' lies within an arbitrarily
-    # oriented cylinder. The cylinder is defined by an axis from 'pt1' to 'pt2',
-    # the axis having a length squared of 'lengthsq' (pre-compute for each cylinder
-    # to avoid repeated work!), and radius squared of 'radius_sq'.
-    #    The function tests against the end caps first, which is cheap -> only
-    # a single dot product to test against the parallel cylinder caps.  If the
-    # point is within these, more work is done to find the distance of the point
-    # from the cylinder axis.
-    #    Fancy Math (TM) makes the whole test possible with only two dot-products
-    # a subtract, and two multiplies.  For clarity, the 2nd mult is kept as a
-    # divide.  It might be faster to change this to a mult by also passing in
-    # 1/lengthsq and using that instead.
-    #    Elminiate the first 3 subtracts by specifying the cylinder as a base
-    # point on one end cap and a vector to the other end cap (pass in {dx,dy,dz}
-    # instead of 'pt2' ).
-    #
-    # The dot product is constant along a plane perpendicular to a vector.
-    # The magnitude of the cross product divided by one vector length is
-    # constant along a cylinder surface defined by the other vector as axis.
-
-    lengthsq = np.linalg.norm(pt2-pt1)
-    dx = pt2[0] - pt1[0]
-    dy = pt2[1] - pt1[1]
-    dz = pt2[2] - pt1[2]
-    pdx = testpt[0] - pt1[0]
-    pdy = testpt[1] - pt1[1]
-    pdz = testpt[2] - pt1[2]
-
-    # Dot the d and pd vectors to see if point lies behind the
-    # cylinder cap at pt1.x, pt1.y, pt1.z
-    dot = pdx * dx + pdy * dy + pdz * dz
-
-    # If dot is less than zero the point is behind the pt1 cap.
-    # If greater than the cylinder axis line segment length squared
-    # then the point is outside the other end cap at pt2.
-    if dot < 0.0 or dot > lengthsq:
-        return False
-    else:
-        # Point lies within the parallel caps, so find
-        # distance squared from point to line, using the fact that sin^2 + cos^2 = 1
-        # the dot = cos() * |d||pd|, and cross*cross = sin^2 * |d|^2 * |pd|^2
-        # Carefull: '*' means mult for scalars and dotproduct for vectors
-        # In short, where dist is pt distance to cyl axis:
-        # dist = sin( pd to d ) * |pd|
-        # distsq = dsq = (1 - cos^2( pd to d)) * |pd|^2
-        # dsq = ( 1 - (pd * d)^2 / (|pd|^2 * |d|^2) ) * |pd|^2
-        # dsq = pd * pd - dot * dot / lengthsq
-        #  where lengthsq is d*d or |d|^2 that is passed into this function
-
-        # distance squared to the cylinder axis:
-        dsq = abs(pdx*pdx + pdy*pdy + pdz*pdz - dot*dot/lengthsq)
-        return dsq < radius_sq
-
-
 def calc_group_dists(electrodes_group):
     return [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(electrodes_group[:-1], electrodes_group[1:])]
 
@@ -280,7 +226,7 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
             points_to_remove.append(pair[ind])
     if len(points_to_remove) > 0:
         points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
-    return points_inside_cylinder
+    return points_inside_cylinder, points_to_remove
 
 
 ############# Utils ##############

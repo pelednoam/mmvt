@@ -453,12 +453,12 @@ def slicer_draw(self, context):
         layout.label(text='CT intensity: {:.2f}'.format(bpy.context.scene.ct_intensity))
         # layout.prop(context.scene, 'slices_modality_mix')
     layout.prop(context.scene, 'slices_zoom', text='Slices zoom')
-    col = layout.box().column()
-    col.prop(context.scene, 'new_electrode_lead', text='Lead')
-    col.prop(context.scene, 'new_electrode_num', text='Number')
-    col.operator(FindNearestElectrodeInCT.bl_idname, text="Find nearest electrodes", icon='MESH_CUBE')
-    col.operator(CreateNewElectrode.bl_idname, text="Create electrode", icon='MESH_CUBE')
-    col.operator(ExportElectrodes.bl_idname, text="Export electrodes", icon='MESH_CUBE')
+    # col = layout.box().column()
+    # col.prop(context.scene, 'new_electrode_lead', text='Lead')
+    # col.prop(context.scene, 'new_electrode_num', text='Number')
+    # col.operator(FindNearestElectrodeInCT.bl_idname, text="Find nearest electrodes", icon='MESH_CUBE')
+    # col.operator(CreateNewElectrode.bl_idname, text="Create electrode", icon='MESH_CUBE')
+    # col.operator(ExportElectrodes.bl_idname, text="Export electrodes", icon='MESH_CUBE')
 
 
 class SlicerPanel(bpy.types.Panel):
