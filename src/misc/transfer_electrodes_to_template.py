@@ -14,7 +14,8 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
-mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} --outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}' # --step3'
+mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} ' + \
+                   '--outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to} --nocleanup' # --step3'
 mri_vol2vol = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/T1.mgz ' + \
     '--o {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
@@ -489,10 +490,10 @@ if __name__ == '__main__':
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
-    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # print(','.join(electrodes.keys()))
     # good_subjects = ['mg96']
-    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=1, print_only=False) #
+    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=1, print_only=True, overwrite=True) #
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
