@@ -1,6 +1,7 @@
 import numpy as np
 import os.path as op
 from collections import Counter
+from itertools import product
 from sklearn.preprocessing import StandardScaler
 from sklearn import svm
 from sklearn.externals import joblib
@@ -51,17 +52,14 @@ def clustering(data, ct_data, n_components, get_centroids=True, clustering_metho
         centroids = np.rint(centroids).astype(int)
         for ind, centroid in enumerate(centroids):
             centroids[ind] = find_nearest_electrde_in_ct(ct_data, centroid, threshold)
-        print(np.all([ct_data[tuple(voxel)] > threshold for voxel in centroids]))
-        return centroids, Y
-    else:
+    else: # get max CT intensity
         centroids = np.zeros(centroids.shape, dtype=np.int)
         labels = np.unique(Y)
-        # centroid_inds = []
         for ind, label in enumerate(labels):
             voxels = data[Y == label]
             centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
-            # centroid_inds.append(np.where(np.all(data == centroids[ind], axis=1))[0][0])
-        return centroids, Y
+    print(np.all([ct_data[tuple(voxel)] > threshold for voxel in centroids]))
+    return centroids, Y
 
 
 def knn_clustering(data, n_components, output_fol='', threshold=0):
@@ -99,7 +97,6 @@ def gmm_clustering(data, n_components, covariance_type='full', output_fol='', th
 
 
 def find_nearest_electrde_in_ct(ct_data, voxel, threshold=None, max_iters=100):
-    from itertools import product
     peak_found, iter_num = False, 0
     x, y, z = voxel
     if threshold is not None and ct_data[x, y, z] >= threshold:
@@ -121,6 +118,13 @@ def find_nearest_electrde_in_ct(ct_data, voxel, threshold=None, max_iters=100):
         print('Peak was not found!')
     return x, y, z
 
+
+def get_voxel_neighbors_ct_hist(ct_data, voxel):
+    x, y, z = voxel
+    ct_values = []
+    for dx, dy, dz in product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]):
+        if ct_data[x + dx, y + dy, z + dz] > max_ct_data:
+    ct_values = [ct_data[x + dx, y + dy, z + dz] for dx, dy, dz in product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1])]
 
 def ct_voxels_to_t1_ras_tkr(centroids, ct_header, brain_header):
     ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
