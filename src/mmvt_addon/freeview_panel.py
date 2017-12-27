@@ -99,7 +99,21 @@ def open_freeview():
         ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
         ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
     print(cmd)
-    FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(cmd)
+    FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(
+        cmd, read_stderr=reading_freeview_stderr_func, read_stdin=reading_freeview_stdin_func,
+        stdout_func=reading_freeview_stdout_func)
+
+
+def reading_freeview_stdin_func():
+    return FreeviewPanel.freeview_is_open
+
+
+def reading_freeview_stdout_func():
+    return FreeviewPanel.freeview_is_open
+
+
+def reading_freeview_stderr_func():
+    return FreeviewPanel.freeview_is_open
 
 
 def get_electrodes_command(root):
@@ -249,16 +263,24 @@ class FreeviewOpen(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def cancel(self, context):
-        context.window_manager.event_timer_remove(self._timer)
-        self._timer = None
+        try:
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
+        except:
+            pass
         return {'CANCELLED'}
 
     def invoke(self, context, event=None):
-        open_freeview()
-        freeview_save_cursor()
-        context.window_manager.modal_handler_add(self)
-        self._updating = False
-        self._timer = context.window_manager.event_timer_add(0.1, context.window)
+        if not FreeviewPanel.freeview_is_open:
+            FreeviewPanel.freeview_is_open = True
+            open_freeview()
+            freeview_save_cursor()
+            context.window_manager.modal_handler_add(self)
+            self._updating = False
+            self._timer = context.window_manager.event_timer_add(0.1, context.window)
+        else:
+            FreeviewPanel.freeview_is_open = False
+            return self.cancel(context)
         return {'RUNNING_MODAL'}
         # return {"FINISHED"}
 
@@ -281,6 +303,7 @@ class FreeviewPanel(bpy.types.Panel):
     init = False
     freeview_in_queue = None
     freeview_out_queue = None
+    freeview_is_open = False
 
     def draw(self, context):
         layout = self.layout
@@ -295,7 +318,8 @@ class FreeviewPanel(bpy.types.Panel):
         if not all_electrodes_exist and bpy.context.scene.freeview_load_electrodes:
             layout.operator(CreateFreeviewFiles.bl_idname, text='Create Freeview files', icon='PARTICLES')
         else:
-            layout.operator(FreeviewOpen.bl_idname, text='Freeview', icon='PARTICLES')
+            text = 'Close Freeview' if FreeviewPanel.freeview_is_open else 'Open Freeview'
+            layout.operator(FreeviewOpen.bl_idname, text=text, icon='PARTICLES')
             fmri_files_template = op.join(mu.get_user_fol(),
                     'freeview','*{}*.{}'.format(bpy.context.scene.fmri_files, '{format}'))
             fmri_vol_files = glob.glob(fmri_files_template.format(format='mgz')) + \
@@ -344,6 +368,7 @@ def init(addon, addon_prefs=None):
     #         shutil.copy(subjects_ct_fname, mmvt_ct_fname)
     FreeviewPanel.CT_files_exist = op.isfile(mmvt_ct_fname)
     FreeviewPanel.init = True
+    FreeviewPanel.freeview_is_open = False
     register()
 
 
