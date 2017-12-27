@@ -43,7 +43,7 @@ def get_electrodes_above_threshold():
     ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain, DellPanel.aseg)
     print('clustering...')
     ct_electrodes, clusters = fect.clustering(
-        ct_voxels, DellPanel.ct_data, bpy.context.scene.dell_ct_n_components, 'knn', #DellPanel.output_fol,
+        ct_voxels, DellPanel.ct_data, bpy.context.scene.dell_ct_n_components, True, 'knn', #DellPanel.output_fol,
         threshold=bpy.context.scene.dell_ct_threshold)
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')

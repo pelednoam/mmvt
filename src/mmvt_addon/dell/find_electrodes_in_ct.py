@@ -41,19 +41,27 @@ def apply_trans(trans, points):
     return points[:, :3]
 
 
-def clustering(data, ct_data, n_components, clustering_method='knn', output_fol='', threshold=0, covariance_type='full'):
+def clustering(data, ct_data, n_components, get_centroids=True, clustering_method='knn', output_fol='', threshold=0,
+               covariance_type='full'):
     if clustering_method == 'gmm':
         centroids, Y = gmm_clustering(data, n_components, covariance_type, threshold, output_fol)
     elif clustering_method == 'knn':
         centroids, Y = knn_clustering(data, n_components, output_fol, threshold)
-    centroids = np.zeros(centroids.shape, dtype=np.int)
-    labels = np.unique(Y)
-    # centroid_inds = []
-    for ind, label in enumerate(labels):
-        voxels = data[Y == label]
-        centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
-        # centroid_inds.append(np.where(np.all(data == centroids[ind], axis=1))[0][0])
-    return centroids, Y
+    if get_centroids:
+        centroids = np.rint(centroids).astype(int)
+        for ind, centroid in enumerate(centroids):
+            centroids[ind] = find_nearest_electrde_in_ct(ct_data, centroid, threshold)
+        print(np.all([ct_data[tuple(voxel)] > threshold for voxel in centroids]))
+        return centroids, Y
+    else:
+        centroids = np.zeros(centroids.shape, dtype=np.int)
+        labels = np.unique(Y)
+        # centroid_inds = []
+        for ind, label in enumerate(labels):
+            voxels = data[Y == label]
+            centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
+            # centroid_inds.append(np.where(np.all(data == centroids[ind], axis=1))[0][0])
+        return centroids, Y
 
 
 def knn_clustering(data, n_components, output_fol='', threshold=0):
@@ -88,6 +96,30 @@ def gmm_clustering(data, n_components, covariance_type='full', output_fol='', th
     Y = gmm.predict(data)
     centroids = gmm.means_
     return centroids, Y
+
+
+def find_nearest_electrde_in_ct(ct_data, voxel, threshold=None, max_iters=100):
+    from itertools import product
+    peak_found, iter_num = False, 0
+    x, y, z = voxel
+    if threshold is not None and ct_data[x, y, z] >= threshold:
+        return voxel
+    while not peak_found and iter_num < max_iters:
+        max_ct_data = ct_data[x, y, z]
+        max_diffs = (0, 0, 0)
+        for dx, dy, dz in product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]):
+            if ct_data[x + dx, y + dy, z + dz] > max_ct_data:
+                max_ct_data = ct_data[x + dx, y + dy, z + dz]
+                max_diffs = (dx, dy, dz)
+        x, y, z = x + max_diffs[0], y + max_diffs[1], z + max_diffs[2]
+        if threshold is not None and max_ct_data >= threshold:
+            peak_found = True
+        else:
+            peak_found = max_diffs == (0, 0, 0)
+        iter_num += 1
+    if not peak_found:
+        print('Peak was not found!')
+    return x, y, z
 
 
 def ct_voxels_to_t1_ras_tkr(centroids, ct_header, brain_header):

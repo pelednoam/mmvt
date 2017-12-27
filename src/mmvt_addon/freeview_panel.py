@@ -68,7 +68,7 @@ def open_freeview():
     else:
         sig_cmd = ''
     if bpy.context.scene.freeview_load_CT:
-        mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
+        mmvt_ct_fname = op.join(root, 'ct', 'ct_reg_to_mr.mgz')
         if FreeviewPanel.CT_files_exist:
             ct_cmd = '-v "{}":opacity=0 '.format(mmvt_ct_fname)
         else:
@@ -286,16 +286,16 @@ class FreeviewPanel(bpy.types.Panel):
         layout = self.layout
         root = mu.get_user_fol()
         # row = layout.row(align=0)
+        if bpy.data.objects.get('Deep_electrodes'):
+            layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
         all_electrodes_exist = True
         if bpy.data.objects.get('Deep_electrodes'):
             all_electrodes_exist = all([op.isfile(op.join(root, 'freeview', '{}.dat'.format(group)))
                                         for group in FreeviewPanel.electrodes_groups])
-        if not all_electrodes_exist:
+        if not all_electrodes_exist and bpy.context.scene.freeview_load_electrodes:
             layout.operator(CreateFreeviewFiles.bl_idname, text='Create Freeview files', icon='PARTICLES')
         else:
             layout.operator(FreeviewOpen.bl_idname, text='Freeview', icon='PARTICLES')
-            if bpy.data.objects.get('Deep_electrodes'):
-                layout.prop(context.scene, 'freeview_load_electrodes', text="Load electrodes")
             fmri_files_template = op.join(mu.get_user_fol(),
                     'freeview','*{}*.{}'.format(bpy.context.scene.fmri_files, '{format}'))
             fmri_vol_files = glob.glob(fmri_files_template.format(format='mgz')) + \
@@ -337,7 +337,7 @@ def init(addon, addon_prefs=None):
         FreeviewPanel.electrodes_groups = []
     bpy.context.scene.freeview_messages = ''
     root = mu.get_user_fol()
-    mmvt_ct_fname = op.join(root, 'freeview', 'ct_nas.nii.gz')
+    mmvt_ct_fname = op.join(root, 'ct', 'ct_reg_to_mr.mgz')
     # if not op.isfile(mmvt_ct_fname):
     #     subjects_ct_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'mri', 'ct_nas.nii.gz')
     #     if op.isfile(subjects_ct_fname):
