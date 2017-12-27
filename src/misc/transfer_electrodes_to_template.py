@@ -24,7 +24,11 @@ mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/{elcs_fil
     '--o {subjects_dir}/{subject}/electrodes/{output_name}_to_colin27.nii.gz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
     '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
-
+applyMorph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
+             '--transform {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}/' + \
+             'combined_to{subject_to}_elreg_afteraseg-norm.tm3d ' + \
+             'point_list {subjects_dir}/{subject_from}/electrodes/stim_electrodes.txt ' + \
+             '{subjects_dir}/{subject_from}/electrodes/stim_electrodes_to_{subject_to}.txt a'
 
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
@@ -67,7 +71,7 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
         if not op.isfile(output_fname):
             rs = utils.partial_run_script(locals(), print_only=print_only)
             rs(mri_vol2vol)
-        print(f'freeview -v $SUBJECTS_DIR/colin27/mri/T1.mgz $SUBJECTS_DIR/{subject}/mri/T1_to_colin_csv_register.mgz')
+        print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
 
 
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
@@ -113,7 +117,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
         # utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
         # print(f'{subject} has {len(elecs)} electrodes')
         # print(f'{subject} after morphing as {len(tkreg)} electrodes:')
-        # print(f'freeview -v $SUBJECTS_DIR/{subject}/electrodes/stim_electrodes.nii.gz $SUBJECTS_DIR/colin27/mri/T1.mgz')
+        # print(f'freeview -v {subjects_dir}/{subject}/electrodes/stim_electrodes.nii.gz {subjects_dir}/colin27/mri/T1.mgz')
         # for ind, pair in enumerate(pairs):
         #     pair_name = chr(ord('A') + ind)
         #     for elc_ind in range(2):
@@ -493,7 +497,7 @@ if __name__ == '__main__':
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # print(','.join(electrodes.keys()))
     # good_subjects = ['mg96']
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False) #
+    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False) #
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
     # compare_electrodes_labeling(electrodes, template_system, atlas)
@@ -512,8 +516,8 @@ if __name__ == '__main__':
     # cvs_register_to_template(['mg105'], template_system, SUBJECTS_DIR)
     '''
     mri_cvs_register --mov mg112 --template colin27 c
-    mri_vol2vol --mov $SUBJECTS_DIR/mg112/mri/T1.mgz --o $SUBJECTS_DIR/mg112/mri/T1_to_colin_csv_register.mgz --m3z
-     $SUBJECTS_DIR/mg112/mri_cvs_register/final_CVSmorph_tocolin27.m3z --noDefM3zPath --no-save-reg --targ $SUBJECTS_DIR/colin27/mri/T1.mgz
+    mri_vol2vol --mov {subjects_dir}/mg112/mri/T1.mgz --o {subjects_dir}/mg112/mri/T1_to_colin_csv_register.mgz --m3z
+     {subjects_dir}/mg112/mri_cvs_register/final_CVSmorph_tocolin27.m3z --noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz
 
     '''
     print('finish')
