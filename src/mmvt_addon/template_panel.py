@@ -1,6 +1,8 @@
 import bpy
 import os.path as op
 import glob
+import time
+import traceback
 import mmvt_utils as mu
 
 
@@ -36,6 +38,68 @@ class TemplateButton(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+def start_timer():
+    TemplatePanel.is_playing = True
+    TemplatePanel.init_play = True
+    if TemplatePanel.first_time:
+        print('Starting the timer!')
+        TemplatePanel.first_time = False
+        bpy.ops.wm.modal_timer_operator()
+
+
+class ModalTemplateTimerOperator(bpy.types.Operator):
+    """Operator which runs its self from a timer"""
+    bl_idname = "wm.modal_template_timer_operator"
+    bl_label = "Modal Timer Operator"
+
+    _timer = None
+    _time = time.time()
+
+    def modal(self, context, event):
+        # First frame initialization:
+        if TemplatePanel.init_play:
+            # Do some timer init
+            pass
+
+        if not TemplatePanel.is_playing:
+            return {'PASS_THROUGH'}
+
+        if event.type in {'ESC'}:
+            print('Stop!')
+            self.cancel(context)
+            return {'PASS_THROUGH'}
+
+        if event.type == 'TIMER':
+            if time.time() - self._time > TemplatePanel.play_time_step:
+                self._time = time.time()
+                try:
+                    # do something
+                    pass
+                except:
+                    print(traceback.format_exc())
+                    print('Error in plotting at {}!'.format(self.limits))
+
+        return {'PASS_THROUGH'}
+
+    def execute(self, context):
+        wm = context.window_manager
+        self.cancel(context)
+        self._timer = wm.event_timer_add(time_step=0.05, window=context.window)
+        self._time = time.time()
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def cancel(self, context):
+        TemplatePanel.is_playing = False
+        bpy.context.scene.update()
+        if self._timer:
+            try:
+                wm = context.window_manager
+                wm.event_timer_remove(self._timer)
+            except:
+                pass
+
+
 bpy.types.Scene.template_files = bpy.props.EnumProperty(items=[], description="tempalte files")
 
 
@@ -47,6 +111,10 @@ class TemplatePanel(bpy.types.Panel):
     bl_label = "Template"
     addon = None
     init = False
+    init_play = False
+    is_playing = False
+    first_time = True
+    play_time_step = 1
 
     def draw(self, context):
         if TemplatePanel.init:
@@ -73,6 +141,7 @@ def register():
         unregister()
         bpy.utils.register_class(TemplatePanel)
         bpy.utils.register_class(TemplateButton)
+        bpy.utils.register_class(ModalTemplateTimerOperator)
     except:
         print("Can't register Template Panel!")
 
@@ -81,5 +150,6 @@ def unregister():
     try:
         bpy.utils.unregister_class(TemplatePanel)
         bpy.utils.unregister_class(TemplateButton)
+        bpy.utils.unregister_class(ModalTemplateTimerOperator)
     except:
         pass

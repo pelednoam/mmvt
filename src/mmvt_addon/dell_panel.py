@@ -8,7 +8,7 @@ import shutil
 import os
 import random
 import traceback
-
+import time
 import mmvt_utils as mu
 from scripts import scripts_utils as su
 
@@ -87,18 +87,19 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
             elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance)
-        if bpy.context.scene.ct_plot_lead:
-            create_lead(group[0], group[-1])
     else:
         group, noise, DellPanel.dists = fect.find_group_between_pair(
             elc_ind, elc_ind2, DellPanel.pos, bpy.context.scene.dell_ct_error_radius,
-            bpy.context.scene.dell_ct_min_distance)
-        if bpy.context.scene.ct_plot_lead:
-            create_lead(elc_ind, elc_ind2)
+            bpy.context.scene.dell_ct_min_distance, DellPanel.names)
     if len(group) == 0:
         print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
         DellPanel.noise.add(elc_ind)
         return []
+    DellPanel.log.append((DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group]))
+    mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
+        int(bpy.context.scene.dell_ct_threshold))))
+    if bpy.context.scene.ct_plot_lead:
+        create_lead(group[0], group[-1])
     DellPanel.groups.append(group)
     for p in noise:
         print('Marking {} as noise'.format(DellPanel.names[p]))
@@ -113,6 +114,16 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
     return group
 
 
+def find_all_groups(runs_num=100):
+    start_timer()
+    # group_found = find_random_group()
+    # run_num = 0
+    # while group_found and run_num < runs_num:
+    #     print('group {} found!'.format(run_num + 1))
+    #     group_found = find_random_group()
+    #     run_num += 1
+
+
 def find_random_group():
     elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
     group, run_num = [], 0
@@ -121,7 +132,12 @@ def find_random_group():
         group = _find_electrode_lead(elc_ind)
         if len(group) == 0:
             elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
-        run_num += 1
+            run_num += 1
+        else:
+            DellPanel.log.append((DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group]))
+            mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
+                int(bpy.context.scene.dell_ct_threshold))))
+    return len(group) > 0
 
 
 def save_ct_neighborhood():
@@ -219,6 +235,17 @@ def clear_groups():
         os.remove(groups_fname)
     clear_electrodes_color()
     mu.delete_hierarchy('leads')
+    log_fname = op.join(DellPanel.output_fol, '{}_log.pkl'.format(
+        int(bpy.context.scene.dell_ct_threshold)))
+    if op.isfile(log_fname):
+        shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(log_fname)))
+        os.remove(log_fname)
+    DellPanel.log = []
+    DellPanel.is_playing = False
+
+
+def dell_ct_electrode_was_selected(elc_name):
+    pass
 
 
 def clear_electrodes_color():
@@ -259,9 +286,9 @@ def dell_draw(self, context):
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
-        row = layout.row(align=0)
-        row.prop(context.scene, 'dell_ct_n_components', text="n_components")
-        row.prop(context.scene, 'dell_ct_n_groups', text="n_groups")
+        # row = layout.row(align=0)
+        # row.prop(context.scene, 'dell_ct_n_components', text="n_components")
+        # row.prop(context.scene, 'dell_ct_n_groups', text="n_groups")
         row = layout.row(align=0)
         row.prop(context.scene, 'dell_ct_error_radius', text="Error radius")
         row.prop(context.scene, 'dell_ct_min_elcs_for_lead', text="Min for lead")
@@ -291,13 +318,87 @@ def dell_draw(self, context):
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
         row.operator(PrevCTElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
         row.label(text=bpy.context.selected_objects[0].name)
-    if len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
+
+    # if len(DellPanel.log) > 0:
+    #     layout.label(text='Selected Electrode and its group:')
+    #     box = layout.box()
+    #     col = box.column()
+    #     for elc, group in DellPanel.log:
+    #         mu.add_box_line(col, elc, ','.join(group), 0.1)
+    if bpy.context.scene.dell_ct_print_distances and len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
         layout.label(text='Group inner distances:')
         box = layout.box()
         col = box.column()
         last_group = DellPanel.groups[-1]
         for elc1, elc2, dist in zip([DellPanel.names[k] for k in last_group[:-1]], [DellPanel.names[k] for k in last_group[1:]], DellPanel.dists):
             mu.add_box_line(col, '{}-{}'.format(elc1, elc2), '{:.2f}'.format(dist), 0.8)
+
+
+def start_timer():
+    DellPanel.is_playing = True
+    DellPanel.init_play = True
+    if DellPanel.first_time:
+        print('Starting the timer!')
+        DellPanel.first_time = False
+        bpy.ops.wm.modal_dell_timer_operator()
+
+
+class ModalDellTimerOperator(bpy.types.Operator):
+    """Operator which runs its self from a timer"""
+    bl_idname = "wm.modal_dell_timer_operator"
+    bl_label = "Modal Timer Operator"
+
+    _timer = None
+    _time = time.time()
+
+    def modal(self, context, event):
+        # First frame initialization:
+        if DellPanel.init_play:
+            # Do some timer init
+            pass
+
+        if not DellPanel.is_playing:
+            return {'PASS_THROUGH'}
+
+        if event.type in {'ESC'}:
+            print('Stop!')
+            self.cancel(context)
+            return {'PASS_THROUGH'}
+
+        if event.type == 'TIMER':
+            if time.time() - self._time > DellPanel.play_time_step:
+                self._time = time.time()
+                try:
+                    run_num = 0
+                    group_found = find_random_group()
+                    while not group_found and run_num < DellPanel.max_finding_group_tries:
+                        group_found = find_random_group()
+                        run_num += 1
+                    if run_num == DellPanel.max_finding_group_tries:
+                        self.cancel(context)
+                except:
+                    print(traceback.format_exc())
+                    print('Error in plotting at {}!'.format(self.limits))
+
+        return {'PASS_THROUGH'}
+
+    def execute(self, context):
+        wm = context.window_manager
+        self.cancel(context)
+        self._timer = wm.event_timer_add(time_step=0.05, window=context.window)
+        self._time = time.time()
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def cancel(self, context):
+        DellPanel.is_playing = False
+        bpy.context.scene.update()
+        if self._timer:
+            try:
+                wm = context.window_manager
+                wm.event_timer_remove(self._timer)
+            except:
+                pass
 
 
 class ChooseCTFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -336,7 +437,7 @@ class FindRandomLead(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        find_random_group()
+        find_all_groups()
         return {'PASS_THROUGH'}
 
 
@@ -434,12 +535,13 @@ bpy.types.Scene.dell_ct_lead_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
 bpy.types.Scene.ct_mark_noise = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.dell_ct_print_distances = bpy.props.BoolProperty(default=False)
 
 
 class DellPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
-    bl_context = "objectmode"
+    bl_context = "objectmodmde"
     bl_category = "mmvt"
     bl_label = "Dell"
     addon = None
@@ -452,6 +554,12 @@ class DellPanel(bpy.types.Panel):
     groups = []
     noise = set()
     dists = []
+    init_play = False
+    is_playing = False
+    first_time = True
+    play_time_step = 0.7
+    max_finding_group_tries = 10
+    log = []
 
     def draw(self, context):
         if DellPanel.init:
@@ -532,6 +640,10 @@ def init_groups():
             _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     if len(DellPanel.groups) == 0:
         clear_electrodes_color()
+    log_fname = op.join(DellPanel.output_fol, '{}_log.pkl'.format(
+        int(bpy.context.scene.dell_ct_threshold)))
+    if op.isfile(log_fname):
+        DellPanel.log = mu.load(log_fname)
 
 
 def register():
@@ -549,6 +661,7 @@ def register():
         bpy.utils.register_class(NextCTElectrode)
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(DeleteElectrodes)
+        bpy.utils.register_class(ModalDellTimerOperator)
     except:
         print("Can't register Dell Panel!")
 
@@ -567,6 +680,7 @@ def unregister():
         bpy.utils.unregister_class(NextCTElectrode)
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(DeleteElectrodes)
+        bpy.utils.unregister_class(ModalDellTimerOperator)
     except:
         pass
 

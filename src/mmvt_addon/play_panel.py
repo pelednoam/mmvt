@@ -606,6 +606,7 @@ class Play(bpy.types.Operator):
         PlayPanel.init_play = True
         if PlayPanel.first_time:
             print('Starting the play timer!')
+            # todo: why this line is marked??
             # PlayPanel.first_time = False
             ModalTimerOperator.limits = bpy.context.scene.play_from
             bpy.ops.wm.modal_timer_operator()

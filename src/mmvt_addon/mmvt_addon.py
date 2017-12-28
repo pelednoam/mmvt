@@ -345,6 +345,8 @@ find_point_thickness = skull_panel.find_point_thickness
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
 
 
 def get_max_time_steps(default_val=2500):

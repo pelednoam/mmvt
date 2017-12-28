@@ -507,6 +507,7 @@ class SelectionListener(bpy.types.Operator):
                     _addon().vertices_selected(selected_obj_name)
                 elif selected_obj_type == mu.OBJ_TYPE_ELECTRODE:
                     _addon().electode_was_manually_selected(selected_obj_name)
+                    _addon().dell_ct_electrode_was_selected(selected_obj_name)
                 if bpy.context.scene.find_curves_sep_auto:
                     _addon().calc_best_curves_sep()
                 elif bpy.context.scene.curves_sep > 0:

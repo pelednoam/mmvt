@@ -212,11 +212,13 @@ def read_pial_verts(user_fol):
     return verts
 
 
-def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2):
+def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2, names=[]):
     points_inside, cylinder = points_in_cylinder(
         electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius, return_cylinder=True)
-    for p in points_inside:
-        in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[elc_ind]):
+    if len(names) > 0:
+        for p in points_inside:
+            in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[p], error_radius)
+            print(names[p], in_cube)
     sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc_ind1]) for p in points_inside])
     points_inside = [points_inside[ind] for ind in sort_indices]
     elcs_inside = electrodes[points_inside]
@@ -235,7 +237,7 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
     for i in electrodes_list:
         for j in electrodes_list[i+1:]:
-            if not point_in_cube(electrodes[i], electrodes[j], electrodes[elc_ind]):
+            if not point_in_cube(electrodes[i], electrodes[j], electrodes[elc_ind], error_radius):
                 continue
             points_inside, cylinder = points_in_cylinder(
                 electrodes[i], electrodes[j], electrodes, error_radius, return_cylinder=True)
@@ -267,15 +269,15 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
     return best_group, best_group_too_close_points, best_group_dists
 
 
-def point_in_cube(pt1, pt2, r):
+def point_in_cube(pt1, pt2, k, e=0):
     # return all([p_in_the_middle(pt1[k], pt2[k], r[k]) for k in range(3)])
     # faster:
-    return p_in_the_middle(pt1[0], pt2[0], r[0]) and p_in_the_middle(pt1[1], pt2[1], r[1]) and \
-           p_in_the_middle(pt1[2], pt2[2], r[2])
+    return p_in_the_middle(pt1[0], pt2[0], k[0], e) and p_in_the_middle(pt1[1], pt2[1], k[1], e) and \
+           p_in_the_middle(pt1[2], pt2[2], k[2], e)
 
 
-def p_in_the_middle(x, y, z):
-    return x >= z >= y if x > y else x <= z <= y
+def p_in_the_middle(x, y, z, e=0):
+    return x+e >= z >= y-e if x > y else x-e <= z <= y+e
 
 
 def points_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False, N=100):
