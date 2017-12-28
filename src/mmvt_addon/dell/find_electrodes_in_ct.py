@@ -42,11 +42,13 @@ def apply_trans(trans, points):
     return points[:, :3]
 
 
-def find_all_local_maxima(ct_data, voxels, threshold=0, max_iters=100):
+def find_all_local_maxima(ct_data, voxels, threshold=0, find_nei_maxima=False, max_iters=100):
     maxs = set()
     for run, voxel in enumerate(voxels):
-        # max_voxel = find_local_maxima_in_ct(ct_data, voxel, max_iters)
-        max_voxel = find_local_nei_maxima_in_ct(ct_data, voxel, threshold, max_iters)
+        if find_nei_maxima:
+            max_voxel = find_local_nei_maxima_in_ct(ct_data, voxel, threshold, max_iters)
+        else:
+            max_voxel = find_local_maxima_in_ct(ct_data, voxel, max_iters)
         maxs.add(tuple(max_voxel))
     maxs = np.array([np.array(vox) for vox in maxs])
     return maxs
@@ -215,14 +217,16 @@ def read_pial_verts(user_fol):
 def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2, names=[]):
     points_inside, cylinder = points_in_cylinder(
         electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius, return_cylinder=True)
-    if len(names) > 0:
-        for p in points_inside:
-            in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[p], error_radius)
-            print(names[p], in_cube)
+    # if len(names) > 0:
+    #     for p in points_inside:
+    #         in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[p], error_radius)
+    #         print(names[p], in_cube)
     sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc_ind1]) for p in points_inside])
     points_inside = [points_inside[ind] for ind in sort_indices]
     elcs_inside = electrodes[points_inside]
     dists = calc_group_dists(elcs_inside)
+    print([names[p] for p in points_inside])
+    print(dists)
     points_inside, too_close_points = remove_too_close_points(
         electrodes, points_inside, cylinder, min_distance)
     group = points_inside.tolist() if not isinstance(points_inside, list) else points_inside.copy()
@@ -318,10 +322,24 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
             print(pair, pair_dist_to_cylinder)
             ind = np.argmax(pair_dist_to_cylinder)
             points_to_remove.append(pair[ind])
+    rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
+    points_to_remove.extend(rectangles)
     elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
     if len(points_to_remove) > 0:
         points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
     return points_inside_cylinder, elecs_to_remove
+
+
+def find_rectangles_in_group(electrodes, points_inside_cylinder, point_removed, ratio=0.7):
+    points_inside_cylinder = [e for e in points_inside_cylinder if e not in
+                              set([points_inside_cylinder[k] for k in point_removed])]
+    elcs_inside = electrodes[points_inside_cylinder]
+    points_to_remove = []
+    dists = cdist(elcs_inside, elcs_inside)
+    for ind in range(len(dists) - 2):
+        if dists[ind, ind+2] < (dists[ind, ind+1] + dists[ind+1, ind+2]) * ratio:
+            points_to_remove.append(ind+1)
+    return points_to_remove
 
 
 ############# Utils ##############
@@ -342,3 +360,49 @@ def flat_list_of_lists(l):
 
 def all_items_equall(arr):
     return all([x == arr[0] for x in arr])
+
+################ tests ####################
+
+
+def test1(ct_data, threshold):
+    voxels = np.array([[172, 107, 155]])
+    maxs = find_all_local_maxima(ct_data, voxels, threshold)
+    print(maxs)
+
+
+def test2(ct_data, ct_header, brain, aseg, threshold, min_distance):
+    ct_voxels = find_voxels_above_threshold(ct_data, threshold)
+    ct_voxels = mask_voxels_outside_brain(ct_voxels, ct_header, brain, aseg)
+    ct_nei_maxima = find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
+    ct_maxima = find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=False, max_iters=100)
+    dists = cdist(ct_maxima, ct_nei_maxima)
+    inds = np.where(np.min(dists, axis=0) > min_distance)
+    print('asdf')
+
+
+if __name__ == '__main__':
+    from src.utils import utils
+    import nibabel as nib
+    import matplotlib.pyplot as plt
+    subject = 'mg105'
+    threshold_percentile = 99.9
+    min_distance = 3
+
+    links_dir = utils.get_links_dir()
+    mmvt_dir = utils.get_link_dir(links_dir, 'mmvt')
+    subjects_dir = utils.get_link_dir(links_dir, 'subjects', 'SUBJECTS_DIR')
+
+    ct_name = 'ct_reg_to_mr.mgz'
+    brain_mask_name = 'brain.mgz'
+    aseg_name = 'aseg.mgz'
+    brain_mask_fname = op.join(subjects_dir, subject, 'mri', brain_mask_name)
+    aseg_fname = op.join(subjects_dir, subject, 'mri', aseg_name)
+    ct_fname = op.join(mmvt_dir, subject, 'ct', ct_name)
+    ct = nib.load(ct_fname)
+    ct_data = ct.get_data()
+    brain = nib.load(brain_mask_fname)
+    aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
+    threshold = np.percentile(ct_data, threshold_percentile)
+    print('threshold: {}'.format(threshold))
+    # test1(ct_data, threshold)
+    test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
