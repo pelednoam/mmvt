@@ -215,6 +215,8 @@ def read_pial_verts(user_fol):
 def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2):
     points_inside, cylinder = points_in_cylinder(
         electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius, return_cylinder=True)
+    for p in points_inside:
+        in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[elc_ind]):
     sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc_ind1]) for p in points_inside])
     points_inside = [points_inside[ind] for ind in sort_indices]
     elcs_inside = electrodes[points_inside]
@@ -307,9 +309,12 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
     inds = np.where(dists < min_distance)
     if len(inds[0]) > 0:
         pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+        print('remove_too_close_points: {}'.format(pairs))
         pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
         for pair_electrode, pair in zip(pairs_electrodes, pairs):
-            ind = np.argmin(np.min(cdist(np.array(pair_electrode), cylinder), axis=1))
+            pair_dist_to_cylinder = np.min(cdist(np.array(pair_electrode), cylinder), axis=1)
+            print(pair, pair_dist_to_cylinder)
+            ind = np.argmax(pair_dist_to_cylinder)
             points_to_remove.append(pair[ind])
     elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
     if len(points_to_remove) > 0:

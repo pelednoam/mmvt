@@ -87,10 +87,14 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
             elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance)
+        if bpy.context.scene.ct_plot_lead:
+            create_lead(group[0], group[-1])
     else:
         group, noise, DellPanel.dists = fect.find_group_between_pair(
             elc_ind, elc_ind2, DellPanel.pos, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_distance)
+        if bpy.context.scene.ct_plot_lead:
+            create_lead(elc_ind, elc_ind2)
     if len(group) == 0:
         print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
         DellPanel.noise.add(elc_ind)
@@ -98,7 +102,8 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
     DellPanel.groups.append(group)
     for p in noise:
         print('Marking {} as noise'.format(DellPanel.names[p]))
-        _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.ct_noise_color))
+        if bpy.context.scene.ct_mark_noise:
+            _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
         DellPanel.noise.add(p)
     mu.save(DellPanel.groups, op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold))))
@@ -187,6 +192,24 @@ def select_new_electrode(new_electrode_name):
     _addon().electode_was_manually_selected(new_electrode_name)
 
 
+def create_lead(ind1, ind2, radius=0.05):
+    layers = [False] * 20
+    lead_layer = _addon().ELECTRODES_LAYER
+    layers[lead_layer] = True
+    parent_name = 'leads'
+    mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None)
+
+    p1, p2 = DellPanel.pos[ind1] * 0.1, DellPanel.pos[ind2] * 0.1
+    mu.cylinder_between(p1, p2, radius, layers)
+    lead_name = '{}-{}'.format(DellPanel.names[ind1], DellPanel.names[ind2])
+    color = tuple(np.concatenate((bpy.context.scene.dell_ct_lead_color, [1])))
+    mu.create_material('{}_mat'.format(lead_name), color, 1)
+    cur_obj = bpy.context.active_object
+    cur_obj.name = lead_name
+    cur_obj.parent = bpy.data.objects[parent_name]
+    bpy.data.objects[lead_name].select = False
+
+
 def clear_groups():
     DellPanel.groups = []
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
@@ -195,6 +218,7 @@ def clear_groups():
         shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
         os.remove(groups_fname)
     clear_electrodes_color()
+    mu.delete_hierarchy('leads')
 
 
 def clear_electrodes_color():
@@ -245,7 +269,14 @@ def dell_draw(self, context):
         row.prop(context.scene, 'dell_ct_max_dist_between_electrodes', text="Max dist between")
         row.prop(context.scene, 'dell_ct_min_distance', text="Min dist between")
         layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
-        layout.prop(context.scene, 'ct_noise_color', text='Noise color')
+        row = layout.row(align=0)
+        row.prop(context.scene, 'ct_mark_noise', text='Mark noise')
+        if bpy.context.scene.ct_mark_noise:
+            row.prop(context.scene, 'dell_ct_noise_color', text='')
+        row = layout.row(align=0)
+        row.prop(context.scene, 'ct_plot_lead', text='Plot lead')
+        if bpy.context.scene.ct_plot_lead:
+            row.prop(context.scene, 'dell_ct_lead_color', text='')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
@@ -397,9 +428,12 @@ bpy.types.Scene.dell_ct_error_radius = bpy.props.FloatProperty(min=1, max=8, def
 bpy.types.Scene.dell_ct_min_elcs_for_lead = bpy.props.IntProperty(min=2, max=20, default=4)
 bpy.types.Scene.dell_ct_max_dist_between_electrodes = bpy.props.FloatProperty(default=15, min=1, max=100)
 bpy.types.Scene.dell_ct_min_distance = bpy.props.FloatProperty(default=3, min=0, max=100)
-bpy.types.Scene.ct_noise_color = bpy.props.FloatVectorProperty(
+bpy.types.Scene.dell_ct_noise_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
-
+bpy.types.Scene.dell_ct_lead_color = bpy.props.FloatVectorProperty(
+    name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
+bpy.types.Scene.ct_mark_noise = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True)
 
 
 class DellPanel(bpy.types.Panel):
