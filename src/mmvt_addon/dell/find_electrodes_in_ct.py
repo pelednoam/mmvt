@@ -15,18 +15,35 @@ def find_voxels_above_threshold(ct_data, threshold):
     return np.array(np.where(ct_data > threshold)).T
 
 
-def mask_voxels_outside_brain(voxels, ct_header, brain, aseg=None):
+def mask_voxels_outside_brain(voxels, ct_header, brain, user_fol, aseg=None):
     brain_header = brain.get_header()
     brain_mask = brain.get_data()
-    ct_vox2ras, ras2t1_vox, _ = get_trans(ct_header, brain_header)
+    ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
     ct_ras = apply_trans(ct_vox2ras, voxels)
     t1_vox = np.rint(apply_trans(ras2t1_vox, ct_ras)).astype(int)
+    t1_tkreg = apply_trans(vox2t1_ras_tkr, t1_vox)
+    t1_voxels_outside_pial = get_t1_voxels_outside_pial(user_fol, brain_header, brain_mask, aseg, t1_vox, t1_tkreg)
+    t1_voxels_outside_pial = set([tuple(v) for v in t1_voxels_outside_pial])
     if aseg is None:
         voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0])
     else:
         voxels = np.array([v for v, t1_v in zip(voxels, t1_vox) if brain_mask[tuple(t1_v)] > 0 and
-                           aseg[tuple(t1_v)] not in [0, 7, 8]])
+                           aseg[tuple(t1_v)] not in [7, 8] and tuple(t1_v) not in t1_voxels_outside_pial])
     return voxels
+
+
+def get_t1_voxels_outside_pial(user_fol, brain_header, brain_mask, aseg, t1_vox, t1_tkreg, vertices=None):
+    unknown = np.array([t1_t for t1_v, t1_t in zip(t1_vox, t1_tkreg)
+                        if brain_mask[tuple(t1_v)] > 0 and aseg[tuple(t1_v)] == 0])
+    if vertices is None:
+        print('Loading pial vertices for finding electrodes hemis')
+        verts = read_pial_verts(user_fol)
+        vertices = np.concatenate((verts['rh'], verts['lh']))
+    dists = cdist(unknown, vertices)
+    close_verts = np.argmin(dists, axis=1)
+    outside_pial = [u for u, v in zip(unknown, close_verts) if np.linalg.norm(u) - np.linalg.norm(vertices[v]) > 0]
+    voxel_outside_pial = apply_trans(np.linalg.inv(brain_header.get_vox2ras_tkr()), outside_pial)
+    return voxel_outside_pial
 
 
 def get_trans(ct_header, brain_header):
@@ -49,9 +66,21 @@ def find_all_local_maxima(ct_data, voxels, threshold=0, find_nei_maxima=False, m
             max_voxel = find_local_nei_maxima_in_ct(ct_data, voxel, threshold, max_iters)
         else:
             max_voxel = find_local_maxima_in_ct(ct_data, voxel, max_iters)
-        maxs.add(tuple(max_voxel))
+        if max_voxel is not None:
+            maxs.add(tuple(max_voxel))
     maxs = np.array([np.array(vox) for vox in maxs])
     return maxs
+
+
+def remove_neighbors_voexls(ct_data, voxels):
+    dists = cdist(voxels, voxels, 'cityblock')
+    inds = np.where(dists == 1)
+    if len(inds[0]) > 0:
+        pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+        to_remove = [pair[0] if ct_data[tuple(voxels[pair[0]])] < ct_data[tuple(voxels[pair[1]])]
+                     else pair[1] for pair in pairs]
+        voxels = np.delete(voxels, to_remove, axis=0)
+    return voxels
 
 
 def clustering(data, ct_data, n_components, get_centroids=True, clustering_method='knn', output_fol='', threshold=0,
@@ -110,39 +139,43 @@ def gmm_clustering(data, n_components, covariance_type='full', output_fol='', th
 
 def find_local_maxima_in_ct(ct_data, voxel, max_iters=100):
     peak_found, iter_num = False, 0
+    voxel_max = voxel.copy()
     while not peak_found and iter_num < max_iters:
-        max_ct_data = ct_data[tuple(voxel)]
+        max_ct_data = ct_data[tuple(voxel_max)]
         max_diffs = (0, 0, 0)
-        neighbors = get_voxel_neighbors_ct_values(ct_data, voxel, True)
+        neighbors = get_voxel_neighbors_ct_values(ct_data, voxel_max, True)
         for ct_value, delta in neighbors:
             if ct_value > max_ct_data:
                 max_ct_data = ct_value
                 max_diffs = delta
         peak_found = max_diffs == (0, 0, 0)
-        voxel += max_diffs
+        voxel_max += max_diffs
         iter_num += 1
     if not peak_found:
-        print('Peak was not found!')
-    return voxel
+        # print('Peak was not found!')
+        voxel_max = None
+    return voxel_max
 
 
 def find_local_nei_maxima_in_ct(ct_data, voxel, threshold=0, max_iters=100):
     peak_found, iter_num = False, 0
+    voxel_max = voxel.copy()
     while not peak_found and iter_num < max_iters:
-        max_nei_ct_data = sum(get_voxel_neighbors_ct_values(ct_data, voxel, False))
+        max_nei_ct_data = sum(get_voxel_neighbors_ct_values(ct_data, voxel_max, False))
         max_diffs = (0, 0, 0)
-        neighbors = get_voxel_neighbors_ct_values(ct_data, voxel, True)
+        neighbors = get_voxel_neighbors_ct_values(ct_data, voxel_max, True)
         for ct_val, delta in neighbors:
             neighbors_neighbors_ct_val = sum(get_voxel_neighbors_ct_values(ct_data, voxel+delta, False))
             if neighbors_neighbors_ct_val > max_nei_ct_data and ct_val > threshold:
                 max_nei_ct_data = neighbors_neighbors_ct_val
                 max_diffs = delta
         peak_found = max_diffs == (0, 0, 0)
-        voxel += max_diffs
+        voxel_max += max_diffs
         iter_num += 1
     if not peak_found:
-        print('Peak was not found!')
-    return voxel
+        # print('Peak was not found!')
+        voxel_max = None
+    return voxel_max
 
 
 def get_voxel_neighbors_ct_values(ct_data, voxel, include_new_voxel=False):
@@ -236,7 +269,7 @@ def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_
 def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                          min_distance=2):
     max_electrodes_inside = 0
-    best_group, best_group_too_close_points, best_group_dists = [], [], []
+    best_points_insides, best_group_too_close_points, best_group_dists, best_cylinder = [], [], [], None
     elcs_already_in_groups = set(flat_list_of_lists(groups))
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
     for i in electrodes_list:
@@ -261,15 +294,21 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
             dists = calc_group_dists(elcs_inside)
             if max(dists) > max_dist_between_electrodes:
                 continue
+            points_inside_before_removing_too_close_points = points_inside.copy()
             points_inside, too_close_points = remove_too_close_points(
                 electrodes, points_inside, cylinder, min_distance)
             if len(points_inside) < min_elcs_for_lead:
                 continue
             if len(points_inside) > max_electrodes_inside:
                 max_electrodes_inside = len(points_inside)
-                best_group = points_inside.tolist() if not isinstance(points_inside, list) else points_inside.copy()
+                best_points_insides = points_inside
+                bset_points_inside_before_removing_too_close_points = points_inside_before_removing_too_close_points.copy()
                 best_group_too_close_points = too_close_points.copy()
                 best_group_dists = calc_group_dists(electrodes[points_inside])
+                best_cylinder = cylinder
+    best_group = best_points_insides.tolist() if not isinstance(best_points_insides, list) else best_points_insides.copy()
+    # For debug only
+    remove_too_close_points(electrodes, bset_points_inside_before_removing_too_close_points, best_cylinder, min_distance)
     return best_group, best_group_too_close_points, best_group_dists
 
 
@@ -308,8 +347,8 @@ def calc_group_dists(electrodes_group):
 
 def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_distance):
     # Remove too close points
+    points_examined, points_to_remove = set(), []
     elcs_inside = electrodes[points_inside_cylinder]
-    points_to_remove = []
     dists = cdist(elcs_inside, elcs_inside)
     dists += np.eye(len(elcs_inside)) * min_distance * 2
     inds = np.where(dists < min_distance)
@@ -318,10 +357,14 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
         print('remove_too_close_points: {}'.format(pairs))
         pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
         for pair_electrode, pair in zip(pairs_electrodes, pairs):
+            # if pair[0] in points_examined or pair[1] in points_examined:
+            #     continue
             pair_dist_to_cylinder = np.min(cdist(np.array(pair_electrode), cylinder), axis=1)
             print(pair, pair_dist_to_cylinder)
             ind = np.argmax(pair_dist_to_cylinder)
             points_to_remove.append(pair[ind])
+            for k in range(2):
+                points_examined.add(pair[k])
     rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
     points_to_remove.extend(rectangles)
     elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
@@ -365,19 +408,30 @@ def all_items_equall(arr):
 
 
 def test1(ct_data, threshold):
-    voxels = np.array([[172, 107, 155]])
-    maxs = find_all_local_maxima(ct_data, voxels, threshold)
+    voxels = np.array([[90, 75, 106]])
+    maxs = find_all_local_maxima(ct_data, voxels, threshold, find_nei_maxima=True)
     print(maxs)
 
 
 def test2(ct_data, ct_header, brain, aseg, threshold, min_distance):
     ct_voxels = find_voxels_above_threshold(ct_data, threshold)
     ct_voxels = mask_voxels_outside_brain(ct_voxels, ct_header, brain, aseg)
-    ct_nei_maxima = find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
-    ct_maxima = find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=False, max_iters=100)
-    dists = cdist(ct_maxima, ct_nei_maxima)
-    inds = np.where(np.min(dists, axis=0) > min_distance)
+    voxels = find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
+    voxels = remove_neighbors_voexls(ct_data, voxels)
     print('asdf')
+
+
+def test3(ct_data, threshold, ct_header, brain, aseg=None, user_fol=''):
+    ct_voxels = find_voxels_above_threshold(ct_data, threshold)
+    brain_header = brain.get_header()
+    brain_mask = brain.get_data()
+    ct_vox2ras, ras2t1_vox, vox2t1_ras_tkr = get_trans(ct_header, brain_header)
+    ct_ras = apply_trans(ct_vox2ras, ct_voxels)
+    t1_vox = np.rint(apply_trans(ras2t1_vox, ct_ras)).astype(int)
+    t1_tkreg = apply_trans(vox2t1_ras_tkr, t1_vox)
+    t1_voxels_outside_pial = get_t1_voxels_outside_pial(user_fol, brain_header, brain_mask, aseg, t1_vox, t1_tkreg)
+    t1_voxels_outside_pial = set([tuple(v) for v in t1_voxels_outside_pial])
+    print('sdf')
 
 
 if __name__ == '__main__':
@@ -405,4 +459,5 @@ if __name__ == '__main__':
     threshold = np.percentile(ct_data, threshold_percentile)
     print('threshold: {}'.format(threshold))
     # test1(ct_data, threshold)
-    test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
+    # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
+    test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))

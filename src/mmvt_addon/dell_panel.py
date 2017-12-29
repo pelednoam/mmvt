@@ -40,10 +40,11 @@ def get_electrodes_above_threshold():
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
     print('mask_voxels_outside_brain...')
-    ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain, DellPanel.aseg)
+    ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, DellPanel.aseg)
     print('Finding local maxima')
     ct_electrodes = fect.find_all_local_maxima(
         DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
+    ct_electrodes = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_electrodes)
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
     DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
@@ -331,8 +332,16 @@ def dell_draw(self, context):
         layout.label(text='Selected Electrode and its group:')
         box = layout.box()
         col = box.column()
-        for elc, group in DellPanel.current_log:
-            mu.add_box_line(col, elc, ','.join(group), 0.1)
+        elc, group = DellPanel.current_log[0]
+        row = col.split(percentage=0.3, align=True)
+        row.label(text=elc)
+        row.label(text='{}-{}'.format(group[0], group[-1]))
+        row.label(text=str(len(group)))
+    if len(bpy.context.selected_objects) == 2 and all(
+            bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
+        layout.label(text='Distance between {} and {}: {:.2f}'.format(
+            bpy.context.selected_objects[0].name, bpy.context.selected_objects[1].name,
+            np.linalg.norm(bpy.context.selected_objects[0].location - bpy.context.selected_objects[1].location) * 10))
     layout.prop(context.scene, 'dell_ct_print_distances', text='Show distances within group')
     if bpy.context.scene.dell_ct_print_distances and len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
         layout.label(text='Group inner distances:')
@@ -646,6 +655,7 @@ def init_electrodes():
         bpy.context.scene.dell_ct_n_groups = len(groups)
 
 
+@mu.tryit()
 def init_groups():
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold)))

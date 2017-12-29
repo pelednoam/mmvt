@@ -100,8 +100,8 @@ def open_freeview():
         ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
     print(cmd)
     FreeviewPanel.freeview_in_queue, FreeviewPanel.freeview_out_queue = mu.run_command_in_new_thread(
-        cmd, read_stderr=reading_freeview_stderr_func, read_stdin=reading_freeview_stdin_func,
-        stdout_func=reading_freeview_stdout_func)
+        cmd)#, read_stderr=reading_freeview_stderr_func, read_stdin=reading_freeview_stdin_func,
+        # stdout_func=reading_freeview_stdout_func)
 
 
 def reading_freeview_stdin_func():
