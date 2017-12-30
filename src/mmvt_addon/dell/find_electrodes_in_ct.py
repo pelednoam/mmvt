@@ -346,30 +346,40 @@ def calc_group_dists(electrodes_group):
 
 
 def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_distance):
+    elecs_to_remove = []
     # Remove too close points
-    points_examined, points_to_remove = set(), []
     elcs_inside = electrodes[points_inside_cylinder]
     dists = cdist(elcs_inside, elcs_inside)
     dists += np.eye(len(elcs_inside)) * min_distance * 2
     inds = np.where(dists < min_distance)
-    if len(inds[0]) > 0:
+    while len(inds[0]) > 0:
+        points_examined, points_to_remove = set(), []
         pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
         print('remove_too_close_points: {}'.format(pairs))
         pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
         for pair_electrode, pair in zip(pairs_electrodes, pairs):
-            # if pair[0] in points_examined or pair[1] in points_examined:
-            #     continue
+            if pair[0] in points_examined or pair[1] in points_examined:
+                continue
             pair_dist_to_cylinder = np.min(cdist(np.array(pair_electrode), cylinder), axis=1)
-            print(pair, pair_dist_to_cylinder)
+            # print(pair, pair_dist_to_cylinder)
             ind = np.argmax(pair_dist_to_cylinder)
             points_to_remove.append(pair[ind])
             for k in range(2):
                 points_examined.add(pair[k])
-    rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
-    points_to_remove.extend(rectangles)
-    elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
-    if len(points_to_remove) > 0:
-        points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
+        elecs_to_remove += [points_inside_cylinder[p] for p in points_to_remove]
+        if len(points_to_remove) > 0:
+            points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
+        elcs_inside = electrodes[points_inside_cylinder]
+        dists = cdist(elcs_inside, elcs_inside)
+        dists += np.eye(len(elcs_inside)) * min_distance * 2
+        inds = np.where(dists < min_distance)
+
+    # rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
+    # points_to_remove.extend(rectangles)
+    # elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
+    # if len(points_to_remove) > 0:
+    #     points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
+    elecs_to_remove = np.array(elecs_to_remove)
     return points_inside_cylinder, elecs_to_remove
 
 
