@@ -1885,5 +1885,9 @@ def argmax2d(data):
     return np.unravel_index(np.argmax(data), data.shape)
 
 
+def indices_of_elements(arr, values):
+    return np.in1d(arr, values).nonzero()[0]
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

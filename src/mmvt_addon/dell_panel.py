@@ -81,18 +81,19 @@ def find_electrode_lead():
 
 def _find_electrode_lead(elc_ind, elc_ind2=-1):
     if elc_ind2 == -1:
-        group, noise, DellPanel.dists = fect.find_electrode_group(
+        group, noise, DellPanel.dists, dists_to_cylinder = fect.find_electrode_group(
             elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance)
     else:
-        group, noise, DellPanel.dists = fect.find_group_between_pair(
+        group, noise, DellPanel.dists, dists_to_cylinder = fect.find_group_between_pair(
             elc_ind, elc_ind2, DellPanel.pos, bpy.context.scene.dell_ct_error_radius,
-            bpy.context.scene.dell_ct_min_distance, DellPanel.names)
+            bpy.context.scene.dell_ct_min_distance)
     if len(group) == 0:
         print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
         DellPanel.noise.add(elc_ind)
         return []
+    DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
     log = (DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group])
     DellPanel.log.append(log)
     DellPanel.current_log = [log]
@@ -328,6 +329,7 @@ def dell_draw(self, context):
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
         row.operator(PrevCTElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
         row.label(text=bpy.context.selected_objects[0].name)
+        row.label(text='Dist to cylinder: {:.2f}'.format(DellPanel.dists_to_cylinder[bpy.context.selected_objects[0].name]))
     if len(DellPanel.current_log) > 0:
         layout.label(text='Selected Electrode and its group:')
         box = layout.box()
@@ -578,17 +580,12 @@ class DellPanel(bpy.types.Panel):
     ct = None
     brain = None
     output_fol = ''
-    colors = []
-    groups = []
+    colors, groups, dists, dists_to_cylinder = [], [], [], []
     noise = set()
-    dists = []
-    init_play = False
-    is_playing = False
-    first_time = True
+    init_play, is_playing, first_time = False, False, True
     play_time_step = 0.7
     max_finding_group_tries = 10
-    log = []
-    current_log = []
+    log, current_log = [], []
 
     def draw(self, context):
         if DellPanel.init:

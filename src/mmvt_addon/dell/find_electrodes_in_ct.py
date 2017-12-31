@@ -99,7 +99,7 @@ def clustering(data, ct_data, n_components, get_centroids=True, clustering_metho
         for ind, label in enumerate(labels):
             voxels = data[Y == label]
             centroids[ind] = voxels[np.argmax([ct_data[tuple(voxel)] for voxel in voxels])]
-    print(np.all([ct_data[tuple(voxel)] > threshold for voxel in centroids]))
+    # print(np.all([ct_data[tuple(voxel)] > threshold for voxel in centroids]))
     return centroids, Y
 
 
@@ -247,37 +247,32 @@ def read_pial_verts(user_fol):
     return verts
 
 
-def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2, names=[]):
-    points_inside, cylinder = points_in_cylinder(
-        electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius, return_cylinder=True)
-    # if len(names) > 0:
-    #     for p in points_inside:
-    #         in_cube = point_in_cube(electrodes[elc_ind1], electrodes[elc_ind2], electrodes[p], error_radius)
-    #         print(names[p], in_cube)
+def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_distance=2):
+    points_inside, cylinder, dists_to_cylinder = points_in_cylinder(
+        electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius)
     sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc_ind1]) for p in points_inside])
     points_inside = [points_inside[ind] for ind in sort_indices]
     elcs_inside = electrodes[points_inside]
     dists = calc_group_dists(elcs_inside)
-    print([names[p] for p in points_inside])
-    print(dists)
     points_inside, too_close_points = remove_too_close_points(
         electrodes, points_inside, cylinder, min_distance)
     group = points_inside.tolist() if not isinstance(points_inside, list) else points_inside.copy()
-    return group, too_close_points, dists
+    return group, too_close_points, dists, dists_to_cylinder
 
 
 def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
                          min_distance=2):
     max_electrodes_inside = 0
-    best_points_insides, best_group_too_close_points, best_group_dists, best_cylinder = [], [], [], None
+    best_points_insides, best_group_too_close_points, best_group_dists, best_dists_to_cylinder = [], [], [], []
+    # best_cylinder = None
     elcs_already_in_groups = set(flat_list_of_lists(groups))
     electrodes_list = list(set(range(len(electrodes))) - elcs_already_in_groups)
     for i in electrodes_list:
         for j in electrodes_list[i+1:]:
             if not point_in_cube(electrodes[i], electrodes[j], electrodes[elc_ind], error_radius):
                 continue
-            points_inside, cylinder = points_in_cylinder(
-                electrodes[i], electrodes[j], electrodes, error_radius, return_cylinder=True)
+            points_inside, cylinder, dists_to_cylinder = points_in_cylinder(
+                electrodes[i], electrodes[j], electrodes, error_radius)
             if elc_ind not in points_inside:
                 continue
             if len(set(points_inside) & elcs_already_in_groups) > 0:
@@ -302,14 +297,15 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
             if len(points_inside) > max_electrodes_inside:
                 max_electrodes_inside = len(points_inside)
                 best_points_insides = points_inside
-                bset_points_inside_before_removing_too_close_points = points_inside_before_removing_too_close_points.copy()
                 best_group_too_close_points = too_close_points.copy()
                 best_group_dists = calc_group_dists(electrodes[points_inside])
-                best_cylinder = cylinder
+                best_dists_to_cylinder = {p: d for p, d in zip(points_inside_before_removing_too_close_points, dists_to_cylinder)}
+                # bset_points_inside_before_removing_too_close_points = points_inside_before_removing_too_close_points.copy()
+                # best_cylinder = cylinder
     best_group = best_points_insides.tolist() if not isinstance(best_points_insides, list) else best_points_insides.copy()
     # For debug only
-    remove_too_close_points(electrodes, bset_points_inside_before_removing_too_close_points, best_cylinder, min_distance)
-    return best_group, best_group_too_close_points, best_group_dists
+    # remove_too_close_points(electrodes, bset_points_inside_before_removing_too_close_points, best_cylinder, min_distance)
+    return best_group, best_group_too_close_points, best_group_dists, best_dists_to_cylinder
 
 
 def point_in_cube(pt1, pt2, k, e=0):
@@ -323,16 +319,14 @@ def p_in_the_middle(x, y, z, e=0):
     return x+e >= z >= y-e if x > y else x-e <= z <= y+e
 
 
-def points_in_cylinder(pt1, pt2, points, radius_sq, return_cylinder=False, N=100):
+def points_in_cylinder(pt1, pt2, points, radius_sq, N=100):
     dist = np.linalg.norm(pt1 - pt2)
     elc_ori = (pt2 - pt1) / dist # norm(elc_ori)=1mm
     # elc_line = np.array([pt1 + elc_ori*t for t in np.linspace(0, dist, N)])
     elc_line = (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
     dists = np.min(cdist(elc_line, points), 0)
-    if return_cylinder:
-        return np.where(dists <= radius_sq)[0], elc_line
-    else:
-        return np.where(dists <= radius_sq)[0]
+    points_inside_cylinder = np.where(dists <= radius_sq)[0]
+    return points_inside_cylinder, elc_line, dists[points_inside_cylinder]
 
 
 def point_in_cylinder(pt1, pt2, r, q):
@@ -354,13 +348,13 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
     inds = np.where(dists < min_distance)
     if len(inds[0]) > 0:
         pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
-        print('remove_too_close_points: {}'.format(pairs))
+        # print('remove_too_close_points: {}'.format(pairs))
         pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
         for pair_electrode, pair in zip(pairs_electrodes, pairs):
             # if pair[0] in points_examined or pair[1] in points_examined:
             #     continue
             pair_dist_to_cylinder = np.min(cdist(np.array(pair_electrode), cylinder), axis=1)
-            print(pair, pair_dist_to_cylinder)
+            # print(pair, pair_dist_to_cylinder)
             ind = np.argmax(pair_dist_to_cylinder)
             # if pair[ind] - 1 not in points_to_remove and pair[ind] + 1 not in points_to_remove:
             points_to_remove.append(pair[ind])
@@ -369,11 +363,13 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
     rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
     points_to_remove.extend(rectangles)
     elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
+    # Check if one of the removed points should be un-removed (calc dists)
+    points_inside_cylinder_after_removing = np.delete(points_inside_cylinder, points_to_remove, axis=0)
+    dists = cdist(electrodes[elecs_to_remove], electrodes[points_inside_cylinder_after_removing])
+    points_to_unremove = np.array(points_to_remove)[np.min(dists, axis=1) > min_distance]
+    points_to_remove = [e for e in points_to_remove if e not in points_to_unremove]
     if len(points_to_remove) > 0:
         points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
-    # Check if one of the removed points should be un-removed (calc dists)
-    dists = cdist(electrodes[elecs_to_remove], electrodes[points_inside_cylinder])
-    elecs_to_unremoved = elecs_to_remove[np.min(dists, axis=1) > min_distance]
     return points_inside_cylinder, elecs_to_remove
 
 
