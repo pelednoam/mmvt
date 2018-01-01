@@ -319,12 +319,12 @@ def p_in_the_middle(x, y, z, e=0):
     return x+e >= z >= y-e if x > y else x-e <= z <= y+e
 
 
-def points_in_cylinder(pt1, pt2, points, radius_sq, N=100):
+def points_in_cylinder(pt1, pt2, points, radius_sq, N=100, metric='euclidean'):
     dist = np.linalg.norm(pt1 - pt2)
     elc_ori = (pt2 - pt1) / dist # norm(elc_ori)=1mm
     # elc_line = np.array([pt1 + elc_ori*t for t in np.linspace(0, dist, N)])
     elc_line = (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
-    dists = np.min(cdist(elc_line, points), 0)
+    dists = np.min(cdist(elc_line, points, metric), 0)
     points_inside_cylinder = np.where(dists <= radius_sq)[0]
     return points_inside_cylinder, elc_line, dists[points_inside_cylinder]
 
@@ -434,6 +434,17 @@ def test3(ct_data, threshold, ct_header, brain, aseg=None, user_fol=''):
     print('sdf')
 
 
+def test4(ct_data):
+    voxel1 = np.array([102, 99, 131])
+    voxel2 = np.array([104, 102, 131])
+    points = np.array(list(product(*[range(voxel1[k], voxel2[k] + 1) for k in range(3)])))
+    inds, _, _ = points_in_cylinder(voxel1, voxel2, points, 1, metric='cityblock')
+    path = points[inds]
+    diffs = [pt2 - pt1 for pt1, pt2 in zip(path[:-1], path[1:])]
+    path = path[[np.all(d>=0) for d in diffs]]
+    path_ct_data = [ct_data[tuple(p)] for p in path]
+    print(path)
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
@@ -460,4 +471,5 @@ if __name__ == '__main__':
     print('threshold: {}'.format(threshold))
     # test1(ct_data, threshold)
     # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
-    test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
+    # test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
+    test4(ct_data)
