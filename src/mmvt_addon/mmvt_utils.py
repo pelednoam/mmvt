@@ -33,12 +33,11 @@ import subprocess
 from subprocess import Popen, PIPE, STDOUT
 from multiprocessing.connection import Client
 import threading
-from queue import Queue
+from queue import Queue, Empty
 import cProfile
 from itertools import chain
 from sys import platform as _platform
 from datetime import datetime
-from queue import Empty
 import glob
 
 _addon = None
@@ -2135,3 +2134,12 @@ def get_distinct_colors_hs(colors_num=0):
 def get_distinct_colors(colors_num=0):
     hs = get_distinct_colors_hs(colors_num)
     return [colorsys.hls_to_rgb(hs[ind], 0.5, 1) for ind in range(colors_num)]
+
+
+def calc_colors_from_cm(vert_values, data_min, colors_ratio, cm):
+    colors_indices = np.rint(((np.array(vert_values) - data_min) * colors_ratio)).astype(int)
+    # take care about values that are higher or smaller than the min and max values that were calculated (maybe using precentiles)
+    colors_indices[colors_indices < 0] = 0
+    colors_indices[colors_indices > 255] = 255
+    verts_colors = cm[colors_indices]
+    return verts_colors

@@ -129,6 +129,36 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
         return op.isfile(op.join(output_fol, 'objects.pkl'))
 
 
+def save_electrode_ct_pics(subject, voxel, pixels_around_voxel=40):
+    from src.mmvt_addon import slicer
+    import matplotlib.pyplot as plt
+
+    states = {}
+    for modality in ['mri', 'ct']:
+        states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
+    images = slicer.create_slices(voxel, states, modalities='ct', plot_cross=False)
+    fig, axs = plt.subplots(1,3)#"#, True, True)
+    for img_num, ((pers, data), ax) in enumerate(zip(images.items(), axs.ravel())):
+        # plt.subplot(2, 2, img_num + 1)
+        # ax.set_aspect('equal')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.imshow(data[::-1])
+        y, x = states[modality].cross[img_num]
+        y = 256 - y
+        print(x, y)
+        ax.autoscale(False)
+        ax.axhline(y)
+        ax.axvline(x)
+        # ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
+        # ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
+
+        # img = smp.toimage(data)  # Create a PIL image
+    plt.tight_layout()
+    # plt.show()
+    print('asdf')
+
+
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'convert_ct_to_mgz'):
         flags['convert_ct_to_mgz'] = convert_ct_to_mgz(
@@ -152,6 +182,9 @@ def main(subject, remote_subject_dir, args, flags):
             args.output_fol, args.clustering_method, args.max_iters, args.cylinder_error_radius,
             args.min_elcs_for_lead, args.max_dist_between_electrodes, args.min_cylinders_ang, args.ct_thresholds,
             args.min_joined_items_num, args.min_distance_beteen_electrodes, args.overwrite, args.debug)
+
+    if 'save_electrode_ct_pics' in args.function:
+        flags['save_electrode_ct_pics'] = save_electrode_ct_pics(subject, [102, 99, 131])
 
     return flags
 

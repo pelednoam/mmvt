@@ -82,7 +82,7 @@ def find_electrode_lead():
 def _find_electrode_lead(elc_ind, elc_ind2=-1):
     if elc_ind2 == -1:
         group, noise, DellPanel.dists, dists_to_cylinder = fect.find_electrode_group(
-            elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
+            elc_ind, DellPanel.pos, DellPanel.ct_data, bpy.context.scene.dell_ct_threshold, DellPanel.ct.header, DellPanel.brain.header,  DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance)
     else:
@@ -103,7 +103,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
         create_lead(group[0], group[-1])
     DellPanel.groups.append(group)
     for p in noise:
-        print('Marking {} as noise'.format(DellPanel.names[p]))
+        # print('Marking {} as noise'.format(DellPanel.names[p]))
         if bpy.context.scene.ct_mark_noise:
             _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
         DellPanel.noise.add(p)
@@ -329,7 +329,8 @@ def dell_draw(self, context):
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
         row.operator(PrevCTElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
         row.label(text=bpy.context.selected_objects[0].name)
-        row.label(text='Dist to cylinder: {:.2f}'.format(DellPanel.dists_to_cylinder[bpy.context.selected_objects[0].name]))
+        if bpy.context.selected_objects[0].name in DellPanel.dists_to_cylinder:
+            row.label(text='Dist to cylinder: {:.2f}'.format(DellPanel.dists_to_cylinder[bpy.context.selected_objects[0].name]))
     if len(DellPanel.current_log) > 0:
         layout.label(text='Selected Electrode and its group:')
         box = layout.box()

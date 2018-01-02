@@ -8,6 +8,7 @@ from sklearn.externals import joblib
 from sklearn import mixture
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
+from queue import Queue, Empty
 import time
 
 
@@ -260,8 +261,8 @@ def find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius=3, min_
     return group, too_close_points, dists, dists_to_cylinder
 
 
-def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4, max_dist_between_electrodes=15,
-                         min_distance=2):
+def find_electrode_group(elc_ind, electrodes, ct_data, threshold, ct_header, brain_header, elctrodes_hemis, groups=[], error_radius=3, min_elcs_for_lead=4,
+                         max_dist_between_electrodes=15, min_distance=2):
     max_electrodes_inside = 0
     best_points_insides, best_group_too_close_points, best_group_dists, best_dists_to_cylinder = [], [], [], []
     # best_cylinder = None
@@ -301,10 +302,13 @@ def find_electrode_group(elc_ind, electrodes, elctrodes_hemis, groups=[], error_
                 best_group_dists = calc_group_dists(electrodes[points_inside])
                 best_dists_to_cylinder = {p: d for p, d in zip(points_inside_before_removing_too_close_points, dists_to_cylinder)}
                 # bset_points_inside_before_removing_too_close_points = points_inside_before_removing_too_close_points.copy()
-                # best_cylinder = cylinder
-    best_group = best_points_insides.tolist() if not isinstance(best_points_insides, list) else best_points_insides.copy()
+                best_cylinder = cylinder
     # For debug only
     # remove_too_close_points(electrodes, bset_points_inside_before_removing_too_close_points, best_cylinder, min_distance)
+    # best_points_insides, connected_points = remove_connected_points(
+    #     electrodes, best_points_insides, best_cylinder, ct_data, threshold, ct_header, brain_header)
+    # best_group_too_close_points = np.concatenate((best_group_too_close_points, connected_points))
+    best_group = best_points_insides.tolist() if not isinstance(best_points_insides, list) else best_points_insides.copy()
     return best_group, best_group_too_close_points, best_group_dists, best_dists_to_cylinder
 
 
@@ -339,6 +343,24 @@ def calc_group_dists(electrodes_group):
     return [np.linalg.norm(pt2 - pt1) for pt1, pt2 in zip(electrodes_group[:-1], electrodes_group[1:])]
 
 
+def remove_connected_points(electrodes, points_inside_cylinder, cylinder, ct_data, threshold, ct_header, brain_header):
+    points_to_remove = set()
+    for ind, (pt1, pt2) in enumerate(zip(points_inside_cylinder[:-1], points_inside_cylinder[1:])):
+        pair_electrodes = np.vstack((electrodes[pt1], electrodes[pt2]))
+        vox1, vox2 = t1_ras_tkr_to_ct_voxels(pair_electrodes, ct_header, brain_header)
+        if find_path(vox1, vox2, ct_data, threshold) and ind not in points_to_remove and ind + 1 not in points_to_remove:
+            print('connected points: {}-{}'.format(points_inside_cylinder[ind], points_inside_cylinder[ind + 1]))
+            # points_to_remove.add(ind if ct_data[tuple(vox1)] < ct_data[tuple(vox2)] else ind + 1)
+            pair_dist_to_cylinder = np.min(cdist(pair_electrodes, cylinder), axis=1)
+            dist_to_cylinder_ind = np.argmax(pair_dist_to_cylinder)
+            points_to_remove.add(ind if dist_to_cylinder_ind == 0 else ind + 1)
+    points_to_remove = list(points_to_remove)
+    elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
+    if len(points_to_remove) > 0:
+        points_inside_cylinder = np.delete(points_inside_cylinder, points_to_remove, axis=0)
+    return points_inside_cylinder, elecs_to_remove
+
+
 def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_distance):
     # Remove too close points
     points_examined, points_to_remove = set(), []
@@ -351,15 +373,9 @@ def remove_too_close_points(electrodes, points_inside_cylinder, cylinder, min_di
         # print('remove_too_close_points: {}'.format(pairs))
         pairs_electrodes = [[elcs_inside[p[k]] for k in range(2)] for p in pairs]
         for pair_electrode, pair in zip(pairs_electrodes, pairs):
-            # if pair[0] in points_examined or pair[1] in points_examined:
-            #     continue
             pair_dist_to_cylinder = np.min(cdist(np.array(pair_electrode), cylinder), axis=1)
-            # print(pair, pair_dist_to_cylinder)
             ind = np.argmax(pair_dist_to_cylinder)
-            # if pair[ind] - 1 not in points_to_remove and pair[ind] + 1 not in points_to_remove:
             points_to_remove.append(pair[ind])
-            # for k in range(2):
-            #     points_examined.add(pair[k])
     rectangles = find_rectangles_in_group(electrodes, points_inside_cylinder, points_to_remove)
     points_to_remove.extend(rectangles)
     elecs_to_remove = np.array(points_inside_cylinder)[points_to_remove]
@@ -385,6 +401,32 @@ def find_rectangles_in_group(electrodes, points_inside_cylinder, point_removed, 
     return points_to_remove
 
 
+def find_path(vox1, vox2, ct_data, threshold):
+    from_vox = [min([vox1[k], vox2[k]]) for k in range(3)]
+    to_vox = [max([vox1[k], vox2[k]]) for k in range(3)]
+    vox = from_vox.copy()
+    queue = Queue()
+    found = False
+    voxs = set()
+    debug_string = ''
+    # steps = [np.array(s) for s in product([0, 1], [0, 1], [0, 1]) if s != (0, 0, 0)]
+    steps = np.eye(3).astype(int)
+    while vox is not None and not found:
+        for step in steps:
+            found = np.array_equal(vox, to_vox)
+            if found:
+                break
+            if np.all(vox + step <= to_vox) and ct_data[tuple(vox + step)] >= threshold:
+                debug_string += '{} from {} to {} ({})\n'.format(step, vox, vox + step, ct_data[tuple(vox + step)])
+                if tuple(vox + step) not in voxs:
+                    queue.put(vox + step)
+                    voxs.add(tuple(vox + step))
+        vox = queue_get(queue)
+    if found:
+        print(debug_string)
+    return found
+
+
 ############# Utils ##############
 
 def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
@@ -403,6 +445,16 @@ def flat_list_of_lists(l):
 
 def all_items_equall(arr):
     return all([x == arr[0] for x in arr])
+
+
+def queue_get(queue):
+    try:
+        if queue is None:
+            return None
+        else:
+            return queue.get(block=False)
+    except Empty:
+        return None
 
 ################ tests ####################
 
@@ -445,6 +497,16 @@ def test4(ct_data):
     path_ct_data = [ct_data[tuple(p)] for p in path]
     print(path)
 
+
+def test5(ct_data, threshold):
+    vox1 = np.array([102, 99, 131])
+    vox2 = np.array([104, 102, 131])
+    is_there_path = find_path(vox1, vox2, ct_data, threshold)
+    max1 = find_local_maxima_in_ct(ct_data, vox1)
+    max2 = find_local_maxima_in_ct(ct_data, vox2)
+    print(is_there_path)
+
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
@@ -469,7 +531,7 @@ if __name__ == '__main__':
     aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     threshold = np.percentile(ct_data, threshold_percentile)
     print('threshold: {}'.format(threshold))
-    # test1(ct_data, threshold)
-    # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
-    # test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
-    test4(ct_data)
+    # # test1(ct_data, threshold)
+    # # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
+    # # test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
+    test5(ct_data, threshold)

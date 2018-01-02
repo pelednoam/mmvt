@@ -1,19 +1,29 @@
-import bpy
 import numpy as np
 import numpy.linalg as npl
 import os.path as op
 import traceback
 
-import mmvt_utils as mu
-from coloring_panel import calc_colors
+try:
+    import bpy
+    import mmvt_utils as mu
+    from coloring_panel import calc_colors
+    IN_BLENDER = True
+except:
+    from src.mmvt_addon import mmvt_utils as mu
+    from src.mmvt_addon.mmvt_utils import calc_colors_from_cm as calc_colors
+    IN_BLENDER = False
 
 
-def init(modality, modality_data=None, colormap=None):
+def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
+    if subject == '':
+        subject = mu.get_user()
+    if mmvt_dir == '':
+        mmvt_dir = mu.file_fol()
     if modality_data is None:
         if modality == 'ct':
-            fname = op.join(mu.get_user_fol(), 'ct', 'ct_data.npz'.format(modality))
+            fname = op.join(mmvt_dir, subject, 'ct', 'ct_data.npz'.format(modality))
         else:
-            fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format(modality))
+            fname = op.join(mmvt_dir, subject, 'freeview', '{}_data.npz'.format(modality))
         if op.isfile(fname):
             modality_data = mu.Bag(np.load(fname))
         else:
@@ -24,7 +34,7 @@ def init(modality, modality_data=None, colormap=None):
             mu.run_command_in_new_thread(cmd, False)
             return None
     if colormap is None:
-        colormap_fname = op.join(mu.file_fol(), 'color_maps', 'gray.npy')
+        colormap_fname = op.join(mmvt_dir, 'color_maps', 'gray.npy')
         colormap = np.load(colormap_fname)
     affine = np.array(modality_data.affine, float)
     data = modality_data.data
@@ -47,7 +57,7 @@ def init(modality, modality_data=None, colormap=None):
     return self
 
 
-def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None):
+def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True):
     self = mu.Bag({})
     if isinstance(modalities, str):
         modalities = [modalities]
@@ -72,11 +82,12 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in zip(xaxs, modalities)])
     max_yaxs_size = max([self[modality].sizes[yax] for yax, modality in zip(yaxs, modalities)])
     max_sizes = (max_xaxs_size, max_yaxs_size)
-
+    self[modality].cross = [None] * 3
     for ii, xax, yax, prespective, label in zip(
             [0, 1, 2], xaxs, yaxs, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
         pixels = {}
         cross = (int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
+        self[modality].cross[ii] = cross
         for modality in modalities:
             s = self[modality]
             d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates)
@@ -94,9 +105,14 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             pixels = (1 - ct_ratio) * pixels['mri'] + ct_ratio * pixels['ct']
         else:
             pixels = pixels[modality]
-        image = create_image(pixels, max_sizes, prespective, cross, state[modality].extras[ii])
-        if image is not None:
-            images[prespective] = image
+        if plot_cross:
+            pixels = add_cross_to_pixels(pixels, max_sizes, cross, state[modality].extras[ii])
+        if IN_BLENDER:
+            image = create_image(pixels, max_sizes, prespective)
+            if image is not None:
+                images[prespective] = image
+        else:
+            images[prespective] = pixels
     # print(np.dot(state[modality].affine, [x, y, z, 1])[:3])
     return images
 
@@ -154,8 +170,18 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap):
     return pixels
 
 
+def add_cross_to_pixels(pixels, max_sizes, cross, extra):
+    if 0 <= cross[1] < max_sizes[1]:  # data.shape[1]:
+        for x in range(max_sizes[0]):  # data.shape[0]):
+            pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
+    if 0 <= cross[0] < max_sizes[0]:  # data.shape[0]:
+        for y in range(max_sizes[1]):  # data.shape[1]):
+            pixels[cross[0], y] = [0, 1, 0, 1]
+    return pixels
+
+
 # def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colormap, horz_cross, vert_corss, extra):
-def create_image(pixels, max_sizes, prespective, cross, extra):
+def create_image(pixels, max_sizes, prespective):
     image_name = '{}.png'.format(prespective)
     if image_name not in bpy.data.images:
         image = bpy.data.images.new(image_name, width=max_sizes[0], height=max_sizes[1])
@@ -165,12 +191,13 @@ def create_image(pixels, max_sizes, prespective, cross, extra):
     try:
         # pixels = calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap)
         # print(prespective, horz_cross, vert_corss)
-        if 0 <= cross[1] < max_sizes[1]: # data.shape[1]:
-            for x in range(max_sizes[0]): #data.shape[0]):
-                pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
-        if 0 <= cross[0] < max_sizes[0]: #data.shape[0]:
-            for y in range(max_sizes[1]): #data.shape[1]):
-                pixels[cross[0], y] = [0, 1, 0, 1]
+
+        # if 0 <= cross[1] < max_sizes[1]: # data.shape[1]:
+        #     for x in range(max_sizes[0]): #data.shape[0]):
+        #         pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
+        # if 0 <= cross[0] < max_sizes[0]: #data.shape[0]:
+        #     for y in range(max_sizes[1]): #data.shape[1]):
+        #         pixels[cross[0], y] = [0, 1, 0, 1]
 
         # pixels[:, :, 3] = 0.5
         image.pixels = pixels.ravel()
