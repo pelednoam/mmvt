@@ -144,9 +144,7 @@ def get_image_data(image_data, order, flips, ii, pos):
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
         print('get_image_data: No data for {}'.format(pos))
-        image_data_zeros = np.zeros((256, 256, 256))
-        data = np.rollaxis(image_data_zeros, axis=order[ii])[pos[ii]]
-        return data
+        return np.zeros((256, 256))
     xax = [1, 0, 0][ii]
     yax = [2, 2, 1][ii]
     if order[xax] < order[yax]:
@@ -286,6 +284,7 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
     else:
         fig = plt.gcf()
         fig.set_size_inches((20, 8.5), forward=False)
+        print('Pic was saved in {}'.format(fig_fname))
         plt.savefig(fig_fname, dpi=500)
 
 

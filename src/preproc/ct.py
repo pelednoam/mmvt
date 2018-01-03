@@ -11,6 +11,7 @@ from src.utils import args_utils as au
 from src.utils import freesurfer_utils as fu
 from src.utils import ct_utils as ctu
 from src.preproc import anatomy as anat
+from src.mmvt_addon import slicer
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
@@ -129,15 +130,39 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
         return op.isfile(op.join(output_fol, 'objects.pkl'))
 
 
-def save_electrode_ct_pics(subject, voxel, pixels_around_voxel=30, interactive=True):
-    from src.mmvt_addon import slicer
-
+def save_electrode_ct_pics(subject, voxel, elc_name='', pixels_around_voxel=30, interactive=True, states=None, fig_fname=''):
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct', 'figures'))
-    fig_fname =  op.join(fol, '{}_{}.jpg'.format(voxel, pixels_around_voxel))
+    if fig_fname == '':
+        fig_fname = op.join(fol, '{}_{}.jpg'.format(voxel, pixels_around_voxel))
+    if states is None:
+        states = {}
+        for modality in ['mri', 'ct']:
+            states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
+    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname)
+    if fig_fname != '':
+        return op.isfile(fig_fname)
+    else:
+        return True
+
+
+def save_electrodes_group_ct_pics(subject, voxels, group_name='', electrodes_names='', pixels_around_voxel=30):
     states = {}
     for modality in ['mri', 'ct']:
         states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
-    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel)#, fig_fname=fig_fname)
+    if electrodes_names == '':
+        electrodes_names = [''] * len(voxels)
+    elif group_name == '':
+        group_name = '{}-{}'.format(electrodes_names[0], electrodes_names[-1])
+    if group_name == '':
+        print("Both group_name and electrodes_names can't be empty!")
+        return False
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct', 'figures', group_name))
+    ret = True
+    for ind, (voxel, elc_name) in enumerate(zip(voxels, electrodes_names)):
+        elc_name = voxel if elc_name == '' else elc_name
+        fig_fname = op.join(fol, '{}_{}_{}.jpg'.format(ind, elc_name, pixels_around_voxel))
+        ret = ret and save_electrode_ct_pics(subject, voxel, elc_name, pixels_around_voxel, False, states, fig_fname)
+    return ret
 
 
 def main(subject, remote_subject_dir, args, flags):
@@ -165,7 +190,12 @@ def main(subject, remote_subject_dir, args, flags):
             args.min_joined_items_num, args.min_distance_beteen_electrodes, args.overwrite, args.debug)
 
     if 'save_electrode_ct_pics' in args.function:
-        flags['save_electrode_ct_pics'] = save_electrode_ct_pics(subject, [102, 99, 131])
+        flags['save_electrode_ct_pics'] = save_electrode_ct_pics(
+            subject, args.voxel, args.pixels_around_voxel, args.interactive)
+
+    if 'save_electrodes_group_ct_pics' in args.function:
+        flags['save_electrodes_group_ct_pics'] = save_electrodes_group_ct_pics(
+            subject, args.voxels, args.group_name, args.electrodes_names, args.pixels_around_voxel)
 
     return flags
 
@@ -201,6 +231,14 @@ def read_cmd_args(argv=None):
     parser.add_argument('--min_joined_items_num', help='', required=False, default=1, type=int)
     parser.add_argument('--min_distance_beteen_electrodes', help='', required=False, default=2, type=float)
 
+    # Dell
+    parser.add_argument('--voxels', help='', required=False, default='', type=au.list_of_int_lists_type)
+    parser.add_argument('--voxel', help='', required=False, default='', type=au.int_arr_type) # 102,99,131
+    parser.add_argument('--pixels_around_voxel', help='', required=False, default=30, type=int)
+    parser.add_argument('--interactive', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--electrodes_names', help='', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--group_name', help='', required=False, default='')
+
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['brain.mgz']}
@@ -211,3 +249,4 @@ if __name__ == '__main__':
     args = read_cmd_args()
     pu.run_on_subjects(args, main)
     print('finish!')
+

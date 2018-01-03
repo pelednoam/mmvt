@@ -259,6 +259,18 @@ def clear_electrodes_color():
             _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
 
 
+def save_ct_electrodes_figures():
+    group, in_group_ind = find_select_electrode_group()
+    electrodes_names = ','.join([DellPanel.names[g] for g in group])
+    t1_vox = np.array([DellPanel.pos[g] for g in group])
+    ct_vox = fect.t1_ras_tkr_to_ct_voxels(t1_vox, DellPanel.ct.header, DellPanel.brain.header)
+    voxels = ';'.join([','.join(map(str, tuple(vox))) for vox in ct_vox])
+    cmd = '{} -m src.preproc.ct -s {} '.format(bpy.context.scene.python_cmd, mu.get_user()) + \
+          '-f save_electrodes_group_ct_pics --voxels "{}" '.format(voxels) + \
+          '--electrodes_names "{}" --interactive 0 --ignore_missing 1'.format(electrodes_names)
+    mu.run_command_in_new_thread(cmd, False)
+
+
 def run_ct_preproc():
     cmd = '{} -m src.preproc.ct -s {} -f save_subject_ct_trans,save_images_data_and_header --ignore_missing 1'.format(
         bpy.context.scene.python_cmd, mu.get_user())
@@ -279,6 +291,9 @@ def install_dell_reqs():
 def dell_draw(self, context):
     layout = self.layout
     parent = bpy.data.objects.get('Deep_electrodes', None)
+    electrode_with_group_selected = \
+        len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names and \
+        len(DellPanel.groups) > 0
     if not NIBABEL_EXIST or not DELL_EXIST:
         layout.operator(InstallReqs.bl_idname, text="Install reqs", icon='ROTATE')
     elif not DellPanel.ct_found:
@@ -316,6 +331,8 @@ def dell_draw(self, context):
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
+            if electrode_with_group_selected:
+                layout.operator(SaveCTElectrodesFigures.bl_idname, text="Save CT figures", icon='OUTLINER_OB_FORCE_FIELD')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
         layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
@@ -324,7 +341,7 @@ def dell_draw(self, context):
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
         layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
-    if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names and len(DellPanel.groups) > 0:
+    if electrode_with_group_selected:
         row = layout.row(align=0)
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
         row.operator(PrevCTElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
@@ -512,6 +529,16 @@ class NextCTElectrode(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class SaveCTElectrodesFigures(bpy.types.Operator):
+    bl_idname = 'mmvt.save_ct_electrodes_figures'
+    bl_label = 'save_ct_electrodes_figures'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        save_ct_electrodes_figures()
+        return {'FINISHED'}
+
+
 class DeleteElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.delete_electrodes"
     bl_label = "delete_electrodes"
@@ -689,6 +716,7 @@ def register():
         bpy.utils.register_class(SaveCTNeighborhood)
         bpy.utils.register_class(PrevCTElectrode)
         bpy.utils.register_class(NextCTElectrode)
+        bpy.utils.register_class(SaveCTElectrodesFigures)
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(DeleteElectrodes)
         bpy.utils.register_class(ModalDellTimerOperator)
@@ -709,6 +737,7 @@ def unregister():
         bpy.utils.unregister_class(SaveCTNeighborhood)
         bpy.utils.unregister_class(PrevCTElectrode)
         bpy.utils.unregister_class(NextCTElectrode)
+        bpy.utils.unregister_class(SaveCTElectrodesFigures)
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(DeleteElectrodes)
         bpy.utils.unregister_class(ModalDellTimerOperator)

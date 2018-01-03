@@ -4,6 +4,7 @@ def bool_arr_type(var): return var
 def str_arr_type(var): return var
 def int_arr_type(var): return var
 def float_arr_type(var): return var
+def list_of_int_lists_type(var): return var
 
 
 def add_arguments(parser, arguments):
@@ -36,6 +37,8 @@ def parse_parser(parser, argv=None):
             args[val.dest] = get_args_list(in_args, val.dest, int, val.default)
         elif val.type is float_arr_type:
             args[val.dest] = get_args_list(in_args, val.dest, float, val.default)
+        elif val.type is list_of_int_lists_type:
+            args[val.dest] = get_args_list_of_lists(in_args, val.dest, int, val.default)
         elif val.dest in in_args:
             if type(in_args[val.dest]) is str:
                 args[val.dest] = in_args[val.dest].replace("'", '')
@@ -57,6 +60,21 @@ def get_args_list(args, key, var_type, default_val=''):
         ret = [args[key]]
     if var_type:
         ret = list(map(var_type, ret))
+    return ret
+
+
+def get_args_list_of_lists(args, key, var_type, default_val=''):
+    if args[key] is None or len(args[key]) == 0:
+        return default_val
+    args[key] = args[key].replace("'", '')
+    if ';' in args[key]:
+        ret = [val.split(',') for val in args[key].split(';')]
+    elif len(args[key]) == 0:
+        ret = []
+    else:
+        ret = [args[key]]
+    if var_type:
+        ret = [list(map(var_type, x)) for x in ret]
     return ret
 
 
