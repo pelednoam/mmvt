@@ -39,6 +39,7 @@ from itertools import chain
 from sys import platform as _platform
 from datetime import datetime
 import glob
+import importlib
 
 _addon = None
 
@@ -92,6 +93,7 @@ except:
 
 try:
     from scripts import scripts_utils as su
+    importlib.reload(su)
 except:
     from src.mmvt_addon.scripts import scripts_utils as su
 
