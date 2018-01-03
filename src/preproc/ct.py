@@ -137,7 +137,7 @@ def save_electrode_ct_pics(subject, voxel, pixels_around_voxel=30, interactive=T
     states = {}
     for modality in ['mri', 'ct']:
         states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
-    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname)
+    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel)#, fig_fname=fig_fname)
 
 
 def main(subject, remote_subject_dir, args, flags):
