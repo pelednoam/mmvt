@@ -236,6 +236,58 @@ def on_click(ii, xy, state, modality='mri'):
     return idxs
 
 
+def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxel=20, fig_fname=''):
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Slider
+
+    def update(val):
+        pixels_around_voxel = _pixels_around_voxel.val
+        for img_num, ax in enumerate(axs.ravel()):
+            x_vox_slice = get_image_data(x_vox, s.order, s.flips, img_num, s.coordinates)
+            y, x = np.argwhere(x_vox_slice)[0]
+            ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
+            ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
+        fig.canvas.draw_idle()
+
+    fig, axs = plt.subplots(1, 3)#"#, True, True)
+    plt.tight_layout()
+    if fig_fname == '':
+        figManager = plt.get_current_fig_manager()
+        figManager.window.showMaximized()
+
+    if interactive and fig_fname == '':
+        axcolor = 'lightgoldenrodyellow'
+        axamp = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
+        _pixels_around_voxel = Slider(axamp, 'Zoom', 1, 256/2, valinit=pixels_around_voxel)
+        _pixels_around_voxel.on_changed(update)
+
+    s = state[modality]
+    fig.suptitle('Voxel {} ({:.2f})'.format(tuple(xyz), s.data[tuple(xyz)]))
+    x_vox = np.zeros_like(s.data)
+    x_vox[tuple(xyz)] = 255
+    images = create_slices(xyz, state, modalities=modality, plot_cross=False)
+    for img_num, ((pers, data), ax) in enumerate(zip(images.items(), axs.ravel())):
+        x_vox_slice = get_image_data(x_vox, s.order, s.flips, img_num, s.coordinates)
+        y, x = np.argwhere(x_vox_slice)[0]
+
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.imshow(data, origin='lower')
+        ax.imshow(x_vox_slice, cmap=plt.cm.Reds, alpha=0.5)
+        ax.axhline(y)
+        ax.axvline(x)
+        ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
+        ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
+        ax.set_title(pers)
+
+    if fig_fname == '':
+        plt.show()
+    else:
+        fig = plt.gcf()
+        fig.set_size_inches((20, 8.5), forward=False)
+        plt.savefig(fig_fname, dpi=500)
+
+
 # Most of this code is taken from nibabel
 def axcodes2ornt(axcodes, labels=None):
     """ Convert axis codes `axcodes` to an orientation

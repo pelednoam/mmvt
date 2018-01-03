@@ -129,34 +129,15 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
         return op.isfile(op.join(output_fol, 'objects.pkl'))
 
 
-def save_electrode_ct_pics(subject, voxel, pixels_around_voxel=40):
+def save_electrode_ct_pics(subject, voxel, pixels_around_voxel=30, interactive=True):
     from src.mmvt_addon import slicer
-    import matplotlib.pyplot as plt
 
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct', 'figures'))
+    fig_fname =  op.join(fol, '{}_{}.jpg'.format(voxel, pixels_around_voxel))
     states = {}
     for modality in ['mri', 'ct']:
         states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
-    images = slicer.create_slices(voxel, states, modalities='ct', plot_cross=False)
-    fig, axs = plt.subplots(1,3)#"#, True, True)
-    for img_num, ((pers, data), ax) in enumerate(zip(images.items(), axs.ravel())):
-        # plt.subplot(2, 2, img_num + 1)
-        # ax.set_aspect('equal')
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        ax.imshow(data[::-1])
-        y, x = states[modality].cross[img_num]
-        y = 256 - y
-        print(x, y)
-        ax.autoscale(False)
-        ax.axhline(y)
-        ax.axvline(x)
-        # ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
-        # ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
-
-        # img = smp.toimage(data)  # Create a PIL image
-    plt.tight_layout()
-    # plt.show()
-    print('asdf')
+    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname)
 
 
 def main(subject, remote_subject_dir, args, flags):
