@@ -434,7 +434,7 @@ def init_listener():
     return ret
 
 
-def create_slices(modality=None, pos=None):
+def create_slices(modality=None, pos=None, zoom_around_voxel=False, zoom_voxels_num=30, smooth=False):
     if WhereAmIPanel.slicer_state.mri is None:
         return
     if modality is None:
@@ -475,11 +475,12 @@ def create_slices(modality=None, pos=None):
         x, y, z = apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
-    create_slices_from_vox_coordinates(xyz, modality)
+    create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel, zoom_voxels_num, smooth)
 
 
-def create_slices_from_vox_coordinates(xyz, modality):
-    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality)
+def create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel=False, zoom_voxels_num=30, smooth=False):
+    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel,
+                                  zoom_voxels_num=zoom_voxels_num, smooth=smooth)
     update_slices(modality=modality, ratio=1, images=images)
     _addon().slices_zoom()
 

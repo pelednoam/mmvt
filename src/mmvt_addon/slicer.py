@@ -39,6 +39,7 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     affine = np.array(modality_data.affine, float)
     data = modality_data.data
     clim = modality_data.precentiles
+    bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max = clim
     colors_ratio = modality_data.colors_ratio
     codes = axcodes2ornt(aff2axcodes(affine))
     order = np.argsort([c[0] for c in codes])
@@ -57,7 +58,8 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     return self
 
 
-def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True):
+def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True,
+                  zoom_around_voxel=False, zoom_voxels_num=30, smooth=False):
     self = mu.Bag({})
     if isinstance(modalities, str):
         modalities = [modalities]
@@ -90,7 +92,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         self[modality].cross[ii] = cross
         for modality in modalities:
             s = self[modality]
-            d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates)
+            d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num, smooth)
             # todo: Should do that step in the state init
             if modality == 'ct':
                 d[np.where(d == 0)] = -200
@@ -106,6 +108,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         else:
             pixels = pixels[modality]
         if plot_cross:
+            if zoom_around_voxel:
+                cross = (128, 128)
             pixels = add_cross_to_pixels(pixels, max_sizes, cross, state[modality].extras[ii])
         if IN_BLENDER:
             image = create_image(pixels, max_sizes, prespective)
@@ -139,7 +143,8 @@ def calc_cross(coordinates, sizes, flips):
     return verts, horizs
 
 
-def get_image_data(image_data, order, flips, ii, pos):
+def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_voxel=False, zoom_voxels_num=30,
+                   smooth=False):
     try:
         data = np.rollaxis(image_data, axis=order[ii])[pos[ii]]  # [data_idx] # [pos[ii]]
     except:
@@ -153,6 +158,8 @@ def get_image_data(image_data, order, flips, ii, pos):
         data = data[:, ::-1]
     if flips[yax]:
         data = data[::-1]
+    if zoom_around_voxel:
+        data = clipped_zoom(data, cross[0], cross[1], zoom_voxels_num, smooth)
     return data
 
 
@@ -170,12 +177,15 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap):
 
 
 def add_cross_to_pixels(pixels, max_sizes, cross, extra):
-    if 0 <= cross[1] < max_sizes[1]:  # data.shape[1]:
-        for x in range(max_sizes[0]):  # data.shape[0]):
-            pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
-    if 0 <= cross[0] < max_sizes[0]:  # data.shape[0]:
-        for y in range(max_sizes[1]):  # data.shape[1]):
-            pixels[cross[0], y] = [0, 1, 0, 1]
+    try:
+        if 0 <= cross[1] < max_sizes[1]:  # data.shape[1]:
+            for x in range(max_sizes[0]):  # data.shape[0]):
+                pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
+        if 0 <= cross[0] < max_sizes[0]:  # data.shape[0]:
+            for y in range(max_sizes[1]):  # data.shape[1]):
+                pixels[cross[0], y] = [0, 1, 0, 1]
+    except:
+        pass
     return pixels
 
 
@@ -186,19 +196,7 @@ def create_image(pixels, max_sizes, prespective):
         image = bpy.data.images.new(image_name, width=max_sizes[0], height=max_sizes[1])
     else:
         image = bpy.data.images[image_name]
-    # print([im.name for im in bpy.data.images])
     try:
-        # pixels = calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap)
-        # print(prespective, horz_cross, vert_corss)
-
-        # if 0 <= cross[1] < max_sizes[1]: # data.shape[1]:
-        #     for x in range(max_sizes[0]): #data.shape[0]):
-        #         pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
-        # if 0 <= cross[0] < max_sizes[0]: #data.shape[0]:
-        #     for y in range(max_sizes[1]): #data.shape[1]):
-        #         pixels[cross[0], y] = [0, 1, 0, 1]
-
-        # pixels[:, :, 3] = 0.5
         image.pixels = pixels.ravel()
         return image
     except:
@@ -235,7 +233,7 @@ def on_click(ii, xy, state, modality='mri'):
     return idxs
 
 
-def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxel=20, fig_fname=''):
+def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxel=20, fig_fname='', elc_name=''):
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider
 
@@ -261,7 +259,7 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
         _pixels_around_voxel.on_changed(update)
 
     s = state[modality]
-    fig.suptitle('Voxel {} ({:.2f})'.format(tuple(xyz), s.data[tuple(xyz)]))
+    fig.suptitle('{} {} ({:.2f})'.format(elc_name if elc_name != '' else 'Voxel', tuple(xyz), s.data[tuple(xyz)]))
     x_vox = np.zeros_like(s.data)
     x_vox[tuple(xyz)] = 255
     images = create_slices(xyz, state, modalities=modality, plot_cross=False)
@@ -286,6 +284,47 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
         fig.set_size_inches((20, 8.5), forward=False)
         print('Pic was saved in {}'.format(fig_fname))
         plt.savefig(fig_fname, dpi=500)
+
+
+# https://stackoverflow.com/questions/37119071/scipy-rotate-and-zoom-an-image-without-changing-its-dimensions
+def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
+    from scipy.ndimage import zoom
+
+    h, w = img.shape[:2]
+    zoom_factor = h / (pixels_zoom * 2)
+
+    # width and height of the zoomed image
+    zh = int(np.round(zoom_factor * h))
+    zw = int(np.round(zoom_factor * w))
+
+    # for multichannel images we don't want to apply the zoom factor to the RGB
+    # dimension, so instead we create a tuple of zoom factors, one per array
+    # dimension, with 1's for any trailing dimensions after the width and height.
+    zoom_tuple = (zoom_factor,) * 2 + (1,) * (img.ndim - 2)
+    order = 3 if smooth else 0
+
+    # zooming out
+    if zoom_factor < 1:
+        # bounding box of the clip region within the output array
+        top = (h - zh) // 2
+        left = (w - zw) // 2
+        # zero-padding
+        out = np.zeros_like(img)
+        out[top:top+zh, left:left+zw] = zoom(img, zoom_tuple, **kwargs)
+
+    # zooming in
+    elif zoom_factor > 1:
+        out = zoom(img[x-pixels_zoom:x+pixels_zoom, y-pixels_zoom:y+pixels_zoom], zoom_tuple, order=order, **kwargs)
+        # `out` might still be slightly larger than `img` due to rounding, so
+        # trim off any extra pixels at the edges
+        trim_top = ((out.shape[0] - h) // 2)
+        trim_left = ((out.shape[1] - w) // 2)
+        out = out[trim_top:trim_top+h, trim_left:trim_left+w]
+
+    # if zoom_factor == 1, just return the input array
+    else:
+        out = img
+    return out
 
 
 # Most of this code is taken from nibabel

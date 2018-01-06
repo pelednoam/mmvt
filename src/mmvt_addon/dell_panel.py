@@ -259,6 +259,18 @@ def clear_electrodes_color():
             _addon().object_coloring(bpy.data.objects[elc_name], (1, 1, 1))
 
 
+def open_interactive_ct_viewer():
+    elc_name = bpy.context.selected_objects[0].name
+    if elc_name in DellPanel.names:
+        t1_vox = DellPanel.pos[DellPanel.names.index(elc_name)]
+        ct_vox = fect.t1_ras_tkr_to_ct_voxels(t1_vox, DellPanel.ct.header, DellPanel.brain.header)
+        voxel = ','.join(map(str, tuple(ct_vox)))
+        cmd = '{} -m src.preproc.ct -s {} '.format(bpy.context.scene.python_cmd, mu.get_user()) + \
+              '-f save_electrode_ct_pics --voxel "{}" --elc_name {} '.format(voxel, elc_name) + \
+              '--interactive 1 --ignore_missing 1'
+        mu.run_command_in_new_thread(cmd, False)
+
+
 def save_ct_electrodes_figures():
     group, in_group_ind = find_select_electrode_group()
     electrodes_names = ','.join([DellPanel.names[g] for g in group])
@@ -293,7 +305,7 @@ def dell_draw(self, context):
     parent = bpy.data.objects.get('Deep_electrodes', None)
     electrode_with_group_selected = \
         len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names and \
-        len(DellPanel.groups) > 0
+        DellPanel.names.index(bpy.context.selected_objects[0].name) in mu.flat_list_of_lists(DellPanel.groups)
     if not NIBABEL_EXIST or not DELL_EXIST:
         layout.operator(InstallReqs.bl_idname, text="Install reqs", icon='ROTATE')
     elif not DellPanel.ct_found:
@@ -329,9 +341,12 @@ def dell_draw(self, context):
             col = box.column()
             for g in DellPanel.groups:
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
+        if len(bpy.context.selected_objects) == 1:
+            layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
-            layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
-            if electrode_with_group_selected:
+            if not electrode_with_group_selected:
+                layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
+            else:
                 layout.operator(SaveCTElectrodesFigures.bl_idname, text="Save CT figures", icon='OUTLINER_OB_FORCE_FIELD')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
@@ -458,6 +473,15 @@ class ChooseCTFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         init(_addon(), ct_name)
         return {'FINISHED'}
 
+
+class OpenInteractiveCTViewer(bpy.types.Operator):
+    bl_idname = "mmvt.open_interactive_ct_viewer"
+    bl_label = "open_interactive_ct_viewer"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        open_interactive_ct_viewer()
+        return {'PASS_THROUGH'}
 
 class FindElectrodeLead(bpy.types.Operator):
     bl_idname = "mmvt.find_electrode_lead"
@@ -710,6 +734,7 @@ def register():
         bpy.utils.register_class(ChooseCTFile)
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
+        bpy.utils.register_class(OpenInteractiveCTViewer)
         bpy.utils.register_class(FindElectrodeLead)
         bpy.utils.register_class(FindRandomLead)
         bpy.utils.register_class(FindAllLeads)
@@ -731,6 +756,7 @@ def unregister():
         bpy.utils.unregister_class(ChooseCTFile)
         bpy.utils.unregister_class(CalcThresholdPercentile)
         bpy.utils.unregister_class(GetElectrodesAboveThrshold)
+        bpy.utils.unregister_class(OpenInteractiveCTViewer)
         bpy.utils.unregister_class(FindElectrodeLead)
         bpy.utils.unregister_class(FindRandomLead)
         bpy.utils.unregister_class(FindAllLeads)

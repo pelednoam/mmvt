@@ -14,6 +14,13 @@ try:
 except:
     pass
 
+
+try:
+    import scipy
+    SCIPY_EXIST = True
+except:
+    SCIPY_EXIST = False
+
 try:
     import mne
     MNE_EXIST = True

@@ -132,13 +132,13 @@ def find_electrodes(subject, n_components, n_groups, ct_name='', brain_mask_fnam
 
 def save_electrode_ct_pics(subject, voxel, elc_name='', pixels_around_voxel=30, interactive=True, states=None, fig_fname=''):
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct', 'figures'))
-    if fig_fname == '':
+    if fig_fname == '' and not interactive:
         fig_fname = op.join(fol, '{}_{}.jpg'.format(voxel, pixels_around_voxel))
     if states is None:
         states = {}
         for modality in ['mri', 'ct']:
             states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
-    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname)
+    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname, elc_name=elc_name)
     if fig_fname != '':
         return op.isfile(fig_fname)
     else:
@@ -191,7 +191,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'save_electrode_ct_pics' in args.function:
         flags['save_electrode_ct_pics'] = save_electrode_ct_pics(
-            subject, args.voxel, args.pixels_around_voxel, args.interactive)
+            subject, args.voxel, args.elc_name, args.pixels_around_voxel, args.interactive, fig_fname=args.fig_name)
 
     if 'save_electrodes_group_ct_pics' in args.function:
         flags['save_electrodes_group_ct_pics'] = save_electrodes_group_ct_pics(
@@ -238,6 +238,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--interactive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--electrodes_names', help='', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--group_name', help='', required=False, default='')
+    parser.add_argument('--elc_name', help='', required=False, default='')
+    parser.add_argument('--fig_name', help='', required=False, default='')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
