@@ -479,11 +479,11 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=False, zoom_voxels_
 
     pos = np.array(pos) * 10
     if modality == 'mri':
-        x, y, z = apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]
+        x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]).astype(int)
     elif modality == 'ct':
-        vox = apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]
+        vox = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
         ras = apply_trans(_trans().vox2ras, np.array([vox]))[0]
-        x, y, z = apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]
+        x, y, z = np.rint(apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]).astype(int)
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
     create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel, zoom_voxels_num, smooth, clim, plot_cross)

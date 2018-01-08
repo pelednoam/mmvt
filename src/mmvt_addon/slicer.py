@@ -59,7 +59,7 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     return self
 
 
-def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True,
+def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True ,
                   zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None):
     self = mu.Bag({})
     if isinstance(modalities, str):
@@ -79,31 +79,31 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     x, y, z = xyz[:3]
     for modality in modalities:
         self[modality].coordinates = np.rint(np.array([x, y, z])[self[modality].order]).astype(int)
-    cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
+        self[modality].cross = [None] * 3
+        self[modality].x_vox = np.zeros_like(self[modality].data)
+        self[modality].x_vox[tuple(xyz)] = 255
+
+    # cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
     images = {}
     xaxs, yaxs = [1, 0, 0], [2, 2, 1]
     max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in zip(xaxs, modalities)])
     max_yaxs_size = max([self[modality].sizes[yax] for yax, modality in zip(yaxs, modalities)])
     max_sizes = (max_xaxs_size, max_yaxs_size)
-    self[modality].cross = [None] * 3
 
     for ii, xax, yax, prespective, label in zip(
             [0, 1, 2], xaxs, yaxs, ['sagital', 'coronal', 'axial'], ('SAIP', 'SLIR', 'ALPR')):
         pixels = {}
-        cross = (int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
+        # cross = (int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]))
         # print('cross', cross)
         # self[modality].cross[ii] = cross
         for modality in modalities:
             s = self[modality]
-            cross2 = calc_cross2(xyz, s, ii)
-            print('{} ({},{})'.format(prespective, cross[0], cross[1]))
-            print('{} ({},{})'.format(prespective, cross2[0], cross2[1]))
-            # x_vox = np.zeros_like(s.data)
-            # x_vox[tuple(xyz)] = 255
-            # x_vox_slice = get_image_data(x_vox, s.order, s.flips, ii, s.coordinates)
+            cross = calc_cross(self[modality].x_vox, s, ii)
+            # print('{} ({},{})'.format(prespective, cross[0], cross[1]))
+            # print('{} ({},{})'.format(prespective, cross[0], cross[1]))
 
-            self[modality].cross[ii] = cross2
-            d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates, cross2, zoom_around_voxel, zoom_voxels_num,
+            self[modality].cross[ii] = cross
+            d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
                                smooth)
             # todo: Should do that step in the state init
             if modality == 'ct':
@@ -114,7 +114,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
                 colors_ratio = 256 / (clim[1] - clim[0])
             else:
                 clim, colors_ratio = s.clim, s.colors_ratio
-            pixels[modality] = calc_slice_pixels(d, sizes, max_sizes, clim, colors_ratio, s.colormap, cross2)
+            pixels[modality] = calc_slice_pixels(d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num)
         # image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
         #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]),
         #                      state[modality].extras[ii])
@@ -137,33 +137,31 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     return images
 
 
-def calc_cross2(xyz, state, ii):
-    x_vox = np.zeros_like(state.data)
-    x_vox[tuple(xyz)] = 255
+def calc_cross(x_vox, state, ii):
     x_vox_slice = get_image_data(x_vox, state.order, state.flips, ii, state.coordinates)
-    return np.argwhere(x_vox_slice)[0]
+    return np.rint(np.argwhere(x_vox_slice)[0]).astype(int)
 
 
-def calc_cross(coordinates, sizes, flips):
-    verts, horizs = [None] * 3, [None] * 3
-    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
-        verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
-        horizs[ii] = np.array([[-0.5, sizes[xax] - 0.5], [0] * 2]).T
-    for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
-        loc = coordinates[ii]
-        if flips[ii]:
-            loc = sizes[ii] - loc
-        loc = [loc] * 2
-        if ii == 0:
-            verts[2][:, 0] = loc
-            verts[1][:, 0] = loc
-        elif ii == 1:
-            horizs[2][:, 1] = loc
-            verts[0][:, 0] = loc
-        else:  # ii == 2
-            horizs[1][:, 1] = loc
-            horizs[0][:, 1] = loc
-    return verts, horizs
+# def calc_cross(coordinates, sizes, flips):
+#     verts, horizs = [None] * 3, [None] * 3
+#     for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+#         verts[ii] = np.array([[0] * 2, [-0.5, sizes[yax] - 0.5]]).T
+#         horizs[ii] = np.array([[-0.5, sizes[xax] - 0.5], [0] * 2]).T
+#     for ii, xax, yax in zip([0, 1, 2], [1, 0, 0], [2, 2, 1]):
+#         loc = coordinates[ii]
+#         if flips[ii]:
+#             loc = sizes[ii] - loc
+#         loc = [loc] * 2
+#         if ii == 0:
+#             verts[2][:, 0] = loc
+#             verts[1][:, 0] = loc
+#         elif ii == 1:
+#             horizs[2][:, 1] = loc
+#             verts[0][:, 0] = loc
+#         else:  # ii == 2
+#             horizs[1][:, 1] = loc
+#             horizs[0][:, 1] = loc
+#     return verts, horizs
 
 
 def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_voxel=False, zoom_voxels_num=30,
@@ -181,16 +179,21 @@ def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_vo
         data = data[:, ::-1]
     if flips[yax]:
         data = data[::-1]
-    if zoom_around_voxel:
+    if cross is not None and zoom_around_voxel:
+        # print('Setting ({},{}) to be marked as red'.format(cross[0], cross[1]))
         data = clipped_zoom(data, cross[0], cross[1], zoom_voxels_num, smooth)
     return data
 
 
-def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, cross):
+def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
+    if zoom_around_voxel:
+        # todo: in very close zoom the red doesn't cover the whole pixel
+        zoom_factor = np.rint(256 / (pixels_zoom * 2)).astype(int)
+        colors[128:128 + zoom_factor, 128:128 + zoom_factor] = [1, 0, 0]
+
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
-    pixels[cross[0], cross[1], :3] = [1, 0, 0]
 
     # todo: check all the other cases
     extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
@@ -291,7 +294,10 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
     images = create_slices(xyz, state, modalities=modality, plot_cross=False)
     for img_num, ((pers, data), ax) in enumerate(zip(images.items(), axs.ravel())):
         x_vox_slice = get_image_data(x_vox, s.order, s.flips, img_num, s.coordinates)
-        y, x = np.argwhere(x_vox_slice)[0]
+        # y, x = np.argwhere(x_vox_slice)[0]
+        y, x = s.cross[img_num][0], s.cross[img_num][1]
+        print('plot_slices: {} ({},{})'.format(pers, y, x))
+        # print('create_slices: {} ({},{})'.format(pers, s.cross[img_num][0], s.cross[img_num][1]))
 
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -301,15 +307,15 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
         zoom_tuple = (zoom_factor,) * 2 + (1,) * (data.ndim - 2)
         order = 0
         # data = data[::-1]
-        data = zoom(data[y - pixels_around_voxel:y + pixels_around_voxel, x - pixels_around_voxel:x + pixels_around_voxel], zoom_tuple, order=order)
+        # data = zoom(data[y - pixels_around_voxel:y + pixels_around_voxel, x - pixels_around_voxel:x + pixels_around_voxel], zoom_tuple, order=order)
 
-        ax.imshow(data)#, origin='lower')
-        ax.imshow(x_vox_slice, cmap=plt.cm.Reds, alpha=0.5)
+        ax.imshow(data, interpolation='none')#, origin='lower')
+        ax.imshow(x_vox_slice, cmap=plt.cm.Reds, alpha=0.5, interpolation='none')
         ax.axhline(y)
         ax.axvline(x)
-        print('Zooming in img[{}:{}, {}:{}]'.format(x-pixels_around_voxel,x+pixels_around_voxel, y-pixels_around_voxel,y+pixels_around_voxel))
-        # ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
-        # ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
+        # print('Zooming in img[{}:{}, {}:{}]'.format(x-pixels_around_voxel,x+pixels_around_voxel, y-pixels_around_voxel,y+pixels_around_voxel))
+        ax.set_xlim([x - pixels_around_voxel, x + pixels_around_voxel])
+        ax.set_ylim([y - pixels_around_voxel, y + pixels_around_voxel])
         ax.set_title('{} ({},{})'.format(pers, x, y))
 
     if fig_fname == '':
@@ -350,7 +356,7 @@ def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
 
     # zooming in
     elif zoom_factor > 1:
-        print('Zooming in img[{}:{}, {}:{}]'.format(x-pixels_zoom,x+pixels_zoom, y-pixels_zoom,y+pixels_zoom))
+        # print('Zooming in img[{}:{}, {}:{}]'.format(x-pixels_zoom,x+pixels_zoom, y-pixels_zoom,y+pixels_zoom))
         out = zoom(img[x-pixels_zoom:x+pixels_zoom, y-pixels_zoom:y+pixels_zoom], zoom_tuple, order=order, **kwargs)
         # `out` might still be slightly larger than `img` due to rounding, so
         # trim off any extra pixels at the edges

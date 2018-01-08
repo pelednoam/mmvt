@@ -685,6 +685,7 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
     if not op.isfile(brain_mask_fname):
         print("Dell: Can't find brain.mgz!")
         return False
+    print('Dell panel: loading {}'.format(ct_fname))
     DellPanel.ct = nib.load(ct_fname)
     DellPanel.ct_data = DellPanel.ct.get_data()
     DellPanel.brain = nib.load(brain_mask_fname)
