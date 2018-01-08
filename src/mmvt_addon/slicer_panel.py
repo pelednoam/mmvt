@@ -15,9 +15,11 @@ def slices_modality_update(self, context):
         bpy.context.scene.slices_modality_mix = 1
         _addon().set_ct_intensity()
     if _addon().get_slicer_state(bpy.context.scene.slices_modality) is not None:
+        clim = (bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max)
         _addon().create_slices(
             modality=bpy.context.scene.slices_modality, zoom_around_voxel=bpy.context.scene.slices_zoom_around_voxel,
-            zoom_voxels_num=bpy.context.scene.slices_zoom_voxels_num, smooth=bpy.context.scene.slices_zoom_interpolate)
+            zoom_voxels_num=bpy.context.scene.slices_zoom_voxels_num, smooth=bpy.context.scene.slices_zoom_interpolate,
+            clim=clim, plot_cross=bpy.context.scene.slices_plot_cross)
     slicer_state = _addon().get_slicer_state(bpy.context.scene.slices_modality)
     bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max = slicer_state.clim
 
@@ -531,7 +533,6 @@ def init(addon):
         SlicerPanel.ct_exist = True
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(
             items=[('mri', 'MRI', '', 1), ('ct', 'CT', '', 2)], update=slices_modality_update)
-    bpy.context.scene.slices_modality = 'mri'
     bpy.context.scene.slices_modality_mix = 0
     bpy.context.scene.slices_zoom = 1
     bpy.context.scene.new_electrode_num = 1
@@ -539,6 +540,7 @@ def init(addon):
     bpy.context.scene.slices_zoom_voxels_num = 30
     bpy.context.scene.slices_zoom_interpolate = False
     bpy.context.scene.slices_plot_cross = True
+    bpy.context.scene.slices_modality = 'mri'
     SlicerPanel.init = True
     register()
 

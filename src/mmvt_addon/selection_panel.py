@@ -110,6 +110,8 @@ def calc_best_curves_sep(norm_percs=[3, 97]):
 
 
 def _calc_best_curves_sep(data, norm_percs=[3, 97]):
+    if len(data) == 0:
+        return 0
     try:
         max_diff = max([np.diff(mu.calc_min_max(data[k], norm_percs=norm_percs))[0] for k in range(data.shape[0])])
         return max_diff * 1.1

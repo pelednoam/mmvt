@@ -444,8 +444,19 @@ def init_listener():
     return ret
 
 
-def create_slices(modality=None, pos=None, zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None,
-                  plot_cross=True):
+def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_num=-1, smooth=None, clim=None,
+                  plot_cross=None):
+    if zoom_around_voxel is None:
+        zoom_around_voxel = bpy.context.scene.slices_zoom_around_voxel
+    if zoom_voxels_num == -1:
+        zoom_voxels_num = bpy.context.scene.slices_zoom_voxels_num
+    if smooth is None:
+        smooth = bpy.context.scene.slices_zoom_interpolate
+    if clim is None:
+        clim = (bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max)
+    if plot_cross is None:
+        plot_cross = bpy.context.scene.slices_plot_cross
+
     if WhereAmIPanel.slicer_state.mri is None:
         return
     if modality is None:
