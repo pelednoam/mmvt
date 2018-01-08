@@ -545,7 +545,10 @@ def pos_to_current_inflation(pos):
     obj = bpy.data.objects['inflated_{}'.format(closest_mesh_name)]
     me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
     new_pos = me.vertices[vertex_ind].co
-    bpy.data.meshes.remove(me)
+    # Bug in windows, Blender crashses here
+    # todo: Figure out why...
+    if not mu.IS_WINDOWS:
+        bpy.data.meshes.remove(me)
     return new_pos
 
 
