@@ -82,13 +82,16 @@ def find_electrode_lead():
 def _find_electrode_lead(elc_ind, elc_ind2=-1):
     if elc_ind2 == -1:
         group, noise, DellPanel.dists, dists_to_cylinder = fect.find_electrode_group(
-            elc_ind, DellPanel.pos, DellPanel.ct_data, bpy.context.scene.dell_ct_threshold, DellPanel.ct.header, DellPanel.brain.header,  DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
+            elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance)
+        # DellPanel.ct_data, bpy.context.scene.dell_ct_threshold, DellPanel.ct.header, DellPanel.brain.header
     else:
         group, noise, DellPanel.dists, dists_to_cylinder = fect.find_group_between_pair(
             elc_ind, elc_ind2, DellPanel.pos, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_distance)
+    if not isinstance(group, list):
+        group = group.tolist()
     if len(group) == 0:
         print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
         DellPanel.noise.add(elc_ind)
@@ -271,6 +274,25 @@ def open_interactive_ct_viewer():
         mu.run_command_in_new_thread(cmd, False)
 
 
+def check_if_outside_pial():
+    # elc_name = bpy.context.selected_objects[0].name
+    # if elc_name in DellPanel.names:
+    vertices = fect.read_pial_verts(mu.get_user_fol())
+    vertices = np.concatenate((vertices['rh'], vertices['lh']))
+    # for elc_ind, elc_name in enumerate(DellPanel.names):
+    t1_tkreg = DellPanel.pos
+    t1_vox = np.rint(fect.apply_trans(np.linalg.inv(DellPanel.brain.header.get_vox2ras_tkr), t1_tkreg)).astype(int)
+    outside, close_verts = fect.get_t1_voxels_outside_pial(
+        mu.get_user_fol(), DellPanel.brain.header, DellPanel.brain_mask, DellPanel.aseg, t1_tkreg, t1_vox,
+        vertices=vertices)
+    # if len(outside) == 1:
+    #     print('{} is outside the pial surface'.format(elc_name))
+    #     _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], [1, 0, 0])
+    #     print('point outside the brain')
+    # else:
+    #     print('point inside the brain')
+
+
 def save_ct_electrodes_figures():
     group, in_group_ind = find_select_electrode_group()
     electrodes_names = ','.join([DellPanel.names[g] for g in group])
@@ -377,6 +399,7 @@ def dell_draw(self, context):
         layout.label(text='Distance between {} and {}: {:.2f}'.format(
             bpy.context.selected_objects[0].name, bpy.context.selected_objects[1].name,
             np.linalg.norm(bpy.context.selected_objects[0].location - bpy.context.selected_objects[1].location) * 10))
+    layout.operator(CheckIfElectrodeOutsidePial.bl_idname, text="Find outer electrodes", icon='ROTATE')
     layout.prop(context.scene, 'dell_ct_print_distances', text='Show distances within group')
     if bpy.context.scene.dell_ct_print_distances and len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
         layout.label(text='Group inner distances:')
@@ -551,6 +574,17 @@ class NextCTElectrode(bpy.types.Operator):
     def invoke(self, context, event=None):
         next_ct_electrode()
         return {'FINISHED'}
+
+
+class CheckIfElectrodeOutsidePial(bpy.types.Operator):
+    bl_idname = 'mmvt.check_if_outside_pial'
+    bl_label = 'check_if_outside_pial'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        check_if_outside_pial()
+        return {'FINISHED'}
+
 
 
 class SaveCTElectrodesFigures(bpy.types.Operator):
@@ -744,6 +778,7 @@ def register():
         bpy.utils.register_class(NextCTElectrode)
         bpy.utils.register_class(SaveCTElectrodesFigures)
         bpy.utils.register_class(ClearGroups)
+        bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
         bpy.utils.register_class(ModalDellTimerOperator)
     except:
@@ -766,6 +801,7 @@ def unregister():
         bpy.utils.unregister_class(NextCTElectrode)
         bpy.utils.unregister_class(SaveCTElectrodesFigures)
         bpy.utils.unregister_class(ClearGroups)
+        bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
         bpy.utils.unregister_class(DeleteElectrodes)
         bpy.utils.unregister_class(ModalDellTimerOperator)
     except:
