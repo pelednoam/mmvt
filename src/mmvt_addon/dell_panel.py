@@ -35,6 +35,15 @@ def dell_ct_n_groups_update(self, context):
         DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
 
 
+def ct_mark_noise_update(self, context):
+    for p in DellPanel.noise:
+        bpy.data.objects[DellPanel.names[p]].hide = not bpy.context.scene.ct_mark_noise
+
+
+def ct_plot_lead_update(self, context):
+    mu.show_hide_hierarchy(bpy.context.scene.ct_plot_lead, 'leads', also_parent=False, select=False)
+
+
 def get_electrodes_above_threshold():
     user_fol = mu.get_user_fol()
     print('find_voxels_above_threshold...')
@@ -106,11 +115,10 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
         create_lead(group[0], group[-1])
     DellPanel.groups.append(group)
     for p in noise:
-        # print('Marking {} as noise'.format(DellPanel.names[p]))
-        if bpy.context.scene.ct_mark_noise:
-            _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
+        # print('Marking {} as noise for group {}-{}'.format(DellPanel.names[p], DellPanel.names[group[0]], DellPanel.names[group[-1]]))
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
         DellPanel.noise.add(p)
-    mu.save(DellPanel.groups, op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
+    mu.save((DellPanel.groups, DellPanel.noise), op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold))))
     color = DellPanel.colors[len(DellPanel.groups) - 1]
     for elc_ind in group:
@@ -118,20 +126,25 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
     return group
 
 
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_all_groups(runs_num=100):
-    start_timer()
-    # group_found = find_random_group()
-    # run_num = 0
-    # while group_found and run_num < runs_num:
-    #     print('group {} found!'.format(run_num + 1))
-    #     group_found = find_random_group()
-    #     run_num += 1
+    if bpy.context.scene.dell_find_all_group_using_timer:
+        start_timer()
+    else:
+        group_found = find_random_group()
+        run_num = 0
+        while group_found and run_num < runs_num:
+            g = DellPanel.groups[-1]
+            print('{}) group {}-{} found!'.format(run_num + 1, DellPanel.names[g[0]], DellPanel.names[g[-1]]))
+            group_found = find_random_group()
+            run_num += 1
+    print('Done!')
 
 
-def find_random_group():
+def find_random_group(runs_num=100):
     elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
-    group, run_num = [], 0
-    while len(elcs) > 0 and len(group) == 0 and run_num < 10:
+    group, run_num, log = [], 0, None
+    while len(elcs) > 0 and len(group) == 0 and run_num < runs_num:
         elc_ind = random.choice(elcs)
         group = _find_electrode_lead(elc_ind)
         if len(group) == 0:
@@ -140,9 +153,12 @@ def find_random_group():
         else:
             log = (DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group])
             DellPanel.log.append(log)
-            mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
-                int(bpy.context.scene.dell_ct_threshold))))
-            DellPanel.current_log = [log]
+
+    if log is not None:
+        DellPanel.current_log = [log]
+        mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
+            int(bpy.context.scene.dell_ct_threshold))))
+    print('find_random_group: exit afer {} runs'.format(run_num))
     return len(group) > 0
 
 
@@ -234,11 +250,13 @@ def create_lead(ind1, ind2, radius=0.05):
 
 def clear_groups():
     DellPanel.groups = []
+    DellPanel.noise = set()
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold)))
     if op.isfile(groups_fname):
         shutil.copy(groups_fname, '{}_backup{}'.format(*op.splitext(groups_fname)))
         os.remove(groups_fname)
+    bpy.context.scene.ct_mark_noise = True
     clear_electrodes_color()
     mu.delete_hierarchy('leads')
     log_fname = op.join(DellPanel.output_fol, '{}_log.pkl'.format(
@@ -363,8 +381,8 @@ def dell_draw(self, context):
             col = box.column()
             for g in DellPanel.groups:
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
-        if len(bpy.context.selected_objects) == 1:
-            layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
+        # if len(bpy.context.selected_objects) == 1:
+        #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             if not electrode_with_group_selected:
                 layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
@@ -373,11 +391,15 @@ def dell_draw(self, context):
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
         layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
-        layout.operator(FindAllLeads.bl_idname, text="I feel lucky", icon='LAMP_SUN')
+        row = layout.row(align=0)
+        row.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
+        row.prop(context.scene, 'dell_find_all_group_using_timer', text='Use timer')
         # layout.operator(SaveCTNeighborhood.bl_idname, text="Save CT neighborhood", icon='EDIT')
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
-        layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+        layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
+        if bpy.context.scene.dell_delete_electrodes:
+            layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
     if electrode_with_group_selected:
         row = layout.row(align=0)
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
@@ -649,9 +671,11 @@ bpy.types.Scene.dell_ct_noise_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
 bpy.types.Scene.dell_ct_lead_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
-bpy.types.Scene.ct_mark_noise = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.ct_mark_noise = bpy.props.BoolProperty(default=True, update=ct_mark_noise_update)
+bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True, update=ct_plot_lead_update)
 bpy.types.Scene.dell_ct_print_distances = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.dell_delete_electrodes = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default=False)
 
 
 class DellPanel(bpy.types.Panel):
@@ -699,6 +723,8 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_ct_min_elcs_for_lead = 4
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
         bpy.context.scene.dell_ct_min_distance = 3
+        bpy.context.scene.dell_delete_electrodes = False
+        bpy.context.scene.dell_find_all_group_using_timer = False
         if not DellPanel.init:
             DellPanel.init = True
             register()
@@ -743,7 +769,7 @@ def init_electrodes():
 def init_groups():
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold)))
-    DellPanel.groups = mu.load(groups_fname) if op.isfile(groups_fname) else []
+    DellPanel.groups, DellPanel.noise = mu.load(groups_fname) if op.isfile(groups_fname) else ([], set())
     DellPanel.groups = [list(l) for l in DellPanel.groups]
     parent = bpy.data.objects.get('Deep_electrodes', None)
     if parent is None or len(parent.children) == 0:
@@ -752,6 +778,8 @@ def init_groups():
         color = DellPanel.colors[ind]
         for elc_ind in group:
             _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
+    for p in DellPanel.noise:
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
     if len(DellPanel.groups) == 0:
         clear_electrodes_color()
     log_fname = op.join(DellPanel.output_fol, '{}_log.pkl'.format(

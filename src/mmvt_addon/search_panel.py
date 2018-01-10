@@ -25,6 +25,7 @@ class SearchFilter(bpy.types.Operator):
             except:
                 if label_name in obj.name:
                     SearchPanel.marked_objects.append(obj.name)
+        # todo: show rois only if the object is an ROI. Also, move the cursor
         SearchPanel.addon.show_rois()
         return {"FINISHED"}
 

@@ -55,14 +55,9 @@ def test5(ct_data, threshold):
 def test6(elc1, elc2, threshold, output_fol, min_distance=3, error_radius=2):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     elc_ind1, elc_ind2 = names.index(elc1), names.index(elc2)
-    points_inside, cylinder, dists_to_cylinder = fect.points_in_cylinder(
-        electrodes[elc_ind1], electrodes[elc_ind2], electrodes, error_radius)
-    sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc_ind1]) for p in points_inside])
-    points_inside = [points_inside[ind] for ind in sort_indices]
-    dists_to_cylinder = dists_to_cylinder[sort_indices]
-    points_inside_cylinder, elecs_to_remove, removed_indices = fect.remove_too_close_points(electrodes, points_inside, cylinder, min_distance)
-    dists_to_cylinder = np.delete(dists_to_cylinder, removed_indices)
-    print(points_inside_cylinder, elecs_to_remove, dists_to_cylinder)
+    group, too_close_points, dists, dists_to_cylinder = \
+        fect.find_group_between_pair(elc_ind1, elc_ind2, electrodes, error_radius, min_distance)
+    print(group, too_close_points, dists, dists_to_cylinder)
 
 
 def test7(elc_name, output_fol, threshold, ct_header, brain, aseg, user_fol):
@@ -105,5 +100,5 @@ if __name__ == '__main__':
     # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
     # test3(ct_data, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
     # test5(ct_data, threshold)
-    # test6('LUN131', 'LUN129', threshold, output_fol, min_distance, error_r)
-    test7('RUN133', output_fol, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
+    test6('RUN72', 'RUN79', threshold, output_fol, min_distance, error_r)
+    # test7('RUN133', output_fol, threshold, ct.header, brain, aseg, op.join(mmvt_dir, subject))
