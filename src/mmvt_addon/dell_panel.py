@@ -49,7 +49,10 @@ def get_electrodes_above_threshold():
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
     print('mask_voxels_outside_brain...')
-    ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, DellPanel.aseg)
+    # todo: should use https://blender.stackexchange.com/questions/31693/how-to-find-if-a-point-is-inside-a-mesh
+    ct_voxels, voxels_indices = fect.mask_voxels_outside_brain(
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, DellPanel.aseg, None,
+        bpy.context.scene.dell_brain_mask_sigma)
     print('Finding local maxima')
     ct_electrodes = fect.find_all_local_maxima(
         DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
@@ -90,10 +93,10 @@ def find_electrode_lead():
 
 def _find_electrode_lead(elc_ind, elc_ind2=-1):
     if elc_ind2 == -1:
-        group, noise, DellPanel.dists, dists_to_cylinder = fect.find_electrode_group(
+        group, noise, DellPanel.dists, dists_to_cylinder, gof, best_elc_ind = fect.find_electrode_group(
             elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
-            bpy.context.scene.dell_ct_min_distance)
+            bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search)
         # DellPanel.ct_data, bpy.context.scene.dell_ct_threshold, DellPanel.ct.header, DellPanel.brain.header
     else:
         group, noise, DellPanel.dists, dists_to_cylinder = fect.find_group_between_pair(
@@ -106,7 +109,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
         DellPanel.noise.add(elc_ind)
         return []
     DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
-    log = (DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group])
+    log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
     DellPanel.log.append(log)
     DellPanel.current_log = [log]
     mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
@@ -128,6 +131,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_all_groups(runs_num=100):
+    clear_groups()
     if bpy.context.scene.dell_find_all_group_using_timer:
         start_timer()
     else:
@@ -249,6 +253,8 @@ def create_lead(ind1, ind2, radius=0.05):
 
 
 def clear_groups():
+    for p in DellPanel.noise:
+        bpy.data.objects[DellPanel.names[p]].hide = False
     DellPanel.groups = []
     DellPanel.noise = set()
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
@@ -293,22 +299,14 @@ def open_interactive_ct_viewer():
 
 
 def check_if_outside_pial():
-    # elc_name = bpy.context.selected_objects[0].name
-    # if elc_name in DellPanel.names:
-    vertices = fect.read_pial_verts(mu.get_user_fol())
-    vertices = np.concatenate((vertices['rh'], vertices['lh']))
-    # for elc_ind, elc_name in enumerate(DellPanel.names):
-    t1_tkreg = DellPanel.pos
-    t1_vox = np.rint(fect.apply_trans(np.linalg.inv(DellPanel.brain.header.get_vox2ras_tkr), t1_tkreg)).astype(int)
-    outside, close_verts = fect.get_t1_voxels_outside_pial(
-        mu.get_user_fol(), DellPanel.brain.header, DellPanel.brain_mask, DellPanel.aseg, t1_tkreg, t1_vox,
-        vertices=vertices)
-    # if len(outside) == 1:
-    #     print('{} is outside the pial surface'.format(elc_name))
-    #     _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], [1, 0, 0])
-    #     print('point outside the brain')
-    # else:
-    #     print('point inside the brain')
+    aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
+    voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
+    voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
+        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), aseg, None,
+        bpy.context.scene.dell_brain_mask_sigma)
+    indices_outside_brain = set(range(len(voxels))) - set(voxels_in_indices)
+    for ind in indices_outside_brain:
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[ind]], (0, 1, 0))
 
 
 def save_ct_electrodes_figures():
@@ -356,6 +354,7 @@ def dell_draw(self, context):
         row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
+        layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
         # row = layout.row(align=0)
@@ -391,9 +390,9 @@ def dell_draw(self, context):
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
         layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
-        row = layout.row(align=0)
-        row.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
-        row.prop(context.scene, 'dell_find_all_group_using_timer', text='Use timer')
+        layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
+        layout.prop(context.scene, 'dell_do_post_search', text='Do post search')
+        layout.prop(context.scene, 'dell_find_all_group_using_timer', text='Use timer')
         # layout.operator(SaveCTNeighborhood.bl_idname, text="Save CT neighborhood", icon='EDIT')
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
@@ -421,7 +420,10 @@ def dell_draw(self, context):
         layout.label(text='Distance between {} and {}: {:.2f}'.format(
             bpy.context.selected_objects[0].name, bpy.context.selected_objects[1].name,
             np.linalg.norm(bpy.context.selected_objects[0].location - bpy.context.selected_objects[1].location) * 10))
-    layout.operator(CheckIfElectrodeOutsidePial.bl_idname, text="Find outer electrodes", icon='ROTATE')
+    row = layout.row(align=0)
+    row.operator(CheckIfElectrodeOutsidePial.bl_idname, text="Find outer electrodes", icon='ROTATE')
+    row.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+    row.prop(context.scene, 'dell_brain_mask_use_aseg', text='Use aseg')
     layout.prop(context.scene, 'dell_ct_print_distances', text='Show distances within group')
     if bpy.context.scene.dell_ct_print_distances and len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
         layout.label(text='Group inner distances:')
@@ -676,6 +678,9 @@ bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True, update=ct_pl
 bpy.types.Scene.dell_ct_print_distances = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_delete_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.dell_brain_mask_sigma = bpy.props.IntProperty(min=0, max=20, default=2)
+bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
 
 
 class DellPanel(bpy.types.Panel):
@@ -722,9 +727,10 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_ct_error_radius = 2
         bpy.context.scene.dell_ct_min_elcs_for_lead = 4
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
-        bpy.context.scene.dell_ct_min_distance = 3
+        bpy.context.scene.dell_ct_min_distance = 2.5
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
+        bpy.context.scene.dell_do_post_search = False
         if not DellPanel.init:
             DellPanel.init = True
             register()
