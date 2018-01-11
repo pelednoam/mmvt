@@ -46,12 +46,12 @@ def ct_plot_lead_update(self, context):
 
 def get_electrodes_above_threshold():
     user_fol = mu.get_user_fol()
+    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
     print('mask_voxels_outside_brain...')
-    # todo: should use https://blender.stackexchange.com/questions/31693/how-to-find-if-a-point-is-inside-a-mesh
-    ct_voxels, voxels_indices = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, DellPanel.aseg, None,
+    ct_voxels, _ = fect.mask_voxels_outside_brain(
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, subject_fol, DellPanel.aseg, None,
         bpy.context.scene.dell_brain_mask_sigma)
     print('Finding local maxima')
     ct_electrodes = fect.find_all_local_maxima(
@@ -300,9 +300,10 @@ def open_interactive_ct_viewer():
 
 def check_if_outside_pial():
     aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
+    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
     voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
-        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), aseg, None,
+        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), subject_fol, aseg, None,
         bpy.context.scene.dell_brain_mask_sigma)
     indices_outside_brain = set(range(len(voxels))) - set(voxels_in_indices)
     for ind in indices_outside_brain:
@@ -714,8 +715,9 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
         if DellPanel.ct_found:
             init_electrodes()
-            if bpy.context.scene.dell_ct_n_groups > 0:
-                DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
+            # if bpy.context.scene.dell_ct_n_groups > 0:
+            # todo: change that!
+            DellPanel.colors = mu.get_distinct_colors(20)
             files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             if len(files) > 0:
                 (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])

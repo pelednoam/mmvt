@@ -28,6 +28,7 @@ def save_cursor_position(pos=None):
         FreeviewPanel.freeview_in_queue.put(freeview_cmd)
     freeview_fol = op.join(root, 'freeview')
     mu.make_dir(freeview_fol)
+    print('Cursor was saved in {}'.format(op.join(freeview_fol, 'edit.dat')))
     np.savetxt(op.join(freeview_fol, 'edit.dat'), point)
     # cursor_position = np.array(pos) * 10
     # ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos',data=dict(
