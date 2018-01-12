@@ -343,56 +343,64 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
         print(f'No electrodes labeling file for {template}!')
         return
     elab_template = utils.load(template_elab_files[0])
-    errors = defaultdict(list)
+    errors = ''
     for subject in electrodes.keys():
         elab_files = glob.glob(op.join(
             MMVT_DIR, subject, 'electrodes', f'{subject}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
         if len(elab_files) == 0:
-            errors[subject].append(f'No electrodes labeling file for {subject}!')
             print(f'No electrodes labeling file for {subject}!')
             continue
-        errors[subject] = []
         electrodes_names = [e[0] for e in electrodes[subject]]
         elab = utils.load(elab_files[0])
         elab = [e for e in elab if e['name'] in electrodes_names]
         for elc in electrodes_names:
-            no_erros = True
+            no_errors = True
             elc_labeling = [e for e in elab if e['name'] == elc][0]
             elc_labeling_template = [e for e in elab_template if e['name'] == f'{subject}_{elc}'][0]
             for roi, prob in zip(elc_labeling['cortical_rois'], elc_labeling['cortical_probs']):
-                no_erros = no_erros and compare_rois_and_probs(
+                no_err, err = compare_rois_and_probs(
                     subject, template, elc, roi, prob, elc_labeling['cortical_rois'],
                     elc_labeling_template['cortical_rois'], elc_labeling_template['cortical_probs'])
+                no_errors = no_errors and no_err
+                if err != '':
+                    errors += err + '\n'
             for roi, prob in zip(elc_labeling['subcortical_rois'], elc_labeling['subcortical_probs']):
-                no_erros = no_erros and compare_rois_and_probs(
+                no_err, err = compare_rois_and_probs(
                     subject, template, elc, roi, prob, elc_labeling['subcortical_rois'],
                     elc_labeling_template['subcortical_rois'], elc_labeling_template['subcortical_probs'])
-            if no_erros:
+                no_errors = no_errors and no_err
+                if err != '':
+                    errors += err + '\n'
+            if no_errors:
                 print(f'{subject},{elc},Good!')
+                errors += err + '\n'
+    with open(op.join(MMVT_DIR, template, 'electrodes', 'trans_errors.txt'), "w") as text_file:
+        print(errors, file=text_file)
     # print(errors)
 
 
 def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
                            elc_labeling_template_rois_probs):
-    no_erros = True
+    no_errors = True
+    err = ''
     if roi not in elc_labeling_template_rois:
         if prob > 0.05:
             err = f'{subject},{elc},{roi} ({prob}) not in {template}'
             print(err)
-            no_erros = False
+            no_errors = False
     else:
         roi_ind = elc_labeling_template_rois.index(roi)
         template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
         if abs(prob - template_roi_prob) > 0.05:
             err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
             print(err)
-            no_erros = False
+            no_errors = False
     for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
         if roi not in elc_labeling_rois and prob > 0.05:
             err = f'{subject},{elc},{roi} ({prob}) only in {template}'
             print(err)
-            no_erros = False
-    return no_erros
+            no_errors = False
+    return no_errors, err
 
 
 def sanity_check():
