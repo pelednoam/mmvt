@@ -76,6 +76,21 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
 
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    bad_subjects, good_subjects = [], []
+    for subject_from in electrodes.keys():
+        rs = utils.partial_run_script(locals(), print_only=print_only)
+        rs(applyMorph)
+        ret = op.isfile(op.join(subjects_dir, subject_from, 'electrodes', f'stim_electrodes_to_{subject_to}.txt'))
+        if not ret:
+            bad_subjects.append(subject_from)
+        else:
+            good_subjects.append(subject_from)
+    print('good subjects: {}'.format(good_subjects))
+    print('bad subjects: {}'.format(bad_subjects))
+
+
+def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     template_electrodes = defaultdict(list)
     header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
     for subject in electrodes.keys():
@@ -418,6 +433,8 @@ def get_subject_files(subject, necessary_files, remote_subject_dir):
 
 def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
     for subject in electrodes.keys():
+        t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
+        trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
         fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
         csv_fname = op.join(fol, 'stim_electrodes.txt')
         if op.isfile(csv_fname) and not overwrite:
@@ -425,7 +442,8 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         with open(csv_fname, 'w') as csv_file:
             wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE, delimiter=' ')
             for _, coords in electrodes[subject]:
-                wr.writerow([*['{:.2f}'.format(x) for x in coords]])
+                vox = np.rint(apply_trans(trans, coords)).astype(int)
+                wr.writerow([*['{:.2f}'.format(x) for x in vox]])
 
 
 def create_volume_with_electrodes(electrodes, subjects_dir, merge_to_pairs=True, overwrite=False):
