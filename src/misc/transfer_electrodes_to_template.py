@@ -373,7 +373,7 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
                     errors += err + '\n'
             if no_errors:
                 print(f'{subject},{elc},Good!')
-                errors += err + '\n'
+                errors += f'{subject},{elc},Good!\n'
     with open(op.join(MMVT_DIR, template, 'electrodes', 'trans_errors.txt'), "w") as text_file:
         print(errors, file=text_file)
     # print(errors)
