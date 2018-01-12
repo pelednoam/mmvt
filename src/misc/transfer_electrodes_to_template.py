@@ -553,9 +553,9 @@ if __name__ == '__main__':
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
     # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-    save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
     # export_into_csv(template_system, MMVT_DIR, 'stim_')
-    # compare_electrodes_labeling(electrodes, template_system, atlas)
+    compare_electrodes_labeling(electrodes, template_system, atlas)
 
 
 
