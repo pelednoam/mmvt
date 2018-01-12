@@ -78,15 +78,35 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     bad_subjects, good_subjects = [], []
     for subject_from in electrodes.keys():
+        output_fname = op.join(subjects_dir, subject_from, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        if op.isfile(output_fname) and not overwrite:
+            continue
         rs = utils.partial_run_script(locals(), print_only=print_only)
         rs(applyMorph)
-        ret = op.isfile(op.join(subjects_dir, subject_from, 'electrodes', f'stim_electrodes_to_{subject_to}.txt'))
+        ret = op.isfile(output_fname)
         if not ret:
             bad_subjects.append(subject_from)
         else:
             good_subjects.append(subject_from)
     print('good subjects: {}'.format(good_subjects))
     print('bad subjects: {}'.format(bad_subjects))
+
+
+def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False):
+    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    output_fname = op.join(mmvt_dir, subject_to, 'electrodes', 'template_electrodes.pkl')
+    if op.isfile(output_fname) and not overwrite:
+        return
+    t1_header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
+    trans = t1_header.get_vox2ras_tkr()
+    template_electrodes = defaultdict(list)
+    for subject in electrodes.keys():
+        input_fname = op.join(subjects_dir, subject, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
+        tkregs = apply_trans(trans, vox)
+        for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
+            template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
+    utils.save(template_electrodes, output_fname)
 
 
 def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
@@ -512,7 +532,13 @@ if __name__ == '__main__':
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
-    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+
+    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
+    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
+    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+
+
     # print(','.join(electrodes.keys()))
     # good_subjects = ['mg96']
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False) #
@@ -522,8 +548,7 @@ if __name__ == '__main__':
 
     # create_volume_with_electrodes(electrodes, SUBJECTS_DIR, merge_to_pairs=True, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
-    template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR)
-    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+
     # export_into_csv(template_system, MMVT_DIR, 'stim_')
 
     # sanity_check()
