@@ -100,14 +100,21 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     t1_header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
     trans = t1_header.get_vox2ras_tkr()
     template_electrodes = defaultdict(list)
+    bad_subjects, good_subjects = [], []
     for subject in electrodes.keys():
         input_fname = op.join(subjects_dir, subject, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        if not op.isfile(input_fname):
+            bad_subjects.append(subject)
+            continue
         vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
         tkregs = apply_trans(trans, vox)
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
             template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
+        good_subjects.append(subject)
     utils.save(template_electrodes, output_fname)
     print('read_morphed_electrodes: {}'.format(op.isfile(output_fname)))
+    print('good subjects: {}'.format(good_subjects))
+    print('bad subjects: {}'.format(bad_subjects))
 
 
 def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
