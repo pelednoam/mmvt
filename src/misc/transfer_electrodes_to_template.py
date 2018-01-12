@@ -107,6 +107,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
             template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
     utils.save(template_electrodes, output_fname)
+    print('read_morphed_electrodes: {}'.format(op.isfile(output_fname)))
 
 
 def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
