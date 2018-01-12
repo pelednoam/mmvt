@@ -154,10 +154,10 @@ def calc_groups_dist_to_dura(elc_name, output_fol, threshold):
         dists = cdist(electrodes[group], verts[hemis[group[0]]])
         close_verts_dists = np.min(dists, axis=1)
         print('{}-{}: {}'.format(names[group[0]], names[group[-1]], close_verts_dists))
-        mean_dists.append(np.mean(close_verts_dists))
+        mean_dists.append(np.max(close_verts_dists))
     plt.barh(np.arange(len(groups)), mean_dists, align='center', alpha=0.5)
     plt.yticks(np.arange(len(groups)), ('{}-{}'.format(names[group[0]], names[group[-1]]) for group in groups))
-    plt.title('mean groups dist to dural surface')
+    plt.title('max groups dist to dural surface')
     plt.show()
     print('asdf')
 
