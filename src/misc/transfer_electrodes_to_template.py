@@ -103,11 +103,13 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     template_electrodes = defaultdict(list)
     bad_subjects, good_subjects = [], []
     for subject in electrodes.keys():
+        if subject == subject_to:
+            continue
         input_fname = op.join(subjects_dir, subject, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
-        print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
         if not op.isfile(input_fname):
             bad_subjects.append(subject)
             continue
+        print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
         vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
         tkregs = apply_trans(trans, vox)
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
