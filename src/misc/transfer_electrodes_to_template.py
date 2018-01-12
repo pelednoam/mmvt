@@ -5,6 +5,7 @@ import nibabel as nib
 import glob
 from scipy.spatial.distance import cdist
 import csv
+import shutil
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -103,6 +104,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     bad_subjects, good_subjects = [], []
     for subject in electrodes.keys():
         input_fname = op.join(subjects_dir, subject, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
         if not op.isfile(input_fname):
             bad_subjects.append(subject)
             continue
@@ -323,6 +325,10 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
         wr.writerow(['Electrode Name','R','A','S'])
         for elc_name, elc_coords in zip(electrodes_dict.names, electrodes_dict.pos):
             wr.writerow([elc_name, *['{:.2f}'.format(x) for x in elc_coords.squeeze()]])
+    fol = utils.make_dir(op.join(SUBJECTS_DIR, template, 'electrodes'))
+    csv_fname2 = op.join(fol, utils.namesbase_with_ext(csv_fname))
+    shutil.copy(csv_fname, csv_fname2)
+    print('export_into_csv: {}'.format(op.isfile(csv_fname) and op.isfile(csv_fname2)))
 
 
 def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas40'):
@@ -541,10 +547,13 @@ if __name__ == '__main__':
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-
     # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
     read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
     # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+    # export_into_csv(template_system, MMVT_DIR, 'stim_')
+    # compare_electrodes_labeling(electrodes, template_system, atlas)
+
+
 
 
     # print(','.join(electrodes.keys()))
@@ -552,7 +561,6 @@ if __name__ == '__main__':
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False) #
     # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
     # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
-    # compare_electrodes_labeling(electrodes, template_system, atlas)
 
     # create_volume_with_electrodes(electrodes, SUBJECTS_DIR, merge_to_pairs=True, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)
