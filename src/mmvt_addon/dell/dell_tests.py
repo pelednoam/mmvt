@@ -116,7 +116,7 @@ def check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct_heade
 
 def check_dist_to_pial_vertices(elc_name, subject_fol, threshold):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
-    hemi_indices, close_verts_indices, all_dists, dural_mask = get_t1_voxels_inside_dural(electrodes, subject_fol)
+    hemi_indices, close_verts_indices, all_dists, dural_mask = fect.get_t1_voxels_inside_dural(electrodes, subject_fol)
     elc_ind = names.index(elc_name)
     t1_tkras_coords = np.array([electrodes[elc_ind]])
     verts, faces, normals = {}, {}, {}
@@ -127,37 +127,46 @@ def check_dist_to_pial_vertices(elc_name, subject_fol, threshold):
     hemi = hemis[elc_ind]
     dists = cdist(t1_tkras_coords, verts[hemi])
     close_verts = np.argmin(dists, axis=1)
-    is_inside = point_in_mesh(t1_tkras_coords[0], verts[hemi][close_verts[0]], normals[hemi][close_verts[0]])
+    is_inside = fect.point_in_mesh(t1_tkras_coords[0], verts[hemi][close_verts[0]], normals[hemi][close_verts[0]])
     # vert_norm = np.linalg.norm(vertices[close_verts][0])
     # elc_norm = np.linalg.norm(t1_tkras_coords[0])
     print(is_inside)
 
 
-def get_t1_voxels_inside_dural(t1_tkreg, subject_fol):
-    verts, normals, min_dists, close_verts_indices = {}, {}, {}, {}
-    hemis = ['lh', 'rh']
-    for hemi_ind, hemi in enumerate(hemis):
-        verts[hemi_ind], faces = nib.freesurfer.read_geometry(op.join(subject_fol, 'surf', '{}.dural'.format(hemi)))
-        # todo: check the normals vs Blender normals
-        normals[hemi_ind] = fect.calc_normals(verts[hemi_ind], faces)
-        dists = cdist(t1_tkreg, verts[hemi_ind])
-        min_dists[hemi] = np.min(dists, axis=1)
-        close_verts_indices[hemi] = np.argmin(dists, axis=1)
-    all_dists = [min_dists[hemi] for hemi in hemis]
-    hemi_indices = np.argmin(all_dists, axis=0)
-    close_verts_indices = np.array([close_verts_indices[hemi] for hemi in hemis]).T
-    close_verts_indices = [close_vert_indices[h] for close_vert_indices, h in zip(close_verts_indices, hemi_indices)]
-    dural_mask = [point_in_mesh(u, verts[hemi][vert_ind], normals[hemi][vert_ind]) for u, vert_ind, hemi in
-                  zip(t1_tkreg, close_verts_indices, hemi_indices)]
-    return [hemis[h] for h in hemi_indices], close_verts_indices, np.array(all_dists).T, dural_mask
+def calc_groups_dist_to_dura(elc_name, output_fol, threshold):
+    (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
+    groups, noise = utils.load(op.join(output_fol, '{}_groups.pkl'.format(int(threshold))))
+    elc_ind = names.index(elc_name)
+    group, in_group_ind = find_electrode_group(elc_ind, groups)
 
+    verts = {}
+    for hemi in ['lh', 'rh']:
+        # verts[hemi], _ = nib.freesurfer.read_geometry(op.join(subject_fol, 'surf', '{}.dural'.format(hemi)))
+        verts[hemi], _ = nib.freesurfer.read_geometry(op.join(subject_fol, 'bem', 'watershed',  'mg105_brain_surface'))
 
-def point_in_mesh(point, closest_vert, closeset_vert_normal):
-    # https://blender.stackexchange.com/questions/31693/how-to-find-if-a-point-is-inside-a-mesh
-    p2 = point - closest_vert
-    v = p2.dot(closeset_vert_normal)
-    print(v)
-    return not(v < 0.0)
+    dists = cdist([electrodes[elc_ind]], verts[hemis[elc_ind]])
+    close_verts_dists = np.min(dists, axis=1)
+    close_verts_ind = np.argmin(dists, axis=1)
+    print('{}: {} ({})'.format(names[elc_ind], close_verts_dists, verts[hemis[elc_ind]][close_verts_ind]))
+
+    mean_dists = []
+    for group in groups:
+        dists = cdist(electrodes[group], verts[hemis[group[0]]])
+        close_verts_dists = np.min(dists, axis=1)
+        print('{}-{}: {}'.format(names[group[0]], names[group[-1]], close_verts_dists))
+        mean_dists.append(np.mean(close_verts_dists))
+    plt.barh(np.arange(len(groups)), mean_dists, align='center', alpha=0.5)
+    plt.yticks(np.arange(len(groups)), ('{}-{}'.format(names[group[0]], names[group[-1]]) for group in groups))
+    plt.title('mean groups dist to dural surface')
+    plt.show()
+    print('asdf')
+
+def find_electrode_group(elc_ind, groups):
+    groups_mask = [(elc_ind in g) for g in groups]
+    if sum(groups_mask) == 1:
+        group = [g for g, m in zip(groups, groups_mask) if m][0]
+        in_group_ind = group.index(elc_ind)
+    return group, in_group_ind
 
 
 if __name__ == '__main__':
@@ -196,8 +205,9 @@ if __name__ == '__main__':
     # test3(ct_data, threshold, ct.header, brain, aseg, user_fol)
     # find_path(ct_data, threshold)
     # find_group_between_pair('RUN72', 'RUN79', threshold, output_fol, min_distance, error_r)
-    mask_voxels_outside_brain('RUN133', output_fol, threshold, ct.header, brain, aseg, user_fol, subject_fol)
+    # mask_voxels_outside_brain('RUN133', output_fol, threshold, ct.header, brain, aseg, user_fol, subject_fol)
     # find_closest_points_on_cylinder('RUN42', 'RUN112', threshold, output_fol, error_r)
     # calc_dist_on_cylinder('RUN57', 'RUN82', threshold, output_fol, error_r)
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
+    calc_groups_dist_to_dura('RUN98', output_fol, threshold)
