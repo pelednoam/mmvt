@@ -17,6 +17,7 @@ try:
     importlib.reload(fect)
     DELL_EXIST = True
 except:
+    # print(traceback.format_exc())
     DELL_EXIST = False
 
 try:
@@ -49,14 +50,18 @@ def get_electrodes_above_threshold():
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
-    print('mask_voxels_outside_brain...')
-    ct_voxels, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, subject_fol, DellPanel.aseg, None,
-        bpy.context.scene.dell_brain_mask_sigma)
+    print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
     print('Finding local maxima')
-    ct_electrodes = fect.find_all_local_maxima(
-        DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
-    ct_electrodes = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_electrodes)
+    ct_voxels = fect.find_all_local_maxima(
+        DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=False, max_iters=100)
+    print('{} local maxima were found'.format(len(ct_voxels)))
+    ct_voxels = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_voxels)
+    print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
+    print('mask_voxels_outside_brain...')
+    ct_electrodes, _ = fect.mask_voxels_outside_brain(
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, subject_fol, DellPanel.aseg, None,
+        bpy.context.scene.dell_brain_mask_sigma, DellPanel.ct_data.shape)
+    print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
     DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
@@ -275,6 +280,8 @@ def clear_groups():
 
 
 def dell_ct_electrode_was_selected(elc_name):
+    if not DellPanel.init:
+        return
     group, in_group_ind = find_select_electrode_group()
     group = [DellPanel.names[g] for g in group]
     DellPanel.current_log = [(elc, g) for (elc, g) in DellPanel.log if set(g) == set(group)]
@@ -355,7 +362,7 @@ def dell_draw(self, context):
         row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
-        layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+        # layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
         # row = layout.row(align=0)
@@ -696,7 +703,7 @@ class DellPanel(bpy.types.Panel):
     ct = None
     brain = None
     output_fol = ''
-    colors, groups, dists, dists_to_cylinder = [], [], [], []
+    names, colors, groups, dists, dists_to_cylinder = [], [], [], [], []
     noise = set()
     init_play, is_playing, first_time = False, False, True
     play_time_step = 0.7

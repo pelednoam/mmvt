@@ -5,10 +5,14 @@ import nibabel as nib
 from itertools import product
 from scipy.spatial.distance import cdist
 
+from src.utils import utils
 
-def test1(ct_data, threshold):
-    voxels = np.array([[90, 75, 106]])
-    maxs = fect.find_all_local_maxima(ct_data, voxels, threshold, find_nei_maxima=True)
+MMVT_DIR = utils.get_link_dir(utils.get_links_dir(), 'mmvt')
+
+
+def find_local_maxima_from_voxels(voxel, ct_data, threshold, find_nei_maxima=True):
+    voxels = np.array([voxel])
+    maxs = fect.find_all_local_maxima(ct_data, voxels, threshold, find_nei_maxima)
     print(maxs)
 
 
@@ -169,11 +173,32 @@ def find_electrode_group(elc_ind, groups):
     return group, in_group_ind
 
 
+@utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
+def get_electrodes_above_threshold(ct_data, ct_header, brain, threshold, user_fol, subject_fol):
+    print('find_voxels_above_threshold...')
+    ct_voxels = fect.find_voxels_above_threshold(ct_data, threshold)
+    print('{} voxels were found above {}'.format(len(ct_voxels), threshold))
+    print('Finding local maxima')
+    ct_voxels = fect.find_all_local_maxima(
+        ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
+    print('{} local maxima were found'.format(len(ct_voxels)))
+    ct_voxels = fect.remove_neighbors_voexls(ct_data, ct_voxels)
+    print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
+    print('mask_voxels_outside_brain...')
+    ct_voxels, _ = fect.mask_voxels_outside_brain(
+        ct_voxels, ct_header, brain, user_fol, subject_fol)
+    print('{} voxels in the brain were found'.format(len(ct_voxels)))
+
+
+def get_voxel_neighbors_ct_values(voxel, ct_data):
+    fect.get_voxel_neighbors_ct_values(ct_data, voxel)
+
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
     import matplotlib.pyplot as plt
-    subject = 'mg105'
+    subject = 'nmr01183' # 'mg105'
     threshold_percentile = 99.9
     min_distance = 2.5
     error_r = 2
@@ -200,7 +225,7 @@ if __name__ == '__main__':
     user_fol = op.join(mmvt_dir, subject)
     subject_fol = op.join(subjects_dir, subject)
 
-    # test1(ct_data, threshold)
+    # find_local_maxima_from_voxels([97, 88, 125], ct_data, threshold, find_nei_maxima=False)
     # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
     # test3(ct_data, threshold, ct.header, brain, aseg, user_fol)
     # find_path(ct_data, threshold)
@@ -210,4 +235,6 @@ if __name__ == '__main__':
     # calc_dist_on_cylinder('RUN57', 'RUN82', threshold, output_fol, error_r)
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
-    calc_groups_dist_to_dura('RUN98', output_fol, threshold)
+    # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
+    get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
+    # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
