@@ -53,7 +53,7 @@ def get_electrodes_above_threshold():
     print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
     print('Finding local maxima')
     ct_voxels = fect.find_all_local_maxima(
-        DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=False, max_iters=100)
+        DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
     print('{} local maxima were found'.format(len(ct_voxels)))
     ct_voxels = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_voxels)
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))

@@ -445,7 +445,7 @@ def init_listener():
 
 
 def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_num=-1, smooth=None, clim=None,
-                  plot_cross=None):
+                  plot_cross=None, mark_voxel=None):
     if zoom_around_voxel is None:
         zoom_around_voxel = bpy.context.scene.slices_zoom_around_voxel
     if zoom_voxels_num == -1:
@@ -456,6 +456,8 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
         clim = (bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max)
     if plot_cross is None:
         plot_cross = bpy.context.scene.slices_plot_cross
+    if mark_voxel is None:
+        mark_voxel = bpy.context.scene.slices_mark_voxel
 
     if WhereAmIPanel.slicer_state.mri is None:
         return
@@ -490,20 +492,22 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
 
     pos = np.array(pos) * 10
     if modality == 'mri':
-        x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos])).astype(np.int)[0]).astype(int)
+        x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
     elif modality == 'ct':
-        vox = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
+        vox = apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]
         ras = apply_trans(_trans().vox2ras, np.array([vox]))[0]
-        x, y, z = np.rint(apply_trans(_ct_trans().ras2vox, np.array([ras])).astype(np.int)[0]).astype(int)
+        x, y, z = np.rint(apply_trans(_ct_trans().ras2vox, np.array([ras]))[0]).astype(int)
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
-    create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel, zoom_voxels_num, smooth, clim, plot_cross)
+    create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel, zoom_voxels_num, smooth, clim, plot_cross,
+                                       mark_voxel)
 
 
 def create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel=False, zoom_voxels_num=30, smooth=False,
-                                       clim=None, plot_cross=True):
-    images = slicer.create_slices(xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel,
-                                  zoom_voxels_num=zoom_voxels_num, smooth=smooth, clim=clim, plot_cross=plot_cross)
+                                       clim=None, plot_cross=True, mark_voxel=True):
+    images = slicer.create_slices(
+        xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel, zoom_voxels_num=zoom_voxels_num,
+        smooth=smooth, clim=clim, plot_cross=plot_cross, mark_voxel=mark_voxel)
     update_slices(modality=modality, ratio=1, images=images)
     _addon().slices_zoom()
 

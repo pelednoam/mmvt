@@ -60,7 +60,7 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
 
 
 def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True ,
-                  zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None):
+                  zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None, mark_voxel=True):
     self = mu.Bag({})
     if isinstance(modalities, str):
         modalities = [modalities]
@@ -76,6 +76,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     if mri is None:
         return None
 
+    # print(xyz)
+    xyz = np.rint(xyz).astype(int)
     x, y, z = xyz[:3]
     for modality in modalities:
         self[modality].coordinates = np.rint(np.array([x, y, z])[self[modality].order]).astype(int)
@@ -100,7 +102,6 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             s = self[modality]
             cross = calc_cross(self[modality].x_vox, s, ii)
             # print('{} ({},{})'.format(prespective, cross[0], cross[1]))
-            # print('{} ({},{})'.format(prespective, cross[0], cross[1]))
 
             self[modality].cross[ii] = cross
             d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
@@ -114,7 +115,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
                 colors_ratio = 256 / (clim[1] - clim[0])
             else:
                 clim, colors_ratio = s.clim, s.colors_ratio
-            pixels[modality] = calc_slice_pixels(d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num)
+            pixels[modality] = calc_slice_pixels(
+                d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num, mark_voxel)
         # image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
         #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]),
         #                      state[modality].extras[ii])
@@ -126,7 +128,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         if plot_cross:
             if zoom_around_voxel:
                 cross = (128, 128)
-            pixels = add_cross_to_pixels(pixels, max_sizes, cross, state[modality].extras[ii])
+            extra = (0,0) if zoom_around_voxel else state[modality].extras[ii]
+            pixels = add_cross_to_pixels(pixels, max_sizes, cross, extra)
         if IN_BLENDER:
             image = create_image(pixels, max_sizes, prespective)
             if image is not None:
@@ -185,22 +188,23 @@ def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_vo
     return data
 
 
-def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom):
+def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom,
+                      mark_voxel=True):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
-    if zoom_around_voxel:
+
+    # todo: check all the other cases
+    extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
+    if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
+        dark = np.zeros((colors.shape[0], extra[0], 3))
+        colors = np.concatenate((dark, colors, dark), axis=1)
+
+    if zoom_around_voxel and mark_voxel:
         # todo: in very close zoom the red doesn't cover the whole pixel
         zoom_factor = np.rint(256 / (pixels_zoom * 2)).astype(int)
         colors[128:128 + zoom_factor, 128:128 + zoom_factor] = [1, 0, 0]
 
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
-
-    # todo: check all the other cases
-    extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
-    if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
-        dark = np.zeros((colors.shape[0], extra[0], 4))
-        dark[:, :, 3] = 1
-        pixels = np.concatenate((dark, pixels, dark), axis=1)
     return pixels
 
 
@@ -347,8 +351,8 @@ def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
     # zooming out
     if zoom_factor < 1:
         # bounding box of the clip region within the output array
-        top = (h - zh) // 2
-        left = (w - zw) // 2
+        # top = (h - zh) // 2
+        # left = (w - zw) // 2
         # zero-padding
         out = np.zeros_like(img)
         # out[top:top+zh, left:left+zw] = zoom(img, zoom_tuple, **kwargs)
@@ -357,6 +361,7 @@ def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
     # zooming in
     elif zoom_factor > 1:
         # print('Zooming in img[{}:{}, {}:{}]'.format(x-pixels_zoom,x+pixels_zoom, y-pixels_zoom,y+pixels_zoom))
+        # pixels_zoom = min([pixels_zoom, x, y])
         out = zoom(img[x-pixels_zoom:x+pixels_zoom, y-pixels_zoom:y+pixels_zoom], zoom_tuple, order=order, **kwargs)
         # `out` might still be slightly larger than `img` due to rounding, so
         # trim off any extra pixels at the edges

@@ -19,7 +19,7 @@ def slices_modality_update(self, context):
         _addon().create_slices(
             modality=bpy.context.scene.slices_modality, zoom_around_voxel=bpy.context.scene.slices_zoom_around_voxel,
             zoom_voxels_num=bpy.context.scene.slices_zoom_voxels_num, smooth=bpy.context.scene.slices_zoom_interpolate,
-            clim=clim, plot_cross=bpy.context.scene.slices_plot_cross)
+            clim=clim, plot_cross=bpy.context.scene.slices_plot_cross, mark_voxel=bpy.context.scene.slices_mark_voxel)
     slicer_state = _addon().get_slicer_state(bpy.context.scene.slices_modality)
     bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max = slicer_state.clim
 
@@ -34,7 +34,7 @@ def slices_update(self, context):
         _addon().create_slices(
             modality=bpy.context.scene.slices_modality, zoom_around_voxel=bpy.context.scene.slices_zoom_around_voxel,
             zoom_voxels_num=bpy.context.scene.slices_zoom_voxels_num, smooth=bpy.context.scene.slices_zoom_interpolate,
-            clim=clim, plot_cross=bpy.context.scene.slices_plot_cross)
+            clim=clim, plot_cross=bpy.context.scene.slices_plot_cross, mark_voxel=bpy.context.scene.slices_mark_voxel)
 
 
 def ct_exist():
@@ -468,6 +468,8 @@ bpy.types.Scene.slices_zoom_interpolate = bpy.props.BoolProperty(default=False, 
 bpy.types.Scene.slices_x_max = bpy.props.FloatProperty(default=1, update=slices_update)
 bpy.types.Scene.slices_x_min = bpy.props.FloatProperty(default=1, update=slices_update)
 bpy.types.Scene.slices_plot_cross = bpy.props.BoolProperty(default=True, update=slices_update)
+bpy.types.Scene.slices_mark_voxel = bpy.props.BoolProperty(default=True, update=slices_update)
+
 
 def slicer_draw(self, context):
     layout = self.layout
@@ -492,7 +494,9 @@ def slicer_draw(self, context):
         row = layout.row(align=0)
         row.prop(context.scene, 'slices_zoom_voxels_num', text='#voxels')
         row.prop(context.scene, 'slices_zoom_interpolate', text='smooth')
-    layout.prop(context.scene, 'slices_plot_cross', text='Plot cross')
+    row = layout.row(align=0)
+    row.prop(context.scene, 'slices_plot_cross', text='Plot cross')
+    row.prop(context.scene, 'slices_mark_voxel', text='Mark voxel')
 
     # col = layout.box().column()
     # col.prop(context.scene, 'new_electrode_lead', text='Lead')
@@ -540,6 +544,7 @@ def init(addon):
     bpy.context.scene.slices_zoom_voxels_num = 30
     bpy.context.scene.slices_zoom_interpolate = False
     bpy.context.scene.slices_plot_cross = True
+    bpy.context.scene.slices_mark_voxel = True
     bpy.context.scene.slices_modality = 'mri'
     SlicerPanel.init = True
     register()
