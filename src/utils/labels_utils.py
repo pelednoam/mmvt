@@ -91,14 +91,19 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
     subject_dir = op.join(subjects_dir, subject)
-    if utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name))) \
-            and not overwrite:
+    annot_files_exist = utils.both_hemi_files_exist(
+        op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
+    if annot_files_exist and not overwrite:
         return True
     if len(labels) == 0:
         labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
         labels_files = glob.glob(op.join(labels_fol, '*.label'))
         if len(labels_files) == 0:
-            raise Exception('labels_to_annot: No labels files!')
+            if not annot_files_exist:
+                raise Exception('labels_to_annot: No labels files!')
+            else:
+                print("Can't find label files, using the annot files instead")
+                return True
         for label_file in labels_files:
             if fix_unknown and 'unknown' in utils.namebase(label_file):
                 continue
@@ -236,7 +241,7 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
                 backup_fname = utils.add_str_to_file_name(annot_fname, '_backup')
                 shutil.copy(annot_fname, backup_fname)
             try:
-                mne.write_labels_to_annot(subject=subject, labels=labels, parc=atlas, overwrite=True,
+                mne.write_labels_to_annot(subject=subject, hemi=hemi, labels=labels, parc=atlas, overwrite=True,
                                           subjects_dir=SUBJECTS_DIR)
             except:
                 print('create_vertices_labels_lookup: Error writing labels to annot file!')
