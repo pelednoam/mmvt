@@ -1469,6 +1469,7 @@ def read_cmd_args(argv=None):
     if args.overwrite:
         args.overwrite_annotation = True
         args.overwrite_morphing_labels = True
+        args.overwrite_vertices_labels_lookup = True
         args.overwrite_hemis_ply = True
         args.overwrite_labels_ply_files = True
         args.overwrite_faces_verts = True

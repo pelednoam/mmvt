@@ -96,7 +96,10 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
         labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
             atlas, surface_type, hemi), '*.ply')))
         # print(atlas, surface_type, hemi, labels_files_num, len(labels))
-        return labels_files_num == len(labels)
+        # if labels_files_num != len(labels):
+        #     print('labels_files_num = {}, but len(labels) = {}'.format(labels_files_num, len(labels)))
+        # todo: should check the the -1 is becase the unknowns weren't written
+        return labels_files_num <= len(labels) -1
     else:
         return False
 
@@ -105,6 +108,9 @@ def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fo
     # Vertices for the current label
     nV = vtx.shape[0]
     facL_lab_flat = utils.list_flatten(facL_lab)
+    if len(facL_lab_flat) == 0:
+        print("Cant write {}, no vertices!".format(labels[lab]))
+        return True
     vidx = list(set(facL_lab_flat))
     vtxL[lab] = vtx[vidx]
     # Reindex the faces
@@ -138,33 +144,10 @@ def writing_ply_files_parallel(p):
     # print('Writing {}'.format(op.join(output_fol, label_name)))
     utils.write_ply_file(vtxL_lab, facL_lab, op.join(output_fol, label_name), True)
 
-        # Add the corresponding line to the index file
-    # fprintf(fidx, '%s,%g\n', fname, udpx(lab));
 
-
-# def create_labels_lookup(subject, hemi, aparc_name):
-#     import mne.label
-#     annot_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, aparc_name))
-#     if not op.isfile(annot_fname):
-#         return {}
-#     annot, ctab, label_names = mne.label._read_annot(annot_fname)
-#     lookup_key = 1
-#     lookup = {}
-#     for label_ind in range(len(label_names)):
-#         indices_num = len(np.where(annot == ctab[label_ind, 4])[0])
-#         if indices_num > 0 or label_names[label_ind].astype(str) == 'unknown':
-#             lookup[lookup_key] = label_names[label_ind].astype(str)
-#             lookup_key += 1
-#     return lookup
-
-
-# def rename_cortical(lookup, fol, new_fol):
-#     ply_files = glob.glob(op.join(fol, '*.ply'))
-#     utils.delete_folder_files(new_fol)
-#     for ply_file in ply_files:
-#         base_name = op.basename(ply_file)
-#         num = int(base_name.split('.')[-2])
-#         hemi = base_name.split('.')[0]
-#         name = lookup[hemi].get(num, num)
-#         new_name = '{}-{}'.format(name, hemi)
-#         shutil.copy(ply_file, op.join(new_fol, '{}.ply'.format(new_name)))
+if __name__ == '__main__':
+    subject = 'nmr01121'
+    dumps_fol = op.join(MMVT_DIR, subject, 'dumps')
+    (lab, facL_lab, vtx, vtxL, labels, hemi, output_fol) = utils.load(
+        op.join(dumps_fol, 'parcelate_cortex_writing_ply_files.pkl'))
+    writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fol)
