@@ -45,7 +45,8 @@ def ct_plot_lead_update(self, context):
     mu.show_hide_hierarchy(bpy.context.scene.ct_plot_lead, 'leads', also_parent=False, select=False)
 
 
-def get_electrodes_above_threshold():
+@mu.profileit('cumtime', op.join(mu.get_user_fol()))
+def find_electrodes_pipeline():
     user_fol = mu.get_user_fol()
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     print('find_voxels_above_threshold...')
@@ -64,7 +65,8 @@ def get_electrodes_above_threshold():
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
-    DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
+    # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
+    DellPanel.hemis, _ = fect.find_electrodes_hemis(subject_fol, DellPanel.pos, groups=None)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
@@ -96,7 +98,7 @@ def find_electrode_lead():
         print("You should first select an electrode")
 
 
-def _find_electrode_lead(elc_ind, elc_ind2=-1):
+def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
     if elc_ind2 == -1:
         group, noise, DellPanel.dists, dists_to_cylinder, gof, best_elc_ind = fect.find_electrode_group(
             elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
@@ -104,7 +106,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
             bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search)
         # DellPanel.ct_data, bpy.context.scene.dell_ct_threshold, DellPanel.ct.header, DellPanel.brain.header
     else:
-        group, noise, DellPanel.dists, dists_to_cylinder = fect.find_group_between_pair(
+        group, noise, DellPanel.dists, dists_to_cylinder, gof, best_elc_ind = fect.find_group_between_pair(
             elc_ind, elc_ind2, DellPanel.pos, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_distance)
     if not isinstance(group, list):
@@ -113,6 +115,14 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1):
         print('No group was found for {}!'.format(DellPanel.names[elc_ind]))
         DellPanel.noise.add(elc_ind)
         return []
+
+    if debug:
+        mu.save((elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
+            bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
+            bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search), op.join(
+            DellPanel.debug_fol, '_find_electrode_lead_{}-{}_{}_{}.pkl'.format(
+                group[0], group[-1], elc_ind, int(bpy.context.scene.dell_ct_threshold))))
+
     DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
     log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
     DellPanel.log.append(log)
@@ -382,6 +392,10 @@ def dell_draw(self, context):
         row.prop(context.scene, 'ct_plot_lead', text='Plot lead')
         if bpy.context.scene.ct_plot_lead:
             row.prop(context.scene, 'dell_ct_lead_color', text='')
+        if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
+            name = bpy.context.selected_objects[0].name
+            ind = DellPanel.names.index(name)
+            layout.label(text='{} index: {} hemi: {}'.format(name, ind, DellPanel.hemis[ind]))
         layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
         if len(DellPanel.groups) > 0:
             box = layout.box()
@@ -579,12 +593,12 @@ class SaveCTNeighborhood(bpy.types.Operator):
 
 
 class GetElectrodesAboveThrshold(bpy.types.Operator):
-    bl_idname = "mmvt.get_electrodes_above_threshold"
-    bl_label = "get_electrodes_above_threshold"
+    bl_idname = "mmvt.find_electrodes_pipeline"
+    bl_label = "find_electrodes_pipeline"
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        get_electrodes_above_threshold()
+        find_electrodes_pipeline()
         return {'PASS_THROUGH'}
 
 
@@ -715,11 +729,13 @@ class DellPanel(bpy.types.Panel):
             dell_draw(self, context)
 
 
-def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz'):
+def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz', debug=True):
     DellPanel.addon = addon
     try:
         DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
+        if debug:
+            DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if DellPanel.ct_found:
             init_electrodes()
             # if bpy.context.scene.dell_ct_n_groups > 0:

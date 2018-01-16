@@ -194,6 +194,50 @@ def get_voxel_neighbors_ct_values(voxel, ct_data):
     fect.get_voxel_neighbors_ct_values(ct_data, voxel)
 
 
+def load_find_electrode_lead_log(output_fol, logs_fol, log_name, threshold, elc1_ind=0, elc2_ind=0):
+    (_, names, _, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
+    (elc_ind, electrodes, elctrodes_hemis, groups, error_radius, min_elcs_for_lead, max_dist_between_electrodes, min_distance,
+     do_post_search) = utils.load(op.join(output_fol, logs_fol, '{}.pkl'.format(log_name)))
+
+    elcs_already_in_groups = set(fect.flat_list_of_lists(groups))
+    if elc1_ind in elcs_already_in_groups or elc2_ind in elcs_already_in_groups:
+        print('elcs are in elcs_already_in_groups!')
+    electrodes_list = set(range(len(electrodes))) - elcs_already_in_groups
+    for elc_ind in (elc1_ind, elc2_ind):
+        if elc_ind not in electrodes_list:
+            print('{} are not in electrodes_list!'.format(elc_ind))
+
+    group, noise, dists, dists_to_cylinder, gof, best_elc_ind = fect.find_electrode_group(
+        elc_ind, electrodes, elctrodes_hemis, groups, error_radius, min_elcs_for_lead, max_dist_between_electrodes, min_distance,
+        do_post_search)
+
+    print('elcs_already_in_groups: {}'.format(elcs_already_in_groups))
+    print('{} points between {} and {}: {}'.format(len(group), names[group[0]], names[group[-1]], [names[p] for p in group]))
+
+
+    # points_inside, cylinder, dists_to_cylinder = fect.find_elc_cylinder(
+    #     electrodes, elc_ind, elc1_ind, elc2_ind, elcs_already_in_groups, elctrodes_hemis, min_elcs_for_lead, error_radius,
+    #     min_distance)
+    # if points_inside is None:
+    #     return
+    # sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc1_ind]) for p in points_inside])
+    # points_inside = [points_inside[ind] for ind in sort_indices]
+    # print('points between {} and {}: {}'.format(names[elc1_ind], names[elc2_ind], [names[p] for p in points_inside]))
+    # elcs_inside = electrodes[points_inside]
+    # dists_to_cylinder = dists_to_cylinder[sort_indices]
+    # # elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
+    # dists = fect.calc_group_dists(elcs_inside)
+    # if max(dists) > max_dist_between_electrodes:
+    #     return
+    # # points_inside_before_removing_too_close_points = points_inside.copy()
+    # points_inside, too_close_points, removed_indices = fect.remove_too_close_points(
+    #     electrodes, points_inside, cylinder, min_distance)
+    # dists_to_cylinder = np.delete(dists_to_cylinder, removed_indices)
+    # if len(points_inside) < min_elcs_for_lead:
+    #     return
+    # gof = np.mean(dists_to_cylinder)
+
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
@@ -236,5 +280,6 @@ if __name__ == '__main__':
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
-    get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
+    # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
+    load_find_electrode_lead_log(output_fol, 'b736e', '_find_electrode_lead_4-54_54_1587', threshold, 39, 54)
