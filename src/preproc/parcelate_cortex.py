@@ -41,7 +41,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
 
     now = time.time()
     for f in range(nF):
-        utils.time_to_go(now, f, nF, runs_num_to_print=5000)
+        utils.time_to_go(now, f, nF, runs_num_to_print=50000)
         # Current face & labels
         Cfac = fac[f]
         Cidx = [vertices_labels_ids_lookup[vert_ind] for vert_ind in Cfac]
@@ -91,17 +91,17 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     ret = True
     for lab in range(nL):
         ret = ret and writing_ply_files(subject, lab, facL[lab], vtx, vtxL, labels, hemi, output_fol)
-
-    if ret:
-        labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
-            atlas, surface_type, hemi), '*.ply')))
-        # print(atlas, surface_type, hemi, labels_files_num, len(labels))
-        # if labels_files_num != len(labels):
-        #     print('labels_files_num = {}, but len(labels) = {}'.format(labels_files_num, len(labels)))
-        # todo: should check the the -1 is becase the unknowns weren't written
-        return labels_files_num <= len(labels) -1
-    else:
-        return False
+    return ret
+    # if ret:
+    #     labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
+    #         atlas, surface_type, hemi), '*.ply')))
+    #     # print(atlas, surface_type, hemi, labels_files_num, len(labels))
+    #     if labels_files_num != len(labels):
+    #          print('labels_files_num = {}, but len(labels) = {}'.format(labels_files_num, len(labels)))
+    #     # todo: should check the the -1 is becase the unknowns weren't written
+    #     return labels_files_num <= len(labels) -1
+    # else:
+    #     return False
 
 
 def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
