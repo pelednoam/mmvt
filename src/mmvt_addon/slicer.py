@@ -59,6 +59,11 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     return self
 
 
+def in_shape(xyz, shape):
+    x, y, z = xyz
+    return 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2]
+
+
 def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True ,
                   zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None, mark_voxel=True):
     self = mu.Bag({})
@@ -83,7 +88,10 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
         self[modality].coordinates = np.rint(np.array([x, y, z])[self[modality].order]).astype(int)
         self[modality].cross = [None] * 3
         self[modality].x_vox = np.zeros_like(self[modality].data)
-        self[modality].x_vox[tuple(xyz)] = 255
+        if in_shape(xyz, self[modality].data.shape):
+            self[modality].x_vox[tuple(xyz)] = 255
+        else:
+            self[modality].x_vox[128, 128, 128] = 255
 
     # cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
     images = {}
@@ -142,7 +150,11 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
 
 def calc_cross(x_vox, state, ii):
     x_vox_slice = get_image_data(x_vox, state.order, state.flips, ii, state.coordinates)
-    return np.rint(np.argwhere(x_vox_slice)[0]).astype(int)
+    inds = np.argwhere(x_vox_slice)
+    if len(inds) == 0:
+        return 128, 128
+    else:
+        return np.rint(np.argwhere(x_vox_slice)[0]).astype(int)
 
 
 # def calc_cross(coordinates, sizes, flips):
