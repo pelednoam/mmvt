@@ -226,7 +226,7 @@ def import_brain(context=None):
     atlas = mu.get_real_atlas_name(bpy.context.scene.atlas, short_name=True)
     blend_fname = op.join(mu.get_parent_fol(mu.get_user_fol()), '{}_{}.blend'.format(mu.get_user(), atlas))
     bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
-    _addon().load_all_panels()
+    _addon().load_all_panels(first_time=True)
 
 
 class ImportBrain(bpy.types.Operator):

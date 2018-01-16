@@ -550,21 +550,21 @@ def get_classes():
     return classes
 
 
-def get_panels():
+def get_panels(first_time=False):
     panels = [appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
             slicer_panel, skull_panel, pizco_panel]#, dell_panel)
-    # if not mmvt_utils.IS_WINDOWS:
-    #     panels.append(dell_panel)
+    if not mmvt_utils.IS_WINDOWS and not first_time:
+        panels.append(dell_panel)
     return panels
 
 
-def load_all_panels(addon_prefs=None):
+def load_all_panels(addon_prefs=None, first_time=False):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
     # fix_cortex_labels_material()
-    for panel in get_panels():
+    for panel in get_panels(first_time):
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)
         else:
