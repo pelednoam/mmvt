@@ -196,10 +196,12 @@ def create_surfaces(subject, hemi='both', overwrite=False):
             # mmvt_hemi_mat_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.mat'.format(hemi, surf_type))
             if not op.isfile(mmvt_hemi_ply_fname) or overwrite:
                 print('Reading {}'.format(surf_name))
-                if op.isfile(mmvt_hemi_npz_fname):
+                if op.isfile(surf_name):
+                    verts, faces = nib_fs.read_geometry(surf_name)
+                elif op.isfile(mmvt_hemi_npz_fname):
                     verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
                 else:
-                    verts, faces = nib_fs.read_geometry(surf_name)
+                    raise Exception("Can't find the surface {}!".format(surf_name))
                 if surf_type == 'inflated':
                     verts_offset = 55 if hemi == 'rh' else -55
                     verts[:, 0] = verts[:, 0] + verts_offset
