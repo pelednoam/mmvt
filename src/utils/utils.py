@@ -71,6 +71,7 @@ min_stc = mu.min_stc
 max_stc = mu.max_stc
 apply_trans = mu.apply_trans
 remove_file = mu.remove_file
+get_distinct_colors = mu.get_distinct_colors
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -1066,9 +1067,9 @@ def fwd_vertno(fwd):
     return sum(map(len, [src['vertno'] for src in fwd['src']]))
 
 
-def plot_3d_PCA(X, names=None, n_components=3):
+def plot_3d_PCA(X, names=None, colors=[], legend_labels=[], n_components=3):
     X_PCs = calc_PCA(X, n_components)
-    plot_3d_scatter(X_PCs, names)
+    plot_3d_scatter(X_PCs, names, colors=colors, legend_labels=legend_labels)
 
 
 def calc_PCA(X, n_components=3):
@@ -1080,12 +1081,16 @@ def calc_PCA(X, n_components=3):
     return X
 
 
-def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=[], title='', fname=''):
+def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=None, legend_labels=[], title='', fname=''):
     from mpl_toolkits.mplot3d import Axes3D, proj3d
     fig = plt.figure()
     ax = Axes3D(fig)
-    if len(colors) == 0:
-        ax.scatter(X[:, 0], X[:, 1], X[:, 2])
+    if len(legend_labels) > 0:
+        legend_labels = np.array(legend_labels)
+        unique_labels = np.unique(legend_labels)
+        for unique_label in unique_labels:
+            inds = np.where(legend_labels == unique_label)[0]
+            ax.scatter(X[inds, 0], X[inds, 1], X[inds, 2], c=[colors[ind] for ind in inds], label=unique_label)
     else:
         ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=colors)
 
@@ -1104,6 +1109,9 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=
 
     if not classifier is None:
         make_ellipses(classifier, ax)
+
+    if legend_labels is not None:
+        plt.legend()
 
     if title != '':
         plt.title(title)

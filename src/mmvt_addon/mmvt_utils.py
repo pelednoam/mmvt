@@ -2161,3 +2161,8 @@ def calc_colors_from_cm(vert_values, data_min, colors_ratio, cm):
     colors_indices[colors_indices > 255] = 255
     verts_colors = cm[colors_indices]
     return verts_colors
+
+
+def in_shape(xyz, shape):
+    x, y, z = xyz
+    return 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2]

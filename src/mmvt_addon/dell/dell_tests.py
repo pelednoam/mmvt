@@ -215,45 +215,49 @@ def load_find_electrode_lead_log(output_fol, logs_fol, log_name, threshold, elc1
     print('{} points between {} and {}: {}'.format(len(group), names[group[0]], names[group[-1]], [names[p] for p in group]))
 
 
-    # points_inside, cylinder, dists_to_cylinder = fect.find_elc_cylinder(
-    #     electrodes, elc_ind, elc1_ind, elc2_ind, elcs_already_in_groups, elctrodes_hemis, min_elcs_for_lead, error_radius,
-    #     min_distance)
-    # if points_inside is None:
-    #     return
-    # sort_indices = np.argsort([np.linalg.norm(electrodes[p] - electrodes[elc1_ind]) for p in points_inside])
-    # points_inside = [points_inside[ind] for ind in sort_indices]
-    # print('points between {} and {}: {}'.format(names[elc1_ind], names[elc2_ind], [names[p] for p in points_inside]))
-    # elcs_inside = electrodes[points_inside]
-    # dists_to_cylinder = dists_to_cylinder[sort_indices]
-    # # elcs_inside = sorted(elcs_inside, key=lambda x: np.linalg.norm(x - electrodes[i]))
-    # dists = fect.calc_group_dists(elcs_inside)
-    # if max(dists) > max_dist_between_electrodes:
-    #     return
-    # # points_inside_before_removing_too_close_points = points_inside.copy()
-    # points_inside, too_close_points, removed_indices = fect.remove_too_close_points(
-    #     electrodes, points_inside, cylinder, min_distance)
-    # dists_to_cylinder = np.delete(dists_to_cylinder, removed_indices)
-    # if len(points_inside) < min_elcs_for_lead:
-    #     return
-    # gof = np.mean(dists_to_cylinder)
-
-
-def check_voxel_dist_to_dural(voxel, subject_fol, ct_header, brain_header):
+def check_voxel_dist_to_dural(voxel, subject_fol, ct_header, brain_header, sigma):
     verts, faces, normals = fect.get_dural_surface(subject_fol, do_calc_normals=True)
     electrodes_t1_tkreg = fect.ct_voxels_to_t1_ras_tkr(voxel, ct_header, brain_header)
     for hemi in ['rh', 'lh']:
         dists = cdist([electrodes_t1_tkreg], verts[hemi])
         close_verts_indices = np.argmin(dists, axis=1)[0]
         inside, v = fect.point_in_mesh(electrodes_t1_tkreg, verts[hemi][close_verts_indices],
-                                       normals[hemi][close_verts_indices], sigma=1, return_v=True)
+                                       normals[hemi][close_verts_indices], sigma=sigma, return_v=True)
         print(hemi, inside, v)
+
+
+def check_voxel_around_electrodes(ct_data, output_fol, threshold, ct_header, brain_header):
+    (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
+    groups, noise = utils.load(op.join(output_fol, '{}_groups.pkl'.format(int(threshold))))
+    elcs_group, elcs_colors = [], []
+    # elcs_nei = np.zeros((len(utils.flat_list_of_lists(groups)), 3))
+    elcs_nei = []
+    groups_nei = []
+    colors = utils.get_distinct_colors(len(groups))
+    groups_names = ['{}-{}'.format(names[g[0]], names[g[-1]]) for g in groups]
+    for group_ind, (group, color) in enumerate(zip(groups, colors)):
+        group_voxels = fect.t1_ras_tkr_to_ct_voxels([electrodes[g] for g in group], ct_header, brain_header)
+        groups_elecs_nei = np.array([fect.get_voxel_neighbors_ct_values(ct_data, elc_voxel, r=4) for elc_voxel in group_voxels])
+        elcs_group.append([np.sum(groups_elecs_nei), np.mean(groups_elecs_nei), np.var(groups_elecs_nei)])
+        # for elc_voxel in group_voxels:
+        #     elc_nei = fect.get_voxel_neighbors_ct_values(ct_data, elc_voxel, r=2)
+        #     # elcs_nei.append(elc_nei)
+        #     elcs_nei.append([np.sum(elc_nei), np.mean(elc_nei), np.var(elc_nei)])
+        #     elcs_group.append('{}-{}'.format(names[group[0]], names[group[-1]]))
+        #     elcs_colors.append(color)
+    elcs_group = np.array(elcs_group)
+    groups_names = np.array(groups_names)
+    utils.plot_3d_scatter(elcs_group, names=groups_names)
+    # elcs_nei = np.array(elcs_nei)
+    # utils.plot_3d_PCA(elcs_nei, colors=elcs_colors, legend_labels=elcs_group)
+    print('asdf')
 
 
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
     import matplotlib.pyplot as plt
-    subject = 'nmr01183' # 'mg105'
+    subject = 'mg105' # 'nmr01183'
     threshold_percentile = 99.9
     min_distance = 2.5
     error_r = 2
@@ -290,8 +294,9 @@ if __name__ == '__main__':
     # calc_dist_on_cylinder('RUN57', 'RUN82', threshold, output_fol, error_r)
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
-    check_voxel_dist_to_dural([130, 85, 157], subject_fol, ct.header, brain.header)
+    # check_voxel_dist_to_dural([130, 85, 157], subject_fol, ct.header, brain.header, sigma=1)
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
     # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
     # load_find_electrode_lead_log(output_fol, 'b736e', '_find_electrode_lead_4-54_54_1587', threshold, 39, 54)
+    check_voxel_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
