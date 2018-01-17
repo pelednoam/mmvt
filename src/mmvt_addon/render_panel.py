@@ -499,7 +499,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=None, index=-1):
+def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0):
     if view_selected is None:
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
@@ -526,6 +526,8 @@ def save_image(image_type='image', view_selected=None, index=-1):
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
+    if zoom_val != 0:
+        _addon().zoom(zoom_val)
     bpy.ops.render.opengl(view3d_context, write_still=True)
     # if view_selected:
     #     _addon().zoom(1)
