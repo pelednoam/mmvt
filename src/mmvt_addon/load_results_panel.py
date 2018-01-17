@@ -94,6 +94,7 @@ class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         self.fmri_file_template, hemi = load_surf_files(self.filepath)
         self.fmri_npy_template_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}.npy'.format(
             mu.namebase(self.fmri_file_template)))
+        print('Waiting for both hemi files to be created ({})'.format(self.fmri_npy_template_fname))
         if self.fmri_file_template != '':
             bpy.context.scene.nii_label_output = 'Loading nii file...'
             ChooseNiftiiFile.running = True
