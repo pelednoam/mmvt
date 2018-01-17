@@ -92,6 +92,8 @@ class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     def execute(self, context):
         self.fmri_file_template, hemi = load_surf_files(self.filepath)
+        self.fmri_npy_template_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}.npy'.format(
+            mu.namebase(self.fmri_file_template)))
         if self.fmri_file_template != '':
             bpy.context.scene.nii_label_output = 'Loading nii file...'
             ChooseNiftiiFile.running = True
@@ -104,7 +106,7 @@ class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     def modal(self, context, event):
         if event.type == 'TIMER' and ChooseNiftiiFile.running:
-            if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'fmri', self.fmri_file_template)):
+            if mu.both_hemi_files_exist(self.fmri_npy_template_fname):
                 _addon().plot_fmri_file(self.fmri_file_template)
                 clean_nii_temp_files(self.fmri_file_template)
                 ChooseNiftiiFile.running = False

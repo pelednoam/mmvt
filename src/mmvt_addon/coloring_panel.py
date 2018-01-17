@@ -1186,32 +1186,34 @@ def calc_stc_minmax():
     return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
 
 
+@mu.tryit()
 def plot_fmri_file(fmri_template_fname):
-    _fmri_files_update(mu.namebase(fmri_template_fname)[:-len('.{hemi}')])
+    fmri_template_fname_no_hemi = mu.remove_hemi_template(mu.namebase(fmri_template_fname))
+    init_fmri_files(current_fmri_file=fmri_template_fname_no_hemi)
     activity_map_coloring('FMRI')
+
 
 
 def _fmri_files_update(fmri_file_name):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
-    fname_template = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(fmri_file_name, '{hemi}'))
+    # fname_template = op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(fmri_file_name, '{hemi}'))
+    fname_template = op.join(user_fol, 'fmri', 'fmri_*{}*{}.npy'.format('{hemi}', fmri_file_name))
     if not mu.both_hemi_files_exist(fname_template):
-        fname_template = op.join(user_fol, 'fmri', 'fmri_{}.{}.npy'.format(fmri_file_name, '{hemi}'))
-    if not mu.both_hemi_files_exist(fname_template):
-        fname_template = op.join(user_fol, 'fmri', 'fmri_{}-{}.npy'.format(fmri_file_name, '{hemi}'))
+        fname_template = op.join(user_fol, 'fmri', 'fmri_*{}*{}.npy'.format(fmri_file_name, '{hemi}'))
     if not mu.both_hemi_files_exist(fname_template):
         print('fmri_files_update: {} does not exist!'.format(fname_template))
         ColoringMakerPanel.fMRI['rh'] = None
         ColoringMakerPanel.fMRI['lh'] = None
-        return
+        return False
     for hemi in mu.HEMIS:
-        fname = fname_template.format(hemi=hemi)
+        fname = glob.glob(fname_template.format(hemi=hemi))[0]
         ColoringMakerPanel.fMRI[hemi] = np.load(fname)
-    fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
-        bpy.context.scene.fmri_files))
-    if not op.isfile(fmri_data_maxmin_fname):
-        fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(
-            bpy.context.scene.fmri_files))
+    # fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_activity_map_minmax_{}.pkl'.format(
+    #     bpy.context.scene.fmri_files))
+    # if not op.isfile(fmri_data_maxmin_fname):
+    fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(fmri_file_name))
+    #     bpy.context.scene.fmri_files))
     if not op.isfile(fmri_data_maxmin_fname):
         calc_fmri_min_max(fmri_data_maxmin_fname, fname_template)
     data_min, data_max = mu.load(fmri_data_maxmin_fname)
@@ -1220,6 +1222,7 @@ def _fmri_files_update(fmri_file_name):
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_title('fMRI')
+    return True
 
 
 def fmri_files_update(self, context):
@@ -1229,7 +1232,8 @@ def fmri_files_update(self, context):
 def calc_fmri_min_max(fmri_data_maxmin_fname, fname_template):
     # Remove the RGB columns
     for hemi in mu.HEMIS:
-        fname = fname_template.format(hemi=hemi)
+        fname = glob.glob(fname_template.format(hemi=hemi))[0] if '*' in fname_template else \
+            fname_template.format(hemi=hemi)
         x = np.load(fname)
         if x.ndim > 1 and x.shape[1] == 4:
             x = x[:, 0]
@@ -1872,7 +1876,7 @@ def draw(self, context):
     user_fol = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*_lh.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh*.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
     meg_ext_meth = bpy.context.scene.meg_labels_extract_method
     meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data*_{}_{}_{}.npz'.format(
@@ -2268,15 +2272,18 @@ def init_fmri_labels():
         ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = load_subs_faces_verts()
 
 
-def init_fmri_files():
+def init_fmri_files(current_fmri_file=''):
     user_fol = mu.get_user_fol()
-    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh.npy'))
+    fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh*.npy'))
     if len(fmri_files) > 0:
-        files_names = [mu.namebase(fname)[5:-3] for fname in fmri_files]
+        files_names = [mu.get_label_hemi_invariant_name(mu.namebase(fname)[5:]) for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
-        bpy.context.scene.fmri_files = files_names[0]
+        if current_fmri_file == '':
+            bpy.context.scene.fmri_files = files_names[0]
+        else:
+            bpy.context.scene.fmri_files = current_fmri_file
 
 
 def init_static_conn():

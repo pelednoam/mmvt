@@ -1764,6 +1764,11 @@ def get_label_hemi_invariant_name(label_name):
     return label_inv_name
 
 
+def remove_hemi_template(template):
+    new_template = template.replace('.{hemi}', '').replace('{hemi}.', '').replace('_{hemi}', '').replace('{hemi}_', '')
+    return new_template
+
+
 def get_hemi_from_full_fname(fname):
     folder = namebase(fname)
     hemi = get_hemi_from_fname(folder)
@@ -2087,7 +2092,11 @@ def make_link(source, target, overwrite=False):
 
 
 def both_hemi_files_exist(file_template):
-    return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
+    if '*' not in file_template:
+        return op.isfile(file_template.format(hemi='rh')) and op.isfile(file_template.format(hemi='lh'))
+    else:
+        return len(glob.glob(file_template.format(hemi='rh'))) == 1 and \
+               len(glob.glob(file_template.format(hemi='lh'))) == 1
 
 
 def delete_files(temp):
