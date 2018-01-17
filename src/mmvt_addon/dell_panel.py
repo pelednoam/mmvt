@@ -66,7 +66,8 @@ def find_electrodes_pipeline():
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
     # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
-    DellPanel.hemis, _ = fect.find_electrodes_hemis(subject_fol, DellPanel.pos, groups=None)
+    DellPanel.hemis, _ = fect.find_electrodes_hemis(
+        subject_fol, DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
@@ -117,6 +118,8 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
         return []
 
     if debug:
+        if DellPanel.debug_fol == '':
+            DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         mu.save((elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
             bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
             bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search), op.join(
@@ -442,10 +445,10 @@ def dell_draw(self, context):
         layout.label(text='Distance between {} and {}: {:.2f}'.format(
             bpy.context.selected_objects[0].name, bpy.context.selected_objects[1].name,
             np.linalg.norm(bpy.context.selected_objects[0].location - bpy.context.selected_objects[1].location) * 10))
-    row = layout.row(align=0)
-    row.operator(CheckIfElectrodeOutsidePial.bl_idname, text="Find outer electrodes", icon='ROTATE')
-    row.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
-    row.prop(context.scene, 'dell_brain_mask_use_aseg', text='Use aseg')
+    # row = layout.row(align=0)
+    # row.operator(CheckIfElectrodeOutsidePial.bl_idname, text="Find outer electrodes", icon='ROTATE')
+    # row.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+    # row.prop(context.scene, 'dell_brain_mask_use_aseg', text='Use aseg')
     layout.prop(context.scene, 'dell_ct_print_distances', text='Show distances within group')
     if bpy.context.scene.dell_ct_print_distances and len(DellPanel.dists) > 0 and len(DellPanel.groups) > 0:
         layout.label(text='Group inner distances:')
@@ -703,6 +706,7 @@ bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default
 bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_brain_mask_sigma = bpy.props.IntProperty(min=0, max=20, default=2)
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
 
 
 class DellPanel(bpy.types.Panel):
@@ -723,6 +727,7 @@ class DellPanel(bpy.types.Panel):
     play_time_step = 0.7
     max_finding_group_tries = 10
     log, current_log = [], []
+    debug_fol = ''
 
     def draw(self, context):
         if DellPanel.init:
@@ -734,8 +739,6 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
     try:
         DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
-        if debug:
-            DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if DellPanel.ct_found:
             init_electrodes()
             # if bpy.context.scene.dell_ct_n_groups > 0:
@@ -753,9 +756,13 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_ct_min_elcs_for_lead = 4
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
         bpy.context.scene.dell_ct_min_distance = 2.5
+        bpy.context.scene.dell_brain_mask_sigma = 1
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
         bpy.context.scene.dell_do_post_search = False
+        bpy.context.scene.dell_debug = False
+        if bpy.context.scene.dell_debug:
+            DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if not DellPanel.init:
             DellPanel.init = True
             register()

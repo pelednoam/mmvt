@@ -238,6 +238,17 @@ def load_find_electrode_lead_log(output_fol, logs_fol, log_name, threshold, elc1
     # gof = np.mean(dists_to_cylinder)
 
 
+def check_voxel_dist_to_dural(voxel, subject_fol, ct_header, brain_header):
+    verts, faces, normals = fect.get_dural_surface(subject_fol, do_calc_normals=True)
+    electrodes_t1_tkreg = fect.ct_voxels_to_t1_ras_tkr(voxel, ct_header, brain_header)
+    for hemi in ['rh', 'lh']:
+        dists = cdist([electrodes_t1_tkreg], verts[hemi])
+        close_verts_indices = np.argmin(dists, axis=1)[0]
+        inside, v = fect.point_in_mesh(electrodes_t1_tkreg, verts[hemi][close_verts_indices],
+                                       normals[hemi][close_verts_indices], sigma=1, return_v=True)
+        print(hemi, inside, v)
+
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
@@ -279,7 +290,8 @@ if __name__ == '__main__':
     # calc_dist_on_cylinder('RUN57', 'RUN82', threshold, output_fol, error_r)
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
+    check_voxel_dist_to_dural([130, 85, 157], subject_fol, ct.header, brain.header)
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
     # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
-    load_find_electrode_lead_log(output_fol, 'b736e', '_find_electrode_lead_4-54_54_1587', threshold, 39, 54)
+    # load_find_electrode_lead_log(output_fol, 'b736e', '_find_electrode_lead_4-54_54_1587', threshold, 39, 54)
