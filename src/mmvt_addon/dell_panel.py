@@ -9,6 +9,7 @@ import os
 import random
 import traceback
 import time
+from itertools import cycle
 import mmvt_utils as mu
 from scripts import scripts_utils as su
 
@@ -31,9 +32,9 @@ def _addon():
     return DellPanel.addon
 
 
-def dell_ct_n_groups_update(self, context):
-    if bpy.context.scene.dell_ct_n_groups > 0:
-        DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
+# def dell_ct_n_groups_update(self, context):
+#     if bpy.context.scene.dell_ct_n_groups > 0:
+#         DellPanel.colors = mu.get_distinct_colors(bpy.context.scene.dell_ct_n_groups)
 
 
 def ct_mark_noise_update(self, context):
@@ -141,7 +142,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
         DellPanel.noise.add(p)
     mu.save((DellPanel.groups, DellPanel.noise), op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
         int(bpy.context.scene.dell_ct_threshold))))
-    color = DellPanel.colors[len(DellPanel.groups) - 1]
+    color = next(DellPanel.colors)
     for elc_ind in group:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     return group
@@ -209,6 +210,7 @@ def name_electrodes(elctrodes_hemis):
 
 
 def delete_electrodes():
+    clear_groups()
     mu.delete_hierarchy('Deep_electrodes')
 
 
@@ -387,6 +389,7 @@ def dell_draw(self, context):
         row = layout.row(align=0)
         row.prop(context.scene, 'dell_ct_max_dist_between_electrodes', text="Max dist between")
         row.prop(context.scene, 'dell_ct_min_distance', text="Min dist between")
+        layout.prop(context.scene, 'dell_debug', text='debug')
         row = layout.row(align=0)
         row.prop(context.scene, 'ct_mark_noise', text='Mark noise')
         if bpy.context.scene.ct_mark_noise:
@@ -741,9 +744,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
         if DellPanel.ct_found:
             init_electrodes()
-            # if bpy.context.scene.dell_ct_n_groups > 0:
-            # todo: change that!
-            DellPanel.colors = mu.get_distinct_colors(20)
+            DellPanel.colors = cycle(mu.get_distinct_colors(10))
             files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             if len(files) > 0:
                 (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])
@@ -813,7 +814,7 @@ def init_groups():
     if parent is None or len(parent.children) == 0:
         return
     for ind, group in enumerate(DellPanel.groups):
-        color = DellPanel.colors[ind]
+        color = next(DellPanel.colors)
         for elc_ind in group:
             _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     for p in DellPanel.noise:
