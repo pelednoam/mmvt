@@ -197,10 +197,10 @@ def save_ct_neighborhood():
 
 
 def name_electrodes(elctrodes_hemis):
-    elcs_nums = {'rh':1, 'lh':1}
+    elcs_nums = {'rh':1, 'lh':1, 'un':1}
     names = []
     for elc_hemi in elctrodes_hemis:
-        names.append('{}UN{}'.format('R' if elc_hemi == 'rh' else 'L', elcs_nums[elc_hemi]))
+        names.append('{}UN{}'.format('R' if elc_hemi == 'rh' else 'L' if elc_hemi == 'lh' else 'M', elcs_nums[elc_hemi]))
         elcs_nums[elc_hemi] += 1
     return names
 
