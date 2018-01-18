@@ -203,8 +203,8 @@ def load_find_electrode_lead_log(output_fol, logs_fol, log_name, threshold, elc1
     if elc1_ind in elcs_already_in_groups or elc2_ind in elcs_already_in_groups:
         print('elcs are in elcs_already_in_groups!')
     electrodes_list = set(range(len(electrodes))) - elcs_already_in_groups
-    for elc_ind in (elc1_ind, elc2_ind):
-        if elc_ind not in electrodes_list:
+    for ind in (elc1_ind, elc2_ind):
+        if ind not in electrodes_list:
             print('{} are not in electrodes_list!'.format(elc_ind))
 
     group, noise, dists, dists_to_cylinder, gof, best_elc_ind = fect.find_electrode_group(
@@ -226,7 +226,7 @@ def check_voxel_dist_to_dural(voxel, subject_fol, ct_header, brain_header, sigma
         print(hemi, inside, v)
 
 
-def check_voxel_around_electrodes(ct_data, output_fol, threshold, ct_header, brain_header):
+def check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct_header, brain_header):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     groups, noise = utils.load(op.join(output_fol, '{}_groups.pkl'.format(int(threshold))))
     elcs_group, elcs_colors = [], []
@@ -238,7 +238,7 @@ def check_voxel_around_electrodes(ct_data, output_fol, threshold, ct_header, bra
     for group_ind, (group, color) in enumerate(zip(groups, colors)):
         group_voxels = fect.t1_ras_tkr_to_ct_voxels([electrodes[g] for g in group], ct_header, brain_header)
         groups_elecs_nei = np.array([fect.get_voxel_neighbors_ct_values(ct_data, elc_voxel, r=4) for elc_voxel in group_voxels])
-        elcs_group.append([np.sum(groups_elecs_nei), np.mean(groups_elecs_nei), np.var(groups_elecs_nei)])
+        elcs_group.append([np.mean(groups_elecs_nei), np.var(groups_elecs_nei)])
         # for elc_voxel in group_voxels:
         #     elc_nei = fect.get_voxel_neighbors_ct_values(ct_data, elc_voxel, r=2)
         #     # elcs_nei.append(elc_nei)
@@ -251,6 +251,30 @@ def check_voxel_around_electrodes(ct_data, output_fol, threshold, ct_header, bra
     # elcs_nei = np.array(elcs_nei)
     # utils.plot_3d_PCA(elcs_nei, colors=elcs_colors, legend_labels=elcs_group)
     print('asdf')
+
+
+def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, brain_header):
+    (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
+    groups, noise = utils.load(op.join(output_fol, '{}_groups.pkl'.format(int(threshold))))
+    ct_voxels = fect.t1_ras_tkr_to_ct_voxels(electrodes, ct_header, brain_header)
+    nei_features = []
+    for ct_voxel in ct_voxels:
+        ct_voxel_nei = fect.get_voxel_neighbors_ct_values(ct_data, ct_voxel, r=4)
+        nei_features.append([np.mean(ct_voxel_nei), np.std(ct_voxel_nei)])
+
+    from sklearn import mixture
+    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full')
+    gmm.fit(nei_features)
+    Y = gmm.predict_proba(nei_features)
+    centroids = gmm.means_
+
+    nei_features = np.array(nei_features)
+    fig = plt.figure()
+    plt.scatter(nei_features[:, 0], nei_features[:, 1])
+    plt.scatter(centroids[:, 0], centroids[:, 1], c='r')
+    plt.xlabel('mean')
+    plt.ylabel('std')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -298,5 +322,6 @@ if __name__ == '__main__':
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
     # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
-    # load_find_electrode_lead_log(output_fol, 'b736e', '_find_electrode_lead_4-54_54_1587', threshold, 39, 54)
-    check_voxel_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
+    # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
+    # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
+    check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)

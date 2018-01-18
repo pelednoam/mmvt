@@ -274,7 +274,8 @@ def create_lead(ind1, ind2, radius=0.05):
 
 def clear_groups():
     for p in DellPanel.noise:
-        bpy.data.objects[DellPanel.names[p]].hide = False
+        if bpy.data.objects.get(DellPanel.names[p], None) is not None:
+            bpy.data.objects[DellPanel.names[p]].hide = False
     DellPanel.groups = []
     DellPanel.noise = set()
     groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
