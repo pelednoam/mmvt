@@ -27,6 +27,13 @@ try:
 except:
     MNE_EXIST = False
 
+
+try:
+    import nibabel as nib
+    NIB_EXIST = True
+except:
+    NIB_EXIST = False
+
 import traceback
 import math
 import sys
@@ -1783,17 +1790,22 @@ def get_label_for_full_fname(fname, delim='-'):
     fname_file_type = file_type(fname)
     names = [get_label_hemi_invariant_name(namebase(fname))]
     folder = namebase(fname)
-    hemi = get_hemi_from_fname(folder)
+    hemi_delim, pos, label, hemi = get_hemi_delim_and_pos(folder)
     while hemi == '' and folder != '':
         fname = get_parent_fol(fname)
         folder = fname.split(op.sep)[-1]
         names.insert(0, get_label_hemi_invariant_name(folder))
-        hemi = get_hemi_from_fname(folder)
-    return '{}.{}.{}'.format(delim.join(names), hemi, fname_file_type)
+        hemi_delim, pos, label, hemi = get_hemi_delim_and_pos(folder)
+    # return '{}.{}.{}'.format(delim.join(names), hemi, fname_file_type)
+    return '{}.{}'.format(build_label_name(hemi_delim, pos, delim.join(names), hemi), fname_file_type)
 
 
-def get_both_hemis_files(fname):
-    hemi = get_hemi_from_fname(namebase(fname))
+def get_both_hemis_files(fname, hemi=''):
+    if hemi == '':
+        hemi = get_hemi_from_fname(namebase(fname))
+    if hemi == '':
+        print("Can't find the file's hemi! {}".format(fname))
+        return {'rh': '', 'lh': ''}
     full_fname = fname
     if hemi != '':
         other_hemi_fname = op.join(get_parent_fol(fname), get_other_hemi_label_name(fname))
@@ -2166,3 +2178,23 @@ def calc_colors_from_cm(vert_values, data_min, colors_ratio, cm):
 def in_shape(xyz, shape):
     x, y, z = xyz
     return 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2]
+
+
+def find_hemi_using_vertices_num(fname):
+    hemi = ''
+    if NIB_EXIST:
+        x = nib.load(fname).get_data()
+        vertices_num = [n for n in x.shape if n > 5]
+        if len(vertices_num) == 0:
+            print("Can'f find the vertices number of the nii file! {}".format(fname))
+        else:
+            vertices_num = vertices_num[0]
+            if vertices_num == len(bpy.data.objects['rh'].data.vertices):
+                hemi = 'rh'
+            elif vertices_num == len(bpy.data.objects['lh'].data.vertices):
+                hemi = 'lh'
+            else:
+                print("The vertices num ({}) in the nii file ({}) doesn't match any hemi!".format(
+                    vertices_num, fname))
+                hemi = ''
+    return hemi

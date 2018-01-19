@@ -54,7 +54,12 @@ def load_surf_files(nii_fname):
     fmri_file_template = ''
     user_fol = mu.get_user_fol()
     nii_fol = mu.get_fname_folder(nii_fname)
-    fmri_hemis = mu.get_both_hemis_files(nii_fname)
+    hemi = mu.get_hemi_from_fname(mu.namebase(nii_fname))
+    if hemi == '':
+        hemi = mu.find_hemi_using_vertices_num(nii_fname)
+        if hemi == '':
+            return '', ''
+    fmri_hemis = mu.get_both_hemis_files(nii_fname, hemi)
     hemi = mu.get_hemi_from_full_fname(nii_fname)
     local_fname = build_local_fname(nii_fname, user_fol)
     mu.make_dir(op.join(user_fol, 'fmri'))
@@ -62,6 +67,7 @@ def load_surf_files(nii_fname):
         mu.make_link(nii_fname, local_fname, True)
     other_hemi = mu.other_hemi(hemi)
     other_hemi_fname = fmri_hemis[other_hemi]
+    # todo: if the other hemi file doens't exist, just create an empty one
     if op.isfile(other_hemi_fname):
         local_other_hemi_fname = build_local_fname(other_hemi_fname, user_fol)
         if nii_fol != op.join(user_fol, 'fmri'):
@@ -84,14 +90,17 @@ def clean_nii_temp_files(fmri_file_template):
 class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.choose_niftii_file"
     bl_label = "Choose niftii file"
-    filename_ext = '.nii.gz'
+    filename_ext = '.*' # '.nii.gz'
     filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255) # nii.gz
     running = False
     fmri_file_template = ''
     _timer = None
 
     def execute(self, context):
-        self.fmri_file_template, hemi = load_surf_files(self.filepath)
+        self.fmri_file_template, hemi = load_surf_files(self.filepath[:-2])
+        if hemi == '':
+            bpy.context.scene.nii_label_prompt = "Can't determine the hemi!"
+            return {'RUNNING_MODAL'}
         self.fmri_npy_template_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}.npy'.format(
             mu.namebase(self.fmri_file_template)))
         print('Waiting for both hemi files to be created ({})'.format(self.fmri_npy_template_fname))
