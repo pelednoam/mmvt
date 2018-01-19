@@ -158,6 +158,8 @@ def colorbar_update(self, context):
         set_colorbar_title(bpy.context.scene.colorbar_title)
         set_colorbar_max(bpy.context.scene.colorbar_max)
         set_colorbar_min(bpy.context.scene.colorbar_min)
+        bpy.context.scene.coloring_use_abs = np.sign(bpy.context.scene.colorbar_max) != \
+                                             np.sign(bpy.context.scene.colorbar_min)
 
 
 def show_cb_in_render_update(self, context):

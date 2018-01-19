@@ -444,7 +444,9 @@ def update_connectivity_degree_threshold(self, context):
     color_connectivity_degree()
 
 
-def fmri_labels_coloring(override_current_mat=True):
+def fmri_labels_coloring(override_current_mat=True, use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
     if not bpy.context.scene.color_rois_homogeneously:
         init_activity_map_coloring('FMRI')
@@ -493,11 +495,13 @@ def fmri_labels_coloring(override_current_mat=True):
                 cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(sub_name))
                 activity_map_obj_coloring(
                     cur_obj, data, ColoringMakerPanel.subs_faces_verts[sub_name], 0, True,
-                    labels_min, colors_ratio)
+                    labels_min, colors_ratio, use_abs)
 
 
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
-                         override_current_mat=True, colors_min=None, colors_max=None):
+                         override_current_mat=True, colors_min=None, colors_max=None, use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     now = time.time()
     colors_ratio = None
     labels_names = ColoringMakerPanel.labels_vertices['labels_names']
@@ -573,7 +577,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     #         cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
     cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
     activity_map_obj_coloring(
-        cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio)
+        cur_obj, colors_data, faces_verts[hemi], threshold, override_current_mat, colors_min, colors_ratio, use_abs)
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
@@ -612,7 +616,9 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
-                    save_prev_colors=False, coloring_layer='Col'):
+                    save_prev_colors=False, coloring_layer='Col', use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     if hemi in mu.HEMIS:
         pial_hemi = hemi
         hemi = 'inflated_{}'.format(hemi)
@@ -623,7 +629,7 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min,
-                              colors_ratio, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer)
+                              colors_ratio, use_abs, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer)
 
 
 @mu.timeit
@@ -732,7 +738,9 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
     #bpy.data.objects['Brain'].select = True
 
 
-def fmri_subcortex_activity_color(threshold, override_current_mat=True):
+def fmri_subcortex_activity_color(threshold, override_current_mat=True, use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
     subcoticals = glob.glob(op.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
     for subcortical_file in subcoticals:
@@ -746,7 +754,8 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True):
             if op.isfile(lookup_file) and op.isfile(verts_file):
                 lookup = np.load(lookup_file)
                 verts_values = np.load(verts_file)
-                activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat)
+                activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat,
+                                          use_abs=use_abs)
 
 
 def create_inflated_curv_coloring():
@@ -816,17 +825,29 @@ def calc_colors(vert_values, data_min, colors_ratio, cm=None):
     return mu.calc_colors_from_cm(vert_values, data_min, colors_ratio, cm)
 
 
+def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
+    if use_abs:
+        if bigger_or_equall:
+            valid_verts = np.where(np.abs(values) >= threshold)[0]
+        else:
+            valid_verts = np.where(np.abs(values) > threshold)[0]
+    else:
+        if bigger_or_equall:
+            valid_verts = np.where(values >= threshold)[0]
+        else:
+            valid_verts = np.where(values > threshold)[0]
+    return valid_verts
+
+
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
-                              colors_ratio=None, bigger_or_equall=False, save_prev_colors=False, coloring_layer='Col'):
+                              colors_ratio=None, use_abs=True, bigger_or_equall=False, save_prev_colors=False,
+                              coloring_layer='Col'):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
-    if bigger_or_equall:
-        valid_verts = np.where(np.abs(values) >= threshold)[0]
-    else:
-        valid_verts = np.where(np.abs(values) > threshold)[0]
+    valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
     colors_picked_from_cm = False
     # cm = _addon().get_cm()
     if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
@@ -1066,7 +1087,9 @@ def color_volumetric():
     pass
 
 
-def color_subcortical_region(region_name, color):
+def color_subcortical_region(region_name, color, use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     #todo: read the ColoringPanel.subs_verts_faces like in fmri labels coloring
     cur_obj = bpy.data.objects.get(region_name + '_fmri_activity', None)
     obj_ana_fname = op.join(mu.get_user_fol(), 'subcortical', '{}.npz'.format(region_name))
@@ -1082,7 +1105,7 @@ def color_subcortical_region(region_name, color):
         lookup = np.load(obj_lookup_fname)
         region_colors_data = np.hstack((np.array([1.]), color))
         region_colors_data = np.tile(region_colors_data, (len(verts), 1))
-        activity_map_obj_coloring(cur_obj, region_colors_data, lookup, 0, True)
+        activity_map_obj_coloring(cur_obj, region_colors_data, lookup, 0, True, use_abs=use_abs)
     else:
         if cur_obj and not 'white' in cur_obj.name.lower():
             print("Don't have the necessary files for coloring {}!".format(region_name))
@@ -1300,7 +1323,9 @@ def color_electrodes_sources():
                              colors_min=data_min, colors_max=data_max)
 
 
-def color_eeg_helmet():
+def color_eeg_helmet(use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     fol = mu.get_user_fol()
     data_fname = op.join(fol, 'eeg', 'eeg_data.npy')
     data = np.load(data_fname)
@@ -1318,7 +1343,7 @@ def color_eeg_helmet():
 
     cur_obj = bpy.data.objects['eeg_helmet']
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
-                              colors_ratio=colors_ratio, bigger_or_equall=False)
+                              colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
 
 def color_meg_sensors():
@@ -1907,6 +1932,8 @@ def draw(self, context):
         connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
     # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
+    layout.prop(context.scene, 'coloring_use_abs', text="Use abs")
+
     # layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
     layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
 
@@ -2024,6 +2051,7 @@ bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], desc
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
@@ -2117,6 +2145,7 @@ def init(addon):
     ColoringMakerPanel.faces_verts = load_faces_verts()
     bpy.context.scene.coloring_meg_subcorticals = False
     bpy.context.scene.meg_peak_mode = 'abs'
+    bpy.context.scene.coloring_use_abs = True
     ColoringMakerPanel.init = True
     for hemi in ['lh', 'rh']:
         mesh = bpy.data.objects['inflated_{}'.format(hemi)].data

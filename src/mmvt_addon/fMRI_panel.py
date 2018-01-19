@@ -75,7 +75,9 @@ def fmri_blobs_percentile_max_update(self, context):
         bpy.context.scene.fmri_blobs_percentile_max = bpy.context.scene.fmri_blobs_percentile_min
 
 
-def plot_blob(cluster_labels, faces_verts, is_inflated=None):
+def plot_blob(cluster_labels, faces_verts, is_inflated=None, use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     is_inflated = _addon().is_inflated() if is_inflated is None else is_inflated
     fMRIPanel.dont_show_clusters_info = False
     _addon().init_activity_map_coloring('FMRI')#, subcorticals=False)
@@ -97,7 +99,7 @@ def plot_blob(cluster_labels, faces_verts, is_inflated=None):
     cur_obj = bpy.data.objects[hemi]
     _addon().activity_map_obj_coloring(
         cur_obj, blob_activity, faces_verts[real_hemi], threshold, True,
-        data_min=data_min, colors_ratio=colors_ratio)
+        data_min=data_min, colors_ratio=colors_ratio, use_abs=use_abs)
     other_real_hemi = mu.other_hemi(real_hemi)
     other_hemi = mu.other_hemi(hemi)
     if other_hemi in fMRIPanel.colors_in_hemis and fMRIPanel.colors_in_hemis[other_hemi]:
@@ -289,7 +291,7 @@ def unfilter_clusters():
     update_clusters(2, 1)
 
 
-def plot_all_blobs():
+def plot_all_blobs(use_abs=None):
     # fMRIPanel.dont_show_clusters_info = False
     faces_verts = _addon().get_faces_verts()
     _addon().init_activity_map_coloring('FMRI')#, subcorticals=False)
@@ -301,7 +303,7 @@ def plot_all_blobs():
         inf_hemi = 'inflated_{}'.format(hemi)
         _addon().activity_map_obj_coloring(
             bpy.data.objects[inf_hemi], blobs_activity[hemi], faces_verts[hemi], threshold, True,
-            data_min=data_min, colors_ratio=colors_ratio)
+            data_min=data_min, colors_ratio=colors_ratio, use_abs=use_abs)
         # if bpy.context.scene.coloring_both_pial_and_inflated:
         #     for inf_hemi in [hemi, 'inflated_{}'.format(hemi)]:
         #         _addon().activity_map_obj_coloring(
