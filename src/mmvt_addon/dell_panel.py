@@ -61,8 +61,8 @@ def find_electrodes_pipeline():
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     print('mask_voxels_outside_brain...')
     ct_electrodes, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, user_fol, subject_fol, DellPanel.aseg, None,
-        bpy.context.scene.dell_brain_mask_sigma, DellPanel.ct_data.shape)
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, subject_fol, bpy.context.scene.dell_brain_mask_sigma,
+        bpy.context.scene.use_only_brain_mask)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
@@ -379,6 +379,7 @@ def dell_draw(self, context):
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         # layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+        layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
         # row = layout.row(align=0)
@@ -692,8 +693,8 @@ class ClearGroups(bpy.types.Operator):
 
 bpy.types.Scene.dell_ct_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
 bpy.types.Scene.dell_ct_threshold_percentile = bpy.props.FloatProperty(default=99.9, min=0, max=100, description="")
-bpy.types.Scene.dell_ct_n_components = bpy.props.IntProperty(min=0, description='')
-bpy.types.Scene.dell_ct_n_groups = bpy.props.IntProperty(min=0, description='', update=dell_ct_n_groups_update)
+# bpy.types.Scene.dell_ct_n_components = bpy.props.IntProperty(min=0, description='')
+# bpy.types.Scene.dell_ct_n_groups = bpy.props.IntProperty(min=0, description='', update=dell_ct_n_groups_update)
 bpy.types.Scene.dell_ct_error_radius = bpy.props.FloatProperty(min=1, max=8, default=2)
 bpy.types.Scene.dell_ct_min_elcs_for_lead = bpy.props.IntProperty(min=2, max=20, default=4)
 bpy.types.Scene.dell_ct_max_dist_between_electrodes = bpy.props.FloatProperty(default=15, min=1, max=100)
@@ -710,6 +711,7 @@ bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default
 bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_brain_mask_sigma = bpy.props.IntProperty(min=0, max=20, default=2)
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
 
 
@@ -762,6 +764,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
         bpy.context.scene.dell_do_post_search = False
+        bpy.context.scene.use_only_brain_mask = False
         bpy.context.scene.dell_debug = False
         if bpy.context.scene.dell_debug:
             DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
@@ -801,8 +804,8 @@ def init_electrodes():
         elcs_dict = mu.Bag(np.load(elcs_files[0]))
         bipolar = '-' in elcs_dict.names[0]
         groups = set([mu.elec_group(elc_name, bipolar) for elc_name in elcs_dict.names])
-        bpy.context.scene.dell_ct_n_components = len(elcs_dict.names)
-        bpy.context.scene.dell_ct_n_groups = len(groups)
+        # bpy.context.scene.dell_ct_n_components = len(elcs_dict.names)
+        # bpy.context.scene.dell_ct_n_groups = len(groups)
 
 
 @mu.tryit()
