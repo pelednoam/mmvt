@@ -247,8 +247,11 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
                 print('create_vertices_labels_lookup: Error writing labels to annot file!')
                 print('Creating unknown label manually')
                 create_unknown_labels(subject, atlas)
-            labels = read_labels(subject, SUBJECTS_DIR, atlas, hemi=hemi)
+            labels = mne.read_labels_from_annot(
+                subject, atlas, subjects_dir=SUBJECTS_DIR, surf_name='pial', hemi=hemi)
             labels_names = [l.name for l in labels]
+        if len([l for l in labels_names if 'unknown' in l.lower()]) == 0:
+            raise Exception('No unknown label in {}'.format(annot_fname))
         verts, _ = utils.read_pial(subject, MMVT_DIR, hemi)
         verts_indices = set(range(len(verts)))
         for label in labels:
