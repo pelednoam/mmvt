@@ -85,7 +85,7 @@ class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.choose_niftii_file"
     bl_label = "Choose niftii file"
     filename_ext = '.nii.gz'
-    filter_glob = bpy.props.StringProperty(default='*.nii.gz', options={'HIDDEN'}, maxlen=255)
+    filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255) # nii.gz
     running = False
     fmri_file_template = ''
     _timer = None
