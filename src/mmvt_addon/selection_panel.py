@@ -150,13 +150,19 @@ def fmri_data_loaded():
 
 
 def electrodes_data_loaded():
-    electrodes_obj = bpy.data.objects.get(_addon().electrodes_panel_parent)
-    return electrodes_obj is not None and mu.count_fcurves(electrodes_obj, recursive=True) > 0
+    try:
+        electrodes_obj = bpy.data.objects.get(_addon().electrodes_panel_parent)
+        return electrodes_obj is not None and mu.count_fcurves(electrodes_obj, recursive=True) > 0
+    except:
+        return False
 
 
 def meg_clusters_data_loaded():
-    meg_clusters_obj = bpy.data.objects.get(_addon().meg_panel_parent)
-    return meg_clusters_obj is not None and mu.count_fcurves(meg_clusters_obj, recursive=True) > 0
+    try:
+        meg_clusters_obj = bpy.data.objects.get(_addon().meg_panel_parent)
+        return meg_clusters_obj is not None and mu.count_fcurves(meg_clusters_obj, recursive=True) > 0
+    except:
+        return False
 
 
 def select_roi(roi_name):
@@ -386,7 +392,10 @@ class ClearSelection(bpy.types.Operator):
             bpy.data.objects[' '].select = True
             bpy.context.scene.objects.active = bpy.data.objects[' ']
         SelectionMakerPanel.selection = []
-        _addon().clear_electrodes_selection()
+        try:
+            _addon().clear_electrodes_selection()
+        except:
+            pass
         return {"FINISHED"}
 
 
