@@ -1,9 +1,15 @@
 import bpy
 import mmvt_utils as mu
 import mathutils
+import numpy as np
 import glob
 import os.path as op
 import re
+
+
+ROT_45 = np.sin(np.deg2rad(45)) # np.rad2deg(np.arcsin(0.7071068286895752)) = 45
+AXIAL_ROT1 = (0.6829140186309814, -0.007170889526605606, 0.007669730577617884, -0.7304232716560364)
+AXIAL_ROT2 = (0.015227699652314186, 0.7250200510025024, 0.6884075403213501, 0.014458661898970604)
 
 
 def _addon():
@@ -110,77 +116,74 @@ def show_hide_sub_corticals(do_hide=True):
 # def flip_camera_ortho_view():
 #     options = ['ORTHO', 'CAMERA']
 #     bpy.types.Scene.in_camera_view = not bpy.types.Scene.in_camera_view
-#     bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = options[
+#     mu.get_view3d_region().view_perspective = options[
 #         int(bpy.types.Scene.in_camera_view)]
 
 
 def show_sagital():
     if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'saggital':
-            bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 1.5707963705062866]
-            bpy.types.Scene.current_view = 'saggital'
-            bpy.types.Scene.current_view_direction = 0
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'sagittal':
+            bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, np.pi / 2]
+            bpy.context.scene.current_view = 'sagittal'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 1.5707963705062866]
+            if bpy.context.scene.current_view_flip == 1:
+                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, np.pi / 2]
             else:
-                # print('in ShowSaggital else')
-                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, -1.5707963705062866]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-            # bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                # print('in ShowSagittal else')
+                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, -np.pi / 2]
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
+            # ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
     else:
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'saggital':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
-            bpy.types.Scene.current_view = 'saggital'
-            bpy.types.Scene.current_view_direction = 0
+        mu.get_view3d_region().view_perspective = 'ORTHO'
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'sagittal':
+            mu.get_view3d_region().view_rotation = [0.5, 0.5, -0.5, -0.5]
+            bpy.context.scene.current_view = 'sagittal'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, -0.5, -0.5]
+            if bpy.context.scene.current_view_flip == 1:
+                mu.get_view3d_region().view_rotation = [0.5, 0.5, -0.5, -0.5]
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.5, 0.5, 0.5, 0.5]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
+                mu.get_view3d_region().view_rotation = [0.5, 0.5, 0.5, 0.5]
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
 
     # view_all()
     # zoom(-1)
-    bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+    ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
 
 
 def show_coronal(show_frontal=False):
     if show_frontal:
-        bpy.types.Scene.current_view = 'coronal'
-        bpy.types.Scene.current_view_direction = 0
+        bpy.context.scene.current_view = 'coronal'
+        bpy.context.scene.current_view_flip = 0
         return
 
     if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
-            bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 3.1415927410125732]
-            bpy.types.Scene.current_view = 'coronal'
-            bpy.types.Scene.current_view_direction = 0
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'coronal':
+            bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, np.pi]
+            bpy.context.scene.current_view = 'coronal'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 3.1415927410125732]
+            if bpy.context.scene.current_view_flip == 1:
+                bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, np.pi]
             else:
                 # print('in ShowCoronal else')
                 bpy.data.objects["Camera_empty"].rotation_euler = [0.0, 0.0, 0.0]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
+        ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
     else:
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'coronal':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752,
-                                                                                    0.7071068286895752, -0.0, -0.0]
-            bpy.types.Scene.current_view = 'coronal'
-            bpy.types.Scene.current_view_direction = 0
+        mu.get_view3d_region().view_perspective = 'ORTHO'
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'coronal':
+            mu.get_view3d_region().view_rotation = [ROT_45, ROT_45, -0.0, -0.0]
+            bpy.context.scene.current_view = 'coronal'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0.7071068286895752,
-                                                                                        0.7071068286895752, -0.0, -0.0]
+            if bpy.context.scene.current_view_flip == 1:
+                mu.get_view3d_region().view_rotation = [ROT_45, ROT_45, -0.0, -0.0]
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 0, 0.7071068286895752,
-                                                                                        0.7071068286895752]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                mu.get_view3d_region().view_rotation = [0, 0, ROT_45, ROT_45]
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
+        ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
     # view_all()
     # zoom(-1)
@@ -188,31 +191,32 @@ def show_coronal(show_frontal=False):
 
 def show_axial():
     if bpy.types.Scene.in_camera_view and bpy.data.objects.get("Camera_empty") is not None:
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
-            bpy.data.objects["Camera_empty"].rotation_euler = [1.5707963705062866, 0.0, 3.1415927410125732]
-            bpy.types.Scene.current_view = 'axial'
-            bpy.types.Scene.current_view_direction = 0
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'axial':
+            bpy.data.objects["Camera_empty"].rotation_euler = [np.pi / 2, 0.0, np.pi]
+            bpy.context.scene.current_view = 'axial'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.objects["Camera_empty"].rotation_euler = [1.5707963705062866, 0.0, 3.1415927410125732]
+            if bpy.context.scene.current_view_flip == 1:
+                bpy.data.objects["Camera_empty"].rotation_euler = [np.pi / 2, 0.0, np.pi]
             else:
                 # print('in ShowAxial else')
-                bpy.data.objects["Camera_empty"].rotation_euler = [-1.5707963705062866, 0.0, 3.1415927410125732]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                bpy.data.objects["Camera_empty"].rotation_euler = [-np.pi / 2, 0.0, np.pi]
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
+        ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
     else:
-        bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective = 'ORTHO'
-        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.types.Scene.current_view != 'axial':
-            bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
-            bpy.types.Scene.current_view = 'axial'
-            bpy.types.Scene.current_view_direction = 0
+        mu.get_view3d_region().view_perspective = 'ORTHO'
+        # todo: first term is always False...
+        if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'axial':
+            mu.get_view3d_region().view_rotation = AXIAL_ROT1 # [1, 0, 0, 0]
+            bpy.context.scene.current_view = 'axial'
+            bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.types.Scene.current_view_direction == 1:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [1, 0, 0, 0]
+            if bpy.context.scene.current_view_flip == 1:
+                mu.get_view3d_region().view_rotation = AXIAL_ROT1 # [1, 0, 0, 0]
             else:
-                bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_rotation = [0, 1, 0, 0]
-            bpy.types.Scene.current_view_direction = not bpy.types.Scene.current_view_direction
-        bpy.types.Scene.time_of_view_selection = mu.get_time_obj()
+                mu.get_view3d_region().view_rotation = AXIAL_ROT2 # [0, 1, 0, 0]
+            bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
+        ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
     # view_all()
     # zoom(-1)
 
@@ -291,9 +295,9 @@ def minimize_brain():
     bpy.ops.screen.back_to_previous(context)
 
 
-class ShowSaggital(bpy.types.Operator):
-    bl_idname = "mmvt.show_saggital"
-    bl_label = "mmvt show_saggital"
+class ShowSagittal(bpy.types.Operator):
+    bl_idname = "mmvt.show_sagittal"
+    bl_label = "mmvt show_sagittal"
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -423,6 +427,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     init = False
     split_view = 0
     split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
+    time_of_view_selection = mu.get_time_obj
 
     def draw(self, context):
         if not ShowHideObjectsPanel.init:
@@ -452,7 +457,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator(ShowAxial.bl_idname, text='Axial', icon='AXIS_TOP')
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
-        row.operator(ShowSaggital.bl_idname, text='Saggital', icon='AXIS_SIDE')
+        row.operator(ShowSagittal.bl_idname, text='Sagittal', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
         layout.prop(context.scene, 'render_split')
         # layout.operator(MaxMinBrain.bl_idname,
@@ -472,7 +477,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         # row = layout.row(align=True)
         # layout.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
         layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
-
+        # layout.label(text=','.join(['{:.3f}'.format(x) for x in mu.get_view3d_region().view_rotation]))
 
 
 bpy.types.Scene.objects_show_hide_lh = bpy.props.BoolProperty(
@@ -494,10 +499,12 @@ bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0
 bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='y')
 bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='z')
 
-bpy.types.Scene.current_view = 'free'
-bpy.types.Scene.time_of_view_selection = mu.get_time_obj
-bpy.types.Scene.current_view_direction = 0
+
+# bpy.types.Scene.current_view = 'free'
+bpy.types.Scene.current_view_flip = bpy.props.BoolProperty()
 # bpy.types.Scene.in_camera_view = 0
+bpy.types.Scene.current_view = bpy.props.EnumProperty(
+    items=[("sagittal", "Sagittal", "", 1), ("coronal", "Coronal", "", 2), ("axial", "Axial", "", 3)])
 
 
 def init(addon):
@@ -536,7 +543,7 @@ def register():
         bpy.utils.register_class(ShowHideObjectsPanel)
         bpy.utils.register_class(ShowHideLH)
         bpy.utils.register_class(ShowHideRH)
-        bpy.utils.register_class(ShowSaggital)
+        bpy.utils.register_class(ShowSagittal)
         bpy.utils.register_class(ShowCoronal)
         bpy.utils.register_class(ShowAxial)
         bpy.utils.register_class(SplitView)
@@ -554,7 +561,7 @@ def unregister():
         bpy.utils.unregister_class(ShowHideObjectsPanel)
         bpy.utils.unregister_class(ShowHideLH)
         bpy.utils.unregister_class(ShowHideRH)
-        bpy.utils.unregister_class(ShowSaggital)
+        bpy.utils.unregister_class(ShowSagittal)
         bpy.utils.unregister_class(ShowCoronal)
         bpy.utils.unregister_class(ShowAxial)
         bpy.utils.unregister_class(SplitView)
