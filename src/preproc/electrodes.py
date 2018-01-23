@@ -146,6 +146,7 @@ def read_electrodes_file(subject, bipolar, postfix=''):
         '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else ''))
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
+        print('{}: No npz file, trying to read xls file'.format(subject))
         convert_electrodes_pos(subject, bipolar, True)
     if not op.isfile(electrodes_fname):
         print("Can't find {} electrodes file (bipolar={})".format(subject, bipolar))
