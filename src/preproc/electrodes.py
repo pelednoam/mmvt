@@ -227,6 +227,7 @@ def convert_electrodes_pos(
         subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name='', snaps=[True, False]):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(MMVT_DIR, subject, 'electrodes')
+    utils.make_dir(electrodes_folder)
 
     file_found = False
     for snap in snaps:
