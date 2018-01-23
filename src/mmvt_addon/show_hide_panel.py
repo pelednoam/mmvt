@@ -6,14 +6,71 @@ import glob
 import os.path as op
 import re
 
+(ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR,
+ ROT_AXIAL_INFERIOR) = range(6)
+
 
 ROT_45 = np.sin(np.deg2rad(45)) # np.rad2deg(np.arcsin(0.7071068286895752)) = 45
-AXIAL_ROT1 = (0.6829140186309814, -0.007170889526605606, 0.007669730577617884, -0.7304232716560364)
-AXIAL_ROT2 = (0.015227699652314186, 0.7250200510025024, 0.6884075403213501, 0.014458661898970604)
+SAGITTAL_LEFT = [0.5, 0.5, -0.5, -0.5]
+SAGITTAL_RIGHT = [0.5, 0.5, 0.5, 0.5]
+CORONAL_ANTERIOR = [0.0, 0.0, ROT_45, ROT_45]
+CORONAL_POSTERIOR = [ROT_45, ROT_45, 0.0, 0.0]
+AXIAL_SUPERIOR = (0.6829140186309814, -0.007170889526605606, 0.007669730577617884, -0.7304232716560364)
+AXIAL_INFERIOR = (0.015227699652314186, 0.7250200510025024, 0.6884075403213501, 0.014458661898970604)
+'''
+Originally:
+CORONAL_ANTERIOR = [1, 0, 0, 0]
+CORONAL_POSTERIOR = [0, 1, 0, 0]
+The current rotation is after rotating it in 45 in the z(?) axis
+https://www.mathworks.com/matlabcentral/answers/123763-how-to-rotate-entire-3d-data-with-x-y-z-values-along-a-particular-axis-say-x-axis
+'''
+# todo: change those ugly numbers to an equation like in the link
+
+ANGLES_DICT = {
+    ROT_SAGITTAL_LEFT: SAGITTAL_LEFT,
+    ROT_SAGITTAL_RIGHT: SAGITTAL_RIGHT,
+    ROT_CORONAL_ANTERIOR: CORONAL_ANTERIOR,
+    ROT_CORONAL_POSTERIOR: CORONAL_POSTERIOR,
+    ROT_AXIAL_SUPERIOR: AXIAL_SUPERIOR,
+    ROT_AXIAL_INFERIOR: AXIAL_INFERIOR
+}
+ANGLES_NAMES_DICT = {
+    ROT_SAGITTAL_LEFT: 'left',
+    ROT_SAGITTAL_RIGHT: 'right',
+    ROT_CORONAL_ANTERIOR: 'anterior',
+    ROT_CORONAL_POSTERIOR: 'posterior',
+    ROT_AXIAL_SUPERIOR: 'superior',
+    ROT_AXIAL_INFERIOR: 'inferior'
+}
 
 
 def _addon():
     return ShowHideObjectsPanel.addon
+
+
+def rotate_view(view_ang):
+    rotation_in_quaternions = ANGLES_DICT.get(view_ang, '')
+    if rotation_in_quaternions != '':
+        mu.rotate_view3d(rotation_in_quaternions)
+    else:
+        print('angle should be one of ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ' + \
+              'ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR, ROT_AXIAL_INFERIOR')
+
+
+def view_name(view):
+    if mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
+        hemi = 'lh'
+    elif not mu.get_hemi_obj('rh').hide and mu.get_hemi_obj('lh').hide:
+        hemi = 'rh'
+    elif not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
+        hemi = 'both'
+    if (hemi == 'rh' and view == ROT_SAGITTAL_LEFT) or (hemi == 'lh' and view == ROT_SAGITTAL_RIGHT):
+        view_name = 'medial'
+    elif (hemi == 'lh' and view == ROT_SAGITTAL_LEFT) or (hemi == 'rh' and view == ROT_SAGITTAL_RIGHT):
+        view_name = 'lateral'
+    else:
+        view_name = ANGLES_NAMES_DICT[view]
+    return view_name
 
 
 def zoom(delta):
@@ -137,14 +194,11 @@ def show_sagital():
     else:
         mu.get_view3d_region().view_perspective = 'ORTHO'
         if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'sagittal':
-            mu.get_view3d_region().view_rotation = [0.5, 0.5, -0.5, -0.5]
+            mu.rotate_view3d(SAGITTAL_LEFT)
             bpy.context.scene.current_view = 'sagittal'
-            bpy.context.scene.current_view_flip = 0
+            bpy.context.scene.current_view_flip = False
         else:
-            if bpy.context.scene.current_view_flip == 1:
-                mu.get_view3d_region().view_rotation = [0.5, 0.5, -0.5, -0.5]
-            else:
-                mu.get_view3d_region().view_rotation = [0.5, 0.5, 0.5, 0.5]
+            mu.rotate_view3d(SAGITTAL_LEFT) if bpy.context.scene.current_view_flip else mu.rotate_view3d(SAGITTAL_RIGHT)
             bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
 
     # view_all()
@@ -174,14 +228,11 @@ def show_coronal(show_frontal=False):
     else:
         mu.get_view3d_region().view_perspective = 'ORTHO'
         if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'coronal':
-            mu.get_view3d_region().view_rotation = [ROT_45, ROT_45, -0.0, -0.0]
+            mu.rotate_view3d(CORONAL_ANTERIOR)
             bpy.context.scene.current_view = 'coronal'
-            bpy.context.scene.current_view_flip = 0
+            bpy.context.scene.current_view_flip = False
         else:
-            if bpy.context.scene.current_view_flip == 1:
-                mu.get_view3d_region().view_rotation = [ROT_45, ROT_45, -0.0, -0.0]
-            else:
-                mu.get_view3d_region().view_rotation = [0, 0, ROT_45, ROT_45]
+            mu.rotate_view3d(CORONAL_ANTERIOR) if bpy.context.scene.current_view_flip else mu.rotate_view3d(CORONAL_POSTERIOR)
             bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
         ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
         # print(bpy.ops.view3d.viewnumpad())
@@ -207,14 +258,11 @@ def show_axial():
         mu.get_view3d_region().view_perspective = 'ORTHO'
         # todo: first term is always False...
         if mu.get_time_from_event(mu.get_time_obj()) > 2 or bpy.context.scene.current_view != 'axial':
-            mu.get_view3d_region().view_rotation = AXIAL_ROT1 # [1, 0, 0, 0]
+            mu.get_view3d_region().view_rotation = AXIAL_SUPERIOR # [1, 0, 0, 0]
             bpy.context.scene.current_view = 'axial'
             bpy.context.scene.current_view_flip = 0
         else:
-            if bpy.context.scene.current_view_flip == 1:
-                mu.get_view3d_region().view_rotation = AXIAL_ROT1 # [1, 0, 0, 0]
-            else:
-                mu.get_view3d_region().view_rotation = AXIAL_ROT2 # [0, 1, 0, 0]
+            mu.rotate_view3d(AXIAL_SUPERIOR) if bpy.context.scene.current_view_flip else mu.rotate_view3d(AXIAL_INFERIOR)
             bpy.context.scene.current_view_flip = not bpy.context.scene.current_view_flip
         ShowHideObjectsPanel.time_of_view_selection = mu.get_time_obj()
     # view_all()
@@ -229,7 +277,7 @@ def _split_view():
     split_view(view)
     if bpy.context.scene.render_split:
         names = {0:'normal', 1:'split_lateral', 2:'split_medial'}
-        _addon().save_image(names[view], view_selected=bpy.context.scene.save_selected_view)
+        _addon().save_image(names[view])
 
 
 @mu.tryit()
@@ -459,7 +507,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSagittal.bl_idname, text='Sagittal', icon='AXIS_SIDE')
         layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
-        layout.prop(context.scene, 'render_split')
+        # layout.prop(context.scene, 'render_split', text='Render images')
         # layout.operator(MaxMinBrain.bl_idname,
         #                 text="{} Brain".format('Maximize' if bpy.context.scene.brain_max_min else 'Minimize'),
         #                 icon='TRIA_UP' if bpy.context.scene.brain_max_min else 'TRIA_DOWN')
@@ -548,7 +596,6 @@ def register():
         bpy.utils.register_class(ShowAxial)
         bpy.utils.register_class(SplitView)
         bpy.utils.register_class(MaxMinBrain)
-        # bpy.utils.register_class(FlipCameraView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideSubCerebellum)
         # print('Show Hide Panel was registered!')
@@ -566,7 +613,6 @@ def unregister():
         bpy.utils.unregister_class(ShowAxial)
         bpy.utils.unregister_class(SplitView)
         bpy.utils.unregister_class(MaxMinBrain)
-        # bpy.utils.unregister_class(FlipCameraView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
     except:

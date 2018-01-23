@@ -173,6 +173,7 @@ def render_draw(self, context):
     layout = self.layout
 
     layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
+    layout.operator(SaveAllViews.bl_idname, text='Save all perspectives', icon='EDITMODE_HLT')
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
 
@@ -272,6 +273,18 @@ bpy.types.Scene.background_color = bpy.props.EnumProperty(
     items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
+
+
+class SaveAllViews(bpy.types.Operator):
+    bl_idname = "mmvt.save_all_views"
+    bl_label = "mmvt save_all_views"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        save_all_views()
+        return {"FINISHED"}
+
 
 
 class MirrorCamera(bpy.types.Operator):
@@ -499,7 +512,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0):
+def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True):
     if view_selected is None:
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
@@ -517,7 +530,10 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0):
     index = bpy.context.scene.frame_current if index == -1 else index
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
-    image_name = op.join(fol, '{}_{}.png'.format(image_type, index))
+    if add_index_to_name:
+        image_name = op.join(fol, '{}_{}.png'.format(image_type, index))
+    else:
+        image_name = op.join(fol, '{}.png'.format(image_type))
     print('Image saved in {}'.format(image_name))
     bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
@@ -537,6 +553,35 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0):
     #                       'INVOKE_DEFAULT',  # invoke the operator
     #                       copy=True,
     #                       filepath=image_name)  # export it to this location
+
+
+def save_all_views(views=None):
+    if views is None:
+        views = _addon().ANGLES_DICT.keys()
+    else:
+        views = list(map(int, views))
+    surf_name_dict = {-1: 'pial', 0: 'inflated', 1: 'flat'}
+    surf_name = surf_name_dict.get(bpy.context.scene.inflating, '')
+    if surf_name == '':
+        if -1 < bpy.context.scene.inflating < 0:
+            surf_name = '{:.1f}_inflated'.format(1 - bpy.context.scene.inflating)
+        else:
+            surf_name = '{:.1f}_flat'.format(bpy.context.scene.inflating)
+    if mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
+        hemi = 'lh'
+    elif not mu.get_hemi_obj('rh').hide and mu.get_hemi_obj('lh').hide:
+        hemi = 'rh'
+    elif not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
+        hemi = ''
+    else:
+        print('You need to show at least one hemi')
+    org_view_ang = mu.get_view3d_region().view_rotation
+    for view in views:
+        view_name = _addon().view_name(view)
+        img_name = '{}{}_{}'.format('{}_'.format(hemi) if hemi != '' else '', surf_name, view_name)
+        _addon().rotate_view(view)
+        save_image(img_name, add_index_to_name=False)
+    mu.rotate_view3d(org_view_ang)
 
 
 def queue_len():
@@ -645,6 +690,7 @@ def register():
         bpy.utils.register_class(MirrorCamera)
         bpy.utils.register_class(RenderFigure)
         bpy.utils.register_class(RenderPerspectives)
+        bpy.utils.register_class(SaveAllViews)
         bpy.utils.register_class(CombinePerspectives)
         # print('Render Panel was registered!')
     except:
@@ -662,6 +708,7 @@ def unregister():
         bpy.utils.unregister_class(MirrorCamera)
         bpy.utils.unregister_class(RenderFigure)
         bpy.utils.unregister_class(RenderPerspectives)
+        bpy.utils.unregister_class(SaveAllViews)
         bpy.utils.unregister_class(CombinePerspectives)
     except:
         pass

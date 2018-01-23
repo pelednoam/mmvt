@@ -162,7 +162,7 @@ def slice_brain(cut_pos=None, save_image=False):
     bpy.data.objects['masking_cube'].hide = True
     bpy.data.objects['masking_cube'].hide_render = True
     for hemi in ['lh', 'rh']:
-        inflated_object = bpy.data.objects['inflated_{}'.format(hemi)]
+        inflated_object = mu.get_hemi_obj(hemi)
         if inflated_object.modifiers.get('mask_for_slice') is None:
             inflated_object.modifiers.new('mask_for_slice', type='BOOLEAN')
         inflated_object.modifiers['mask_for_slice'].object = bpy.data.objects['masking_cube']

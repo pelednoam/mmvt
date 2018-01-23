@@ -99,6 +99,11 @@ settings = None
 
 electrodes_panel_parent = electrodes_panel.PARENT_OBJ_NAME
 meg_panel_parent = meg_panel.PARENT_OBJ_NAME
+ANGLES_DICT = show_hide_panel.ANGLES_DICT
+ANGLES_NAMES_DICT = show_hide_panel.ANGLES_NAMES_DICT
+(ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR,
+ ROT_AXIAL_INFERIOR) = range(6)
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import_brain = data_panel.import_brain
 add_data_to_parent_obj = data_panel.add_data_to_parent_obj
@@ -209,6 +214,7 @@ camera_mode = render_panel.camera_mode
 save_image = render_panel.save_image
 set_to_camera_view = render_panel.set_to_camera_view
 exit_from_camera_view = render_panel.exit_from_camera_view
+save_all_views = render_panel.save_all_views
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -224,6 +230,8 @@ show_coronal = show_hide_panel.show_coronal
 show_axial = show_hide_panel.show_axial
 split_view = show_hide_panel.split_view
 view_all = show_hide_panel.view_all
+rotate_view = show_hide_panel.rotate_view
+view_name = show_hide_panel.view_name
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d

@@ -1671,6 +1671,10 @@ def get_view3d_region():
     return bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d
 
 
+def rotate_view3d(rotation_in_quaternions):
+    get_view3d_region().view_rotation = rotation_in_quaternions
+
+
 def get_current_context():
     # all the area types except 'EMPTY' from blender.org/api/blender_python_api_current/bpy.types.Area.html#bpy.types.Area.type
     types = {'VIEW_3D', 'TIMELINE', 'GRAPH_EDITOR', 'DOPESHEET_EDITOR', 'NLA_EDITOR', 'IMAGE_EDITOR', 'SEQUENCE_EDITOR',
@@ -2198,3 +2202,7 @@ def find_hemi_using_vertices_num(fname):
                     vertices_num, fname))
                 hemi = ''
     return hemi
+
+
+def get_hemi_obj(hemi):
+    return bpy.data.objects['inflated_{}'.format(hemi)]

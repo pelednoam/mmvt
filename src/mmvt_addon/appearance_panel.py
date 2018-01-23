@@ -197,8 +197,8 @@ def inflating_update(self, context):
 
         if AppearanceMakerPanel.flat_map_exists:
             for hemi in ['rh', 'lh']:
-                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = use_masking
-                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = use_masking
+                mu.get_hemi_obj(hemi).modifiers['mask_bad_vertices'].show_viewport = use_masking
+                mu.get_hemi_obj(hemi).modifiers['mask_bad_vertices'].show_render = use_masking
                 # print(use_masking)
         # bpy.context.scene.hemis_inf_distance = - (1 - bpy.context.scene.inflating) * 5
 
@@ -775,8 +775,8 @@ def init(addon):
 
         for hemi in ['lh', 'rh']:
             try:
-                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_viewport = True
-                bpy.data.objects['inflated_{}'.format(hemi)].modifiers['mask_bad_vertices'].show_render = True
+                mu.get_hemi_obj(hemi).modifiers['mask_bad_vertices'].show_viewport = True
+                mu.get_hemi_obj(hemi).modifiers['mask_bad_vertices'].show_render = True
             except:
                 pass
     if bpy.data.objects.get('Cortex-rh') and bpy.data.objects.get('lh'):

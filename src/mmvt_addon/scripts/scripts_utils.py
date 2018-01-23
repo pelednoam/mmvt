@@ -24,6 +24,8 @@ IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
 
 
+HEMIS = ['rh', 'lh']
+
 def is_mac():
     return IS_MAC
 
@@ -242,9 +244,14 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if call_args is None:
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
+        # if run_in_background:
         cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" {call_args}'.format( # > {log_fname}
             blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
+        # else:
+        #     cmd = '{blender_exe} -P "{script_fname}" {blend_fname} {call_args}'.format( # > {log_fname}
+        #         blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
+        #         blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
         mmvt_addon_fol = get_parent_fol(__file__, 2)
         print(cmd)
         if not only_verbose:
@@ -312,7 +319,8 @@ def exit_blender():
 
 def get_python_argv():
     # Remove the blender argv and return only the python argv
-    return sys.argv[5:]
+    scripts_params_ind = sys.argv.index('--python') + 2
+    return sys.argv[scripts_params_ind:]
 
 
 class ParserWithHelp(argparse.ArgumentParser):
@@ -475,6 +483,17 @@ def is_int(s):
         return True
     except ValueError:
         return False
+
+
+def get_hemi_obj(hemi):
+    return bpy.data.objects['inflated_{}'.format(hemi)]
+
+
+def other_hemi(hemi):
+    if 'inflated' in hemi:
+        return 'inflated_lh' if hemi == 'inflated_rh' else 'inflated_rh'
+    else:
+        return 'lh' if hemi == 'rh' else 'rh'
 
 
 if __name__ == '__main__':

@@ -399,7 +399,7 @@ def create_inflating_morphing():
     print('Creating inflation morphing')
     for hemi in mu.HEMIS:
         pial = bpy.data.objects[hemi]
-        inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+        inflated = mu.get_hemi_obj(hemi)
         # if inflated.active_shape_key_index >= 0:
         #     print('{} already has a shape key'.format(hemi))
         #     continue
@@ -416,7 +416,7 @@ def create_inflating_flat_morphing():
     # for hemi in mu.HEMIS:
     #     verts_faces_dic = op.join(mu.get_user_fol(), 'faces_verts_lookup_{}.pkl'.format(hemi))
     #     flat_surf = op.join(mu.get_user_fol, 'surf', '{}.flat.pial.npz'.format(hemi))
-    #     inflated = bpy.data.objects['inflated_{}'.format(hemi)]
+    #     inflated = mu.get_hemi_obj(hemi)
     #     if op.isfile(flat_surf):
     #         flat_verts, _ = np.load(flat_surf)
     #         inflated.shape_key_add(name='flat')
@@ -425,7 +425,7 @@ def create_inflating_flat_morphing():
     #                 inflated.data.shape_keys.key_blocks['flat'].data[vert_ind].co[ii] = flat_verts[vert_ind][ii]
 
     for hemi in mu.HEMIS:
-        cur_obj = bpy.data.objects['inflated_{}'.format(hemi)]
+        cur_obj = mu.get_hemi_obj(hemi)
         d = np.load(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format(hemi)))
         flat_faces, flat_verts = d['faces'], d['verts']
 
