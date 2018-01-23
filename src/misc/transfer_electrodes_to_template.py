@@ -76,10 +76,20 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
         print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
 
 
-def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
+def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=6):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+
+    subjects = electrodes.keys
+    indices = np.array_split(np.arange(len(subjects)), n_jobs)
+    chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, overwrite, print_only)
+              for chunk_indices in indices]
+    utils.run_parallel(_mri_cvs_register_parallel, chunks, n_jobs)
+
+
+def _morph_electrodes_parallel(p):
+    subjects, subject_to, subjects_dir, overwrite, print_only = p
     bad_subjects, good_subjects = [], []
-    for subject_from in electrodes.keys():
+    for subject_from in subjects:
         output_fname = op.join(subjects_dir, subject_from, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
         if op.isfile(output_fname) and not overwrite:
             continue
@@ -90,6 +100,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
             bad_subjects.append(subject_from)
         else:
             good_subjects.append(subject_from)
+
     print('good subjects: {}'.format(good_subjects))
     print('bad subjects: {}'.format(bad_subjects))
 
