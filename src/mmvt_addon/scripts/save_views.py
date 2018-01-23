@@ -98,14 +98,10 @@ def post_script(args):
     from src.utils import figures_utils as fu
 
     print('Adding colorbar')
-    subject_fol = op.join(su.get_mmvt_dir(), args.subject)
-    figures_fol = op.join(subject_fol, 'figures')
-    colors_map = args.cb
     data_max, data_min = list(map(float, args.cb_vals))
-
-    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+    for fig_name in glob.glob(op.join(args.output_path, '*.png')):
         fu.combine_brain_with_color_bar(
-            data_max, data_min, fig_name, colors_map, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
+            data_max, data_min, fig_name, args.cb, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
 if __name__ == '__main__':
