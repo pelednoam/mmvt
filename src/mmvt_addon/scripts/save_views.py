@@ -2,6 +2,7 @@ import sys
 import os
 import os.path as op
 import glob
+import time
 from itertools import product
 
 try:
@@ -27,6 +28,7 @@ def wrap_blender_call():
     if args.add_cb:
         log_exist = op.isfile(log_fname)
         while not log_exist:
+            time.sleep(.1)
             log_exist = op.isfile(log_fname)
         post_script(args)
 
