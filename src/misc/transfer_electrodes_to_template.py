@@ -31,6 +31,7 @@ applyMorph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
              'point_list {subjects_dir}/{subject_from}/electrodes/stim_electrodes.txt ' + \
              '{subjects_dir}/{subject_from}/electrodes/stim_electrodes_to_{subject_to}.txt a'
 
+
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
@@ -301,6 +302,16 @@ def read_csv_file(csv_fname, save_as_bipolar):
     return electrodes
 
 
+def read_all_electrodes(subjects, bipolar):
+    from src.preproc import electrodes as elc_pre
+    electrodes = defaultdict(list)
+    for subject in subjects:
+        names, pos = elc_pre.read_electrodes_file(subject, bipolar)
+        for elec_name, coords in zip(names, pos):
+            electrodes[subject].append((elec_name, coords))
+    return electrodes
+
+
 def save_template_electrodes_to_template(template_electrodes, bipolar, mmvt_dir, template_system='mni', prefix='', postfix=''):
     output_fname = '{}electrodes{}_positions.npz'.format(prefix, '_bipolar' if bipolar else '', postfix)
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
@@ -555,15 +566,18 @@ if __name__ == '__main__':
     save_as_bipolar = False
     template_system = 'mni' # hc029
     atlas = 'aparc.DKTatlas40'
+    bipolar = True
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
+    electrodes = read_all_electrodes(electrodes.keys(), bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
+
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
+    # template_electrodes = morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
     # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
     # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
     # export_into_csv(template_system, MMVT_DIR, 'stim_')
-    compare_electrodes_labeling(electrodes, template_system, atlas)
+    # compare_electrodes_labeling(electrodes, template_system, atlas)
 
 
 
