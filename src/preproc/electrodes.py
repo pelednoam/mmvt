@@ -8,6 +8,7 @@ import scipy
 from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 from datetime import datetime
+import traceback
 import mne.io
 from mne.filter import notch_filter
 
@@ -147,7 +148,10 @@ def read_electrodes_file(subject, bipolar, postfix=''):
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         print('{}: No npz file, trying to read xls file'.format(subject))
-        convert_electrodes_pos(subject, bipolar, True)
+        try:
+            convert_electrodes_pos(subject, bipolar, True)
+        except:
+            print(traceback.format_exc())
     if not op.isfile(electrodes_fname):
         print("Can't find {} electrodes file (bipolar={})".format(subject, bipolar))
         return [], []
