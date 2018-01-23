@@ -79,7 +79,7 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=6):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
 
-    subjects = electrodes.keys
+    subjects = electrodes.keys()
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, overwrite, print_only)
               for chunk_indices in indices]
