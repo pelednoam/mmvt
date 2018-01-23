@@ -147,10 +147,14 @@ def read_electrodes_file(subject, bipolar, postfix=''):
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         convert_electrodes_pos(subject, bipolar, True)
-    d = np.load(electrodes_fname)
-    # fix for a bug in ielu
-    names = [n.replace('elec_unsorted', '') for n in d['names']]
-    return names, d['pos']
+    if not op.isfile(electrodes_fname):
+        print("Can't find {} electrodes file (bipolar={})".format(subject, bipolar))
+        return [], []
+    else:
+        d = np.load(electrodes_fname)
+        # fix for a bug in ielu
+        names = [n.replace('elec_unsorted', '') for n in d['names']]
+        return names, d['pos']
 
 
 def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):

@@ -305,10 +305,17 @@ def read_csv_file(csv_fname, save_as_bipolar):
 def read_all_electrodes(subjects, bipolar):
     from src.preproc import electrodes as elc_pre
     electrodes = defaultdict(list)
+    bads, goods = [], []
     for subject in subjects:
         names, pos = elc_pre.read_electrodes_file(subject, bipolar)
+        if len(names) == 0:
+            bads.append(subject)
+        else:
+            goods.append(subject)
         for elec_name, coords in zip(names, pos):
             electrodes[subject].append((elec_name, coords))
+    print('bads: {}'.format(bads))
+    print('goods: {}'.format(goods))
     return electrodes
 
 
