@@ -59,6 +59,17 @@ def example5():
         fu.combine_brain_with_color_bar(
             data_max, data_min, fig_name, colors_map, dpi=100)
 
+
+def example6():
+    figures_fol = '/home/npeled/mmvt/nmr01216/figures'
+    colors_map = 'RdOrYl'
+    data_max, data_min = 2, 6
+
+    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+        fu.combine_brain_with_color_bar(
+            data_max, data_min, fig_name, colors_map, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
+
+
 if __name__ == '__main__':
-    example5()
+    example6()
 

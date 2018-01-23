@@ -176,11 +176,15 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0,
-                                 w_fac=2, h_fac=3/2, facecolor='black', **kargs):
+                                 w_fac=2, h_fac=3/2, facecolor='black',
+                                 dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1, **kargs):
     image_fol = utils.get_fname_folder(figure_fname)
-    image_fname = op.join(image_fol, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
-    if op.isfile(image_fname) and not overwrite:
-        return
+    if not overwrite:
+        image_fname = op.join(image_fol, '{}_cb.{}'.format(figure_fname[:-4], figure_fname[-3:]))
+    else:
+        image_fname = figure_fname
+    # if op.isfile(image_fname) and not overwrite:
+    #     return
     image = Image.open(figure_fname)
     img_width, img_height = image.size
     w, h = img_width/dpi * w_fac, img_height/dpi * h_fac
@@ -193,7 +197,7 @@ def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, o
     im = brain_ax.imshow(image, animated=True)
     ax_cb = plt.subplot(gs[:, -2:-1])
     ax_cb.tick_params(axis='y', colors='white' if facecolor=='black' else 'black')
-    resize_and_move_ax(ax_cb, dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1)
+    resize_and_move_ax(ax_cb, dy=dy, dx=dx, ddh=ddh, ddw=ddw)
     plot_color_bar(data_max, data_min, colors_map, ax_cb)
     plt.savefig(image_fname, facecolor=fig.get_facecolor(), transparent=True)
     plt.close()

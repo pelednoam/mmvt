@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path as op
+import glob
 from itertools import product
 
 try:
@@ -14,7 +15,20 @@ except:
 def wrap_blender_call():
     args = read_args()
     # todo: check args
+    if args.output_path == '':
+        mmvt_dir = su.get_link_dir(su.get_links_dir(), 'mmvt')
+        args.output_path = op.join(mmvt_dir, args.subject, 'figures')
+    su.make_dir(args.output_path)
+    log_fname = op.join(args.output_path, 'save_views.log')
+    if  op.isfile(log_fname):
+        os.remove(log_fname)
     su.call_script(__file__, args, run_in_background=False)
+
+    if args.add_cb:
+        log_exist = op.isfile(log_fname)
+        while not log_exist:
+            log_exist = op.isfile(log_fname)
+        post_script(args)
 
 
 def add_args():
@@ -33,6 +47,10 @@ def add_args():
         help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
     parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
+    parser.add_argument('--add_cb', help='Add colormap (default False)', required=False, default=False, type=su.is_true)
+    parser.add_argument('--cb', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
+    parser.add_argument('--cb_vals', help='Colormap min and max (default "0,1")', required=False, default='0,1',
+                        type=su.str_arr_type)
     return parser
 
 
@@ -46,10 +64,6 @@ def save_views(subject_fname):
     if args.debug:
         su.debug()
     mmvt = su.init_mmvt_addon()
-    if args.output_path == '':
-        mmvt_dir = su.get_link_dir(su.get_links_dir(), 'mmvt')
-        args.output_path = op.join(mmvt_dir, args.subject, 'figures')
-    su.make_dir(args.output_path)
     mmvt.set_render_output_path(args.output_path)
     views = [int(v)-1 for v in args.views]
     if args.sub == 1:
@@ -73,7 +87,23 @@ def save_views(subject_fname):
             mmvt.show_inflated()
             mmvt.set_inflated_ratio(args.inflated - 1)
         mmvt.save_all_views(views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name)
+    with open(op.join(args.output_path, 'save_views.log'), 'w') as text_file:
+        print(args, file=text_file)
     su.exit_blender()
+
+
+def post_script(args):
+    from src.utils import figures_utils as fu
+
+    print('Adding colorbar')
+    subject_fol = op.join(su.get_mmvt_dir(), args.subject)
+    figures_fol = op.join(subject_fol, 'figures')
+    colors_map = args.cb
+    data_max, data_min = list(map(float, args.cb_vals))
+
+    for fig_name in glob.glob(op.join(figures_fol, '*.png')):
+        fu.combine_brain_with_color_bar(
+            data_max, data_min, fig_name, colors_map, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
 if __name__ == '__main__':
