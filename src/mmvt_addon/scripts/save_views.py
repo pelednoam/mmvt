@@ -52,7 +52,7 @@ def add_args():
     parser.add_argument('--add_cb', help='Add colormap (default False)', required=False, default=False, type=su.is_true)
     parser.add_argument('--cb', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
     parser.add_argument('--cb_vals', help='Colormap min and max (default "0,1")', required=False, default='0,1',
-                        type=su.str_arr_type)
+                        type=su.float_arr_type)
     return parser
 
 
