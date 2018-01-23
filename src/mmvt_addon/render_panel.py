@@ -555,18 +555,22 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #                       filepath=image_name)  # export it to this location
 
 
-def save_all_views(views=None):
+def save_all_views(views=None, inflated_ratio_in_file_name=False):
     if views is None:
         views = _addon().ANGLES_DICT.keys()
     else:
         views = list(map(int, views))
-    surf_name_dict = {-1: 'pial', 0: 'inflated', 1: 'flat'}
-    surf_name = surf_name_dict.get(bpy.context.scene.inflating, '')
-    if surf_name == '':
-        if -1 < bpy.context.scene.inflating < 0:
-            surf_name = '{:.1f}_inflated'.format(1 - bpy.context.scene.inflating)
-        else:
-            surf_name = '{:.1f}_flat'.format(bpy.context.scene.inflating)
+    inf_r = bpy.context.scene.inflating
+    if inflated_ratio_in_file_name:
+        surf_name_dict = {-1: 'pial', 0: 'inflated', 1: 'flat'}
+        surf_name = surf_name_dict.get(inf_r, '')
+        if surf_name == '':
+            if -1 < inf_r < 0:
+                surf_name = '{:.1f}_inflated'.format(1 - inf_r)
+            else:
+                surf_name = '{:.1f}_flat'.format(inf_r)
+    else:
+        surf_name = 'pial' if inf_r == -1 else 'inflated' if -1 < inf_r <= 0 else 'flat'
     if mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
         hemi = 'lh'
     elif not mu.get_hemi_obj('rh').hide and mu.get_hemi_obj('lh').hide:

@@ -32,8 +32,7 @@ def do_something(subject_fname):
 
 if __name__ == '__main__':
     import sys
-    subject_fname = sys.argv[1]
-    if sys.argv[2] == '--background':
-        do_something(subject_fname)
-    else:
+    if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
         wrap_blender_call()
+    else:
+        do_something(sys.argv[1])

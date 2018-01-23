@@ -1656,10 +1656,10 @@ def view_selected():
 
 
 def select_all_brain(val):
-    bpy.data.objects['lh'].hide_select = not val
-    bpy.data.objects['lh'].select = val
-    bpy.data.objects['rh'].hide_select = not val
-    bpy.data.objects['rh'].select = val
+    bpy.data.objects['inflated_lh'].hide_select = not val
+    bpy.data.objects['inflated_lh'].select = val
+    bpy.data.objects['inflated_rh'].hide_select = not val
+    bpy.data.objects['inflated_rh'].select = val
     if not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
         select_hierarchy('Subcortical_fmri_activity_map', val)
         if not val:

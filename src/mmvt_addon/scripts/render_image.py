@@ -92,7 +92,7 @@ def render_image_blender(subject_fname):
         mmvt.filter_nodes(args.filter_nodes)
     if args.inflated:
         mmvt.show_inflated()
-        mmvt.set_inflated_ratio = args.inflated_ratio
+        mmvt.set_inflated_ratio(args.inflated_ratio)
     mmvt.set_background_color(args.background_color)
     mmvt.set_lighting(args.lighting)
     for image_name, camera in zip(args.image_name, args.camera):

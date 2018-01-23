@@ -29,6 +29,10 @@ def add_args():
     parser.add_argument('--sub',
         help='When to show subcorticals (1:always, 2:never, 3:only when showing both hemis (default))',
         required=False, default=3, type=int)
+    parser.add_argument('-o', '--output_path',
+        help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
+    parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
+    parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
     return parser
 
 
@@ -42,6 +46,11 @@ def save_views(subject_fname):
     if args.debug:
         su.debug()
     mmvt = su.init_mmvt_addon()
+    if args.output_path == '':
+        mmvt_dir = su.get_link_dir(su.get_links_dir(), 'mmvt')
+        args.output_path = op.join(mmvt_dir, args.subject, 'figures')
+    su.make_dir(args.output_path)
+    mmvt.set_render_output_path(args.output_path)
     views = [int(v)-1 for v in args.views]
     if args.sub == 1:
         mmvt.show_subcorticals()
@@ -62,7 +71,8 @@ def save_views(subject_fname):
             mmvt.show_pial()
         elif surface == 'inflated':
             mmvt.show_inflated()
-        mmvt.save_all_views(views=views)
+            mmvt.set_inflated_ratio(args.inflated - 1)
+        mmvt.save_all_views(views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name)
     su.exit_blender()
 
 
