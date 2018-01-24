@@ -64,18 +64,27 @@ def example6():
     figures_fol = '/home/npeled/mmvt/nmr01216/figures'
     colors_map = 'RdOrYl'
     data_max, data_min = 2, 6
+    background = '#393939'
 
     files = glob.glob(op.join(figures_fol, '*.png'))
-    images_hemi_inv_list = set([utils.namebase(fname)[3:] for fname in files])
+    images_hemi_inv_list = set([utils.namebase(fname)[3:] for fname in files if utils.namebase(fname)[:2] in ['rh', 'lh']])
     files = [[fname for fname in files if utils.namebase(fname)[3:] == img_hemi_inv] for img_hemi_inv in images_hemi_inv_list]
     for files_coup in files:
+        hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
+        coup_template = files_coup[0].replace(hemi, '{hemi}')
+        coup = {}
+        for hemi in utils.HEMIS:
+            coup[hemi] = coup_template.format(hemi=hemi)
         new_image_fname = op.join(utils.get_fname_folder(files_coup[0]), utils.namesbase_with_ext(files_coup[0])[3:])
 
-        fu.crop_image(files_coup[0], '/home/npeled/mmvt/nmr01216/figures/xxx1.png', dx=150, dy=0, dw=150, dh=0)
-        fu.crop_image(files_coup[1], '/home/npeled/mmvt/nmr01216/figures/xxx2.png', dx=150, dy=0, dw=150, dh=0)
-        fu.combine_two_images('/home/npeled/mmvt/nmr01216/figures/xxx1.png',
-                              '/home/npeled/mmvt/nmr01216/figures/xxx2.png',
-                              '/home/npeled/mmvt/nmr01216/figures/xxx3.png')
+        fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
+        fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
+        fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
+        fu.combine_brain_with_color_bar(
+            data_max, data_min, new_image_fname, colors_map, dpi=200, overwrite=True,
+            w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.08)
+        for hemi in utils.HEMIS:
+            utils.remove_file(coup[hemi])
         # fu.combine_brain_with_color_bar(
         #     data_max, data_min, new_image_fname, colors_map, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 

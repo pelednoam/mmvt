@@ -47,6 +47,8 @@ def add_args():
     parser.add_argument('--sub',
         help='When to show subcorticals (1:always, 2:never, 3:only when showing both hemis (default))',
         required=False, default=3, type=int)
+    parser.add_argument('--join_hemis', help='Join hemis to one file (default False)', required=False, default=False,
+        type=su.is_true)
     parser.add_argument('-o', '--output_path',
         help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
@@ -101,14 +103,39 @@ def save_views(subject_fname):
 
 def post_script(args):
     from src.utils import figures_utils as fu
+    from src.utils import utils
 
     print('Adding colorbar')
     data_max, data_min = list(map(float, args.cb_vals))
     ticks = list(map(float, args.cb_ticks)) if args.cb_ticks is not None else None
-    for fig_name in glob.glob(op.join(args.output_path, '*.png')):
-        fu.combine_brain_with_color_bar(
-            data_max, data_min, fig_name, args.cm, dpi=100, overwrite=True, ticks=ticks,
-            w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
+    background = '#393939'
+    if args.join_hemis:
+        files = glob.glob(op.join(args.output_path, '*.png'))
+        images_hemi_inv_list = set(
+            [utils.namebase(fname)[3:] for fname in files if utils.namebase(fname)[:2] in ['rh', 'lh']])
+        files = [[fname for fname in files if utils.namebase(fname)[3:] == img_hemi_inv] for img_hemi_inv in
+                 images_hemi_inv_list]
+        for files_coup in files:
+            hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
+            coup_template = files_coup[0].replace(hemi, '{hemi}')
+            coup = {}
+            for hemi in utils.HEMIS:
+                coup[hemi] = coup_template.format(hemi=hemi)
+            new_image_fname = op.join(utils.get_fname_folder(files_coup[0]),
+                                      utils.namesbase_with_ext(files_coup[0])[3:])
+            fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
+            fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
+            fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
+            fu.combine_brain_with_color_bar(
+                data_max, data_min, new_image_fname, args.cm, dpi=100, overwrite=True, ticks=ticks,
+                w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.08)
+            for hemi in utils.HEMIS:
+                utils.remove_file(coup[hemi])
+    else:
+        for fig_name in glob.glob(op.join(args.output_path, '*.png')):
+            fu.combine_brain_with_color_bar(
+                data_max, data_min, fig_name, args.cm, dpi=100, overwrite=True, ticks=ticks,
+                w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
 if __name__ == '__main__':
