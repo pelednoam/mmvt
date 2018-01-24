@@ -59,7 +59,7 @@ def crop_image(image_fname, new_fname, dx=0, dy=0, dw=0, dh=0, **kargs):
 
 
 def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=PICS_COMB_HORZ, dpi=100,
-                       facecolor='black', **kargs):
+                       facecolor='black', w_fac=1, h_fac=1, **kargs):
     image1 = Image.open(figure1_fname)
     image2 = Image.open(figure2_fname)
     if comb_dim==PICS_COMB_HORZ:
@@ -68,18 +68,27 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     else:
         new_img_width = max(image1.size[0], image2.size[0])
         new_img_height = image1.size[1] + image2.size[1]
-    w, h = new_img_width / dpi, new_img_height / dpi
+    w, h = new_img_width / dpi * w_fac, new_img_height / dpi * h_fac
     fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
     fig.canvas.draw()
-    if comb_dim == PICS_COMB_HORZ:
-        ax1 = plt.subplot(121)
-        ax2 = plt.subplot(122)
-    else:
-        ax1 = plt.subplot(211)
-        ax2 = plt.subplot(212)
-    ax1.imshow(image1)
-    ax2.imshow(image2)
-    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
+
+    gs = gridspec.GridSpec(1, 2)
+    gs.update(wspace=0, hspace=0)  # set the spacing between axes.
+    for g, image in zip(gs, (image1, image2)):
+        ax = plt.subplot(g)
+        ax.imshow(image)
+        ax.axis('off')
+    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
+
+    # if comb_dim == PICS_COMB_HORZ:
+    #     ax1 = plt.subplot(121)
+    #     ax2 = plt.subplot(122)
+    # else:
+    #     ax1 = plt.subplot(211)
+    #     ax2 = plt.subplot(212)
+    # ax1.imshow(image1)
+    # ax2.imshow(image2)
+    # plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
 def combine_four_brain_perspectives_output_fname(fol, inflated=False, facecolor='black', clusters_name=''):

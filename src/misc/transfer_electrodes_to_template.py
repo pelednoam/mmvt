@@ -76,7 +76,7 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
         print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
 
 
-def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=6):
+def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=4):
     subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
 
     subjects = list(electrodes.keys())
