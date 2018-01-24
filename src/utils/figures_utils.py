@@ -13,7 +13,7 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 
 @utils.tryit()
-def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, **kargs):
+def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None, **kargs):
     import matplotlib as mpl
 
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
@@ -22,6 +22,8 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
         ax = plt.subplot(199)
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
+    if ticks is not None:
+        cb.set_ticks(ticks)
     if do_save:
         plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map_name)))
     else:
@@ -176,7 +178,7 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 
 def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0,
-                                 w_fac=2, h_fac=3/2, facecolor='black',
+                                 w_fac=2, h_fac=3/2, facecolor='black', ticks=None,
                                  dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1, **kargs):
     image_fol = utils.get_fname_folder(figure_fname)
     if not overwrite:
@@ -198,7 +200,7 @@ def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, o
     ax_cb = plt.subplot(gs[:, -2:-1])
     ax_cb.tick_params(axis='y', colors='white' if facecolor=='black' else 'black')
     resize_and_move_ax(ax_cb, dy=dy, dx=dx, ddh=ddh, ddw=ddw)
-    plot_color_bar(data_max, data_min, colors_map, ax_cb)
+    plot_color_bar(data_max, data_min, colors_map, ax_cb, ticks=ticks)
     plt.savefig(image_fname, facecolor=fig.get_facecolor(), transparent=True)
     plt.close()
     image = Image.open(image_fname)

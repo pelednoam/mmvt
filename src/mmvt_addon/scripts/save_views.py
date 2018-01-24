@@ -49,9 +49,11 @@ def add_args():
         help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
     parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
-    parser.add_argument('--add_cb', help='Add colormap (default False)', required=False, default=False, type=su.is_true)
-    parser.add_argument('--cb', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
-    parser.add_argument('--cb_vals', help='Colormap min and max (default "0,1")', required=False, default='0,1',
+    parser.add_argument('--add_cb', help='Add colorbar (default False)', required=False, default=False, type=su.is_true)
+    parser.add_argument('--cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
+    parser.add_argument('--cb_vals', help='Colorbar min and max (default "0,1")', required=False, default='0,1',
+                        type=su.float_arr_type)
+    parser.add_argument('--cb_ticks', help='Colorbar ticks (default None)', required=False, default=None,
                         type=su.float_arr_type)
     return parser
 
@@ -99,9 +101,11 @@ def post_script(args):
 
     print('Adding colorbar')
     data_max, data_min = list(map(float, args.cb_vals))
+    ticks = list(map(float, args.cb_ticks)) if args.cb_ticks is not None else None
     for fig_name in glob.glob(op.join(args.output_path, '*.png')):
         fu.combine_brain_with_color_bar(
-            data_max, data_min, fig_name, args.cb, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
+            data_max, data_min, fig_name, args.cm, dpi=100, overwrite=True, ticks=ticks,
+            w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
 if __name__ == '__main__':

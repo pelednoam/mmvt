@@ -59,7 +59,10 @@ def get_args_list(args, key, var_type, default_val=''):
     else:
         ret = [args[key]]
     if var_type:
-        ret = list(map(var_type, ret))
+        try:
+            ret = list(map(var_type, ret))
+        except:
+            ret = None
     return ret
 
 
