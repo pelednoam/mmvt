@@ -37,6 +37,8 @@ def add_args():
     parser = su.add_default_args()
     parser.add_argument('--hemi', help='hemis ("rh", "lh", "rh,lh" or "both" (default))', required=False, default='both',
                         type=su.str_arr_type)
+    parser.add_argument('--rot_lh_axial', help='Rotate lh to allign with rh in axial view (default False)',
+        required=False, default=False, type=su.is_true)
     parser.add_argument('--views',
         help='views, any combination of 1-6 (sagittal_left/right, coronal_anterior/posterior, axial_superior/inferior',
         required=False, default='1,2,3,4,5,6', type=su.str_arr_type)
@@ -90,7 +92,8 @@ def save_views(subject_fname):
         elif surface == 'inflated':
             mmvt.show_inflated()
             mmvt.set_inflated_ratio(args.inflated - 1)
-        mmvt.save_all_views(views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name)
+        mmvt.save_all_views(views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name,
+                            rot_lh_axial=args.rot_lh_axial)
     with open(op.join(args.output_path, 'save_views.log'), 'w') as text_file:
         print(args, file=text_file)
     su.exit_blender()

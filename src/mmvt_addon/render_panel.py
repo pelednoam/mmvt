@@ -555,7 +555,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #                       filepath=image_name)  # export it to this location
 
 
-def save_all_views(views=None, inflated_ratio_in_file_name=False):
+def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False):
     if views is None:
         views = _addon().ANGLES_DICT.keys()
     else:
@@ -584,6 +584,8 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False):
         view_name = _addon().view_name(view)
         img_name = '{}{}_{}'.format('{}_'.format(hemi) if hemi != '' else '', surf_name, view_name)
         _addon().rotate_view(view)
+        if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
+            _addon().rotate_brain(dz=180)
         save_image(img_name, add_index_to_name=False)
     mu.rotate_view3d(org_view_ang)
 

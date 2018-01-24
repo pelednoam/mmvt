@@ -1,6 +1,7 @@
 import bpy
 import mmvt_utils as mu
 import mathutils
+import math
 import numpy as np
 import glob
 import os.path as op
@@ -91,7 +92,7 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
     dz = bpy.context.scene.rotate_dz if dz is None else dz
     bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz = dx, dy, dz
     rv3d = mu.get_view3d_region()
-    rv3d.view_rotation.rotate(mathutils.Euler((dx, dy, dz)))
+    rv3d.view_rotation.rotate(mathutils.Euler((math.radians(d) for d in (dx, dy, dz))))
     if bpy.context.scene.rotate_and_render or save_image:
         _addon().save_image('rotation', view_selected=bpy.context.scene.save_selected_view)
     if keep_rotating:
@@ -543,9 +544,9 @@ bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.render_split = bpy.props.BoolProperty()
 
-bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='x')
-bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='y')
-bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0.1, min=-0.1, max=0.1, name='z')
+bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x')#, min=-0.1, max=0.1, )
+bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0, step=1, name='y')#, min=-0.1, max=0.1, )
+bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0, step=1, name='z')#, min=-0.1, max=0.1, name='z')
 
 
 # bpy.types.Scene.current_view = 'free'
@@ -572,9 +573,9 @@ def init(addon):
     bpy.context.scene.rotate_brain = False
     bpy.context.scene.rotate_and_render = False
     bpy.context.scene.render_split = False
-    bpy.context.scene.rotate_dz = 0.02
-    bpy.context.scene.rotate_dx = 0.00
-    bpy.context.scene.rotate_dy = 0.00
+    bpy.context.scene.rotate_dz = 0
+    bpy.context.scene.rotate_dx = 0
+    bpy.context.scene.rotate_dy = 0
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')
     # hide_obj(bpy.data.objects[obj_func_name], val)
