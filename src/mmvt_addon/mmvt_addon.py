@@ -215,6 +215,7 @@ save_image = render_panel.save_image
 set_to_camera_view = render_panel.set_to_camera_view
 exit_from_camera_view = render_panel.exit_from_camera_view
 save_all_views = render_panel.save_all_views
+change_background_color = render_panel.change_background_color
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi

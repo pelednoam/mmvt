@@ -198,10 +198,11 @@ def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, o
     #     return
     image = Image.open(figure_fname)
     img_width, img_height = image.size
-    w, h = img_width/dpi * w_fac, img_height/dpi * h_fac
+    w, h = (img_width/dpi) * w_fac, (img_height/dpi) * h_fac
     fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
     fig.canvas.draw()
     gs = gridspec.GridSpec(18, 18)
+    gs.update(wspace=0, hspace=0)  # set the spacing between axes.
     brain_ax = plt.subplot(gs[:, :-2])
     plt.tight_layout()
     plt.axis('off')

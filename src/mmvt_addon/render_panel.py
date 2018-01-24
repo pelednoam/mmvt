@@ -121,6 +121,10 @@ def exit_from_camera_view():
     camera_mode('ORTHO')
 
 
+def change_background_color(new_color=(0.227, 0.227, 0.227)):
+    bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = new_color
+
+
 def camera_mode(view=None):
     area = bpy.data.screens['Neuro'].areas[1]
     if view is None:
@@ -223,6 +227,8 @@ def render_draw(self, context):
             col.prop(context.scene, "X_location", text='X location')
             col.prop(context.scene, "Y_location", text='Y location')
             col.prop(context.scene, "Z_location", text='Z location')
+    else:
+        layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
 
 def update_camera(self=None, context=None):
@@ -486,6 +492,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         put_func_in_queue(render_func)
         if queue_len() == 1:
             run_func_in_queue()
+    return bpy.context.scene.render.filepath
 
 
 def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals, overwrite=True):
@@ -555,7 +562,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #                       filepath=image_name)  # export it to this location
 
 
-def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False):
+def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0):
     if views is None:
         views = _addon().ANGLES_DICT.keys()
     else:
@@ -587,7 +594,12 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
-        image_fname = save_image(img_name, add_index_to_name=False)
+        if render_images:
+            camera_mode()
+            image_fname = render_image(img_name, quality=quality, overwrite=True)
+            camera_mode()
+        else:
+            image_fname = save_image(img_name, add_index_to_name=False)
         images_names.append(image_fname)
     mu.rotate_view3d(org_view_ang)
     return images_names

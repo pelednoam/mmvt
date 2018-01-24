@@ -24,6 +24,7 @@ def wrap_blender_call():
     images_fname = op.join(args.output_path, 'images_names.txt')
     if op.isfile(log_fname):
         os.remove(log_fname)
+
     su.call_script(__file__, args, run_in_background=False)
 
     if args.add_cb or args.join_hemis:
@@ -63,6 +64,8 @@ def add_args():
                         type=su.float_arr_type)
     parser.add_argument('--cb_ticks', help='Colorbar ticks (default None)', required=False, default=None,
                         type=su.float_arr_type)
+    parser.add_argument('--background_color', help='Set the background color in solid mode (default black)',
+                        required=False, default='0,0,0', type=su.float_arr_type)
     return parser
 
 
@@ -83,6 +86,13 @@ def save_views(subject_fname):
     elif args.sub == 2:
         mmvt.hide_subcorticals()
     all_images_names = []
+    args.render_images = False
+    args.transparency = 0
+    args.render_quality = 30
+    if args.render_images:
+        mmvt.set_brain_transparency(args.transparency)
+    else:
+        mmvt.change_background_color(args.background_color)
     for hemi, surface in product(args.hemi, args.surf):
         if hemi in su.HEMIS:
             su.get_hemi_obj(hemi).hide = False
@@ -100,7 +110,8 @@ def save_views(subject_fname):
             mmvt.show_inflated()
             mmvt.set_inflated_ratio(args.inflated - 1)
         images_names = mmvt.save_all_views(
-            views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name, rot_lh_axial=args.rot_lh_axial)
+            views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name, rot_lh_axial=args.rot_lh_axial,
+            render_images=args.render_images, quality=args.render_quality)
         all_images_names.extend(images_names)
     with open(op.join(args.output_path, 'images_names.txt'), 'w') as text_file:
         for image_fname in all_images_names:
@@ -117,7 +128,7 @@ def post_script(args, images_names):
     print('post script')
     data_max, data_min = list(map(float, args.cb_vals))
     ticks = list(map(float, args.cb_ticks)) if args.cb_ticks is not None else None
-    background = '#393939'
+    background = args.background_color # '#393939'
     if args.join_hemis:
         images_hemi_inv_list = set(
             [utils.namebase(fname)[3:] for fname in images_names if utils.namebase(fname)[:2] in ['rh', 'lh']])
@@ -136,8 +147,8 @@ def post_script(args, images_names):
                 fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
                 fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
                 fu.combine_brain_with_color_bar(
-                    data_max, data_min, new_image_fname, args.cm, dpi=100, overwrite=True, ticks=ticks,
-                    w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.08)
+                    data_max, data_min, new_image_fname, args.cm, dpi=200, overwrite=True, ticks=ticks,
+                    w_fac=3, h_fac=3, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.02)
             else:
                 fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
                 fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=150, dh=0)
