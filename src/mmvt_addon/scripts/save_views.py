@@ -21,16 +21,20 @@ def wrap_blender_call():
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')
     su.make_dir(args.output_path)
     log_fname = op.join(args.output_path, 'save_views.log')
-    if  op.isfile(log_fname):
+    images_fname = op.join(args.output_path, 'images_names.txt')
+    if op.isfile(log_fname):
         os.remove(log_fname)
     su.call_script(__file__, args, run_in_background=False)
 
-    if args.add_cb:
+    if args.add_cb or args.join_hemis:
         log_exist = op.isfile(log_fname)
         while not log_exist:
-            time.sleep(.1)
             log_exist = op.isfile(log_fname)
-        post_script(args)
+            time.sleep(.1)
+        with open(images_fname, 'r') as text_file:
+            images_names = text_file.readlines()
+        images_names = [l.strip() for l in images_names]
+        post_script(args, images_names)
 
 
 def add_args():
@@ -78,6 +82,7 @@ def save_views(subject_fname):
         mmvt.show_subcorticals()
     elif args.sub == 2:
         mmvt.hide_subcorticals()
+    all_images_names = []
     for hemi, surface in product(args.hemi, args.surf):
         if hemi in su.HEMIS:
             su.get_hemi_obj(hemi).hide = False
@@ -94,26 +99,29 @@ def save_views(subject_fname):
         elif surface == 'inflated':
             mmvt.show_inflated()
             mmvt.set_inflated_ratio(args.inflated - 1)
-        mmvt.save_all_views(views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name,
-                            rot_lh_axial=args.rot_lh_axial)
+        images_names = mmvt.save_all_views(
+            views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name, rot_lh_axial=args.rot_lh_axial)
+        all_images_names.extend(images_names)
+    with open(op.join(args.output_path, 'images_names.txt'), 'w') as text_file:
+        for image_fname in all_images_names:
+            print(image_fname, file=text_file)
     with open(op.join(args.output_path, 'save_views.log'), 'w') as text_file:
         print(args, file=text_file)
     su.exit_blender()
 
 
-def post_script(args):
+def post_script(args, images_names):
     from src.utils import figures_utils as fu
     from src.utils import utils
 
-    print('Adding colorbar')
+    print('post script')
     data_max, data_min = list(map(float, args.cb_vals))
     ticks = list(map(float, args.cb_ticks)) if args.cb_ticks is not None else None
     background = '#393939'
     if args.join_hemis:
-        files = glob.glob(op.join(args.output_path, '*.png'))
         images_hemi_inv_list = set(
-            [utils.namebase(fname)[3:] for fname in files if utils.namebase(fname)[:2] in ['rh', 'lh']])
-        files = [[fname for fname in files if utils.namebase(fname)[3:] == img_hemi_inv] for img_hemi_inv in
+            [utils.namebase(fname)[3:] for fname in images_names if utils.namebase(fname)[:2] in ['rh', 'lh']])
+        files = [[fname for fname in images_names if utils.namebase(fname)[3:] == img_hemi_inv] for img_hemi_inv in
                  images_hemi_inv_list]
         for files_coup in files:
             hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
@@ -123,16 +131,21 @@ def post_script(args):
                 coup[hemi] = coup_template.format(hemi=hemi)
             new_image_fname = op.join(utils.get_fname_folder(files_coup[0]),
                                       utils.namesbase_with_ext(files_coup[0])[3:])
-            fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
-            fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
-            fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
-            fu.combine_brain_with_color_bar(
-                data_max, data_min, new_image_fname, args.cm, dpi=100, overwrite=True, ticks=ticks,
-                w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.08)
+            if args.add_cb:
+                fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
+                fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
+                fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
+                fu.combine_brain_with_color_bar(
+                    data_max, data_min, new_image_fname, args.cm, dpi=100, overwrite=True, ticks=ticks,
+                    w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.08)
+            else:
+                fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
+                fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=150, dh=0)
+                fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
             for hemi in utils.HEMIS:
                 utils.remove_file(coup[hemi])
-    else:
-        for fig_name in glob.glob(op.join(args.output_path, '*.png')):
+    elif args.add_cb and not args.join_hemis:
+        for fig_name in images_names:
             fu.combine_brain_with_color_bar(
                 data_max, data_min, fig_name, args.cm, dpi=100, overwrite=True, ticks=ticks,
                 w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)

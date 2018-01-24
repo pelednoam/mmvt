@@ -1897,5 +1897,21 @@ def indices_of_elements(arr, values):
     return np.in1d(arr, values).nonzero()[0]
 
 
+def is_locked(fname):
+    if not op.isfile(fname):
+        print('The file {} does not exist!'.format(fname))
+        return None
+    locked = True
+    try:
+        buffer_size = 8
+        # Opening file in append mode and read the first 8 characters.
+        file_object = open(fname, 'a', buffer_size)
+        if file_object:
+            locked = False
+    except IOError:
+        locked = True
+    return locked
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))
