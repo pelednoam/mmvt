@@ -22,6 +22,18 @@ def sizing_update(self, context):
         print(traceback.format_exc())
 
 
+def moshe_group_ind_update(self, context):
+    try:
+        do_somthing()
+    except:
+        print('Error in sizing update!')
+        print(traceback.format_exc())
+
+
+def set_moshe_group_ind(self, value):
+    print("setting value", value)
+
+
 def update_something():
     pass
 
@@ -32,6 +44,7 @@ bpy.types.Scene.valid_lois_color = bpy.props.FloatVectorProperty(
 bpy.types.Scene.invalid_lois_color = bpy.props.FloatVectorProperty(
     name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
 bpy.types.Scene.lois_size = bpy.props.FloatProperty(min=0.1, max=2, default=0.75, step=0.1, update=sizing_update)
+bpy.types.Scene.moshe_group_ind = bpy.props.IntProperty(default=0, min=0, description="Show group with index K", update=moshe_group_ind_update)
 
 
 def do_somthing():
@@ -50,9 +63,12 @@ def do_somthing():
             mat = bpy.data.materials.new(name=mat_name)
         mat.diffuse_color = materials_colors[ind]
 
+    cur_valid_list_ind = min(bpy.context.scene.moshe_group_ind, len(valid_lois_list)-1)
+    # set_moshe_group_ind(cur_valid_list_ind)
+    cur_valid_list = valid_lois_list[cur_valid_list_ind]
     for obj in bpy.data.objects['512pnts'].children:
         cur_mat = bpy.data.materials['invalid_lois_mat']
-        if any(obj.name in s for s in valid_lois_list):
+        if any(obj.name in s for s in cur_valid_list):
             cur_mat = bpy.data.materials['valid_lois_mat']
         obj.active_material = cur_mat
 
@@ -69,16 +85,27 @@ def moshe_draw(self, context):
     layout.prop(context.scene, 'valid_lois_color', text='Valid LOIs')
     layout.prop(context.scene, 'invalid_lois_color', text='Invalid LOIs')
     layout.operator(MosheButton.bl_idname, text="Paint LOIs", icon='COLOR')
+    layout.prop(context.scene, 'moshe_group_ind', text='Group index:')
 
 
 class MosheButton(bpy.types.Operator):
     bl_idname = "mmvt.moshe_button"
-    bl_label = "Template botton"
+    bl_label = "Moshe button"
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
         do_somthing()
         return {'PASS_THROUGH'}
+
+
+# class MosheNextButton(bpy.types.Operator):
+#     bl_idname = "mmvt.moshe_next_button"
+#     bl_label = "Moshe next button"
+#     bl_options = {"UNDO"}
+#
+#     def invoke(self, context, event=None):
+#         do_somthing()
+#         return {'PASS_THROUGH'}
 
 
 def start_timer():
