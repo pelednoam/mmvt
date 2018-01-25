@@ -1027,6 +1027,8 @@ def color_manually():
                 color_rgb = cu.name_to_rgb(color_name)
             # Check if the color is already in RBG
             elif len(color_name) == 3:
+                if max(list(map(float, color_name))) > 1:
+                    color_name = [float(c) / 256 for c in color_name]
                 color_rgb = color_name
             elif len(color_name) == 0:
                 color_rgb = next(rand_colors)
