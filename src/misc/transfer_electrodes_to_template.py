@@ -590,11 +590,11 @@ if __name__ == '__main__':
     electrodes = read_all_electrodes(electrodes.keys(), bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
 
-    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-    save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
-    export_into_csv(template_system, MMVT_DIR, 'stim_')
+    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+    # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+    # export_into_csv(template_system, MMVT_DIR, 'stim_')
 
 
     # compare_electrodes_labeling(electrodes, template_system, atlas)
