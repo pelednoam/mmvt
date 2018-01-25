@@ -83,7 +83,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, overwrite, print_only)
               for chunk_indices in indices]
-    utils.run_parallel(_mri_cvs_register_parallel, chunks, n_jobs)
+    utils.run_parallel(_morph_electrodes_parallel, chunks, n_jobs)
 
 
 def _morph_electrodes_parallel(p):
