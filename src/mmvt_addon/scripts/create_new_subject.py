@@ -40,7 +40,7 @@ def create_new_subject_file(args):
 def read_args(argv=None):
     parser = su.add_default_args()
     parser.add_argument('--overwrite_blend', help='', required=False, default=0, type=su.is_true)
-    parser.add_argument('--import_in_blender', help='', required=False, default=0, type=su.is_true)
+    parser.add_argument('--import_in_blender', help='', required=False, default=1, type=su.is_true)
     return su.parse_args(parser, argv)
 
 

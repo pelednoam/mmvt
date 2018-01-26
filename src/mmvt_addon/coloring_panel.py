@@ -117,6 +117,10 @@ def set_threshold(val):
     bpy.context.scene.coloring_threshold = val
 
 
+def  set_use_abs_threshold(val):
+    bpy.context.scene.coloring_use_abs = val
+
+
 def can_color_obj(obj):
     cur_mat = obj.active_material
     return 'RGB' in cur_mat.node_tree.nodes

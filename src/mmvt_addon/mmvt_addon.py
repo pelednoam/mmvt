@@ -189,6 +189,7 @@ get_activity_colors = coloring_panel.get_activity_colors
 recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 what_is_colored = coloring_panel.what_is_colored
+set_use_abs_threshold = coloring_panel.set_use_abs_threshold
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -218,6 +219,7 @@ set_to_camera_view = render_panel.set_to_camera_view
 exit_from_camera_view = render_panel.exit_from_camera_view
 save_all_views = render_panel.save_all_views
 change_background_color = render_panel.change_background_color
+get_output_path = render_panel.get_output_path
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
@@ -235,6 +237,7 @@ split_view = show_hide_panel.split_view
 view_all = show_hide_panel.view_all
 rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
+show_hemis = show_hide_panel.show_hemis
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
@@ -359,6 +362,8 @@ select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ load_results panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`~
+load_surf_files = load_results_panel.load_surf_files
 
 
 def get_max_time_steps(default_val=2500):

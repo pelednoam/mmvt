@@ -375,6 +375,16 @@ def get_camera_dir(args):
 #     return get_parent_fol(get_user_fol())
 
 
+def get_user_fol():
+    root_fol = bpy.path.abspath('//')
+    user = get_user()
+    return op.join(root_fol, user)
+
+
+def get_user():
+    return namebase(bpy.data.filepath).split('_')[0]
+
+
 def get_real_atlas_name(atlas, csv_fol='', short_name=False):
     if csv_fol == '':
         csv_fol = get_mmvt_dir()
@@ -494,6 +504,14 @@ def other_hemi(hemi):
         return 'inflated_lh' if hemi == 'inflated_rh' else 'inflated_rh'
     else:
         return 'lh' if hemi == 'rh' else 'rh'
+
+
+def waits_for_file(fname):
+    import time
+    log_exist = op.isfile(fname)
+    while not log_exist:
+        log_exist = op.isfile(fname)
+        time.sleep(.1)
 
 
 if __name__ == '__main__':

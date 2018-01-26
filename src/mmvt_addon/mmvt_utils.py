@@ -1782,12 +1782,18 @@ def remove_hemi_template(template):
 
 def get_hemi_from_full_fname(fname):
     folder = namebase(fname)
+    full_fname = fname
     hemi = get_hemi_from_fname(folder)
     while hemi == '' and folder != '':
         fname = get_parent_fol(fname)
         folder = fname.split(op.sep)[-1]
         hemi = get_hemi_from_fname(folder)
-    return hemi
+    if hemi != '':
+        other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
+        hemis_fnames = {hemi: full_fname, other_hemi(hemi): other_hemi_fname}
+    else:
+        hemis_fnames = {'rh':'', 'lh':''}
+    return hemi, hemis_fnames
 
 
 def get_label_for_full_fname(fname, delim='-'):
@@ -1804,22 +1810,26 @@ def get_label_for_full_fname(fname, delim='-'):
     return '{}.{}'.format(build_label_name(hemi_delim, pos, delim.join(names), hemi), fname_file_type)
 
 
-def get_both_hemis_files(fname, hemi=''):
-    if hemi == '':
-        hemi = get_hemi_from_fname(namebase(fname))
+def get_both_hemis_files(fname):
+    # if hemi == '':
+    #     hemi = get_hemi_from_fname(namebase(fname))
+    # if hemi == '':
+    #     print("Can't find the file's hemi! {}".format(fname))
+    #     return {'rh': '', 'lh': ''}
+    full_fname = fname
+    # if hemi != '':
+    #     other_hemi_fname = op.join(get_parent_fol(fname), get_other_hemi_label_name(fname))
+    # else:
+    hemi = ''
+    folder = get_parent_fol(fname)
+    while hemi == '' and folder != '':
+        fname = get_parent_fol(fname)
+        folder = fname.split(op.sep)[-1]
+        hemi = get_hemi_from_fname(folder)
     if hemi == '':
         print("Can't find the file's hemi! {}".format(fname))
         return {'rh': '', 'lh': ''}
-    full_fname = fname
-    if hemi != '':
-        other_hemi_fname = op.join(get_parent_fol(fname), get_other_hemi_label_name(fname))
-    else:
-        folder = get_parent_fol(fname)
-        while hemi == '' and folder != '':
-            fname = get_parent_fol(fname)
-            folder = fname.split(op.sep)[-1]
-            hemi = get_hemi_from_fname(folder)
-        other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
+    other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
     return {hemi: full_fname, other_hemi(hemi): other_hemi_fname}
 
 

@@ -68,6 +68,7 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
         # _addon().s.colorbar_max = max_val
         # _addon().s.colorbar_min = min_val
         ColorbarPanel.init = init
+        lock_colorbar_values(True)
     else:
         print('set_colorbar_max_min: ax_val < min_val!')
 

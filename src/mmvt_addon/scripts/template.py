@@ -24,6 +24,8 @@ def read_args(argv=None):
 
 def do_something(subject_fname):
     args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     mmvt = su.init_mmvt_addon()
     # Call mmvt functions
     su.save_blend_file(subject_fname)

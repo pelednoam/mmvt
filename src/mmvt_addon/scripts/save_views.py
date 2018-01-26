@@ -13,33 +13,27 @@ except:
     import scripts_utils as su
 
 
-def wrap_blender_call():
-    args = read_args()
-    # todo: check args
+def pre_blender_call(args):
     if args.output_path == '':
         mmvt_dir = su.get_link_dir(su.get_links_dir(), 'mmvt')
         args.output_path = op.join(mmvt_dir, args.subject, 'figures')
     su.make_dir(args.output_path)
-    log_fname = op.join(args.output_path, 'save_views.log')
-    images_fname = op.join(args.output_path, 'images_names.txt')
-    if op.isfile(log_fname):
-        os.remove(log_fname)
+    args.log_fname = op.join(args.output_path, 'mmvt_calls.log')
+    args.images_log_fname = op.join(args.output_path, 'images_names.txt')
+    if op.isfile(args.log_fname):
+        os.remove(args.log_fname)
+    return args
 
+
+def wrap_blender_call():
+    args = read_args()
+    # todo: check args
+    args = pre_blender_call(args)
     su.call_script(__file__, args, run_in_background=False)
-
-    if args.add_cb or args.join_hemis:
-        log_exist = op.isfile(log_fname)
-        while not log_exist:
-            log_exist = op.isfile(log_fname)
-            time.sleep(.1)
-        with open(images_fname, 'r') as text_file:
-            images_names = text_file.readlines()
-        images_names = [l.strip() for l in images_names]
-        post_script(args, images_names)
+    post_blender_call(args)        
 
 
-def add_args():
-    parser = su.add_default_args()
+def add_args(parser):
     parser.add_argument('--hemi', help='hemis ("rh", "lh", "rh,lh" or "both" (default))', required=False, default='both',
                         type=su.str_arr_type)
     parser.add_argument('--rot_lh_axial', help='Rotate lh to allign with rh in axial view (default False)',
@@ -66,19 +60,28 @@ def add_args():
                         type=su.float_arr_type)
     parser.add_argument('--background_color', help='Set the background color in solid mode (default black)',
                         required=False, default='0,0,0', type=su.float_arr_type)
+
+    parser.add_argument('--log_fname', help='For inner usage', required=False, default='', type=str)
+    parser.add_argument('--images_log_fname', help='For inner usage', required=False, default='', type=str)
     return parser
 
 
 def read_args(argv=None):
-    parser = add_args()
+    parser = su.add_default_args()
+    parser = add_args(parser)
     return su.parse_args(parser, argv)
 
 
-def save_views(subject_fname):
+def wrap_mmvt_calls(subject_fname):
     args = read_args(su.get_python_argv())
     if args.debug:
         su.debug()
     mmvt = su.init_mmvt_addon()
+    mmvt_calls(mmvt, args, subject_fname)
+    su.exit_blender()
+
+
+def mmvt_calls(mmvt, args, subject_fname):
     mmvt.set_render_output_path(args.output_path)
     views = [int(v)-1 for v in args.views]
     if args.sub == 1:
@@ -100,8 +103,7 @@ def save_views(subject_fname):
             if args.sub == 3:
                 mmvt.hide_subcorticals()
         if hemi == 'both':
-            su.get_hemi_obj('rh').hide = False
-            su.get_hemi_obj('lh').hide = False
+            mmvt.show_hemis()
             if args.sub == 3:
                 mmvt.show_subcorticals()
         if surface == 'pial':
@@ -113,19 +115,25 @@ def save_views(subject_fname):
             views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name, rot_lh_axial=args.rot_lh_axial,
             render_images=args.render_images, quality=args.render_quality)
         all_images_names.extend(images_names)
-    with open(op.join(args.output_path, 'images_names.txt'), 'w') as text_file:
+
+    with open(args.images_log_fname, 'w') as text_file:
         for image_fname in all_images_names:
             print(image_fname, file=text_file)
-    with open(op.join(args.output_path, 'save_views.log'), 'w') as text_file:
+    with open(args.log_fname, 'w') as text_file:
         print(args, file=text_file)
-    su.exit_blender()
 
 
-def post_script(args, images_names):
+def post_blender_call(args):
+    if not args.add_cb and not args.join_hemis:
+        return
+    
     from src.utils import figures_utils as fu
     from src.utils import utils
 
-    print('post script')
+    su.waits_for_file(args.log_fname)
+    with open(args.images_log_fname, 'r') as text_file:
+        images_names = text_file.readlines()
+    images_names = [l.strip() for l in images_names]
     data_max, data_min = list(map(float, args.cb_vals))
     ticks = list(map(float, args.cb_ticks)) if args.cb_ticks is not None else None
     background = args.background_color # '#393939'
@@ -167,6 +175,5 @@ if __name__ == '__main__':
     if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
         wrap_blender_call()
     else:
-        # su.debug()
-        save_views(sys.argv[1])
+        wrap_mmvt_calls(sys.argv[1])
 

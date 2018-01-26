@@ -562,6 +562,10 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #                       filepath=image_name)  # export it to this location
 
 
+def get_output_path():
+    return bpy.path.abspath(bpy.context.scene.output_path)
+
+
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0):
     if views is None:
         views = _addon().ANGLES_DICT.keys()

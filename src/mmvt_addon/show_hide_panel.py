@@ -135,8 +135,10 @@ def show_hide_hemi(val, hemi):
 
 
 def show_hemis():
-    for obj_name in ['rh', 'lh', 'Cortex-inflated-rh', 'Cortex-inflated-lh']:
-        show_hide_hierarchy(False, obj_name)
+    for hemi in mu.HEMIS:
+        show_hide_hemi(False, hemi)
+    # for obj_name in ['Cortex-inflated-rh', 'Cortex-inflated-lh']: # 'rh', 'lh'
+    #     show_hide_hierarchy(False, obj_name)
 
 
 def hide_obj(obj, val=True):
