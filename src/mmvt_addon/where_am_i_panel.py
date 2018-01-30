@@ -325,13 +325,17 @@ def find_closest_label():
     hemi = 'rh' if 'rh' in hemi else 'lh'
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
-    labels = mu.read_labels_from_annot(annot_fname)
-    vert_labels = [l for l in labels if vertex_ind in l.vertices]
-    if len(vert_labels) > 0:
-        label = vert_labels[0]
-        bpy.context.scene.closest_label_output = label.name
-        return label.name, hemi
+    if op.isfile(annot_fname):
+        labels = mu.read_labels_from_annot(annot_fname)
+        vert_labels = [l for l in labels if vertex_ind in l.vertices]
+        if len(vert_labels) > 0:
+            label = vert_labels[0]
+            bpy.context.scene.closest_label_output = label.name
+            return label.name, hemi
+        else:
+            return 'unknown', hemi
     else:
+        # todo: maybe we should return something else here...
         return 'unknown', hemi
 
 
