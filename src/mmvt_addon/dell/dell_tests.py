@@ -277,6 +277,14 @@ def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, br
     plt.show()
 
 
+def point_in_surface_cylinder(subject, mmvt_dir, user_fol, radius_sq):
+    verts_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_{hemi}.pkl')
+    verts = fect.read_pial_verts(user_fol)
+    pt1, pt2 = [], []
+    hemi = 'rh'
+    dists = cdist([pt1, pt2], verts[hemi])
+
+
 if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
@@ -324,4 +332,5 @@ if __name__ == '__main__':
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
-    check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
+    # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
+    check_point_in_surface_cylinder()

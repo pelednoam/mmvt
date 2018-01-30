@@ -1,7 +1,9 @@
 import os
 import os.path as op
 import nibabel as nib
+import numpy as np
 import shutil
+from scipy import ndimage
 
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
@@ -106,3 +108,61 @@ def get_data_and_header(subject, mmvt_dir, subjects_dir, ct_name='ct_reg_to_mr.m
     header = nib.load(fname)
     data = header.get_data()
     return data, header
+
+
+def isotropization(ct_fname, isotropization_type=1, iso_vector_override=None):
+    ct =  nib.load(ct_fname)
+    ct_data = ct.get_data()
+    initial_shape = ct_data.shape
+    ct_new_data, iso_img = None, None
+    vox2ras = ct.affine
+
+    if isotropization_type == 1: #'By voxel':
+        max_axis = np.max(ct_data.shape)
+
+        # WARNING: this is not the true isotropization
+        # factor. To get the true isotropization factor we would have to
+        # trust the image to tell us its correct slice thickness.
+        # But this is usually a good approximation
+        zf = ct_data.shape / np.array([max_axis, max_axis, max_axis])
+        ct_new_data = ndimage.interpolation.zoom(ct_data, zf)
+
+    elif isotropization_type == 2: #'By header':
+        # check orientation
+        rd, ad, sd = get_std_orientation(vox2ras)
+        vox2ras_rstd = np.array(list(map(lambda ix: np.squeeze(vox2ras[ix, :3]), (rd, ad, sd))))
+        vox2ras_dg = np.abs(np.diag(vox2ras_rstd)[:3])
+        min_axis = np.min(vox2ras_dg)
+        max_axis = np.max(vox2ras_dg)
+        # zf = vox2ras_dg / min_axis
+        zf = vox2ras_dg/ max_axis
+        # zf = min_axis / vox2ras_dg
+        if np.all(zf == 1):
+            print('CT header is isotropic, no linearization to do')
+        else:
+            ct_new_data = ndimage.interpolation.zoom(ct_data, zf)
+            # ct_new_data = ct_data
+
+    elif isotropization_type == 3: #'Manual override':
+        initial_shape = ct_data.shape
+        zf = np.array(iso_vector_override)
+        if np.all(zf == 1):
+            print('CT header is isotropic, no linearization to do')
+        else:
+            ct_new_data = ndimage.interpolation.zoom(ct_data, zf)
+
+    if ct_new_data is not None:
+        new_shape = ct_new_data.shape
+        # for i in range(3):
+        #     vox2ras[i,i] *= 1/zf[i]
+        print('Inital CT shape:{}, new shape:{}'.format(initial_shape, new_shape))
+        iso_img = nib.Nifti1Image(ct_new_data, vox2ras, ct.header)
+
+    return iso_img
+
+
+def get_std_orientation(affine):
+    rd, = np.where(np.abs(affine[:,0]) == np.max(np.abs(affine[:,0])))
+    ad, = np.where(np.abs(affine[:,1]) == np.max(np.abs(affine[:,1])))
+    sd, = np.where(np.abs(affine[:,2]) == np.max(np.abs(affine[:,2])))
+    return (rd[0], ad[0], sd[0])

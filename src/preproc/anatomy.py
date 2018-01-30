@@ -1461,7 +1461,7 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     existing_freesurfer_annotations = ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
-    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz'],
+    args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz', 'brain.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',
                  'lh.sphere.reg', 'rh.sphere.reg'],

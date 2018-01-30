@@ -50,12 +50,17 @@ def ct_plot_lead_update(self, context):
 def find_electrodes_pipeline():
     user_fol = mu.get_user_fol()
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
-    print('find_voxels_above_threshold...')
-    ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
-    print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
-    print('Finding local maxima')
-    ct_voxels = fect.find_all_local_maxima(
-        DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
+    local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima.npy')
+    if True: #not op.isfile(local_maxima_fname):
+        print('find_voxels_above_threshold...')
+        ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
+        print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
+        print('Finding local maxima')
+        ct_voxels = fect.find_all_local_maxima(
+            DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
+        np.save(local_maxima_fname, ct_voxels)
+    else:
+        ct_voxels = np.load(local_maxima_fname)
     print('{} local maxima were found'.format(len(ct_voxels)))
     ct_voxels = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_voxels)
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
@@ -326,7 +331,7 @@ def check_if_outside_pial():
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
     voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
-        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), subject_fol, aseg, None,
+        voxels, DellPanel.ct.header, DellPanel.brain, subject_fol,
         bpy.context.scene.dell_brain_mask_sigma)
     indices_outside_brain = set(range(len(voxels))) - set(voxels_in_indices)
     for ind in indices_outside_brain:

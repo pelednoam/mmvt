@@ -51,6 +51,8 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
 
 def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_name='', threshold=-200,
                    cost_function='nmi', overwrite=False, print_only=False):
+    if op.isfile(op.join(SUBJECTS_DIR, subject, 'ct', ct_name)):
+        shutil.copy(op.join(SUBJECTS_DIR, subject, 'ct', ct_name), op.join(MMVT_DIR, subject, 'ct', ct_name))
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     if ct_name == '':
@@ -165,11 +167,25 @@ def save_electrodes_group_ct_pics(subject, voxels, group_name='', electrodes_nam
     return ret
 
 
+def isotropization(subject, ct_fname, ct_fol, new_image_fname='', isotropization_type=1, iso_vector_override=None):
+    if not op.isdir(ct_fol):
+        ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+    if new_image_fname == '':
+        new_image_fname = 'iso_ct.{}'.format(utils.file_type(ct_fname))
+    ct_fname = op.join(ct_fol, ct_fname)
+    iso_img = ctu.isotropization(ct_fname, isotropization_type=2, iso_vector_override=[2, 2, 1])
+    nib.save(iso_img, op.join(ct_fol, new_image_fname))
+
+
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'convert_ct_to_mgz'):
         flags['convert_ct_to_mgz'] = convert_ct_to_mgz(
             subject, args.ct_raw_input_fol, args.ct_fol, args.ct_org_name, args.overwrite, args.print_only,
             args.ask_before)
+
+    if utils.should_run(args, 'isotropization'):
+        flags['isotropization'] = isotropization(
+            subject, args.ct_org_name, args.ct_fol)
 
     if utils.should_run(args, 'register_to_mr'):
         flags['register_to_mr'] = register_to_mr(
