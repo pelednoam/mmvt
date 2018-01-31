@@ -174,7 +174,8 @@ def find_electrode_group(elc_ind, groups):
 
 
 @utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
-def get_electrodes_above_threshold(ct_data, ct_header, brain, threshold, user_fol, subject_fol):
+def get_electrodes_above_threshold(ct_data, ct_header, brain, threshold, user_fol, subject_fol, binary_erosion=True):
+    # ct_data = fect.binary_erosion(ct_data, threshold)
     print('find_voxels_above_threshold...')
     ct_voxels = fect.find_voxels_above_threshold(ct_data, threshold)
     print('{} voxels were found above {}'.format(len(ct_voxels), threshold))
@@ -184,10 +185,13 @@ def get_electrodes_above_threshold(ct_data, ct_header, brain, threshold, user_fo
     print('{} local maxima were found'.format(len(ct_voxels)))
     ct_voxels = fect.remove_neighbors_voexls(ct_data, ct_voxels)
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
+    #utils.plot_3d_scatter(ct_voxels)
+    utils.gradient_scatter3d(ct_voxels, ct_data)
     print('mask_voxels_outside_brain...')
-    ct_voxels, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, ct_header, brain, user_fol, subject_fol)
-    print('{} voxels in the brain were found'.format(len(ct_voxels)))
+    # ct_voxels, _ = fect.mask_voxels_outside_brain(
+    #     ct_voxels, ct_header, brain, user_fol, subject_fol)
+    # print('{} voxels in the brain were found'.format(len(ct_voxels)))
+
 
 
 def get_voxel_neighbors_ct_values(voxel, ct_data):
@@ -289,7 +293,7 @@ if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
     import matplotlib.pyplot as plt
-    subject = 'mg105' # 'nmr01183'
+    subject = 'nmr01209' #'mg105' # 'nmr01183'
     threshold_percentile = 99.9
     min_distance = 2.5
     error_r = 2
@@ -310,7 +314,7 @@ if __name__ == '__main__':
     ct_data = ct.get_data()
     brain = nib.load(brain_mask_fname)
     aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
-    threshold = np.percentile(ct_data, threshold_percentile)
+    threshold = 3000 # np.percentile(ct_data, threshold_percentile)
     print('threshold: {}'.format(threshold))
     output_fol = op.join(mmvt_dir, subject, 'ct', 'finding_electrodes_in_ct')
     user_fol = op.join(mmvt_dir, subject)
@@ -328,9 +332,9 @@ if __name__ == '__main__':
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
     # check_voxel_dist_to_dural([130, 85, 157], subject_fol, ct.header, brain.header, sigma=1)
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
-    # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
+    get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    check_point_in_surface_cylinder()
+    # check_point_in_surface_cylinder()
