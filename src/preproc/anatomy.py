@@ -1257,14 +1257,14 @@ def save_images_data_and_header(subject):
     return ret
 
 
-def create_skull_surfaces(subject):
+def create_skull_surfaces(subject, surfaces_fol_name='bem'):
     skull_fol = op.join(MMVT_DIR, subject, 'skull')
     utils.make_dir(skull_fol)
     errors = {}
     vertices_faces = defaultdict(list)
     for skull_surf in ['inner_skull', 'outer_skull']:
         ply_fname = op.join(skull_fol, '{}.ply'.format(skull_surf))
-        surf_fname = op.join(SUBJECTS_DIR, subject, 'bem', '{}.surf'.format(skull_surf))
+        surf_fname = op.join(SUBJECTS_DIR, subject, surfaces_fol_name, '{}.surf'.format(skull_surf))
         if op.isfile(surf_fname):
             verts, faces = nib_fs.read_geometry(surf_fname)
             utils.write_ply_file(verts, faces, ply_fname, True)
@@ -1404,7 +1404,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['calc_3d_atlas'] = calc_3d_atlas(subject, args.atlas, args.overwrite_aseg_file)
 
     if 'create_skull_surfaces' in args.function:
-        flags['create_skull_surfaces'] = create_skull_surfaces(subject)
+        flags['create_skull_surfaces'] = create_skull_surfaces(subject, args.skull_surfaces_fol_name)
 
     if 'check_labels' in args.function:
         flags['check_labels'] = check_labels(subject, args.atlas)
@@ -1457,6 +1457,7 @@ def read_cmd_args(argv=None):
 
     parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
     parser.add_argument('--slices_modality', help='', required=False, default='mri')
+    parser.add_argument('--skull_surfaces_fol_name', help='', required=False, default='bem')
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

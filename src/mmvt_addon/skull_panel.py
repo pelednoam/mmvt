@@ -11,7 +11,7 @@ def _addon():
 
 
 def thickness_arrows_update(self, context):
-    mu.show_hide_hierarchy(bpy.context.scene.thickness_arrows, 'thickness_arrows', also_parent=True, select=False)
+    mu.show_hide_hierarchy(bpy.context.scene.thickness_arrows, 'thickness_arrows_from_inner', also_parent=True, select=False)
 
 
 def cast_ray_source_update(self, context):

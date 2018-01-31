@@ -413,7 +413,7 @@ def appearance_draw(self, context):
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor')
+    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')

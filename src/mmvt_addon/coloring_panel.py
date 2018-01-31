@@ -420,6 +420,9 @@ def color_connections_labels_avg(override_current_mat=True):
 
 def color_connectivity_degree():
     corr = ColoringMakerPanel.static_conn
+    if corr.ndim != 2:
+        print('ColoringMakerPanel.static_conn has {} dim instead of 2!'.format(corr.ndim))
+        return
     threshold = bpy.context.scene.connectivity_degree_threshold
     labels = ColoringMakerPanel.connectivity_labels
     if bpy.context.scene.connectivity_degree_threshold_use_abs:
