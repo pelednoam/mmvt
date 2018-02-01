@@ -1081,7 +1081,24 @@ def calc_PCA(X, n_components=3):
     return X
 
 
-def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=None, legend_labels=[], title='', fname=''):
+def gradient_scatter3d(X, colors_data, colorsMap='hot', do_show=True):
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.cm as cmx
+    cm = plt.get_cmap(colorsMap)
+    cs = [colors_data[x, y, z] for x, y, z in zip(X[:, 0], X[:, 1], X[:, 2])]
+    cNorm = matplotlib.colors.Normalize(vmin=min(cs), vmax=max(cs))
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=scalarMap.to_rgba(cs))
+    scalarMap.set_array(cs)
+    fig.colorbar(scalarMap)
+    if do_show:
+        plt.show()
+
+
+def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=[], colors=None, legend_labels=[],
+                    title='', fname='', do_show=True):
     from mpl_toolkits.mplot3d import Axes3D, proj3d
     fig = plt.figure()
     ax = Axes3D(fig)
@@ -1117,7 +1134,8 @@ def plot_3d_scatter(X, names=None, labels=None, classifier=None, labels_indices=
         plt.title(title)
 
     if fname == '':
-        plt.show()
+        if do_show:
+            plt.show()
     else:
         plt.savefig(fname)
         plt.close()
