@@ -11,7 +11,12 @@ def _addon():
 
 
 def thickness_arrows_update(self, context):
-    mu.show_hide_hierarchy(bpy.context.scene.thickness_arrows, 'thickness_arrows_from_inner', also_parent=True, select=False)
+    if bpy.context.scene.cast_ray_source == 'inner':
+        mu.show_hide_hierarchy(
+            bpy.context.scene.thickness_arrows, 'thickness_arrows_from_inner', also_parent=True, select=False)
+    else:
+        mu.show_hide_hierarchy(
+            bpy.context.scene.thickness_arrows, 'thickness_arrows_from_outer', also_parent=True, select=False)
 
 
 def cast_ray_source_update(self, context):
@@ -86,6 +91,8 @@ def import_plane():
         skull_plane = bpy.context.selected_objects[0]
         skull_plane.select = True
         bpy.ops.object.shade_smooth()
+        bpy.ops.mesh.uv_texture_add()
+        skull_plane.data.uv_textures['UVMap'].data[0].image = bpy.data.images['neuropace.jpg']
         skull_plane.active_material = bpy.data.materials['Activity_map_mat']
         skull_plane.name = 'skull_plane'
         skull_plane.parent = bpy.data.objects[emptys_name]
@@ -95,6 +102,7 @@ def import_plane():
     skull_plane.rotation_mode = 'XYZ'
     skull_plane.rotation_euler[0] = skull_plane.rotation_euler[1] = 0
     skull_plane.rotation_euler[2] = -math.pi / 2
+
     # align_plane(False)
 
 
@@ -205,7 +213,7 @@ def align_plane(to_cursor):
     plane.rotation_quaternion = dir_vec.to_track_quat('Z','Y')
     if not to_cursor:
         bpy.context.scene.cursor_location = vertex_co
-    plane.location = bpy.context.scene.cursor_location + vert_normal * 0.5
+    plane.location = bpy.context.scene.cursor_location + vert_normal * -0.5 # to point outside
 
     # for space in mu.get_3d_spaces(only_neuro=True):
     #     space.region_3d.view_matrix = plane.rotation_quaternion.to_matrix().to_4x4()
@@ -233,7 +241,7 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
     mat = omwi * imw
 
     o = mat * direction_vert.co
-    n = mat * (direction_vert.co + direction_vert.normal) - o
+    n = mat * (direction_vert.co + direction_vert.normal * -1) - o
     hit, loc, norm, index = plane.ray_cast(o, n)
     if hit:
         if plot_directional_arrow:
@@ -247,7 +255,7 @@ def get_plane_values(direction_vert=None, plot_arrows=False, plot_directional_ar
     vertices = skull.data.vertices
     for vert_ind, vert in enumerate(vertices):
         o = mat * vert.co
-        n = mat * (vert.co + direction_vert.normal) - o
+        n = mat * (vert.co + direction_vert.normal * -1) - o
         hit, loc, norm, index = plane.ray_cast(o, n)
         if hit:
             length = abs((omw * loc - omw * o).length * factor)
@@ -301,8 +309,8 @@ def ray_cast(from_inner=True, create_thickness_arrows=None):
     for vert_ind, vert in enumerate(vertices):
         o = mat * vert.co
         n = mat * (vert.co + vert.normal) - o
-        if not from_inner:
-            n *= -1
+        # if not from_inner:
+        #     n *= -1
         hit, loc, norm, index = ray_obj.ray_cast(o, n)
         if hit:
             # print('{}/{} hit {} on face {}'.format(vert_ind, N, 'outer' if from_inner else 'innner', index))
@@ -419,7 +427,7 @@ class CalcThickness(bpy.types.Operator):
     def invoke(self, context, event=None):
         # fix_normals()
         for inner in [True, False]:
-            ray_cast(inner, inner and bpy.context.scene.create_thickness_arrows)
+            ray_cast(inner, bpy.context.scene.create_thickness_arrows) # and inner and )
         return {'PASS_THROUGH'}
 
 

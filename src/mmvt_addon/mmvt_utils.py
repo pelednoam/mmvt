@@ -2144,8 +2144,21 @@ def file_modification_time(fname):
     return datetime.fromtimestamp(mtime)
 
 
-def apply_trans(trans, point):
-    return np.dot(trans, np.append(point, 1))[:3]
+def apply_trans(trans, points):
+    # return np.dot(trans, np.append(point, 1))[:3]
+    if len(points) == 0:
+        return []
+    if isinstance(points, list):
+        points = np.array(points)
+    ndim = points.ndim
+    if ndim == 1:
+        points = np.array([points])
+    points = np.hstack((points, np.ones((len(points), 1))))
+    points = np.dot(trans, points.T).T
+    points = points[:, :3]
+    if ndim == 1:
+        points = points[0]
+    return points
 
 
 def remove_file(fname, raise_error_if_does_not_exist=False):

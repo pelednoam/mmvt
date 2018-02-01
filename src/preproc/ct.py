@@ -26,25 +26,28 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
             return True
         else:
             os.remove(output_fname)
-    if not op.isdir(ct_raw_input_fol):
-        print(f'{ct_fol} does not exist!')
-        return False
-    ct_files = glob.glob(op.join(ct_raw_input_fol, '*.dcm'))
-    if len(ct_files) == 0:
-        sub_folders = [d for d in glob.glob(op.join(ct_raw_input_fol, '*')) if op.isdir(d)]
-        if len(sub_folders) == 0:
-            print(f'Cannot find CT files in {ct_raw_input_fol}!')
+    if op.isfile(op.join(SUBJECTS_DIR, subject, 'ct', 'ct.nii.gz')):
+        ct_files = [op.join(SUBJECTS_DIR, subject, 'ct', 'ct.nii.gz')]
+    else:
+        if not op.isdir(ct_raw_input_fol):
+            print(f'{ct_fol} does not exist!')
             return False
-        fol = utils.select_one_file(sub_folders, '', 'CT', is_dir=True)
-        ct_files = glob.glob(op.join(fol, '*.dcm'))
+        ct_files = glob.glob(op.join(ct_raw_input_fol, '*.dcm'))
         if len(ct_files) == 0:
-            print(f'Cannot find CT files in {fol}!')
-            return False
-    ct_files.sort(key=op.getmtime)
-    if ask_before:
-        ret = input(f'convert {ct_files[0]} to {output_fname}? ')
-        if not au.is_true(ret):
-            return False
+            sub_folders = [d for d in glob.glob(op.join(ct_raw_input_fol, '*')) if op.isdir(d)]
+            if len(sub_folders) == 0:
+                print(f'Cannot find CT files in {ct_raw_input_fol}!')
+                return False
+            fol = utils.select_one_file(sub_folders, '', 'CT', is_dir=True)
+            ct_files = glob.glob(op.join(fol, '*.dcm'))
+            if len(ct_files) == 0:
+                print(f'Cannot find CT files in {fol}!')
+                return False
+        ct_files.sort(key=op.getmtime)
+        if ask_before:
+            ret = input(f'convert {ct_files[0]} to {output_fname}? ')
+            if not au.is_true(ret):
+                return False
     fu.mri_convert(ct_files[0], output_fname, print_only=print_only)
     return True if print_only else op.isfile(output_fname)
 
@@ -183,7 +186,7 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.ct_raw_input_fol, args.ct_fol, args.ct_org_name, args.overwrite, args.print_only,
             args.ask_before)
 
-    if utils.should_run(args, 'isotropization'):
+    if 'isotropization' in args.function:
         flags['isotropization'] = isotropization(
             subject, args.ct_org_name, args.ct_fol)
 

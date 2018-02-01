@@ -387,7 +387,7 @@ def update_slices(modality='mri', ratio=1, images=None):
     #     necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
     # elif modality == 'ct':
     #     necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
-    necessary_images = set(['axial.png', 'coronal.png', 'sagital.png', 'Render Result'])
+    necessary_images = set(['axial.png', 'coronal.png', 'sagital.png', 'Render Result', 'device.jpg'])
     extra_images = set([img.name for img in bpy.data.images]) - necessary_images
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name])

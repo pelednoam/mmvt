@@ -1257,16 +1257,20 @@ def save_images_data_and_header(subject):
     return ret
 
 
-def create_skull_surfaces(subject, surfaces_fol_name='bem'):
+def create_skull_surfaces(subject, surfaces_fol_name='bem', verts_in_ras=True):
     skull_fol = op.join(MMVT_DIR, subject, 'skull')
     utils.make_dir(skull_fol)
     errors = {}
     vertices_faces = defaultdict(list)
+    t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
     for skull_surf in ['inner_skull', 'outer_skull']:
         ply_fname = op.join(skull_fol, '{}.ply'.format(skull_surf))
         surf_fname = op.join(SUBJECTS_DIR, subject, surfaces_fol_name, '{}.surf'.format(skull_surf))
         if op.isfile(surf_fname):
             verts, faces = nib_fs.read_geometry(surf_fname)
+            if verts_in_ras:
+                vox = utils.apply_trans(np.linalg.inv(t1_header.get_vox2ras()), verts)
+                verts = utils.apply_trans(t1_header.get_vox2ras_tkr(), vox)
             utils.write_ply_file(verts, faces, ply_fname, True)
             faces_verts_fname = op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))
             errors = utils.calc_ply_faces_verts(
@@ -1283,7 +1287,7 @@ def create_skull_surfaces(subject, surfaces_fol_name='bem'):
         for k, message in errors.items():
             print('{}: {}'.format(k, message))
 
-    return all([op.isfile(op.join(SUBJECTS_DIR, subject, 'bem', '{}.ply'.format(skull_surf))) and \
+    return all([op.isfile(op.join(SUBJECTS_DIR, subject, surfaces_fol_name, '{}.ply'.format(skull_surf))) and \
                 op.isfile(op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))) \
                 for skull_surf in ['inner_skull', 'outer_skull']])
 
