@@ -20,7 +20,7 @@ def test2(ct_data, ct_header, brain, aseg, threshold, min_distance):
     ct_voxels = fect.find_voxels_above_threshold(ct_data, threshold)
     ct_voxels = fect.mask_voxels_outside_brain(ct_voxels, ct_header, brain, aseg)
     voxels = fect.find_all_local_maxima(ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
-    voxels = fect.remove_neighbors_voexls(ct_data, voxels)
+    voxels = fect.remove_neighbors_voxels(ct_data, voxels)
     print('asdf')
 
 
@@ -183,14 +183,16 @@ def get_electrodes_above_threshold(ct_data, ct_header, brain, threshold, user_fo
     ct_voxels = fect.find_all_local_maxima(
         ct_data, ct_voxels, threshold, find_nei_maxima=True, max_iters=100)
     print('{} local maxima were found'.format(len(ct_voxels)))
-    ct_voxels = fect.remove_neighbors_voexls(ct_data, ct_voxels)
+    ct_voxels = fect.remove_neighbors_voxels(ct_data, ct_voxels)
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     #utils.plot_3d_scatter(ct_voxels)
-    utils.gradient_scatter3d(ct_voxels, ct_data)
+    # utils.gradient_scatter3d(ct_voxels, ct_data)
     print('mask_voxels_outside_brain...')
-    # ct_voxels, _ = fect.mask_voxels_outside_brain(
-    #     ct_voxels, ct_header, brain, user_fol, subject_fol)
-    # print('{} voxels in the brain were found'.format(len(ct_voxels)))
+    ct_voxels, _ = fect.mask_voxels_outside_brain(
+        ct_voxels, ct_header, brain, subject_fol, sigma=1)
+    print('{} voxels in the brain were found'.format(len(ct_voxels)))
+    utils.gradient_scatter3d(ct_voxels, ct_data)
+    print('asdf')
 
 
 

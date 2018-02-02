@@ -64,13 +64,12 @@ def find_electrodes_pipeline():
     else:
         ct_voxels = np.load(local_maxima_fname)
     print('{} local maxima were found'.format(len(ct_voxels)))
-    ct_voxels = fect.remove_neighbors_voexls(DellPanel.ct_data, ct_voxels)
+    ct_voxels = fect.remove_neighbors_voxels(DellPanel.ct_data, ct_voxels)
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     print('mask_voxels_outside_brain...')
-    # ct_electrodes, _ = fect.mask_voxels_outside_brain(
-    #     ct_voxels, DellPanel.ct.header, DellPanel.brain, subject_fol, bpy.context.scene.dell_brain_mask_sigma,
-    #     bpy.context.scene.use_only_brain_mask)
-    ct_electrodes = ct_voxels
+    ct_electrodes, _ = fect.mask_voxels_outside_brain(
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, subject_fol, bpy.context.scene.dell_brain_mask_sigma,
+        bpy.context.scene.use_only_brain_mask)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
@@ -220,6 +219,21 @@ def name_electrodes(elctrodes_hemis):
 def delete_electrodes():
     clear_groups()
     mu.delete_hierarchy('Deep_electrodes')
+
+
+def delete_electrodes_from_selection():
+    for obj in bpy.context.selected_objects:
+        if obj.parent.name != 'Deep_electrodes':
+            obj.selected = False
+    selected_electrodes_indices = [DellPanel.names.index(obj.name) for obj in bpy.context.selected_objects]
+    elcs_pos = [DellPanel.pos[ind] for ind in selected_electrodes_indices]
+    elcs_ct_voxels = np.rint(fect.t1_ras_tkr_to_ct_voxels(elcs_pos, DellPanel.ct.header, DellPanel.brain.header)).astype(int)
+    ct_int = [DellPanel.ct_data[tuple(vox)] for vox in elcs_ct_voxels]
+    print('CT int of selected electrodes: {}'.format(ct_int))
+    max_ct_int_ind = np.argmin(ct_int)
+    print('{} has the highest CT int: {}'.format(DellPanel.names[max_ct_int_ind], max(ct_int)))
+    bpy.context.selected_objects[max_ct_int_ind].select = False
+    bpy.ops.object.delete()
 
 
 def calc_threshold_precentile():
@@ -438,6 +452,8 @@ def dell_draw(self, context):
         layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+    if len(bpy.context.selected_objects) > 1:
+        layout.operator(DeleteElectrodesFromGroup.bl_idname, text="Leave highest CT int", icon='CANCEL')
     if electrode_with_group_selected:
         row = layout.row(align=0)
         row.operator(NextCTElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
@@ -670,6 +686,17 @@ class DeleteElectrodes(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+
+class DeleteElectrodesFromGroup(bpy.types.Operator):
+    bl_idname = "mmvt.delete_electrodes_from_selection"
+    bl_label = "delete_electrodes_from_selection"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        delete_electrodes_from_selection()
+        return {'PASS_THROUGH'}
+
+
 class InstallReqs(bpy.types.Operator):
     bl_idname = "mmvt.install_dell_reqs"
     bl_label = "install_dell_reqs"
@@ -861,6 +888,7 @@ def register():
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
+        bpy.utils.register_class(DeleteElectrodesFromGroup)
         bpy.utils.register_class(ModalDellTimerOperator)
     except:
         print("Can't register Dell Panel!")
@@ -884,6 +912,7 @@ def unregister():
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
         bpy.utils.unregister_class(DeleteElectrodes)
+        bpy.utils.unregister_class(DeleteElectrodesFromGroup)
         bpy.utils.unregister_class(ModalDellTimerOperator)
     except:
         pass
