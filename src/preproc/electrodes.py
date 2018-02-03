@@ -1039,6 +1039,10 @@ def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=Non
     return electrodes_fname
 
 
+def snap_electrodes_to_dural(subject, electrodes_group_name):
+    pass
+
+
 def set_args(args):
     # todo: fix this part!
     # if args.to_t.isnumeric() and args.from_t.isnumeric():

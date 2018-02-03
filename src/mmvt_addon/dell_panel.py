@@ -85,6 +85,13 @@ def find_electrodes_pipeline():
     _addon().show_electrodes()
 
 
+def refresh_pos_and_names():
+    objects = bpy.data.objects['Deep_electrodes'].children
+    DellPanel.names = [o.name for o in objects]
+    DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
+    DellPanel.groups = []
+
+
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrode_lead():
     if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
@@ -435,6 +442,7 @@ def dell_draw(self, context):
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         # if len(bpy.context.selected_objects) == 1:
         #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
+        layout.operator(RefreshElectrodesObjects.bl_idname, text="Refresh", icon='OUTLINER_OB_FORCE_FIELD')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             if not electrode_with_group_selected:
                 layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
@@ -584,6 +592,17 @@ class OpenInteractiveCTViewer(bpy.types.Operator):
     def invoke(self, context, event=None):
         open_interactive_ct_viewer()
         return {'PASS_THROUGH'}
+
+
+class RefreshElectrodesObjects(bpy.types.Operator):
+    bl_idname = "mmvt.refresh_pos_and_names"
+    bl_label = "refresh_pos_and_names"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        refresh_pos_and_names()
+        return {'PASS_THROUGH'}
+
 
 class FindElectrodeLead(bpy.types.Operator):
     bl_idname = "mmvt.find_electrode_lead"
@@ -889,6 +908,7 @@ def register():
         bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
         bpy.utils.register_class(DeleteElectrodesFromGroup)
+        bpy.utils.register_class(RefreshElectrodesObjects)
         bpy.utils.register_class(ModalDellTimerOperator)
     except:
         print("Can't register Dell Panel!")
@@ -913,6 +933,7 @@ def unregister():
         bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
         bpy.utils.unregister_class(DeleteElectrodes)
         bpy.utils.unregister_class(DeleteElectrodesFromGroup)
+        bpy.utils.unregister_class(RefreshElectrodesObjects)
         bpy.utils.unregister_class(ModalDellTimerOperator)
     except:
         pass
