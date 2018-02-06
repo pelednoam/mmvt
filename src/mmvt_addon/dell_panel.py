@@ -9,6 +9,7 @@ import os
 import random
 import traceback
 import time
+import csv
 from itertools import cycle
 import mmvt_utils as mu
 from scripts import scripts_utils as su
@@ -90,6 +91,35 @@ def refresh_pos_and_names():
     DellPanel.names = [o.name for o in objects]
     DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
     DellPanel.groups = []
+
+
+def export_electrodes(group_hemi_default='G'):
+    output_fol = op.join(mu.get_user_fol(), 'electrodes')
+    subject = mu.get_user()
+    if len(DellPanel.groups) > 0:
+        groups = DellPanel.groups
+    else:
+        groups = [[k for k, o in enumerate(_addon().electrodes_panel_parent_obj.children)]]
+        group_hemi = group_hemi_default
+    csv_fname = op.join(output_fol, '{}_RAS.csv'.format(subject))
+    for fname in glob.glob(op.join(output_fol, '*.dat')):
+        os.remove(fname)
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE)
+        wr.writerow(['Electrode Name','R','A','S'])
+        groups_inds = {'R':0, 'L':0}
+        for group in groups:
+            # DellPanel.hemis
+            group_hemi = 'R' if group_hemi == 'rh' else 'L' if group_hemi == 'lh' else group_hemi_default
+            if group_hemi in groups_inds:
+                group_name = '{}G{}'.format(group_hemi, chr(ord('A') + groups_inds[group_hemi]))
+            else:
+                group_name = group_hemi_default
+            elcs_names = ['{}{}'.format(group_name, k+1) for k in range(len(group))]
+            for ind, elc_ind in enumerate(group):
+                wr.writerow([elcs_names[ind], *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
+            if group_hemi in groups_inds:
+                groups_inds[group_hemi] += 1
 
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
@@ -460,6 +490,7 @@ def dell_draw(self, context):
         layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+        layout.operator(ExportDellElectrodes.bl_idname, text="Export electrodes", icon='EXPORT')
     if len(bpy.context.selected_objects) > 1:
         layout.operator(DeleteElectrodesFromGroup.bl_idname, text="Leave highest CT int", icon='CANCEL')
     if electrode_with_group_selected:
@@ -695,6 +726,16 @@ class SaveCTElectrodesFigures(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ExportDellElectrodes(bpy.types.Operator):
+    bl_idname = "mmvt.export_dell_electrodes"
+    bl_label = "export_dell_electrodes"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        export_electrodes()
+        return {'PASS_THROUGH'}
+
+
 class DeleteElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.delete_electrodes"
     bl_label = "delete_electrodes"
@@ -703,7 +744,6 @@ class DeleteElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         delete_electrodes()
         return {'PASS_THROUGH'}
-
 
 
 class DeleteElectrodesFromGroup(bpy.types.Operator):
@@ -908,6 +948,7 @@ def register():
         bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
         bpy.utils.register_class(DeleteElectrodesFromGroup)
+        bpy.utils.register_class(ExportDellElectrodes)
         bpy.utils.register_class(RefreshElectrodesObjects)
         bpy.utils.register_class(ModalDellTimerOperator)
     except:
@@ -933,6 +974,7 @@ def unregister():
         bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
         bpy.utils.unregister_class(DeleteElectrodes)
         bpy.utils.unregister_class(DeleteElectrodesFromGroup)
+        bpy.utils.unregister_class(ExportDellElectrodes)
         bpy.utils.unregister_class(RefreshElectrodesObjects)
         bpy.utils.unregister_class(ModalDellTimerOperator)
     except:

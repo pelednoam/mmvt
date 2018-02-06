@@ -24,7 +24,6 @@ STAT_AVG, STAT_DIFF = range(2)
 STAT_NAME = {STAT_DIFF: 'diff', STAT_AVG: 'avg'}
 DEPTH, GRID = range(2)
 
-locating_file = None
 
 def montage_to_npy(montage_file, output_file):
     sfp = mne.channels.read_montage(montage_file)
@@ -637,7 +636,7 @@ def fix_channles_names(edf_raw, data_channels):
 
 def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
-    edf_fname, _ = locating_file(args.raw_fname, '*.edf')
+    edf_fname, _ = utils.locating_file(args.raw_fname, '*.edf', op.join(ELECTRODES_DIR, subject))
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
     edf_raw = mne.io.read_raw_edf(edf_fname, preload=args.preload)
@@ -1091,9 +1090,6 @@ def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     args = set_args(args)
-
-    global locating_file
-    locating_file = partial(utils.locating_file, parent_fol=op.join(ELECTRODES_DIR, subject))
 
     if utils.should_run(args, 'convert_electrodes_pos'):
         flags['convert_electrodes_pos'], _, _ = convert_electrodes_pos(
