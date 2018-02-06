@@ -675,7 +675,7 @@ def get_fname_folder(fname):
     return op.sep.join(fname.split(op.sep)[:-1])
 
 
-def namesbase_with_ext(fname):
+def namebase_with_ext(fname):
     return fname.split(op.sep)[-1]
 
 

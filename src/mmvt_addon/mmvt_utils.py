@@ -172,7 +172,7 @@ def namebase(fname):
 #     return op.splitext(op.basename(file_name))[0]
 
 
-def namesbase_with_ext(fname):
+def namebase_with_ext(fname):
     return fname.split(op.sep)[-1]
 
 
@@ -2007,7 +2007,7 @@ def read_labels_from_annot(annot_fname):
         The labels, sorted by label name (ascending).
     """
     labels = list()
-    hemi = get_hemi_from_fname(namesbase_with_ext(annot_fname))
+    hemi = get_hemi_from_fname(namebase_with_ext(annot_fname))
     annot, ctab, label_names = _read_annot(annot_fname)
     label_rgbas = ctab[:, :4]
     label_ids = ctab[:, -1]

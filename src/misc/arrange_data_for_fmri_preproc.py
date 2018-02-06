@@ -145,7 +145,7 @@ def copy_fmri_ts_files(subjects, delete_previous_files=True):
         if len(ts_files) == 0:
             print('No ts files for {}!'.format(sub))
         for ts_file in ts_files:
-            target_fname = op.join(FMRI_DIR, sub, utils.namesbase_with_ext(ts_file))
+            target_fname = op.join(FMRI_DIR, sub, utils.namebase_with_ext(ts_file))
             if delete_previous_files:
                 for old_fname in glob.glob(op.join(FMRI_DIR, sub, '*laus125_*.txt')):
                     os.remove(old_fname)

@@ -108,7 +108,7 @@ def calc_per_session(subject, condition, ctf_raw_data, inverse_method, args, all
         return
     ica_fname = op.join(MEG_DIR, subject, '{}-session{}-ica.fif'.format(cond, session))
     if len(all_eog_inds) > 0:
-        session_ind = np.where(all_eog_inds[:, 0] == utils.namesbase_with_ext(ica_fname))[0][0]
+        session_ind = np.where(all_eog_inds[:, 0] == utils.namebase_with_ext(ica_fname))[0][0]
         eog_inds = [int(all_eog_inds[session_ind, 1])]
     else:
         eog_inds = []

@@ -84,6 +84,6 @@ if __name__ == '__main__':
     new_frames = duplicate_frames(frames, times, times_per_frame, last_frame_len,  max_frames_num=break_ind)
     dup_fol = create_dup_frames_links(subject, new_frames, '{}_dup'.format(frames_fol))
     movie_fname = movu.combine_images(dup_fol, frames_fol, frame_rate=int(1 / times_per_frame))
-    new_movie_fname = op.join(MMVT_DIR, subject, 'figures', utils.namesbase_with_ext(movie_fname))
+    new_movie_fname = op.join(MMVT_DIR, subject, 'figures', utils.namebase_with_ext(movie_fname))
     utils.remove_file(new_movie_fname)
     shutil.move(movie_fname, new_movie_fname)

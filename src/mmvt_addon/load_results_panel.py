@@ -38,7 +38,7 @@ if IN_BLENDER:
 
         def draw(self, context):
             if LoadResultsPanel.init:
-                template_draw(self, context)
+                load_results_draw(self, context)
 
 
     class ChooseSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -54,12 +54,13 @@ if IN_BLENDER:
             stc_fol = mu.get_fname_folder(stc_fname)
             if stc_fol != op.join(user_fol, 'meg'):
                 other_hemi_stc_fname = op.join(stc_fol, '{}.stc'.format(mu.get_other_hemi_label_name(mu.namebase(stc_fname))))
-                shutil.copy(stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(stc_fname)))
-                shutil.copy(other_hemi_stc_fname, op.join(user_fol, 'meg', mu.namesbase_with_ext(other_hemi_stc_fname)))
+                shutil.copy(stc_fname, op.join(user_fol, 'meg', mu.namebase_with_ext(stc_fname)))
+                shutil.copy(other_hemi_stc_fname, op.join(user_fol, 'meg', mu.namebase_with_ext(other_hemi_stc_fname)))
                 _addon().init_meg_activity_map()
             _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_fname))
             bpy.context.scene.meg_files = label
             return {'FINISHED'}
+
 
     class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         bl_idname = "mmvt.choose_niftii_file"
@@ -106,7 +107,7 @@ if IN_BLENDER:
             return {'CANCELLED'}
 
 
-    def template_draw(self, context):
+    def load_results_draw(self, context):
         layout = self.layout
         if MNE_EXIST:
             layout.operator(ChooseSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY').filepath=op.join(
@@ -149,11 +150,11 @@ if IN_BLENDER:
 
 
 def build_local_fname(nii_fname, user_fol):
-    if mu.get_hemi_from_fname(mu.namesbase_with_ext(nii_fname)) == '':
+    if mu.get_hemi_from_fname(mu.namebase_with_ext(nii_fname)) == '':
         local_fname = mu.get_label_for_full_fname(nii_fname)
         # local_fname = '{}.{}.{}'.format(mu.namebase(nii_fname), hemi, mu.file_type(nii_fname))
     else:
-        local_fname = mu.namesbase_with_ext(nii_fname)
+        local_fname = mu.namebase_with_ext(nii_fname)
     return op.join(user_fol, 'fmri', local_fname)
 
 
@@ -181,7 +182,7 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol=''):
         local_other_hemi_fname = build_local_fname(other_hemi_fname, user_fol)
         if nii_fol != op.join(user_fol, 'fmri'):
             mu.make_link(other_hemi_fname, local_other_hemi_fname, True)
-        fmri_file_template = mu.get_template_hemi_label_name(mu.namesbase_with_ext(local_fname))
+        fmri_file_template = mu.get_template_hemi_label_name(mu.namebase_with_ext(local_fname))
         if run_fmri_preproc:
             cmd = '{} -m src.preproc.fMRI -s {} -f load_surf_files --fmri_file_template "{}" --ignore_missing 1'.format(
                 bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)

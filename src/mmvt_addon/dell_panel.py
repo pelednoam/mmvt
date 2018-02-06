@@ -100,6 +100,9 @@ def export_electrodes(group_hemi_default='G'):
         groups = DellPanel.groups
     else:
         groups = [[k for k, o in enumerate(_addon().electrodes_panel_parent_obj.children)]]
+        if len(DellPanel.pos) != len(groups[0]):
+            print('len(DellPanel.pos) ({}) != len(groups[0]) ({})!'.format(len(DellPanel.pos), len(groups[0])))
+            return
         group_hemi = group_hemi_default
     csv_fname = op.join(output_fol, '{}_RAS.csv'.format(subject))
     for fname in glob.glob(op.join(output_fol, '*.dat')):
@@ -604,7 +607,7 @@ class ChooseCTFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     def execute(self, context):
         ct_fname = self.filepath
-        ct_name = 'ct_reg_to_mr.mgz' # mu.namesbase_with_ext(ct_fname)
+        ct_name = 'ct_reg_to_mr.mgz' # mu.namebase_with_ext(ct_fname)
         user_fol = mu.get_user_fol()
         ct_fol = mu.get_fname_folder(ct_fname)
         if ct_fol != op.join(user_fol, 'ct'):

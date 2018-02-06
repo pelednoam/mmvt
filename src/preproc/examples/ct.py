@@ -24,7 +24,7 @@ def convert_darpa_ct(args):
             f'/homes/5/npeled/space1/Angelique/recon-alls/{darpa_subject}/', '**', 'ct.*'), recursive=True)
         if len(files) > 0:
             for fname in files:
-                output_fname = op.join(local_ct_fol, utils.namesbase_with_ext(fname))
+                output_fname = op.join(local_ct_fol, utils.namebase_with_ext(fname))
                 print('Coping {} to {}'.format(fname, output_fname))
                 shutil.copy(fname, output_fname)
             goods.append(subject)

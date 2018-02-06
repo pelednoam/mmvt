@@ -149,7 +149,7 @@ def post_blender_call(args):
             for hemi in utils.HEMIS:
                 coup[hemi] = coup_template.format(hemi=hemi)
             new_image_fname = op.join(utils.get_fname_folder(files_coup[0]),
-                                      utils.namesbase_with_ext(files_coup[0])[3:])
+                                      utils.namebase_with_ext(files_coup[0])[3:])
             if args.add_cb:
                 fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
                 fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)

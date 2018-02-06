@@ -32,6 +32,8 @@ def montage_to_npy(montage_file, output_file):
 
 def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     data = np.genfromtxt(ras_file, dtype=str, delimiter=delimiter)
+    if data.shape[1] == 5 and np.all(data[:, 4] == ''):
+        data = np.delete(data, (4), axis=1)
     data = fix_str_items_in_csv(data)
     # Check if the electrodes coordinates has a header
     try:

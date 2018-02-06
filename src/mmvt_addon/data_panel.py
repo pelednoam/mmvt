@@ -1,4 +1,5 @@
 import bpy
+import bpy_extras
 import os.path as op
 import glob
 import numpy as np
@@ -6,6 +7,7 @@ import time
 import mmvt_utils as mu
 import selection_panel
 import logging
+import shutil
 from collections import Iterable
 
 STAT_AVG, STAT_DIFF = range(2)
@@ -1037,6 +1039,30 @@ class StartFlatProcess(bpy.types.Operator):
         create_inflating_flat_morphing()
         return {"FINISHED"}
 
+
+class ChooseElectrodesPositionsFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.load_electrodes_positions_file"
+    bl_label = "Choose electrodes positions file (npz)"
+
+    filename_ext = '.npz'
+    filter_glob = bpy.props.StringProperty(default='*.npz', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        electrodes_fname = self.filepath
+        user_fol = mu.get_user_fol()
+        electrodes_fol = mu.get_fname_folder(electrodes_fname)
+        if 'electrodes_positions' not in mu.namebase(electrodes_fname):
+            new_fname = op.join(electrodes_fol, 'electrodes', '{}_electrodes_positions.npz'.format(mu.namebase(
+                electrodes_fname).replace('electrodes', '').replace('__', '_')))
+        else:
+            new_fname = electrodes_fname
+        if electrodes_fol != op.join(user_fol, 'electrodes'):
+            shutil.copy(electrodes_fname, op.join(op.join(user_fol, 'electrodes', mu.namebase_with_ext(new_fname))))
+        init_electrodes_positions_list()
+        bpy.context.scene.electrodes_positions_files = mu.namebase(new_fname)
+        return {'FINISHED'}
+
+
 class DataMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -1069,7 +1095,10 @@ class DataMakerPanel(bpy.types.Panel):
         col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
 
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
-        col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
+
+        if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format('{hemi}'))):
+            col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
+
         if len(electrodes_positions_files) > 0:
             col = layout.box().column()
             col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
@@ -1077,7 +1106,8 @@ class DataMakerPanel(bpy.types.Panel):
             col.prop(context.scene, 'bipolar', text="Bipolar")
             col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
             col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
-
+        layout.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions", icon='GROUP_VERTEX').filepath=op.join(
+            mu.get_user_fol(), 'electrodes', '*.npz')
         if DataMakerPanel.meg_labels_data_exist:
             col = layout.box().column()
             col.prop(context.scene, 'labels_data_files', text="")
@@ -1161,13 +1191,7 @@ def init(addon):
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=items, description="subcortical fMRI files")
 
-    electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
-    if len(electrodes_positions_files) > 0:
-        files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
-        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
-            items=items,description="Electrodes positions")
-        bpy.context.scene.electrodes_positions_files = files_names[0]
+    init_electrodes_positions_list()
     if bpy.data.objects.get('Deep_electrodes'):
         bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
     fMRI_labels_sources_files = glob.glob(
@@ -1183,6 +1207,16 @@ def init(addon):
     # _addon().create_inflated_curv_coloring()
     DataMakerPanel.init = True
     register()
+
+
+def init_electrodes_positions_list():
+    electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
+    if len(electrodes_positions_files) > 0:
+        files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
+            items=items, description="Electrodes positions")
+        bpy.context.scene.electrodes_positions_files = files_names[0]
 
 
 def register():
@@ -1204,6 +1238,7 @@ def register():
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(CreateEEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
+        bpy.utils.register_class(ChooseElectrodesPositionsFile)
         # bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.register_class(SelectExternalMEGEvoked)
         # print('Data Panel was registered!')
@@ -1228,6 +1263,8 @@ def unregister():
         bpy.utils.unregister_class(ImportBrain)
         bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
+        bpy.utils.unregister_class(ChooseElectrodesPositionsFile)
+
         # bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:

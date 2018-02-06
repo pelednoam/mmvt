@@ -524,7 +524,7 @@ def check_bem(mri_subject, args={}):
     if not op.isfile(BEM):
         prepare_subject_folder(
             mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
-            {'bem': [utils.namesbase_with_ext(BEM)]}, args)
+            {'bem': [utils.namebase_with_ext(BEM)]}, args)
     if not op.isfile(BEM):
         bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
         watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
@@ -2513,7 +2513,7 @@ def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_
     min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
         min_max_output_fname = min_max_output_template.format(atlas, em)
-        min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namesbase_with_ext(min_max_output_fname))
+        min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase_with_ext(min_max_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
         template = labels_data_template.format(atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
@@ -2679,7 +2679,7 @@ def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, cluste
         if annot_files is not None:
             for hemi in utils.HEMIS:
                 annot_fname = annot_files.format(hemi=hemi)
-                dest_annot_fname = op.join(clusters_fol, utils.namesbase_with_ext(annot_fname))
+                dest_annot_fname = op.join(clusters_fol, utils.namebase_with_ext(annot_fname))
                 if not op.isfile(dest_annot_fname):
                     shutil.copy(annot_fname, dest_annot_fname)
         anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
@@ -2714,7 +2714,7 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
         while not utils.is_int(comp_num):
             print('Please enter a valid integer')
         with open(output_fname, 'a') as f:
-            f.write('{},{}\n'.format(utils.namesbase_with_ext(ica_fname), comp_num))
+            f.write('{},{}\n'.format(utils.namebase_with_ext(ica_fname), comp_num))
     return ica
 
 

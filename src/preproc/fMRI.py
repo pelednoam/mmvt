@@ -706,7 +706,7 @@ def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject=''
         return '', '', ''
 
     utils.make_dir(op.join(FMRI_DIR, subject))
-    local_fname = op.join(FMRI_DIR, subject, utils.namesbase_with_ext(volume_fname))
+    local_fname = op.join(FMRI_DIR, subject, utils.namebase_with_ext(volume_fname))
     if not op.isfile(local_fname):
         shutil.copy(volume_fname, local_fname)
     volume_fname = local_fname
@@ -898,7 +898,7 @@ def calc_volumetric_labels_mean(subject, atlas, fmri_file_template, measures=['m
     if not ret:
         return False
     ret = True
-    new_aseg_fname = op.join(MMVT_DIR, subject, 'fmri', utils.namesbase_with_ext(aparc_aseg_fname))
+    new_aseg_fname = op.join(MMVT_DIR, subject, 'fmri', utils.namebase_with_ext(aparc_aseg_fname))
     x_data = nib.load(volume_fname).get_data()
     aparc_aseg = morph_aseg(subject, x_data, volume_fname, aparc_aseg_fname, new_aseg_fname)
     aparc_aseg_data = aparc_aseg.get_data()
@@ -1147,7 +1147,7 @@ def find_volume_files(files):
                 'rh_' in fname or 'lh_' in fname or
                 'rh.' in fname or 'lh.' in fname or
                 'rh-' in fname or 'lh-' in fname)
-    volume_files = [f for f in files if not hemi_in_fname(utils.namesbase_with_ext(f))]
+    volume_files = [f for f in files if not hemi_in_fname(utils.namebase_with_ext(f))]
     if len(files) > 0 and len(volume_files) == 0:
         print('find_volume_files: No volume files were found! hemi was found in all the given files! {}'.format(files))
     return volume_files
@@ -1248,7 +1248,7 @@ def clean_4d_data(subject, atlas, fmri_file_template, trg_subject='fsaverage5', 
                     shutil.copy(res_fname, new_fname)
         for hemi in utils.HEMIS:
             utils.make_link(new_fname_template.format(hemi=hemi), op.join(
-                MMVT_DIR, subject, 'fmri', utils.namesbase_with_ext(new_fname_template.format(hemi=hemi))))
+                MMVT_DIR, subject, 'fmri', utils.namebase_with_ext(new_fname_template.format(hemi=hemi))))
         return utils.both_hemi_files_exist(new_fname_template)
 
     def copy_preproc_sess_outputs():

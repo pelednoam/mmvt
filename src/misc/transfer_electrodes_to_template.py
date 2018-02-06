@@ -146,7 +146,7 @@ def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir,
             # print(f"Can't find volumetric electrodes file for {subject}")
             continue
         for stim_file in glob.glob(op.join(subjects_dir, subject, 'electrodes', 'stim_????.nii.gz')):
-            elcs_file_name = utils.namesbase_with_ext(stim_file)
+            elcs_file_name = utils.namebase_with_ext(stim_file)
             output_name = utils.namebase(stim_file)
             output_fname = op.join(subjects_dir, subject, 'electrodes', f'{output_name}_to_colin27.nii.gz')
             if not op.isfile(output_fname) or overwrite:
@@ -359,7 +359,7 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
         for elc_name, elc_coords in zip(electrodes_dict.names, electrodes_dict.pos):
             wr.writerow([elc_name, *['{:.2f}'.format(x) for x in elc_coords.squeeze()]])
     fol = utils.make_dir(op.join(SUBJECTS_DIR, template, 'electrodes'))
-    csv_fname2 = op.join(fol, utils.namesbase_with_ext(csv_fname))
+    csv_fname2 = op.join(fol, utils.namebase_with_ext(csv_fname))
     shutil.copy(csv_fname, csv_fname2)
     print('export_into_csv: {}'.format(op.isfile(csv_fname) and op.isfile(csv_fname2)))
 

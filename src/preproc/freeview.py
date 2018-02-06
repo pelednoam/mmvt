@@ -88,7 +88,7 @@ def create_aparc_aseg_file(subject, atlas, overwrite_aseg_file=False, print_only
     if not ret:
         return False
 
-    aparc_aseg_file = utils.namesbase_with_ext(aparc_aseg_fname)
+    aparc_aseg_file = utils.namebase_with_ext(aparc_aseg_fname)
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
     blender_file = op.join(MMVT_DIR, subject, 'freeview', aparc_aseg_file)
     utils.remove_file(blender_file)
