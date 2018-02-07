@@ -91,6 +91,8 @@ def refresh_pos_and_names():
     DellPanel.names = [o.name for o in objects]
     DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
     DellPanel.groups = []
+    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
+            op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
 
 
 def export_electrodes(group_hemi_default='G'):
