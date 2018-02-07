@@ -75,7 +75,7 @@ def find_electrodes_pipeline():
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
     # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
-    DellPanel.hemis, _ = fect.find_electrodes_hemis(
+    DellPanel.hemis = fect.find_electrodes_hemis(
         subject_fol, DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),

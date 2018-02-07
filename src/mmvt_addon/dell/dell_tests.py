@@ -282,16 +282,24 @@ def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, br
     plt.show()
 
 
-def point_in_surface_cylinder(subject, elc1_name, elc2_name, mmvt_dir, user_fol, threshold, radius_sq):
+def point_in_surface_cylinder(elc1_name, elc2_name, verts, verts_nei, mmvt_dir, user_fol, threshold, radius_sq,
+                              dural_verts=None, dural_normals=None):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     elc1_ind = names.index(elc1_name)
     elc2_ind = names.index(elc2_name)
-
-    verts_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_{hemi}.pkl')
-    verts = fect.read_pial_verts(user_fol)
-    pt1, pt2 = [], []
-    hemi = 'rh'
+    pt1, pt2 = electrodes[elc1_ind], electrodes[elc2_ind]
+    if len(hemis) != len(electrodes):
+        hemis = fect.find_electrodes_hemis(subject_fol, [pt1, pt2], None, 0, dural_verts, dural_normals)
+        hemi1, hemi2 = hemis
+    else:
+        hemi1, hemi2 = hemis[elc1_ind], hemis[elc2_ind]
+    if hemi1 != hemi2:
+        print('The electrodes should be in the same hemi!')
+        return
+    hemi = hemi1
     dists = cdist([pt1, pt2], verts[hemi])
+    hemi_verts_indices = np.argmin(dists, 1)
+    print('asdf')
 
 
 if __name__ == '__main__':
@@ -326,6 +334,10 @@ if __name__ == '__main__':
     user_fol = op.join(mmvt_dir, subject)
     subject_fol = op.join(subjects_dir, subject)
 
+    verts_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_{hemi}.pkl')
+    verts_nei = {hemi:utils.load(verts_neighbors_fname.format(hemi=hemi)) for hemi in utils.HEMIS}
+    verts = fect.read_pial_verts(user_fol)
+
     # find_local_maxima_from_voxels([97, 88, 125], ct_data, threshold, find_nei_maxima=False)
     # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
     # test3(ct_data, threshold, ct.header, brain, aseg, user_fol)
@@ -343,4 +355,4 @@ if __name__ == '__main__':
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    point_in_surface_cylinder(subject, 'G38', 'G26', mmvt_dir, user_fol, threshold, error_r)
+    point_in_surface_cylinder('G38', 'G26', verts, verts_nei, mmvt_dir, user_fol, threshold, error_r)
