@@ -1,4 +1,4 @@
-<img src=https://user-images.githubusercontent.com/1643819/35896982-ec9bf2a8-0b8c-11e8-85cc-58610e6d1f30.png align="right"  height="120" width="120"/>
+<img src=https://user-images.githubusercontent.com/1643819/35896982-ec9bf2a8-0b8c-11e8-85cc-58610e6d1f30.png align="right"  height="175.5" width="124"/>
 <br>
 
 ## Multi-Modality Visualization Tool
