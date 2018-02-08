@@ -91,6 +91,7 @@ def refresh_pos_and_names():
     DellPanel.names = [o.name for o in objects]
     DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
     DellPanel.groups = []
+    DellPanel.hemis = fect.find_electrodes_hemis('', DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
 
@@ -195,6 +196,19 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
     for elc_ind in group:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     return group
+
+
+def find_electrode_group_on_dural():
+    selected_elcs = [bpy.context.selected_objects[k].name for k in range(2)]
+    elc_inds = [DellPanel.names.index(elc) for elc in selected_elcs]
+    points, points_inside = fect.find_points_path_on_dural_surface(
+        elc_inds[0], elc_inds[1], DellPanel.hemis, DellPanel.pos, DellPanel.verts_dural, DellPanel.verts_dural_nei,
+        DellPanel.names, 5)
+    color = next(DellPanel.colors)
+    for elc_ind in points_inside:
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
+    for p1, p2 in zip(points[:-1], points[1:]):
+        create_lead(p1, p2, inds_are_points=True)
 
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
@@ -318,16 +332,22 @@ def select_new_electrode(new_electrode_name):
     _addon().electode_was_manually_selected(new_electrode_name)
 
 
-def create_lead(ind1, ind2, radius=0.05):
+def create_lead(ind1, ind2, radius=0.05, inds_are_points=False):
     layers = [False] * 20
     lead_layer = _addon().ELECTRODES_LAYER
     layers[lead_layer] = True
     parent_name = 'leads'
     mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None)
 
-    p1, p2 = DellPanel.pos[ind1] * 0.1, DellPanel.pos[ind2] * 0.1
+    if not inds_are_points:
+        p1, p2 = DellPanel.pos[ind1] * 0.1, DellPanel.pos[ind2] * 0.1
+    else:
+        p1, p2 = ind1 * 0.1, ind2 * 0.1
     mu.cylinder_between(p1, p2, radius, layers)
-    lead_name = '{}-{}'.format(DellPanel.names[ind1], DellPanel.names[ind2])
+    if not inds_are_points:
+        lead_name = '{}-{}'.format(DellPanel.names[ind1], DellPanel.names[ind2])
+    else:
+        lead_name = mu.rand_letters(5)
     color = tuple(np.concatenate((bpy.context.scene.dell_ct_lead_color, [1])))
     mu.create_material('{}_mat'.format(lead_name), color, 1)
     cur_obj = bpy.context.active_object
@@ -485,6 +505,7 @@ def dell_draw(self, context):
                 layout.operator(SaveCTElectrodesFigures.bl_idname, text="Save CT figures", icon='OUTLINER_OB_FORCE_FIELD')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
+            layout.operator(FindGroupBetweenTwoElectrodesOnDural.bl_idname, text="Find group on dural", icon='EXPORT')
         layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
         layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
         layout.prop(context.scene, 'dell_do_post_search', text='Do post search')
@@ -637,6 +658,16 @@ class RefreshElectrodesObjects(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         refresh_pos_and_names()
+        return {'PASS_THROUGH'}
+
+
+class FindGroupBetweenTwoElectrodesOnDural(bpy.types.Operator):
+    bl_idname = "mmvt.find_electrode_group_on_dural"
+    bl_label = "find_electrode_group_on_dural"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        find_electrode_group_on_dural()
         return {'PASS_THROUGH'}
 
 
@@ -843,6 +874,10 @@ class DellPanel(bpy.types.Panel):
 def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz', debug=True):
     DellPanel.addon = addon
     try:
+        ret = init_dural()
+        if not ret:
+            DellPanel.init = False
+            return
         DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
         if DellPanel.ct_found:
@@ -897,6 +932,20 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
     aseg_fname = op.join(subjects_dir, mu.get_user(), 'mri', aseg_name)
     DellPanel.aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     return True
+
+
+def init_dural():
+    try:
+        user_fol = mu.get_user_fol()
+        verts_dural_neighbors_fname = op.join(user_fol, 'verts_neighbors_dural_{hemi}.pkl')
+        DellPanel.verts_dural_nei = {hemi:mu.load(verts_dural_neighbors_fname.format(hemi=hemi)) for hemi in mu.HEMIS}
+        DellPanel.verts_dural, DellPanel.faces_dural = fect.read_surf_verts(user_fol, 'dural', True)
+        DellPanel.normals_dural = {hemi:fect.calc_normals(DellPanel.verts_dural[hemi], DellPanel.faces_dural[hemi])
+                                   for hemi in mu.HEMIS}
+        return True
+    except:
+        print(traceback.format_exc())
+        return False
 
 
 def init_electrodes():
@@ -954,6 +1003,7 @@ def register():
         bpy.utils.register_class(DeleteElectrodes)
         bpy.utils.register_class(DeleteElectrodesFromGroup)
         bpy.utils.register_class(ExportDellElectrodes)
+        bpy.utils.register_class(FindGroupBetweenTwoElectrodesOnDural)
         bpy.utils.register_class(RefreshElectrodesObjects)
         bpy.utils.register_class(ModalDellTimerOperator)
     except:
@@ -980,6 +1030,7 @@ def unregister():
         bpy.utils.unregister_class(DeleteElectrodes)
         bpy.utils.unregister_class(DeleteElectrodesFromGroup)
         bpy.utils.unregister_class(ExportDellElectrodes)
+        bpy.utils.unregister_class(FindGroupBetweenTwoElectrodesOnDural)
         bpy.utils.unregister_class(RefreshElectrodesObjects)
         bpy.utils.unregister_class(ModalDellTimerOperator)
     except:

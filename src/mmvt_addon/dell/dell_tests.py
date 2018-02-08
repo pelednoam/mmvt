@@ -282,7 +282,8 @@ def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, br
     plt.show()
 
 
-def find_points_path(elc1_name, elc2_name, verts, verts_nei, threshold, dural_verts=None, dural_normals=None):
+def find_points_on_dural_surface(elc1_name, elc2_name, dural_verts, dural_verts_nei, threshold, error_radius=3,
+                                 dural_normals=None):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     elc1_ind = names.index(elc1_name)
     elc2_ind = names.index(elc2_name)
@@ -293,27 +294,38 @@ def find_points_path(elc1_name, elc2_name, verts, verts_nei, threshold, dural_ve
         hemi1, hemi2 = hemis
     else:
         hemi1, hemi2 = hemis[elc1_ind], hemis[elc2_ind]
-    if hemi1 != hemi2:
-        print('The electrodes should be in the same hemi!')
-        return
-    hemi = hemi1
-    dists = cdist([pt1, pt2], verts[hemi])
-    vert1_ind, vert2_ind = np.argmin(dists, 1)
-    vert1_nei = verts_nei[hemi][vert1_ind]
-    dist = np.inf
-    while vert2_ind not in vert1_nei:
-        vert1_nei_pos = verts[hemi][vert1_nei]
-        dists = cdist([verts[hemi][vert2_ind]], vert1_nei_pos)
-        vert1_ind = vert1_nei[np.argmin(dists)]
-        min_dist = np.min(dists)
-        if min_dist < dist:
-            dist = min_dist
-        else:
-            print('Ahhhh! local minima!')
-            return []
-        points.append(verts[hemi][vert1_ind])
-        vert1_nei = verts_nei[hemi][vert1_ind]
-    points.append(pt2)
+
+    points, indices = fect.find_points_path_on_dural_surface(
+        elc1_ind, elc2_ind, hemis, electrodes, dural_verts, dural_verts_nei, names, threshold=5)
+    print([names[ind] for ind in indices])
+
+
+    # if hemi1 != hemi2:
+    #     print('The electrodes should be in the same hemi!')
+    #     return
+    # hemi = hemi1
+    # dists = cdist([pt1, pt2], dural_verts[hemi])
+    # vert1_ind, vert2_ind = np.argmin(dists, 1)
+    # vert1_nei = dural_verts_nei[hemi][vert1_ind]
+    # dist = np.inf
+    # while vert2_ind not in vert1_nei:
+    #     vert1_nei_pos = dural_verts[hemi][vert1_nei]
+    #     dists = cdist([dural_verts[hemi][vert2_ind]], vert1_nei_pos)
+    #     vert1_ind = vert1_nei[np.argmin(dists)]
+    #     min_dist = np.min(dists)
+    #     if min_dist < dist:
+    #         dist = min_dist
+    #     else:
+    #         print('Ahhhh! local minima!')
+    #         return []
+    #     points.append(dural_verts[hemi][vert1_ind])
+    #     vert1_nei = dural_verts_nei[hemi][vert1_ind]
+    # points.append(pt2)
+    # dists = np.min(cdist(points, electrodes), 0)
+    # points_inside = np.where(dists <= error_radius)[0]
+    # print('Points between {} and {}:'.format(elc1_name, elc2_name))
+    # print([names[ind] for ind in points_inside])
+
 
 
 if __name__ == '__main__':
@@ -369,4 +381,5 @@ if __name__ == '__main__':
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    find_points_path('G38', 'G26', verts_dural, verts_dural_nei, threshold)
+    find_points_on_dural_surface('G38', 'G26', verts_dural, verts_dural_nei, threshold, error_r)
+
