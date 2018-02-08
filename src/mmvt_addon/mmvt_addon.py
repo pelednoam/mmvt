@@ -613,9 +613,9 @@ def main(addon_prefs=None):
             panel.unregister()
         if bpy.data.objects.get('rh', None) is None:
             data_panel.init(mmvt)
-            appearance_panel.init(mmvt)
-            transparency_panel.init(mmvt)
-            render_panel.init(mmvt)
+            # appearance_panel.init(mmvt)
+            # transparency_panel.init(mmvt)
+            # render_panel.init(mmvt)
         else:
             if addon_prefs is not None:
                 load_all_panels(addon_prefs)

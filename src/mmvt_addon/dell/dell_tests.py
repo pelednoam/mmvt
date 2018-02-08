@@ -282,14 +282,14 @@ def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, br
     plt.show()
 
 
-def point_in_surface_cylinder(elc1_name, elc2_name, verts, verts_nei, mmvt_dir, user_fol, threshold, radius_sq,
-                              dural_verts=None, dural_normals=None):
+def find_points_path(elc1_name, elc2_name, verts, verts_nei, threshold, dural_verts=None, dural_normals=None):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     elc1_ind = names.index(elc1_name)
     elc2_ind = names.index(elc2_name)
     pt1, pt2 = electrodes[elc1_ind], electrodes[elc2_ind]
+    points = [pt1]
     if len(hemis) != len(electrodes):
-        hemis = fect.find_electrodes_hemis(subject_fol, [pt1, pt2], None, 0, dural_verts, dural_normals)
+        hemis = fect.find_electrodes_hemis(subject_fol, [pt1, pt2], None, 1, dural_verts, dural_normals)
         hemi1, hemi2 = hemis
     else:
         hemi1, hemi2 = hemis[elc1_ind], hemis[elc2_ind]
@@ -298,8 +298,22 @@ def point_in_surface_cylinder(elc1_name, elc2_name, verts, verts_nei, mmvt_dir, 
         return
     hemi = hemi1
     dists = cdist([pt1, pt2], verts[hemi])
-    hemi_verts_indices = np.argmin(dists, 1)
-    print('asdf')
+    vert1_ind, vert2_ind = np.argmin(dists, 1)
+    vert1_nei = verts_nei[hemi][vert1_ind]
+    dist = np.inf
+    while vert2_ind not in vert1_nei:
+        vert1_nei_pos = verts[hemi][vert1_nei]
+        dists = cdist([verts[hemi][vert2_ind]], vert1_nei_pos)
+        vert1_ind = vert1_nei[np.argmin(dists)]
+        min_dist = np.min(dists)
+        if min_dist < dist:
+            dist = min_dist
+        else:
+            print('Ahhhh! local minima!')
+            return []
+        points.append(verts[hemi][vert1_ind])
+        vert1_nei = verts_nei[hemi][vert1_ind]
+    points.append(pt2)
 
 
 if __name__ == '__main__':
@@ -334,9 +348,9 @@ if __name__ == '__main__':
     user_fol = op.join(mmvt_dir, subject)
     subject_fol = op.join(subjects_dir, subject)
 
-    verts_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_{hemi}.pkl')
-    verts_nei = {hemi:utils.load(verts_neighbors_fname.format(hemi=hemi)) for hemi in utils.HEMIS}
-    verts = fect.read_pial_verts(user_fol)
+    verts_dural_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_dural_{hemi}.pkl')
+    verts_dural_nei = {hemi:utils.load(verts_dural_neighbors_fname.format(hemi=hemi)) for hemi in utils.HEMIS}
+    verts_dural = fect.read_surf_verts(user_fol, 'dural')
 
     # find_local_maxima_from_voxels([97, 88, 125], ct_data, threshold, find_nei_maxima=False)
     # test2(ct_data, ct.header, brain, aseg, threshold, min_distance)
@@ -355,4 +369,4 @@ if __name__ == '__main__':
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    point_in_surface_cylinder('G38', 'G26', verts, verts_nei, mmvt_dir, user_fol, threshold, error_r)
+    find_points_path('G38', 'G26', verts_dural, verts_dural_nei, threshold)

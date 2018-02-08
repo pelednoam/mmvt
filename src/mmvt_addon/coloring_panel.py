@@ -1484,7 +1484,7 @@ def clear_and_recolor():
 def get_condditions_from_labels_fcurves():
     conditions = []
     parent_obj = bpy.data.objects.get('Cortex-lh')
-    if parent_obj:
+    if parent_obj and len(parent_obj.children) > 0:
         label_obj = parent_obj.children[0]
         fcurves_names = mu.get_fcurves_names(label_obj)
         conditions = [fc_name.split('_')[-1] for fc_name in fcurves_names]

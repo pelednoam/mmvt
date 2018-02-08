@@ -189,7 +189,7 @@ def convert_and_rename_subcortical_files(fol, new_fol, lookup):
 def create_surfaces(subject, hemi='both', overwrite=False):
     for hemi in lu.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
-        for surf_type in ['inflated', 'pial']:
+        for surf_type in ['inflated', 'pial', 'dural']:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
@@ -201,7 +201,12 @@ def create_surfaces(subject, hemi='both', overwrite=False):
                 elif op.isfile(mmvt_hemi_npz_fname):
                     verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
                 else:
-                    raise Exception("Can't find the surface {}!".format(surf_name))
+                    if surf_type != 'dural':
+                        raise Exception("Can't find the surface {}!".format(surf_name))
+                    else:
+                        print('No dural surf! Run the following command from ielu folder')
+                        print('''python2 -c "from ielu import pipeline as pipe; 
+                                 pipe.create_dural_surface(subject='{}')"'''.format(subject))
                 if surf_type == 'inflated':
                     verts_offset = 55 if hemi == 'rh' else -55
                     verts[:, 0] = verts[:, 0] + verts_offset
@@ -511,29 +516,28 @@ def save_labels_vertices(subject, atlas):
         return False
 
 
-@utils.timeit
+@utils.tryit()
 def create_spatial_connectivity(subject):
-    try:
-        verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors_{hemi}.pkl')
-        connectivity_fname = op.join(MMVT_DIR, subject, 'spatial_connectivity.pkl')
+    ret = True
+    for surf in ['pial', 'dural']:
+        verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors{}_{}.pkl'.format(
+            '' if surf == 'pial' else '_{}'.format(surf), '{hemi}'))
+        connectivity_fname = op.join(MMVT_DIR, subject, 'spatial_connectivity{}.pkl'.format(
+            '' if surf == 'pial' else '_{}'.format(surf)))
         if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(connectivity_fname):
-            return True
+            continue
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
             neighbors = defaultdict(list)
-            d = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.pial.npz'.format(hemi)))
+            d = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf)))
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
             rows, cols = connectivity_per_hemi[hemi].nonzero()
             for ind in range(len(rows)):
                 neighbors[rows[ind]].append(cols[ind])
             utils.save(neighbors, verts_neighbors_fname.format(hemi=hemi))
         utils.save(connectivity_per_hemi, connectivity_fname)
-        success = True
-    except:
-        print('Error in create_spatial_connectivity!')
-        print(traceback.format_exc())
-        success = False
-    return success
+        ret = ret and op.isfile(connectivity_fname)
+    return ret
 
 
 def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', atlas='aparc.DKTatlas40', debug=False,
