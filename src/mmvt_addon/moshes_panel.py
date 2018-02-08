@@ -1,5 +1,6 @@
 import bpy
 import os.path as op
+import os
 import glob
 import time
 import traceback
@@ -47,9 +48,22 @@ bpy.types.Scene.lois_size = bpy.props.FloatProperty(min=0.1, max=2, default=0.75
 bpy.types.Scene.moshe_group_ind = bpy.props.IntProperty(default=0, min=0, description="Show group with index K", update=moshe_group_ind_update)
 
 
+def make_path_absolute(key):
+    """ Prevent Blender's relative paths of doom """
+    # This can be a collection property or addon preferences
+    props = bpy.context.scene.my_collection
+    print(bpy.path.abspath('//'))
+    sane_path = lambda p: os.path.abspath(bpy.path.abspath(p))
+
+    if key in props and props[key].startswith('//'):
+        props[key] = sane_path(props[key])
+
+
 def do_somthing():
     import csv
-    with open(bpy.context.scene.moshes_valid_lois_path, 'r') as f:
+    tmp = op.abspath(bpy.path.abspath('//')+bpy.context.scene.moshes_valid_lois_path[2:])
+    print(bpy.path.abspath('//'))
+    with open(tmp, 'r') as f:
         reader = csv.reader(f)
         valid_lois_list = list(reader)
 
@@ -68,7 +82,7 @@ def do_somthing():
     cur_valid_list = valid_lois_list[cur_valid_list_ind]
     for obj in bpy.data.objects['512pnts'].children:
         cur_mat = bpy.data.materials['invalid_lois_mat']
-        if any(obj.name in s for s in cur_valid_list):
+        if any(obj.name == s for s in cur_valid_list):
             cur_mat = bpy.data.materials['valid_lois_mat']
         obj.active_material = cur_mat
 
@@ -203,6 +217,7 @@ def init(addon):
     #     items=moshe_items, description="tempalte files",update=moshe_files_update)
     # bpy.context.scene.moshe_files = files_names[0]
     register()
+    # bpy.context.user_preferences.filepaths.use_relative_paths = False
     MoshePanel.init = True
 
 

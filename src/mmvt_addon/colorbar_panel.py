@@ -163,6 +163,15 @@ def colorbar_update(self, context):
                                              np.sign(bpy.context.scene.colorbar_min)
 
 
+def show_vertical_cb_update(self, context):
+    if bpy.context.scene.show_vertical_cb is True:
+        bpy.data.objects['full_colorbar'].rotation_euler[1] = 0
+        bpy.context.window.screen = bpy.data.screens['Neuro_vertical_colorbar']
+    else:
+        bpy.data.objects['full_colorbar'].rotation_euler[1] = np.pi/2.0
+        bpy.context.window.screen = bpy.data.screens['Neuro']
+
+
 def show_cb_in_render_update(self, context):
     show_cb_in_render(bpy.context.scene.show_cb_in_render)
 
@@ -192,6 +201,8 @@ def colorbar_draw(self, context):
     layout.prop(context.scene, 'hide_cb_center', text='Hide center')
     layout.prop(context.scene, 'colorbar_prec', text='precision')
     layout.prop(context.scene, 'lock_min_max', text='Lock values')
+    if bpy.data.screens.get('Neuro_vertical_colorbar') is not None:
+        layout.prop(context.scene, 'show_vertical_cb', text='Show vertical colorbar')
     layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
     layout.prop(context.scene, 'update_cb_location', text='Update location')
     if bpy.context.scene.update_cb_location:
@@ -217,6 +228,7 @@ bpy.types.Scene.colorbar_title = bpy.props.StringProperty(description="", update
 bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=15, description="", update=colorbar_update)
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)
+bpy.types.Scene.show_vertical_cb = bpy.props.BoolProperty(default=True, description="show_vertical_cb", update=show_vertical_cb_update)
 bpy.types.Scene.hide_cb_center = bpy.props.BoolProperty(default=False, update=hide_cb_center_update)
 bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
