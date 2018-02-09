@@ -91,7 +91,9 @@ def refresh_pos_and_names():
     DellPanel.names = [o.name for o in objects]
     DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
     DellPanel.groups = []
-    DellPanel.hemis = fect.find_electrodes_hemis('', DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
+    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+    DellPanel.hemis = fect.find_electrodes_hemis(
+        subject_fol, DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
 
@@ -199,7 +201,19 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
 
 
 def find_electrode_group_on_dural():
-    selected_elcs = [bpy.context.selected_objects[k].name for k in range(2)]
+    if len(bpy.context.selected_objects) == 2:
+        selected_elcs = [bpy.context.selected_objects[k].name for k in range(2)]
+        _find_electrode_group_on_dural(selected_elcs)
+    elif len(bpy.context.selected_objects) == 0:
+        for pt1, pt2 in zip(['G38', 'G64', 'G19', 'G49', 'G37', 'G46', 'G7', 'G22'],
+                            ['G26', 'G52', 'G56', 'G41', 'G20', 'G47', 'G15', 'G48']):
+            _find_electrode_group_on_dural((pt1, pt2))
+        for pt1, pt2 in zip(['G38', 'G25', 'G61', 'G36', 'G4', 'G39', 'G23', 'G26'],
+                            ['G22', 'G58', 'G35', 'G1', 'G63', 'G30', 'G13', 'G48']):
+            _find_electrode_group_on_dural((pt1, pt2))
+
+
+def _find_electrode_group_on_dural(selected_elcs):
     elc_inds = [DellPanel.names.index(elc) for elc in selected_elcs]
     points, points_inside = fect.find_points_path_on_dural_surface(
         elc_inds[0], elc_inds[1], DellPanel.hemis, DellPanel.pos, DellPanel.verts_dural, DellPanel.verts_dural_nei,
@@ -207,6 +221,7 @@ def find_electrode_group_on_dural():
     color = next(DellPanel.colors)
     for elc_ind in points_inside:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
+    print([DellPanel.names[p] for p in points_inside])
     for p1, p2 in zip(points[:-1], points[1:]):
         create_lead(p1, p2, inds_are_points=True)
 
@@ -506,6 +521,10 @@ def dell_draw(self, context):
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
             layout.operator(FindGroupBetweenTwoElectrodesOnDural.bl_idname, text="Find group on dural", icon='EXPORT')
+        # if len(bpy.context.selected_objects) == 4 and all(
+        #         bpy.context.selected_objects[k].name in DellPanel.names for k in range(4)):
+        if len(bpy.context.selected_objects) == 0:
+            layout.operator(FindGroupBetweenTwoElectrodesOnDural.bl_idname, text="Find grid on dural", icon='EXPORT')
         layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
         layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
         layout.prop(context.scene, 'dell_do_post_search', text='Do post search')
