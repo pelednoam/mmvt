@@ -457,6 +457,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
     ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
     if not bpy.context.scene.color_rois_homogeneously:
         init_activity_map_coloring('FMRI')
+    _addon().set_colorbar_title('fMRI')
     threshold = bpy.context.scene.coloring_threshold
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
@@ -464,7 +465,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
     if _addon().colorbar_values_are_locked():
         labels_min, labels_max = _addon().get_colorbar_max_min()
     else:
-        labels_min, labels_max = np.load(
+        labels_min, labels_max  = np.load(
             op.join(user_fol, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, em)))
         if labels_min > 0:
             labels_min = 0

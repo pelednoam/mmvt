@@ -1712,30 +1712,30 @@ def main(subject, remote_subject_dir, args, flags):
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)
 
+    if 'clean_4d_data' in args.function:
+        flags['clean_4d_data'] = clean_4d_data(
+            subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd, args.only_preproc,
+            args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
+
     if 'analyze_4d_data' in args.function:
         flags['analyze_4d_data'] = analyze_4d_data(
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.template_brain,
             args.norm_percs, args.overwrite_labels_data, remote_fmri_dir, args.resting_state_plot,
             args.resting_state_plot_all_vertices, args.excluded_labels, args.input_format)
 
-    if 'calc_labels_minmax' in args.function:
-        flags['calc_labels_minmax'] = calc_labels_minmax(subject, args.atlas, args.labels_extract_mode)
-
     if 'save_dynamic_activity_map' in args.function:
         flags['save_dynamic_activity_map'] = save_dynamic_activity_map(
             subject, args.fmri_file_template, template_brains=args.template_brain,
             norm_percs=args.norm_percs, overwrite=args.overwrite_activity_data)
+
+    if 'calc_labels_minmax' in args.function:
+        flags['calc_labels_minmax'] = calc_labels_minmax(subject, args.atlas, args.labels_extract_mode)
 
     if 'calc_subs_surface_activity' in args.function:
         flags['calc_subs_surface_activity'] = calc_subs_surface_activity(
             subject, args.fmri_file_template, args.template_brain, args.subs_threshold, args.subcortical_codes_file,
             args.aseg_stats_fname, method=args.calc_subs_surface_method, k_points=args.calc_subs_surface_points,
             format='mgz', do_plot=False)
-
-    if 'clean_4d_data' in args.function:
-        flags['clean_4d_data'] = clean_4d_data(
-            subject, args.atlas, args.fmri_file_template, args.template_brain, args.fsd, args.only_preproc,
-            args.fwhm, args.lfp, args.nskip, remote_fmri_dir, args.overwrite_4d_preproc, args.print_only)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject

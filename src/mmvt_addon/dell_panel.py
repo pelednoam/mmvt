@@ -217,7 +217,7 @@ def _find_electrode_group_on_dural(selected_elcs):
     elc_inds = [DellPanel.names.index(elc) for elc in selected_elcs]
     points, points_inside = fect.find_points_path_on_dural_surface(
         elc_inds[0], elc_inds[1], DellPanel.hemis, DellPanel.pos, DellPanel.verts_dural, DellPanel.verts_dural_nei,
-        DellPanel.names, 5)
+        DellPanel.names, 5, (0.1, 0.5))
     color = next(DellPanel.colors)
     for elc_ind in points_inside:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))

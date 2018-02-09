@@ -231,6 +231,16 @@ def import_brain(context=None):
     _addon().load_all_panels(first_time=True)
 
 
+class FixBrainMaterials(bpy.types.Operator):
+    bl_idname = "mmvt.fix_brain_materials"
+    bl_label = "fix_brain_materials"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        _addon().fix_cortex_labels_material()
+        return {"FINISHED"}
+
+
 class ImportBrain(bpy.types.Operator):
     bl_idname = "mmvt.brain_importing"
     bl_label = "import2 brain"
@@ -1093,7 +1103,7 @@ class DataMakerPanel(bpy.types.Panel):
         col.prop(context.scene, 'atlas', text="Atlas")
         col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
         col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
-
+        col.operator(FixBrainMaterials.bl_idname, text="Fix brain materials", icon='PARTICLE_DATA')
         electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
 
         if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format('{hemi}'))):
@@ -1239,6 +1249,7 @@ def register():
         bpy.utils.register_class(CreateEEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
         bpy.utils.register_class(ChooseElectrodesPositionsFile)
+        bpy.utils.register_class(FixBrainMaterials)
         # bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.register_class(SelectExternalMEGEvoked)
         # print('Data Panel was registered!')
@@ -1264,7 +1275,7 @@ def unregister():
         bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
         bpy.utils.unregister_class(ChooseElectrodesPositionsFile)
-
+        bpy.utils.unregister_class(FixBrainMaterials)
         # bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:

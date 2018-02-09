@@ -282,7 +282,8 @@ def check_voxels_around_electrodes(ct_data, output_fol, threshold, ct_header, br
     plt.show()
 
 
-def find_points_on_dural_surface(elc1_name, elc2_name, dural_verts, dural_verts_nei, threshold, dural_normals=None):
+def find_points_on_dural_surface(elc1_name, elc2_name, dural_verts, dural_verts_nei, threshold, debug=False,
+                                 dural_normals=None, sigma=5, ang_thresholds=(0.1, 0.5)):
     (electrodes, names, hemis, threshold) = utils.load(op.join(output_fol, '{}_electrodes.pkl'.format(int(threshold))))
     elc1_ind = names.index(elc1_name)
     elc2_ind = names.index(elc2_name)
@@ -290,7 +291,8 @@ def find_points_on_dural_surface(elc1_name, elc2_name, dural_verts, dural_verts_
         hemis = fect.find_electrodes_hemis(subject_fol, electrodes, None, 1, dural_verts, dural_normals)
     print('find_points_path_on_dural_surface from {} to {}'.format(elc1_name, elc2_name))
     points, indices = fect.find_points_path_on_dural_surface(
-        elc1_ind, elc2_ind, hemis, electrodes, dural_verts, dural_verts_nei, names, threshold=5, debug=False)
+        elc1_ind, elc2_ind, hemis, electrodes, dural_verts, dural_verts_nei, names, sigma=sigma,
+        ang_thresholds=ang_thresholds, debug=debug)
     group_names = [names[ind] for ind in indices]
     print(len(group_names), group_names)
 
@@ -348,8 +350,8 @@ if __name__ == '__main__':
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    # find_points_on_dural_surface('G26', 'G48', verts_dural, verts_dural_nei, threshold)
-    for pt1, pt2 in zip(['G38', 'G64', 'G19', 'G49', 'G37', 'G46', 'G7', 'G22'], ['G26', 'G52', 'G56', 'G41', 'G20', 'G47', 'G15', 'G48']):
-        find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
-    for pt1, pt2 in zip(['G38', 'G25', 'G61', 'G36', 'G4', 'G39', 'G23', 'G26'], ['G22', 'G58', 'G35', 'G1', 'G63', 'G30', 'G13', 'G48']):
-        find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
+    find_points_on_dural_surface('G37', 'G20', verts_dural, verts_dural_nei, threshold, True)
+    # for pt1, pt2 in zip(['G38', 'G64', 'G19', 'G49', 'G37', 'G46', 'G7', 'G22'], ['G26', 'G52', 'G56', 'G41', 'G20', 'G47', 'G15', 'G48']):
+    #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
+    # for pt1, pt2 in zip(['G38', 'G25', 'G61', 'G36', 'G4', 'G39', 'G23', 'G26'], ['G22', 'G58', 'G35', 'G1', 'G63', 'G30', 'G13', 'G48']):
+    #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
