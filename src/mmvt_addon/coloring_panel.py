@@ -686,6 +686,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                     data_min, data_max = ColoringMakerPanel.fmri_activity_data_minmax
                     _addon().set_colorbar_max_min(data_max, data_min)
                 _addon().set_colorbar_title('fMRI')
+                _addon().set_colorbar_max_min(data_max, data_min)
             if clusters:
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
             else:

@@ -1485,10 +1485,11 @@ def get_max_abs(data_max, data_min):
 
 
 def calc_min_max(x, x_min=None, x_max=None, norm_percs=None):
+    x_no_nan = x[np.where(~np.isnan(x))]
     if x_min is None:
-        x_min = np.nanmin(x) if norm_percs is None else np.percentile(x, norm_percs[0])
+        x_min = np.nanmin(x) if norm_percs is None else np.percentile(x_no_nan, norm_percs[0])
     if x_max is None:
-        x_max = np.nanmax(x) if norm_percs is None else np.percentile(x, norm_percs[1])
+        x_max = np.nanmax(x) if norm_percs is None else np.percentile(x_no_nan, norm_percs[1])
     if x_min == 0 and x_max == 0 and norm_percs is not None:
         x_min, x_max = calc_min_max(x)
     if x_min == 0 and x_max == 0:

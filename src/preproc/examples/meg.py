@@ -1,9 +1,15 @@
 import argparse
+import os.path as op
+import shutil
 
 from src.preproc import meg as meg
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
+
+LINKS_DIR = utils.get_links_dir()
+MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
+FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 
 
 def read_epoches_and_calc_activity(subject, mri_subject):
@@ -172,6 +178,36 @@ def calc_rest(args):
     ))
     meg.call_main(args)
 
+
+def load_fieldtrip_volumetric_data(args):
+    # http://www.fieldtriptoolbox.org/reference/ft_sourceinterpolate
+    # http://www.fieldtriptoolbox.org/reference/ft_sourceplot
+    # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceplot.m
+    # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceinterpolate.m
+    import scipy.io as sio
+    import nibabel as nib
+    from src.preproc import fMRI
+    import numpy as np
+
+    overwrite = True
+    output_fname = op.join(MEG_DIR, args.subject[0], 'sourceInterp.nii')
+    if not op.isfile(output_fname) or overwrite:
+        fname = op.join(MEG_DIR, args.subject[0], 'sourceInterp.mat')
+        # load Matlab/Fieldtrip data
+        mat = sio.loadmat(fname, squeeze_me=True, struct_as_record=False)
+        ft_data = mat['sourceInterp']
+        data = ft_data.stat2
+        t1 = nib.load(op.join(MEG_DIR, args.subject[0], 'nihpd_asym_10.0-14.0_t1w.nii'))
+        affine = t1.affine
+        nib.save(nib.Nifti1Image(data, affine), output_fname)
+    surface_output_template = op.join(MEG_DIR, args.subject[0], 'sourceInterp_{hemi}.mgz')
+    if not utils.both_hemi_files_exist(surface_output_template) or overwrite:
+        fMRI.project_volume_to_surface(args.subject[0], output_fname)
+        for hemi in utils.HEMIS:
+            shutil.move(op.join(FMRI_DIR, args.subject[0], 'sourceInterp_{}.mgz'.format(hemi)),
+                        op.join(MEG_DIR, args.subject[0], 'sourceInterp_{}.mgz'.format(hemi)))
+    fMRI.calc_fmri_min_max(args.subject[0], surface_output_template, norm_percs=(3, 97), symetric_colors=True)
+    print('asdf')
 
 def calc_functional_rois(args):
     # -s DC -a laus250 -f find_functional_rois_in_stc --stc_name right-MNE-1-15 --label_name_template "precentral*" --inv_fname right-inv --threshold 99.5
