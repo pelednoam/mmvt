@@ -893,6 +893,9 @@ class DellPanel(bpy.types.Panel):
 def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz', debug=True):
     DellPanel.addon = addon
     try:
+        if not DELL_EXIST:
+            DellPanel.init = False
+            return
         ret = init_dural()
         if not ret:
             DellPanel.init = False
