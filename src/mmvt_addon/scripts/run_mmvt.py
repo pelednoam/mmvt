@@ -1,6 +1,6 @@
 import sys
 import os
-
+import os.path as op
 
 try:
     from src.mmvt_addon.scripts import scripts_utils as su
@@ -10,15 +10,16 @@ except:
     import scripts_utils as su
 
 
-def run(subject='', atlas='', run_in_background=False):
-    args = read_args(dict(
-        subject=subject,
-        atlas=atlas,
-    ))
-    if subject != '':
-        args.subject = subject
-    if atlas != '':
-        args.atlas = atlas
+def run(run_in_background=False):
+    # args = read_args(dict(
+    #     subject=subject,
+    #     atlas=atlas,
+    # ))
+    # if subject != '':
+    #     args.subject = subject
+    # if atlas != '':
+    #     args.atlas = atlas
+    args = read_args()
     su.call_script(__file__, args, run_in_background=run_in_background)
 
 
@@ -29,22 +30,25 @@ def read_args(argv=None):
 
 
 def init_mmvt_addon(subject_fname):
-    # args = read_args(su.get_python_argv())
-    # if args.debug:
-    #     su.debug()
+    args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     su.init_mmvt_addon()
     print('Finish init MMVT!')
 
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 2 and sys.argv[2] in ['--python', '--background']:
-        subject_fname = sys.argv[1]
-        init_mmvt_addon(subject_fname)
-    elif len(sys.argv) >= 2:
-        subject = sys.argv[1]
-        atlas = sys.argv[2]
-        run_in_background = su.is_true(sys.argv[3]) if len(sys.argv) >= 4 else False
-        run(subject, atlas, run_in_background)
+    # if len(sys.argv) > 2 and sys.argv[2] in ['--python', '--background']:
+    #     subject_fname = sys.argv[1]
+    #     init_mmvt_addon(subject_fname)
+    # elif len(sys.argv) >= 2:
+    #     subject = sys.argv[1]
+    #     atlas = sys.argv[2]
+    #     run_in_background = su.is_true(sys.argv[3]) if len(sys.argv) >= 4 else False
+    #     run(subject, atlas, run_in_background)
+    # else:
+    #     print('Not enough parameters were sent!')
+    if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
+        run()
     else:
-        print('Not enough parameters were sent!')
+        init_mmvt_addon(sys.argv[1])

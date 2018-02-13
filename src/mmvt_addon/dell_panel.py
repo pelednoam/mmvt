@@ -963,6 +963,8 @@ def init_dural():
         DellPanel.verts_dural_nei = {hemi:mu.load(verts_dural_neighbors_fname.format(hemi=hemi)) \
             if op.isfile(verts_dural_neighbors_fname.format(hemi=hemi)) else None for hemi in mu.HEMIS}
         DellPanel.verts_dural, DellPanel.faces_dural = fect.read_surf_verts(user_fol, 'dural', True)
+        if DellPanel.verts_dural['rh'] is None or DellPanel.faces_dural['rh'] is None:
+            return False
         DellPanel.normals_dural = {hemi:fect.calc_normals(DellPanel.verts_dural[hemi], DellPanel.faces_dural[hemi])
                                    for hemi in mu.HEMIS}
         return True

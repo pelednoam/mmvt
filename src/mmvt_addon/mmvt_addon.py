@@ -446,6 +446,7 @@ def make_all_fcurve_visible():
 def init(addon_prefs):
     global settings
     run_faulthandler()
+    print('filepath: {}'.format(bpy.data.filepath))
     set_play_to(get_max_time_steps())
     mmvt_utils.view_all_in_graph_editor(bpy.context)
     bpy.context.window.screen = bpy.data.screens['Neuro']

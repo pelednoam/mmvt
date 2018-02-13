@@ -71,6 +71,8 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     subjects_dir = mu.get_parent_fol(mu.get_user_fol())
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
+    if isinstance(stc, str):
+        stc = mne.read_source_estimate(stc)
     stc_t = create_stc_t(stc, t)
     if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
             len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
@@ -1212,9 +1214,10 @@ def calc_stc_minmax():
     data_max = mu.max_stc(stc)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
-    ColoringMakerPanel.stc._data *= np.power(10, 9)
-    data_min *= np.power(10, 9)
-    data_max *= np.power(10, 9)
+    if np.max(ColoringMakerPanel.stc._data) < np.power(10, 5):
+        ColoringMakerPanel.stc._data *= np.power(10, 9)
+        data_min *= np.power(10, 9)
+        data_max *= np.power(10, 9)
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
         ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax

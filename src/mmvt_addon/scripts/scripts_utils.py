@@ -256,7 +256,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         print(cmd)
         if not only_verbose:
             os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd, stay_alive=True)
+            utils.run_script(cmd, stay_alive=True, log_fname=log_fname)
         print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:
