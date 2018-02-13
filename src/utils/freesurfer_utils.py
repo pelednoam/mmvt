@@ -47,6 +47,39 @@ mri_robust_register = 'mri_robust_register --mov {source_fname} --dst {target_fn
 
 
 @utils.check_for_freesurfer
+def project_on_surface(subject, volume_file, surf_output_fname, target_subject=None, overwrite_surf_data=False,
+                       modality='fmri', subjects_dir='', mmvt_dir=''):
+    if target_subject is None:
+        target_subject = subject
+    if subjects_dir == '':
+        subjects_dir = utils.get_link_dir(utils.get_links_dir(), 'subjects', 'SUBJECTS_DIR')
+    if mmvt_dir == '':
+        mmvt_dir = utils.get_link_dir(utils.get_links_dir(), 'mmvt')
+    utils.make_dir(op.join(mmvt_dir, subject, 'fmri'))
+    os.environ['SUBJECTS_DIR'] = subjects_dir
+    os.environ['SUBJECT'] = subject
+    for hemi in utils.HEMIS:
+        if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
+            print('project {} to {}'.format(volume_file, hemi))
+            if modality != 'pet':
+                surf_data = project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
+                    target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
+            else:
+                surf_data = project_pet_volume_data(subject, volume_file, hemi, surf_output_fname.format(hemi=hemi))
+            nans = np.sum(np.isnan(surf_data))
+            if nans > 0:
+                print('there are {} nans in {} surf data!'.format(nans, hemi))
+        surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
+        output_fname = op.join(mmvt_dir, subject, modality, '{}_{}'.format(modality, op.basename(
+            surf_output_fname.format(hemi=hemi))))
+        npy_output_fname = op.splitext(output_fname)[0]
+        if not op.isfile('{}.npy'.format(npy_output_fname)) or overwrite_surf_data:
+            print('Saving surf data in {}.npy'.format(npy_output_fname))
+            utils.make_dir(utils.get_parent_fol(npy_output_fname))
+            np.save(npy_output_fname, surf_data)
+
+
+@utils.check_for_freesurfer
 def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
     temp_output = output_fname is None
     if output_fname is None:

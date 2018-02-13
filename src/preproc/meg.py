@@ -11,6 +11,9 @@ from itertools import product
 import traceback
 import mne
 import types
+import scipy.io as sio
+import nibabel as nib
+
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
 from mne.preprocessing import ICA
@@ -20,6 +23,7 @@ from src.utils import utils
 from src.utils import preproc_utils as pu
 from src.utils import labels_utils as lu
 from src.utils import args_utils as au
+from src.utils import freesurfer_utils as fu
 from src.preproc import anatomy as anat
 
 SUBJECTS_MRI_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
@@ -1531,6 +1535,21 @@ def create_stc_t(stc, t, subject=''):
     return stc_t
 
 
+def create_stc_t_from_data(subject, rh_data, lh_data, tstep=0.001):
+    lh_vertno, rh_vertno = len(lh_data), len(rh_data)
+    data = np.concatenate([lh_data, rh_data])
+    if np.max(data) > 1e-6:
+        data /= np.power(10, 9)
+    data = np.reshape(data, (data.shape[0], 1))
+    rh_verts, _ = utils.read_pial(subject, MMVT_DIR, 'rh')
+    lh_verts, _ = utils.read_pial(subject, MMVT_DIR, 'lh')
+    lh_vertno = np.arange(0, lh_vertno)
+    rh_vertno = np.arange(0, rh_vertno) + max(lh_vertno) + 1
+    vertices = [lh_vertno, rh_vertno]
+    stc_t = mne.SourceEstimate(data, vertices, 0, tstep, subject=subject)
+    return stc_t
+
+
 def morph_stc(events, morph_to_subject, inverse_method='dSPM', n_jobs=6):
     for ind, cond in enumerate(events.keys()):
         output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
@@ -2920,6 +2939,32 @@ def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
     return raw_files
 
 
+def load_fieldtrip_volumetric_data(subject, data_name, overwrite_nii_file=False, overwrite_surface=False,
+                                   overwrite_stc=False):
+    volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
+    if not op.isfile(volumetric_meg_fname) or overwrite_nii_file:
+        fname = op.join(MEG_DIR, subject, '{}.mat'.format(data_name))
+        # load Matlab/Fieldtrip data
+        mat = sio.loadmat(fname, squeeze_me=True, struct_as_record=False)
+        ft_data = mat[data_name]
+        data = ft_data.stat2
+        affine = ft_data.transform
+        nib.save(nib.Nifti1Image(data, affine), volumetric_meg_fname)
+    surface_output_template = op.join(MEG_DIR, subject, '{}_{}.mgz'.format(data_name, '{hemi}'))
+    if not utils.both_hemi_files_exist(surface_output_template) or overwrite_surface:
+        fu.project_on_surface(subject, volumetric_meg_fname, surface_output_template, overwrite_surf_data=True,
+                              modality='meg')
+    stcs_exist = utils.both_hemi_files_exist(op.join(MMVT_DIR, subject, 'meg', '{}-{}.stc'.format(data_name, '{hemi}')))
+    if not stcs_exist or overwrite_stc:
+        data = {}
+        for hemi in utils.HEMIS:
+            data[hemi] = np.load(op.join(MMVT_DIR, subject, 'meg', 'meg_{}_{}.npy'.format(data_name, hemi)))
+            data[hemi][np.where(np.isnan(data[hemi]))] = 0
+        stc = create_stc_t_from_data(subject, data['rh'], data['lh'])
+        stc.save(op.join(MMVT_DIR, subject, 'meg', data_name))
+    return stcs_exist
+
+
 def init_main(subject, mri_subject, remote_subject_dir, args):
     if args.events_file_name != '':
         args.events_file_name = op.join(MEG_DIR, args.task, subject, args.events_file_name)
@@ -3028,6 +3073,10 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'fit_ica_on_subjects' in args.function:
         fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
+
+    if 'load_fieldtrip_volumetric_data' in args.function:
+        flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
+            subject, args.field_trip_data_name, args.overwrite_nii_file, args.overwrite_surface, args.overwrite_stc)
 
     return flags
 
@@ -3143,6 +3192,10 @@ def read_cmd_args(argv=None):
     parser.add_argument('--min_cluster_max', required=False, default=0, type=float)
     parser.add_argument('--min_cluster_size', required=False, default=0, type=int)
     parser.add_argument('--clusters_label', required=False, default='')
+    # FieldTrip
+    parser.add_argument('--field_trip_data_name', required=False, default='')
+    parser.add_argument('--overwrite_nii_file', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_surface', help='', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

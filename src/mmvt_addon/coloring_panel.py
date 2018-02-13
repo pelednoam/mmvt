@@ -54,6 +54,8 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     n_jobs = mu.get_n_jobs(n_jobs)
 
     def create_stc_t(stc, t):
+        if len(stc.times) == 1:
+            return stc
         C = max([stc.rh_data.shape[0], stc.lh_data.shape[0]])
         stc_lh_data = stc.lh_data[:, t:t + 1] if stc.lh_data.shape[0] > 0 else np.zeros((C, 1))
         stc_rh_data = stc.rh_data[:, t:t + 1] if stc.rh_data.shape[0] > 0 else np.zeros((C, 1))
@@ -70,13 +72,20 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
     stc_t = create_stc_t(stc, t)
-    vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
-    stc_t_smooth = mne.morph_data(subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
+    if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
+            len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
+        stc_t_smooth = stc_t
+    else:
+        vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
+        stc_t_smooth = mne.morph_data(
+            subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
 
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         data_min, data_max = ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
+        if data_min >= 0 and data_max >= 0:
+            _addon().set_colormap('YlOrRd')
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_prec(2)
     if threshold > data_max:
@@ -1187,8 +1196,8 @@ def _meg_files_update(context):
             bpy.data.scenes['Scene'].frame_preview_end = T
             if context.scene.frame_current > T:
                 context.scene.frame_current = T
+            data_min, data_max = calc_stc_minmax()
             if not _addon().colorbar_values_are_locked():
-                data_min, data_max = calc_stc_minmax()
                 _addon().set_colorbar_max_min(data_max, data_min)
                 _addon().set_colorbar_title('MEG')
             # try:
@@ -1203,12 +1212,9 @@ def calc_stc_minmax():
     data_max = mu.max_stc(stc)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
-    factor = 9 # to get nAmp
-    if factor > 3:
-        # ColoringMakerPanel.stc = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
-        ColoringMakerPanel.stc._data *= np.power(10, factor)
-        data_min *= np.power(10, factor)
-        data_max *= np.power(10, factor)
+    ColoringMakerPanel.stc._data *= np.power(10, 9)
+    data_min *= np.power(10, 9)
+    data_max *= np.power(10, 9)
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
         ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax

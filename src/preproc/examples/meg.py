@@ -10,6 +10,7 @@ from src.utils import preproc_utils as pu
 LINKS_DIR = utils.get_links_dir()
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
 def read_epoches_and_calc_activity(subject, mri_subject):
@@ -184,30 +185,34 @@ def load_fieldtrip_volumetric_data(args):
     # http://www.fieldtriptoolbox.org/reference/ft_sourceplot
     # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceplot.m
     # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceinterpolate.m
+    # -s nihpd-asym -f load_fieldtrip_volumetric_data  --field_trip_data_name sourceInterp --overwrite_stc 1
     import scipy.io as sio
     import nibabel as nib
-    from src.preproc import fMRI
+    from src.preproc import meg
     import numpy as np
+    from src.utils import freesurfer_utils as fu
 
-    overwrite = True
-    output_fname = op.join(MEG_DIR, args.subject[0], 'sourceInterp.nii')
-    if not op.isfile(output_fname) or overwrite:
-        fname = op.join(MEG_DIR, args.subject[0], 'sourceInterp.mat')
+    overwrite = False
+    subject = args.subject[0]
+    data_name = 'sourceInterp'
+    volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
+    if not op.isfile(volumetric_meg_fname) or overwrite:
+        fname = op.join(MEG_DIR, subject, '{}.mat'.format(data_name))
         # load Matlab/Fieldtrip data
         mat = sio.loadmat(fname, squeeze_me=True, struct_as_record=False)
-        ft_data = mat['sourceInterp']
+        ft_data = mat[data_name]
         data = ft_data.stat2
-        t1 = nib.load(op.join(MEG_DIR, args.subject[0], 'nihpd_asym_10.0-14.0_t1w.nii'))
-        affine = t1.affine
-        nib.save(nib.Nifti1Image(data, affine), output_fname)
-    surface_output_template = op.join(MEG_DIR, args.subject[0], 'sourceInterp_{hemi}.mgz')
+        affine = ft_data.transform
+        nib.save(nib.Nifti1Image(data, affine), volumetric_meg_fname)
+    surface_output_template = op.join(MEG_DIR, subject, '{}_{}.mgz'.format(data_name, '{hemi}'))
     if not utils.both_hemi_files_exist(surface_output_template) or overwrite:
-        fMRI.project_volume_to_surface(args.subject[0], output_fname)
-        for hemi in utils.HEMIS:
-            shutil.move(op.join(FMRI_DIR, args.subject[0], 'sourceInterp_{}.mgz'.format(hemi)),
-                        op.join(MEG_DIR, args.subject[0], 'sourceInterp_{}.mgz'.format(hemi)))
-    fMRI.calc_fmri_min_max(args.subject[0], surface_output_template, norm_percs=(3, 97), symetric_colors=True)
-    print('asdf')
+        fu.project_on_surface(subject, volumetric_meg_fname, surface_output_template, overwrite_surf_data=True,
+                              modality='meg')
+    data = {hemi:np.load(op.join(MMVT_DIR, subject, 'meg', 'meg_{}_{}.npy'.format(data_name, hemi)))
+            for hemi in utils.HEMIS}
+    stc = meg.create_stc_t(subject, data['rh'], data['lh'])
+    stc.save(op.join(MMVT_DIR, subject, 'meg', data_name))
+
 
 def calc_functional_rois(args):
     # -s DC -a laus250 -f find_functional_rois_in_stc --stc_name right-MNE-1-15 --label_name_template "precentral*" --inv_fname right-inv --threshold 99.5

@@ -135,7 +135,9 @@ def camera_mode(view=None):
         area.spaces[0].region_3d.view_perspective = 'ORTHO'
         mu.select_all_brain(False)
         bpy.data.cameras['Camera'].lens = 35
+        _addon().change_to_solid_brain()
     else:
+        _addon().change_to_rendered_brain()
         bpy.data.objects['Camera'].select = True
         bpy.context.scene.objects.active = bpy.data.objects['Camera']
         ob = bpy.context.object
@@ -177,7 +179,8 @@ def render_draw(self, context):
     layout = self.layout
 
     layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
-    layout.operator(SaveAllViews.bl_idname, text='Save all perspectives', icon='EDITMODE_HLT')
+    func_name = 'Render' if get_view_mode() == 'CAMERA' else 'Save'
+    layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
 
@@ -288,7 +291,7 @@ class SaveAllViews(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        save_all_views()
+        save_all_views(render_images=get_view_mode() == 'CAMERA')
         return {"FINISHED"}
 
 

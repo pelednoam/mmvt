@@ -520,30 +520,6 @@ def plot_points(subject, verts, pts=None, colors=None, fig_name='', ax=None):
         plt.close()
 
 
-def project_on_surface(subject, volume_file, surf_output_fname,
-                       target_subject=None, overwrite_surf_data=False, is_pet=False):
-    if target_subject is None:
-        target_subject = subject
-    utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
-    for hemi in utils.HEMIS:
-        if not op.isfile(surf_output_fname.format(hemi=hemi)) or overwrite_surf_data:
-            print('project {} to {}'.format(volume_file, hemi))
-            if not is_pet:
-                surf_data = fu.project_volume_data(volume_file, hemi, subject_id=subject, surf="pial", smooth_fwhm=3,
-                    target_subject=target_subject, output_fname=surf_output_fname.format(hemi=hemi))
-            else:
-                surf_data = fu.project_pet_volume_data(subject, volume_file, hemi, surf_output_fname.format(hemi=hemi))
-            nans = np.sum(np.isnan(surf_data))
-            if nans > 0:
-                print('there are {} nans in {} surf data!'.format(nans, hemi))
-        surf_data = np.squeeze(nib.load(surf_output_fname.format(hemi=hemi)).get_data())
-        output_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(surf_output_fname.format(hemi=hemi))))
-        npy_output_fname = op.splitext(output_fname)[0]
-        if not op.isfile('{}.npy'.format(npy_output_fname)) or overwrite_surf_data:
-            print('Saving surf data in {}.npy'.format(npy_output_fname))
-            np.save(npy_output_fname, surf_data)
-
-
 def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname).replace('{subject}', subject)
@@ -684,7 +660,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     if volume_fname == '':
         return False, ''
     if not utils.both_hemi_files_exist(npy_surf_fname) or overwrite_surf_data:
-        project_on_surface(subject, volume_fname, surf_output_fname,
+        fu.project_on_surface(subject, volume_fname, surf_output_fname,
                        target_subject, overwrite_surf_data=overwrite_surf_data, is_pet=is_pet)
     freeview_volume_fname = op.join(MMVT_DIR, subject, 'freeview', op.basename(volume_fname))
     if not op.isfile(freeview_volume_fname):
