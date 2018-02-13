@@ -2939,15 +2939,16 @@ def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
     return raw_files
 
 
-def load_fieldtrip_volumetric_data(subject, data_name, overwrite_nii_file=False, overwrite_surface=False,
-                                   overwrite_stc=False):
+def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
+                                   overwrite_nii_file=False, overwrite_surface=False, overwrite_stc=False):
     volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
     if not op.isfile(volumetric_meg_fname) or overwrite_nii_file:
         fname = op.join(MEG_DIR, subject, '{}.mat'.format(data_name))
         # load Matlab/Fieldtrip data
         mat = sio.loadmat(fname, squeeze_me=True, struct_as_record=False)
         ft_data = mat[data_name]
-        data = ft_data.stat2
+        data = getattr(ft_data, data_field_name)
+        data[np.isnan(data)] = 0
         affine = ft_data.transform
         nib.save(nib.Nifti1Image(data, affine), volumetric_meg_fname)
     surface_output_template = op.join(MEG_DIR, subject, '{}_{}.mgz'.format(data_name, '{hemi}'))
@@ -3076,7 +3077,7 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
-            subject, args.field_trip_data_name, args.overwrite_nii_file, args.overwrite_surface, args.overwrite_stc)
+            subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file, args.overwrite_surface, args.overwrite_stc)
 
     return flags
 
@@ -3193,7 +3194,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--min_cluster_size', required=False, default=0, type=int)
     parser.add_argument('--clusters_label', required=False, default='')
     # FieldTrip
-    parser.add_argument('--field_trip_data_name', required=False, default='')
+    parser.add_argument('--fieldtrip_data_name', required=False, default='')
+    parser.add_argument('--fieldtrip_data_field_name', required=False, default='')
     parser.add_argument('--overwrite_nii_file', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_surface', help='', required=False, default=0, type=au.is_true)
 

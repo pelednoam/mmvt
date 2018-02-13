@@ -1931,5 +1931,9 @@ def is_locked(fname):
     return locked
 
 
+def non_nan_data(x):
+    return x[np.where(~np.isnan(x))]
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

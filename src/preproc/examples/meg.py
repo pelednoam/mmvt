@@ -185,7 +185,7 @@ def load_fieldtrip_volumetric_data(args):
     # http://www.fieldtriptoolbox.org/reference/ft_sourceplot
     # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceplot.m
     # https://github.com/fieldtrip/fieldtrip/blob/master/ft_sourceinterpolate.m
-    # -s nihpd-asym -f load_fieldtrip_volumetric_data  --field_trip_data_name sourceInterp --overwrite_stc 1
+    # -s nihpd-asym -f load_fieldtrip_volumetric_data  --fieldtrip_data_field_name stat2 --fieldtrip_data_name sourceInterp --overwrite_stc 1 --overwrite_nii_file 1
     import scipy.io as sio
     import nibabel as nib
     from src.preproc import meg
