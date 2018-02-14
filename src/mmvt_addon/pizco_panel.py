@@ -176,11 +176,12 @@ def init(addon):
 
 def init_pizco(mmvt):
     try:
-        bpy.context.scene.pizco_server_address = 'tcp://127.0.0.1:8000'
+        bpy.context.scene.pizco_server_address = 'tcp://127.0.0.1:8001'
         MMVT_Server(mmvt, bpy.context.scene.pizco_server_address)
         return True
     except:
         print('No pizco')
+        # print(traceback.format_exc())
         return False
 
 

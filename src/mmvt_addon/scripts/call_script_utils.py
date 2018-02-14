@@ -37,7 +37,7 @@ def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname=''):
     if verbose:
         print('running: {}'.format(cmd))
     if stay_alive:
-        run_command_in_new_thread(cmd)
+        run_command_in_new_thread(cmd, cwd, log_fname)
     else:
         if IS_WINDOWS:
             output = subprocess.call(cmd)
@@ -48,11 +48,11 @@ def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname=''):
             else:
                 log_file = None
             p = Popen(cmd, shell=True, stdout=log_file, bufsize=1, close_fds=True, cwd=cwd)
-        print(output)
-        return output
+        # print(output)
+        # return output
 
 
-def run_command_in_new_thread(cmd):
-    thread = threading.Thread(target=run_script, args=[cmd])
+def run_command_in_new_thread(cmd, cwd=None, log_fname=''):
+    thread = threading.Thread(target=run_script, args=[cmd, False, False, cwd, log_fname])
     print('start!')
     thread.start()

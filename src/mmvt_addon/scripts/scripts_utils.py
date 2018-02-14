@@ -255,8 +255,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         mmvt_addon_fol = get_parent_fol(__file__, 2)
         print(cmd)
         if not only_verbose:
-            os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd, stay_alive=True, log_fname=log_fname)
+            # os.chdir(mmvt_addon_fol)
+            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=mmvt_addon_fol)
         print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:
@@ -343,10 +343,11 @@ def add_default_args():
     return parser
 
 
-def parse_args(parser, argv):
+def parse_args(parser, argv, raise_exception_if_subject_is_empty=True):
     args = Bag(au.parse_parser(parser, argv))
     args.real_atlas = get_real_atlas_name(args.atlas)
-    if (len(args.subjects) == 0 and args.subject == '') or (len(args.subjects) > 0 and args.subject != ''):
+    if ((len(args.subjects) == 0 and args.subject == '') or (len(args.subjects) > 0 and args.subject != '')) and \
+            raise_exception_if_subject_is_empty:
         # print(args)
         raise Exception('You need to set --subject or --subjects!')
     return args

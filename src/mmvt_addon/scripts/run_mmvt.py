@@ -10,23 +10,21 @@ except:
     import scripts_utils as su
 
 
-def run(run_in_background=False):
-    # args = read_args(dict(
-    #     subject=subject,
-    #     atlas=atlas,
-    # ))
-    # if subject != '':
-    #     args.subject = subject
-    # if atlas != '':
-    #     args.atlas = atlas
+def run(subject='', atlas='', run_in_background=False, debug=None):
     args = read_args()
+    if subject != '':
+        args.subject = subject
+    if atlas != '':
+        args.atlas = atlas
+    if debug is not None:
+        args.debug = debug
     su.call_script(__file__, args, run_in_background=run_in_background)
 
 
 def read_args(argv=None):
     parser = su.add_default_args()
     # Add more args here
-    return su.parse_args(parser, argv)
+    return su.parse_args(parser, argv, raise_exception_if_subject_is_empty=False)
 
 
 def init_mmvt_addon(subject_fname):
@@ -38,16 +36,6 @@ def init_mmvt_addon(subject_fname):
 
 
 if __name__ == '__main__':
-    # if len(sys.argv) > 2 and sys.argv[2] in ['--python', '--background']:
-    #     subject_fname = sys.argv[1]
-    #     init_mmvt_addon(subject_fname)
-    # elif len(sys.argv) >= 2:
-    #     subject = sys.argv[1]
-    #     atlas = sys.argv[2]
-    #     run_in_background = su.is_true(sys.argv[3]) if len(sys.argv) >= 4 else False
-    #     run(subject, atlas, run_in_background)
-    # else:
-    #     print('Not enough parameters were sent!')
     if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
         run()
     else:

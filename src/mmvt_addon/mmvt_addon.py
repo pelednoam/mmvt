@@ -587,10 +587,10 @@ def load_all_panels(addon_prefs=None, first_time=False):
             panel.init(mmvt, addon_prefs)
         else:
             panel.init(mmvt)
-        if bpy.data.objects.get('rh'):
-            split_view(0)
-            split_view(0)
-            fix_scale()
+    if bpy.data.objects.get('rh'):
+        split_view(0)
+        split_view(0)
+        fix_scale()
     show_activity()
     show_pial()
     view_all()
