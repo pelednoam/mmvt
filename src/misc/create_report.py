@@ -44,7 +44,6 @@ def main(html_template_fname, scan_fol, patient_name, mrn, scan_date, output_fna
 
 
 if __name__ == '__main__':
-    # wkhtmltopdf_fol = '/homes/5/npeled/space1/Documents/natalia/wkhtmltox/bin'
     template_fname = '/homes/5/npeled/space1/Documents/natalia/template_report.html'
     scan_fol = '/homes/5/npeled/space1/Documents/natalia/scan'
 
