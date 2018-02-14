@@ -13,8 +13,9 @@ except:
     import save_views
 
 
-def wrap_blender_call():
-    args = read_args()
+def wrap_blender_call(args=None):
+    if args is None:
+        args = read_args()
     args = pre_blender_call(args)
     if args.save_views:
         args = save_views.pre_blender_call(args)
