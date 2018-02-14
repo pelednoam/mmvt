@@ -47,7 +47,7 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 # @mu.dump_args
-def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
+def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
              n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
@@ -72,7 +72,10 @@ def plot_stc(stc, t, threshold=0,  save_image=True, view_selected=False, subject
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
     if isinstance(stc, str):
-        stc = mne.read_source_estimate(stc)
+        ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
+        calc_stc_minmax()
+    if threshold is None:
+        set_threshold(threshold)
     stc_t = create_stc_t(stc, t)
     if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
             len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):

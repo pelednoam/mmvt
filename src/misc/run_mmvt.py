@@ -1,16 +1,14 @@
 import os
 import os.path as op
 from pizco import Proxy
-import mne
 
 os.chdir(os.environ['MMVT_CODE'])
 from src.mmvt_addon.scripts import run_mmvt
+from src.utils import utils
 
-
-subject = 'sample'
-atlas = 'dkt'
+subject, atlas = 'DC', 'laus250'
 run_mmvt.run(subject, atlas, run_in_background=False, debug=True)
 mmvt = Proxy('tcp://127.0.0.1:8001')
-mne_sample_data_fol = mne.datasets.sample.data_path()
-stc_fname = op.join(mne_sample_data_fol, 'MEG', 'sample', 'sample_audvis-meg-rh.stc')
+meg_dir = utils.get_link_dir(utils.get_links_dir(), 'meg')
+stc_fname = op.join(meg_dir, subject, 'left-MNE-1-15-lh.stc')
 mmvt.plot_stc(stc_fname, 10, threshold=0)
