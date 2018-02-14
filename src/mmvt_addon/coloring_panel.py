@@ -1198,10 +1198,10 @@ def _meg_files_update(context):
             bpy.data.scenes['Scene'].frame_preview_end = T
             if context.scene.frame_current > T:
                 context.scene.frame_current = T
+            # if not _addon().colorbar_values_are_locked():
             data_min, data_max = calc_stc_minmax()
-            if not _addon().colorbar_values_are_locked():
-                _addon().set_colorbar_max_min(data_max, data_min)
-                _addon().set_colorbar_title('MEG')
+            _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
+            _addon().set_colorbar_title('MEG')
             # try:
             #     bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
             # except:
@@ -1214,7 +1214,7 @@ def calc_stc_minmax():
     data_max = mu.max_stc(stc)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
-    if np.max(ColoringMakerPanel.stc._data) < np.power(10, 5):
+    if np.max(ColoringMakerPanel.stc._data) < 1e-5:
         ColoringMakerPanel.stc._data *= np.power(10, 9)
         data_min *= np.power(10, 9)
         data_max *= np.power(10, 9)

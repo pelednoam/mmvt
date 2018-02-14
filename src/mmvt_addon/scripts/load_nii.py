@@ -36,6 +36,7 @@ def add_args(parser):
     parser.add_argument('--use_abs_threshold', help='Use abs threshold', required=False, default=True, type=su.is_true)
     parser.add_argument('--cb_min_max', help='Colorbar min max values (default: take the min and abs from the data)',
                         required=False, default=None, type=su.float_arr_type)
+    parser.add_argument('--cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
     parser.add_argument('--save_views', help='Save views', required=False, default=False, type=su.is_true)
     parser.add_argument('--fmri_file_template', help='For inner usage', required=False, default='', type=str)
     return parser
@@ -91,6 +92,7 @@ def mmvt_calls(mmvt, args, subject_fname):
     if args.cb_min_max is not None:
         cb_min, cb_max = args.cb_min_max
         mmvt.set_colorbar_max_min(cb_max, cb_min)
+    mmvt.set_colormap(args.cm)
     mmvt.show_hemis() # Otherwise it'll plot only on the not-hidden hemis
     mmvt.plot_fmri_file(args.fmri_file_template)
 

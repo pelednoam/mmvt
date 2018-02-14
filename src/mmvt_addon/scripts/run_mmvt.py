@@ -39,4 +39,5 @@ if __name__ == '__main__':
     if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
         run()
     else:
+        # su.debug()
         init_mmvt_addon(sys.argv[1])

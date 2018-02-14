@@ -53,14 +53,17 @@ def add_args(parser):
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
     parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
     parser.add_argument('--add_cb', help='Add colorbar (default False)', required=False, default=False, type=su.is_true)
-    parser.add_argument('--cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
+    parser.add_argument('--cb_cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
     parser.add_argument('--cb_vals', help='Colorbar min and max (default "0,1")', required=False, default='0,1',
                         type=su.float_arr_type)
     parser.add_argument('--cb_ticks', help='Colorbar ticks (default None)', required=False, default=None,
                         type=su.float_arr_type)
     parser.add_argument('--background_color', help='Set the background color in solid mode (default black)',
                         required=False, default='0,0,0', type=su.float_arr_type)
-
+    parser.add_argument('--render_images', help='Render the images (default False)', required=False, default=False,
+                        type=su.is_true)
+    parser.add_argument('--render_quality', help='Render quality (default 50)', required=False, default=50, type=int)
+    parser.add_argument('--transparency', help='Rendering transparency, 0-1 (default 0)', required=False, default=0, type=float)
     parser.add_argument('--log_fname', help='For inner usage', required=False, default='', type=str)
     parser.add_argument('--images_log_fname', help='For inner usage', required=False, default='', type=str)
     return parser
@@ -89,9 +92,9 @@ def mmvt_calls(mmvt, args, subject_fname):
     elif args.sub == 2:
         mmvt.hide_subcorticals()
     all_images_names = []
-    args.render_images = False
-    args.transparency = 0
-    args.render_quality = 30
+    # args.render_images = False
+    # args.transparency = 0
+    # args.render_quality = 30
     if args.render_images:
         mmvt.set_brain_transparency(args.transparency)
     else:
@@ -155,7 +158,7 @@ def post_blender_call(args):
                 fu.crop_image(coup['rh'], coup['rh'], dx=150, dy=0, dw=0, dh=0)
                 fu.combine_two_images(coup['lh'], coup['rh'], new_image_fname, facecolor=background)
                 fu.combine_brain_with_color_bar(
-                    data_max, data_min, new_image_fname, args.cm, dpi=200, overwrite=True, ticks=ticks,
+                    data_max, data_min, new_image_fname, args.cb_cm, dpi=200, overwrite=True, ticks=ticks,
                     w_fac=3, h_fac=3, ddh=0.7, dy=0.13, ddw=0.4, dx=-0.02)
             else:
                 fu.crop_image(coup['lh'], coup['lh'], dx=150, dy=0, dw=150, dh=0)
@@ -166,7 +169,7 @@ def post_blender_call(args):
     elif args.add_cb and not args.join_hemis:
         for fig_name in images_names:
             fu.combine_brain_with_color_bar(
-                data_max, data_min, fig_name, args.cm, dpi=100, overwrite=True, ticks=ticks,
+                data_max, data_min, fig_name, args.cb_cm, dpi=100, overwrite=True, ticks=ticks,
                 w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 

@@ -53,6 +53,7 @@ from itertools import chain
 from sys import platform as _platform
 from datetime import datetime
 import glob
+import functools
 import importlib
 
 _addon = None
@@ -189,7 +190,7 @@ def file_type(fname):
 # def file_type(fname):
 #     return op.splitext(op.basename(fname))[1][1:]
 
-
+@functools.lru_cache(maxsize=None)
 def file_fol():
     return os.path.dirname(bpy.data.filepath)
 
@@ -348,6 +349,7 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
             print ("Could not delete object")
 
 
+@functools.lru_cache(maxsize=None)
 def get_atlas(default='laus250'):
     # name_split = namebase(bpy.data.filepath).split('_')
     # if len(name_split) > 1:
@@ -389,6 +391,7 @@ def get_mmvt_fol():
     return bpy.path.abspath('//')
 
 
+@functools.lru_cache(maxsize=None)
 def get_user_fol():
     root_fol = bpy.path.abspath('//')
     user = get_user()
@@ -927,6 +930,7 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
         row.label(text=text2)
 
 
+@functools.lru_cache(maxsize=None)
 def get_user():
     return namebase(bpy.data.filepath).split('_')[0]
 
@@ -1347,6 +1351,7 @@ def remove_items_from_set(x, items):
             x.remove(item)
 
 
+@functools.lru_cache(maxsize=None)
 def save_blender_file(blend_fname=''):
     if blend_fname == '':
         blend_fname = bpy.data.filepath
