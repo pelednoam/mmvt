@@ -53,7 +53,6 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
     subject = mu.get_user() if subject == '' else subject
     n_jobs = mu.get_n_jobs(n_jobs)
     bpy.context.scene.frame_current = t
-
     def create_stc_t(stc, t):
         if len(stc.times) == 1:
             return stc
@@ -2139,8 +2138,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     contours_coloring_exist = False
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}
-
-    activity_map_coloring = activity_map_coloring
+    activity_types = []
+    # activity_map_coloring = activity_map_coloring
 
     def draw(self, context):
         draw(self, context)
