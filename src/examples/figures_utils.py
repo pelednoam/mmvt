@@ -89,6 +89,14 @@ def example6():
         #     data_max, data_min, new_image_fname, colors_map, dpi=100, overwrite=True, w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
+def example7():
+    images_names = glob.glob('/home/npeled/mmvt/nmr01216/figures/back/*.png')
+    for fig_name in images_names:
+        fu.combine_brain_with_color_bar(
+            data_max, data_min, fig_name, args.cb_cm, dpi=100, overwrite=True, ticks=ticks,
+            w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
+
+
 if __name__ == '__main__':
     example6()
 

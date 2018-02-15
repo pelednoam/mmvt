@@ -13,19 +13,25 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 
 @utils.tryit()
-def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None, **kargs):
+def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None, facecolor='black',
+                   dpi=100, **kargs):
     import matplotlib as mpl
 
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
     color_map = find_color_map(color_map)
     if ax is None:
-        ax = plt.subplot(199)
+        fig = plt.figure(dpi=dpi, facecolor=facecolor) #, figsize=(w, h))
+        fig.canvas.draw()
+        ax = plt.gca() #plt.subplot(199)
+        ax.tick_params(axis='y', colors='white' if facecolor in ['black', [0, 0, 0]] else 'black')
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
     if ticks is not None:
         cb.set_ticks(ticks)
+    resize_and_move_ax(ax, ddw=0.07, ddh=0.8)
     if do_save:
-        plt.savefig(op.join(fol, '{}_colorbar.jpg'.format(color_map_name)))
+        fname = op.join(fol, '{}_colorbar.jpg'.format(color_map_name))
+        plt.savefig(fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
     else:
         plt.show()
     return cb
@@ -185,7 +191,19 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
     return new_image_fname
 
 
-def combine_brain_with_color_bar(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
+def combine_brain_with_color_bar(image_fname, cb_img, w_offset=10, overwrite=False):
+    background = Image.open(image_fname)
+    bg_w, bg_h = background.size
+    cb_w, cb_h = cb_img.size
+    offset = (int((bg_w - cb_w)) - w_offset, int((bg_h - cb_h) / 2))
+    background.paste(cb_img, offset)
+    if not overwrite:
+        image_fol = utils.get_fname_folder(image_fname)
+        image_fname = op.join(image_fol, '{}_cb.{}'.format(image_fname[:-4], image_fname[-3:]))
+    background.save(image_fname)
+
+
+def combine_brain_with_color_bar_old(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
                                  x_left_crop=0, x_right_crop=0, y_top_crop=0, y_buttom_crop=0,
                                  w_fac=2, h_fac=3/2, facecolor='black', ticks=None,
                                  dy=0.03, ddh=0.92, ddw=0.8, dx=-0.1, **kargs):
