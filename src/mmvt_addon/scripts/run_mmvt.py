@@ -10,8 +10,11 @@ except:
     import scripts_utils as su
 
 
-def run(subject='', atlas='', run_in_background=False, debug=None):
-    args = read_args()
+def run(subject='', atlas='', run_in_background=False, debug=None, raise_exp=True):
+    args = read_args(raise_exp=raise_exp)
+    if args is None:
+        sys.argv = [__file__ , '-s', subject, '-a', atlas]
+        args = read_args()
     if subject != '':
         args.subject = subject
     if atlas != '':
@@ -21,10 +24,18 @@ def run(subject='', atlas='', run_in_background=False, debug=None):
     su.call_script(__file__, args, run_in_background=run_in_background)
 
 
-def read_args(argv=None):
+def read_args(argv=None, raise_exp=True):
     parser = su.add_default_args()
     # Add more args here
-    return su.parse_args(parser, argv, raise_exception_if_subject_is_empty=False)
+    # print('argv: {}'.format(sys.argv))
+    if raise_exp:
+        return su.parse_args(parser, argv, raise_exception_if_subject_is_empty=False)
+    else:
+        try:
+            args = su.parse_args(parser, argv, raise_exception_if_subject_is_empty=False)
+        except:
+            args = None
+    return args
 
 
 def init_mmvt_addon(subject_fname):

@@ -52,6 +52,7 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
     import mne
     subject = mu.get_user() if subject == '' else subject
     n_jobs = mu.get_n_jobs(n_jobs)
+    bpy.context.scene.frame_current = t
 
     def create_stc_t(stc, t):
         if len(stc.times) == 1:
@@ -74,6 +75,7 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
     if isinstance(stc, str):
         ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
         calc_stc_minmax()
+
     if threshold is None:
         set_threshold(threshold)
     stc_t = create_stc_t(stc, t)

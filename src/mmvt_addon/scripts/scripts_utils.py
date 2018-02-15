@@ -216,9 +216,10 @@ def get_logs_fol():
 
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
                 only_verbose=False):
-    if args.blender_fol == '':
-        args.blender_fol = get_blender_dir()
-    if not op.isdir(args.blender_fol):
+    # if args.blender_fol == '':
+    #     args.blender_fol = get_blender_dir()
+    blender_fol = get_blender_dir()
+    if not op.isdir(blender_fol):
         print('No Blender folder!')
         return
     blend_fname_is_None = True if blend_fname is None else False
@@ -245,18 +246,18 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
         # if run_in_background:
-        cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" {call_args}'.format( # > {log_fname}
-            blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
-            blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
+        print('Blender dir: {}'.format(blender_fol))
+        cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
+            blender_exe='./blender', background='--background' if run_in_background else '',
+            blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
         # else:
         #     cmd = '{blender_exe} -P "{script_fname}" {blend_fname} {call_args}'.format( # > {log_fname}
         #         blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
         #         blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
         mmvt_addon_fol = get_parent_fol(__file__, 2)
-        print(cmd)
         if not only_verbose:
             # os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=mmvt_addon_fol)
+            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol) #mmvt_addon_fol)
         print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:
@@ -319,7 +320,7 @@ def exit_blender():
 
 def get_python_argv():
     # Remove the blender argv and return only the python argv
-    scripts_params_ind = sys.argv.index('--python') + 2
+    scripts_params_ind = sys.argv.index('--python') + 3 # because of the " -- "s
     return sys.argv[scripts_params_ind:]
 
 
@@ -339,7 +340,7 @@ def add_default_args():
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
     parser.add_argument('-d', '--debug', help='debug', required=False, default=0, type=au.is_true)
-    parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
+    # parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 
 

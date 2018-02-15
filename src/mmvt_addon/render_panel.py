@@ -565,6 +565,10 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #                       filepath=image_name)  # export it to this location
 
 
+# todo: understand how to change the file_format to png in code
+# def get_figure_format():
+#     render.image_settings.file_format
+
 def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
