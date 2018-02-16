@@ -33,7 +33,7 @@ def get_parent_fol(curr_dir='', levels=1):
     return parent_fol
 
 
-def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname=''):
+def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname='', err_pipe=None):
     if verbose:
         print('running: {}'.format(cmd))
     if stay_alive:
@@ -47,7 +47,7 @@ def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname=''):
                 log_file = open(log_fname, 'w')
             else:
                 log_file = None
-            p = Popen(cmd, shell=True, stdout=log_file, bufsize=1, close_fds=True, cwd=cwd)
+            p = Popen(cmd, shell=True, stdout=log_file, stderr=err_pipe, bufsize=1, close_fds=True, cwd=cwd)
         # print(output)
         # return output
 

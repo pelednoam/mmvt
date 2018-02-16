@@ -1019,22 +1019,26 @@ def create_labels_names_lookup(subject, atlas):
 
 
 def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_overwrite_blend=True):
+    from src.mmvt_addon.scripts import create_new_subject as mmvt_script
     # Create a file for the new subject
+    args = mmvt_script.create_new_subject(subject, atlas, overwrite_blend)
+    utils.waits_for_file(args.log_fname)
     atlas = utils.get_real_atlas_name(atlas, short_name=True)
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
-    empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
-    if not op.isfile(empty_subject_fname):
-        resources_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
-        shutil.copy(op.join(resources_dir, 'empty_subject.blend'), empty_subject_fname)
-    if op.isfile(new_fname) and not overwrite_blend:
-        if ask_if_overwrite_blend:
-            overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
-            if au.is_true(overwrite):
-               os.remove(new_fname)
-               shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
-    else:
-        shutil.copy(empty_subject_fname, new_fname)
     return op.isfile(new_fname)
+    # empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
+    # if not op.isfile(empty_subject_fname):
+    #     resources_dir = op.join(utils.get_parent_fol(levels=2), 'resources')
+    #     shutil.copy(op.join(resources_dir, 'empty_subject.blend'), empty_subject_fname)
+    # if op.isfile(new_fname) and not overwrite_blend:
+    #     if ask_if_overwrite_blend:
+    #         overwrite = input('The file {} already exist, do you want to overwrite? '.format(new_fname))
+    #         if au.is_true(overwrite):
+    #            os.remove(new_fname)
+    #            shutil.copy(op.join(MMVT_DIR, 'empty_subject.blend'), new_fname)
+    # else:
+    #     shutil.copy(empty_subject_fname, new_fname)
+
 
 
 def check_bem(subject, remote_subject_dir, args):

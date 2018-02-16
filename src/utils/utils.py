@@ -77,6 +77,7 @@ from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
 get_real_atlas_name = su.get_real_atlas_name
 select_one_file = su.select_one_file
+waits_for_file = su.waits_for_file
 
 from src.utils import args_utils as au
 is_int = au.is_int

@@ -2235,3 +2235,8 @@ def find_hemi_using_vertices_num(fname):
 
 def get_hemi_obj(hemi):
     return bpy.data.objects['inflated_{}'.format(hemi)]
+
+
+def write_to_stderr(str):
+    sys.stderr.write('{}\n'.format(str))
+    sys.stderr.flush()

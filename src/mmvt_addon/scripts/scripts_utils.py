@@ -208,14 +208,8 @@ def make_dir(fol):
     return fol
 
 
-def get_logs_fol():
-    logs_fol = op.join(get_parent_fol(__file__, 4), 'logs')
-    make_dir(logs_fol)
-    return logs_fol
-
-
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
-                only_verbose=False):
+                only_verbose=False, err_pipe=None):
     # if args.blender_fol == '':
     #     args.blender_fol = get_blender_dir()
     blender_fol = get_blender_dir()
@@ -224,9 +218,6 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         return
     blend_fname_is_None = True if blend_fname is None else False
     call_args_is_None = True if call_args is None else False
-    logs_fol = get_logs_fol()
-    if only_verbose:
-        print('Creating logs fol: {}'.format(logs_fol))
     if log_name == '':
         log_name = namebase(script_fname)
         if only_verbose:
@@ -238,6 +229,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         args.subject = subject
         args.subjects = ''
         print('*********** {} ***********'.format(subject))
+        logs_fol = get_logs_fol(subject)
         if blend_fname is None:
             blend_fname = get_subject_fname(args)
         else:
@@ -257,21 +249,29 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         mmvt_addon_fol = get_parent_fol(__file__, 2)
         if not only_verbose:
             # os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol) #mmvt_addon_fol)
-        print('After Blender call')
+            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
+        # print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:
             blend_fname = None
         if call_args_is_None:
             call_args = None
         call_args, blend_fname = None, None
-    print('Finish! For more details look in {}'.format(log_fname))
+    # print('Finish! For more details look in {}'.format(log_fname))
+
+
+def get_logs_fol(subject):
+    logs_fol = op.join(get_mmvt_dir(), subject, 'logs')
+    make_dir(logs_fol)
+    return logs_fol
 
 
 def get_subject_fname(args):
     mmvt_dir = get_mmvt_dir()
+    atlas = get_real_atlas_name(args.atlas, short_name=True)
+    new_fname = op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, atlas))
     # return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
-    return op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, args.atlas))
+    return new_fname
 
 
 def create_call_args(args):

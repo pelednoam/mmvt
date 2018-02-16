@@ -199,9 +199,11 @@ def import_brain(context=None):
         mu.log_err('import_brain: addon is None!', logging)
         return
     user_fol = mu.get_user_fol()
-    print("importing ROIs")
+    mu.write_to_stderr('Importing ROIs...')
     import_rois(user_fol)
+    mu.write_to_stderr('Importing functional maps...')
     import_hemis_for_functional_maps(user_fol)
+    mu.write_to_stderr('Importing subcorticals...')
     import_subcorticals(op.join(user_fol, 'subcortical'))
     # if op.isdir(op.join(user_fol, 'cerebellum')):
     #     import_subcorticals(op.join(user_fol, 'cerebellum'), 'Cerebellum')
@@ -209,6 +211,7 @@ def import_brain(context=None):
         last_obj = context.active_object.name
         print('last obj is -' + last_obj)
     if bpy.context.scene.inflated_morphing:
+        mu.write_to_stderr('Creating inflating morphing...')
         create_inflating_morphing()
     if bpy.data.objects.get(' '):
         bpy.data.objects[' '].select = True
@@ -224,7 +227,7 @@ def import_brain(context=None):
         if obj.name[-1] == '1':
             obj.name = obj.name[0:-4]
     bpy.ops.object.select_all(action='DESELECT')
-    print('Brain importing is Finished ')
+    mu.write_to_stderr('Brain importing is Finished!')
     atlas = mu.get_real_atlas_name(bpy.context.scene.atlas, short_name=True)
     blend_fname = op.join(mu.get_parent_fol(mu.get_user_fol()), '{}_{}.blend'.format(mu.get_user(), atlas))
     bpy.ops.wm.save_as_mainfile(filepath=blend_fname)
