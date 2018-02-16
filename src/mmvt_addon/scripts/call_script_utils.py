@@ -54,5 +54,5 @@ def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname='', err
 
 def run_command_in_new_thread(cmd, cwd=None, log_fname=''):
     thread = threading.Thread(target=run_script, args=[cmd, False, False, cwd, log_fname])
-    print('start!')
+    # print('start!')
     thread.start()

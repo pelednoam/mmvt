@@ -238,7 +238,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
         # if run_in_background:
-        print('Blender dir: {}'.format(blender_fol))
+        # print('Blender dir: {}'.format(blender_fol))
         cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
             blender_exe='./blender', background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')

@@ -2033,7 +2033,7 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
         if not raw_exist:
             print('No raw or raw info file!')
             return False
-        raw = mne.io.read_raw_fif(RAW)
+        raw = mne.io.read_raw_fif(raw_fname)
         info = raw.info
         utils.save(info, INFO)
     else:

@@ -685,7 +685,7 @@ def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, rea
     else:
         thread = threading.Thread(target=run_command, args=(cmd, shell, cwd))
         q_in, q_out = None, None
-    print('start!')
+    # print('start!')
     thread.start()
     return q_in, q_out
 

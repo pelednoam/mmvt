@@ -2,6 +2,7 @@ import os.path as op
 import numpy as np
 import mne.io
 import traceback
+from functools import partial
 
 from src.utils import utils
 from src.utils import preproc_utils as pu
@@ -97,9 +98,9 @@ def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
     return True
 
 
-def main(tup, remote_subject_dir, args, flags):
-    (subject, mri_subject), inverse_method = tup
-    evoked, epochs = None, None
+def init(subject, args, mri_subject='', remote_subject_dir=''):
+    if mri_subject == '':
+        mri_subject = subject
     fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, remote_subject_dir, args)
     meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
                      MMVT_DIR, args)
@@ -107,6 +108,15 @@ def main(tup, remote_subject_dir, args, flags):
     meg.FWD = meg.FWD_EEG
     meg.INV = meg.INV_EEG
     stat = meg.STAT_AVG if len(conditions) == 1 else meg.STAT_DIFF
+    SUBJECT_EEG_DIR = op.join(SUBJECTS_EEG_DIR, subject)
+    meg.locating_file = partial(utils.locating_file, parent_fol=SUBJECT_EEG_DIR)
+    return conditions, stat
+
+
+def main(tup, remote_subject_dir, args, flags):
+    (subject, mri_subject), inverse_method = tup
+    evoked, epochs = None, None
+    conditions, stat = init(subject, args, mri_subject, remote_subject_dir)
 
     if utils.should_run(args, 'read_eeg_sensors_layout'):
         flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
