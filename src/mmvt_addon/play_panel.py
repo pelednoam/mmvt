@@ -36,7 +36,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("stim", "Electrodes stimulation"), ("stim_sources", "Electrodes stimulation & sources"),
        ("meg_elecs", "Meg & Electrodes activity"),
        ("meg_elecs_coh", "Meg & Electrodes activity & coherence"),
-       ("eeg_helmet", "EEG helmet")]
+       ("eeg_helmet", "EEG helmet"), ("meg_sensors", "MEG sensors"),
+       ("eeg_sensors", "EEG sensors")]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Type pf data to play')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description="frames num")

@@ -1936,16 +1936,16 @@ def draw(self, context):
     #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
     # fmri_labels_data_minmax_exist = op.isfile(
     #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
-    electrodes_files_exist = \
-        op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
-        op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npy'.format(bip)))
-    electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
-    electrodes_stim_files_exist = len(glob.glob(op.join(
-        mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
-    electrodes_labels_files_exist = len(glob.glob(op.join(
-        mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
-                                    len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
+    # bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    # electrodes_files_exist = \
+    #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
+    #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npy'.format(bip)))
+    # electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
+    # electrodes_stim_files_exist = len(glob.glob(op.join(
+    #     mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
+    # electrodes_labels_files_exist = len(glob.glob(op.join(
+    #     mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
+    #                                 len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
     static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*.npy'))) > 0
     # manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
@@ -2037,15 +2037,15 @@ def draw(self, context):
         # if not bpy.data.objects.get('eeg_helmet', None) is None:
         #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
-    if electrodes_files_exist:
+    if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
-        if electrodes_dists_exist:
+        if ColoringMakerPanel.electrodes_dists_exist:
             col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
-        if electrodes_labels_files_exist:
+        if ColoringMakerPanel.electrodes_labels_files_exist:
             col.prop(context.scene, "electrodes_sources_files", text="")
             col.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
-        if electrodes_stim_files_exist:
+        if ColoringMakerPanel.electrodes_stim_files_exist:
             col.operator(ColorElectrodesStim.bl_idname, text="Plot Electrodes Stimulation", icon='POTATO')
     if connections_files_exit:
         col = layout.box().column()
@@ -2134,6 +2134,10 @@ class ColoringMakerPanel(bpy.types.Panel):
     fmri_activity_map_exist = False
     eeg_exist = False
     meg_sensors_exist = False
+    electrodes_files_exist = False
+    electrodes_dists_exist = False
+    electrodes_stim_files_exist = False
+    electrodes_labels_files_exist = False
     conn_labels_avg_files_exit = False
     contours_coloring_exist = False
     stc = None
@@ -2154,6 +2158,7 @@ def init(addon):
     init_meg_activity_map()
     init_fmri_activity_map()
     init_meg_labels_coloring_type()
+    init_electrodes()
     init_fmri_files()
     init_fmri_labels()
     init_electrodes_sources()
@@ -2228,6 +2233,8 @@ def init_meg_activity_map():
         bpy.types.Scene.meg_files = bpy.props.EnumProperty(
             items=list_items, description="MEG files", update=meg_files_update)
         bpy.context.scene.meg_files = list_items[0][0]
+    if ColoringMakerPanel.meg_activity_data_exist or ColoringMakerPanel.stc_file_exist:
+        ColoringMakerPanel.activity_types.append('meg')
 
 
 def create_stc_files_list(list_items=[]):
@@ -2256,6 +2263,25 @@ def init_fmri_activity_map():
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_max_min(data_max, data_min, True)
         _addon().set_colorbar_title('fMRI')
+        ColoringMakerPanel.activity_types.append('fmri')
+
+
+def init_electrodes():
+    user_fol = mu.get_user_fol()
+    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    ColoringMakerPanel.electrodes_files_exist = \
+        op.isfile(op.join(user_fol, 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
+        op.isfile(op.join(user_fol, 'electrodes', 'electrodes_{}data.npy'.format(bip)))
+    ColoringMakerPanel.electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
+    ColoringMakerPanel.electrodes_stim_files_exist = len(glob.glob(op.join(
+        mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
+    ColoringMakerPanel.electrodes_labels_files_exist = len(glob.glob(op.join(
+        mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
+        len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
+    if ColoringMakerPanel.electrodes_files_exist:
+        ColoringMakerPanel.activity_types.append('elecs')
+    if ColoringMakerPanel.electrodes_stim_files_exist:
+        ColoringMakerPanel.activity_types.append('stim')
 
 
 def init_meg_sensors():
@@ -2268,6 +2294,7 @@ def init_meg_sensors():
         data_min, data_max = np.load(data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
+        ColoringMakerPanel.activity_types.append('meg_sensors')
 
 
 def init_eeg_sensors():
@@ -2280,6 +2307,7 @@ def init_eeg_sensors():
         data_min, data_max = np.load(data_minmax_fname)
         ColoringMakerPanel.eeg_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.eeg_data_minmax = (data_min, data_max)
+        ColoringMakerPanel.activity_types.append('eeg_sensors')
 
 
 def init_contours_coloring():
@@ -2308,6 +2336,7 @@ def init_meg_labels_coloring_type():
         bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
             items=items, description="meg_labels_coloring_type")
         bpy.context.scene.meg_labels_coloring_type = 'diff'
+        ColoringMakerPanel.activity_types.append('meg_labels')
 
 
 def init_fmri_labels():
@@ -2323,6 +2352,8 @@ def init_fmri_labels():
         op.join(user_fol, 'fmri', 'subcorticals_{}.npz'.format(em)))
     if ColoringMakerPanel.subs_faces_verts is None or ColoringMakerPanel.subs_verts is None:
         ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = load_subs_faces_verts()
+    if ColoringMakerPanel.fmri_labels_exist:
+        ColoringMakerPanel.activity_types.append('fmri_labels')
 
 
 def init_fmri_files(current_fmri_file=''):
@@ -2410,6 +2441,7 @@ def init_connectivity_labels_avg():
             items=items, description="Connectivity labels avg")
         bpy.context.scene.conn_labels_avg_files = files_names[0]
         ColoringMakerPanel.conn_labels_avg_files_exit = True
+        ColoringMakerPanel.activity_types.append('labels_connectivity')
 
 
 def register():
