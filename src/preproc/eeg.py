@@ -20,6 +20,8 @@ if SUBJECTS_EEG_DIR == '':
     raise Exception('No EEG folder (not MEG)!')
 SUBJECT_EEG_DIR = ''
 
+calc_evokes = meg.calc_evokes_wrapper
+
 
 def read_eeg_sensors_layout(subject, mri_subject, args):
     return meg.read_sensors_layout(subject, mri_subject, args, pick_meg=False, pick_eeg=True)
@@ -142,8 +144,13 @@ def main(tup, remote_subject_dir, args, flags):
     return flags
 
 
-def read_cmd_args(argv=None):
+def read_cmd_args(argv=None, subject='', mri_subject='', atlas=''):
+    if argv is None and subject != '':
+        mri_subject = subject if mri_subject == '' else mri_subject
+        argv = ['-s', subject, '-m', mri_subject]
     args = meg.read_cmd_args(argv)
+    if atlas != '' and args.atlas != atlas:
+        args.atlas = atlas
     args.pick_meg = False
     args.pick_eeg = True
     args.reject = False

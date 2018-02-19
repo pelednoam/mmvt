@@ -159,7 +159,7 @@ def print_file(fname, file_desc):
 
 def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='{cond}', cleaning_method='',
                   contrast='', root_dir='', raw_fname_format='', fwd_fname_format='', inv_fname_format=''):
-    if fname_format=='':
+    if fname_format == '':
         fname_format = '{subject}-{ana_type}.{file_type}'
     if subject=='':
         subject = SUBJECT
@@ -185,9 +185,9 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
     return op.join(root_dir, fname)
 
 
-def load_raw(raw_fname='', bad_channels=[], l_freq=None, h_freq=None):
+def load_raw(raw_fname='', bad_channels=[], l_freq=None, h_freq=None, raw_template='*raw.fif'):
     # read the data
-    raw_fname, raw_exist = locating_file(raw_fname, glob_pattern='*raw.fif')
+    raw_fname, raw_exist = locating_file(raw_fname, glob_pattern=raw_template)
     if not raw_exist:
         raise Exception("Coulnd't find the raw file! {}".format(raw_fname))
     raw = mne.io.read_raw_fif(raw_fname, preload=True)
@@ -357,7 +357,10 @@ def calc_epochs_wrapper(
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
-        epo_exist = op.isfile(epo_fname)
+        if '{cond}' not in epo_fname:
+            epo_exist = op.isfile(epo_fname)
+        else:
+            epo_exist = all([op.isfile(get_cond_fname(epo_fname, cond)) for cond in conditions.keys()])
         if epo_exist and not overwrite_epochs:
             if '{cond}' in epo_fname:
                 epo_exist = True
@@ -2025,11 +2028,11 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
-def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False):
+def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False, overwrite_sensors=False):
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if not op.isfile(INFO):
-        raw_fname, raw_exist = locating_file(RAW, '*raw.fif')
+        raw_fname, raw_exist = locating_file(RAW, args.raw_template)
         if not raw_exist:
             print('No raw or raw info file!')
             return False
@@ -2051,6 +2054,8 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
     else:
         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'eeg'))
         output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
+    if op.isfile(output_fname) and not overwrite_sensors:
+        return True
     ret = False
     if len(sensors_pos) > 0:
         # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
@@ -3158,6 +3163,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--raw_template', help='', required=False, default='*raw.fif')
     parser.add_argument('--stc_template', help='', required=False, default='')
     parser.add_argument('--labels_data_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
