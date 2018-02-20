@@ -1,5 +1,5 @@
 <img src=https://user-images.githubusercontent.com/1643819/36446044-0ba7e0b4-164e-11e8-8ff8-f2963bcf78be.png align="right"/>
-<br>
+<br><br>
 
 ## Multi-Modality Visualization Tool
 
