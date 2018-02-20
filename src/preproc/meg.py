@@ -46,13 +46,13 @@ def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, sub
     return init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
                  args.cleaning_method, args.contrast, subjects_meg_dir, args.task, subjects_mri_dir, mmvt_dir,
-                 args.fwd_no_cond, args.inv_no_cond, args.data_per_task)
+                 args.fwd_no_cond, args.inv_no_cond, args.data_per_task, args.sub_dirs_for_tasks)
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
                  cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
-                 fwd_no_cond=False, inv_no_cond=False, data_per_task=False):
+                 fwd_no_cond=False, inv_no_cond=False, data_per_task=False, sub_dirs_for_tasks=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, RAW_ICA, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
         BEM, STC, STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH,\
@@ -62,8 +62,13 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     SUBJECT = subject
     MRI_SUBJECT = mri_subject if mri_subject!='' else subject
     os.environ['SUBJECT'] = SUBJECT
-    if task != '' and data_per_task:
-        SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
+    if task != '':
+        if data_per_task:
+            SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
+        if sub_dirs_for_tasks:
+            SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT, task)
+        else:
+            SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
     else:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
     # if not op.isdir(SUBJECT_MEG_FOLDER):
@@ -243,7 +248,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0, overwrite_epochs=False):
+                 windows_num=0, overwrite_epochs=False, eve_template='*eve.fif'):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
     if op.isfile(epoches_fname) and not overwrite_epochs:
         epochs = mne.read_epochs(epoches_fname)
@@ -264,8 +269,9 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     if remove_power_line_noise:
         raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
-    events_fname, event_fname_exist = locating_file(EVE, glob_pattern='*eve.fif')
-    if read_events_from_file and events is None and event_fname_exist:
+    events_fname, event_fname_exist = locating_file(EVE, glob_pattern=eve_template)
+    # todo: what to do with the read_events_from_file?
+    if events is None and event_fname_exist:
         # events_fname = events_fname if events_fname != '' else EVE
         print('read events from {}'.format(events_fname))
         events = mne.read_events(events_fname)
@@ -325,7 +331,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname)
+        args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template)
 
 
 locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
@@ -353,7 +359,7 @@ def calc_epochs_wrapper(
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname=''):
+        windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif'):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -380,7 +386,8 @@ def calc_epochs_wrapper(
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs)
+                                  epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
+                                  eve_template)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -395,7 +402,7 @@ def calc_epochs_wrapper(
 
 
 def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='',
-                norm_by_percentile=False, norm_percs=None):
+                norm_by_percentile=False, norm_percs=None, modality='meg'):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
         events_keys = list(events.keys())
@@ -405,7 +412,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
             return False, None
         evokes = [epochs[event].average() for event in events_keys]
-        save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs)
+        save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs, modality)
         if '{cond}' in evoked_fname:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
@@ -425,12 +432,13 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
 
 
 def save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data=False, norm_by_percentile=False,
-                        norm_percs=None):
-    fol = op.join(MMVT_DIR, mri_subject, 'meg')
+                        norm_percs=None, modality='meg'):
+    fol = op.join(MMVT_DIR, mri_subject, modality)
     utils.make_dir(fol)
-    meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
+    channels_prefix = 'MEG' if modality == 'meg' else 'EEG'
+    meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith(channels_prefix)]
     if len(meg_indices) == 0:
-        print('None of the channels names starts with MEG!')
+        print(f'None of the channels names starts with {channels_prefix}!')
         meg_indices = range(len(evokes[0].ch_names))
     ch_names = [evokes[0].ch_names[k] for k in meg_indices]
     dt = np.diff(evokes[0].times[:2])[0]
@@ -2292,7 +2300,7 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
             epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
-            args.norm_by_percentile, args.norm_percs)
+            args.norm_by_percentile, args.norm_percs, args.modality)
 
     return flags, evoked, epochs
 
@@ -3094,6 +3102,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-t', '--task', help='task name', required=False, default='')
     parser.add_argument('-c', '--conditions', help='conditions', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
+    parser.add_argument('--modality', help='', required=False, default='meg')
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
@@ -3164,6 +3173,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--raw_template', help='', required=False, default='*raw.fif')
+    parser.add_argument('--eve_template', help='', required=False, default='*eve.fif')
     parser.add_argument('--stc_template', help='', required=False, default='')
     parser.add_argument('--labels_data_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
