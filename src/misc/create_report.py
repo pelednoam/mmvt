@@ -32,11 +32,13 @@ def create_pdf(html_fname, pdf_fname):
     pdfkit.from_file(html_fname, pdf_fname)
 
 
-def main(html_template_fname, scan_fol, patient_name, task_name, mrn, scan_date, img_prefix, output_fname=''):
+def main(html_template_fname, scan_fol, patient_name, task_name, mrn, scan_date, img_prefix,
+         report_name_suffix='', output_fname=''):
     if utils.get_parent_fol(html_template_fname) != scan_fol:
         shutil.copy(html_template_fname, scan_fol)
     if output_fname == '':
-        output_fname = op.join(scan_fol, '{}.pdf'.format(mrn))
+        output_fname = op.join(scan_fol, '{}{}.pdf'.format(mrn, '_{}'.format(report_name_suffix) \
+            if report_name_suffix != '' else ''))
     new_html_fname =  utils.change_fname_extension(output_fname, 'html')
     if img_prefix == '':
         img_prefix = utils.find_common_start([utils.namebase(f) for f in glob.glob(op.join(scan_fol, '*.png'))])
@@ -63,8 +65,10 @@ if __name__ == '__main__':
     parser.add_argument('--mrn', required=True)
     parser.add_argument('--scan_date', required=True)
     parser.add_argument('--img_name_prefix', required=False, default='')
+    parser.add_argument('--report_name_suffix', required=False, default='')
     args = utils.Bag(au.parse_parser(parser))
     html_template_fname = op.join(args.template_fol, args.template_name)
-    main(html_template_fname, args.scan_fol, args.patient_name, args.task, args.mrn, args.scan_date, args.img_name_prefix)
+    main(html_template_fname, args.scan_fol, args.patient_name, args.task, args.mrn, args.scan_date,
+         args.img_name_prefix, args.report_name_suffix)
 
 
