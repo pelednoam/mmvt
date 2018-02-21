@@ -62,9 +62,9 @@ if __name__ == '__main__':
     parser.add_argument('--task', required=True)
     parser.add_argument('--mrn', required=True)
     parser.add_argument('--scan_date', required=True)
-    parser.add_argument('--img_prefix', required=False, default='')
+    parser.add_argument('--img_name_prefix', required=False, default='')
     args = utils.Bag(au.parse_parser(parser))
     html_template_fname = op.join(args.template_fol, args.template_name)
-    main(html_template_fname, args.scan_fol, args.patient_name, args.task, args.mrn, args.scan_date, args.img_prefix)
+    main(html_template_fname, args.scan_fol, args.patient_name, args.task, args.mrn, args.scan_date, args.img_name_prefix)
 
 
