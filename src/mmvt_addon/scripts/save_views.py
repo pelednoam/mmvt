@@ -51,7 +51,7 @@ def add_args(parser):
         type=su.is_true)
     parser.add_argument('-o', '--output_path',
         help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
-    parser.add_argument('--img_name_prefix', help='imges name prefix (default:"")', required=False, default='',)
+    parser.add_argument('--img_name_prefix', help='imges name prefix (default:"")', required=False, default='')
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
     parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
     parser.add_argument('--add_cb', help='Add colorbar (default False)', required=False, default=False, type=su.is_true)
