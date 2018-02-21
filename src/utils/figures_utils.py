@@ -14,7 +14,7 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 @utils.tryit()
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None, facecolor='black',
-                   dpi=100, **kargs):
+                   ticks_font_size=10, dpi=100, **kargs):
     import matplotlib as mpl
 
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
@@ -28,6 +28,7 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
     if ticks is not None:
         cb.set_ticks(ticks)
+        cb.ax.tick_params(labelsize=ticks_font_size)
     resize_and_move_ax(ax, ddw=0.07, ddh=0.8)
     if do_save:
         fname = op.join(fol, '{}_colorbar.jpg'.format(color_map_name))

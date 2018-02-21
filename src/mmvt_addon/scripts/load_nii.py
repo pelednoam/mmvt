@@ -18,8 +18,10 @@ def wrap_blender_call(args=None):
         args = read_args()
     args = pre_blender_call(args)
     if args.save_views:
+        if args.img_name_prefix == '' and args.use_fol_for_img_prefix:
+            args.img_name_prefix = su.namebase(su.get_parent_fol(args.nii))
         args = save_views.pre_blender_call(args)
-    su.call_script(__file__, args, run_in_background=False)
+    su.call_script(__file__, args, run_in_background=False, err_pipe=sys.stdin)
     if args.save_views:
         save_views.post_blender_call(args)
 
@@ -40,6 +42,8 @@ def add_args(parser):
     parser.add_argument('--cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
     parser.add_argument('--save_views', help='Save views', required=False, default=False, type=su.is_true)
     parser.add_argument('--fmri_file_template', help='For inner usage', required=False, default='', type=str)
+    parser.add_argument('--use_fol_for_img_prefix', help='Use the nii folder name as the images prefix', required=False,
+                        default=False, type=su.is_true)
     return parser
 
 

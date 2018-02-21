@@ -573,7 +573,8 @@ def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
-def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0):
+def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
+                   img_name_prefix=''):
     if views is None:
         views = _addon().ANGLES_DICT.keys()
     else:
@@ -596,12 +597,14 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     elif not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
         hemi = ''
     else:
-        print('You need to show at least one hemi')
+        mu.write_to_stderr('You need to show at least one hemi')
     org_view_ang = mu.get_view3d_region().view_rotation
     images_names = []
     for view in views:
         view_name = _addon().view_name(view)
-        img_name = '{}{}_{}'.format('{}_'.format(hemi) if hemi != '' else '', surf_name, view_name)
+        img_name = '{}{}{}_{}'.format(
+            '{}_'.format(hemi) if hemi != '' else '',
+            '{}_'.format(img_name_prefix) if img_name_prefix != '' else '', surf_name, view_name)
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
@@ -611,6 +614,7 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
             camera_mode()
         else:
             image_fname = save_image(img_name, add_index_to_name=False)
+        mu.write_to_stderr('Saving image to {}'.format(image_fname))
         images_names.append(image_fname)
     mu.rotate_view3d(org_view_ang)
     return images_names

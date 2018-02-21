@@ -51,6 +51,7 @@ def add_args(parser):
         type=su.is_true)
     parser.add_argument('-o', '--output_path',
         help='Output path. The default is op.join(mmvt_dir, args.subject, "figures")', required=False, default='')
+    parser.add_argument('--img_name_prefix', help='imges name prefix (default:"")', required=False, default='',)
     parser.add_argument('--inflated', help='Infalted ratio (0-1) (default:1)', required=False, default=1.0, type=float)
     parser.add_argument('--inflated_ratio_in_file_name', help='', required=False, default=False, type=su.is_true)
     parser.add_argument('--add_cb', help='Add colorbar (default False)', required=False, default=False, type=su.is_true)
@@ -73,6 +74,8 @@ def add_args(parser):
                         required=False, default=True, type=su.is_true)
     parser.add_argument('--crop_figures', help='Crop figures (default True)',
                         required=False, default=True, type=su.is_true)
+    parser.add_argument('--cb_ticks_font_size', help='Colorbar ticks font size (default 10)', required=False,
+                        default=10, type=int)
     return parser
 
 
@@ -123,7 +126,7 @@ def mmvt_calls(mmvt, args, subject_fname):
             mmvt.set_inflated_ratio(args.inflated - 1)
         images_names = mmvt.save_all_views(
             views=views, inflated_ratio_in_file_name=args.inflated_ratio_in_file_name, rot_lh_axial=args.rot_lh_axial,
-            render_images=args.render_images, quality=args.render_quality)
+            render_images=args.render_images, quality=args.render_quality, img_name_prefix=args.img_name_prefix)
         all_images_names.extend(images_names)
 
     with open(args.images_log_fname, 'w') as text_file:
@@ -157,7 +160,8 @@ def post_blender_call(args):
         fol = utils.get_fname_folder(files[0][0])
         cb_fname = op.join(fol, '{}_colorbar.jpg'.format(args.cb_cm))
         # if not op.isfile(cb_fname):
-        fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background)
+        fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
+                          ticks_font_size=args.cb_ticks_font_size)
         cb_img = Image.open(cb_fname)
         for files_coup in files:
             hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
