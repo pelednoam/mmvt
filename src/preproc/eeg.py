@@ -156,6 +156,7 @@ def read_cmd_args(argv=None, subject='', mri_subject='', atlas=''):
     args.reject = False
     args.fwd_usingMEG = False
     args.fwd_usingEEG = True
+    args.modality = 'eeg'
     return args
 
 

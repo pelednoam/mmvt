@@ -292,7 +292,8 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
-    epochs = mne.Epochs(raw, events, conditions, tmin, tmax, proj=True, picks=picks,
+    events_conditions = {k:v for k,v in conditions.items() if v in np.unique(events[:, 2])}
+    epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     print('{} good epochs'.format(len(epochs)))
     save_epochs(epochs, epoches_fname)
@@ -410,8 +411,8 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             epochs = mne.read_epochs(EPO)
         if any([event not in epochs.event_id for event in events_keys]):
             print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
-            return False, None
-        evokes = [epochs[event].average() for event in events_keys]
+            # return False, None
+        evokes = [epochs[event].average() for event in events_keys if event in epochs]
         save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs, modality)
         if '{cond}' in evoked_fname:
             # evokes = {event: epochs[event].average() for event in events_keys}

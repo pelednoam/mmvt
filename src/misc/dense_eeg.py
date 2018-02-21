@@ -31,21 +31,21 @@ def main(eeg_fol, subject):
             shutil.copy(eve_fname, fol)
         raw_file = op.join(fol, utils.namebase_with_ext(raw_file))
         eve_fname = op.join(fol, utils.namebase_with_ext(eve_fname))
-        args.modality = 'eeg'
         args.raw_template = args.raw_fname = raw_file # todo: why both?
         args.eve_template = eve_fname
         args.conditions = [1001, 1002]
         # args.files_includes_cond = False
         args.sub_dirs_for_tasks = True
         eeg.init(subject, args)
-        args.t_min, args.t_max = 0, 0.5
-        # args.fname_format = '{subject}_{cond}-{ana_type}.{file_type}''
+        args.t_min, args.t_max = -0.2, 0.2
+        args.l_freq, args.h_freq = 1, 40
+
         eeg.read_eeg_sensors_layout(subject, subject, args)
-        eeg.calc_evokes(subject, {'onset':1001, 'offset':1002}, args)
+        eeg.calc_evokes(subject, {'s1':1001, 's2':1002}, args)
 
 
 if __name__ == '__main__':
-    eeg_fol = '/cluster/neuromind/npeled/MGH_Highdensity_source/EEG'
+    # eeg_fol = '/cluster/neuromind/npeled/MGH_Highdensity_source/EEG'
     subject = 'mgh128'
-    # eeg_fol = op.join(EEG_DIR, subject)
+    eeg_fol = op.join(EEG_DIR, subject)
     main(eeg_fol, subject)
