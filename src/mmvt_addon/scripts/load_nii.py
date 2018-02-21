@@ -42,6 +42,9 @@ def add_args(parser):
     parser.add_argument('--cm', help='Colormap (default RdOrYl)', required=False, default='RdOrYl')
     parser.add_argument('--save_views', help='Save views', required=False, default=False, type=su.is_true)
     parser.add_argument('--fmri_file_template', help='For inner usage', required=False, default='', type=str)
+    parser.add_argument('--img_name_prefix',
+                        help='Images name prefix (if empty, you can use the use_fol_for_img_prefix flag)',
+                        required=False, default='')
     parser.add_argument('--use_fol_for_img_prefix', help='Use the nii folder name as the images prefix', required=False,
                         default=False, type=su.is_true)
     return parser
