@@ -402,18 +402,29 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
-def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='',
-                norm_by_percentile=False, norm_percs=None, modality='meg'):
+def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
+                norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
+                overwrite_evoked=False):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
+        if op.isfile(evoked_fname) and not overwrite_evoked:
+            evoked = mne.read_evokeds(evoked_fname)
+            return True, evoked
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
         if any([event not in epochs.event_id for event in events_keys]):
             print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
+            events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
             # return False, None
-        evokes = [epochs[event].average() for event in events_keys if event in epochs]
-        save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data, norm_by_percentile, norm_percs, modality)
+        evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
+        if calc_evoked_for_all_epoches:
+            epochs_all = mne.concatenate_epochs([epochs[event] for event in events_keys])
+            evokes_all = epochs_all.average()
+        else:
+            evokes_all = None
+        save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all, normalize_data, norm_by_percentile,
+                            norm_percs, modality, calc_max_min_diff)
         if '{cond}' in evoked_fname:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
@@ -423,7 +434,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             mne.write_evokeds(evoked_fname, evokes)
     except:
         print(traceback.format_exc())
-        return False
+        return False, None
     else:
         if '{cond}' in evoked_fname:
             flag = all([op.isfile(get_cond_fname(evoked_fname, event)) for event in evokes.keys()])
@@ -432,25 +443,38 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
     return flag, evokes
 
 
-def save_evokes_to_mmvt(evokes, events_keys, mri_subject, normalize_data=False, norm_by_percentile=False,
-                        norm_percs=None, modality='meg'):
-    fol = op.join(MMVT_DIR, mri_subject, modality)
-    utils.make_dir(fol)
-    channels_prefix = 'MEG' if modality == 'meg' else 'EEG'
-    meg_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith(channels_prefix)]
-    if len(meg_indices) == 0:
-        print(f'None of the channels names starts with {channels_prefix}!')
-        meg_indices = range(len(evokes[0].ch_names))
-    ch_names = [evokes[0].ch_names[k] for k in meg_indices]
-    dt = np.diff(evokes[0].times[:2])[0]
-    data = np.zeros((len(meg_indices), evokes[0].data.shape[1], len(events_keys)))
-    for event_ind, event in enumerate(events_keys):
-        data[:, :, event_ind] = evokes[event_ind].data[meg_indices]
+def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, normalize_data=False,
+                        norm_by_percentile=False, norm_percs=None, modality='meg', calc_max_min_diff=True):
+    fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
+    if modality == 'meg':
+        channels_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
+        if len(channels_indices) == 0:
+            print(f'None of the channels names starts with {channels_prefix}!')
+    first_evokes = evokes if isinstance(evokes, mne.evoked.EvokedArray) else evokes[0]
+    channels_indices = range(len(first_evokes.ch_names))
+    ch_names = [first_evokes.ch_names[k] for k in channels_indices]
+    dt = np.diff(first_evokes.times[:2])[0]
+    if isinstance(evokes, mne.evoked.EvokedArray):
+        data = evokes.data[channels_indices]
+    else:
+        data_shape = len(events_keys) + (0 if evokes_all is None else 1)
+        data = np.zeros((len(channels_indices), first_evokes.data.shape[1], data_shape))
+        for event_ind, event in enumerate(events_keys):
+            data[:, :, event_ind] = evokes[event_ind].data[channels_indices]
+        if evokes_all is not None:
+            data[:, :, data_shape - 1] = evokes_all.data[channels_indices]
     if normalize_data:
         data = utils.normalize_data(data, norm_by_percentile, norm_percs)
-    data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
-    data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
+    else:
+        data *= np.power(10, 6) # micro V
+    if calc_max_min_diff:
+        data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
+        data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
+    else:
+        data_max, data_min = utils.get_data_max_min(data, norm_by_percentile, norm_percs)
     max_abs = utils.get_max_abs(data_max, data_min)
+    if evokes_all is not None:
+        events_keys.append('all')
     np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
     np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
     np.save(op.join(fol, 'meg_sensors_evoked_minmax.npy'), [-max_abs, max_abs])
@@ -2301,7 +2325,8 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
             epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
-            args.norm_by_percentile, args.norm_percs, args.modality)
+            args.norm_by_percentile, args.norm_percs, args.modality, args.calc_max_min_diff,
+            args.calc_evoked_for_all_epoches, args.overwrite_evoked)
 
     return flags, evoked, epochs
 
@@ -3116,7 +3141,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--epo_fname', help='', required=False, default='')
     parser.add_argument('--evo_fname', help='', required=False, default='')
     parser.add_argument('--noise_cov_fname', help='', required=False, default='')
+    parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
@@ -3173,6 +3200,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--evoked_flip_positive', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--evoked_moving_average_win_size', help='', required=False, default=0, type=int)
     parser.add_argument('--normalize_evoked', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--calc_max_min_diff', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--raw_template', help='', required=False, default='*raw.fif')
     parser.add_argument('--eve_template', help='', required=False, default='*eve.fif')
     parser.add_argument('--stc_template', help='', required=False, default='')

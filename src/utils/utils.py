@@ -15,7 +15,7 @@ except:
     print('No matplotlib')
 import subprocess
 import functools
-from functools import partial
+from functools import partial, reduce
 import warnings
 import glob
 import mne
@@ -1934,6 +1934,22 @@ def is_locked(fname):
 
 def non_nan_data(x):
     return x[np.where(~np.isnan(x))]
+
+
+def get_common_letters(str_list):
+    return ''.join([x[0] for x in zip(*str_list) if reduce(lambda a, b:(a == b) and a or None,x)])
+
+
+def find_common_start(str_list):
+    str_list = str_list[:]
+    prev = None
+    while True:
+        common = get_common_letters(str_list)
+        if common == prev:
+            break
+            str_list.append(common)
+        prev = common
+    return get_common_letters(str_list)
 
 
 if __name__ == '__main__':
