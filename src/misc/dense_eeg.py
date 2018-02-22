@@ -1,8 +1,6 @@
-import sys
 import os.path as op
 import glob
 import shutil
-from functools import partial
 
 from src.preproc import eeg
 from src.preproc import meg
@@ -28,9 +26,9 @@ def init_flags(subject, task, conditions, remote_subject_dir=''):
     args.calc_max_min_diff = False
     args.calc_evoked_for_all_epoches = args.calc_stc_for_all = False
     args.calc_stc_diff = False
-    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors, args.overwrite_stc = False, True, False, False
     args.normalize_data = False
     args.use_raw_for_noise_cov = True
+    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors, args.overwrite_stc = False, True, False, False
     return args
 
 
