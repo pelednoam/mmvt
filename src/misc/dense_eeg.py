@@ -34,6 +34,27 @@ def init_flags(subject, task, conditions, remote_subject_dir=''):
     return args
 
 
+def set_args(task, conditions, raw_file, eve_fname):
+    args = init_flags(subject, task, conditions, remote_subject_dir)
+    fol = utils.make_dir(op.join(EEG_DIR, subject, args.task))
+    raw_file, eve_fname = copy_files(fol, raw_file, eve_fname)
+    args.raw_template = args.raw_fname = raw_file  # todo: why both?
+    args.eve_template = eve_fname
+    args.stc_template = op.join(
+        meg.SUBJECT_MEG_FOLDER, '{}_{}_{}-{}.stc'.format(subject, task, '{cond}', '{method}'))
+    return args
+
+
+def copy_files(fol, raw_file, eve_fname):
+    if not op.isfile(op.join(fol, utils.namebase_with_ext(raw_file))):
+        shutil.copy(raw_file, fol)
+    if not op.isfile(op.join(fol, utils.namebase_with_ext(eve_fname))):
+        shutil.copy(eve_fname, fol)
+    raw_file = op.join(fol, utils.namebase_with_ext(raw_file))
+    eve_fname = op.join(fol, utils.namebase_with_ext(eve_fname))
+    return raw_file, eve_fname
+
+
 def main(eeg_fol, subject, remote_subject_dir=''):
     raw_files = glob.glob(op.join(eeg_fol, '*_raw.fif'))
     conditions = {'spikes1': 1001, 'spikes2': 1002}
@@ -44,20 +65,7 @@ def main(eeg_fol, subject, remote_subject_dir=''):
             print(f'No annot file for {raw_file}!')
             continue
         task = '_'.join(utils.namebase(raw_file).split('_')[1:-1])
-        print(task)
-        args = init_flags(subject, task, conditions, remote_subject_dir)
-        args.stc_template = op.join(
-            meg.SUBJECT_MEG_FOLDER, '{}_{}_{}-{}.stc'.format(subject, task, '{cond}', '{method}'))
-        fol = utils.make_dir(op.join(EEG_DIR, subject, args.task))
-        if not op.isfile(op.join(fol, utils.namebase_with_ext(raw_file))):
-            shutil.copy(raw_file, fol)
-        if not op.isfile(op.join(fol, utils.namebase_with_ext(eve_fname))):
-            shutil.copy(eve_fname, fol)
-        raw_file = op.join(fol, utils.namebase_with_ext(raw_file))
-        eve_fname = op.join(fol, utils.namebase_with_ext(eve_fname))
-        args.raw_template = args.raw_fname = raw_file # todo: why both?
-        args.eve_template = eve_fname
-
+        args = set_args(task, conditions, raw_file, eve_fname)
         if first_time:
             eeg.read_eeg_sensors_layout(subject, args)
             # import_sensors.wrap_blender_call(subject, 'eeg', load_data=False, overwrite_sensors=args.overwrite_sensors)
