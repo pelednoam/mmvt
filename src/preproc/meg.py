@@ -475,9 +475,9 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     max_abs = utils.get_max_abs(data_max, data_min)
     if evokes_all is not None:
         events_keys.append('all')
-    np.save(op.join(fol, 'meg_sensors_evoked_data.npy'), data)
-    np.savez(op.join(fol, 'meg_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
-    np.save(op.join(fol, 'meg_sensors_evoked_minmax.npy'), [-max_abs, max_abs])
+    np.save(op.join(fol, f'{modality}_sensors_evoked_data.npy'), data)
+    np.savez(op.join(fol, f'{modality}_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
+    np.save(op.join(fol, f'{modality}_sensors_evoked_minmax.npy'), [-max_abs, max_abs])
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -2061,7 +2061,8 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
-def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=False, overwrite_sensors=False):
+def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
+                        trans_file=''):
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if not op.isfile(INFO):
@@ -2091,17 +2092,7 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
         return True
     ret = False
     if len(sensors_pos) > 0:
-        # trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, '*COR*.fif'))
-        trans_file = COR
-        if not op.isfile(trans_file):
-            trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, '**', '*COR*.fif'), recursive=True)
-            if len(trans_files) == 1:
-                trans_file = trans_files[0]
-            else:
-                trans_pat = op.join(MEG_DIR, args.task, subject, '*COR*.fif')
-                trans_files = glob.glob(trans_pat)
-                if len(trans_files) == 1:
-                    trans_file = trans_files[0]
+        trans_file = find_trans_file(trans_file, args)
         if not op.isfile(trans_file):
             print('No trans files!')
         else:
@@ -2115,6 +2106,41 @@ def read_sensors_layout(subject, mri_subject, args, pick_meg=True, pick_eeg=Fals
         print('No sensors found!')
     return ret
 
+
+def find_trans_file(trans_file, args):
+    trans_file = COR if trans_file == '' else trans_file
+    if not op.isfile(trans_file):
+        trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, '**', '*COR*.fif'), recursive=True)
+        if len(trans_files) == 0 and args.remote_subject_dir != '':
+            trans_files = glob.glob(op.join(args.remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+        if len(trans_files) == 0:
+            trans_files = glob.glob(op.join(utils.get_parent_fol(COR), '**', '*COR*.fif'), recursive=True)
+        bem_trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-head.fif'))
+        if len(bem_trans_files):
+            trans_files += bem_trans_files
+        else:
+            trans_files += glob.glob(op.join(args.remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+        ok_trans_files = []
+        for trans_file in trans_files:
+            try:
+                trans = mne.transforms.read_trans(trans_file)
+                head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
+                if trans is not None and not np.all(head_mri_t['trans'] == np.eye(4)):
+                    ok_trans_files.append(trans_file)
+            except:
+                pass
+
+        trans_file = utils.select_one_file(
+            ok_trans_files, template='*COR*.fif', files_desc='MRI-Head transformation',
+            file_func=lambda fname:read_trans(fname))
+    return trans_file
+
+
+def read_trans(fname):
+    try:
+        print(mne.transforms.read_trans(fname))
+    except:
+        print('Not a trans file')
 
 # def plot_labels_data(plot_each_label=False):
 #     plt.close('all')
@@ -3048,7 +3074,7 @@ def main(tup, remote_subject_dir, args, flags):
         subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs)
 
     if utils.should_run(args, 'read_sensors_layout'):
-        flags['read_sensors_layout'] = read_sensors_layout(subject, mri_subject, args)
+        flags['read_sensors_layout'] = read_sensors_layout(mri_subject, args)
 
     if utils.should_run(args, 'save_vertex_activity_map'):
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
@@ -3129,6 +3155,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-c', '--conditions', help='conditions', required=False, default='all', type=au.str_arr_type)
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('--modality', help='', required=False, default='meg')
+    parser.add_argument('--sub_dirs_for_tasks', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
@@ -3144,6 +3171,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_sensors', help='overwrite_sensors', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_fwd', help='overwrite_fwd', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)

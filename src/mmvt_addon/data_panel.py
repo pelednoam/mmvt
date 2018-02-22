@@ -370,15 +370,23 @@ def import_meg_sensors():
     print('MEG sensors importing is Finished ')
 
 
+def import_eeg_sensors():
+    input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+    import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors')
+    bpy.types.Scene.eeg_imported = True
+    print('EEG sensors importing is Finished ')
+
+
 def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrode_size=None,
-                      parnet_name='Deep_electrodes', elecs_pos=None, elecs_names=None):
+                      parnet_name='Deep_electrodes', elecs_pos=None, elecs_names=None, overwrite=False):
     if electrodes_layer is None:
         electrodes_layer = _addon().ELECTRODES_LAYER
     if not electrode_size is None:
         bpy.context.scene.electrodes_radius = electrode_size
     if bipolar != '':
         bpy.context.scene.bipolar = bool(bipolar)
-    mu.delete_hierarchy(parnet_name)
+    if overwrite:
+        mu.delete_hierarchy(parnet_name)
     if input_file != '':
         if op.isfile(input_file):
             f = np.load(input_file)
@@ -386,6 +394,14 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
         else:
             print("Can't find electrodes input file! {}".format(input_file))
             return False
+    if not overwrite:
+        electrodes_num = len(bpy.data.objects[parnet_name].children)
+        if electrodes_num == len(elecs_names):
+            print("The electrodes are already imported.")
+            return True
+        else:
+            print('Wrong number of electrodes, deleting the object')
+            mu.delete_hierarchy(parnet_name)
 
     electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
@@ -511,10 +527,7 @@ class ImportEEG(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors')
-        bpy.types.Scene.eeg_imported = True
-        print('EEG sensors importing is Finished ')
+        import_eeg_sensors()
         return {"FINISHED"}
 
 
@@ -619,6 +632,27 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
         meta = DataMakerPanel.meg_meta = np.load(meta_fname)
         add_data_to_electrodes(data, meta)
         add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat)
+        bpy.types.Scene.eeg_data_exist = True
+    if bpy.data.objects.get(' '):
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
+
+
+def add_data_to_eeg_sensors():
+    parnet_name = 'EEG_sensors'
+    parent_obj = bpy.data.objects.get(parnet_name)
+    if parent_obj is None:
+        layers_array = [False] * 20
+        create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
+    data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
+    meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
+    if not op.isfile(data_fname) or not op.isfile(meta_fname):
+        mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
+    else:
+        DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_data(data_fname, meta_fname)
+        data, meta = DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
+        add_data_to_electrodes(data, meta, window_len=2)
+        # todo: check why window_len==2
+        add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
         bpy.types.Scene.eeg_data_exist = True
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -895,9 +929,11 @@ def load_meg_labels_data():
     return data, names, data_rh['conditions']
 
 
-def load_eeg_data():
-    data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
-    meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
+def load_eeg_data(data_fname='', meta_fname=''):
+    if data_fname == '':
+        data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
+    if meta_fname == '':
+        meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
     data = np.load(data_fname, mmap_mode='r')
     meta = np.load(meta_fname)
     return data, meta
@@ -973,23 +1009,7 @@ class AddDataToEEGSensors(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        parnet_name = 'EEG_sensors'
-        parent_obj = bpy.data.objects.get(parnet_name)
-        if parent_obj is None:
-            layers_array = [False] * 20
-            create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
-        data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
-        meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz')
-        if not op.isfile(data_fname) or not op.isfile(meta_fname):
-            mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
-        else:
-            DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_data()
-            data, meta = DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
-            add_data_to_electrodes(data, meta, window_len=2)
-            add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
-            bpy.types.Scene.eeg_data_exist = True
-        if bpy.data.objects.get(' '):
-            bpy.context.scene.objects.active = bpy.data.objects[' ']
+        add_data_to_eeg_sensors()
         return {"FINISHED"}
 
 
@@ -1154,8 +1174,9 @@ class DataMakerPanel(bpy.types.Panel):
         meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
         meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_data_npz = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npz')
-        eeg_data_npy = op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy')
+        eeg_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
+        eeg_meta_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
+        eeg_data_minmax = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_minmax.npy')
 
         if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
             col = layout.box().column()
@@ -1163,7 +1184,8 @@ class DataMakerPanel(bpy.types.Panel):
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
-        if op.isfile(eeg_sensors_positions_file) and (op.isfile(eeg_data_npy) or op.isfile(eeg_data_npz)):
+        if op.isfile(eeg_sensors_positions_file) and op.isfile(eeg_data) and op.isfile(eeg_meta_data) \
+                and op.isfile(eeg_data_minmax):
             col = layout.box().column()
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')

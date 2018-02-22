@@ -119,7 +119,9 @@ load_electrodes_dists = data_panel.load_electrodes_dists
 load_eeg_data = data_panel.load_eeg_data
 load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
+import_eeg_sensors = data_panel.import_eeg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
+add_data_to_eeg_sensors = data_panel.add_data_to_eeg_sensors
 add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
 create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

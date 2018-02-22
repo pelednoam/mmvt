@@ -23,8 +23,9 @@ SUBJECT_EEG_DIR = ''
 calc_evokes = meg.calc_evokes_wrapper
 
 
-def read_eeg_sensors_layout(subject, mri_subject, args):
-    return meg.read_sensors_layout(subject, mri_subject, args, pick_meg=False, pick_eeg=True)
+def read_eeg_sensors_layout(mri_subject, args):
+    return meg.read_sensors_layout(
+        mri_subject, args, pick_meg=False, pick_eeg=True, overwrite_sensors=args.overwrite_sensors)
 
 
 def save_evoked_to_blender(mri_subject, events, args, evoked=None):
