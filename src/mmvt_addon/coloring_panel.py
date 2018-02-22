@@ -1186,6 +1186,8 @@ def _meg_files_update(context):
         full_stc_fname = ''
         template = op.join(user_fol, 'meg', '*.stc')
         stcs_files = glob.glob(template)
+        # todo: Do something better...
+        stcs_files += glob.glob(op.join(user_fol, 'eeg', '*.stc'))
         for stc_file in stcs_files:
             _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
             if label == bpy.context.scene.meg_files:
@@ -1932,33 +1934,14 @@ def draw(self, context):
         atlas, meg_ext_meth, '{hemi}')))
     meg_labels_data_minmax_exist = op.isfile(
         op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
-    # fmri_labels_data_exist = mu.hemi_files_exists(
-    #     op.join(user_fol, 'fmri', 'labels_data_{}_{}.npz'.format(atlas, '{hemi}')))
-    # fmri_labels_data_minmax_exist = op.isfile(
-    #     op.join(user_fol, 'meg', 'meg_labels_{}_minmax.npz'.format(atlas)))
-    # bip = 'bipolar_' if bpy.context.scene.bipolar else ''
-    # electrodes_files_exist = \
-    #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
-    #     op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data.npy'.format(bip)))
-    # electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
-    # electrodes_stim_files_exist = len(glob.glob(op.join(
-    #     mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0
-    # electrodes_labels_files_exist = len(glob.glob(op.join(
-    #     mu.get_user_fol(), 'electrodes', '*_labels_*.npz'))) > 0 and \
-    #                                 len(glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*_subcortical_*.npz'))) > 0
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
     static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*.npy'))) > 0
-    # manually_groups_file_exist = op.isfile(op.join(mu.get_parent_fol(user_fol),
-    #                                                '{}_groups.csv'.format(bpy.context.scene.atlas)))
     if _addon() is None:
         connections_files_exit = False
     else:
         connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
-    # volumetric_coloring_files_exist = len(glob.glob(op.join(user_fol, 'coloring', 'volumetric', '*.csv')))
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
     layout.prop(context.scene, 'coloring_use_abs', text="Use abs")
-
-    # layout.prop(context.scene, 'coloring_both_pial_and_inflated', text="Both pial & inflated")
     layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
 
     if faces_verts_exist:
@@ -1970,8 +1953,8 @@ def draw(self, context):
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_files', '')
             # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
-            col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-            col.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
+            col.operator(ColorMeg.bl_idname, text="Plot EEG/MEG ", icon='POTATO')
+            col.operator(ColorMegMax.bl_idname, text="Plot EEG/MEG peak", icon='POTATO')
             col.prop(context.scene, 'meg_peak_mode', '')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
@@ -2017,15 +2000,6 @@ def draw(self, context):
         row = layout.row(align=True)
         row.prop(context.scene, 'labels_folder', text='')
         row.operator(PlotLabelsFolder.bl_idname, text='', icon='GAME')
-
-            # if manually_groups_file_exist:
-        #     col = layout.box().column()
-            # col.label('Groups')
-            # col.prop(context.scene, 'labels_groups', text="")
-            # col.operator(ColorGroupsManually.bl_idname, text="Color Groups", icon='POTATO')
-            # if volumetric_coloring_files_exist:
-            #     layout.prop(context.scene, "vol_coloring_files", text="")
-            #     layout.operator(ColorVol.bl_idname, text="Color Volumes", icon='POTATO')
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
@@ -2240,6 +2214,8 @@ def init_meg_activity_map():
 def create_stc_files_list(list_items=[]):
     user_fol = mu.get_user_fol()
     stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
+    # todo: seperate between MEG and EEG stc files
+    stcs_files += glob.glob(op.join(user_fol, 'eeg', '*.stc'))
     stc_files_dic = defaultdict(list)
     for stc_file in stcs_files:
         _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))

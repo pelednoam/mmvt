@@ -24,9 +24,11 @@ def init_flags(subject, task, conditions, remote_subject_dir=''):
     args.t_min, args.t_max = -0.2, 0.2
     args.l_freq, args.h_freq = 1, 40
     args.inverse_method = ['MNE', 'sLORETA']
+    args.inv_loose = 0.6
     args.calc_max_min_diff = False
-    args.calc_evoked_for_all_epoches = args.calc_stc_for_all = True
-    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors = False, True, False
+    args.calc_evoked_for_all_epoches = args.calc_stc_for_all = False
+    args.calc_stc_diff = False
+    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors, args.overwrite_stc = False, True, False, False
     args.normalize_data = False
     args.use_raw_for_noise_cov = True
     return args
@@ -41,7 +43,8 @@ def main(eeg_fol, subject, remote_subject_dir=''):
         if not op.isfile(eve_fname):
             print(f'No annot file for {raw_file}!')
             continue
-        task = utils.namebase(raw_file).split('_')[1]
+        task = '_'.join(utils.namebase(raw_file).split('_')[1:-1])
+        print(task)
         args = init_flags(subject, task, conditions, remote_subject_dir)
         args.stc_template = op.join(
             meg.SUBJECT_MEG_FOLDER, '{}_{}_{}-{}.stc'.format(subject, task, '{cond}', '{method}'))

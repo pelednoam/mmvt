@@ -38,6 +38,7 @@ bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
+bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=[], description="EEG data files")
 bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
 bpy.types.Scene.add_fmri_subcorticals_data = bpy.props.BoolProperty(default=True, description="")
 
@@ -371,7 +372,7 @@ def import_meg_sensors(overwrite_sensors=False):
     print('MEG sensors importing is Finished ')
 
 
-def import_eeg_sensors():
+def import_eeg_sensors(overwrite_sensors=False):
     input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
     import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors',
                       overwrite=overwrite_sensors)
@@ -396,7 +397,7 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
         else:
             print("Can't find electrodes input file! {}".format(input_file))
             return False
-    if not overwrite:
+    if not overwrite and bpy.data.objects.get(parnet_name, None) is not None:
         electrodes_num = len(bpy.data.objects[parnet_name].children)
         if electrodes_num == len(elecs_names):
             print("The electrodes are already imported.")
@@ -645,16 +646,16 @@ def add_data_to_eeg_sensors():
     if parent_obj is None:
         layers_array = [False] * 20
         create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
-    data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
-    meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
+    data_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npy'.format(bpy.context.scene.eeg_data_files))
+    meta_fname = op.join(mu.get_user_fol(), 'eeg', '{}_meta.npz'.format(bpy.context.scene.eeg_data_files)) # 'eeg_sensors_evoked_data_meta.npz')
     if not op.isfile(data_fname) or not op.isfile(meta_fname):
         mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
     else:
         DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_data(data_fname, meta_fname)
         data, meta = DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
-        add_data_to_electrodes(data, meta, window_len=2)
         # todo: check why window_len==2
-        add_data_to_electrodes_parent_obj(parent_obj, data, meta, window_len=2)
+        add_data_to_electrodes(data, meta)#, conditions='spikes1')#, window_len=2)
+        add_data_to_electrodes_parent_obj(parent_obj, data, meta)#, condition_ind=0)#, window_len=2)
         bpy.types.Scene.eeg_data_exist = True
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -833,11 +834,14 @@ class AddfMRIDynamicsToBrain(bpy.types.Operator):
 #         return {"FINISHED"}
 
 @mu.tryit()
-def add_data_to_electrodes(all_data, meta_data, window_len=None):
+def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None):
     print('Adding data to Electrodes')
     now = time.time()
     N = len(meta_data['names'])
     T = all_data.shape[1] if window_len is None or not 'dt' in meta_data else int(window_len / meta_data['dt'])
+    conditions = meta_data['conditions'] if conditions is None else conditions
+    if isinstance(conditions, str):
+        conditions = [conditions]
     for obj_counter, (obj_name, data) in enumerate(zip(meta_data['names'], all_data)):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         obj_name = obj_name.astype(str)
@@ -847,9 +851,9 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
             continue
         cur_obj = bpy.data.objects[obj_name]
         fcurves_num = mu.count_fcurves(cur_obj)
-        if fcurves_num < len(meta_data['conditions']):
-            for cond_ind, cond_str in enumerate(meta_data['conditions']):
-                cond_str = cond_str.astype(str)
+        if fcurves_num < len(conditions):
+            for cond_ind, cond_str in enumerate(conditions):
+                cond_str = cond_str.astype(str) if not isinstance(cond_str, str) else cond_str
                 # Set the values to zeros in the first and last frame for current object(current label)
                 mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + cond_str, 0, 1)
                 # todo: +2? WTF?!?
@@ -857,7 +861,8 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
-                for ind, t in enumerate(data[:T, cond_ind]):
+                data_cond_ind = np.where(meta_data['conditions'] == cond_str)[0][0]
+                for ind, t in enumerate(data[:T, data_cond_ind]):
                     mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), t, ind + 2)
                 # remove the orange keyframe sign in the fcurves window
                 fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
@@ -875,7 +880,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None):
 
 
 @mu.tryit()
-def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None):
+def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None, condition_ind=None):
     # todo: merge with add_data_to_brain_parent_obj, same code
     sources = {}
     # for obj_name, data in zip(f['names'], f['data']):
@@ -884,7 +889,9 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     for obj_name, data, data_stat in zip(meta['names'], all_data, all_data_stat):
         obj_name = obj_name.astype(str)
         if data_stat is None:
-            if stat == STAT_AVG or data.shape[1] == 1:
+            if condition_ind is not None:
+                data_stat = data[:, condition_ind]
+            elif stat == STAT_AVG or data.shape[1] == 1:
                 data_stat = np.squeeze(np.mean(data, axis=1))
             elif stat == STAT_DIFF:
                 data_stat = np.squeeze(np.diff(data, axis=1))
@@ -1176,9 +1183,10 @@ class DataMakerPanel(bpy.types.Panel):
         meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
         meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
         eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
-        eeg_meta_data = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
-        eeg_data_minmax = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_minmax.npy')
+        eeg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))) > 0
+        eeg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data_meta.npz'))) > 0
+        # todo: do something with eeg_data_minmax
+        eeg_data_minmax_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_minmax.npy'))) > 0
 
         if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
             col = layout.box().column()
@@ -1186,11 +1194,11 @@ class DataMakerPanel(bpy.types.Panel):
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
-        if op.isfile(eeg_sensors_positions_file) and op.isfile(eeg_data) and op.isfile(eeg_meta_data) \
-                and op.isfile(eeg_data_minmax):
+        if op.isfile(eeg_sensors_positions_file) and eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
             col = layout.box().column()
             col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
             col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
+            col.prop(context.scene, 'eeg_data_files', text="")
             col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
 
 
@@ -1228,6 +1236,7 @@ def init(addon):
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=items, description="subcortical fMRI files")
 
+    init_eeg()
     init_electrodes_positions_list()
     if bpy.data.objects.get('Deep_electrodes'):
         bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
@@ -1254,6 +1263,15 @@ def init_electrodes_positions_list():
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
             items=items, description="Electrodes positions")
         bpy.context.scene.electrodes_positions_files = files_names[0]
+
+
+def init_eeg():
+    eeg_data_files = glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))
+    if len(eeg_data_files) > 0:
+        files_names = [mu.namebase(fname) for fname in eeg_data_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=items)
+        bpy.context.scene.eeg_data_files = files_names[0]
 
 
 def register():

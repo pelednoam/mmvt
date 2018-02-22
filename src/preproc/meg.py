@@ -390,7 +390,7 @@ def calc_epochs_wrapper(
 
 def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
-                overwrite_evoked=False):
+                overwrite_evoked=False, task=''):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
         if op.isfile(evoked_fname) and not overwrite_evoked:
@@ -412,7 +412,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
         else:
             evokes_all = None
         save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all, normalize_data, norm_by_percentile,
-                            norm_percs, modality, calc_max_min_diff)
+                            norm_percs, modality, calc_max_min_diff, task)
         if '{cond}' in evoked_fname:
             # evokes = {event: epochs[event].average() for event in events_keys}
             for event, evoked in zip(events_keys, evokes):
@@ -432,7 +432,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
 
 
 def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, normalize_data=False,
-                        norm_by_percentile=False, norm_percs=None, modality='meg', calc_max_min_diff=True):
+                        norm_by_percentile=False, norm_percs=None, modality='meg', calc_max_min_diff=True, task=''):
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
     if modality == 'meg':
         channels_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
@@ -463,9 +463,10 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     max_abs = utils.get_max_abs(data_max, data_min)
     if evokes_all is not None:
         events_keys.append('all')
-    np.save(op.join(fol, f'{modality}_sensors_evoked_data.npy'), data)
-    np.savez(op.join(fol, f'{modality}_sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
-    np.save(op.join(fol, f'{modality}_sensors_evoked_minmax.npy'), [-max_abs, max_abs])
+    task = f'{task}_' if task != '' else ''
+    np.save(op.join(fol, f'{task}sensors_evoked_data.npy'), data)
+    np.savez(op.join(fol, f'{task}sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
+    np.save(op.join(fol, f'{task}sensors_evoked_minmax.npy'), [-max_abs, max_abs])
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -938,7 +939,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                            single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
                            stc_template='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
-                           modality='meg', calc_stc_for_all=False, n_jobs=6):
+                           modality='meg', calc_stc_for_all=False, calc_stcs_diff=True, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     # Other options is to use calc_labels_avg_for_rest
     epo_fname = get_epo_fname(epo_fname)
@@ -1019,7 +1020,8 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
-    calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
+    if calc_stcs_diff:
+        calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
 
@@ -2362,7 +2364,7 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
         flags['calc_evokes'], evoked = calc_evokes(
             epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
             args.norm_by_percentile, args.norm_percs, args.modality, args.calc_max_min_diff,
-            args.calc_evoked_for_all_epoches, args.overwrite_evoked)
+            args.calc_evoked_for_all_epoches, args.overwrite_evoked, args.task)
 
     return flags, evoked, epochs
 
@@ -2393,7 +2395,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
             args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
             args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, raw, epochs,
-            args.modality, args.calc_stc_for_all, args.n_jobs)
+            args.modality, args.calc_stc_for_all, args.calc_stc_diff, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
 
@@ -3246,6 +3248,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--labels_data_template', help='', required=False, default='')
     parser.add_argument('--save_stc', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--stc_t', help='', required=False, default=-1, type=int)
+    parser.add_argument('--calc_stc_diff', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--apply_on_raw', help='', required=False, default=0, type=au.is_true)
