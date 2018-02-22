@@ -12,7 +12,8 @@ except:
 STAT_AVG, STAT_DIFF = range(2)
 
 
-def wrap_blender_call(subject='', modality='', load_data=None, run_in_background=True, debug=None):
+def wrap_blender_call(subject='', modality='', load_data=None, overwrite_sensors=None, run_in_background=True,
+                      debug=None):
     args = read_args()
     if args is None:
         sys.argv = [__file__ , '-s', subject]
@@ -23,6 +24,8 @@ def wrap_blender_call(subject='', modality='', load_data=None, run_in_background
         args.modality = modality
     if load_data is not None:
         args.load_data = load_data
+    if overwrite_sensors is not None:
+        args.overwrite_sensors = overwrite_sensors
     if debug is not None:
         args.debug = debug
     if args.modality not in ['meg', 'eeg']:
@@ -35,6 +38,7 @@ def read_args(argv=None):
     parser.add_argument('--stat', help='conds stat', required=False, default=STAT_DIFF)
     parser.add_argument('--modality', help='modality', required=False, default='meg')
     parser.add_argument('--load_data', help='load_data', required=False, default=1, type=su.is_true)
+    parser.add_argument('--overwrite_sensors', required=False, default=0, type=su.is_true)
     return su.parse_args(parser, argv)
 
 
@@ -44,11 +48,11 @@ def wrap_mmvt_calls(subject_fname):
         su.debug()
     mmvt = su.init_mmvt_addon()
     if args.modality == 'meg':
-        mmvt.import_meg_sensors()
+        mmvt.import_meg_sensors(args.overwrite_sensors)
         if args.load_data:
             mmvt.add_data_to_meg_sensors(args.stat)
     elif args.modality == 'eeg':
-        mmvt.import_eeg_sensors()
+        mmvt.import_eeg_sensors(args.overwrite_sensors)
         if args.load_data:
             mmvt.add_data_to_eeg_sensors()
     else:

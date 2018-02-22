@@ -363,16 +363,18 @@ class ImportRois(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def import_meg_sensors():
+def import_meg_sensors(overwrite_sensors=False):
     input_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
-    import_electrodes(input_file, _addon().MEG_LAYER, bipolar=False, parnet_name='MEG_sensors')
+    import_electrodes(input_file, _addon().MEG_LAYER, bipolar=False, parnet_name='MEG_sensors',
+                      overwrite=overwrite_sensors)
     bpy.types.Scene.meg_sensors_imported = True
     print('MEG sensors importing is Finished ')
 
 
 def import_eeg_sensors():
     input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-    import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors')
+    import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors',
+                      overwrite=overwrite_sensors)
     bpy.types.Scene.eeg_imported = True
     print('EEG sensors importing is Finished ')
 

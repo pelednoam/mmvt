@@ -56,7 +56,8 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, RAW_ICA, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
         BEM, STC, STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST, COR, AVE, LBL, STC_MORPH,\
-        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS
+        ACT, ASEG, MMVT_SUBJECT_FOLDER, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS, \
+        locating_meg_file, locating_subject_file
     if files_includes_cond:
         fname_format = fname_format_cond
     SUBJECT = subject
@@ -71,6 +72,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
             SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
     else:
         SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
+    locating_meg_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
     # if not op.isdir(SUBJECT_MEG_FOLDER):
     #     SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir)
     # if not op.isdir(SUBJECT_MEG_FOLDER):
@@ -78,6 +80,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     utils.make_dir(SUBJECT_MEG_FOLDER)
     print('Subject meg dir: {}'.format(SUBJECT_MEG_FOLDER))
     SUBJECT_MRI_FOLDER = op.join(subjects_mri_dir, MRI_SUBJECT)
+    locating_subject_file = partial(utils.locating_file, parent_fol=SUBJECT_MRI_FOLDER)
     MMVT_SUBJECT_FOLDER = op.join(mmvt_dir, MRI_SUBJECT)
     _get_fif_name_cond = partial(get_file_name, fname_format=fname_format, file_type='fif',
         cleaning_method=cleaning_method, contrast=contrast, raw_fname_format=raw_fname_format,
@@ -192,7 +195,7 @@ def get_file_name(ana_type, subject='', file_type='fif', fname_format='', cond='
 
 def load_raw(raw_fname='', bad_channels=[], l_freq=None, h_freq=None, raw_template='*raw.fif'):
     # read the data
-    raw_fname, raw_exist = locating_file(raw_fname, glob_pattern=raw_template)
+    raw_fname, raw_exist = locating_meg_file(raw_fname, glob_pattern=raw_template)
     if not raw_exist:
         raise Exception("Coulnd't find the raw file! {}".format(raw_fname))
     raw = mne.io.read_raw_fif(raw_fname, preload=True)
@@ -269,7 +272,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     if remove_power_line_noise:
         raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
-    events_fname, event_fname_exist = locating_file(EVE, glob_pattern=eve_template)
+    events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
     # todo: what to do with the read_events_from_file?
     if events is None and event_fname_exist:
         # events_fname = events_fname if events_fname != '' else EVE
@@ -335,25 +338,8 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template)
 
 
-locating_file = partial(utils.locating_file, parent_fol=SUBJECT_MEG_FOLDER)
-
-# def locating_file(default_fname, glob_pattern=''):
-#     fname = default_fname
-#     exist = op.isfile(default_fname)
-#     if not exist:
-#         files = glob.glob(op.join(SUBJECT_MEG_FOLDER, glob_pattern))
-#         exist = len(files) > 0
-#         if exist:
-#             if len(files) == 1:
-#                 fname = files[0]
-#             else:
-#                 fname_input = input('There are more than one *epo.fif files. Please choose the one you want to use: ')
-#                 if op.isfile(op.join(SUBJECT_MEG_FOLDER, fname_input)):
-#                     fname = op.join(SUBJECT_MEG_FOLDER, fname_input)
-#                 else:
-#                     print("Couldn't find {}!".format(op.join(SUBJECT_MEG_FOLDER, fname_input)))
-#     return fname, exist
-
+locating_meg_file = None
+locating_subject_file = None
 
 def calc_epochs_wrapper(
         conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
@@ -421,6 +407,8 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
         if calc_evoked_for_all_epoches:
             epochs_all = mne.concatenate_epochs([epochs[event] for event in events_keys])
             evokes_all = epochs_all.average()
+            evokes_all_fname = op.join(utils.get_parent_fol(evoked_fname), f'{mri_subject}-all-eve.fif')
+            mne.write_evokeds(evokes_all_fname, evokes_all)
         else:
             evokes_all = None
         save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all, normalize_data, norm_by_percentile,
@@ -536,8 +524,10 @@ def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH
 
 def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing='oct6', recreate_src_surface='white',
               n_jobs=2):
-    src_fname = SRC if op.isfile(SRC) else op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
-        mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))
+    src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
+    if not src_exist:
+        src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
+            mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))
     if not recreate_the_source_space and op.isfile(src_fname):
         src = mne.read_source_spaces(src_fname)
     else:
@@ -561,11 +551,12 @@ def check_bem(mri_subject, args={}):
         args = utils.Bag(
             sftp=False, sftp_username='', sftp_domain='', sftp_password='',
             overwrite_fs_files=False, print_traceback=False, sftp_port=22)
-    if not op.isfile(BEM):
+    bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
+    if not bem_exist:
         prepare_subject_folder(
             mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
-            {'bem': [utils.namebase_with_ext(BEM)]}, args)
-    if not op.isfile(BEM):
+            {'bem': ['*-bem-sol.fif']}, args)
+    if not op.isfile(bem_fname):
         bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
         watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
                            '{}_outer_skull_surface']
@@ -593,7 +584,7 @@ def check_bem(mri_subject, args={}):
         model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
         bem = mne.make_bem_solution(model)
         mne.write_bem_solution(BEM, bem)
-    return op.isfile(BEM)
+    return op.isfile(bem_fname)
 
 
 def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', sub_corticals_codes_file='',
@@ -607,10 +598,7 @@ def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', 
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing,recreate_src_surface, n_jobs)
         check_src_ply_vertices_num(src)
-        try:
-            check_bem(mri_subject, args)
-        except:
-            print(traceback.format_exc())
+        check_bem(mri_subject, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
@@ -820,7 +808,7 @@ def recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args, raw=None):
 
 def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     if inv_fname == '':
-        inv_fname, inv_exist = locating_file(inv_fname, '*inv.fif')
+        inv_fname, inv_exist = locating_meg_file(inv_fname, '*inv.fif')
         if not inv_exist:
             inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
     else:
@@ -833,7 +821,7 @@ def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
 
 def get_raw_fname(raw_fname=''):
     if raw_fname == '':
-        raw_fname, raw_exist = locating_file(raw_fname, '*raw.fif')
+        raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif')
         if not raw_exist:
             raw_fname = RAW
     return raw_fname
@@ -841,7 +829,7 @@ def get_raw_fname(raw_fname=''):
 
 def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     if fwd_fname == '':
-        fwd_fname, fwd_exist = locating_file(fwd_fname, '*fwd.fif')
+        fwd_fname, fwd_exist = locating_meg_file(fwd_fname, '*fwd.fif')
         if not fwd_exist:
             fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
     return fwd_fname
@@ -849,7 +837,7 @@ def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
 
 def get_epo_fname(epo_fname=''):
     if epo_fname == '':
-        epo_fname, epo_exist = locating_file(epo_fname, '*epo.fif')
+        epo_fname, epo_exist = locating_meg_file(epo_fname, '*epo.fif')
         if not epo_exist:
             epo_fname = EPO
     return epo_fname
@@ -857,18 +845,20 @@ def get_epo_fname(epo_fname=''):
 
 def get_evo_fname(evo_fname=''):
     if evo_fname == '':
-        evo_fname, epo_exist = locating_file(evo_fname, '*ave.fif')
+        evo_fname, epo_exist = locating_meg_file(evo_fname, '*ave.fif')
         if not epo_exist:
             evo_fname = EVO
     return evo_fname
 
 
-def calc_inverse_operator(events=None, epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
-                          inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0,
-                          overwrite_inverse_operator=False, use_empty_room_for_noise_cov=False,
-                          overwrite_noise_cov=False, calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True,
-                          fwd_usingMEG=True, fwd_usingEEG=True, calc_for_spec_sub_cortical=False, cortical_fwd=None,
-                          subcortical_fwd=None, spec_subcortical_fwd=None, region=None, args=None):
+def calc_inverse_operator(
+        events=None, raw_fname='', epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
+        inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0, overwrite_inverse_operator=False,
+        use_empty_room_for_noise_cov=False, use_raw_for_noise_cov=False, overwrite_noise_cov=False,
+        calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True, fwd_usingMEG=True, fwd_usingEEG=True,
+        calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None, spec_subcortical_fwd=None,
+        region=None, args=None):
+    raw_fname = get_raw_fname(raw_fname)
     fwd_fname = get_fwd_fname(fwd_fname, fwd_usingMEG, fwd_usingEEG)
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     evo_fname = get_evo_fname(evo_fname)
@@ -891,6 +881,10 @@ def calc_inverse_operator(events=None, epo_fname='', evo_fname='', fwd_fname='',
                 if use_empty_room_for_noise_cov:
                     raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
                     noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
+                    noise_cov.save(noise_cov_fname)
+                elif use_raw_for_noise_cov:
+                    raw = mne.io.read_raw_fif(raw_fname) # preload=True # add_eeg_ref=False
+                    noise_cov = mne.compute_raw_covariance(raw, tmin=0, tmax=None)
                     noise_cov.save(noise_cov_fname)
                 else:
                     epo = get_cond_fname(epo_fname, cond)
@@ -943,7 +937,8 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
                            stc_template='', epo_fname='', evo_fname='', inv_fname='',
-                           fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None, n_jobs=6):
+                           fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
+                           modality='meg', calc_stc_for_all=False, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     # Other options is to use calc_labels_avg_for_rest
     epo_fname = get_epo_fname(epo_fname)
@@ -954,7 +949,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
         stc_hemi_template = STC_HEMI
     else:
         stc_hemi_template = '{}{}'.format(stc_template[:-4], '-{hemi}.stc')
-    events_keys = events.keys() if events is not None and isinstance(events, dict) else ['all']
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     stcs, stcs_num = {}, {}
     lambda2 = 1.0 / snr ** 2
     global_inverse_operator = False
@@ -964,6 +959,8 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
             return False, stcs, stcs_num
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
+    if calc_stc_for_all:
+        events_keys.append('all')
     for cond_name in events_keys:
         stc_fname = stc_template.format(cond=cond_name, method=inverse_method)[:-4]
         if op.isfile('{}.stc'.format(stc_fname)) and not overwrite_stc:
@@ -999,8 +996,12 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                 else:
                     evoked = get_evoked_cond(
                         cond_name, evo_fname, epo_fname, baseline, apply_SSP_projection_vectors, add_eeg_ref)
+                    if evoked is None and cond_name == 'all':
+                        all_evokes_fname = op.join(SUBJECT_MEG_FOLDER, '{}-all-eve.fif'.format(SUBJECT))
+                        if op.isfile(all_evokes_fname):
+                            evoked = mne.read_evokeds(all_evokes_fname)[0]
                     if evoked is None:
-                        return False, stcs, stcs_num
+                        continue
                     if not stc_t_min is None and not stc_t_max is None:
                         evoked = evoked.crop(stc_t_min, stc_t_max)
                     try:
@@ -1011,7 +1012,8 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
-                    stcs[cond_name].save(op.join(MMVT_DIR, SUBJECT, 'meg', utils.namebase(stc_fname)))
+                    # mmvt_stc_name = ''
+                    stcs[cond_name].save(op.join(MMVT_DIR, SUBJECT, modality, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
@@ -1374,7 +1376,8 @@ def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all
     if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
         make_forward_solution_to_specific_subcortrical(events, region)
     if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
-        calc_inverse_operator(events, '', '', '', '', '', inv_loose, inv_depth, False, False, False, False, True, region=region)
+        calc_inverse_operator(events, '', '', '', '', '', '', inv_loose, inv_depth, False, False, False, False, False,
+                              True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
@@ -2066,7 +2069,7 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if not op.isfile(INFO):
-        raw_fname, raw_exist = locating_file(RAW, args.raw_template)
+        raw_fname, raw_exist = locating_meg_file(RAW, args.raw_template)
         if not raw_exist:
             print('No raw or raw info file!')
             return False
@@ -2092,7 +2095,7 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
         return True
     ret = False
     if len(sensors_pos) > 0:
-        trans_file = find_trans_file(trans_file, args)
+        trans_file = find_trans_file(trans_file, args.remote_subject_dir)
         if not op.isfile(trans_file):
             print('No trans files!')
         else:
@@ -2107,19 +2110,19 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
     return ret
 
 
-def find_trans_file(trans_file, args):
+def find_trans_file(trans_file, remote_subject_dir=''):
     trans_file = COR if trans_file == '' else trans_file
     if not op.isfile(trans_file):
         trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, '**', '*COR*.fif'), recursive=True)
-        if len(trans_files) == 0 and args.remote_subject_dir != '':
-            trans_files = glob.glob(op.join(args.remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+        if len(trans_files) == 0 and remote_subject_dir != '':
+            trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
         if len(trans_files) == 0:
             trans_files = glob.glob(op.join(utils.get_parent_fol(COR), '**', '*COR*.fif'), recursive=True)
         bem_trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-head.fif'))
         if len(bem_trans_files):
             trans_files += bem_trans_files
         else:
-            trans_files += glob.glob(op.join(args.remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+            trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
         ok_trans_files = []
         for trans_file in trans_files:
             try:
@@ -2281,7 +2284,7 @@ def prepare_subject_folder(subject, remote_subject_dir, local_subjects_dir, nece
     return utils.prepare_subject_folder(
         necessary_files, subject, remote_subject_dir, local_subjects_dir,
         sftp_args.sftp, sftp_args.sftp_username, sftp_args.sftp_domain, sftp_args.sftp_password,
-        False, sftp_args.print_traceback)
+        False, sftp_args.print_traceback, local_subject_dir=SUBJECT_MEG_FOLDER)
 
 
 def get_meg_files(subject, necessary_fnames, args, events=None):
@@ -2293,13 +2296,14 @@ def get_meg_files(subject, necessary_fnames, args, events=None):
             fnames.extend([get_cond_fname(fname, event) for event in events_keys])
         else:
             fnames.append(fname)
-    local_fol = op.join(MEG_DIR, args.task)
-    prepare_subject_folder(subject, args.remote_subject_meg_dir, local_fol, {'.': fnames}, args)
+    # local_fol = op.join(MEG_DIR, args.task)
+    prepare_subject_folder(subject, args.remote_subject_meg_dir, MEG_DIR, {'.': fnames}, args)
 
 
 def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject=''):
     if mri_subject == '':
         mri_subject = subject
+    raw_fname = get_raw_fname(args.raw_fname)
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     epo_fname = get_epo_fname(args.epo_fname)
@@ -2308,10 +2312,15 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution') and (not op.isfile(fwd_fname) or args.overwrite_fwd):
-            prepare_subject_folder(
-                mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
-                {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
-            src_dic = dict(bem=['{}-oct-6p-src.fif'.format(mri_subject)])
+            # prepare_subject_folder(
+            #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
+            #     {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
+            trans_file = find_trans_file(COR, args.remote_subject_dir)
+            if op.isfile(trans_file):
+                trans_fol = utils.make_dir(op.join('mri', 'T1-neuromag', 'sets'))
+                if utils.get_parent_fol(trans_file) != trans_fol:
+                    shutil.copy(trans_file, trans_fol)
+            src_dic = dict(bem=['*-oct-6*-src.fif'])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
             for nec_file in [src_dic, create_src_dic]:
@@ -2330,8 +2339,9 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
             get_meg_files(subject, [epo_fname, fwd_fname], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
-                conditions, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.inv_loose, args.inv_depth,
-                args.noise_t_min, args.noise_t_max, args.overwrite_inv, args.use_empty_room_for_noise_cov,
+                conditions, raw_fname, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.inv_loose,
+                args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
+                args.use_empty_room_for_noise_cov, args.use_raw_for_noise_cov,
                 args.overwrite_noise_cov, args.inv_calc_cortical, args.inv_calc_subcorticals,
                 args.fwd_usingMEG, args.fwd_usingEEG, args=args)
     return flags
@@ -2383,7 +2393,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
             args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
             args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, raw, epochs,
-            args.n_jobs)
+            args.modality, args.calc_stc_for_all, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
 
@@ -3203,6 +3213,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--noise_t_min', help='', required=False, default=None, type=au.float_or_none)
     parser.add_argument('--noise_t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--snr', help='', required=False, default=3.0, type=float)
+    parser.add_argument('--calc_stc_for_all', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
     parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
@@ -3290,8 +3301,9 @@ def read_cmd_args(argv=None):
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0
-    # if args.n_jobs == -1:
-    #     args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    # todo: Was set as a remark, why?
+    if args.n_jobs == -1:
+        args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.function == 'rest_functions':
         args.function = 'calc_epochs,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,' + \
                         'calc_labels_avg_per_condition'

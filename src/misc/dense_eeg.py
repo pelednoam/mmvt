@@ -23,10 +23,12 @@ def init_flags(subject, task, conditions, remote_subject_dir=''):
     args.conditions = list(conditions.values())
     args.t_min, args.t_max = -0.2, 0.2
     args.l_freq, args.h_freq = 1, 40
+    args.inverse_method = ['MNE', 'sLORETA']
     args.calc_max_min_diff = False
-    args.calc_evoked_for_all_epoches = True
-    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors = True, True, True
+    args.calc_evoked_for_all_epoches = args.calc_stc_for_all = True
+    args.overwrite_epochs, args.overwrite_evoked, args.overwrite_sensors = False, True, False
     args.normalize_data = False
+    args.use_raw_for_noise_cov = True
     return args
 
 
@@ -41,6 +43,8 @@ def main(eeg_fol, subject, remote_subject_dir=''):
             continue
         task = utils.namebase(raw_file).split('_')[1]
         args = init_flags(subject, task, conditions, remote_subject_dir)
+        args.stc_template = op.join(
+            meg.SUBJECT_MEG_FOLDER, '{}_{}_{}-{}.stc'.format(subject, task, '{cond}', '{method}'))
         fol = utils.make_dir(op.join(EEG_DIR, subject, args.task))
         if not op.isfile(op.join(fol, utils.namebase_with_ext(raw_file))):
             shutil.copy(raw_file, fol)
@@ -53,9 +57,12 @@ def main(eeg_fol, subject, remote_subject_dir=''):
 
         if first_time:
             eeg.read_eeg_sensors_layout(subject, args)
-            import_sensors.wrap_blender_call(subject, 'eeg', load_data=False)
+            # import_sensors.wrap_blender_call(subject, 'eeg', load_data=False, overwrite_sensors=args.overwrite_sensors)
             first_time = False
         eeg.calc_evokes(subject, conditions, args)
+        eeg.calc_fwd_inv(subject, args, conditions)
+        for im in args.inverse_method:
+            eeg.calc_stc_per_condition(subject, conditions, im, args)
 
 
 if __name__ == '__main__':

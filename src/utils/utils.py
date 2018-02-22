@@ -896,8 +896,9 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
 
 def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
         sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-        overwrite_files=False, print_traceback=True, sftp_port=22):
-    local_subject_dir = op.join(local_subjects_dir, subject)
+        overwrite_files=False, print_traceback=True, sftp_port=22, local_subject_dir=''):
+    if local_subject_dir == '':
+        local_subject_dir = op.join(local_subjects_dir, subject)
     mmvt_dir = get_link_dir(get_links_dir(), 'mmvt')
     save(dict(remote_subject_dir=remote_subject_dir, sftp=sftp, sftp_username=sftp_username, sftp_domain=sftp_domain,
               sftp_password=sftp_password, sftp_port=sftp_port), op.join(mmvt_dir, subject, 'remote_subject_info.pkl'))
@@ -922,8 +923,18 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                     file_name = file_name.replace('{subject}', subject)
                     local_fname = op.join(local_subject_dir, fol, file_name)
                     remote_fname = op.join(remote_subject_dir, fol, file_name)
-                    if not op.isfile(local_fname) or overwrite_files:
-                        if op.isfile(remote_fname):
+                    local_files = glob.glob(local_fname)
+                    if len(local_files) == 0 or overwrite_files:
+                        remote_files = glob.glob(remote_fname)
+                        if len(remote_files) > 0:
+                            remote_fname = remote_files[0]
+                            remote_lower = namebase_with_ext(remote_fname).lower()
+                            if subject.lower() in remote_lower and subject not in namebase(remote_fname):
+                                ind = remote_lower.index(subject)
+                                new_file_name = remote_lower[:ind] + subject + remote_lower[len(subject):]
+                                local_fname = op.join(local_subject_dir, fol, new_file_name)
+                            else:
+                                local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
                             print('coping {} to {}'.format(remote_fname, local_fname))
                             shutil.copyfile(remote_fname, local_fname)
                         else:
@@ -943,7 +954,8 @@ def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_d
         #     continue
         for file_name in files:
             file_name = file_name.replace('{subject}', subject)
-            if not op.isfile(op.join(local_subject_dir, fol, file_name)):
+            files = glob.glob(op.join(local_subject_dir, fol, file_name))
+            if len(files) == 0:
                 if trace:
                     print("{}: the file {} doesn't exist in the local subjects folder!!!".format(subject, file_name))
                 all_files_exists = False
@@ -1743,14 +1755,19 @@ def locating_file(default_fname, glob_pattern, parent_fol):
     else:
         exist = op.isfile(fname)
     if not exist:
-        files = glob.glob(op.join(parent_fol, glob_pattern))
+        files = glob.glob(op.join(parent_fol, '**', glob_pattern), recursive=True)
         exist = len(files) > 0
         if exist:
             if len(files) == 1:
                 fname = files[0]
             else:
-                fname_input = input('There are more than one {} files. Please choose the one you want to use: '.format(
-                    glob_pattern))
+                for ind, fname in enumerate(files):
+                    print('{}) {}'.format(ind+1, fname))
+                ind = int(input('There are more than one {} files. Please choose the one you want to use: '.format(
+                    glob_pattern)))
+                if ind == 0 or ind > len(files):
+                    return '', False
+                fname_input = files[ind-1]
                 if op.isfile(op.join(parent_fol, fname_input)):
                     fname = op.join(parent_fol, fname_input)
                 else:

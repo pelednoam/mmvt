@@ -21,6 +21,8 @@ if SUBJECTS_EEG_DIR == '':
 SUBJECT_EEG_DIR = ''
 
 calc_evokes = meg.calc_evokes_wrapper
+calc_fwd_inv = meg.calc_fwd_inv_wrapper
+calc_stc_per_condition = meg.calc_stc_per_condition_wrapper
 
 
 def read_eeg_sensors_layout(mri_subject, args):
