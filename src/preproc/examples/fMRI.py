@@ -10,6 +10,7 @@ from src.utils import preproc_utils as pu
 LINKS_DIR = utils.get_links_dir()
 FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
+SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 
 
 def get_subject_files_using_sftp(args):
@@ -174,10 +175,22 @@ def clean_4d_data(args):
     pu.run_on_subjects(args, fmri.main)
 
 
-def create_nii_from_npy(subject):
-    surf_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_non-interference-v-interference_rh.npy')
-    affine = ft_data.transform
-    nib.save(nib.Nifti1Image(data, affine), volumetric_meg_fname)
+def create_nii_from_npy(args):
+    import numpy as np
+    import nibabel as nib
+    contrast_name = 'non-interference-v-interference'
+    subject = 'mg78_old'
+    fmri_subject = 'mg78'
+    T1 = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz'))
+    affine = T1.affine
+    utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
+    for hemi in utils.HEMIS:
+        surf_fname = op.join(MMVT_DIR, fmri_subject, 'fmri', 'fmri_{}_{}.npy'.format(contrast_name, hemi))
+        data = np.load(surf_fname)
+        data = data.reshape((data.shape[0], 1, 1))
+        output_fname = op.join(MMVT_DIR, fmri_subject, 'fmri', '{}_{}.mgz'.format(contrast_name, hemi))
+        nib.save(nib.Nifti1Image(data, affine), output_fname)
+        print('Data was saved to {}'.format(output_fname))
 
 
 def get_subjects_files(args):
