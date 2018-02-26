@@ -601,6 +601,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
     # show_activity(False)
     mmvt_utils.select_layer(BRAIN_EMPTY_LAYER, False)
     mmvt_utils.unfilter_graph_editor()
+    lock_colorbar_values(False)
     for hemi in ['lh', 'rh']:
         if bpy.data.objects.get(hemi):
             bpy.data.objects[hemi].hide = True

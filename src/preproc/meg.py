@@ -1977,13 +1977,13 @@ def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_metho
 
 def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
-        factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, do_plot=False, n_jobs=1):
+        factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, overwrite=False, do_plot=False, n_jobs=1):
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
             labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
     if labels_data_template == '':
         labels_data_template = LBL
-    if _check_all_files_exist():
+    if _check_all_files_exist() and not overwrite:
         return True
     try:
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
@@ -2065,13 +2065,15 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         labels_names = [utils.to_str(l.name) for l in labels_names]
     for em in extract_modes:
         labels_data[em] = labels_data[em].squeeze()
-        labels_data[em] *= np.power(10, factor)
+        if np.max(labels_data[em]) < 1e-4:
+            labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
             labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
         labels_output_fname = labels_data_template.format(atlas, em, hemi)  # if labels_output_fname_template == '' else \
         # lables_mmvt_fname = op.join(
         #     MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
         print('Saving to {}'.format(labels_output_fname))
+        utils.make_dir(utils.get_parent_fol(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
@@ -2328,6 +2330,10 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
             #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             #     {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
             trans_file = find_trans_file(COR, args.remote_subject_dir)
+            if trans_file is None:
+                flags['make_forward_solution'] = False
+                flags['calc_inverse_operator'] = False
+                return flags
             if op.isfile(trans_file):
                 trans_fol = utils.make_dir(op.join('mri', 'T1-neuromag', 'sets'))
                 if utils.get_parent_fol(trans_file) != trans_fol:
@@ -2564,11 +2570,12 @@ def extract_label_data(label, src, stc):
 
 
 def calc_labels_avg_per_condition_wrapper(
-        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None):
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None,
+        overwrite=False):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
-        if labels_data_exist:
+        if labels_data_exist and not overwrite:
             if utils.should_run(args, 'calc_labels_min_max'):
                 flags['calc_labels_min_max'] = calc_labels_minmax(
                     atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
@@ -2599,8 +2606,8 @@ def calc_labels_avg_per_condition_wrapper(
                 labels_data_template=args.labels_data_template,
                 stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
                 fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingMEG,
-                stcs_num=stcs_num, n_jobs=args.n_jobs)
-            if stcs_conds and isinstance(stcs_conds[conditions_keys[0]], types.GeneratorType) and hemi_ind == 0:
+                stcs_num=stcs_num, overwrite=overwrite, n_jobs=args.n_jobs)
+            if stcs_conds and isinstance(stcs_conds[list(conditions_keys)[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
                     subject, conditions, inverse_method, args, flags, raw=raw, epochs=epochs)
@@ -2631,6 +2638,8 @@ def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_
             labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
             np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
                      labels_diff_minmax=[labels_diff_min, labels_diff_max])
+            print('{}: min: {}, max: {}'.format(em, labels_min, labels_max))
+            print('{}: labels diff min: {}, labels diff max: {}'.format(em, labels_diff_min, labels_diff_max))
             # shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
         else:
             print("Can't find {}!".format(template))
@@ -3093,7 +3102,8 @@ def main(tup, remote_subject_dir, args, flags):
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
     flags = calc_labels_avg_per_condition_wrapper(
-        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs)
+        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs,
+        args.overwrite_labels_data)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(mri_subject, args)

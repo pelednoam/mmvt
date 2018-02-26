@@ -397,7 +397,7 @@ def meg_labels_coloring(override_current_mat=True):
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.meg_labels_extract_method
-    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
+    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'labels_data_{}_{}_minmax.npz'.format(atlas, em)))
     meg_labels_min, meg_labels_max = labels_data_minimax['labels_diff_minmax'] \
         if bpy.context.scene.meg_labels_coloring_type == 'diff' else labels_data_minimax['labels_minmax']
     data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))
@@ -545,6 +545,10 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
         else:
             colors_ratio = 256 / (colors_max - colors_min)
             _addon().set_colorbar_max_min(colors_max, colors_min)
+            if colors_min == 0 or np.sign(colors_min) == np.sign(colors_max):
+                _addon().set_colormap('YlOrRd')
+            else:
+                _addon().set_colormap('BuPu-YlOrRd')
     for label_data, label_colors, label_name in zip(labels_data['data'], colors, labels_data['names']):
         label_name = mu.to_str(label_name)
         if label_data.ndim == 0:
@@ -872,6 +876,9 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
+    if len(valid_verts) == 0:
+        print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
+        return
     colors_picked_from_cm = False
     # cm = _addon().get_cm()
     if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
@@ -1929,11 +1936,11 @@ def draw(self, context):
     faces_verts_exist = mu.hemi_files_exists(op.join(user_fol, 'faces_verts_{hemi}.npy'))
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh*.npy'))  # mu.hemi_files_exists(op.join(user_fol, 'fmri_{hemi}.npy'))
     # fmri_clusters_files_exist = mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_clusters_{hemi}.npy'))
-    meg_ext_meth = bpy.context.scene.meg_labels_extract_method
-    meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data*_{}_{}_{}.npz'.format(
-        atlas, meg_ext_meth, '{hemi}')))
-    meg_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
+    # meg_ext_meth = bpy.context.scene.meg_labels_extract_method
+    # meg_labels_data_exist = mu.hemi_files_exists(op.join(user_fol, 'meg', 'labels_data*_{}_{}_{}.npz'.format(
+    #     atlas, meg_ext_meth, '{hemi}')))
+    # meg_labels_data_minmax_exist = op.isfile(
+    #     op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, meg_ext_meth)))
     manually_color_files_exist = len(glob.glob(op.join(user_fol, 'coloring', '*.csv'))) > 0
     static_connectivity_exist = len(glob.glob(op.join(user_fol, 'connectivity', '*.npy'))) > 0
     if _addon() is None:
@@ -1958,7 +1965,7 @@ def draw(self, context):
             col.prop(context.scene, 'meg_peak_mode', '')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
-        if meg_labels_data_exist and meg_labels_data_minmax_exist:
+        if ColoringMakerPanel.meg_labels_data_exist and ColoringMakerPanel.meg_labels_data_minmax_exist:
             col = layout.box().column()
             # col.label('MEG labels')
             col.prop(context.scene, 'meg_labels_coloring_type', '')
@@ -2114,6 +2121,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     electrodes_labels_files_exist = False
     conn_labels_avg_files_exit = False
     contours_coloring_exist = False
+    meg_labels_data_exist = False
+    meg_labels_data_minmax_exist = False
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
@@ -2301,18 +2310,22 @@ def init_meg_labels_coloring_type():
     user_fol = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     conditions = get_condditions_from_labels_fcurves()
-    em = bpy.context.scene.meg_labels_extract_method
-    meg_labels_data_exist = mu.hemi_files_exists(
-        op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
-    meg_labels_data_minmax_exist = op.isfile(
-        op.join(user_fol, 'meg', 'meg_labels_{}_{}_minmax.npz'.format(atlas, em)))
-    if len(conditions) > 0 and meg_labels_data_exist and meg_labels_data_minmax_exist:
-        items = [('diff', 'Conditions differece', '', 0)]
-        items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
-        bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
-            items=items, description="meg_labels_coloring_type")
-        bpy.context.scene.meg_labels_coloring_type = 'diff'
-        ColoringMakerPanel.activity_types.append('meg_labels')
+    # em = bpy.context.scene.meg_labels_extract_method
+    files = glob.glob(op.join(user_fol, 'meg', 'labels_data_{}_*_rh.npz'.format(atlas)))
+    if len(files) > 0:
+        em = '_'.join(mu.namebase(files[0]).split('_')[3:-1])
+        ColoringMakerPanel.meg_labels_data_exist = mu.hemi_files_exists(
+            op.join(user_fol, 'meg', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+        ColoringMakerPanel.meg_labels_data_minmax_exist = op.isfile(
+            op.join(user_fol, 'meg', 'labels_data_{}_{}_minmax.npz'.format(atlas, em)))
+        if len(conditions) > 0 and ColoringMakerPanel.meg_labels_data_exist and \
+                ColoringMakerPanel.meg_labels_data_minmax_exist:
+            items = [('diff', 'Conditions differece', '', 0)]
+            items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
+            bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
+                items=items, description="meg_labels_coloring_type")
+            bpy.context.scene.meg_labels_coloring_type = 'diff'
+            ColoringMakerPanel.activity_types.append('meg_labels')
 
 
 def init_fmri_labels():

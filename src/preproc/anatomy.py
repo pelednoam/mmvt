@@ -534,7 +534,7 @@ def create_spatial_connectivity(subject):
             if not op.isfile(conn_fname):
                 print("Connectivity file doesn't exist! {}".format(conn_fname))
                 continue
-            d = np.load()
+            d = np.load(conn_fname)
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
             rows, cols = connectivity_per_hemi[hemi].nonzero()
             for ind in range(len(rows)):
