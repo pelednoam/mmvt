@@ -207,6 +207,7 @@ def create_surfaces(subject, hemi='both', overwrite=False):
                         print('No dural surf! Run the following command from ielu folder')
                         print('''python2 -c "from ielu import pipeline as pipe; 
                                  pipe.create_dural_surface(subject='{}')"'''.format(subject))
+                        continue
                 if surf_type == 'inflated':
                     verts_offset = 55 if hemi == 'rh' else -55
                     verts[:, 0] = verts[:, 0] + verts_offset
@@ -529,7 +530,11 @@ def create_spatial_connectivity(subject):
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
             neighbors = defaultdict(list)
-            d = np.load(op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf)))
+            conn_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf))
+            if not op.isfile(conn_fname):
+                print("Connectivity file doesn't exist! {}".format(conn_fname))
+                continue
+            d = np.load()
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
             rows, cols = connectivity_per_hemi[hemi].nonzero()
             for ind in range(len(rows)):
@@ -1022,7 +1027,8 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_
     from src.mmvt_addon.scripts import create_new_subject as mmvt_script
     # Create a file for the new subject
     args = mmvt_script.create_new_subject(subject, atlas, overwrite_blend)
-    utils.waits_for_file(args.log_fname)
+    if args is not None:
+        utils.waits_for_file(args.log_fname)
     atlas = utils.get_real_atlas_name(atlas, short_name=True)
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
     return op.isfile(new_fname)

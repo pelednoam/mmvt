@@ -7,6 +7,10 @@ from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
 
+LINKS_DIR = utils.get_links_dir()
+FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
+MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
+
 
 def get_subject_files_using_sftp(args):
     for subject in args.subject:
@@ -168,6 +172,12 @@ def clean_4d_data(args):
         # template_brain='fsaverage5',
     ))
     pu.run_on_subjects(args, fmri.main)
+
+
+def create_nii_from_npy(subject):
+    surf_fname = op.join(MMVT_DIR, subject, 'fmri', 'fmri_non-interference-v-interference_rh.npy')
+    affine = ft_data.transform
+    nib.save(nib.Nifti1Image(data, affine), volumetric_meg_fname)
 
 
 def get_subjects_files(args):

@@ -18,18 +18,22 @@ def create_new_subject(subject, atlas, overwrite_blend=False):
 
 def wrap_blender_call():
     args = read_args()
-    create_new_subject_file(args)
-    args.log_fname = op.join(su.get_logs_fol(args.subject), 'create_new_subject_script.log')
-    if op.isfile(args.log_fname):
-        os.remove(args.log_fname)
-    if args.import_in_blender:
-        su.call_script(__file__, args, run_in_background=False, err_pipe=sys.stdin)
-        su.waits_for_file(args.log_fname)
-    return args
+    ret = create_new_subject_file(args)
+    if ret:
+        args.log_fname = op.join(su.get_logs_fol(args.subject), 'create_new_subject_script.log')
+        if op.isfile(args.log_fname):
+            os.remove(args.log_fname)
+        if args.import_in_blender:
+            su.call_script(__file__, args, run_in_background=False, err_pipe=sys.stdin)
+            su.waits_for_file(args.log_fname)
+        return args
+    else:
+        return None
 
 
 def create_new_subject_file(args):
     # Create a file for the new subject
+    create_new_file = True
     if len(args.subjects) == 0:
         args.subjects = [args.subject]
     for subject in args.subjects:
@@ -43,8 +47,11 @@ def create_new_subject_file(args):
             if su.is_true(overwrite):
                os.remove(new_fname)
                shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
+            else:
+                create_new_file = False
         else:
             shutil.copy(op.join(su.get_mmvt_dir(), 'empty_subject.blend'), new_fname)
+    return create_new_file
 
 
 def read_args(argv=None):

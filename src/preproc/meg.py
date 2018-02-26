@@ -66,7 +66,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     if task != '':
         if data_per_task:
             SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, task, SUBJECT)
-        if sub_dirs_for_tasks:
+        elif sub_dirs_for_tasks:
             SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT, task)
         else:
             SUBJECT_MEG_FOLDER = op.join(subjects_meg_dir, SUBJECT)
@@ -1027,7 +1027,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
 
 def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc=False):
     if events is None or (not isinstance(events, dict) and len(events) < 2):
-        return
+        return False
     stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
     if all([utils.both_hemi_files_exist(
             stc_hemi_template.format(cond=cond, hemi='{hemi}'))
@@ -1041,7 +1041,7 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrit
                 calc_stc_diff(
                     stc_hemi_template.format(cond=conds[0], hemi=hemi),
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
-
+    return utils.both_hemi_files_exist(stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), hemi='{hemi}'))
 
 def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
                 use_meg=True, use_eeg=False, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
@@ -1591,18 +1591,28 @@ def create_stc_t_from_data(subject, rh_data, lh_data, tstep=0.001):
     return stc_t
 
 
-def morph_stc(events, morph_to_subject, inverse_method='dSPM', n_jobs=6):
+@utils.files_needed({'surf': ['lh.sphere.reg', 'rh.sphere.reg']})
+def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5, smoothing_iterations=None,
+              overwrite=False, n_jobs=6):
     for ind, cond in enumerate(events.keys()):
         output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
+        if op.isfile(output_fname) and not overwrite:
+            continue
         utils.make_dir(utils.get_parent_fol(output_fname))
-        _morph_stc(MRI_SUBJECT, morph_to_subject, STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'),
-                   output_fname, n_jobs=n_jobs)
+        _morph_stc(subject, morph_to_subject, STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'),
+                   output_fname, grade=grade, smooth=smoothing_iterations, n_jobs=n_jobs)
+        ret = ret and utils.both_hemi_files_exist(output_fname)
+    return ret
 
 
-def _morph_stc(from_subject, to_subject, stc_fname, output_fname, grade=5, n_jobs=6):
-    stc = mne.read_source_estimate(stc_fname)
-    stc_morphed = mne.morph_data(from_subject, to_subject, stc, grade=grade, n_jobs=n_jobs)
-    stc_morphed.save(output_fname)
+def _morph_stc(from_subject, to_subject, stc_fname, output_fname, grade=5, smooth=None, n_jobs=6):
+    if op.isfile(stc_fname):
+        stc = mne.read_source_estimate(stc_fname)
+        stc_morphed = mne.morph_data(from_subject, to_subject, stc, grade=grade, smooth=smooth, n_jobs=n_jobs)
+        stc_morphed.save(output_fname)
+        print('Morphed stc file was saves in {}'.format(output_fname))
+    else:
+        print("Can't find {}!".format(stc_fname))
 
 
 # @utils.timeit
@@ -3152,9 +3162,19 @@ def main(tup, remote_subject_dir, args, flags):
     if 'fit_ica_on_subjects' in args.function:
         fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
 
+    if 'morph_stc' in args.function:
+        flags['morph_stc'] = morph_stc(
+            MRI_SUBJECT, conditions, args.morph_to_subject, args.inverse_method[0], args.grade,
+            args.smoothing_iterations, args.overwrite_stc, args.n_jobs)
+
+    if 'calc_stc_diff' in args.function:
+        flags['calc_stc_diff'] = calc_stc_diff_both_hemis(
+            conditions, STC_HEMI, args.inverse_method[0], overwrite_stc=args.overwrite_stc)
+
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
-            subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file, args.overwrite_surface, args.overwrite_stc)
+            subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
+            args.overwrite_surface, args.overwrite_stc)
 
     return flags
 
@@ -3285,6 +3305,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fieldtrip_data_field_name', required=False, default='')
     parser.add_argument('--overwrite_nii_file', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_surface', help='', required=False, default=0, type=au.is_true)
+    # Smoothing / Morphing
+    parser.add_argument('--grade', help='', required=False, default=5, type=au.int_or_none)
+    parser.add_argument('--smoothing_iterations', help='', required=False, default=None, type=au.int_or_none)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

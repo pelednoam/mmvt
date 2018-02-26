@@ -469,7 +469,7 @@ def prepare_files(subjects, template_system):
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
-    martinos_subjects = {'mg96':'ep007'}
+    martinos_subjects = {'mg96':'ep007', 'mg78': 'ep001'}
     goods, bads = [], []
     for subject in subjects:
         files_exist = utils.check_if_all_necessary_files_exist(
@@ -584,10 +584,12 @@ if __name__ == '__main__':
     save_as_bipolar = False
     template_system = 'mni' # hc029
     atlas = 'aparc.DKTatlas40'
-    bipolar = True
+    bipolar = False
 
     electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    electrodes = read_all_electrodes(electrodes.keys(), bipolar)
+    subjects = electrodes.keys()
+    subjects = ['mg78']
+    electrodes = read_all_electrodes(subjects, bipolar)
     good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
     cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
     create_electrodes_files(electrodes, SUBJECTS_DIR, True)

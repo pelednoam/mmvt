@@ -116,13 +116,13 @@ def morph_stc(args):
     args = meg.read_cmd_args(dict(
         subject=args.subject,
         mri_subject=args.mri_subject,
+        function='morph_stc',
         task='MSIT',
         data_per_task=True,
         contrast='interference',
-        cleaning_method='nTSSS'))
-    morph_to_subject = 'ab' # 'fsaverage5'
-    fname_format, fname_format_cond, conditions = meg.init(args.subject[0], args, args.mri_subject[0])
-    meg.morph_stc(conditions, morph_to_subject, args.inverse_method[0], args.n_jobs)
+        cleaning_method='nTSSS',
+        morph_to_subject='colin27'))
+    meg.call_main(args)
 
 
 def crop_stc_no_baseline(subject, mri_subject):

@@ -21,6 +21,7 @@ import shutil
 def _addon():
     return LoadResultsPanel.addon
 
+#todo: stop snapping after click, and return snapping after file selection
 
 if IN_BLENDER:
     bpy.types.Scene.nii_label_prompt = bpy.props.StringProperty(description='')
