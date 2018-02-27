@@ -586,11 +586,11 @@ if __name__ == '__main__':
     atlas = 'aparc.DKTatlas40'
     bipolar = False
 
-    electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
-    subjects = electrodes.keys()
-    subjects = ['mg78']
-    electrodes = read_all_electrodes(subjects, bipolar)
-    good_subjects, bad_subjects = prepare_files(electrodes.keys(), template_system)
+    # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
+    # subjects = electrodes.keys()
+    subjects = ['ep001']
+    # electrodes = read_all_electrodes(subjects, bipolar)
+    good_subjects, bad_subjects = prepare_files(subjects, template_system)
 
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
