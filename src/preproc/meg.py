@@ -2106,7 +2106,7 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
         output_fname = op.join(MMVT_DIR, mri_subject, 'meg', 'meg_sensors_positions.npz')
     else:
         utils.make_dir(op.join(MMVT_DIR, mri_subject, 'eeg'))
-        output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_positions.npz')
+        output_fname = op.join(MMVT_DIR, mri_subject, 'eeg', 'eeg_sensors_positions.npz')
     if op.isfile(output_fname) and not overwrite_sensors:
         return True
     ret = False

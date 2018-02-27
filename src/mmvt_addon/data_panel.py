@@ -373,7 +373,7 @@ def import_meg_sensors(overwrite_sensors=False):
 
 
 def import_eeg_sensors(overwrite_sensors=False):
-    input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+    input_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_positions.npz')
     import_electrodes(input_file, _addon().EEG_LAYER, bipolar=False, parnet_name='EEG_sensors',
                       overwrite=overwrite_sensors)
     bpy.types.Scene.eeg_imported = True
@@ -1094,17 +1094,18 @@ def data_draw(self, context):
     meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
     meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
     meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
-    eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+    eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_positions.npz')
     eeg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))) > 0
     eeg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data_meta.npz'))) > 0
     # todo: do something with eeg_data_minmax
     eeg_data_minmax_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_minmax.npy'))) > 0
 
-    if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
+    if op.isfile(meg_sensors_positions_file):
         col = layout.box().column()
         col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
-        # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
-        col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
+        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz):
+            # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
+            col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
     if op.isfile(eeg_sensors_positions_file):
         col = layout.box().column()
