@@ -150,7 +150,7 @@ def read_electrodes_file(subject, bipolar, postfix=''):
     if not op.isfile(electrodes_fname):
         print('{}: No npz file, trying to read xls file'.format(subject))
         try:
-            convert_electrodes_pos(subject, bipolar, True)
+            convert_electrodes_pos(subject, bipolar)
         except:
             print(traceback.format_exc())
     if not op.isfile(electrodes_fname):
@@ -229,7 +229,7 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
 
 
 def convert_electrodes_pos(
-        subject, bipolar=False, copy_to_blender=True, ras_xls_sheet_name='', snaps=[True, False]):
+        subject, bipolar=False, ras_xls_sheet_name='', snaps=[True, False]):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(MMVT_DIR, subject, 'electrodes')
     utils.make_dir(electrodes_folder)
@@ -752,7 +752,7 @@ def data_electrodes_to_bipolar(subject):
     meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
     data = np.load(op.join(fol, 'electrodes_data.npy'))
     channels, conditions, times = meta_data['names'], meta_data['conditions'], meta_data['times']
-    _, _, bipolar_channels = convert_electrodes_pos(subject, bipolar=True, copy_to_blender=True)
+    _, _, bipolar_channels = convert_electrodes_pos(subject, bipolar=True)
     data_bipolar = np.zeros((len(bipolar_channels), data.shape[1], len(conditions)))
     for cond_ind in range(len(conditions)):
         for ind, bipolar_channel in enumerate(bipolar_channels):

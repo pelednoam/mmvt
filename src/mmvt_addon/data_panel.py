@@ -840,6 +840,10 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
     N = len(meta_data['names'])
     T = all_data.shape[1] if window_len is None or not 'dt' in meta_data else int(window_len / meta_data['dt'])
     conditions = meta_data['conditions'] if conditions is None else conditions
+    if isinstance(conditions[0], np.bytes_):
+        conditions = [c.decode('utf_8') for c in meta_data['conditions']]
+    else:
+        conditions = [str(c) for c in meta_data['conditions']]
     if isinstance(conditions, str):
         conditions = [conditions]
     for obj_counter, (obj_name, data) in enumerate(zip(meta_data['names'], all_data)):
@@ -852,6 +856,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
         cur_obj = bpy.data.objects[obj_name]
         fcurves_num = mu.count_fcurves(cur_obj)
         if fcurves_num < len(conditions):
+            cur_obj.animation_data_clear()
             for cond_ind, cond_str in enumerate(conditions):
                 cond_str = cond_str.astype(str) if not isinstance(cond_str, str) else cond_str
                 # Set the values to zeros in the first and last frame for current object(current label)
@@ -861,7 +866,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
 
                 print('keyframing ' + obj_name + ' object in condition ' + cond_str)
                 # For every time point insert keyframe to current object
-                data_cond_ind = np.where(meta_data['conditions'] == cond_str)[0][0]
+                data_cond_ind = conditions.index(cond_str) #np.where(conditions == cond_str)[0][0]
                 for ind, t in enumerate(data[:T, data_cond_ind]):
                     mu.insert_keyframe_to_custom_prop(cur_obj, obj_name + '_' + str(cond_str), t, ind + 2)
                 # remove the orange keyframe sign in the fcurves window
@@ -971,31 +976,32 @@ def load_electrodes_dists():
 
 
 def load_electrodes_data(stat='diff'):
-    # stat = 'diff' 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'
-    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
-    if DataMakerPanel.electrodes_data is None:
-        fol = op.join(mu.get_user_fol(), 'electrodes')
-        data_file = op.join(fol, 'electrodes_{}data.npz'.format(bip))
-        if op.isfile(data_file):
-            f = np.load(data_file)
-            data = f['data']
-            names = f['names']
-            conditions = f['conditions']
-        elif op.isfile(op.join(fol, 'electrodes_{}data.npy'.format(bip))) and \
-                op.isfile(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip))):
-            data_file = op.join(fol, 'electrodes_{}data.npy'.format(bip))
-            data = np.load(data_file)
-            meta_data = np.load(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip)))
-            names = meta_data['names']
-            conditions = meta_data['conditions']
-        else:
-            data, names, conditions = None, None, None
-        DataMakerPanel.electrodes_data = data
-        names = DataMakerPanel.electrodes_names = [mu.to_str(n) for n in names]
-        conditions = DataMakerPanel.electrodes_conditions = [mu.to_str(c) for c in conditions]
-        return data, names, conditions
-    else:
-        return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions
+    return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions
+
+    # bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    # if DataMakerPanel.electrodes_data is None:
+    #     fol = op.join(mu.get_user_fol(), 'electrodes')
+    #     data_file = op.join(fol, 'electrodes_{}data.npz'.format(bip))
+    #     if op.isfile(data_file):
+    #         f = np.load(data_file)
+    #         data = f['data']
+    #         names = f['names']
+    #         conditions = f['conditions']
+    #     elif op.isfile(op.join(fol, 'electrodes_{}data.npy'.format(bip))) and \
+    #             op.isfile(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip))):
+    #         data_file = op.join(fol, 'electrodes_{}data.npy'.format(bip))
+    #         data = np.load(data_file)
+    #         meta_data = np.load(op.join(fol, 'electrodes_{}meta_data.npz'.format(bip)))
+    #         names = meta_data['names']
+    #         conditions = meta_data['conditions']
+    #     else:
+    #         data, names, conditions = None, None, None
+    #     DataMakerPanel.electrodes_data = data
+    #     names = DataMakerPanel.electrodes_names = [mu.to_str(n) for n in names]
+    #     conditions = DataMakerPanel.electrodes_conditions = [mu.to_str(c) for c in conditions]
+    #     return data, names, conditions
+    # else:
+    #     return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions
 
 
 def meg_evoked_files_update(self, context):
@@ -1010,6 +1016,102 @@ def _meg_evoked_files_update():
                                     if ext.name.startswith(evoked_name)]
         items = [(name, name, '', ind) for ind, name in enumerate(DataMakerPanel.externals)]
         bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=items, description="meg_evoked_types")
+
+
+def add_data_to_electrodes_and_parent():
+    # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
+    parent_obj = bpy.data.objects['Deep_electrodes']
+    base_path = mu.get_user_fol()
+    source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
+        '_bipolar' if bpy.context.scene.bipolar else ''))
+    # 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
+    data, meta = DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_meta_data
+    if not data is None and not meta is None:
+        print('Loading electordes data from {}'.format(source_file))
+        if len(meta['conditions']) > 1:
+            add_data_to_electrodes_parent_obj(parent_obj, data, meta)
+        add_data_to_electrodes(data, meta)
+        # selection_panel.set_conditions_enum(conditions)
+        bpy.types.Scene.electrodes_data_exist = True
+    if bpy.data.objects.get(' '):
+        bpy.context.scene.objects.active = bpy.data.objects[' ']
+
+
+def data_draw(self, context):
+    layout = self.layout
+    # layout.prop(context.scene, 'conf_path')
+    # col = self.layout.column(align=True)
+    col = layout.box().column()
+
+    col.prop(context.scene, 'atlas', text="Atlas")
+    col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
+    col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
+    col.operator(FixBrainMaterials.bl_idname, text="Fix brain materials", icon='PARTICLE_DATA')
+
+    if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format('{hemi}'))):
+        col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
+
+    if DataMakerPanel.electrodes_positions_exist:
+        col = layout.box().column()
+        col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
+        col.prop(context.scene, 'electrodes_positions_files', text="")
+        col.prop(context.scene, 'bipolar', text="Bipolar")
+        col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
+        if DataMakerPanel.electrodes_data_exist:
+            col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
+    layout.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",
+                    icon='GROUP_VERTEX').filepath = op.join(
+        mu.get_user_fol(), 'electrodes', '*.npz')
+    if DataMakerPanel.meg_labels_data_exist:
+        col = layout.box().column()
+        col.prop(context.scene, 'labels_data_files', text="")
+        col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
+        col.prop(context.scene, 'add_meg_labels_data', text="labels")
+        col.prop(context.scene, 'import_unknown', text="Import unknown")
+    if DataMakerPanel.subcortical_meg_data_exist:
+        col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
+
+    if DataMakerPanel.fMRI_dynamic_exist:
+        col = layout.box().column()
+        col.prop(context.scene, 'fMRI_dynamic_files', text="")
+        if DataMakerPanel.subcortical_fmri_data_exist:
+            col.prop(context.scene, 'add_fmri_subcorticals_data', text="add subcorticals")
+            if bpy.context.scene.add_fmri_subcorticals_data:
+                col.prop(context.scene, 'subcortical_fmri_files', text='')
+        col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
+
+    # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
+    # if len(DataMakerPanel.evoked_files) > 0:
+    #     layout.label(text='External MEG evoked files:')
+    #     layout.prop(context.scene, 'meg_evoked_files', text="")
+    #     layout.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
+    #     if len(DataMakerPanel.externals) > 0:
+    #         layout.prop(context.scene, 'evoked_objects', text="")
+    #         select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
+    #         select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
+    #         layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
+
+    meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
+    meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+    meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+    eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
+    eeg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))) > 0
+    eeg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data_meta.npz'))) > 0
+    # todo: do something with eeg_data_minmax
+    eeg_data_minmax_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_minmax.npy'))) > 0
+
+    if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
+        col = layout.box().column()
+        col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
+        # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
+        col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
+
+    if op.isfile(eeg_sensors_positions_file) and eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
+        col = layout.box().column()
+        col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
+        col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
+        col.prop(context.scene, 'eeg_data_files', text="")
+        col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
 
 
 class AddDataToEEGSensors(bpy.types.Operator):
@@ -1039,35 +1141,7 @@ class AddDataToElectrodes(bpy.types.Operator):
     current_root_path = ''
 
     def invoke(self, context, event=None):
-        # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
-        parent_obj = bpy.data.objects['Deep_electrodes']
-        base_path = mu.get_user_fol()
-        data, meta = None, None
-        source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
-            '_bipolar' if bpy.context.scene.bipolar else ''))
-            # 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
-        if op.isfile(source_file):
-            meta = np.load(source_file)
-            data = meta['data']
-        else:
-            source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npy'.format(
-                '_bipolar' if bpy.context.scene.bipolar else ''))
-            meta_file = op.join(base_path, 'electrodes', 'electrodes{}_meta_data.npz'.format(
-                '_bipolar' if bpy.context.scene.bipolar else ''))
-            if op.isfile(source_file) and op.isfile(meta_file):
-                data = np.load(source_file)
-                meta = np.load(meta_file)
-            else:
-                mu.log_err('No electrodes data file!', logging)
-        if not data is None and not meta is None:
-            print('Loading electordes data from {}'.format(source_file))
-            if len(meta['conditions']) > 1:
-                add_data_to_electrodes_parent_obj(parent_obj, data, meta)
-            conditions = add_data_to_electrodes(data, meta)
-            # selection_panel.set_conditions_enum(conditions)
-            bpy.types.Scene.electrodes_data_exist = True
-        if bpy.data.objects.get(' '):
-            bpy.context.scene.objects.active = bpy.data.objects[' ']
+        add_data_to_electrodes_and_parent()
         return {"FINISHED"}
 
 
@@ -1125,82 +1199,11 @@ class DataMakerPanel(bpy.types.Panel):
     electrodes_dists = None
     electrodes_names = None
     electrodes_conditions = None
+    electrodes_positions_exist = False
+    electrodes_data_exist = False
 
     def draw(self, context):
-        layout = self.layout
-        # layout.prop(context.scene, 'conf_path')
-        # col = self.layout.column(align=True)
-        col = layout.box().column()
-
-        col.prop(context.scene, 'atlas', text="Atlas")
-        col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
-        col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
-        col.operator(FixBrainMaterials.bl_idname, text="Fix brain materials", icon='PARTICLE_DATA')
-        electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
-
-        if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format('{hemi}'))):
-            col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
-
-        if len(electrodes_positions_files) > 0:
-            col = layout.box().column()
-            col.prop(context.scene, 'electrodes_radius', text="Electrodes' radius")
-            col.prop(context.scene, 'electrodes_positions_files', text="")
-            col.prop(context.scene, 'bipolar', text="Bipolar")
-            col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
-            col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
-        layout.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions", icon='GROUP_VERTEX').filepath=op.join(
-            mu.get_user_fol(), 'electrodes', '*.npz')
-        if DataMakerPanel.meg_labels_data_exist:
-            col = layout.box().column()
-            col.prop(context.scene, 'labels_data_files', text="")
-            col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
-            col.prop(context.scene, 'add_meg_labels_data', text="labels")
-            col.prop(context.scene, 'import_unknown', text="Import unknown")
-        if DataMakerPanel.subcortical_meg_data_exist:
-            col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
-
-        if DataMakerPanel.fMRI_dynamic_exist:
-            col = layout.box().column()
-            col.prop(context.scene, 'fMRI_dynamic_files', text="")
-            if DataMakerPanel.subcortical_fmri_data_exist:
-                col.prop(context.scene, 'add_fmri_subcorticals_data', text="add subcorticals")
-                if bpy.context.scene.add_fmri_subcorticals_data:
-                    col.prop(context.scene, 'subcortical_fmri_files', text='')
-            col.operator(AddfMRIDynamicsToBrain.bl_idname, text="Add fMRI data", icon='FCURVE')
-
-        # if bpy.types.Scene.electrodes_imported and (not bpy.types.Scene.electrodes_data_exist):
-        # if len(DataMakerPanel.evoked_files) > 0:
-        #     layout.label(text='External MEG evoked files:')
-        #     layout.prop(context.scene, 'meg_evoked_files', text="")
-        #     layout.operator(AddOtherSubjectMEGEvokedResponse.bl_idname, text="Add MEG evoked response", icon='FCURVE')
-        #     if len(DataMakerPanel.externals) > 0:
-        #         layout.prop(context.scene, 'evoked_objects', text="")
-        #         select_text = 'Deselect' if get_external_meg_evoked_selected() else 'Select'
-        #         select_icon = 'BORDER_RECT' if select_text == 'Select' else 'PANEL_CLOSE'
-        #         layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
-
-        meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
-        meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
-        meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
-        eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_positions.npz')
-        eeg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))) > 0
-        eeg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data_meta.npz'))) > 0
-        # todo: do something with eeg_data_minmax
-        eeg_data_minmax_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_minmax.npy'))) > 0
-
-        if op.isfile(meg_sensors_positions_file) and (op.isfile(meg_data_npy) or op.isfile(meg_data_npz)):
-            col = layout.box().column()
-            col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
-            # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
-            col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
-
-        if op.isfile(eeg_sensors_positions_file) and eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
-            col = layout.box().column()
-            col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
-            col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
-            col.prop(context.scene, 'eeg_data_files', text="")
-            col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
-
+        data_draw(self, context)
 
 # def load_meg_evoked():
 #     evoked_fol = op.join(mu.get_user_fol(), 'meg_evoked_files')
@@ -1238,6 +1241,7 @@ def init(addon):
 
     init_eeg()
     init_electrodes_positions_list()
+    init_electrodes_data()
     if bpy.data.objects.get('Deep_electrodes'):
         bpy.context.scene.bipolar = np.all(['-' in o.name for o in bpy.data.objects['Deep_electrodes'].children])
     fMRI_labels_sources_files = glob.glob(
@@ -1258,11 +1262,38 @@ def init(addon):
 def init_electrodes_positions_list():
     electrodes_positions_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes*positions*.npz'))
     if len(electrodes_positions_files) > 0:
+        DataMakerPanel.electrodes_positions_exist = True
         files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
             items=items, description="Electrodes positions")
         bpy.context.scene.electrodes_positions_files = files_names[0]
+
+
+def init_electrodes_data():
+    base_path = mu.get_user_fol()
+    source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
+        '_bipolar' if bpy.context.scene.bipolar else ''))
+    if op.isfile(source_file):
+        DataMakerPanel.electrodes_meta_data = np.load(source_file)
+        DataMakerPanel.electrodes_data = DataMakerPanel.electrodes_meta_data['data']
+        DataMakerPanel.electrodes_data_exist = True
+    else:
+        source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npy'.format(
+            '_bipolar' if bpy.context.scene.bipolar else ''))
+        meta_file = op.join(base_path, 'electrodes', 'electrodes{}_meta_data.npz'.format(
+            '_bipolar' if bpy.context.scene.bipolar else ''))
+        if op.isfile(source_file) and op.isfile(meta_file):
+            DataMakerPanel.electrodes_data = np.load(source_file)
+            DataMakerPanel.electrodes_meta_data = np.load(meta_file)
+            DataMakerPanel.electrodes_data_exist = True
+    DataMakerPanel.electrodes_names = DataMakerPanel.electrodes_meta_data['names']
+    if isinstance(DataMakerPanel.electrodes_names[0], np.bytes_):
+        DataMakerPanel.electrodes_names = np.array([n.decode('utf_8') for n in DataMakerPanel.electrodes_names])
+    DataMakerPanel.electrodes_conditions = DataMakerPanel.electrodes_meta_data['conditions']
+    if isinstance(DataMakerPanel.electrodes_conditions[0], np.bytes_):
+        DataMakerPanel.electrodes_conditions = np.array(
+            [c.decode('utf_8') for c in DataMakerPanel.electrodes_conditions])
 
 
 def init_eeg():

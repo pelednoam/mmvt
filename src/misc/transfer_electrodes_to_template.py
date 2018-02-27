@@ -267,11 +267,14 @@ def lta_transfer_vox2vox(subject, coords):
 
 
 def transfer_electrodes_to_template_system(electrodes, template_system, use_mri_robust_lta=False, vox2vox=False):
+    import time
     teamplte_electrodes = defaultdict(list)
     for subject in electrodes.keys():
         # if subject != 'mg101':
         #     continue
-        for elc_name, coords in electrodes[subject]:
+        now, N = time.time(), len(electrodes[subject])
+        for run, (elc_name, coords) in enumerate(electrodes[subject]):
+            utils.time_to_go(now, run, N, runs_num_to_print=5)
             if use_mri_robust_lta:
                 if vox2vox:
                     template_cords = lta_transfer_vox2vox(subject, coords)
@@ -583,21 +586,30 @@ if __name__ == '__main__':
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
     template_system = 'mni' # hc029
+    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     atlas = 'aparc.DKTatlas40'
     bipolar = False
+    use_apply_morph = False
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
-    subjects = ['ep001']
-    # electrodes = read_all_electrodes(subjects, bipolar)
-    good_subjects, bad_subjects = prepare_files(subjects, template_system)
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
-    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
-    # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
-    # export_into_csv(template_system, MMVT_DIR, 'stim_')
+    subjects = ['mg78']
+    electrodes = read_all_electrodes(subjects, bipolar)
 
+    if use_apply_morph:
+        good_subjects, bad_subjects = prepare_files(subjects, template_system)
+        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
+        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
+        read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+        export_into_csv(template_system, MMVT_DIR, 'stim_')
+
+
+    else:
+        template_electrodes = transfer_electrodes_to_template_system(electrodes, template)
+        save_template_electrodes_to_template(template_electrodes, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
+        export_into_csv(template_system, MMVT_DIR, 'stim_')
 
     # compare_electrodes_labeling(electrodes, template_system, atlas)
 
@@ -607,8 +619,7 @@ if __name__ == '__main__':
     # print(','.join(electrodes.keys()))
     # good_subjects = ['mg96']
     # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False) #
-    # template_electrodes = transfer_electrodes_to_template_system(electrodes, template_system)
-    # save_template_electrodes_to_template(template_electrodes, save_as_bipolar, template_system, 'stim_')
+
 
     # create_volume_with_electrodes(electrodes, SUBJECTS_DIR, merge_to_pairs=True, False)
     # morph_t1(electrodes.keys(), template_system, SUBJECTS_DIR)

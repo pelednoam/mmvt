@@ -193,6 +193,17 @@ def create_nii_from_npy(args):
         print('Data was saved to {}'.format(output_fname))
 
 
+def morph_fmri(args):
+    morph_from, morph_to = 'mg78', 'colin27'
+    nii_template = 'non-interference-v-interference_{hemi}.mgz'
+    from src.utils import freesurfer_utils as fu
+    utils.make_dir(op.join(MMVT_DIR, morph_to, 'fmri'))
+    for hemi in utils.HEMIS:
+        fu.surf2surf(
+            morph_from, morph_to, hemi, op.join(MMVT_DIR, morph_from, 'fmri', nii_template.format(hemi=hemi)),
+            op.join(MMVT_DIR, morph_to, 'fmri', nii_template.format(hemi=hemi)))
+
+
 def get_subjects_files(args):
     ''' -f get_subjects_files -s "file:/homes/5/npeled/space1/Documents/memory_task/subjects.txt" '''
     subjects = pu.decode_subjects(args.subject)

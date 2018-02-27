@@ -1960,8 +1960,8 @@ def draw(self, context):
             # mu.add_box_line(col, '', 'MEG', 0.4)
             col.prop(context.scene, 'meg_files', '')
             # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
-            col.operator(ColorMeg.bl_idname, text="Plot EEG/MEG ", icon='POTATO')
-            col.operator(ColorMegMax.bl_idname, text="Plot EEG/MEG peak", icon='POTATO')
+            col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
+            col.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
             col.prop(context.scene, 'meg_peak_mode', '')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")

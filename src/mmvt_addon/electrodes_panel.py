@@ -186,9 +186,12 @@ def print_electrode_loc(loc):
 
 
 def update_cursor():
+    if not ElecsPanel.init:
+        return
     current_electrode_obj = bpy.data.objects[ElecsPanel.current_electrode]
     bpy.context.scene.cursor_location = current_electrode_obj.location
-    _addon().freeview_panel.save_cursor_position()
+    if _addon().freeview_panel is not None:
+        _addon().freeview_panel.save_cursor_position()
     _addon().set_cursor_pos()
     _addon().create_slices(pos=current_electrode_obj.location)
     _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
@@ -664,6 +667,7 @@ def init_electrodes_list():
         print('{} not in groups!'.format(ElecsPanel.electrodes[0]))
         return False
 
+
 def init_electrodes_labeling(addon):
     #todo: this panel should work also without labeling file
     labling_files = find_elecrode_labeling_files()
@@ -761,8 +765,6 @@ def register():
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
-        bpy.utils.register_class(ElectrodesViewOne)
-        bpy.utils.register_class(ElectrodesViewTwo)
 
 
         # print('Electrodes Panel was registered!')
@@ -780,8 +782,6 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
-        bpy.utils.unregister_class(ElectrodesViewOne)
-        bpy.utils.unregister_class(ElectrodesViewTwo)
 
     except:
         pass
