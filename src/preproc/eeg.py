@@ -163,6 +163,11 @@ def read_cmd_args(argv=None, subject='', mri_subject='', atlas=''):
     return args
 
 
+def call_main(args):
+    subjects_itr, subject_func = meg.get_subjects_itr_func(args)
+    pu.run_on_subjects(args, main, subjects_itr, subject_func)
+
+
 if __name__ == '__main__':
     from src.utils import preproc_utils as pu
     from itertools import product

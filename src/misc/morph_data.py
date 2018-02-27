@@ -1,4 +1,5 @@
 import os.path as op
+import numpy as np
 from src.utils import utils
 from src.utils import freesurfer_utils as fu
 from src.preproc import meg
@@ -23,7 +24,18 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
               overwrite, n_jobs)
 
 
+def morph_sensors_to_template(morph_from, morph_to):
+    sensors = np.load(op.join(MMVT_DIR, morph_from, 'eeg', 'eeg_positions.npz'))
+    coords = sensors['pos']
+    mophed_coords = fu.transform_subject_to_subject_coordinates('ep001', morph_to, coords, SUBJECTS_DIR)
+    # Not sure why, but there is a shift: (-0.18, -2.95, 1.53)
+    utils.make_dir(op.join(MMVT_DIR, morph_to, 'eeg'))
+    np.savez(op.join(MMVT_DIR, morph_to, 'eeg', 'eeg_positions.npz'), names=sensors['names'], pos=mophed_coords)
+    print('The morphed sensors were saved in {}'.format(op.join(MMVT_DIR, morph_to, 'eeg', 'eeg_positions.npz')))
+
+
 if __name__ == '__main__':
     morph_from = 'mg78'
     morph_to = 'colin27'
-    morph_fmri(morph_from, morph_to, 'non-interference-v-interference_{hemi}.mgz')
+    # morph_fmri(morph_from, morph_to, 'non-interference-v-interference_{hemi}.mgz')
+    morph_sensors_to_template(morph_from, morph_to)

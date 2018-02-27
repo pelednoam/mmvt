@@ -604,8 +604,6 @@ if __name__ == '__main__':
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
         export_into_csv(template_system, MMVT_DIR, 'stim_')
-
-
     else:
         template_electrodes = transfer_electrodes_to_template_system(electrodes, template)
         save_template_electrodes_to_template(template_electrodes, save_as_bipolar, MMVT_DIR, template_system, 'stim_')

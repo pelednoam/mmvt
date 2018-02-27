@@ -1515,6 +1515,17 @@ def get_condditions_from_labels_fcurves():
     return conditions
 
 
+def plot_labels_folder():
+    labels_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.labels_folder), '*.label'))
+    if len(labels_files) == 0:
+        print('No labels were found in {}!'.format(op.realpath(bpy.context.scene.labels_folder)))
+    else:
+        colors = cu.get_distinct_colors_hs(len(labels_files))
+        # todo: same color for each hemi
+        for label_fname, color in zip(labels_files, colors):
+            plot_label(label_fname)
+
+
 class ColorEEGHelmet(bpy.types.Operator):
     bl_idname = "mmvt.eeg_helmet"
     bl_label = "mmvt eeg helmet"
@@ -1826,11 +1837,8 @@ class PlotLabelsFolder(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        labels_files = glob.glob(op.join(bpy.context.scene.labels_folder, '*.label'))
-        colors = cu.get_distinct_colors_hs(len(label_files))
-        # todo: same color for each hemi
-        for label_fname, color in zip(labels_files, colors):
-            plot_label(label_fname)
+        plot_labels_folder()
+        return {'FINISHED'}
 
 
 def plot_label(label, color=''):
@@ -1993,20 +2001,12 @@ def draw(self, context):
             # col.label('Manual coloring files')
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-        row = layout.row(align=True)
-        row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
-            mu.get_user_fol(), '*.label')
-        row.prop(context.scene, 'labels_color', text='')
         # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
         if len(ColoringMakerPanel.labels_plotted) > 0:
             box = layout.box()
             col = box.column()
             for label, color in ColoringMakerPanel.labels_plotted:
                 mu.add_box_line(col, label.name, percentage=1)
-        layout.label(text="Choose labels' folder")
-        row = layout.row(align=True)
-        row.prop(context.scene, 'labels_folder', text='')
-        row.operator(PlotLabelsFolder.bl_idname, text='', icon='GAME')
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
@@ -2021,8 +2021,8 @@ def draw(self, context):
     if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
-        if ColoringMakerPanel.electrodes_dists_exist:
-            col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
+        # if ColoringMakerPanel.electrodes_dists_exist:
+        #     col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
         if ColoringMakerPanel.electrodes_labels_files_exist:
             col.prop(context.scene, "electrodes_sources_files", text="")
             col.operator(ColorElectrodesLabels.bl_idname, text="Plot Electrodes Sources", icon='POTATO')
@@ -2043,6 +2043,15 @@ def draw(self, context):
         col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
         col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
 
+    # layout.label(text="Choose labels' folder")
+    # row = layout.row(align=True)
+    # row.prop(context.scene, 'labels_folder', text='')
+    # if bpy.context.scene.labels_folder != '':
+    #     row.operator(PlotLabelsFolder.bl_idname, text='', icon='GAME')
+    row = layout.row(align=True)
+    row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
+        mu.get_user_fol(), '*.label')
+    row.prop(context.scene, 'labels_color', text='')
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 

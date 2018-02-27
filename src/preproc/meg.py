@@ -40,6 +40,9 @@ FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM
 STC_HEMI, STC_HEMI_SAVE, STC_HEMI_SMOOTH, STC_HEMI_SMOOTH_SAVE, STC_ST,\
 COR, LBL, STC_MORPH, ACT, ASEG, DATA_COV, NOISE_COV, DATA_CSD, NOISE_CSD, MEG_TO_HEAD_TRANS = [''] * 43
 
+locating_meg_file = None
+locating_subject_file = None
+
 
 def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
                       mmvt_dir, args):
@@ -338,9 +341,6 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template)
 
 
-locating_meg_file = None
-locating_subject_file = None
-
 def calc_epochs_wrapper(
         conditions, tmin, tmax, baseline, raw=None, read_events_from_file=False, events_mat=None,
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
@@ -369,6 +369,8 @@ def calc_epochs_wrapper(
                     epochs = mne.read_epochs(epo_fname)
         if not epo_exist or overwrite_epochs:
             if raw is None:
+                if raw_fname == '':
+                    raw_fname = get_raw_fname(raw_fname)
                 raw = load_raw(raw_fname, bad_channels, l_freq, h_freq)
             epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
@@ -1014,7 +1016,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
                     # mmvt_stc_name = ''
-                    stcs[cond_name].save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(stc_fname)))
+                    stcs[cond_name].save(op.join(MMVT_DIR, MRI_SUBJECTSUBJECT, modality, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())

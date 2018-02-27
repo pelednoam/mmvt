@@ -1106,12 +1106,13 @@ def data_draw(self, context):
         # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
         col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
-    if op.isfile(eeg_sensors_positions_file) and eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
+    if op.isfile(eeg_sensors_positions_file):
         col = layout.box().column()
         col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
         col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
-        col.prop(context.scene, 'eeg_data_files', text="")
-        col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
+        if eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
+            col.prop(context.scene, 'eeg_data_files', text="")
+            col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
 
 
 class AddDataToEEGSensors(bpy.types.Operator):
