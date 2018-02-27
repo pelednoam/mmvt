@@ -21,7 +21,6 @@ import shutil
 def _addon():
     return LoadResultsPanel.addon
 
-#todo: stop snapping after click, and return snapping after file selection
 
 if IN_BLENDER:
     bpy.types.Scene.nii_label_prompt = bpy.props.StringProperty(description='')
@@ -94,7 +93,8 @@ if IN_BLENDER:
             if event.type == 'TIMER' and ChooseNiftiiFile.running:
                 if mu.both_hemi_files_exist(self.fmri_npy_template_fname):
                     _addon().plot_fmri_file(self.fmri_file_template)
-                    clean_nii_temp_files(self.fmri_file_template)
+                    if mu.get_parent_fol(self.filepath) != op.join(mu.get_user_fol(), 'fmri'):
+                        clean_nii_temp_files(self.fmri_file_template)
                     ChooseNiftiiFile.running = False
                     bpy.context.scene.nii_label_output = ''
                     self.cancel(context)
