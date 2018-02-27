@@ -469,7 +469,7 @@ def prepare_files(subjects, template_system):
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     subjects = list(subjects) + [template]
-    martinos_subjects = {'mg96':'ep007', 'mg78': 'ep001'}
+    martinos_subjects = {'mg96':'ep007', 'mg78': 'ep001', 'ep001': 'ep001'}
     goods, bads = [], []
     for subject in subjects:
         files_exist = utils.check_if_all_necessary_files_exist(
