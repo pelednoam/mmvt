@@ -31,7 +31,7 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
             print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
             cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header --ignore_missing 1'.format(
                 bpy.context.scene.python_cmd, mu.get_user())
-            mu.run_command_in_new_thread(cmd, False)
+            mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
             return None
     if colormap is None:
         colormap_fname = op.join(mmvt_dir, 'color_maps', 'gray.npy')
