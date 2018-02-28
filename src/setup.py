@@ -100,7 +100,8 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
             fol = ''
             if not create_default_folders:
-                fol = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
+                fol = ask_and_create_link(
+                    links_fol, link_name, message, gui, create_default_dir, overwrite=overwrite)
             if fol == '' or create_default_folders:
                 fol = create_default_link(
                     links_fol, link_name, default_fol_name, create_default_dir, overwrite=overwrite)
@@ -131,7 +132,7 @@ def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_
             fol = utils.choose_folder_gui(root_fol, message) if gui else input()
             if fol != '':
                 create_real_folder(fol)
-                utils.create_folder_link(fol, op.join(links_fol, link_name))
+                utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
                 if create_default_dir:
                     utils.make_dir(op.join(fol, 'default'))
     return fol
@@ -241,20 +242,31 @@ def install_blender_reqs():
         resource_fol = utils.get_resources_fol()
         blender_parent_fol = utils.get_parent_fol(blender_fol)
         # Get pip
-        blender_bin_fol = op.join(blender_parent_fol, 'Resources', '2.78', 'python', 'bin') if \
-            utils.is_osx() else glob.glob(op.join(blender_fol, '2.7?', 'python'))[0]
+        blender_bin_fol = sorted(glob.glob(op.join(blender_parent_fol, 'Resources', '2.7?', 'python', 'bin')))[-1] if \
+            utils.is_osx() else sorted(glob.glob(op.join(blender_fol, '2.7?', 'python')))[-1]
         python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
         current_dir = os.getcwd()
         os.chdir(blender_bin_fol)
         # if utils.is_osx():
-        cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
-        utils.run_script(cmd)
         # install blender reqs:
+        pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
         if not utils.is_windows():
-            cmd = '{} install zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('bin', 'pip'))
-            utils.run_script(cmd)
+            utils.run_script(pip_cmd)
+            install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('bin', 'pip'))
+            utils.run_script(install_cmd)
         else:
-            print('Sorry, installing external python libs in python will be implemented in the future')
+            install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('Scripts', 'pip'))
+            print(f'''
+                Sorry, automatically installing external python libs in python will be implemented in the future
+                Meanwhile, you can do the following:
+                1) Open a terminal window as administrator (right click on the "Command Prompt" shortcut from the start
+                   menu and choose "Run as administrator"
+                2) Change the directory to "{blender_bin_fol}".
+                3) Run "{pip_cmd}"
+                4) Run "{install_cmd}"
+                Good luck!
+            ''')
+
             # from src.mmvt_addon.scripts import install_blender_reqs
             # install_blender_reqs.wrap_blender_call(args.only_verbose)
         os.chdir(current_dir)
@@ -270,7 +282,8 @@ def main(args):
 
     # 2) Create links
     if utils.should_run(args, 'create_links'):
-        links_created = create_links(args.links, args.gui, args.default_folders, args.only_verbose)
+        links_created = create_links(args.links, args.gui, args.default_folders, args.only_verbose,
+                                     args.links_file_name, args.overwrite_links)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
 
@@ -335,5 +348,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
     parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--links_file_name', help='', required=False, default='links.csv')
+    parser.add_argument('--overwrite_links', help='', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
     main(args)

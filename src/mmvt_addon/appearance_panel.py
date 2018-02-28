@@ -245,6 +245,7 @@ def appearance_show_rois_activity_update(self=None, context=None):
         if bpy.context.scene.surface_type == 'pial':
             bpy.context.scene.layers[_addon().ROIS_LAYER] = is_rois()
             bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = is_activity()
+            bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()
         elif bpy.context.scene.surface_type == 'inflated':
             bpy.context.scene.layers[_addon().INFLATED_ROIS_LAYER] = is_rois()
             bpy.context.scene.layers[_addon().INFLATED_ACTIVITY_LAYER] = is_activity()

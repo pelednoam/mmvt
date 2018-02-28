@@ -683,7 +683,7 @@ def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, rea
             cmd, q_in, q_out, shell, read_stdin, read_stdout, read_stderr,
             stdin_func, stdout_func, stderr_func, cwd))
     else:
-        thread = threading.Thread(target=run_command, args=(cmd, shell, cwd))
+        thread = threading.Thread(target=run_command, args=(cmd, shell, False, cwd))
         q_in, q_out = None, None
     # print('start!')
     thread.start()
@@ -768,6 +768,8 @@ def run_command(cmd, shell=True, pipe=False, cwd=None):
     from subprocess import Popen, PIPE, STDOUT
     print('run: {}'.format(cmd))
     if (IS_WINDOWS):
+        if cwd is not None:
+            os.chdir(cwd)
         os.system(cmd)
         return None
     else:
