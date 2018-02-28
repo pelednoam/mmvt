@@ -118,7 +118,7 @@ get_resources_dir = su.get_resources_dir
 get_mmvt_dir = su.get_mmvt_dir
 get_subjects_dir = su.get_subjects_dir
 get_real_atlas_name = su.get_real_atlas_name
-
+get_parent_fol = su.get_parent_fol
 
 floats_const_pattern = r"""
      [-+]?
@@ -941,10 +941,10 @@ def current_path():
     return os.path.dirname(os.path.realpath(__file__))
 
 
-def get_parent_fol(fol=None):
-    if fol is None:
-        fol = os.path.dirname(os.path.realpath(__file__))
-    return os.path.split(fol)[0]
+# def get_parent_fol(fol=None):
+#     if fol is None:
+#         fol = os.path.dirname(os.path.realpath(__file__))
+#     return os.path.split(fol)[0]
 
 
 def get_mmvt_code_root():
@@ -2242,3 +2242,4 @@ def get_hemi_obj(hemi):
 def write_to_stderr(str):
     sys.stderr.write('{}\n'.format(str))
     sys.stderr.flush()
+

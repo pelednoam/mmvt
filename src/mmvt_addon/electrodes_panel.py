@@ -444,6 +444,7 @@ def next_electrode():
     bpy.context.scene.electrodes = next_elc
     _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
     bpy.data.objects[next_elc].select = True
+    _addon().curves_sep_update()
 
 
 class PrevElectrode(bpy.types.Operator):
@@ -467,6 +468,7 @@ def prev_electrode():
     bpy.context.scene.electrodes = prev_elc
     _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
     bpy.data.objects[prev_elc].select = True
+    _addon().curves_sep_update()
 
 
 class NextLead(bpy.types.Operator):
