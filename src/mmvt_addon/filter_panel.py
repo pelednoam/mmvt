@@ -133,6 +133,8 @@ def clear_filtering():
 
 
 def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
     # safety check, if something happened to the electrode's material
     if call_create_and_set_material:

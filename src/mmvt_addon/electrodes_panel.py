@@ -86,7 +86,7 @@ def _electrodes_update():
     if _addon() is None or not ElecsPanel.init:
         return
     # mu.print_traceback()
-    prev_elect = ElecsPanel.current_electrode
+    ElecsPanel.prev_elect = prev_elect = ElecsPanel.current_electrode
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
@@ -103,13 +103,13 @@ def _electrodes_update():
     else:
         print('lookup table is None!')
     # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
+    # select_electrode(current_electrode)
     mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
 
 
 def electrodes_selection_coloring():
     current_electrode = bpy.context.scene.electrodes
-    selected_electrodes = [obj.name for obj in bpy.context.selected_objects if
-                           mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
+    selected_electrodes = get_selected_electrodes()
     # Check if it's a new selection:
     # print(len(selected_electrodes), current_electrode, ElecsPanel.prev_electrodes)
     if len(selected_electrodes) == 1 and current_electrode not in ElecsPanel.prev_electrodes:
@@ -127,6 +127,12 @@ def electrodes_selection_coloring():
         ElecsPanel.prev_electrodes.remove(current_electrode)
     else:
         clear_electrodes_selection()
+    print(get_selected_electrodes())
+
+
+def get_selected_electrodes():
+    return [obj.name for obj in bpy.context.selected_objects if
+            mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
 
 
 def clear_electrodes_selection():
@@ -394,8 +400,6 @@ def elecs_draw(self, context):
             mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
             mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
-    # layout.operator(ElectrodesViewOne.bl_idname, text="View1", icon='COLOR_GREEN')
-    # layout.operator(ElectrodesViewTwo.bl_idname, text="View2", icon='COLOR_GREEN')
     layout.prop(context.scene, "elc_size", text="")
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
@@ -438,6 +442,8 @@ def next_electrode():
     else:
         next_elc = lead_electrodes[0]
     bpy.context.scene.electrodes = next_elc
+    _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
+    bpy.data.objects[next_elc].select = True
 
 
 class PrevElectrode(bpy.types.Operator):
@@ -459,6 +465,8 @@ def prev_electrode():
     else:
         prev_elc = lead_electrodes[-1]
     bpy.context.scene.electrodes = prev_elc
+    _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
+    bpy.data.objects[prev_elc].select = True
 
 
 class NextLead(bpy.types.Operator):
@@ -570,6 +578,7 @@ class ElecsPanel(bpy.types.Panel):
     init = False
     electrodes, leads = [], []
     current_electrode = ''
+    prev_elect = ''
     prev_electrodes = set()
     electrodes_locs, lookup = None, None
     subcortical_rois, subcortical_probs = [], []
