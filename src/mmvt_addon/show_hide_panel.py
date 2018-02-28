@@ -126,7 +126,7 @@ def show_hide_hierarchy(do_hide, obj_name):
 
 
 def show_hide_hemi(val, hemi):
-    # show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
+    show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
     show_hide_hierarchy(val, 'Cortex-inflated-{}'.format(hemi))
     # for obj_name in [hemi, 'inflated_{}'.format(hemi)]:
     obj_name = 'inflated_{}'.format(hemi)

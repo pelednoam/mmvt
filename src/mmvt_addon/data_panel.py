@@ -1198,6 +1198,7 @@ class DataMakerPanel(bpy.types.Panel):
     subcortical_fmri_data_exist = False
     fMRI_dynamic_exist = False
     electrodes_data = None
+    electrodes_meta_data = None
     electrodes_dists = None
     electrodes_names = None
     electrodes_conditions = None
@@ -1289,13 +1290,14 @@ def init_electrodes_data():
             DataMakerPanel.electrodes_data = np.load(source_file)
             DataMakerPanel.electrodes_meta_data = np.load(meta_file)
             DataMakerPanel.electrodes_data_exist = True
-    DataMakerPanel.electrodes_names = DataMakerPanel.electrodes_meta_data['names']
-    if isinstance(DataMakerPanel.electrodes_names[0], np.bytes_):
-        DataMakerPanel.electrodes_names = np.array([n.decode('utf_8') for n in DataMakerPanel.electrodes_names])
-    DataMakerPanel.electrodes_conditions = DataMakerPanel.electrodes_meta_data['conditions']
-    if isinstance(DataMakerPanel.electrodes_conditions[0], np.bytes_):
-        DataMakerPanel.electrodes_conditions = np.array(
-            [c.decode('utf_8') for c in DataMakerPanel.electrodes_conditions])
+    if DataMakerPanel.electrodes_meta_data is not None:
+        DataMakerPanel.electrodes_names = DataMakerPanel.electrodes_meta_data['names']
+        if isinstance(DataMakerPanel.electrodes_names[0], np.bytes_):
+            DataMakerPanel.electrodes_names = np.array([n.decode('utf_8') for n in DataMakerPanel.electrodes_names])
+        DataMakerPanel.electrodes_conditions = DataMakerPanel.electrodes_meta_data['conditions']
+        if isinstance(DataMakerPanel.electrodes_conditions[0], np.bytes_):
+            DataMakerPanel.electrodes_conditions = np.array(
+                [c.decode('utf_8') for c in DataMakerPanel.electrodes_conditions])
 
 
 def init_eeg():

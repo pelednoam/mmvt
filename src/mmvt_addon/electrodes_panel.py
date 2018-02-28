@@ -91,7 +91,23 @@ def _electrodes_update():
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
     color_electrodes(current_electrode, prev_elect)
-    # bpy.context.scene.objects.active = bpy.data.objects[current_electrode]
+    electrodes_selection_coloring()
+    if not ElecsPanel.lookup is None:
+        loc = ElecsPanel.lookup.get(current_electrode, None)
+        if loc is None:
+            print("Can't find {} in ElecsPanel.lookup!".format(current_electrode))
+        else:
+            print_electrode_loc(loc)
+            if bpy.context.scene.color_lables:
+                plot_labels_probs(loc)
+    else:
+        print('lookup table is None!')
+    # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
+    mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
+
+
+def electrodes_selection_coloring():
+    current_electrode = bpy.context.scene.electrodes
     selected_electrodes = [obj.name for obj in bpy.context.selected_objects if
                            mu.check_obj_type(obj.name) == mu.OBJ_TYPE_ELECTRODE]
     # Check if it's a new selection:
@@ -111,19 +127,6 @@ def _electrodes_update():
         ElecsPanel.prev_electrodes.remove(current_electrode)
     else:
         clear_electrodes_selection()
-
-    if not ElecsPanel.lookup is None:
-        loc = ElecsPanel.lookup.get(current_electrode, None)
-        if loc is None:
-            print("Can't find {} in ElecsPanel.lookup!".format(current_electrode))
-        else:
-            print_electrode_loc(loc)
-            if bpy.context.scene.color_lables:
-                plot_labels_probs(loc)
-    else:
-        print('lookup table is None!')
-    # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
-    mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
 
 
 def clear_electrodes_selection():

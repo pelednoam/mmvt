@@ -42,6 +42,8 @@ def get_selected_fcurves_and_data():
             continue
         # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
         data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
+        if data is None:
+            continue
         fcurves = SelectionMakerPanel.fcurves[selction_type]()
         if fcurves is None or len(fcurves) == 0:
             continue

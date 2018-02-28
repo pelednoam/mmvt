@@ -128,6 +128,7 @@ def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fo
     # Save the resulting surface
     label_name = '{}-{}.ply'.format(lu.get_label_hemi_invariant_name(labels[lab].name), hemi)
     # print('Writing {}'.format(op.join(output_fol, label_name)))
+    # todo: add distance between hemis if inflated like with the activity surfaces
     utils.write_ply_file(vtxL[lab], facL_lab, op.join(output_fol, label_name), True)
     return op.isfile(op.join(output_fol, label_name))
 

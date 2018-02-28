@@ -515,6 +515,7 @@ class SelectionListener(bpy.types.Operator):
                     _addon().curves_sep_update()
             else:
                 _addon().clear_electrodes_selection()
+                #todo: should call to _addon().clear_rois_selection()
         if time.time() - self.press_time > 1:
             if event.type == 'RIGHTMOUSE':
                 self.press_time = time.time()
