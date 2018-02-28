@@ -40,6 +40,8 @@ def run_script(cmd, verbose=False, stay_alive=False, cwd=None, log_fname='', err
         run_command_in_new_thread(cmd, cwd, log_fname)
     else:
         if IS_WINDOWS:
+            if cwd is not None:
+                os.chdir(cwd)
             output = subprocess.call(cmd)
         else:
             # output = subprocess.check_output('{} | tee /dev/stderr'.format(cmd), shell=True)

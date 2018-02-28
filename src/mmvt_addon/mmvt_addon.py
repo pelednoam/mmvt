@@ -588,6 +588,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)
         else:
+            # print('init {}'.format(panel.__name__))
             panel.init(mmvt)
     if bpy.data.objects.get('rh'):
         split_view(0)
