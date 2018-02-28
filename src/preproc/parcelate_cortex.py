@@ -90,7 +90,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     #
     ret = True
     for lab in range(nL):
-        ret = ret and writing_ply_files(subject, lab, facL[lab], vtx, vtxL, labels, hemi, output_fol)
+        ret = ret and writing_ply_files(subject, surface_type, lab, facL[lab], vtx, vtxL, labels, hemi, output_fol)
     return ret
     # if ret:
     #     labels_files_num = len(glob.glob(op.join(MMVT_DIR, subject, 'labels', '{}.{}.{}'.format(
@@ -104,7 +104,7 @@ def parcelate(subject, atlas, hemi, surface_type, vertices_labels_ids_lookup=Non
     #     return False
 
 
-def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
+def writing_ply_files(subject, surface_type, lab, facL_lab, vtx, vtxL, labels, hemi, output_fol):
     # Vertices for the current label
     nV = vtx.shape[0]
     facL_lab_flat = utils.list_flatten(facL_lab)
@@ -129,6 +129,9 @@ def writing_ply_files(subject, lab, facL_lab, vtx, vtxL, labels, hemi, output_fo
     label_name = '{}-{}.ply'.format(lu.get_label_hemi_invariant_name(labels[lab].name), hemi)
     # print('Writing {}'.format(op.join(output_fol, label_name)))
     # todo: add distance between hemis if inflated like with the activity surfaces
+    if surface_type == 'inflated':
+        verts_offset = 55 if hemi == 'rh' else -55
+        vtxL[lab][:, 0] = vtxL[lab][:, 0] + verts_offset
     utils.write_ply_file(vtxL[lab], facL_lab, op.join(output_fol, label_name), True)
     return op.isfile(op.join(output_fol, label_name))
 
