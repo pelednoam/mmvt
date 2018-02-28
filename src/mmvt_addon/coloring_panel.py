@@ -83,6 +83,7 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
         stc_t_smooth = stc_t
     else:
         vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
+        n_jobs = 1 if mu.IS_WINDOWS else n_jobs
         stc_t_smooth = mne.morph_data(
             subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
 
