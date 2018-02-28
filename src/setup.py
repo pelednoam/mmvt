@@ -100,7 +100,8 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
             fol = ''
             if not create_default_folders:
-                fol = ask_and_create_link(links_fol, link_name, message, gui, create_default_dir)
+                fol = ask_and_create_link(
+                    links_fol, link_name, message, gui, create_default_dir, overwrite=overwrite)
             if fol == '' or create_default_folders:
                 fol = create_default_link(
                     links_fol, link_name, default_fol_name, create_default_dir, overwrite=overwrite)
@@ -131,7 +132,7 @@ def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_
             fol = utils.choose_folder_gui(root_fol, message) if gui else input()
             if fol != '':
                 create_real_folder(fol)
-                utils.create_folder_link(fol, op.join(links_fol, link_name))
+                utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
                 if create_default_dir:
                     utils.make_dir(op.join(fol, 'default'))
     return fol
@@ -281,7 +282,8 @@ def main(args):
 
     # 2) Create links
     if utils.should_run(args, 'create_links'):
-        links_created = create_links(args.links, args.gui, args.default_folders, args.only_verbose)
+        links_created = create_links(args.links, args.gui, args.default_folders, args.only_verbose,
+                                     args.links_file_name, args.overwrite_links)
         if not links_created:
             print('Not all the links were created! Make sure all the links are created before running MMVT.')
 
@@ -346,5 +348,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
     parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--links_file_name', help='', required=False, default='links.csv')
+    parser.add_argument('--overwrite_links', help='', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
     main(args)
