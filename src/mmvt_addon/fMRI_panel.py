@@ -369,7 +369,7 @@ def _cluster_name(x, sort_mode):
 
 
 def get_clusters_files(user_fol=''):
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_*.pkl'))
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
     files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(list(set(files_names)))]
     return files_names, clusters_labels_files, clusters_labels_items
@@ -665,7 +665,7 @@ def init(addon):
         #     perc = mu.namebase(clusters_labels_file).split('_')[-1]
         #     key = '{}_{}'.format(file_name, perc)
             key = file_name
-            fMRIPanel.clusters_labels[key] = np.load(clusters_labels_file)
+            fMRIPanel.clusters_labels[key] = mu.Bag(mu.load(clusters_labels_file))
             # fMRIPanel.clusters_labels[key] = support_old_verions(fMRIPanel.clusters_labels[file_name])
             fMRIPanel.lookup[key] = create_lookup_table(fMRIPanel.clusters_labels[key])
 

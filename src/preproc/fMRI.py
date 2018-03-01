@@ -223,7 +223,7 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, task, n_jobs=1):
         return False
     surf_full_input_fname = utils.select_one_file(surf_full_input_fnames, surf_full_input_fname, 'fMRI surf')
     contrast, connectivity, verts = init_clusters(subject, surf_full_input_fname)
-    clusters_labels = utils.Bag(dict(threshold=t_val, values=[]))
+    clusters_labels = dict(threshold=t_val, values=[])
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
         # blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
@@ -234,7 +234,7 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, task, n_jobs=1):
         if clusters_labels_hemi is None:
             print("Can't find clusters in {}!".format(hemi))
         else:
-            clusters_labels.values.extend(clusters_labels_hemi)
+            clusters_labels['values'].extend(clusters_labels_hemi)
 
     name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('fmri_', '')
     if task != '':
@@ -1792,7 +1792,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
 
     # Resting state flags
-    parser.add_argument('--fmri_file_template', help='', required=False, default='')
+    parser.add_argument('--fmri_file_template', help='', required=False, default='*.mgz')
     parser.add_argument('--fmri_sub_file_template', help='', required=False, default='')
     parser.add_argument('--fsd', help='functional subdirectory', required=False, default='rest')
     parser.add_argument('--only_preproc', help='run only only_preproc', required=False, default=0, type=au.is_true)
