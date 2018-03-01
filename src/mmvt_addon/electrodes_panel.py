@@ -104,6 +104,7 @@ def _electrodes_update():
         print('lookup table is None!')
     # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
     # select_electrode(current_electrode)
+    bpy.data.objects[current_electrode].select = True
     mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
 
 
@@ -443,8 +444,8 @@ def next_electrode():
         next_elc = lead_electrodes[0]
     bpy.context.scene.electrodes = next_elc
     _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
-    bpy.data.objects[next_elc].select = True
-    _addon().curves_sep_update()
+    # bpy.data.objects[next_elc].select = True
+    # _addon().curves_sep_update()
 
 
 class PrevElectrode(bpy.types.Operator):
@@ -467,8 +468,8 @@ def prev_electrode():
         prev_elc = lead_electrodes[-1]
     bpy.context.scene.electrodes = prev_elc
     _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
-    bpy.data.objects[prev_elc].select = True
-    _addon().curves_sep_update()
+    # bpy.data.objects[prev_elc].select = True
+    # _addon().curves_sep_update()
 
 
 class NextLead(bpy.types.Operator):
