@@ -209,7 +209,8 @@ def init_clusters(subject, input_fname):
     return contrast_per_hemi, connectivity_per_hemi, verts_per_hemi
 
 
-def find_clusters(subject, surf_template_fname, t_val, atlas, task, n_jobs=1):
+def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0, min_cluster_size=0, clusters_label='',
+                  task='', n_jobs=1):
     # contrast_name = contrast_name if volume_name == '' else volume_name
     # volume_name = volume_name if volume_name != '' else contrast_name
     # if input_fol == '':
@@ -230,7 +231,8 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, task, n_jobs=1):
         # print('Saving blobs: {}'.format(blobs_output_fname))
         # save_clusters_for_blender(clusters, contrast[hemi], blobs_output_fname)
         clusters_labels_hemi = lu.find_clusters_overlapped_labeles(
-            subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], n_jobs)
+            subject, clusters, contrast[hemi], atlas, hemi, verts[hemi], min_cluster_max, min_cluster_size,
+            clusters_label, n_jobs)
         if clusters_labels_hemi is None:
             print("Can't find clusters in {}!".format(hemi))
         else:
@@ -1683,7 +1685,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(
-            subject, args.fmri_file_template, args.threshold, args.atlas, args.task, args.n_jobs)
+            subject, args.fmri_file_template, args.threshold, args.atlas, args.min_cluster_max,
+            args.min_cluster_size, args.clusters_label, args.task, args.n_jobs)
 
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)
@@ -1790,6 +1793,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
+
+    # Clusters:
+    parser.add_argument('--min_cluster_max', help='', required=False, default=0, type=float)
+    parser.add_argument('--min_cluster_size', help='', required=False, default=0, type=float)
+    parser.add_argument('--clusters_label', help='', required=False, default='')
 
     # Resting state flags
     parser.add_argument('--fmri_file_template', help='', required=False, default='*.mgz')

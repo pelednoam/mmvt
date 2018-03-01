@@ -2243,3 +2243,11 @@ def write_to_stderr(str):
     sys.stderr.write('{}\n'.format(str))
     sys.stderr.flush()
 
+
+def get_vert_co(vert_ind, hemi):
+    obj_name = 'inflated_{}'.format(hemi)
+    obj = bpy.data.objects[obj_name]
+    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+    vertex_co = me.vertices[vert_ind].co * obj.matrix_world
+    bpy.data.meshes.remove(me)
+    return vertex_co

@@ -1,1 +1,1 @@
-python -m src.run
+python -m run > mmvt.log

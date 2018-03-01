@@ -274,6 +274,7 @@ clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_an
 snap_cursor = appearance_panel.snap_cursor
 set_cursor_pos = appearance_panel.set_cursor_pos
 flat_map_exists = appearance_panel.flat_map_exists
+move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from

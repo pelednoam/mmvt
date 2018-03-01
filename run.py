@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+sys.stdout = open('mmvt.log', 'w')
 from src.mmvt_addon.scripts import run_mmvt
 from src.mmvt_addon.scripts import scripts_utils as su
 

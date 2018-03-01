@@ -838,8 +838,8 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
             inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
         if len(inter_labels) > 0 and clusters_label in inter_labels[0]['name']:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
-            cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
-                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster), max_vert=max_vert)))
+            cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
+                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster), max_vert=max_vert))
         else:
             print('No intersected labels!')
     return cluster_labels

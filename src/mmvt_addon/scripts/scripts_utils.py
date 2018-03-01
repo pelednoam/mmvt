@@ -209,7 +209,7 @@ def make_dir(fol):
 
 
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
-                only_verbose=False, err_pipe=None):
+                only_verbose=False, err_pipe=None, std_pipe=None):
     # if args.blender_fol == '':
     #     args.blender_fol = get_blender_dir()
     blender_fol = get_blender_dir()
@@ -249,7 +249,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         mmvt_addon_fol = get_parent_fol(__file__, 2)
         if not only_verbose:
             # os.chdir(mmvt_addon_fol)
-            utils.run_script(cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
+            utils.run_script(
+                cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
         # print('After Blender call')
         # Initialize blend_fname and call_args to None if that was their init value
         if blend_fname_is_None:

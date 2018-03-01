@@ -209,22 +209,21 @@ def inflating_update(self, context):
             if obj_name != '':
                 if 'inflated' not in obj_name:
                     obj_name = 'inflated_{}'.format(obj_name)
-                ob = bpy.data.objects[obj_name]
-                scene = bpy.context.scene
-                me = ob.to_mesh(scene, True, 'PREVIEW')
-                try:
-                    bpy.context.scene.cursor_location = me.vertices[vert].co * ob.matrix_world # / 10
-                except:
-                    pass
-                # if 0 < infl <= 1.0:
-                #     if obj_name == 'inflated_rh':
-                #         bpy.context.scene.cursor_location[0] +=  bpy.context.scene.inflating
-                #     elif obj_name == 'inflated_lh':
-                #         bpy.context.scene.cursor_location[0] -=  bpy.context.scene.inflating
-                bpy.data.meshes.remove(me)
+                obj = bpy.data.objects[obj_name]
+                move_cursor_according_to_vert(vert, obj)
     except:
         print('Error in inflating update!')
         print(traceback.format_exc())
+
+
+def move_cursor_according_to_vert(vert, obj):
+    scene = bpy.context.scene
+    me = obj.to_mesh(scene, True, 'PREVIEW')
+    try:
+        bpy.context.scene.cursor_location = me.vertices[vert].co * obj.matrix_world  # / 10
+    except:
+        pass
+    bpy.data.meshes.remove(me)
 
 
 def set_inflated_ratio(ratio):
