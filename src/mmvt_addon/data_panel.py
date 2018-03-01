@@ -39,6 +39,7 @@ bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description=
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
 bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=[], description="EEG data files")
+bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=[], description="MEG data files")
 bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
 bpy.types.Scene.add_fmri_subcorticals_data = bpy.props.BoolProperty(default=True, description="")
 
@@ -626,8 +627,9 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
     if parent_obj is None:
         layers_array = [False] * 20
         create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
-    data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
-    meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+
+    data_fname = op.join(mu.get_user_fol(), 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_data_files))
+    meta_fname = op.join(mu.get_user_fol(), 'meg', '{}_meta.npz'.format(bpy.context.scene.meg_sensors_data_files))
     if not op.isfile(data_fname) or not op.isfile(meta_fname):
         mu.log_err('MEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
     else:
@@ -1092,8 +1094,9 @@ def data_draw(self, context):
     #         layout.operator(SelectExternalMEGEvoked.bl_idname, text=select_text, icon=select_icon)
 
     meg_sensors_positions_file = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_positions.npz')
-    meg_data_npz = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
-    meg_data_npy = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+    meg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))) > 0
+    meg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data_meta.npz'))) > 0
+    meg_data_minmax_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_minmax.npy'))) > 0
     eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_positions.npz')
     eeg_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))) > 0
     eeg_meta_data_exist = len(glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data_meta.npz'))) > 0
@@ -1103,8 +1106,9 @@ def data_draw(self, context):
     if op.isfile(meg_sensors_positions_file):
         col = layout.box().column()
         col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
-        if op.isfile(meg_data_npy) or op.isfile(meg_data_npz):
+        if meg_data_exist and meg_meta_data_exist and meg_data_minmax_exist:
             # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
+            col.prop(context.scene, 'meg_sensors_data_files', text="")
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
     if op.isfile(eeg_sensors_positions_file):
@@ -1243,6 +1247,7 @@ def init(addon):
         bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=items, description="subcortical fMRI files")
 
     init_eeg()
+    init_meg()
     init_electrodes_positions_list()
     init_electrodes_data()
     if bpy.data.objects.get('Deep_electrodes'):
@@ -1307,6 +1312,15 @@ def init_eeg():
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=items)
         bpy.context.scene.eeg_data_files = files_names[0]
+
+
+def init_meg():
+    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    if len(meg_data_files) > 0:
+        files_names = [mu.namebase(fname) for fname in meg_data_files]
+        items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=items)
+        bpy.context.scene.meg_sensors_data_files = files_names[0]
 
 
 def register():

@@ -395,7 +395,12 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
                 overwrite_evoked=False, task=''):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
-        if op.isfile(evoked_fname) and not overwrite_evoked:
+        fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
+        task_str = f'{task}_' if task != '' else ''
+        mmvt_files = [op.join(fol, f'{task_str}sensors_evoked_data.npy'),
+                      op.join(fol, f'{task_str}sensors_evoked_data_meta.npz'),
+                      op.join(fol, f'{task_str}sensors_evoked_minmax.npy')]
+        if op.isfile(evoked_fname) and all([op.isfile(f) for f in mmvt_files]) and not overwrite_evoked:
             evoked = mne.read_evokeds(evoked_fname)
             return True, evoked
         events_keys = list(events.keys())
