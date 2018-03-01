@@ -701,6 +701,7 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
 #     return list(set(seems_neighbor_verts))
 
 
+@utils.check_for_freesurfer
 def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
     patch_fname_template = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format('{hemi}'))
     if not utils.both_hemi_files_exist(patch_fname_template) or overwrite:
