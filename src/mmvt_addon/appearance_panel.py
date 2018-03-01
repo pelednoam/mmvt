@@ -127,6 +127,7 @@ def hemis_distance_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
                 AppearanceMakerPanel.cortex_rh - bpy.context.scene.hemis_distance
 
+        bpy.context.scene.cursor_is_snapped = bpy.context.scene.hemis_distance == 0
 
 # def inflating_update(self, context):
 #     try:
@@ -414,7 +415,8 @@ def appearance_draw(self, context):
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
+    if bpy.context.scene.hemis_distance == 0:
+        layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
@@ -466,13 +468,21 @@ class SelectionListener(bpy.types.Operator):
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)
-            if _addon().is_pial():
-                # todo: should work also on the inflated
-                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+
+            tkreg_ras = _addon().calc_tkreg_ras_from_cursor()
+            if tkreg_ras is not None:
+                _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+            # if _addon().is_pial():
+            #     tkreg_ras = bpy.context.scene.cursor_location * 10
+            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+            # elif bpy.context.scene.cursor_is_snapped:
+            #     tkreg_ras = _addon().calc_tkreg_ras_from_snapped_cursor()
+            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+
             if cursor_moved:
                 set_cursor_pos()
                 # print('cursor position was changed by the user!')
-                _addon().create_slices()
+                _addon().create_slices(pos=tkreg_ras)
                 _addon().save_cursor_position()
                 clear_slice()
             if coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
@@ -652,6 +662,7 @@ except:
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],
         description="Surface type", update=surface_type_update)
     bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=0, default=0, step=0.1, update=inflating_update)
+
 
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)

@@ -348,6 +348,8 @@ set_t1_value = where_am_i_panel.set_t1_value
 create_slices_from_vox_coordinates = where_am_i_panel.create_slices_from_vox_coordinates
 find_closest_label = where_am_i_panel.find_closest_label
 get_annot_files = where_am_i_panel.get_annot_files
+calc_tkreg_ras_from_snapped_cursor = where_am_i_panel.calc_tkreg_ras_from_snapped_cursor
+calc_tkreg_ras_from_cursor = where_am_i_panel.calc_tkreg_ras_from_cursor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data

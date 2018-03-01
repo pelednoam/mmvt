@@ -448,6 +448,25 @@ def init_listener():
     return ret
 
 
+def calc_tkreg_ras_from_cursor():
+    tkreg_ras = None
+    if _addon().is_pial():
+        tkreg_ras = bpy.context.scene.cursor_location * 10
+    elif bpy.context.scene.cursor_is_snapped:
+        tkreg_ras = calc_tkreg_ras_from_snapped_cursor()
+    return tkreg_ras
+
+
+def calc_tkreg_ras_from_snapped_cursor():
+    vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+    pos = None
+    if obj_name != '' and ('rh' in obj_name or 'lh' in obj_name):
+        obj_name = 'rh' if 'rh' in obj_name else 'lh'
+        ob = bpy.data.objects[obj_name]
+        pos = ob.data.vertices[vert].co
+    return pos
+
+
 def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_num=-1, smooth=None, clim=None,
                   plot_cross=None, mark_voxel=None):
     if zoom_around_voxel is None:
@@ -469,16 +488,18 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
         modality = bpy.context.scene.slices_modality
     pos_was_none = pos is None
     if pos is None:
-        pos = bpy.context.scene.cursor_location
-    if bpy.context.scene.cursor_is_snapped and pos_was_none:
-        vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
-        if obj_name != '' and ('rh' in obj_name or 'lh' in obj_name):
-            obj_name = 'rh' if 'rh' in obj_name else 'lh'
-            ob = bpy.data.objects[obj_name]
-            pos = ob.data.vertices[vert].co / 10
+        pos = bpy.context.scene.cursor_location * 10
+    # if bpy.context.scene.cursor_is_snapped and pos_was_none:
+    #     pos = calc_tkreg_ras_from_snapped_cursor()
+    if pos_was_none:
+        pos = calc_tkreg_ras_from_cursor()
+    if pos is None:
+        print("Can't calc slices if the cursor isn't snapped and the brain in inflated!")
+        return
+    # pos = np.array(pos) * 10
     if WhereAmIPanel.run_slices_listener:
         init_listener()
-        xyz = ','.join(map(str, pos * 10))
+        xyz = ','.join(map(str, pos))
         ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
             subject=mu.get_user(), xyz=xyz, modalities=modality, coordinates_system='tk_ras')))
         flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
@@ -494,7 +515,6 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
             print('python -m src.setup -f copy_resources_files')
         return
 
-    pos = np.array(pos) * 10
     if modality == 'mri':
         x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
     elif modality == 'ct':
