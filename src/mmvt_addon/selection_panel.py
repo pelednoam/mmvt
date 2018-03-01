@@ -109,6 +109,7 @@ def minimize_graph():
 def calc_best_curves_sep(norm_percs=[3, 97]):
     fcurves, data = get_selected_fcurves_and_data()
     bpy.context.scene.curves_sep = _calc_best_curves_sep(data, norm_percs)
+    bpy.context.scene.curves_sep += 0.001
 
 
 def _calc_best_curves_sep(data, norm_percs=[3, 97]):
