@@ -253,6 +253,28 @@ def calc_functional_rois(args):
     meg.call_main(args)
 
 
+def calc_msit_functional_rois(args):
+    clusters_root_fol = utils.make_dir(op.join(MMVT_DIR, args.subject[0], 'meg', 'clusters'))
+    utils.delete_folder_files(clusters_root_fol)
+    conditions = ['neutral', 'interference']
+    for cond in conditions:
+        _args = meg.read_cmd_args(dict(
+            subject=args.subject,
+            mri_subject=args.mri_subject,
+            atlas='laus125',
+            function='find_functional_rois_in_stc',
+            inverse_method='dSPM',
+            stc_name='MSIT-{}-dSPM'.format(cond),
+            label_name_template='*',
+            inv_fname='{}-inv'.format(cond),
+            threshold=99.5,
+            min_cluster_max=5,
+            min_cluster_size=100,
+            # clusters_label='precentral'
+        ))
+        meg.call_main(_args)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)

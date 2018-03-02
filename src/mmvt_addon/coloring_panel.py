@@ -1406,7 +1406,7 @@ def color_meg_sensors():
         data_min, data_max = ColoringMakerPanel.meg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('EEG conditions difference')
+    _addon().set_colorbar_title('MEG conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 

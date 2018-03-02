@@ -2673,7 +2673,7 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
         print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
+def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
                                 label_name_template='', peak_mode='abs', extract_mode='mean_flip',
                                 min_cluster_max=0, min_cluster_size=0, clusters_label='', src=None,
                                 inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, n_jobs=6):
@@ -2721,7 +2721,7 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
             print("Can't find overlapped_labeles in {}-{}!".format(stc_name, hemi))
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
-                subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
+                subject, mri_subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
                 time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(clusters_root_fol, 'clusters_labels_{}.pkl'.format(stc_name, atlas))
@@ -2770,7 +2770,7 @@ def load_connectivity(subject):
     return connectivity_per_hemi
 
 
-def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
+def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
                                     src=None, inv_fname='', time_index=-1, cluster_max_min=0, fwd_usingMEG=True,
                                     fwd_usingEEG=True, calc_contours=True):
     utils.make_dir(clusters_fol)
@@ -2778,8 +2778,11 @@ def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, cluste
     utils.make_dir(time_series_fol)
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     if src is None:
-        inverse_operator = read_inverse_operator(inv_fname)
-        src = inverse_operator['src']
+        if op.isfile(inv_fname):
+            inverse_operator = read_inverse_operator(inv_fname)
+            src = inverse_operator['src']
+        else:
+            src = check_src(mri_subject)
     for cluster_ind, cluster in enumerate(clusters):
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
         cluster_label = mne.Label(
@@ -3147,7 +3150,7 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'find_functional_rois_in_stc' in args.function:
         flags['find_functional_rois_in_stc'] = find_functional_rois_in_stc(
-            subject, args.atlas, args.stc_name, args.threshold, args.threshold_is_precentile,
+            subject, mri_subject, args.atlas, args.stc_name, args.threshold, args.threshold_is_precentile,
             args.peak_stc_time_index, args.label_name_template, args.peak_mode,
             args.extract_mode, args.min_cluster_max, args.min_cluster_size, args.clusters_label,
             inv_fname=args.inv_fname, fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingEEG,
@@ -3273,6 +3276,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recreate_src_surface', help='', required=False, default='white')
     parser.add_argument('--inv_loose', help='', required=False, default=0.2, type=float)
     parser.add_argument('--inv_depth', help='', required=False, default=0.8, type=float)
+    parser.add_argument('--use_raw_for_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--use_empty_room_for_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--inv_calc_cortical', help='', required=False, default=1, type=au.is_true)
