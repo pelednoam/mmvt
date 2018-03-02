@@ -216,7 +216,7 @@ def select_all_meg_sensors():
     select_brain_objects('MEG_sensors')
 
 
-def select_all_eeg():
+def select_all_eeg_sensors():
     mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'EEG'
     select_brain_objects('EEG_sensors')
@@ -342,7 +342,7 @@ class SelectAllEEG(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        select_all_eeg()
+        select_all_eeg_sensors()
         SelectionMakerPanel.selection.append(SEL_EEG_SENSORS)
         mu.unfilter_graph_editor()
         # if bpy.context.scene.selection_type == 'diff':

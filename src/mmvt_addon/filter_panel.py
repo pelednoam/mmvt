@@ -344,7 +344,7 @@ class ClearFiltering(bpy.types.Operator):
         elif type_of_filter == 'Electrodes':
             _addon().select_all_electrodes()
         elif type_of_filter == 'EEG':
-            _addon().select_all_eeg()
+            _addon().select_all_eeg_sensors()
         bpy.data.scenes['Scene'].frame_preview_end = _addon().get_max_time_steps()
         bpy.data.scenes['Scene'].frame_preview_start = 1
         bpy.types.Scene.closest_curve_str = ''
@@ -401,21 +401,21 @@ class Filtering(bpy.types.Operator):
                     mu.message(self, "Can't load {}!".format(input_file))
                     return None, None, None
 
-        print('filtering {}-{}'.format(self.filter_from, self.filter_to))
+        # print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
         # t_range = range(self.filter_from, self.filter_to + 1)
         if self.topK > 0:
             self.topK = min(self.topK, len(names))
-        print(self.type_of_func)
+        # print(self.type_of_func)
         filter_func = get_func(self.type_of_func)
         if isinstance(data, list):
             d = np.vstack((d for d in data))
         else:
             d = data
-        print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
+        # print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
-        print(dd[objects_to_filtter_in])
+        # print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
     def filter_electrodes_or_sensors(self, parent_name, data, meta):
@@ -545,12 +545,14 @@ class Filtering(bpy.types.Operator):
             self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
             data_fname, meta_fname, _ = _addon().get_eeg_sensors_fnames()
-            self.filter_electrodes_or_sensors('EEG_sensors', np.load(data_fname), np.load(meta_fname))
+            data, meta = _addon().load_eeg_sensors_data(data_fname, meta_fname)
+            self.filter_electrodes_or_sensors('EEG_sensors', data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
         elif self.type_of_filter == 'MEG_sensors':
             data_fname, meta_fname, _ = _addon().get_meg_sensors_fnames()
-            self.filter_electrodes_or_sensors('MEG_sensors', np.load(data_fname), np.load(meta_fname))
+            data, meta = _addon().load_meg_sensors_data(data_fname, meta_fname)
+            self.filter_electrodes_or_sensors('MEG_sensors', data, meta)
 
         if bpy.context.scene.filter_items_one_by_one:
             update_filter_items(self.topK, self.objects_indices, self.filter_objects)
@@ -576,7 +578,7 @@ bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
 bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description="Filtering function")
     # items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
     #        ("threshold", "Above threshold", "", 3)],
-bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=False, description="Mark selected items")
+bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=True, description="Mark selected items")
 bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
 bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
     default=False, description="Show one by one", update=show_one_by_one_update)
@@ -600,6 +602,7 @@ class FilteringMakerPanel(bpy.types.Panel):
 def init(addon):
     FilteringMakerPanel.addon = addon
     get_filter_functions()
+    bpy.context.scene.mark_filter_items = True
     FilteringMakerPanel.init = True
     register()
 

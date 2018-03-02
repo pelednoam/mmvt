@@ -1414,7 +1414,7 @@ def color_eeg_sensors():
     _addon().show_hide_eeg()
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_eeg_data(
+    data, meta = _addon().load_eeg_sensors_data(
         ColoringMakerPanel.eeg_sensors_data_fname, ColoringMakerPanel.eeg_sensors_meta_data_fname)
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()

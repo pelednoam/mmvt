@@ -653,7 +653,7 @@ def add_data_to_eeg_sensors():
     if not op.isfile(data_fname) or not op.isfile(meta_fname):
         mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
     else:
-        DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_data(data_fname, meta_fname)
+        DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta = load_eeg_sensors_data(data_fname, meta_fname)
         data, meta = DataMakerPanel.eeg_data, DataMakerPanel.eeg_meta
         # todo: check why window_len==2
         add_data_to_electrodes(data, meta)#, conditions='spikes1')#, window_len=2)
@@ -945,7 +945,7 @@ def load_meg_labels_data():
     return data, names, data_rh['conditions']
 
 
-def load_eeg_data(data_fname='', meta_fname=''):
+def load_eeg_sensors_data(data_fname='', meta_fname=''):
     if data_fname == '':
         data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
     if meta_fname == '':
