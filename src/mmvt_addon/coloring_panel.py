@@ -36,6 +36,18 @@ def get_activity_values():
     return ColoringMakerPanel.activity_values
 
 
+def get_meg_sensors_fnames():
+    return (ColoringMakerPanel.meg_sensors_data_fname,
+        ColoringMakerPanel.meg_sensors_meta_data_fname,
+        ColoringMakerPanel.meg_sensors_data_minmax_fname)
+
+
+def get_eeg_sensors_fnames():
+    return (ColoringMakerPanel.eeg_sensors_data_fname,
+        ColoringMakerPanel.eeg_sensors_meta_data_fname,
+        ColoringMakerPanel.eeg_sensors_data_minmax_fname)
+
+
 def plot_meg(t=-1, save_image=False, view_selected=False):
     if t != -1:
         bpy.context.scene.frame_current = t

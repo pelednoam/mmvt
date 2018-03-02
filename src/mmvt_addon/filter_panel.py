@@ -544,15 +544,13 @@ class Filtering(bpy.types.Operator):
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
             self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
-            data = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'))
-            meta = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
-            self.filter_electrodes_or_sensors('EEG_sensors', data, meta)
+            data_fname, meta_fname, _ = _addon().get_eeg_sensors_fnames()
+            self.filter_electrodes_or_sensors('EEG_sensors', np.load(data_fname), np.load(meta_fname))
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
         elif self.type_of_filter == 'MEG_sensors':
-            data = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy'))
-            meta = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz'))
-            self.filter_electrodes_or_sensors('MEG_sensors', data, meta)
+            data_fname, meta_fname, _ = _addon().get_meg_sensors_fnames()
+            self.filter_electrodes_or_sensors('MEG_sensors', np.load(data_fname), np.load(meta_fname))
 
         if bpy.context.scene.filter_items_one_by_one:
             update_filter_items(self.topK, self.objects_indices, self.filter_objects)
