@@ -42,7 +42,7 @@ def _clusters_update():
     # key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
     key = clusters_labels_file
     fMRIPanel.cluster_labels = cluster = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
-    cluster_centroid =  np.mean(cluster['coordinates'], 0) / 10.0
+    cluster_centroid = np.mean(cluster['coordinates'], 0) / 10.0
     _addon().clear_closet_vertex_and_mesh_to_cursor()
     _addon().set_vertex_data(cluster['max'])
     if 'max_vert' in cluster:
@@ -121,20 +121,25 @@ def plot_blob(cluster_labels, faces_verts, is_inflated=None, use_abs=None):
 def find_closest_cluster(only_within=False):
     # cursor = np.array(bpy.context.scene.cursor_location)
     # print('cursor {}'.format(cursor))
-    if _addon().is_inflated(): # and _addon().get_inflated_ratio() == 1:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-            use_shape_keys=True)
-        # print(closest_mesh_name, vertex_ind, vertex_co)
-        # print(vertex_co - bpy.context.scene.cursor_location)
-        bpy.context.scene.cursor_location = vertex_co
-        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
-        pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
-        pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
-        vertex_co = pial_vert.co
-        _addon().set_tkreg_ras_coo(vertex_co, move_cursor=False)
+    if bpy.context.scene.cursor_is_snapped:
+        # vertex_ind, mesh = _addon().get_closest_vertex_and_mesh_to_cursor()
+        # pial_mesh = 'rh' if mesh == 'inflated_rh' else 'lh'
+        vertex_co = _addon().get_tkreg_ras()
     else:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
-        bpy.context.scene.cursor_location = vertex_co
+        if _addon().is_inflated(): # and _addon().get_inflated_ratio() == 1:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+                use_shape_keys=True)
+            # print(closest_mesh_name, vertex_ind, vertex_co)
+            # print(vertex_co - bpy.context.scene.cursor_location)
+            bpy.context.scene.cursor_location = vertex_co
+            _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+            pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
+            pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
+            vertex_co = pial_vert.co
+            _addon().set_tkreg_ras_coo(vertex_co, move_cursor=False)
+        else:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+            bpy.context.scene.cursor_location = vertex_co
 
     # vertex_co *= 10
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
@@ -145,10 +150,15 @@ def find_closest_cluster(only_within=False):
         key = clusters_labels_file
         cluster_to_search_in = fMRIPanel.clusters_labels[key]['values']
         unfilter_clusters()
-    dists, indices = [], []
-    for ind, cluster in enumerate(cluster_to_search_in):
-        _, _, dist = mu.min_cdist(cluster['coordinates'], [vertex_co])[0]
-        dists.append(dist)
+    # dists, indices = [], []
+    # print('cursor: {}'.format(vertex_co))
+    # for ind, cluster in enumerate(cluster_to_search_in):
+    #     print(np.mean(cluster['coordinates'], 0))
+    #     _, _, dist = mu.min_cdist(cluster['coordinates'], [vertex_co])[0]
+    #     dists.append(dist)
+    max_verts = np.array([bpy.data.objects[cluster.hemi].data.vertices[cluster.max_vert].co for
+                      cluster in cluster_to_search_in])
+    dists = [np.linalg.norm(blob - vertex_co) for blob in max_verts]
     if len(dists) == 0:
         print('No cluster was found!')
     else:

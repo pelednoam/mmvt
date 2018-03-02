@@ -351,6 +351,10 @@ find_closest_label = where_am_i_panel.find_closest_label
 get_annot_files = where_am_i_panel.get_annot_files
 calc_tkreg_ras_from_snapped_cursor = where_am_i_panel.calc_tkreg_ras_from_snapped_cursor
 calc_tkreg_ras_from_cursor = where_am_i_panel.calc_tkreg_ras_from_cursor
+get_tkreg_ras = where_am_i_panel.get_tkreg_ras
+get_ras = where_am_i_panel.get_ras
+get_T1_voxel = where_am_i_panel.get_T1_voxel
+get_ct_voxel = where_am_i_panel.get_ct_voxel
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data

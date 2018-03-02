@@ -233,6 +233,10 @@ def set_tkreg_ras_coo(coo, move_cursor=True):
     WhereAmIPanel.move_cursor = True
 
 
+def get_tkreg_ras():
+    return (bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z)
+
+
 def set_ras_coo(coo):
     # print('set_ras_coo')
     WhereAmIPanel.call_update = False
@@ -240,6 +244,10 @@ def set_ras_coo(coo):
     bpy.context.scene.ras_y = coo[1]
     WhereAmIPanel.call_update = True
     bpy.context.scene.ras_z = coo[2]
+
+
+def get_ras():
+    return (bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z)
 
 
 def set_voxel_coo(coo):
@@ -251,6 +259,10 @@ def set_voxel_coo(coo):
     bpy.context.scene.voxel_z = int(np.round(coo[2]))
 
 
+def get_T1_voxel():
+    return (bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z)
+
+
 def set_ct_coo(coo):
     WhereAmIPanel.call_update = False
     bpy.context.scene.ct_voxel_x = int(np.round(coo[0]))
@@ -258,6 +270,10 @@ def set_ct_coo(coo):
     WhereAmIPanel.call_update = True
     bpy.context.scene.ct_voxel_z = int(np.round(coo[2]))
     _addon().set_ct_intensity()
+
+
+def get_ct_voxel():
+    return (bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z)
 
 
 def apply_trans(trans, points):
