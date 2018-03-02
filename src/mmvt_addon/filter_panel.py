@@ -147,6 +147,7 @@ def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
         obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
         obj.active_material.diffuse_color = (1, 1, 1)
     obj.select = False
+    _addon().calc_best_curves_sep()
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):

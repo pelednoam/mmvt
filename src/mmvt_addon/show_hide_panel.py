@@ -211,6 +211,7 @@ def show_sagital():
 
 def show_coronal(show_frontal=False):
     if show_frontal:
+        mu.rotate_view3d(CORONAL_ANTERIOR)
         bpy.context.scene.current_view = 'coronal'
         bpy.context.scene.current_view_flip = 0
         return
@@ -293,8 +294,9 @@ def split_view(view):
     pial_shift = 10
     inflated_shift = 15
     shift = pial_shift + (bpy.context.scene.inflating + 1) * (inflated_shift - pial_shift)
-    if view == 0: # Normal
+    if view == 0:  # Normal
         show_coronal()
+        mu.set_zoom_level(bpy.context.scene.surface_type, relative=1)
         # if _addon().is_inflated():
         bpy.data.objects['inflated_lh'].location[0] = 0
         bpy.data.objects['inflated_lh'].rotation_euler[2] = 0
@@ -305,8 +307,9 @@ def split_view(view):
         #     bpy.data.objects['lh'].rotation_euler[2] = 0
         #     bpy.data.objects['rh'].location[0] = 0
         #     bpy.data.objects['rh'].rotation_euler[2] = 0
-    elif view == 1: # Split lateral
-        show_coronal()
+    elif view == 1:  # Split lateral
+        show_coronal(show_frontal=True)
+        mu.set_zoom_level(bpy.context.scene.surface_type, relative=1, split=True)
         # lateral split view
         # inflated_lh: loc  x:13, rot z: -90
         # inflated_lr: loc  x:-13, rot z: 90

@@ -180,6 +180,7 @@ def inflating_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = 0
             use_masking = False
 
+        mu.set_zoom_level(bpy.context.scene.surface_type, abs(bpy.context.scene.inflating))
         bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
         bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = False
 
@@ -316,12 +317,15 @@ def surface_type_update(self, context):
         show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
         show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
 
+    mu.set_zoom_level(bpy.context.scene.surface_type, 1)
     if bpy.context.scene.surface_type == 'inflated':
         set_inflated_ratio(0)
 
         # print('inflated - set_inflated_ratio(0) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'flat_map':
         set_inflated_ratio(1)
+        _addon().show_coronal(True)
+        # mu.set_zoom_for_flatmap()
         # print('flat_map - set_inflated_ratio(1) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'pial':
         set_inflated_ratio(-1)
@@ -453,6 +457,8 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
+                if bpy.context.scene.slices_zoom>1:
+                    ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
@@ -584,6 +590,14 @@ def click_inside_images_view(event):
     #         if pos != slices_cursor_pos[active_image.name]:
     #             return active_image, pos
     return None, None
+
+
+def ohad(offset_values):
+    for area, region in mu.get_images_area_regions():
+        override = bpy.context.copy()
+        override['area'] = area
+        override['region'] = region
+        bpy.ops.image.view_pan(override, offset=(-offset_values[0], -offset_value[1]))
 
 
 def set_cursor_pos():
