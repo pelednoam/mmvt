@@ -156,6 +156,7 @@ def can_color_obj(obj):
 
 def contours_coloring_update(self, context):
     user_fol = mu.get_user_fol()
+    ColoringMakerPanel.no_plotting = True
     d = {}
     items = [('all labels', 'all labels', '', 0)]
     for hemi in mu.HEMIS:
@@ -166,10 +167,11 @@ def contours_coloring_update(self, context):
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
     ColoringMakerPanel.labels_contours = d
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
+    ColoringMakerPanel.no_plotting = False
 
 
 def labels_contours_update(self, context):
-    if not ColoringMakerPanel.init:
+    if not ColoringMakerPanel.init or ColoringMakerPanel.no_plotting:
         return
     if bpy.context.scene.labels_contours == 'all labels':
         color_contours(cumulate=False)
@@ -2152,6 +2154,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_sensors_data_fname = ''
     eeg_sensors_meta_data_fname = ''
     eeg_sensors_data_minmax_fname = ''
+    no_plotting = False
 
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}

@@ -270,6 +270,7 @@ def calc_msit_functional_rois(args):
             threshold=99.5,
             min_cluster_max=5,
             min_cluster_size=100,
+            recreate_src_spacing='ico5'
             # clusters_label='precentral'
         ))
         meg.call_main(_args)

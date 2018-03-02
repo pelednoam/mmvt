@@ -534,7 +534,10 @@ def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH
 
 def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing='oct6', recreate_src_surface='white',
               n_jobs=2):
-    src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
+    # src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
+    src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem',
+                        f'{mri_subject}-{recreate_src_spacing[:-1]}-{recreate_src_spacing[-1]}-src.fif')
+    src_exist = op.isfile(src_fname)
     if not src_exist:
         src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
             mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))
@@ -549,6 +552,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
             #     {'bem': '{}-{}-{}-src.fif'.format(mri_subject, oct_name, oct_num)}, args)
+            # https://martinos.org/mne/dev/manual/cookbook.html#source-localization
             src = mne.setup_source_space(MRI_SUBJECT, spacing=recreate_src_spacing, surface=recreate_src_surface,
                                          overwrite=True, subjects_dir=SUBJECTS_MRI_DIR, n_jobs=n_jobs)
         else:
@@ -2676,7 +2680,8 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
 def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
                                 label_name_template='', peak_mode='abs', extract_mode='mean_flip',
                                 min_cluster_max=0, min_cluster_size=0, clusters_label='', src=None,
-                                inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, n_jobs=6):
+                                inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True,
+                                recreate_src_spacing='oct6', n_jobs=6):
     import mne.stats.cluster_level as mne_clusters
 
     clusters_root_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters')
@@ -2722,7 +2727,7 @@ def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
                 subject, mri_subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
-                time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG)
+                time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG, recreate_src_spacing=recreate_src_spacing)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(clusters_root_fol, 'clusters_labels_{}.pkl'.format(stc_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
@@ -2772,7 +2777,7 @@ def load_connectivity(subject):
 
 def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
                                     src=None, inv_fname='', time_index=-1, cluster_max_min=0, fwd_usingMEG=True,
-                                    fwd_usingEEG=True, calc_contours=True):
+                                    fwd_usingEEG=True, calc_contours=True, recreate_src_spacing='oct6'):
     utils.make_dir(clusters_fol)
     time_series_fol = op.join(clusters_fol, 'time_series_{}'.format(extract_mode))
     utils.make_dir(time_series_fol)
@@ -2782,8 +2787,11 @@ def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, f
             inverse_operator = read_inverse_operator(inv_fname)
             src = inverse_operator['src']
         else:
-            src = check_src(mri_subject)
+            # todo: set the recreate_src_spacing according to the stc
+            # https://martinos.org/mne/dev/manual/cookbook.html#source-localization
+            src = check_src(mri_subject, recreate_src_spacing=recreate_src_spacing)
     for cluster_ind, cluster in enumerate(clusters):
+        cluster = utils.Bag(cluster)
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
         cluster_label = mne.Label(
             cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
@@ -3154,7 +3162,7 @@ def main(tup, remote_subject_dir, args, flags):
             args.peak_stc_time_index, args.label_name_template, args.peak_mode,
             args.extract_mode, args.min_cluster_max, args.min_cluster_size, args.clusters_label,
             inv_fname=args.inv_fname, fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingEEG,
-            n_jobs=args.n_jobs)
+            recreate_src_spacing=args.recreate_src_spacing, n_jobs=args.n_jobs)
 
     if 'print_files_names' in args.function:
         # also called in init_globals
