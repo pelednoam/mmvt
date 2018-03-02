@@ -113,6 +113,7 @@ def calc_msit_evoked(args):
         t_max=2,
         read_events_from_file=True,
         normalize_data = False,
+        overwrite_evoked = True,
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
     ))
     meg.call_main(args)

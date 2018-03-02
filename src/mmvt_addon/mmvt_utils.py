@@ -1683,20 +1683,20 @@ def rotate_view3d(rotation_in_quaternions):
     get_view3d_region().view_rotation = rotation_in_quaternions
 
 
-def set_zoom_for_flatmap(relative=False):
-    if relative is False:
-        get_view3d_region().view_distance = 23.0
-    else:
-        get_view3d_region().view_distance = 23.0 * relative + get_view3d_region().view_distance*(1-relative)
-
-
-def set_zoom_for_inflated(relative=False):
-    get_view3d_region().view_distance = 17.7
-
-
-def set_zoom_for_pial(relative=False):
-    get_view3d_region().view_distance = 11.6
-
+# def set_zoom_for_flatmap(relative=False):
+#     if relative is False:
+#         get_view3d_region().view_distance = 23.0
+#     else:
+#         get_view3d_region().view_distance = 23.0 * relative + get_view3d_region().view_distance*(1-relative)
+#
+#
+# def set_zoom_for_inflated(relative=False):
+#     get_view3d_region().view_distance = 17.7
+#
+#
+# def set_zoom_for_pial(relative=False):
+#     get_view3d_region().view_distance = 11.6
+#
 
 def set_zoom_level(surface, relative=1, split=False):
     surface_zoom_level = {'pial': 11.6, 'inflated': 20.7, 'flat_map': 23.0}
@@ -1704,9 +1704,8 @@ def set_zoom_level(surface, relative=1, split=False):
     zoom_level = surface_zoom_level[surface]
     if split:
         get_view3d_region().view_distance = surface_split_zoom_level[surface]
-        return
-    get_view3d_region().view_distance = zoom_level * relative + get_view3d_region().view_distance * (1 - relative)
-
+    else:
+        get_view3d_region().view_distance = zoom_level * relative + get_view3d_region().view_distance * (1 - relative)
 
 
 def get_current_context():

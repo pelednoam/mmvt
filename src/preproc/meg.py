@@ -441,12 +441,13 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
 def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, normalize_data=False,
                         norm_by_percentile=False, norm_percs=None, modality='meg', calc_max_min_diff=True, task=''):
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
+    first_evokes = evokes if isinstance(evokes, mne.evoked.EvokedArray) else evokes[0]
     if modality == 'meg':
         channels_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
         if len(channels_indices) == 0:
             print(f'None of the channels names starts with {channels_prefix}!')
-    first_evokes = evokes if isinstance(evokes, mne.evoked.EvokedArray) else evokes[0]
-    channels_indices = range(len(first_evokes.ch_names))
+    else:
+        channels_indices = range(len(first_evokes.ch_names))
     ch_names = [first_evokes.ch_names[k] for k in channels_indices]
     dt = np.diff(first_evokes.times[:2])[0]
     if isinstance(evokes, mne.evoked.EvokedArray):
@@ -461,7 +462,8 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     if normalize_data:
         data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     else:
-        data *= np.power(10, 6) # micro V
+        factor = 6 if modality == 'eeg' else 12 # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
+        data *= np.power(10, factor)
     if calc_max_min_diff:
         data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
         data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)

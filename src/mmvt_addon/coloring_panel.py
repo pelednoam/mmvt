@@ -1386,7 +1386,8 @@ def color_meg_sensors():
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_meg_sensors_data()
+    data, meta = _addon().load_meg_sensors_data(
+        ColoringMakerPanel.meg_sensors_data_fname, ColoringMakerPanel.meg_sensors_meta_data_fname)
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
@@ -2288,12 +2289,21 @@ def init_electrodes():
 
 def init_meg_sensors():
     user_fol = mu.get_user_fol()
-    data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data.npy')
-    meta_data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data_meta.npz')
-    data_minmax_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_minmax.npy')
-    if all([op.isfile(f) for f in [data_fname, meta_data_fname, data_minmax_fname]]):
+    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    # todo: should be according to the data panel
+    meg_data_files = mu.namebase(meg_data_files[0])
+    ColoringMakerPanel.meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
+    ColoringMakerPanel.meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_data_files))
+    ColoringMakerPanel.meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_data_files[:-5]))
+    # data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data.npy')
+    # meta_data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data_meta.npz')
+    # data_minmax_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_minmax.npy')
+    # todo: check that the Blender objects exist too
+    if all([op.isfile(f) for f in [ColoringMakerPanel.meg_sensors_data_fname,
+                                   ColoringMakerPanel.meg_sensors_meta_data_fname,
+                                   ColoringMakerPanel.meg_sensors_data_minmax_fname]]):
         ColoringMakerPanel.meg_sensors_exist = True
-        data_min, data_max = np.load(data_minmax_fname)
+        data_min, data_max = np.load(ColoringMakerPanel.meg_sensors_data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
         ColoringMakerPanel.activity_types.append('meg_sensors')
@@ -2310,6 +2320,7 @@ def init_eeg_sensors():
     # data_fname = op.join(user_fol, 'eeg', 'eeg_sensors_data.npy')
     # meta_data_fname = op.join(user_fol, 'eeg', 'eeg_sensors_data_meta.npz')
     # data_minmax_fname = op.join(user_fol, 'eeg', 'eeg_data_minmax.npy')
+    # todo: check that the Blender objects exist too
     if all([op.isfile(f) for f in [ColoringMakerPanel.eeg_sensors_data_fname,
                                    ColoringMakerPanel.eeg_sensors_meta_data_fname,
                                    ColoringMakerPanel.eeg_sensors_data_minmax_fname]]):

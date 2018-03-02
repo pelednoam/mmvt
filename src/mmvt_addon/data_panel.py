@@ -955,9 +955,11 @@ def load_eeg_data(data_fname='', meta_fname=''):
     return data, meta
 
 
-def load_meg_sensors_data():
-    data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
-    meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+def load_meg_sensors_data(data_fname='', meta_fname=''):
+    if data_fname == '':
+        data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+    if meta_fname == '':
+        meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
     data = np.load(data_fname, mmap_mode='r')
     meta = np.load(meta_fname)
     return data, meta
