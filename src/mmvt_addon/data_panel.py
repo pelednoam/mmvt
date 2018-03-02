@@ -1246,8 +1246,8 @@ def init(addon):
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=items, description="subcortical fMRI files")
 
-    init_eeg()
     init_meg()
+    init_eeg()
     init_electrodes_positions_list()
     init_electrodes_data()
     if bpy.data.objects.get('Deep_electrodes'):

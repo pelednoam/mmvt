@@ -855,6 +855,8 @@ def calc_colors(vert_values, data_min, colors_ratio, cm=None):
 
 
 def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     if use_abs:
         if bigger_or_equall:
             valid_verts = np.where(np.abs(values) >= threshold)[0]
