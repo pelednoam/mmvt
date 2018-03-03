@@ -544,14 +544,12 @@ class Filtering(bpy.types.Operator):
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
             self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
-            data_fname, meta_fname, _ = _addon().get_eeg_sensors_fnames()
-            data, meta = _addon().load_eeg_sensors_data(data_fname, meta_fname)
+            data, meta = _addon().get_eeg_sensors_data()
             self.filter_electrodes_or_sensors('EEG_sensors', data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
         elif self.type_of_filter == 'MEG_sensors':
-            data_fname, meta_fname, _ = _addon().get_meg_sensors_fnames()
-            data, meta = _addon().load_meg_sensors_data(data_fname, meta_fname)
+            data, meta = _addon().get_meg_sensors_data()
             self.filter_electrodes_or_sensors('MEG_sensors', data, meta)
 
         if bpy.context.scene.filter_items_one_by_one:

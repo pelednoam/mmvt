@@ -193,8 +193,8 @@ recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 what_is_colored = coloring_panel.what_is_colored
 set_use_abs_threshold = coloring_panel.set_use_abs_threshold
-get_meg_sensors_fnames = coloring_panel.get_meg_sensors_fnames
-get_eeg_sensors_fnames = coloring_panel.get_eeg_sensors_fnames
+color_eeg_sensors = coloring_panel.color_eeg_sensors
+color_meg_sensors = coloring_panel.color_meg_sensors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

@@ -36,16 +36,12 @@ def get_activity_values():
     return ColoringMakerPanel.activity_values
 
 
-def get_meg_sensors_fnames():
-    return (ColoringMakerPanel.meg_sensors_data_fname,
-        ColoringMakerPanel.meg_sensors_meta_data_fname,
-        ColoringMakerPanel.meg_sensors_data_minmax_fname)
+def get_eeg_sensors_data():
+    return ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta
 
 
-def get_eeg_sensors_fnames():
-    return (ColoringMakerPanel.eeg_sensors_data_fname,
-        ColoringMakerPanel.eeg_sensors_meta_data_fname,
-        ColoringMakerPanel.eeg_sensors_data_minmax_fname)
+def get_meg_sensors_data():
+    return ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta
 
 
 def plot_meg(t=-1, save_image=False, view_selected=False):
@@ -1407,8 +1403,7 @@ def color_meg_sensors():
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_meg_sensors_data(
-        ColoringMakerPanel.meg_sensors_data_fname, ColoringMakerPanel.meg_sensors_meta_data_fname)
+    data, meta = get_meg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
@@ -1423,12 +1418,11 @@ def color_eeg_sensors():
     _addon().show_hide_eeg()
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_eeg_sensors_data(
-        ColoringMakerPanel.eeg_sensors_data_fname, ColoringMakerPanel.eeg_sensors_meta_data_fname)
+    data, meta = get_eeg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
-        data_min, data_max = ColoringMakerPanel.eeg_data_minmax
+        data_min, data_max = ColoringMakerPanel.eeg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('EEG conditions difference')
@@ -2133,7 +2127,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fmri_activity_data_minmax, fmri_activity_colors_ratio = None, None
     meg_activity_data_minmax, meg_activity_colors_ratio = None, None
     meg_data_min, meg_data_max = 0, 0
-    eeg_data_minmax, eeg_colors_ratio = None, None
+    eeg_sensors_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
     labels_plotted = []
     static_conn = None
@@ -2158,9 +2152,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     contours_coloring_exist = False
     meg_labels_data_exist = False
     meg_labels_data_minmax_exist = False
-    eeg_sensors_data_fname = ''
-    eeg_sensors_meta_data_fname = ''
-    eeg_sensors_data_minmax_fname = ''
+    eeg_sensors_data, eeg_sensors_meta, eeg_sensors_data_minmax = None, None, None
+    meg_sensors_data, meg_sensors_meta, meg_sensors_data_minmax = None, None, None
     no_plotting = False
 
     stc = None
@@ -2316,18 +2309,16 @@ def init_meg_sensors():
         return
     # todo: should be according to the data panel
     meg_data_files = mu.namebase(meg_data_files[0])
-    ColoringMakerPanel.meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
-    ColoringMakerPanel.meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_data_files))
-    ColoringMakerPanel.meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_data_files[:-5]))
-    # data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data.npy')
-    # meta_data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data_meta.npz')
-    # data_minmax_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_minmax.npy')
-    # todo: check that the Blender objects exist too
-    if all([op.isfile(f) for f in [ColoringMakerPanel.meg_sensors_data_fname,
-                                   ColoringMakerPanel.meg_sensors_meta_data_fname,
-                                   ColoringMakerPanel.meg_sensors_data_minmax_fname]]):
+    meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
+    meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_data_files))
+    meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_data_files[:-5]))
+    if all([op.isfile(f) for f in [
+            meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname]]) and \
+            bpy.data.objects.get('MEG_sensors') is not None:
         ColoringMakerPanel.meg_sensors_exist = True
-        data_min, data_max = np.load(ColoringMakerPanel.meg_sensors_data_minmax_fname)
+        ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
+            _addon().load_meg_sensors_data(meg_sensors_data_fname, meg_sensors_meta_data_fname)
+        data_min, data_max = np.load(meg_sensors_data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
         ColoringMakerPanel.activity_types.append('meg_sensors')
@@ -2340,20 +2331,18 @@ def init_eeg_sensors():
         return
     # todo: should be according to the data panel
     eeg_data_files = mu.namebase(eeg_data_files[0])
-    ColoringMakerPanel.eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(eeg_data_files))
-    ColoringMakerPanel.eeg_sensors_meta_data_fname = op.join(user_fol, 'eeg', '{}_meta.npz'.format(eeg_data_files))
-    ColoringMakerPanel.eeg_sensors_data_minmax_fname = op.join(user_fol, 'eeg', '{}_minmax.npy'.format(eeg_data_files[:-5]))
-    # data_fname = op.join(user_fol, 'eeg', 'eeg_sensors_data.npy')
-    # meta_data_fname = op.join(user_fol, 'eeg', 'eeg_sensors_data_meta.npz')
-    # data_minmax_fname = op.join(user_fol, 'eeg', 'eeg_data_minmax.npy')
-    # todo: check that the Blender objects exist too
-    if all([op.isfile(f) for f in [ColoringMakerPanel.eeg_sensors_data_fname,
-                                   ColoringMakerPanel.eeg_sensors_meta_data_fname,
-                                   ColoringMakerPanel.eeg_sensors_data_minmax_fname]]):
+    eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(eeg_data_files))
+    eeg_sensors_meta_data_fname = op.join(user_fol, 'eeg', '{}_meta.npz'.format(eeg_data_files))
+    eeg_sensors_data_minmax_fname = op.join(user_fol, 'eeg', '{}_minmax.npy'.format(eeg_data_files[:-5]))
+    if all([op.isfile(f) for f in
+            [eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname]]) and \
+            bpy.data.objects.get('EEG_sensors', None) is  not None:
         ColoringMakerPanel.eeg_exist = True
-        data_min, data_max = np.load(ColoringMakerPanel.eeg_sensors_data_minmax_fname)
+        ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta, = \
+            _addon().load_eeg_sensors_data(eeg_sensors_data_fname, eeg_sensors_meta_data_fname)
+        data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
         ColoringMakerPanel.eeg_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.eeg_data_minmax = (data_min, data_max)
+        ColoringMakerPanel.eeg_sensors_data_minmax = (data_min, data_max)
         ColoringMakerPanel.activity_types.append('eeg_sensors')
 
 

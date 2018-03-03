@@ -417,11 +417,11 @@ def appearance_draw(self, context):
     #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
     #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
-    if bpy.data.objects.get(_addon().electrodes_panel_parent):
+    if bpy.data.objects.get(_addon().electrodes_panel_parent) and is_pial():
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
-    if bpy.data.objects.get('MEG_sensors'):
+    if bpy.data.objects.get('MEG_sensors') and is_pial():
         show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
-    if bpy.data.objects.get('EEG_sensors'):
+    if bpy.data.objects.get('EEG_sensors') and is_pial():
         show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
