@@ -24,6 +24,10 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
               overwrite, n_jobs)
 
 
+def change_stc_according_to_source():
+    pass
+
+
 def morph_sensors_to_template(morph_from, morph_to, modality='meg'):
     sensors = np.load(op.join(MMVT_DIR, morph_from, modality, f'{modality}_sensors_positions.npz'))
     coords = sensors['pos']

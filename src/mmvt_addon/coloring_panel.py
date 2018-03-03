@@ -2305,6 +2305,8 @@ def init_electrodes():
 def init_meg_sensors():
     user_fol = mu.get_user_fol()
     meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    if len(meg_data_files) == 0:
+        return
     # todo: should be according to the data panel
     meg_data_files = mu.namebase(meg_data_files[0])
     ColoringMakerPanel.meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
@@ -2327,6 +2329,8 @@ def init_meg_sensors():
 def init_eeg_sensors():
     user_fol = mu.get_user_fol()
     eeg_data_files = glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))
+    if len(eeg_data_files) == 0:
+        return
     # todo: should be according to the data panel
     eeg_data_files = mu.namebase(eeg_data_files[0])
     ColoringMakerPanel.eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(eeg_data_files))

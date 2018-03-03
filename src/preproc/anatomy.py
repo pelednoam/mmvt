@@ -717,15 +717,15 @@ def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
             flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
             fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
                                          if ind not in flat_patch_cut_vertices_hemi])
-    params = [(subject, hemi, print_only) for hemi in utils.HEMIS]
+    params = [(subject, hemi, overwrite, print_only) for hemi in utils.HEMIS]
     results = utils.run_parallel(_flat_brain_parallel, params, n_jobs)
     return all(results)
 
 
 def _flat_brain_parallel(p):
-    subject, hemi, print_only = p
+    subject, hemi, overwrite, print_only = p
     flat_patch_fname = fu.get_flat_patch_fname(subject, hemi, SUBJECTS_DIR)
-    if not op.isfile(flat_patch_fname):
+    if not op.isfile(flat_patch_fname) or overwrite:
         flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR, print_only)
     return write_flat_brain_patch(subject, hemi, flat_patch_fname)
 

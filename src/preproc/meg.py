@@ -2707,14 +2707,13 @@ def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold
     clusters_fol = op.join(clusters_root_fol, clusters_name)
     # data_minmax = utils.get_max_abs(utils.min_stc(stc), utils.max_stc(stc))
     # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-    factor = 9 # to get nAmp
-    threshold *= np.power(10, factor)
+    threshold *= np.power(10, 9) # nAmp
     min_cluster_max = max(threshold, min_cluster_max)
     clusters_labels = utils.Bag(
         dict(stc_name=stc_name, threshold=threshold, time=time_index, label_name_template=label_name_template, values=[],
              min_cluster_max=min_cluster_max, min_cluster_size=min_cluster_size, clusters_label=clusters_label))
     for hemi in utils.HEMIS:
-        stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, factor)
+        stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, 9)
         clusters, _ = mne_clusters._find_clusters(stc_data, threshold, connectivity=connectivity[hemi])
         if len(clusters) == 0:
             print('No clusters where found for {}-{}!'.format(stc_name, hemi))
@@ -2726,7 +2725,7 @@ def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold
             print("Can't find overlapped_labeles in {}-{}!".format(stc_name, hemi))
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
-                subject, mri_subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
+                subject, mri_subject, stc, hemi, clusters_labels_hemi, clusters_fol, extract_mode[0], src, inv_fname,
                 time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG, recreate_src_spacing=recreate_src_spacing)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(clusters_root_fol, 'clusters_labels_{}.pkl'.format(stc_name, atlas))
@@ -2775,7 +2774,7 @@ def load_connectivity(subject):
     return connectivity_per_hemi
 
 
-def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
+def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, clusters_fol, extract_mode='mean_flip',
                                     src=None, inv_fname='', time_index=-1, cluster_max_min=0, fwd_usingMEG=True,
                                     fwd_usingEEG=True, calc_contours=True, recreate_src_spacing='oct6'):
     utils.make_dir(clusters_fol)
@@ -2799,14 +2798,14 @@ def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, f
         if time_index == -1:
             cluster.ts_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
         else:
-            cluster.ts_max = x[time_index] * np.power(10, factor)
+            cluster.ts_max = x[time_index] * np.power(10, 9)
         cluster_name = 'cluster_size_{}_max_{:.2f}_{}.label'.format(cluster.size, cluster.max, cluster.name)
         cluster_label.save(op.join(clusters_fol, cluster_name))
         if np.all(label_data == 0):
             cluster.label_data = None
         else:
             cluster.label_data = np.squeeze(label_data)
-            cluster.label_data *= np.power(10, factor)
+            cluster.label_data *= np.power(10, 9)
             np.save(op.join(time_series_fol, '{}.npy'.format(cluster_name)), cluster.label_data)
     if len(clusters) > 0 and calc_contours:
         new_atlas_name = 'clusters-{}-{}'.format(utils.namebase(clusters_fol), hemi)

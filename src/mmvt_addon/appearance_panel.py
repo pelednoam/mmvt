@@ -42,6 +42,12 @@ def change_view3d():
             # break
 
 
+def panels_background_color_update(self, context):
+    context.user_preferences.themes[0].image_editor.space.back = \
+        context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = \
+        bpy.context.scene.panels_background_color
+
+
 def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 
@@ -423,6 +429,9 @@ def appearance_draw(self, context):
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
+    layout.prop(context.scene, 'show_appearance_settings', text='Show settings')
+    if bpy.context.scene.show_appearance_settings:
+        layout.prop(context.scene, 'panels_background_color', text='Background')
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
@@ -686,6 +695,10 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
 bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.show_appearance_settings = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.panels_background_color = bpy.props.FloatVectorProperty(
+    name="object_color", subtype='COLOR', default=(0, 0, 0), min=0.0, max=1.0, description="color picker",
+    update=panels_background_color_update)
 
 
 class SnapCursor(bpy.types.Operator):
@@ -782,6 +795,7 @@ def init(addon):
     # show_rois()
     loc_val = 0 #5
     AppearanceMakerPanel.flat_map_exists = True
+    bpy.context.scene.show_appearance_settings = False
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
             bpy.data.objects['inflated_rh'].location[0] = loc_val
