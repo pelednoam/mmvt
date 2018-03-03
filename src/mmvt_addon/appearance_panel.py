@@ -501,7 +501,7 @@ class SelectionListener(bpy.types.Operator):
                 _addon().create_slices(pos=tkreg_ras)
                 _addon().save_cursor_position()
                 clear_slice()
-            if coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
+            if bpy.context.scene.find_closest_label_on_click: # coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
                 _addon().find_closest_label()
 
         if self.right_clicked:

@@ -52,6 +52,19 @@ def set_t1_value():
         bpy.context.scene.t1_value = 0
 
 
+def subject_annot_files_update(self, context):
+    d = {}
+    user_fol = mu.get_user_fol()
+    contours_template = op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
+            bpy.context.scene.subject_annot_files, '{hemi}'))
+    if mu.both_hemi_files_exist(contours_template):
+        for hemi in mu.HEMIS:
+            d[hemi] = np.load(contours_template.format(hemi=hemi))
+        WhereAmIPanel.labels_contours = d
+    else:
+        WhereAmIPanel.labels_contours = None
+
+
 def where_i_am_draw(self, context):
     layout = self.layout
     layout.label(text='tkreg RAS (surface):')
@@ -89,7 +102,9 @@ def where_i_am_draw(self, context):
         col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
         if bpy.context.scene.closest_label_output != '':
             col.label(text=bpy.context.scene.closest_label_output)
-
+        col.prop(context.scene, 'find_closest_label_on_click', text='Find each click on brain')
+        if WhereAmIPanel.labels_contours is not None:
+            col.prop(context.scene, 'plot_closest_label_contour', text="Plot label's contour")
     col = layout.box().column()
     if not GrowLabel.running:
         col.label(text='Create a new label')
@@ -335,9 +350,12 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 def find_closest_label():
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    closest_mesh_name, vertex_ind, vertex_co = \
-        _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
-    hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    if bpy.context.scene.cursor_is_snapped:
+        vertex_ind, hemi = _addon().get_closest_vertex_and_mesh_to_cursor()
+    else:
+        closest_mesh_name, vertex_ind, _ = \
+            _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
+        hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
     hemi = 'rh' if 'rh' in hemi else 'lh'
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
@@ -347,20 +365,16 @@ def find_closest_label():
         if len(vert_labels) > 0:
             label = vert_labels[0]
             bpy.context.scene.closest_label_output = label.name
-            return label.name, hemi
-        else:
-            return 'unknown', hemi
-    else:
-        # todo: maybe we should return something else here...
-        return 'unknown', hemi
+            plot_closest_label_contour(label.name, hemi)
 
 
 def plot_closest_label_contour(label, hemi):
-    contours_files = glob.glob(op.join(mu.get_user_fol(), '*contours_lh.npz'))
-    contours_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
-    if bpy.context.scene.subject_annot_files in contours_names:
-        bpy.context.scene.contours_coloring = bpy.context.scene.subject_annot_files
-        _addon().color_contours(label, hemi)
+    # contours_files = glob.glob(op.join(mu.get_user_fol(), 'labels', '*contours_lh.npz'))
+    # contours_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+    # if bpy.context.scene.subject_annot_files in contours_names:
+    if WhereAmIPanel.labels_contours is not None:
+        # bpy.context.scene.contours_coloring = bpy.context.scene.subject_annot_files
+        _addon().color_contours([label], hemi, WhereAmIPanel.labels_contours, False, False, (0, 0, 1))
     else:
         mu.create_labels_contours()
 
@@ -714,9 +728,7 @@ class ClosestLabel(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        label, hemi = find_closest_label()
-        if label != 'unknown':
-            plot_closest_label_contour(label, hemi)
+        find_closest_label()
         return {"FINISHED"}
 
 
@@ -813,6 +825,9 @@ bpy.types.Scene.closest_label = bpy.props.StringProperty()
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
 bpy.types.Scene.cut_type = 'sagital'
+bpy.types.Scene.find_closest_label_on_click = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.plot_closest_label_contour = bpy.props.BoolProperty(default=False)
+
 # bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
 
@@ -837,6 +852,7 @@ class WhereAmIPanel(bpy.types.Panel):
     slices_cursor_pos = {}
     slicer_state = None
     annot_files = []
+    labels_contours = None
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -862,8 +878,10 @@ def init(addon):
             if len(annot_files) > 0:
                 WhereAmIPanel.annot_files = files_names = [mu.namebase(fname)[3:] for fname in annot_files]
                 items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
-                bpy.context.scene.subject_annot_files = files_names[0]
+                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(
+                    items=items, update=subject_annot_files_update)
+                ind = mu.index_in_list(bpy.context.scene.atlas, files_names, 0)
+                bpy.context.scene.subject_annot_files = files_names[ind]
             else:
                 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
                 # bpy.context.scene.subject_annot_files = ''
@@ -871,6 +889,8 @@ def init(addon):
             bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
+        bpy.context.scene.find_closest_label_on_click = False
+        bpy.context.scene.plot_closest_label_contour = False
 
         mri_data_fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format('mri'))
         if op.isfile(mri_data_fname):

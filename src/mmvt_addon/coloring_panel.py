@@ -648,20 +648,23 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
                     selected_contours[np.where(contours == label_ind[0][0] + 1)] = \
                         label_ind[0][0] + 1 if specific_color is None else [1, *specific_color]
+                else:
+                    print("Can't find {} in the labels contours!".format(specific_label))
         else:
             selected_contours = labels_contours[hemi]['contours']
         mesh = mu.get_hemi_obj(hemi).data
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
         mesh.vertex_colors['contours'].active_render = True
         color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate,
-                        coloring_layer='contours')
+                        coloring_layer='contours', check_valid_verts=False)
     ColoringMakerPanel.what_is_colored.add(WIC_CONTOURS)
-    if bpy.context.scene.contours_coloring in _addon().get_annot_files():
-        bpy.context.scene.subject_annot_files = bpy.context.scene.contours_coloring
+
+    # if bpy.context.scene.contours_coloring in _addon().get_annot_files():
+    #     bpy.context.scene.subject_annot_files = bpy.context.scene.contours_coloring
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
-                    save_prev_colors=False, coloring_layer='Col', use_abs=None):
+                    save_prev_colors=False, coloring_layer='Col', use_abs=None, check_valid_verts=True):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     if hemi in mu.HEMIS:
@@ -674,7 +677,8 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min,
-                              colors_ratio, use_abs, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer)
+                              colors_ratio, use_abs, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer,
+                              check_valid_verts=check_valid_verts)
 
 
 @mu.timeit
@@ -890,14 +894,14 @@ def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
                               colors_ratio=None, use_abs=True, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col'):
+                              coloring_layer='Col', check_valid_verts=True):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
-    if len(valid_verts) == 0:
-        print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
+    if len(valid_verts) == 0 and check_valid_verts:
+        # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
         return
     colors_picked_from_cm = False
     # cm = _addon().get_cm()

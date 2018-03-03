@@ -2132,6 +2132,7 @@ def create_labels_contours():
     subject, atlas = get_user(), bpy.context.scene.subject_annot_files
     cmd = '{} -m src.preproc.anatomy -s {} -a {} -f create_spatial_connectivity,calc_labeles_contours --ignore_missing 1'.format(
         bpy.context.scene.python_cmd, subject, atlas)
+    # get_code_root_dir
     run_command_in_new_thread(cmd, False)
 
 
@@ -2276,3 +2277,10 @@ def get_vert_co(vert_ind, hemi):
     vertex_co = me.vertices[vert_ind].co * obj.matrix_world
     bpy.data.meshes.remove(me)
     return vertex_co
+
+
+def index_in_list(item, lst, default=-1):
+    if item in lst:
+        return lst.index(item)
+    else:
+        return default
