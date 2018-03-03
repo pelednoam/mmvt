@@ -299,6 +299,8 @@ def filter_view_type_update(self, context):
 def surface_type_update(self, context):
     if AppearanceMakerPanel.no_surface_type_update:
         return
+    if bpy.data.objects['inflated_lh'].location[0] != 0:
+        _addon().set_normal_view()
     # tmp = bpy.context.scene.surface_type
     inflated = bpy.context.scene.surface_type == 'inflated'
     # todo: why we need the for loop here?!?
@@ -424,7 +426,7 @@ def appearance_draw(self, context):
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    if bpy.context.scene.hemis_distance == 0:
+    if bpy.context.scene.hemis_distance == 0 and bpy.data.objects['inflated_lh'].location[0] == 0:
         layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(

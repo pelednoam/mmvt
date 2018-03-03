@@ -243,6 +243,7 @@ view_all = show_hide_panel.view_all
 rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
 show_hemis = show_hide_panel.show_hemis
+set_normal_view = show_hide_panel.set_normal_view
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d

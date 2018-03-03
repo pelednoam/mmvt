@@ -107,6 +107,7 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
             _addon().set_colormap('YlOrRd')
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_prec(2)
+        _addon().set_colorbar_title('MEG')
     if threshold > data_max:
         print('threshold > data_max!')
         threshold = bpy.context.scene.coloring_threshold = 0
@@ -623,7 +624,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True, change_colorbar=True):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=True):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if labels_contours is None:
