@@ -71,6 +71,11 @@ def _clusters_update():
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
             plot_blob(cluster, faces_verts, True)
+    if bpy.context.scene.plot_fmri_cluster_contours:
+        inter_labels = [inter_label['name'] for inter_label in cluster['intersects']]
+        _addon().color_contours(
+            inter_labels, cluster.hemi, None, False, False, specific_color=bpy.context.scene.mri_cluster_contours_color)
+
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
 
@@ -170,7 +175,10 @@ def find_closest_cluster(only_within=False):
             bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
             fMRIPanel.cluster_labels = closest_cluster
             print('Closest cluster: {}, dist: {}'.format(bpy.context.scene.fmri_clusters, min_dist))
-            # _clusters_update()
+            if bpy.context.scene.plot_fmri_cluster_contours:
+                inter_labels = [inter_label['name'] for inter_label in closest_cluster['intersects']]
+                _addon().color_contours(inter_labels, closest_cluster.hemi, None, False, False)
+        # _clusters_update()
         else:
             print('only within: dist to big ({})'.format(min_dist))
 
@@ -466,12 +474,17 @@ def fMRI_draw(self, context):
         layout.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
         layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
+    row = layout.row(align=True)
+    row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
+    row.prop(context.scene, 'mri_cluster_contours_color', text="")
     layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
+
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     row = layout.row(align=True)
     row.label(text='Sort: ')
     row.prop(context.scene, 'fmri_how_to_sort', expand=True)
-    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and not fMRIPanel.dont_show_clusters_info:
+    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and \
+            not fMRIPanel.dont_show_clusters_info:
         if 'size' not in fMRIPanel.cluster_labels:
             fMRIPanel.cluster_labels['size'] = len(fMRIPanel.cluster_labels['vertices'])
         blob_size = fMRIPanel.cluster_labels['size']
@@ -628,6 +641,10 @@ try:
     bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
         default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
     bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.plot_fmri_cluster_contours = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.mri_cluster_contours_color = bpy.props.FloatVectorProperty(
+        name="contours_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
+
 except:
     pass
 
@@ -676,6 +693,7 @@ def init(addon):
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
+    bpy.context.scene.plot_fmri_cluster_contours = False
 
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist

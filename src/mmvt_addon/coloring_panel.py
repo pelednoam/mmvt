@@ -624,7 +624,8 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=True):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=True,
+                   specific_color=None):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if labels_contours is None:
@@ -641,11 +642,12 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
         if specific_hemi != 'both' and hemi != specific_hemi:
             selected_contours = np.zeros(contours.shape)
         elif len(specific_labels) > 0:
-            selected_contours = np.zeros(contours.shape)
+            selected_contours = np.zeros(contours.shape) if specific_color is None else np.zeros((contours.shape[0], 4))
             for specific_label in specific_labels:
                 label_ind = np.where(np.array(labels_contours[hemi]['labels']) == specific_label)
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
-                    selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
+                    selected_contours[np.where(contours == label_ind[0][0] + 1)] = \
+                        label_ind[0][0] + 1 if specific_color is None else [1, *specific_color]
         else:
             selected_contours = labels_contours[hemi]['contours']
         mesh = mu.get_hemi_obj(hemi).data
