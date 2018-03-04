@@ -73,8 +73,10 @@ def _clusters_update():
             plot_blob(cluster, faces_verts, True)
     if bpy.context.scene.plot_fmri_cluster_contours:
         inter_labels = [inter_label['name'] for inter_label in cluster['intersects']]
+        atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
         _addon().color_contours(
-            inter_labels, cluster.hemi, None, False, False, specific_color=bpy.context.scene.mri_cluster_contours_color)
+            inter_labels, cluster.hemi, None, False, False,
+            specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
 
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
@@ -177,7 +179,9 @@ def find_closest_cluster(only_within=False):
             print('Closest cluster: {}, dist: {}'.format(bpy.context.scene.fmri_clusters, min_dist))
             if bpy.context.scene.plot_fmri_cluster_contours:
                 inter_labels = [inter_label['name'] for inter_label in closest_cluster['intersects']]
-                _addon().color_contours(inter_labels, closest_cluster.hemi, None, False, False)
+                atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
+                _addon().color_contours(inter_labels, closest_cluster.hemi, None, False, False,
+                                        specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
         # _clusters_update()
         else:
             print('only within: dist to big ({})'.format(min_dist))
@@ -476,7 +480,7 @@ def fMRI_draw(self, context):
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
     row = layout.row(align=True)
     row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
-    row.prop(context.scene, 'mri_cluster_contours_color', text="")
+    row.prop(context.scene, 'fmri_cluster_contours_color', text="")
     layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
 
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
@@ -642,7 +646,7 @@ try:
         default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
     bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.plot_fmri_cluster_contours = bpy.props.BoolProperty(default=False)
-    bpy.types.Scene.mri_cluster_contours_color = bpy.props.FloatVectorProperty(
+    bpy.types.Scene.fmri_cluster_contours_color = bpy.props.FloatVectorProperty(
         name="contours_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
 
 except:

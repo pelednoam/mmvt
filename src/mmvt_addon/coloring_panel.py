@@ -152,19 +152,24 @@ def can_color_obj(obj):
 
 
 def contours_coloring_update(self, context):
-    user_fol = mu.get_user_fol()
     ColoringMakerPanel.no_plotting = True
-    d = {}
+    ColoringMakerPanel.labels_contours = labels_contours = load_labels_contours()
     items = [('all labels', 'all labels', '', 0)]
     for hemi in mu.HEMIS:
-        d[hemi] = np.load(op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
-            bpy.context.scene.contours_coloring, hemi)))
-        ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
-        items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
+        ColoringMakerPanel.labels[hemi] = labels_contours[hemi]['labels']
+        items.extend([(c, c, '', ind + 1) for ind, c in enumerate(labels_contours[hemi]['labels'])])
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
-    ColoringMakerPanel.labels_contours = d
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
     ColoringMakerPanel.no_plotting = False
+
+
+def load_labels_contours(atlas=''):
+    labels_contours = {}
+    if atlas == '':
+        atlas = bpy.context.scene.contours_coloring
+    for hemi in mu.HEMIS:
+        labels_contours[hemi] = np.load(op.join(mu.get_user_fol(), 'labels', '{}_contours_{}.npz'.format(atlas, hemi)))
+    return labels_contours
 
 
 def labels_contours_update(self, context):
@@ -621,9 +626,11 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
 
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=True,
-                   specific_color=None):
+                   specific_color=None, atlas=''):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
+    if atlas != '' and atlas != bpy.context.scene.contours_coloring and atlas in ColoringMakerPanel.existing_contoures:
+        bpy.context.scene.contours_coloring = atlas
     if labels_contours is None:
         labels_contours = ColoringMakerPanel.labels_contours
     contour_max = max([labels_contours[hemi]['max'] for hemi in mu.HEMIS])
@@ -2155,7 +2162,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     eeg_sensors_data, eeg_sensors_meta, eeg_sensors_data_minmax = None, None, None
     meg_sensors_data, meg_sensors_meta, meg_sensors_data_minmax = None, None, None
     no_plotting = False
-
+    existing_contoures = []
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
@@ -2351,7 +2358,8 @@ def init_contours_coloring():
     contours_files = glob.glob(op.join(user_fol, 'labels', '*contours_lh.npz'))
     if len(contours_files) > 0:
         ColoringMakerPanel.contours_coloring_exist = True
-        files_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+        ColoringMakerPanel.existing_contoures = files_names = \
+            [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=items, update=contours_coloring_update)
         bpy.context.scene.contours_coloring = files_names[0]

@@ -224,7 +224,7 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
         return False
     surf_full_input_fname = utils.select_one_file(surf_full_input_fnames, surf_full_input_fname, 'fMRI surf')
     contrast, connectivity, verts = init_clusters(subject, surf_full_input_fname)
-    clusters_labels = dict(threshold=t_val, values=[])
+    clusters_labels = dict(threshold=t_val, values=[], atlas=atlas)
     for hemi in utils.HEMIS:
         clusters, _ = mne_clusters._find_clusters(contrast[hemi], t_val, connectivity=connectivity[hemi])
         # blobs_output_fname = op.join(input_fol, 'blobs_{}_{}.npy'.format(contrast_name, hemi))
