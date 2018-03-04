@@ -325,7 +325,7 @@ def surface_type_update(self, context):
         show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
         show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
 
-    mu.set_zoom_level(bpy.context.scene.surface_type, 1)
+    # mu.set_zoom_level(bpy.context.scene.surface_type, 1)
     if bpy.context.scene.surface_type == 'inflated':
         set_inflated_ratio(0)
 

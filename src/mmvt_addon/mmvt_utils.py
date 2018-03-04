@@ -1699,7 +1699,7 @@ def rotate_view3d(rotation_in_quaternions):
 #
 
 def set_zoom_level(surface, relative=1, split=False):
-    surface_zoom_level = {'pial': 11.6, 'inflated': 20.7, 'flat_map': 23.0}
+    surface_zoom_level = {'pial': 17.36, 'inflated': 20.7, 'flat_map': 23.0}
     surface_split_zoom_level = {'pial': 22.7, 'inflated': 32.7}
     zoom_level = surface_zoom_level[surface]
     if split:

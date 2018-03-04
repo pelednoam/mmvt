@@ -521,6 +521,10 @@ def get_window_length(obj_name):
     return N
 
 
+def subselect_update(self=None, context=None):
+    context.screen.areas[0].spaces[0].dopesheet.filter_fcurve_name = context.scene.filter_fcurves
+
+
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
     items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2)])
            # ("spec_cond", "Specific condition", "", 3)], description="Selection type")
@@ -532,6 +536,7 @@ bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
 bpy.types.Scene.graph_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
 bpy.types.Scene.find_curves_sep_auto = bpy.props.BoolProperty()
+bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:",update=subselect_update)
 
 
 
@@ -586,6 +591,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllEEG.bl_idname, text="EEG sensors", icon='BORDER_RECT')
         if SelectionMakerPanel.connection_files_exist:
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
+
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
         row = layout.row(align=True)
@@ -597,7 +603,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(MaxMinGraphPanel.bl_idname,
                         text="{} graph".format('Maximize' if bpy.context.scene.graph_max_min else 'Minimize'),
                         icon='TRIA_UP' if bpy.context.scene.graph_max_min else 'TRIA_DOWN')
-
+        layout.prop(context.scene, "filter_fcurves", text="Show curves with name:")
 
         # if not SelectionMakerPanel.dt is None:
         #     points_in_sec = int(1 / SelectionMakerPanel.dt)
