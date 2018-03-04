@@ -195,6 +195,8 @@ what_is_colored = coloring_panel.what_is_colored
 set_use_abs_threshold = coloring_panel.set_use_abs_threshold
 color_eeg_sensors = coloring_panel.color_eeg_sensors
 color_meg_sensors = coloring_panel.color_meg_sensors
+get_meg_sensors_data = coloring_panel.get_meg_sensors_data
+get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw

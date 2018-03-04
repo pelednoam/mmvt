@@ -2015,25 +2015,6 @@ def draw(self, context):
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
                 col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
-        if ColoringMakerPanel.contours_coloring_exist:
-            col = layout.box().column()
-            col.prop(context.scene, 'contours_coloring', '')
-            col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
-            row = col.row(align=True)
-            row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
-            row.prop(context.scene, 'labels_contours', '')
-            row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
-        if manually_color_files_exist:
-            col = layout.box().column()
-            # col.label('Manual coloring files')
-            col.prop(context.scene, "coloring_files", text="")
-            col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
-        if len(ColoringMakerPanel.labels_plotted) > 0:
-            box = layout.box()
-            col = box.column()
-            for label, color in ColoringMakerPanel.labels_plotted:
-                mu.add_box_line(col, label.name, percentage=1)
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
@@ -2069,6 +2050,27 @@ def draw(self, context):
         col.prop(context.scene, 'connectivity_degree_threshold_use_abs', text="Use connectivity absolute value")
         col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
         col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
+
+    if faces_verts_exist:
+        if ColoringMakerPanel.contours_coloring_exist:
+            col = layout.box().column()
+            col.prop(context.scene, 'contours_coloring', '')
+            col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
+            row = col.row(align=True)
+            row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
+            row.prop(context.scene, 'labels_contours', '')
+            row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
+        if manually_color_files_exist:
+            col = layout.box().column()
+            # col.label('Manual coloring files')
+            col.prop(context.scene, "coloring_files", text="")
+            col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
+        if len(ColoringMakerPanel.labels_plotted) > 0:
+            box = layout.box()
+            col = box.column()
+            for label, color in ColoringMakerPanel.labels_plotted:
+                mu.add_box_line(col, label.name, percentage=1)
 
     # layout.label(text="Choose labels' folder")
     # row = layout.row(align=True)
