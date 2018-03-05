@@ -290,7 +290,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         return
     if names is None:
         data, names, conditions = data['data'], data['names'], data['conditions']
-    default_color = (1, 1, 1)
+    # default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     for obj_name, values in zip(names, data):
         if not isinstance(obj_name, str):
@@ -1424,9 +1424,12 @@ def color_meg_sensors():
         data_min, data_max = ColoringMakerPanel.meg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('MEG conditions difference')
     if bpy.context.scene.meg_sensors_conditions != 'diff':
-        pass
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.meg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        _addon().set_colorbar_title('MEG sensors conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -1441,7 +1444,12 @@ def color_eeg_sensors():
         data_min, data_max = ColoringMakerPanel.eeg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('EEG conditions difference')
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        _addon().set_colorbar_title('EEG sensors conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -1482,7 +1490,12 @@ def color_electrodes():
     else:
         data_max, data_min = _addon().get_colorbar_max_min()
         colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('Electordes conditions difference')
+    if bpy.context.scene.electrodes_conditions != 'diff':
+        cond_ind = np.where(conditions == bpy.context.scene.electrodes_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('Electrodes {} condition'.format(conditions[cond_ind]))
+    else:
+        _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
@@ -2032,12 +2045,14 @@ def draw(self, context):
 
     if ColoringMakerPanel.eeg_exist:
         col = layout.box().column()
+        col.prop(context.scene, "eeg_sensors_conditions", text="")
         col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
         # if not bpy.data.objects.get('eeg_helmet', None) is None:
         #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
     if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
+        col.prop(context.scene, "electrodes_conditions", text="")
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         # if ColoringMakerPanel.electrodes_dists_exist:
         #     col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
@@ -2108,6 +2123,8 @@ bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
 bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[])
+bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[])
+bpy.types.Scene.electrodes_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
@@ -2320,6 +2337,13 @@ def init_electrodes():
         ColoringMakerPanel.activity_types.append('elecs')
     if ColoringMakerPanel.electrodes_stim_files_exist:
         ColoringMakerPanel.activity_types.append('stim')
+    if ColoringMakerPanel.electrodes_files_exist:
+        _, _, conditions = _addon().load_electrodes_data()
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(conditions)]
+        items.append(('diff', 'Conditions difference', '', len(conditions) +1))
+        bpy.types.Scene.electrodes_conditions = bpy.props.EnumProperty(items=items, description="Electrodes")
+        bpy.context.scene.electrodes_conditions = 'diff'
+
 
 
 def init_meg_sensors():
@@ -2367,6 +2391,10 @@ def init_eeg_sensors():
         data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
         ColoringMakerPanel.eeg_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.eeg_sensors_data_minmax = (data_min, data_max)
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.eeg_sensors_meta['conditions'])]
+        items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.eeg_sensors_meta['conditions']) +1))
+        bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items, description="EEG sensors")
+        bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
 
 
