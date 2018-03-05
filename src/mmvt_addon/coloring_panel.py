@@ -155,9 +155,10 @@ def contours_coloring_update(self, context):
     ColoringMakerPanel.no_plotting = True
     ColoringMakerPanel.labels_contours = labels_contours = load_labels_contours()
     items = [('all labels', 'all labels', '', 0)]
-    for hemi in mu.HEMIS:
+    for hemi_ind, hemi in enumerate(mu.HEMIS):
         ColoringMakerPanel.labels[hemi] = labels_contours[hemi]['labels']
-        items.extend([(c, c, '', ind + 1) for ind, c in enumerate(labels_contours[hemi]['labels'])])
+        extra = 0 if hemi_ind == 0 else len(labels_contours[mu.HEMIS[0]]['labels'])
+        items.extend([(c, c, '', ind + extra + 1) for ind, c in enumerate(labels_contours[hemi]['labels'])])
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
     ColoringMakerPanel.no_plotting = False
@@ -649,8 +650,14 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
             for specific_label in specific_labels:
                 label_ind = np.where(np.array(labels_contours[hemi]['labels']) == specific_label)
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
-                    selected_contours[np.where(contours == label_ind[0][0] + 1)] = \
-                        label_ind[0][0] + 1 if specific_color is None else [1, *specific_color]
+                    label_ind = label_ind[0][0]
+                    selected_contours[np.where(contours == label_ind + 1)] = \
+                        label_ind + 1 if specific_color is None else [1, *specific_color]
+                    if len(specific_labels) == 1 and 'centers' in labels_contours[hemi]:
+                        vert = labels_contours[hemi]['centers'][label_ind]
+                        _addon().move_cursor_according_to_vert(vert, 'inflated_{}'.format(hemi))
+                        _addon().set_closest_vertex_and_mesh_to_cursor(vert, 'inflated_{}'.format(hemi))
+                        _addon().create_slices()
                 else:
                     print("Can't find {} in the labels contours!".format(specific_label))
         else:

@@ -224,6 +224,8 @@ def inflating_update(self, context):
 
 
 def move_cursor_according_to_vert(vert, obj):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
     scene = bpy.context.scene
     me = obj.to_mesh(scene, True, 'PREVIEW')
     try:
@@ -468,7 +470,8 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
-                if bpy.context.scene.slices_zoom>1:
+                #todo: ???
+                if bpy.context.scene.slices_zoom > 1:
                     ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):

@@ -524,7 +524,7 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
     if pos_was_none:
         pos = calc_tkreg_ras_from_cursor()
     if pos is None:
-        print("Can't calc slices if the cursor isn't snapped and the brain in inflated!")
+        print("Can't calc slices if the cursor isn't snapped and the brain is inflated!")
         return
     # pos = np.array(pos) * 10
     if WhereAmIPanel.run_slices_listener:
@@ -613,12 +613,16 @@ def pos_to_current_inflation(pos):
     closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(pos / 10, mu.HEMIS)
     obj = bpy.data.objects['inflated_{}'.format(closest_mesh_name)]
     me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
-    new_pos = me.vertices[vertex_ind].co
-    # Bug in windows, Blender crashses here
-    # todo: Figure out why...
-    if not mu.IS_WINDOWS:
-        bpy.data.meshes.remove(me)
-    return new_pos
+    try:
+        new_pos = me.vertices[vertex_ind].co
+        # Bug in windows, Blender crashses here
+        # todo: Figure out why...
+        if not mu.IS_WINDOWS:
+            bpy.data.meshes.remove(me)
+        return new_pos
+    except:
+        print('pos_to_current_inflation: Error! ({})'.format(pos))
+        return np.array([0, 0, 0])
 
 
 def set_slicer_state(modality):
