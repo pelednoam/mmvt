@@ -127,12 +127,12 @@ def clear_filtering():
     for parent_name in ['Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         if bpy.data.objects.get(parent_name):
             for obj in bpy.data.objects[parent_name].children:
-                de_select_electrode_and_sensor(obj)
+                de_select_electrode_and_sensor(obj,calc_best_curves_sep=False)
 
     Filtering.filter_objects, Filtering.objects_indices = [], []
 
 
-def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
+def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=True):
     if isinstance(obj, str):
         obj = bpy.data.objects[obj]
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
@@ -147,7 +147,8 @@ def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
         obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
         obj.active_material.diffuse_color = (1, 1, 1)
     obj.select = False
-    _addon().calc_best_curves_sep()
+    if calc_best_curves_sep:
+        _addon().calc_best_curves_sep()
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
@@ -204,16 +205,17 @@ def filter_electrode_or_sensor(elec_name, val=0.3):
 
 def deselect_all_objects():
     for obj in bpy.data.objects:
-        obj.select = False
-        if obj.parent == bpy.data.objects['Subcortical_structures']:
-            obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-        elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
-            obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-        elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
-            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
-        elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
-                bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
-            de_select_electrode_and_sensor(obj)
+        if obj.select:
+            if obj.parent == bpy.data.objects['Subcortical_structures']:
+                obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
+            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
+                obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+            elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
+            elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
+                 bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
+                 de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
+            obj.select = False
 
 
 def filter_items_update(self, context):
@@ -468,7 +470,8 @@ class Filtering(bpy.types.Operator):
             _addon().show_rois()
         else:
             objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
-            _addon().color_objects(objects_names, objects_colors, objects_data)
+            # _addon().color_objects(objects_names, objects_colors, objects_data)
+            _addon().color_contours(specific_labels=objects_names, specific_hemi='both', change_colorbar=False)
 
     def get_objects_to_color(self, names, objects_indices):
         curves_num = 0

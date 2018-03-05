@@ -470,9 +470,8 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
-                #todo: ???
-                if bpy.context.scene.slices_zoom > 1:
-                    ohad(pos/bpy.context.scene.slices_zoom)
+                # if bpy.context.scene.slices_zoom > 1:
+                #     ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
