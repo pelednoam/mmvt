@@ -85,6 +85,7 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
                 except:
                     # in flat map not all the vertices exist
                     # todo handle the case where the brain is sliced and the user click the plane with the image.
+                    print('find_vertex_index_and_mesh_closest_to_cursor: exception in the use_shape_keys loop')
                     break
             bpy.data.meshes.remove(me)
         else:

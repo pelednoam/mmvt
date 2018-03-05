@@ -299,11 +299,13 @@ def select_meg_cluster(event, context, pos=None):
     if not MEGPanel.init:
         return
 
-    area = mu.get_click_area(event, context)
-    if area.type != 'VIEW_3D':
-        return
+    # Should be checked in the appearence modal loop
+    # area = mu.get_click_area(event, context)
+    # if area.type != 'VIEW_3D':
+    #     return
 
-    # if pos is None:    #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
+    # if pos is None:    #
+    # from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
     #     region = [r for r in area.regions if r.type == 'WINDOW'][0]
     #     rv3d = area.spaces.active.region_3d
     #     coord = (event.mouse_x - area.x, event.mouse_y - area.y)

@@ -238,8 +238,9 @@ def move_cursor_according_to_vert(vert, obj):
 def set_inflated_ratio(ratio):
     bpy.context.scene.inflating = ratio
 
-    if not is_rendered():
-        _addon().view_all()
+    # todo: why we need those lines?
+    # if not is_rendered():
+    #     _addon().view_all()
 
 
 def get_inflated_ratio():
@@ -511,7 +512,7 @@ class SelectionListener(bpy.types.Operator):
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
-            cluster = _addon().select_meg_cluster(event, context)
+            # cluster = _addon().select_meg_cluster(event, context)
             # if cluster is not None:
             #     return {'PASS_THROUGH'}
             if len(bpy.context.selected_objects):
@@ -545,7 +546,12 @@ class SelectionListener(bpy.types.Operator):
             else:
                 _addon().clear_electrodes_selection()
                 #todo: should call to _addon().clear_rois_selection()
-        if time.time() - self.press_time > 1:
+                # if is_activity():
+                #     bpy.context.scene.cursor_location = mouse_coo_to_3d_loc(event, context)
+                #     snap_cursor(True)
+                #     _addon().find_closest_label()
+
+        if time.time() - self.press_time > 1 and event.value == 'PRESS':
             if event.type == 'RIGHTMOUSE':
                 self.press_time = time.time()
                 self.right_clicked = True

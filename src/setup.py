@@ -330,7 +330,8 @@ def print_help():
         -v: If True, just check the setup without doing anything (default: False)
         -d: If True, the script will create the default mmvt folders (default: True)
         -f: Set which function (or functions) you want to run (use commas witout spacing) (deafult: all):
-            install_reqs, create_links, copy_resources_files, install_addon, install_blender_reqs, create_links_csv and create_csv
+            install_reqs, create_links, copy_resources_files, install_addon, install_blender_reqs, create_links_csv
+            and create_csv
     '''
     print(str)
 

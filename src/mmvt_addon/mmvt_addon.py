@@ -318,6 +318,7 @@ lock_colorbar_values = colorbar_panel.lock_colorbar_values
 set_colormap = colorbar_panel.set_colormap
 set_colorbar_prec = colorbar_panel.set_colorbar_prec
 get_colorbar_prec = colorbar_panel.get_colorbar_prec
+set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
@@ -587,11 +588,12 @@ def get_panels(first_time=False):
             render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
             slicer_panel, skull_panel, pizco_panel, moshes_panel]#, dell_panel)
-    if not mmvt_utils.IS_WINDOWS and not first_time:
-        panels.append(dell_panel)
+    # if not mmvt_utils.IS_WINDOWS and not first_time:
+    #     panels.append(dell_panel)
     return panels
 
 
+# @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def load_all_panels(addon_prefs=None, first_time=False):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
@@ -608,7 +610,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
         fix_scale()
     show_activity()
     show_pial()
-    view_all()
+    # view_all()
     # show_electrodes(False)
     # show_hide_connections(False)
     # show_activity(False)
@@ -619,8 +621,10 @@ def load_all_panels(addon_prefs=None, first_time=False):
         if bpy.data.objects.get(hemi):
             bpy.data.objects[hemi].hide = True
             bpy.data.objects[hemi].hide_render = True
+    set_colorbar_defaults()
 
 
+# @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def main(addon_prefs=None):
     # atexit.register(my_cleanup_code)
     init(addon_prefs)

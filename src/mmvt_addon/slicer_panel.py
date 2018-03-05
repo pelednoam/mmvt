@@ -50,10 +50,12 @@ def slices_zoom_update(self, context):
 
 
 def slices_zoom():
+    # Really slow
     for area, region in mu.get_images_area_regions():
         override = bpy.context.copy()
         override['area'] = area
         override['region'] = region
+        # override['region_data'].view_distance = bpy.context.scene.slices_zoom
         bpy.ops.image.view_zoom_ratio(override, ratio=bpy.context.scene.slices_zoom)
 
 

@@ -356,6 +356,9 @@ def find_closest_label():
         closest_mesh_name, vertex_ind, _ = \
             _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
         hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    if vertex_ind == -1:
+        print("find_closest_label: Can't find the closest vertex")
+        return
     hemi = 'rh' if 'rh' in hemi else 'lh'
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
@@ -439,7 +442,8 @@ def update_slices(modality='mri', ratio=1, images=None):
                     area.spaces.active.mode = 'MASK'
             area.spaces.active.image = image
             # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
-            bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
+            # Takes ~1s, should find a better way to do it (if at all)
+            # bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
             ind += 1
 
 
@@ -563,7 +567,8 @@ def create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel=False, z
         xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel, zoom_voxels_num=zoom_voxels_num,
         smooth=smooth, clim=clim, plot_cross=plot_cross, mark_voxel=mark_voxel)
     update_slices(modality=modality, ratio=1, images=images)
-    _addon().slices_zoom()
+    #todo: really slow...
+    # _addon().slices_zoom()
 
 
 def save_slices_cursor_pos():

@@ -108,19 +108,19 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
         print('threshold > data_max!')
         threshold = bpy.context.scene.coloring_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
-    set_default_colormap(data_min, data_max)
+    # set_default_colormap(data_min, data_max)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio,
                        threshold, save_image, view_selected, save_prev_colors=save_prev_colors)
     return fname, stc_t_smooth
 
 
-def set_default_colormap(data_min, data_max):
-    # todo: should read default values from ini file
-    if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-        if data_min == 0 or np.sign(data_min) == np.sign(data_max):
-            _addon().set_colormap('YlOrRd')
-        else:
-            _addon().set_colormap('BuPu-YlOrRd')
+# def set_default_colormap(data_min, data_max):
+#     # todo: should read default values from ini file
+#     if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+#         if data_min == 0 or np.sign(data_min) == np.sign(data_max):
+#             _addon().set_colormap('YlOrRd')
+#         else:
+#             _addon().set_colormap('BuPu-YlOrRd')
 
 
 def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False,
@@ -300,15 +300,15 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         t_ind = min(len(values) - 1, cur_frame)
         if values[t_ind].ndim == 0:
             value = values[t_ind]
-        elif bpy.context.scene.selection_type == 'spec_cond':
-            cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
-            if len(cond_inds) == 0:
-                print("!!! Can't find the current condition in the data['conditions'] !!!")
-                return
-            else:
-                cond_ind = cond_inds[0]
-                object_colors = object_colors[:, cond_ind]
-                value = values[t_ind, cond_ind]
+        # elif bpy.context.scene.selection_type == 'spec_cond':
+        #     cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
+        #     if len(cond_inds) == 0:
+        #         print("!!! Can't find the current condition in the data['conditions'] !!!")
+        #         return
+        #     else:
+        #         cond_ind = cond_inds[0]
+        #         object_colors = object_colors[:, cond_ind]
+        #         value = values[t_ind, cond_ind]
         else:
             value = np.diff(values[t_ind])[0] if values.shape[1] > 1 else np.squeeze(values[t_ind])
         # todo: there is a difference between value and real_value, what should we do?
@@ -504,7 +504,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
             labels_min = 0
         _addon().set_colorbar_max_min(labels_max, labels_min)
     colors_ratio = 256 / (labels_max - labels_min)
-    set_default_colormap(labels_min, labels_max)
+    # set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
         if mu.get_hemi_obj(hemi).hide:
             continue
@@ -626,7 +626,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=True,
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
                    specific_color=None, atlas=''):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
@@ -754,12 +754,12 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 bpy.data.scenes['Scene'].frame_preview_end = t
             f = f[:, t]
 
-        # todo: should read default values from ini file
-        if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-            if data_min == 0:
-                _addon().set_colormap('YlOrRd')
-            else:
-                _addon().set_colormap('BuPu-YlOrRd')
+        # # todo: should read default values from ini file
+        # if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+        #     if data_min == 0:
+        #         _addon().set_colormap('YlOrRd')
+        #     else:
+        #         _addon().set_colormap('BuPu-YlOrRd')
 
         color_hemi_data(hemi, f, data_min, colors_ratio, threshold, override_current_mat)
         # if bpy.context.scene.coloring_both_pial_and_inflated:
@@ -1425,6 +1425,8 @@ def color_meg_sensors():
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
     _addon().set_colorbar_title('MEG conditions difference')
+    if bpy.context.scene.meg_sensors_conditions != 'diff':
+        pass
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -2025,6 +2027,7 @@ def draw(self, context):
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
+        col.prop(context.scene, "meg_sensors_conditions", text="")
         col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
 
     if ColoringMakerPanel.eeg_exist:
@@ -2104,6 +2107,7 @@ bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0,
 bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
+bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
@@ -2337,6 +2341,10 @@ def init_meg_sensors():
         data_min, data_max = np.load(meg_sensors_data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.meg_sensors_meta['conditions'])]
+        items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.meg_sensors_meta['conditions']) +1))
+        bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items, description="MEG sensors")
+        bpy.context.scene.meg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('meg_sensors')
 
 
