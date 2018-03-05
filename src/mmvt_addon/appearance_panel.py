@@ -161,7 +161,7 @@ def inflating_update(self, context):
         if bpy.data.objects.get('rh', None) is None:
             return
         if bpy.context.scene.inflating > 0: #flattening
-            _addon().show_coronal(True)
+            # _addon().show_coronal(True)
             # _addon().view_all()
             if AppearanceMakerPanel.flat_map_exists:
                 bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating

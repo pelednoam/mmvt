@@ -199,7 +199,9 @@ def update_cursor():
     if not ElecsPanel.init:
         return
     current_electrode_obj = bpy.data.objects[ElecsPanel.current_electrode]
-    bpy.context.scene.cursor_location = current_electrode_obj.location
+    # Getting the electrode pos after translation if any
+    # loc, rot, scale = bpy.context.object.matrix_world.decompose()
+    bpy.context.scene.cursor_location = current_electrode_obj.matrix_world.to_translation() #current_electrode_obj.location
     if _addon().freeview_panel is not None:
         _addon().freeview_panel.save_cursor_position()
     _addon().set_cursor_pos()
