@@ -4,6 +4,7 @@ import time
 import sys
 import traceback
 import numpy as np
+import os.path as op
 
 import coloring_panel
 
@@ -157,6 +158,11 @@ def hemis_distance_update(self, context):
 
 
 def inflating_update(self, context):
+    _inflating_update()
+
+
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
+def _inflating_update():
     try:
         if bpy.data.objects.get('rh', None) is None:
             return
@@ -186,14 +192,14 @@ def inflating_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = 0
             use_masking = False
 
-        mu.set_zoom_level(bpy.context.scene.surface_type, abs(bpy.context.scene.inflating))
+        # mu.set_zoom_level(bpy.context.scene.surface_type, abs(bpy.context.scene.inflating))
         bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
         bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = False
 
         AppearanceMakerPanel.no_surface_type_update = True
         infl = bpy.context.scene.inflating
         if 0 < infl <= 1.0:
-            bpy.context.scene.surface_type = 'flat_map'
+            bpy.context.scene.surface_type = 'flat'
             _addon().show_coronal(True)
         elif -1.0 < infl <= 0.0:
             bpy.context.scene.surface_type = 'inflated'
@@ -226,12 +232,15 @@ def inflating_update(self, context):
 def move_cursor_according_to_vert(vert, obj):
     if isinstance(obj, str):
         obj = bpy.data.objects[obj]
-    scene = bpy.context.scene
-    me = obj.to_mesh(scene, True, 'PREVIEW')
+
+    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
     try:
         bpy.context.scene.cursor_location = me.vertices[vert].co * obj.matrix_world  # / 10
+        # hemi = 'rh' if 'rh' in obj.name else 'lh' if 'lh' in obj.name else ''
+        # bpy.context.scene.cursor_location = AppearanceMakerPanel.mesh[hemi].vertices[vert].co * obj.matrix_world  # / 10
+        print('cursor_location: {}'.format(bpy.context.scene.cursor_location))
     except:
-        pass
+        print('move_cursor_according_to_vert: Error!')
     bpy.data.meshes.remove(me)
 
 
@@ -302,6 +311,15 @@ def filter_view_type_update(self, context):
 def surface_type_update(self, context):
     if AppearanceMakerPanel.no_surface_type_update:
         return
+    if bpy.context.scene.surface_type == 'pial':
+        bpy.context.scene.inflating = -1
+    elif bpy.context.scene.surface_type == 'inflated':
+        bpy.context.scene.inflating = 0
+    elif bpy.context.scene.surface_type == 'flat':
+        bpy.context.scene.inflating = 1
+    else:
+        print('Wrong value of surface_type! {}'.format(bpy.context.scene.surface_type))
+    return
     if bpy.data.objects['inflated_lh'].location[0] != 0:
         _addon().set_normal_view()
     # tmp = bpy.context.scene.surface_type
@@ -333,7 +351,7 @@ def surface_type_update(self, context):
         set_inflated_ratio(0)
 
         # print('inflated - set_inflated_ratio(0) the actual value={}'.format(bpy.context.scene.inflating))
-    if bpy.context.scene.surface_type == 'flat_map':
+    if bpy.context.scene.surface_type == 'flat':
         set_inflated_ratio(1)
         _addon().show_coronal(True)
         # mu.set_zoom_for_flatmap()
@@ -685,7 +703,7 @@ try:
     _ = bpy.data.shape_keys['Key'].key_blocks["flat"].value
     flat_exist = True
     bpy.types.Scene.surface_type = bpy.props.EnumProperty(
-        items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat_map", "Flat map", "", 3)],
+        items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat", "Flat", "", 3)],
         description="Surface type", update=surface_type_update)
     bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 except:
@@ -843,7 +861,10 @@ def init(addon):
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
     AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
     AppearanceMakerPanel.showing_electrodes = showing_electordes()
+    # AppearanceMakerPanel.mesh = {hemi:mu.get_hemi_obj(hemi).to_mesh(bpy.context.scene, True, 'PREVIEW')
+    #                              for hemi in mu.HEMIS}
     show_inflated()
+    snap_cursor(True)
     AppearanceMakerPanel.init = True
 
     # bpy.data.objects['lh'].hide = True
