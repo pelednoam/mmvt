@@ -170,7 +170,7 @@ def meg_clusters_data_loaded():
         return False
 
 
-def select_roi(roi_name):
+def select_roi(roi_name, change_selected_fcurves_colors=True):
     roi = bpy.data.objects.get(roi_name)
     if roi is None:
         return
@@ -190,7 +190,8 @@ def select_roi(roi_name):
                 fmri_parent_obj.select = True
             else:
                 fcurve.hide = True
-    mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
+    if change_selected_fcurves_colors:
+        mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
     mu.view_all_in_graph_editor()
 
 

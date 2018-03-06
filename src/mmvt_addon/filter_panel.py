@@ -149,37 +149,25 @@ def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
-    ori_closet_object_name = closet_object_name
+    roi_closet_object_name = closet_object_name
     if _addon().is_inflated():
         closet_object_name = 'inflated_{}'.format(closet_object_name)
 
     obj = bpy.data.objects[closet_object_name]
     if bpy.context.scene.selection_type == 'conds':
-        _addon().select_roi(ori_closet_object_name)
+        _addon().select_roi(roi_closet_object_name, change_selected_fcurves_colors=True)
         obj.select = True
         bpy.context.scene.objects.active = obj
     elif bpy.context.scene.selection_type == 'diff':
         if bpy.context.scene.filter_items_one_by_one:
             bpy.data.objects['Brain'].select = True
-            mu.filter_graph_editor(closet_object_name)
-    # if bpy.context.scene.mark_filter_items:
-        # hemi = mu.get_hemi_from_fname(closet_object_name)
-        # _addon().color_contours([closet_object_name], hemi, specific_colors=[0, 0, 1], atlas=bpy.context.scene.atlas,
-        #                         move_cursor=False)
-        # if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-        #     obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
-        # else:
-        #     # todo: should change the code here...
-        #     vertex_colors_prop = 'selected' if mark == 'mark_green' else 'selected_blue'
-        #     vertec_color = (0.0, 1.0, 0.0) if mark == 'mark_green' else (0.0, 0.0, 1.0)
-        #     # selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
-        #     # if _addon().is_inflated():
-        #     if not (vertex_colors_prop in obj.data.vertex_colors):
-        #         color_object_uniformly(obj, vertec_color)
-        #     obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
-        #     # else:
-        #         # obj.active_material = bpy.data.materials[selected_label_material]
-
+            mu.filter_graph_editor(roi_closet_object_name)
+    # labels_names = [Filtering.filter_objects[ind] for ind in Filtering.objects_indices]
+    # index = labels_names.index(obj_name)
+    # print(index)
+    # color = mu.get_hs_color(len(Filtering.objects_indices), index)
+    # color = mu.get_selected_fcurves_colors(mu.OBJ_TYPES_ROIS, sepcific_obj_name=obj_name)
+    _addon().color_contours([roi_closet_object_name], specific_colors=[1, 0, 0], move_cursor=True)
     bpy.types.Scene.filter_is_on = True
 
 
@@ -247,12 +235,7 @@ def update_filter_items(topk, objects_indices, filter_objects):
 
 def show_one_by_one_update(self, context):
     if bpy.context.scene.filter_items_one_by_one:
-        _addon().show_rois()
         update_filter_items(bpy.context.scene.filter_topK, Filtering.objects_indices, Filtering.filter_objects)
-    else:
-        _addon().show_activity()
-        #todo: do something here
-        pass
 
 
 def next_filter_item():
@@ -391,6 +374,7 @@ class Filtering(bpy.types.Operator):
     objects_indices = []
     filter_objects = []
     filter_values = []
+    objs_colors = []
 
     def get_object_to_filter(self, source_files, data=None, names=None):
         if data is None:
@@ -461,53 +445,47 @@ class Filtering(bpy.types.Operator):
         filter_obj_names = [names[ind] for ind in objects_indices]
         if bpy.context.scene.selection_type == 'diff':
             brain_obj = bpy.data.objects['Brain']
-            fcurves_colors = []
+            self.objs_colors = []
             for fcurve in brain_obj.animation_data.action.fcurves:
                 con_name = mu.get_fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
                 if fcurve.select:
-                    fcurves_colors.append(fcurve.color)
+                    self.objs_colors.append(fcurve.color)
             brain_obj.select = True
-            if bpy.context.scene.filter_items_one_by_one:
-                _addon().show_rois()
-            else:
-                _addon().color_contours(filter_obj_names, specific_colors=fcurves_colors, move_cursor=False)
+            _addon().color_contours(filter_obj_names, specific_colors=self.objs_colors, move_cursor=False)
         else:
             for roi_name in filter_obj_names:
                 bpy.data.objects[roi_name].select = True
-            if bpy.context.scene.filter_items_one_by_one:
-                _addon().show_rois()
-            else:
-                objs_colors = mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
-                _addon().color_contours(filter_obj_names, specific_colors=objs_colors, move_cursor=False)
+            self.objs_colors = mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
+            _addon().color_contours(filter_obj_names, specific_colors=self.objs_colors, move_cursor=False)
 
-    def get_objects_to_color(self, names, objects_indices):
-        curves_num = 0
-        for ind in range(min(self.topK, len(objects_indices))):
-            orig_name = names[objects_indices[ind]]
-            if 'unknown' not in orig_name:
-                obj = bpy.data.objects.get(orig_name)
-                if not obj is None and not obj.animation_data is None:
-                    curves_num += len(obj.animation_data.action.fcurves)
-
-        colors = cu.get_distinct_colors(curves_num)
-        objects_names, objects_colors, objects_data = defaultdict(list), defaultdict(list), defaultdict(list)
-        for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
-            if bpy.data.objects.get(names[objects_indices[ind]]):
-                orig_name = names[objects_indices[ind]]
-                obj_type = mu.check_obj_type(orig_name)
-                objects_names[obj_type].append(orig_name)
-                objects_colors[obj_type].append(cu.name_to_rgb('green'))
-                objects_data[obj_type].append(1.0)
-                if 'unknown' not in orig_name:
-                    filter_roi_func(orig_name)
-                    for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
-                        fcurve.color_mode = 'CUSTOM'
-                        fcurve.color = tuple(next(colors))
-            else:
-                print("Can't find {}!".format(names[objects_indices[ind]]))
-        return objects_names, objects_colors, objects_data
+    # def get_objects_to_color(self, names, objects_indices):
+    #     curves_num = 0
+    #     for ind in range(min(self.topK, len(objects_indices))):
+    #         orig_name = names[objects_indices[ind]]
+    #         if 'unknown' not in orig_name:
+    #             obj = bpy.data.objects.get(orig_name)
+    #             if not obj is None and not obj.animation_data is None:
+    #                 curves_num += len(obj.animation_data.action.fcurves)
+    #
+    #     colors = cu.get_distinct_colors(curves_num)
+    #     objects_names, objects_colors, objects_data = defaultdict(list), defaultdict(list), defaultdict(list)
+    #     for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
+    #         if bpy.data.objects.get(names[objects_indices[ind]]):
+    #             orig_name = names[objects_indices[ind]]
+    #             obj_type = mu.check_obj_type(orig_name)
+    #             objects_names[obj_type].append(orig_name)
+    #             objects_colors[obj_type].append(cu.name_to_rgb('green'))
+    #             objects_data[obj_type].append(1.0)
+    #             if 'unknown' not in orig_name:
+    #                 filter_roi_func(orig_name)
+    #                 for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
+    #                     fcurve.color_mode = 'CUSTOM'
+    #                     fcurve.color = tuple(next(colors))
+    #         else:
+    #             print("Can't find {}!".format(names[objects_indices[ind]]))
+    #     return objects_names, objects_colors, objects_data
 
     def invoke(self, context, event=None):
         _addon().change_view3d()

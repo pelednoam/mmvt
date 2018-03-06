@@ -1154,6 +1154,31 @@ def change_selected_fcurves_colors(selected_objects_types, color_also_objects=Tr
     return obj_colors
 
 
+def get_selected_fcurves_colors(selected_objects_types, sepcific_obj_name='', exclude=()):
+    import colorsys
+    if not isinstance(selected_objects_types, Iterable):
+        selected_objects_types = [selected_objects_types]
+    selected_objects = [obj for obj in bpy.context.scene.objects if obj.select if
+                        check_obj_type(obj.name) in selected_objects_types]
+    selected_objects = [obj for obj in selected_objects if obj.animation_data is not None and
+                        obj.name not in exclude][::-1]
+    if len(selected_objects) == 0:
+        return []
+    selected_objects_len = 6 if len(selected_objects) <= 6 else len(selected_objects)
+    Hs = np.linspace(0, 360, selected_objects_len + 1)[:-1] / 360
+    obj_colors = [colorsys.hls_to_rgb(Hs[obj_ind], 0.5, 1) for obj_ind, obj in enumerate(selected_objects)]
+    if sepcific_obj_name != '':
+        selected_objects_names = [o.name for o in selected_objects]
+        if sepcific_obj_name in selected_objects_names:
+            return obj_colors[selected_objects_names.index(sepcific_obj_name)]
+    return obj_colors
+
+
+def get_hs_color(objs_num, obj_ind):
+    Hs = np.linspace(0, 360, objs_num + 1)[:-1] / 360
+    return colorsys.hls_to_rgb(Hs[obj_ind], 0.5, 1)
+
+
 def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):
     colors_num = count_fcurves(objs)
     colors = cu.get_distinct_colors(colors_num)

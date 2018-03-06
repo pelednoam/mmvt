@@ -238,7 +238,7 @@ def move_cursor_according_to_vert(vert, obj):
         bpy.context.scene.cursor_location = me.vertices[vert].co * obj.matrix_world  # / 10
         # hemi = 'rh' if 'rh' in obj.name else 'lh' if 'lh' in obj.name else ''
         # bpy.context.scene.cursor_location = AppearanceMakerPanel.mesh[hemi].vertices[vert].co * obj.matrix_world  # / 10
-        print('cursor_location: {}'.format(bpy.context.scene.cursor_location))
+        # print('cursor_location: {}'.format(bpy.context.scene.cursor_location))
     except:
         print('move_cursor_according_to_vert: Error!')
     bpy.data.meshes.remove(me)
