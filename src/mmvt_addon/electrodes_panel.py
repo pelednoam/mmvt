@@ -209,6 +209,21 @@ def update_cursor():
     _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
 
 
+def export_electrodes():
+    import csv
+    output_fol = op.join(mu.get_user_fol(), 'electrodes')
+    subject = mu.get_user()
+    csv_fname = op.join(output_fol, '{}_RAS.csv'.format(subject))
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE)
+        wr.writerow(['Electrode Name', 'R', 'A', 'S'])
+        for electrodes, group in ElecsPanel.groups_electrodes.items():
+            for ind, elc_name in enumerate(electrodes):
+                wr.writerow([elc_name, *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
+            if group_hemi in groups_inds:
+                groups_inds[group_hemi] += 1
+
+
 def show_lh_update(self, context):
     if ElecsPanel.init:
         show_hide_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)

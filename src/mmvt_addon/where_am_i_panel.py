@@ -128,6 +128,8 @@ def tkras_coo_update(self, context):
         bpy.context.scene.cursor_location[2] = bpy.context.scene.tkreg_ras_z / 10
         _addon().create_slices()
         _addon().slices_zoom()
+        if bpy.context.scene.cursor_is_snapped:
+            _addon().snap_cursor(True)
 
     if not _trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]

@@ -165,20 +165,23 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
         if bpy.context.scene.filter_items_one_by_one:
             bpy.data.objects['Brain'].select = True
             mu.filter_graph_editor(closet_object_name)
-    if bpy.context.scene.mark_filter_items:
-        if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
-            obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
-        else:
-            # todo: should change the code here...
-            vertex_colors_prop = 'selected' if mark == 'mark_green' else 'selected_blue'
-            vertec_color = (0.0, 1.0, 0.0) if mark == 'mark_green' else (0.0, 0.0, 1.0)
-            # selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
-            # if _addon().is_inflated():
-            if not (vertex_colors_prop in obj.data.vertex_colors):
-                color_object_uniformly(obj, vertec_color)
-            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
-            # else:
-                # obj.active_material = bpy.data.materials[selected_label_material]
+    # if bpy.context.scene.mark_filter_items:
+        # hemi = mu.get_hemi_from_fname(closet_object_name)
+        # _addon().color_contours([closet_object_name], hemi, specific_color=[0, 0, 1], atlas=bpy.context.scene.atlas,
+        #                         move_cursor=False)
+        # if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
+        #     obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
+        # else:
+        #     # todo: should change the code here...
+        #     vertex_colors_prop = 'selected' if mark == 'mark_green' else 'selected_blue'
+        #     vertec_color = (0.0, 1.0, 0.0) if mark == 'mark_green' else (0.0, 0.0, 1.0)
+        #     # selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
+        #     # if _addon().is_inflated():
+        #     if not (vertex_colors_prop in obj.data.vertex_colors):
+        #         color_object_uniformly(obj, vertec_color)
+        #     obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
+        #     # else:
+        #         # obj.active_material = bpy.data.materials[selected_label_material]
 
     bpy.types.Scene.filter_is_on = True
 
@@ -470,9 +473,10 @@ class Filtering(bpy.types.Operator):
         if bpy.context.scene.filter_items_one_by_one:
             _addon().show_rois()
         else:
-            objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
+            # objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
             # _addon().color_objects(objects_names, objects_colors, objects_data)
-            _addon().color_contours(specific_labels=objects_names, specific_hemi='both', change_colorbar=False)
+            specific_labels = [names[ind] for ind in objects_indices] # mu.flat_list_of_lists(objects_names.values())
+            _addon().color_contours(specific_labels, specific_color=[0, 0, 1], move_cursor=False)
 
     def get_objects_to_color(self, names, objects_indices):
         curves_num = 0

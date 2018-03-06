@@ -627,11 +627,13 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
 
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
-                   specific_color=None, atlas=''):
+                   specific_color=None, atlas='', move_cursor=True):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if atlas != '' and atlas != bpy.context.scene.contours_coloring and atlas in ColoringMakerPanel.existing_contoures:
         bpy.context.scene.contours_coloring = atlas
+    if atlas == '' and bpy.context.scene.atlas in ColoringMakerPanel.existing_contoures:
+        bpy.context.scene.contours_coloring = bpy.context.scene.atlas
     if labels_contours is None:
         labels_contours = ColoringMakerPanel.labels_contours
     contour_max = max([labels_contours[hemi]['max'] for hemi in mu.HEMIS])
@@ -653,7 +655,7 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
                     label_ind = label_ind[0][0]
                     selected_contours[np.where(contours == label_ind + 1)] = \
                         label_ind + 1 if specific_color is None else [1, *specific_color]
-                    if len(specific_labels) == 1 and 'centers' in labels_contours[hemi]:
+                    if move_cursor and len(specific_labels) == 1 and 'centers' in labels_contours[hemi]:
                         vert = labels_contours[hemi]['centers'][label_ind]
                         _addon().move_cursor_according_to_vert(vert, 'inflated_{}'.format(hemi))
                         _addon().set_closest_vertex_and_mesh_to_cursor(vert, 'inflated_{}'.format(hemi))
@@ -909,6 +911,10 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     scn = bpy.context.scene
 
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
+    if bpy.context.scene.cursor_is_snapped:
+        vert_ind, _ = _addon().get_closest_vertex_and_mesh_to_cursor()
+        _addon().set_vertex_data(values[vert_ind])
+
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
     if len(valid_verts) == 0 and check_valid_verts:
         # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
