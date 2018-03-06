@@ -12,6 +12,25 @@ def _addon():
     return ColorbarPanel.addon
 
 
+def set_colorbar_defaults():
+    set_colorbar_title('')
+    set_colorbar_max_min(1, -1, True, False)
+    set_colorbar_prec(2)
+    set_colormap('BuPu-YlOrRd')
+
+
+def set_colorbar_default_cm():
+    if not ColorbarPanel.init:
+        return
+    # todo: take those values from an ini file
+    data_min, data_max = bpy.context.scene.colorbar_min, bpy.context.scene.colorbar_max
+    if not (data_min == 0 and data_max == 0) and not colorbar_values_are_locked():
+        if data_min == 0 or np.sign(data_min) == np.sign(data_max):
+            set_colormap('YlOrRd')
+        else:
+            set_colormap('BuPu-YlOrRd')
+
+
 def get_cm():
     return ColorbarPanel.cm
 
@@ -56,13 +75,14 @@ def get_colorbar_title():
     return bpy.context.scene.colorbar_title
 
 
-def set_colorbar_max_min(max_val, min_val, force_update=False):
+def set_colorbar_max_min(max_val, min_val, force_update=False, set_default_cm=True):
     if max_val >= min_val:
         init = ColorbarPanel.init
         if force_update:
             ColorbarPanel.init = True
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
+        set_colorbar_default_cm()
         # mu.set_graph_att('colorbar_max', max_val)
         # mu.set_graph_att('colorbar_min', min_val)
         # _addon().s.colorbar_max = max_val
@@ -288,11 +308,11 @@ def init(addon):
         bpy.context.scene.colorbar_y = 0.18
         bpy.context.scene.colorbar_text_y = -1.53
         bpy.context.scene.colorbar_prec = 2
-    if not colorbar_values_are_locked():
-        if 'fMRI' in bpy.context.scene.colorbar_title:
-            bpy.context.scene.colorbar_files = 'PuBu-RdOrYl'
-        else:
-            bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
+    # if not colorbar_values_are_locked():
+    #     if 'fMRI' in bpy.context.scene.colorbar_title:
+    #         bpy.context.scene.colorbar_files = 'PuBu-RdOrYl'
+    #     else:
+    #         bpy.context.scene.colorbar_files = 'BuPu-YlOrRd'
 
 
 def register():

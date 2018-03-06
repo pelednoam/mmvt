@@ -269,18 +269,17 @@ def create_vertices_labels_lookup(subject, atlas, save_labels_ids=False, overwri
         raise Exception('Error in vertices_labels_lookup!\n{}'.format(err))
 
 
-
-def find_label_vertices(subject, atlas, hemi, vertices, label_template):
+def find_label_vertices(subject, atlas, hemi, vertices, label_template='*'):
     import re
     vertices_labels_lookup = create_vertices_labels_lookup(subject, atlas)
-    label_re_template = re.compile(label_template)
+    label_re_template = re.compile(label_template) if label_template != '*' else None
     label_vertices, label_vertices_indices = [], []
     for vert_ind, vert in enumerate(vertices):
         vert_label = vertices_labels_lookup[hemi].get(vert, '')
         if vert_label == '':
             print('find_pick_activity: No label for vert {}'.format(vert))
             continue
-        if label_re_template.search(vert_label) is not None:
+        if label_re_template is None or label_re_template.search(vert_label) is not None:
             label_vertices.append(vert)
             label_vertices_indices.append(vert_ind)
     return label_vertices, label_vertices_indices
@@ -838,8 +837,8 @@ def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts
             inter_labels.append(dict(name=inter_labels_tup[1], num=inter_labels_tup[0]))
         if len(inter_labels) > 0 and clusters_label in inter_labels[0]['name']:
             # max_inter = max([(il['num'], il['name']) for il in inter_labels])
-            cluster_labels.append(utils.Bag(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
-                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster), max_vert=max_vert)))
+            cluster_labels.append(dict(vertices=cluster, intersects=inter_labels, name=inter_labels[0]['name'],
+                coordinates=verts[cluster], max=cluster_max, hemi=hemi, size=len(cluster), max_vert=max_vert))
         else:
             print('No intersected labels!')
     return cluster_labels

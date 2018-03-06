@@ -230,8 +230,8 @@ def render_draw(self, context):
             col.prop(context.scene, "X_location", text='X location')
             col.prop(context.scene, "Y_location", text='Y location')
             col.prop(context.scene, "Z_location", text='Z location')
-    else:
-        layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
+    # else:
+        # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
 
 def update_camera(self=None, context=None):

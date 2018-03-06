@@ -127,12 +127,14 @@ def clear_filtering():
     for parent_name in ['Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         if bpy.data.objects.get(parent_name):
             for obj in bpy.data.objects[parent_name].children:
-                de_select_electrode_and_sensor(obj)
+                de_select_electrode_and_sensor(obj,calc_best_curves_sep=False)
 
     Filtering.filter_objects, Filtering.objects_indices = [], []
 
 
-def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
+def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=True):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
     # safety check, if something happened to the electrode's material
     if call_create_and_set_material:
@@ -144,6 +146,9 @@ def de_select_electrode_and_sensor(obj, call_create_and_set_material=True):
     else:
         obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
         obj.active_material.diffuse_color = (1, 1, 1)
+    obj.select = False
+    if calc_best_curves_sep:
+        _addon().calc_best_curves_sep()
 
 
 def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_green'):
@@ -164,15 +169,16 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
         if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
             obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
         else:
+            # todo: should change the code here...
             vertex_colors_prop = 'selected' if mark == 'mark_green' else 'selected_blue'
             vertec_color = (0.0, 1.0, 0.0) if mark == 'mark_green' else (0.0, 0.0, 1.0)
-            selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
-            if _addon().is_inflated():
-                if not (vertex_colors_prop in obj.data.vertex_colors):
-                    color_object_uniformly(obj, vertec_color)
-                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
-            else:
-                obj.active_material = bpy.data.materials[selected_label_material]
+            # selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
+            # if _addon().is_inflated():
+            if not (vertex_colors_prop in obj.data.vertex_colors):
+                color_object_uniformly(obj, vertec_color)
+            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
+            # else:
+                # obj.active_material = bpy.data.materials[selected_label_material]
 
     bpy.types.Scene.filter_is_on = True
 
@@ -200,16 +206,17 @@ def filter_electrode_or_sensor(elec_name, val=0.3):
 
 def deselect_all_objects():
     for obj in bpy.data.objects:
-        obj.select = False
-        if obj.parent == bpy.data.objects['Subcortical_structures']:
-            obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-        elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
-            obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-        elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
-            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
-        elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
-                bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
-            de_select_electrode_and_sensor(obj)
+        if obj.select:
+            if obj.parent == bpy.data.objects['Subcortical_structures']:
+                obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
+            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
+                obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+            elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
+            elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
+                 bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
+                 de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
+            obj.select = False
 
 
 def filter_items_update(self, context):
@@ -340,7 +347,7 @@ class ClearFiltering(bpy.types.Operator):
         elif type_of_filter == 'Electrodes':
             _addon().select_all_electrodes()
         elif type_of_filter == 'EEG':
-            _addon().select_all_eeg()
+            _addon().select_all_eeg_sensors()
         bpy.data.scenes['Scene'].frame_preview_end = _addon().get_max_time_steps()
         bpy.data.scenes['Scene'].frame_preview_start = 1
         bpy.types.Scene.closest_curve_str = ''
@@ -397,21 +404,21 @@ class Filtering(bpy.types.Operator):
                     mu.message(self, "Can't load {}!".format(input_file))
                     return None, None, None
 
-        print('filtering {}-{}'.format(self.filter_from, self.filter_to))
+        # print('filtering {}-{}'.format(self.filter_from, self.filter_to))
 
         # t_range = range(self.filter_from, self.filter_to + 1)
         if self.topK > 0:
             self.topK = min(self.topK, len(names))
-        print(self.type_of_func)
+        # print(self.type_of_func)
         filter_func = get_func(self.type_of_func)
         if isinstance(data, list):
             d = np.vstack((d for d in data))
         else:
             d = data
-        print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
+        # print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
         objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
-        print(dd[objects_to_filtter_in])
+        # print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 
     def filter_electrodes_or_sensors(self, parent_name, data, meta):
@@ -464,7 +471,8 @@ class Filtering(bpy.types.Operator):
             _addon().show_rois()
         else:
             objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
-            _addon().color_objects(objects_names, objects_colors, objects_data)
+            # _addon().color_objects(objects_names, objects_colors, objects_data)
+            _addon().color_contours(specific_labels=objects_names, specific_hemi='both', change_colorbar=False)
 
     def get_objects_to_color(self, names, objects_indices):
         curves_num = 0
@@ -540,14 +548,12 @@ class Filtering(bpy.types.Operator):
                 #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
             self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
-            data = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data.npy'))
-            meta = np.load(op.join(mu.get_user_fol(), 'eeg', 'eeg_data_meta.npz'))
+            data, meta = _addon().get_eeg_sensors_data()
             self.filter_electrodes_or_sensors('EEG_sensors', data, meta)
         elif self.type_of_filter == 'MEG':
             self.filter_rois(current_file_to_upload)
         elif self.type_of_filter == 'MEG_sensors':
-            data = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy'))
-            meta = np.load(op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz'))
+            data, meta = _addon().get_meg_sensors_data()
             self.filter_electrodes_or_sensors('MEG_sensors', data, meta)
 
         if bpy.context.scene.filter_items_one_by_one:
@@ -568,13 +574,13 @@ bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.fram
                                                   description="When to filter to")
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
     items=[("MEG", "MEG time course", "", 1), ('MEG_sensors', 'MEG sensors', '', 2),
-           ("Electrodes", " Electrodes time course", "", 3), ("EEG", "EEG time course", "", 4),
+           ("Electrodes", " Electrodes time course", "", 3), ("EEG", "EEG sensors", "", 4),
            ('fMRI', 'fMRI dynamics', '', 4)],
     description="Type of curve to be filtered")
 bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description="Filtering function")
     # items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
     #        ("threshold", "Above threshold", "", 3)],
-bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=False, description="Mark selected items")
+bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=True, description="Mark selected items")
 bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
 bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
     default=False, description="Show one by one", update=show_one_by_one_update)
@@ -598,6 +604,7 @@ class FilteringMakerPanel(bpy.types.Panel):
 def init(addon):
     FilteringMakerPanel.addon = addon
     get_filter_functions()
+    bpy.context.scene.mark_filter_items = True
     FilteringMakerPanel.init = True
     register()
 

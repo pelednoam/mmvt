@@ -197,6 +197,10 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
         _addon().color_electrodes_sources()
     if play_type in ['eeg_helmet']:
         _addon().color_eeg_helmet()
+    if play_type in ['eeg_sensors']:
+        _addon().color_eeg_sensors()
+    if play_type in ['meg_sensors']:
+        _addon().color_meg_sensors()
     if successful_ret:
         if bpy.context.scene.save_images:
             _addon().save_image(play_type, bpy.context.scene.save_selected_view,

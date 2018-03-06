@@ -36,6 +36,14 @@ def get_activity_values():
     return ColoringMakerPanel.activity_values
 
 
+def get_eeg_sensors_data():
+    return ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta
+
+
+def get_meg_sensors_data():
+    return ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta
+
+
 def plot_meg(t=-1, save_image=False, view_selected=False):
     if t != -1:
         bpy.context.scene.frame_current = t
@@ -83,6 +91,7 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
         stc_t_smooth = stc_t
     else:
         vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
+        n_jobs = 1 if mu.IS_WINDOWS else n_jobs
         stc_t_smooth = mne.morph_data(
             subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
 
@@ -94,23 +103,24 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
             _addon().set_colormap('YlOrRd')
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_prec(2)
+        _addon().set_colorbar_title('MEG')
     if threshold > data_max:
         print('threshold > data_max!')
         threshold = bpy.context.scene.coloring_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
-    set_default_colormap(data_min, data_max)
+    # set_default_colormap(data_min, data_max)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio,
                        threshold, save_image, view_selected, save_prev_colors=save_prev_colors)
     return fname, stc_t_smooth
 
 
-def set_default_colormap(data_min, data_max):
-    # todo: should read default values from ini file
-    if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-        if data_min == 0 or np.sign(data_min) == np.sign(data_max):
-            _addon().set_colormap('YlOrRd')
-        else:
-            _addon().set_colormap('BuPu-YlOrRd')
+# def set_default_colormap(data_min, data_max):
+#     # todo: should read default values from ini file
+#     if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+#         if data_min == 0 or np.sign(data_min) == np.sign(data_max):
+#             _addon().set_colormap('YlOrRd')
+#         else:
+#             _addon().set_colormap('BuPu-YlOrRd')
 
 
 def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=0, save_image=False,
@@ -142,21 +152,29 @@ def can_color_obj(obj):
 
 
 def contours_coloring_update(self, context):
-    user_fol = mu.get_user_fol()
-    d = {}
+    ColoringMakerPanel.no_plotting = True
+    ColoringMakerPanel.labels_contours = labels_contours = load_labels_contours()
     items = [('all labels', 'all labels', '', 0)]
-    for hemi in mu.HEMIS:
-        d[hemi] = np.load(op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
-            bpy.context.scene.contours_coloring, hemi)))
-        ColoringMakerPanel.labels[hemi] = d[hemi]['labels']
-        items.extend([(c, c, '', ind + 1) for ind, c in enumerate(d[hemi]['labels'])])
+    for hemi_ind, hemi in enumerate(mu.HEMIS):
+        ColoringMakerPanel.labels[hemi] = labels_contours[hemi]['labels']
+        extra = 0 if hemi_ind == 0 else len(labels_contours[mu.HEMIS[0]]['labels'])
+        items.extend([(c, c, '', ind + extra + 1) for ind, c in enumerate(labels_contours[hemi]['labels'])])
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
-    ColoringMakerPanel.labels_contours = d
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
+    ColoringMakerPanel.no_plotting = False
+
+
+def load_labels_contours(atlas=''):
+    labels_contours = {}
+    if atlas == '':
+        atlas = bpy.context.scene.contours_coloring
+    for hemi in mu.HEMIS:
+        labels_contours[hemi] = np.load(op.join(mu.get_user_fol(), 'labels', '{}_contours_{}.npz'.format(atlas, hemi)))
+    return labels_contours
 
 
 def labels_contours_update(self, context):
-    if not ColoringMakerPanel.init:
+    if not ColoringMakerPanel.init or ColoringMakerPanel.no_plotting:
         return
     if bpy.context.scene.labels_contours == 'all labels':
         color_contours(cumulate=False)
@@ -272,7 +290,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         return
     if names is None:
         data, names, conditions = data['data'], data['names'], data['conditions']
-    default_color = (1, 1, 1)
+    # default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     for obj_name, values in zip(names, data):
         if not isinstance(obj_name, str):
@@ -282,15 +300,15 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         t_ind = min(len(values) - 1, cur_frame)
         if values[t_ind].ndim == 0:
             value = values[t_ind]
-        elif bpy.context.scene.selection_type == 'spec_cond':
-            cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
-            if len(cond_inds) == 0:
-                print("!!! Can't find the current condition in the data['conditions'] !!!")
-                return
-            else:
-                cond_ind = cond_inds[0]
-                object_colors = object_colors[:, cond_ind]
-                value = values[t_ind, cond_ind]
+        # elif bpy.context.scene.selection_type == 'spec_cond':
+        #     cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
+        #     if len(cond_inds) == 0:
+        #         print("!!! Can't find the current condition in the data['conditions'] !!!")
+        #         return
+        #     else:
+        #         cond_ind = cond_inds[0]
+        #         object_colors = object_colors[:, cond_ind]
+        #         value = values[t_ind, cond_ind]
         else:
             value = np.diff(values[t_ind])[0] if values.shape[1] > 1 else np.squeeze(values[t_ind])
         # todo: there is a difference between value and real_value, what should we do?
@@ -486,7 +504,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
             labels_min = 0
         _addon().set_colorbar_max_min(labels_max, labels_min)
     colors_ratio = 256 / (labels_max - labels_min)
-    set_default_colormap(labels_min, labels_max)
+    # set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
         if mu.get_hemi_obj(hemi).hide:
             continue
@@ -608,9 +626,12 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
-def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=True, change_colorbar=True):
+def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
+                   specific_color=None, atlas=''):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
+    if atlas != '' and atlas != bpy.context.scene.contours_coloring and atlas in ColoringMakerPanel.existing_contoures:
+        bpy.context.scene.contours_coloring = atlas
     if labels_contours is None:
         labels_contours = ColoringMakerPanel.labels_contours
     contour_max = max([labels_contours[hemi]['max'] for hemi in mu.HEMIS])
@@ -625,25 +646,35 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
         if specific_hemi != 'both' and hemi != specific_hemi:
             selected_contours = np.zeros(contours.shape)
         elif len(specific_labels) > 0:
-            selected_contours = np.zeros(contours.shape)
+            selected_contours = np.zeros(contours.shape) if specific_color is None else np.zeros((contours.shape[0], 4))
             for specific_label in specific_labels:
                 label_ind = np.where(np.array(labels_contours[hemi]['labels']) == specific_label)
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
-                    selected_contours[np.where(contours == label_ind[0][0] + 1)] = label_ind[0][0] + 1
+                    label_ind = label_ind[0][0]
+                    selected_contours[np.where(contours == label_ind + 1)] = \
+                        label_ind + 1 if specific_color is None else [1, *specific_color]
+                    if len(specific_labels) == 1 and 'centers' in labels_contours[hemi]:
+                        vert = labels_contours[hemi]['centers'][label_ind]
+                        _addon().move_cursor_according_to_vert(vert, 'inflated_{}'.format(hemi))
+                        _addon().set_closest_vertex_and_mesh_to_cursor(vert, 'inflated_{}'.format(hemi))
+                        _addon().create_slices()
+                else:
+                    print("Can't find {} in the labels contours!".format(specific_label))
         else:
             selected_contours = labels_contours[hemi]['contours']
         mesh = mu.get_hemi_obj(hemi).data
         mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
         mesh.vertex_colors['contours'].active_render = True
         color_hemi_data(hemi, selected_contours, 0.1, 256 / contour_max, override_current_mat=not cumulate,
-                        coloring_layer='contours')
+                        coloring_layer='contours', check_valid_verts=False)
     ColoringMakerPanel.what_is_colored.add(WIC_CONTOURS)
-    if bpy.context.scene.contours_coloring in _addon().get_annot_files():
-        bpy.context.scene.subject_annot_files = bpy.context.scene.contours_coloring
+
+    # if bpy.context.scene.contours_coloring in _addon().get_annot_files():
+    #     bpy.context.scene.subject_annot_files = bpy.context.scene.contours_coloring
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
-                    save_prev_colors=False, coloring_layer='Col', use_abs=None):
+                    save_prev_colors=False, coloring_layer='Col', use_abs=None, check_valid_verts=True):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     if hemi in mu.HEMIS:
@@ -656,7 +687,8 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
     activity_map_obj_coloring(cur_obj, data, faces_verts, threshold, override_current_mat, data_min,
-                              colors_ratio, use_abs, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer)
+                              colors_ratio, use_abs, save_prev_colors=save_prev_colors, coloring_layer=coloring_layer,
+                              check_valid_verts=check_valid_verts)
 
 
 @mu.timeit
@@ -722,12 +754,12 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 bpy.data.scenes['Scene'].frame_preview_end = t
             f = f[:, t]
 
-        # todo: should read default values from ini file
-        if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-            if data_min == 0:
-                _addon().set_colormap('YlOrRd')
-            else:
-                _addon().set_colormap('BuPu-YlOrRd')
+        # # todo: should read default values from ini file
+        # if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
+        #     if data_min == 0:
+        #         _addon().set_colormap('YlOrRd')
+        #     else:
+        #         _addon().set_colormap('BuPu-YlOrRd')
 
         color_hemi_data(hemi, f, data_min, colors_ratio, threshold, override_current_mat)
         # if bpy.context.scene.coloring_both_pial_and_inflated:
@@ -854,6 +886,8 @@ def calc_colors(vert_values, data_min, colors_ratio, cm=None):
 
 
 def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     if use_abs:
         if bigger_or_equall:
             valid_verts = np.where(np.abs(values) >= threshold)[0]
@@ -870,14 +904,14 @@ def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
                               colors_ratio=None, use_abs=True, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col'):
+                              coloring_layer='Col', check_valid_verts=True):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
-    if len(valid_verts) == 0:
-        print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
+    if len(valid_verts) == 0 and check_valid_verts:
+        # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
         return
     colors_picked_from_cm = False
     # cm = _addon().get_cm()
@@ -1383,14 +1417,19 @@ def color_meg_sensors():
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_meg_sensors_data()
+    data, meta = get_meg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         data_min, data_max = ColoringMakerPanel.meg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('EEG conditions difference')
+    if bpy.context.scene.meg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.meg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        _addon().set_colorbar_title('MEG sensors conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -1398,14 +1437,19 @@ def color_eeg_sensors():
     _addon().show_hide_eeg()
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
     threshold = bpy.context.scene.coloring_threshold
-    data, meta = _addon().load_eeg_data()
+    data, meta = get_eeg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
-        data_min, data_max = ColoringMakerPanel.eeg_data_minmax
+        data_min, data_max = ColoringMakerPanel.eeg_sensors_data_minmax
         _addon().set_colorbar_max_min(data_max, data_min)
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('EEG conditions difference')
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        _addon().set_colorbar_title('EEG sensors conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -1446,7 +1490,12 @@ def color_electrodes():
     else:
         data_max, data_min = _addon().get_colorbar_max_min()
         colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('Electordes conditions difference')
+    if bpy.context.scene.electrodes_conditions != 'diff':
+        cond_ind = np.where(conditions == bpy.context.scene.electrodes_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('Electrodes {} condition'.format(conditions[cond_ind]))
+    else:
+        _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
@@ -1988,38 +2037,22 @@ def draw(self, context):
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
                 col.operator(ColorfMRILabels.bl_idname, text="Plot fMRI Labels", icon='POTATO')
-        if ColoringMakerPanel.contours_coloring_exist:
-            col = layout.box().column()
-            col.prop(context.scene, 'contours_coloring', '')
-            col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
-            row = col.row(align=True)
-            row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
-            row.prop(context.scene, 'labels_contours', '')
-            row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
-        if manually_color_files_exist:
-            col = layout.box().column()
-            # col.label('Manual coloring files')
-            col.prop(context.scene, "coloring_files", text="")
-            col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
-        if len(ColoringMakerPanel.labels_plotted) > 0:
-            box = layout.box()
-            col = box.column()
-            for label, color in ColoringMakerPanel.labels_plotted:
-                mu.add_box_line(col, label.name, percentage=1)
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
+        col.prop(context.scene, "meg_sensors_conditions", text="")
         col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
 
     if ColoringMakerPanel.eeg_exist:
         col = layout.box().column()
+        col.prop(context.scene, "eeg_sensors_conditions", text="")
         col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
         # if not bpy.data.objects.get('eeg_helmet', None) is None:
         #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
     if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
+        col.prop(context.scene, "electrodes_conditions", text="")
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
         # if ColoringMakerPanel.electrodes_dists_exist:
         #     col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
@@ -2042,6 +2075,27 @@ def draw(self, context):
         col.prop(context.scene, 'connectivity_degree_threshold_use_abs', text="Use connectivity absolute value")
         col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
         col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
+
+    if faces_verts_exist:
+        if ColoringMakerPanel.contours_coloring_exist:
+            col = layout.box().column()
+            col.prop(context.scene, 'contours_coloring', '')
+            col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
+            row = col.row(align=True)
+            row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
+            row.prop(context.scene, 'labels_contours', '')
+            row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
+        if manually_color_files_exist:
+            col = layout.box().column()
+            # col.label('Manual coloring files')
+            col.prop(context.scene, "coloring_files", text="")
+            col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
+        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
+        if len(ColoringMakerPanel.labels_plotted) > 0:
+            box = layout.box()
+            col = box.column()
+            for label, color in ColoringMakerPanel.labels_plotted:
+                mu.add_box_line(col, label.name, percentage=1)
 
     # layout.label(text="Choose labels' folder")
     # row = layout.row(align=True)
@@ -2068,6 +2122,9 @@ bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0,
 bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
+bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[])
+bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[])
+bpy.types.Scene.electrodes_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
@@ -2107,7 +2164,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fmri_activity_data_minmax, fmri_activity_colors_ratio = None, None
     meg_activity_data_minmax, meg_activity_colors_ratio = None, None
     meg_data_min, meg_data_max = 0, 0
-    eeg_data_minmax, eeg_colors_ratio = None, None
+    eeg_sensors_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
     labels_plotted = []
     static_conn = None
@@ -2132,6 +2189,10 @@ class ColoringMakerPanel(bpy.types.Panel):
     contours_coloring_exist = False
     meg_labels_data_exist = False
     meg_labels_data_minmax_exist = False
+    eeg_sensors_data, eeg_sensors_meta, eeg_sensors_data_minmax = None, None, None
+    meg_sensors_data, meg_sensors_meta, meg_sensors_data_minmax = None, None, None
+    no_plotting = False
+    existing_contoures = []
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
@@ -2276,31 +2337,64 @@ def init_electrodes():
         ColoringMakerPanel.activity_types.append('elecs')
     if ColoringMakerPanel.electrodes_stim_files_exist:
         ColoringMakerPanel.activity_types.append('stim')
+    if ColoringMakerPanel.electrodes_files_exist:
+        _, _, conditions = _addon().load_electrodes_data()
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(conditions)]
+        items.append(('diff', 'Conditions difference', '', len(conditions) +1))
+        bpy.types.Scene.electrodes_conditions = bpy.props.EnumProperty(items=items, description="Electrodes")
+        bpy.context.scene.electrodes_conditions = 'diff'
+
 
 
 def init_meg_sensors():
     user_fol = mu.get_user_fol()
-    data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data.npy')
-    meta_data_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_data_meta.npz')
-    data_minmax_fname = op.join(user_fol, 'meg', 'meg_sensors_evoked_minmax.npy')
-    if all([op.isfile(f) for f in [data_fname, meta_data_fname, data_minmax_fname]]):
+    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    if len(meg_data_files) == 0:
+        return
+    # todo: should be according to the data panel
+    meg_data_files = mu.namebase(meg_data_files[0])
+    meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
+    meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_data_files))
+    meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_data_files[:-5]))
+    if all([op.isfile(f) for f in [
+            meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname]]) and \
+            bpy.data.objects.get('MEG_sensors') is not None:
         ColoringMakerPanel.meg_sensors_exist = True
-        data_min, data_max = np.load(data_minmax_fname)
+        ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
+            _addon().load_meg_sensors_data(meg_sensors_data_fname, meg_sensors_meta_data_fname)
+        data_min, data_max = np.load(meg_sensors_data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.meg_sensors_meta['conditions'])]
+        items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.meg_sensors_meta['conditions']) +1))
+        bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items, description="MEG sensors")
+        bpy.context.scene.meg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('meg_sensors')
 
 
 def init_eeg_sensors():
     user_fol = mu.get_user_fol()
-    data_fname = op.join(user_fol, 'eeg', 'eeg_data.npy')
-    meta_data_fname = op.join(user_fol, 'eeg', 'eeg_data_meta.npz')
-    data_minmax_fname = op.join(user_fol, 'eeg', 'eeg_data_minmax.npy')
-    if all([op.isfile(f) for f in [data_fname, meta_data_fname, data_minmax_fname]]):
+    eeg_data_files = glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))
+    if len(eeg_data_files) == 0:
+        return
+    # todo: should be according to the data panel
+    eeg_data_files = mu.namebase(eeg_data_files[0])
+    eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(eeg_data_files))
+    eeg_sensors_meta_data_fname = op.join(user_fol, 'eeg', '{}_meta.npz'.format(eeg_data_files))
+    eeg_sensors_data_minmax_fname = op.join(user_fol, 'eeg', '{}_minmax.npy'.format(eeg_data_files[:-5]))
+    if all([op.isfile(f) for f in
+            [eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname]]) and \
+            bpy.data.objects.get('EEG_sensors', None) is  not None:
         ColoringMakerPanel.eeg_exist = True
-        data_min, data_max = np.load(data_minmax_fname)
+        ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta, = \
+            _addon().load_eeg_sensors_data(eeg_sensors_data_fname, eeg_sensors_meta_data_fname)
+        data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
         ColoringMakerPanel.eeg_colors_ratio = 256 / (data_max - data_min)
-        ColoringMakerPanel.eeg_data_minmax = (data_min, data_max)
+        ColoringMakerPanel.eeg_sensors_data_minmax = (data_min, data_max)
+        items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.eeg_sensors_meta['conditions'])]
+        items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.eeg_sensors_meta['conditions']) +1))
+        bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items, description="EEG sensors")
+        bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
 
 
@@ -2309,7 +2403,8 @@ def init_contours_coloring():
     contours_files = glob.glob(op.join(user_fol, 'labels', '*contours_lh.npz'))
     if len(contours_files) > 0:
         ColoringMakerPanel.contours_coloring_exist = True
-        files_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+        ColoringMakerPanel.existing_contoures = files_names = \
+            [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=items, update=contours_coloring_update)
         bpy.context.scene.contours_coloring = files_names[0]

@@ -211,6 +211,7 @@ def show_sagital():
 
 def show_coronal(show_frontal=False):
     if show_frontal:
+        mu.rotate_view3d(CORONAL_ANTERIOR)
         bpy.context.scene.current_view = 'coronal'
         bpy.context.scene.current_view_flip = 0
         return
@@ -272,6 +273,11 @@ def show_axial():
     # zoom(-1)
 
 
+def set_normal_view():
+    split_view(0)
+    ShowHideObjectsPanel.split_view = 0
+
+
 def _split_view():
     ShowHideObjectsPanel.split_view += 1
     if ShowHideObjectsPanel.split_view == 3:
@@ -290,50 +296,35 @@ def split_view(view):
         return
     if view != 0:
         _addon().hide_subcorticals()
-    pial_shift = 10
-    inflated_shift = 15
+    pial_shift, inflated_shift = 10, 15
     shift = pial_shift + (bpy.context.scene.inflating + 1) * (inflated_shift - pial_shift)
-    if view == 0: # Normal
+    bpy.context.scene.cursor_is_snapped = view == 0
+    if view == 0:  # Normal
         show_coronal()
+        mu.set_zoom_level(bpy.context.scene.surface_type, relative=1)
         # if _addon().is_inflated():
         bpy.data.objects['inflated_lh'].location[0] = 0
         bpy.data.objects['inflated_lh'].rotation_euler[2] = 0
         bpy.data.objects['inflated_rh'].location[0] = 0
         bpy.data.objects['inflated_rh'].rotation_euler[2] = 0
-        # else:
-        #     bpy.data.objects['lh'].location[0] = 0
-        #     bpy.data.objects['lh'].rotation_euler[2] = 0
-        #     bpy.data.objects['rh'].location[0] = 0
-        #     bpy.data.objects['rh'].rotation_euler[2] = 0
-    elif view == 1: # Split lateral
-        show_coronal()
+    elif view == 1:  # Split lateral
+        show_coronal(show_frontal=True)
+        mu.set_zoom_level(bpy.context.scene.surface_type, relative=1, split=True)
         # lateral split view
         # inflated_lh: loc  x:13, rot z: -90
         # inflated_lr: loc  x:-13, rot z: 90
-        # if _addon().is_inflated():
         bpy.data.objects['inflated_lh'].location[0] = shift
         bpy.data.objects['inflated_lh'].rotation_euler[2] = -math.pi / 2
         bpy.data.objects['inflated_rh'].location[0] = -shift
         bpy.data.objects['inflated_rh'].rotation_euler[2] = math.pi / 2
-        # else:
-        #     bpy.data.objects['lh'].location[0] = pial_shift
-        #     bpy.data.objects['lh'].rotation_euler[2] = -math.pi / 2
-        #     bpy.data.objects['rh'].location[0] = -pial_shift
-        #     bpy.data.objects['rh'].rotation_euler[2] = math.pi / 2
     elif view == 2:
         # medial split medial
         # inflated_lh: loc  x:13, rot z: 90
         # inflated_lr: loc  x:-13, rot z: -90
-        # if _addon().is_inflated():
         bpy.data.objects['inflated_lh'].location[0] = shift
         bpy.data.objects['inflated_lh'].rotation_euler[2] = math.pi / 2
         bpy.data.objects['inflated_rh'].location[0] = -shift
         bpy.data.objects['inflated_rh'].rotation_euler[2] = -math.pi / 2
-        # else:
-        #     bpy.data.objects['lh'].location[0] = pial_shift - 2
-        #     bpy.data.objects['lh'].rotation_euler[2] = math.pi / 2
-        #     bpy.data.objects['rh'].location[0] = -(pial_shift - 2)
-        #     bpy.data.objects['rh'].rotation_euler[2] = -math.pi / 2
 
 
 def maximize_brain():
@@ -509,7 +500,8 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         row.operator(ShowAxial.bl_idname, text='Axial', icon='AXIS_TOP')
         row.operator(ShowCoronal.bl_idname, text='Coronal', icon='AXIS_FRONT')
         row.operator(ShowSagittal.bl_idname, text='Sagittal', icon='AXIS_SIDE')
-        layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
+        if bpy.context.scene.surface_type != 'flat_map':
+            layout.operator(SplitView.bl_idname, text=self.split_view_text[self.split_view], icon='ALIGN')
         # layout.prop(context.scene, 'render_split', text='Render images')
         # layout.operator(MaxMinBrain.bl_idname,
         #                 text="{} Brain".format('Maximize' if bpy.context.scene.brain_max_min else 'Minimize'),

@@ -41,6 +41,7 @@ def calc_msit_evoked(args):
         t_min=-0.5,
         t_max=2,
         read_events_from_file=True,
+        normalize_data=False,
         events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
     ))
     eeg.call_main(args)

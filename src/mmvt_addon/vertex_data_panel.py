@@ -84,7 +84,9 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
                     kd.insert(me.vertices[i].co, i)
                 except:
                     # in flat map not all the vertices exist
-                    pass
+                    # todo handle the case where the brain is sliced and the user click the plane with the image.
+                    print('find_vertex_index_and_mesh_closest_to_cursor: exception in the use_shape_keys loop')
+                    break
             bpy.data.meshes.remove(me)
         else:
             for i, v in enumerate(mesh.vertices):
@@ -191,11 +193,13 @@ class DataInVertMakerPanel(bpy.types.Panel):
     addon = None
     init = False
     data_in_cursor = None
+    activity_maps_exist = False
 
     def draw(self, context):
         layout = self.layout
-        layout.operator(CreateVertexData.bl_idname, text="Get data in vertex", icon='ROTATE')
-        layout.operator(ClearVertexData.bl_idname, text="Clear", icon='PANEL_CLOSE')
+        if DataInVertMakerPanel.activity_maps_exist:
+            layout.operator(CreateVertexData.bl_idname, text="Get data in vertex", icon='ROTATE')
+            layout.operator(ClearVertexData.bl_idname, text="Clear", icon='PANEL_CLOSE')
         if DataInVertMakerPanel.data_in_cursor is not None:
             layout.label(text='Cursor value: {}'.format(DataInVertMakerPanel.data_in_cursor))
         # layout.operator(, text="Get data in vertex", icon='ROTATE')
@@ -207,6 +211,9 @@ def init(addon):
     if len(lookup_files) == 0:
         print('No lookup files for vertex_data_panel')
         DataInVertMakerPanel.init = False
+    DataInVertMakerPanel.activity_maps_exist = \
+        op.isdir(op.join(mu.get_user_fol(), 'activity_map_rh')) and \
+        op.isdir(op.join(mu.get_user_fol(), 'activity_map_lh'))
     DataInVertMakerPanel.init = True
     register()
 

@@ -116,7 +116,7 @@ eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_meg_labels_data = data_panel.load_meg_labels_data
 load_electrodes_data = data_panel.load_electrodes_data
 load_electrodes_dists = data_panel.load_electrodes_dists
-load_eeg_data = data_panel.load_eeg_data
+load_eeg_sensors_data = data_panel.load_eeg_sensors_data
 load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 import_eeg_sensors = data_panel.import_eeg_sensors
@@ -128,7 +128,7 @@ create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
 select_all_electrodes = selection_panel.select_all_electrodes
-select_all_eeg = selection_panel.select_all_eeg
+select_all_eeg_sensors = selection_panel.select_all_eeg_sensors
 select_only_subcorticals = selection_panel.select_only_subcorticals
 select_all_rois = selection_panel.select_all_rois
 select_all_meg_sensors = selection_panel.select_all_meg_sensors
@@ -142,6 +142,7 @@ select_roi = selection_panel.select_roi
 curves_sep_update = selection_panel.curves_sep_update
 calc_best_curves_sep = selection_panel.calc_best_curves_sep
 set_connection_files_exist = selection_panel.set_connection_files_exist
+de_select_object = selection_panel.de_select_object
 ClearSelection = selection_panel.ClearSelection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
@@ -193,6 +194,10 @@ recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 what_is_colored = coloring_panel.what_is_colored
 set_use_abs_threshold = coloring_panel.set_use_abs_threshold
+color_eeg_sensors = coloring_panel.color_eeg_sensors
+color_meg_sensors = coloring_panel.color_meg_sensors
+get_meg_sensors_data = coloring_panel.get_meg_sensors_data
+get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -241,6 +246,7 @@ view_all = show_hide_panel.view_all
 rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
 show_hemis = show_hide_panel.show_hemis
+set_normal_view = show_hide_panel.set_normal_view
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
@@ -274,6 +280,7 @@ clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_an
 snap_cursor = appearance_panel.snap_cursor
 set_cursor_pos = appearance_panel.set_cursor_pos
 flat_map_exists = appearance_panel.flat_map_exists
+move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
@@ -312,6 +319,7 @@ lock_colorbar_values = colorbar_panel.lock_colorbar_values
 set_colormap = colorbar_panel.set_colormap
 set_colorbar_prec = colorbar_panel.set_colorbar_prec
 get_colorbar_prec = colorbar_panel.get_colorbar_prec
+set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
@@ -348,6 +356,12 @@ set_t1_value = where_am_i_panel.set_t1_value
 create_slices_from_vox_coordinates = where_am_i_panel.create_slices_from_vox_coordinates
 find_closest_label = where_am_i_panel.find_closest_label
 get_annot_files = where_am_i_panel.get_annot_files
+calc_tkreg_ras_from_snapped_cursor = where_am_i_panel.calc_tkreg_ras_from_snapped_cursor
+calc_tkreg_ras_from_cursor = where_am_i_panel.calc_tkreg_ras_from_cursor
+get_tkreg_ras = where_am_i_panel.get_tkreg_ras
+get_ras = where_am_i_panel.get_ras
+get_T1_voxel = where_am_i_panel.get_T1_voxel
+get_ct_voxel = where_am_i_panel.get_ct_voxel
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data
@@ -545,6 +559,7 @@ def fix_objects_material(objects, material_name):
         if obj.name + '_Mat' in materials_names:
             # print(obj.name + '_Mat')
             cur_mat = bpy.data.materials[obj.name + '_Mat']
+            obj.active_material = cur_mat
         else:
             if material_name in materials_names:
                 obj.active_material = bpy.data.materials[material_name].copy()
@@ -571,15 +586,16 @@ def get_classes():
 
 
 def get_panels(first_time=False):
-    panels = [appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
-            render_panel, freeview_panel, transparency_panel, data_panel, where_am_i_panel, search_panel, load_results_panel,
+    panels = [data_panel, appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
+            render_panel, freeview_panel, transparency_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
             slicer_panel, skull_panel, pizco_panel, moshes_panel]#, dell_panel)
-    if not mmvt_utils.IS_WINDOWS and not first_time:
-        panels.append(dell_panel)
+    # if not mmvt_utils.IS_WINDOWS and not first_time:
+    #     panels.append(dell_panel)
     return panels
 
 
+# @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def load_all_panels(addon_prefs=None, first_time=False):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()
@@ -596,7 +612,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
         fix_scale()
     show_activity()
     show_pial()
-    view_all()
+    # view_all()
     # show_electrodes(False)
     # show_hide_connections(False)
     # show_activity(False)
@@ -607,8 +623,10 @@ def load_all_panels(addon_prefs=None, first_time=False):
         if bpy.data.objects.get(hemi):
             bpy.data.objects[hemi].hide = True
             bpy.data.objects[hemi].hide_render = True
+    set_colorbar_defaults()
 
 
+# @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def main(addon_prefs=None):
     # atexit.register(my_cleanup_code)
     init(addon_prefs)

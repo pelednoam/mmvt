@@ -96,6 +96,29 @@ def calc_msit(args):
     meg.call_main(args)
 
 
+def calc_msit_evoked(args):
+    # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
+    #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
+    #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        function='calc_epochs,calc_evokes',
+        data_per_task=True,
+        atlas='laus125',
+        contrast='interference',
+        cleaning_method='nTSSS',
+        t_min=-0.5,
+        t_max=2,
+        read_events_from_file=True,
+        normalize_data = False,
+        overwrite_evoked = True,
+        events_file_name='{subject}_msit_nTSSS_interference-eve.txt',
+    ))
+    meg.call_main(args)
+
+
 def calc_msit_stcs_diff(args):
     args = meg.read_cmd_args(dict(
         subject=args.subject,
@@ -228,6 +251,29 @@ def calc_functional_rois(args):
         threshold=99.5
     ))
     meg.call_main(args)
+
+
+def calc_msit_functional_rois(args):
+    clusters_root_fol = utils.make_dir(op.join(MMVT_DIR, args.subject[0], 'meg', 'clusters'))
+    utils.delete_folder_files(clusters_root_fol)
+    conditions = ['neutral', 'interference']
+    for cond in conditions:
+        _args = meg.read_cmd_args(dict(
+            subject=args.subject,
+            mri_subject=args.mri_subject,
+            atlas='laus125',
+            function='find_functional_rois_in_stc',
+            inverse_method='dSPM',
+            stc_name='MSIT-{}-dSPM'.format(cond),
+            label_name_template='*',
+            inv_fname='{}-inv'.format(cond),
+            threshold=99.5,
+            min_cluster_max=5,
+            min_cluster_size=100,
+            recreate_src_spacing='ico5'
+            # clusters_label='precentral'
+        ))
+        meg.call_main(_args)
 
 
 if __name__ == '__main__':

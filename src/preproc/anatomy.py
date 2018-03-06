@@ -533,7 +533,7 @@ def create_spatial_connectivity(subject):
             if not op.isfile(conn_fname):
                 print("Connectivity file doesn't exist! {}".format(conn_fname))
                 continue
-            d = np.load()
+            d = np.load(conn_fname)
             connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
             rows, cols = connectivity_per_hemi[hemi].nonzero()
             for ind in range(len(rows)):
@@ -701,6 +701,7 @@ def get_vertices_between_labels(hemi, label1, label2, labels, vertices_neighbros
 #     return list(set(seems_neighbor_verts))
 
 
+@utils.check_for_freesurfer
 def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
     patch_fname_template = op.join(SUBJECTS_DIR, subject, 'surf', '{}.inflated.patch'.format('{hemi}'))
     if not utils.both_hemi_files_exist(patch_fname_template) or overwrite:
@@ -716,15 +717,15 @@ def create_flat_brain(subject, print_only=False, overwrite=False, n_jobs=2):
             flat_patch_cut_vertices_hemi = set(flat_patch_cut_vertices[hemi])
             fu.write_patch(patch_fname, [(ind, v) for ind, v in enumerate(inf_verts)
                                          if ind not in flat_patch_cut_vertices_hemi])
-    params = [(subject, hemi, print_only) for hemi in utils.HEMIS]
+    params = [(subject, hemi, overwrite, print_only) for hemi in utils.HEMIS]
     results = utils.run_parallel(_flat_brain_parallel, params, n_jobs)
     return all(results)
 
 
 def _flat_brain_parallel(p):
-    subject, hemi, print_only = p
+    subject, hemi, overwrite, print_only = p
     flat_patch_fname = fu.get_flat_patch_fname(subject, hemi, SUBJECTS_DIR)
-    if not op.isfile(flat_patch_fname):
+    if not op.isfile(flat_patch_fname) or overwrite:
         flat_patch_fname = fu.flat_brain(subject, hemi, SUBJECTS_DIR, print_only)
     return write_flat_brain_patch(subject, hemi, flat_patch_fname)
 
@@ -787,8 +788,9 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
                     label_nei[vert_ind] = contours[vert]
             if verbose:
                 print(label.name, len(np.where(label_nei)[0]) / len(verts))
+        centers = [l.center_of_mass(restrict_vertices=True) for l in labels]
         np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
-                 labels=[l.name for l in labels])
+                 labels=[l.name for l in labels], centers=centers)
     return utils.both_hemi_files_exist(output_fname)
 
 

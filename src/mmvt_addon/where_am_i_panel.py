@@ -52,6 +52,19 @@ def set_t1_value():
         bpy.context.scene.t1_value = 0
 
 
+def subject_annot_files_update(self, context):
+    d = {}
+    user_fol = mu.get_user_fol()
+    contours_template = op.join(user_fol, 'labels', '{}_contours_{}.npz'.format(
+            bpy.context.scene.subject_annot_files, '{hemi}'))
+    if mu.both_hemi_files_exist(contours_template):
+        for hemi in mu.HEMIS:
+            d[hemi] = np.load(contours_template.format(hemi=hemi))
+        WhereAmIPanel.labels_contours = d
+    else:
+        WhereAmIPanel.labels_contours = None
+
+
 def where_i_am_draw(self, context):
     layout = self.layout
     layout.label(text='tkreg RAS (surface):')
@@ -89,7 +102,9 @@ def where_i_am_draw(self, context):
         col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
         if bpy.context.scene.closest_label_output != '':
             col.label(text=bpy.context.scene.closest_label_output)
-
+        col.prop(context.scene, 'find_closest_label_on_click', text='Find each click on brain')
+        if WhereAmIPanel.labels_contours is not None:
+            col.prop(context.scene, 'plot_closest_label_contour', text="Plot label's contour")
     col = layout.box().column()
     if not GrowLabel.running:
         col.label(text='Create a new label')
@@ -233,6 +248,10 @@ def set_tkreg_ras_coo(coo, move_cursor=True):
     WhereAmIPanel.move_cursor = True
 
 
+def get_tkreg_ras():
+    return (bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z)
+
+
 def set_ras_coo(coo):
     # print('set_ras_coo')
     WhereAmIPanel.call_update = False
@@ -240,6 +259,10 @@ def set_ras_coo(coo):
     bpy.context.scene.ras_y = coo[1]
     WhereAmIPanel.call_update = True
     bpy.context.scene.ras_z = coo[2]
+
+
+def get_ras():
+    return (bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z)
 
 
 def set_voxel_coo(coo):
@@ -251,6 +274,10 @@ def set_voxel_coo(coo):
     bpy.context.scene.voxel_z = int(np.round(coo[2]))
 
 
+def get_T1_voxel():
+    return (bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z)
+
+
 def set_ct_coo(coo):
     WhereAmIPanel.call_update = False
     bpy.context.scene.ct_voxel_x = int(np.round(coo[0]))
@@ -258,6 +285,10 @@ def set_ct_coo(coo):
     WhereAmIPanel.call_update = True
     bpy.context.scene.ct_voxel_z = int(np.round(coo[2]))
     _addon().set_ct_intensity()
+
+
+def get_ct_voxel():
+    return (bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z)
 
 
 def apply_trans(trans, points):
@@ -319,9 +350,15 @@ def find_closest_obj(search_also_for_subcorticals=True):
 
 def find_closest_label():
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    closest_mesh_name, vertex_ind, vertex_co = \
-        _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
-    hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    if bpy.context.scene.cursor_is_snapped:
+        vertex_ind, hemi = _addon().get_closest_vertex_and_mesh_to_cursor()
+    else:
+        closest_mesh_name, vertex_ind, _ = \
+            _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
+        hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
+    if vertex_ind == -1:
+        print("find_closest_label: Can't find the closest vertex")
+        return
     hemi = 'rh' if 'rh' in hemi else 'lh'
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
         hemi, bpy.context.scene.subject_annot_files))
@@ -331,20 +368,16 @@ def find_closest_label():
         if len(vert_labels) > 0:
             label = vert_labels[0]
             bpy.context.scene.closest_label_output = label.name
-            return label.name, hemi
-        else:
-            return 'unknown', hemi
-    else:
-        # todo: maybe we should return something else here...
-        return 'unknown', hemi
+            plot_closest_label_contour(label.name, hemi)
 
 
 def plot_closest_label_contour(label, hemi):
-    contours_files = glob.glob(op.join(mu.get_user_fol(), '*contours_lh.npz'))
-    contours_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
-    if bpy.context.scene.subject_annot_files in contours_names:
-        bpy.context.scene.contours_coloring = bpy.context.scene.subject_annot_files
-        _addon().color_contours(label, hemi)
+    # contours_files = glob.glob(op.join(mu.get_user_fol(), 'labels', '*contours_lh.npz'))
+    # contours_names = [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
+    # if bpy.context.scene.subject_annot_files in contours_names:
+    if WhereAmIPanel.labels_contours is not None:
+        # bpy.context.scene.contours_coloring = bpy.context.scene.subject_annot_files
+        _addon().color_contours([label], hemi, WhereAmIPanel.labels_contours, False, False, (0, 0, 1))
     else:
         mu.create_labels_contours()
 
@@ -409,7 +442,8 @@ def update_slices(modality='mri', ratio=1, images=None):
                     area.spaces.active.mode = 'MASK'
             area.spaces.active.image = image
             # bpy.ops.image.replace(override, filepath=op.join(images_fol, images_names[ind]))
-            bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
+            # Takes ~1s, should find a better way to do it (if at all)
+            # bpy.ops.image.view_zoom_ratio(override, ratio=ratio)
             ind += 1
 
 
@@ -448,6 +482,25 @@ def init_listener():
     return ret
 
 
+def calc_tkreg_ras_from_cursor():
+    tkreg_ras = None
+    if _addon().is_pial():
+        tkreg_ras = bpy.context.scene.cursor_location * 10
+    elif bpy.context.scene.cursor_is_snapped:
+        tkreg_ras = calc_tkreg_ras_from_snapped_cursor()
+    return tkreg_ras
+
+
+def calc_tkreg_ras_from_snapped_cursor():
+    vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+    pos = None
+    if obj_name != '' and ('rh' in obj_name or 'lh' in obj_name):
+        obj_name = 'rh' if 'rh' in obj_name else 'lh'
+        ob = bpy.data.objects[obj_name]
+        pos = ob.data.vertices[vert].co
+    return pos
+
+
 def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_num=-1, smooth=None, clim=None,
                   plot_cross=None, mark_voxel=None):
     if zoom_around_voxel is None:
@@ -469,16 +522,18 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
         modality = bpy.context.scene.slices_modality
     pos_was_none = pos is None
     if pos is None:
-        pos = bpy.context.scene.cursor_location
-    if bpy.context.scene.cursor_is_snapped and pos_was_none:
-        vert, obj_name = _addon().get_closest_vertex_and_mesh_to_cursor()
-        if obj_name != '' and ('rh' in obj_name or 'lh' in obj_name):
-            obj_name = 'rh' if 'rh' in obj_name else 'lh'
-            ob = bpy.data.objects[obj_name]
-            pos = ob.data.vertices[vert].co / 10
+        pos = bpy.context.scene.cursor_location * 10
+    # if bpy.context.scene.cursor_is_snapped and pos_was_none:
+    #     pos = calc_tkreg_ras_from_snapped_cursor()
+    if pos_was_none:
+        pos = calc_tkreg_ras_from_cursor()
+    if pos is None:
+        print("Can't calc slices if the cursor isn't snapped and the brain is inflated!")
+        return
+    # pos = np.array(pos) * 10
     if WhereAmIPanel.run_slices_listener:
         init_listener()
-        xyz = ','.join(map(str, pos * 10))
+        xyz = ','.join(map(str, pos))
         ret = mu.conn_to_listener.send_command(dict(cmd='slice_viewer_change_pos', data=dict(
             subject=mu.get_user(), xyz=xyz, modalities=modality, coordinates_system='tk_ras')))
         flag_fname = op.join(mu.get_user_fol(), 'figures', 'slices', '{}_slices.txt'.format(
@@ -494,7 +549,6 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
             print('python -m src.setup -f copy_resources_files')
         return
 
-    pos = np.array(pos) * 10
     if modality == 'mri':
         x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
     elif modality == 'ct':
@@ -513,7 +567,8 @@ def create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel=False, z
         xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel, zoom_voxels_num=zoom_voxels_num,
         smooth=smooth, clim=clim, plot_cross=plot_cross, mark_voxel=mark_voxel)
     update_slices(modality=modality, ratio=1, images=images)
-    _addon().slices_zoom()
+    #todo: really slow...
+    # _addon().slices_zoom()
 
 
 def save_slices_cursor_pos():
@@ -563,12 +618,16 @@ def pos_to_current_inflation(pos):
     closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(pos / 10, mu.HEMIS)
     obj = bpy.data.objects['inflated_{}'.format(closest_mesh_name)]
     me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
-    new_pos = me.vertices[vertex_ind].co
-    # Bug in windows, Blender crashses here
-    # todo: Figure out why...
-    if not mu.IS_WINDOWS:
-        bpy.data.meshes.remove(me)
-    return new_pos
+    try:
+        new_pos = me.vertices[vertex_ind].co
+        # Bug in windows, Blender crashses here
+        # todo: Figure out why...
+        if not mu.IS_WINDOWS:
+            bpy.data.meshes.remove(me)
+        return new_pos
+    except:
+        print('pos_to_current_inflation: Error! ({})'.format(pos))
+        return np.array([0, 0, 0])
 
 
 def set_slicer_state(modality):
@@ -678,9 +737,7 @@ class ClosestLabel(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        label, hemi = find_closest_label()
-        if label != 'unknown':
-            plot_closest_label_contour(label, hemi)
+        find_closest_label()
         return {"FINISHED"}
 
 
@@ -777,6 +834,9 @@ bpy.types.Scene.closest_label = bpy.props.StringProperty()
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
 bpy.types.Scene.cut_type = 'sagital'
+bpy.types.Scene.find_closest_label_on_click = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.plot_closest_label_contour = bpy.props.BoolProperty(default=False)
+
 # bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
 
@@ -801,6 +861,7 @@ class WhereAmIPanel(bpy.types.Panel):
     slices_cursor_pos = {}
     slicer_state = None
     annot_files = []
+    labels_contours = None
 
     def draw(self, context):
         where_i_am_draw(self, context)
@@ -826,8 +887,10 @@ def init(addon):
             if len(annot_files) > 0:
                 WhereAmIPanel.annot_files = files_names = [mu.namebase(fname)[3:] for fname in annot_files]
                 items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=items)
-                bpy.context.scene.subject_annot_files = files_names[0]
+                bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(
+                    items=items, update=subject_annot_files_update)
+                ind = mu.index_in_list(bpy.context.scene.atlas, files_names, 0)
+                bpy.context.scene.subject_annot_files = files_names[ind]
             else:
                 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
                 # bpy.context.scene.subject_annot_files = ''
@@ -835,6 +898,8 @@ def init(addon):
             bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
         bpy.context.scene.closest_label_output = ''
         bpy.context.scene.new_label_r = 5
+        bpy.context.scene.find_closest_label_on_click = False
+        bpy.context.scene.plot_closest_label_contour = False
 
         mri_data_fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format('mri'))
         if op.isfile(mri_data_fname):

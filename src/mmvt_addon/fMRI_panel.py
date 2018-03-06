@@ -22,7 +22,8 @@ def get_clusters_file_names():
 
 
 def get_parcs_files(user_fol, fmri_file_name):
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_{}*.pkl'.format(fmri_file_name)))
+    fMRIPanel.clusters_labels_files = clusters_labels_files = \
+        glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_{}*.pkl'.format(fmri_file_name)))
     return list(set([mu.namebase(fname).split('_')[-1] for fname in clusters_labels_files]))
 
 
@@ -40,29 +41,45 @@ def _clusters_update():
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     # key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
     key = clusters_labels_file
-    fMRIPanel.cluster_labels = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
-    cluster_centroid = np.mean(fMRIPanel.cluster_labels['coordinates'], 0) / 10.0
+    fMRIPanel.cluster_labels = cluster = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
+    cluster_centroid = np.mean(cluster['coordinates'], 0) / 10.0
     _addon().clear_closet_vertex_and_mesh_to_cursor()
-    if _addon().is_pial():
-        bpy.context.scene.cursor_location = cluster_centroid
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-            cluster_centroid, mu.HEMIS, False)
-        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+    _addon().set_vertex_data(cluster['max'])
+    if 'max_vert' in cluster:
+        bpy.context.scene.cursor_location = mu.get_vert_co(cluster.max_vert, cluster.hemi)
+        _addon().set_closest_vertex_and_mesh_to_cursor(cluster.max_vert, 'inflated_{}'.format(cluster.hemi))
     else:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-            cluster_centroid, mu.HEMIS, False)
-        inflated_mesh = 'inflated_{}'.format(closest_mesh_name)
-        me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
-        bpy.context.scene.cursor_location = me.vertices[vertex_ind].co / 10.0
-        bpy.data.meshes.remove(me)
-        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+        if _addon().is_pial():
+            bpy.context.scene.cursor_location = cluster_centroid
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+                cluster_centroid, mu.HEMIS, False)
+            _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+        else:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+                cluster_centroid, mu.HEMIS, False)
+            inflated_mesh = 'inflated_{}'.format(closest_mesh_name)
+            me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
+            bpy.context.scene.cursor_location = me.vertices[vertex_ind].co / 10.0
+            bpy.data.meshes.remove(me)
+            _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+
+    tkreg_ras = _addon().calc_tkreg_ras_from_cursor()
+    if tkreg_ras is not None:
+        _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
 
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
         if bpy.context.scene.fmri_what_to_plot == 'blob':
-            plot_blob(fMRIPanel.cluster_labels, faces_verts, True)
-    _addon().save_cursor_position(cluster_centroid)
-    _addon().create_slices()
+            plot_blob(cluster, faces_verts, True)
+    if bpy.context.scene.plot_fmri_cluster_contours:
+        inter_labels = [inter_label['name'] for inter_label in cluster['intersects']]
+        atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
+        _addon().color_contours(
+            inter_labels, cluster.hemi, None, False, False,
+            specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
+
+    _addon().save_cursor_position()
+    _addon().create_slices(pos=tkreg_ras)
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -109,27 +126,29 @@ def plot_blob(cluster_labels, faces_verts, is_inflated=None, use_abs=None):
 
 # @mu.profileit()
 def find_closest_cluster(only_within=False):
-    cursor = np.array(bpy.context.scene.cursor_location)
-    print('cursor {}'.format(cursor))
-    if _addon().is_inflated(): # and _addon().get_inflated_ratio() == 1:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
-            use_shape_keys=True)
-        # print(closest_mesh_name, vertex_ind, vertex_co)
-        # print(vertex_co - bpy.context.scene.cursor_location)
-        bpy.context.scene.cursor_location = vertex_co
-        _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
-        pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
-        pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
-        # cursor = pial_vert.co / 10
-        _addon().set_tkreg_ras_coo(pial_vert.co, move_cursor=False)
-        # _addon().save_cursor_position(cursor)
+    # cursor = np.array(bpy.context.scene.cursor_location)
+    # print('cursor {}'.format(cursor))
+    if bpy.context.scene.cursor_is_snapped:
+        # vertex_ind, mesh = _addon().get_closest_vertex_and_mesh_to_cursor()
+        # pial_mesh = 'rh' if mesh == 'inflated_rh' else 'lh'
+        vertex_co = _addon().get_tkreg_ras()
     else:
-        closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
-        print(closest_mesh_name, vertex_ind, vertex_co)
-        print(vertex_co - bpy.context.scene.cursor_location)
-        bpy.context.scene.cursor_location = vertex_co
+        if _addon().is_inflated(): # and _addon().get_inflated_ratio() == 1:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor(
+                use_shape_keys=True)
+            # print(closest_mesh_name, vertex_ind, vertex_co)
+            # print(vertex_co - bpy.context.scene.cursor_location)
+            bpy.context.scene.cursor_location = vertex_co
+            _addon().set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name)
+            pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
+            pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
+            vertex_co = pial_vert.co
+            _addon().set_tkreg_ras_coo(vertex_co, move_cursor=False)
+        else:
+            closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
+            bpy.context.scene.cursor_location = vertex_co
 
-    cursor *= 10
+    # vertex_co *= 10
     if bpy.context.scene.search_closest_cluster_only_in_filtered:
         cluster_to_search_in = fMRIPanel.clusters_labels_filtered
     else:
@@ -138,10 +157,15 @@ def find_closest_cluster(only_within=False):
         key = clusters_labels_file
         cluster_to_search_in = fMRIPanel.clusters_labels[key]['values']
         unfilter_clusters()
-    dists, indices = [], []
-    for ind, cluster in enumerate(cluster_to_search_in):
-        _, _, dist = mu.min_cdist(cluster['coordinates'], [cursor])[0]
-        dists.append(dist)
+    # dists, indices = [], []
+    # print('cursor: {}'.format(vertex_co))
+    # for ind, cluster in enumerate(cluster_to_search_in):
+    #     print(np.mean(cluster['coordinates'], 0))
+    #     _, _, dist = mu.min_cdist(cluster['coordinates'], [vertex_co])[0]
+    #     dists.append(dist)
+    max_verts = np.array([bpy.data.objects[cluster.hemi].data.vertices[cluster.max_vert].co for
+                      cluster in cluster_to_search_in])
+    dists = [np.linalg.norm(blob - vertex_co) for blob in max_verts]
     if len(dists) == 0:
         print('No cluster was found!')
     else:
@@ -153,7 +177,12 @@ def find_closest_cluster(only_within=False):
             bpy.context.scene.fmri_clusters = cluster_name(closest_cluster)
             fMRIPanel.cluster_labels = closest_cluster
             print('Closest cluster: {}, dist: {}'.format(bpy.context.scene.fmri_clusters, min_dist))
-            # _clusters_update()
+            if bpy.context.scene.plot_fmri_cluster_contours:
+                inter_labels = [inter_label['name'] for inter_label in closest_cluster['intersects']]
+                atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
+                _addon().color_contours(inter_labels, closest_cluster.hemi, None, False, False,
+                                        specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
+        # _clusters_update()
         else:
             print('only within: dist to big ({})'.format(min_dist))
 
@@ -369,7 +398,7 @@ def _cluster_name(x, sort_mode):
 
 
 def get_clusters_files(user_fol=''):
-    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*_*.pkl'))
+    clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.pkl'))
     files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     clusters_labels_items = [(c, c, '', ind) for ind, c in enumerate(list(set(files_names)))]
     return files_names, clusters_labels_files, clusters_labels_items
@@ -434,7 +463,8 @@ def fMRI_draw(self, context):
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
-    layout.prop(context.scene, 'fmri_clusters_labels_parcs', text='')
+    if len(fMRIPanel.clusters_labels_files) > 1:
+        layout.prop(context.scene, 'fmri_clusters_labels_parcs', text='')
     row = layout.row(align=True)
     row.operator(PrevCluster.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, 'fmri_clusters', text="")
@@ -448,12 +478,17 @@ def fMRI_draw(self, context):
         layout.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
         layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
     layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
+    row = layout.row(align=True)
+    row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
+    row.prop(context.scene, 'fmri_cluster_contours_color', text="")
     layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
+
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     row = layout.row(align=True)
     row.label(text='Sort: ')
     row.prop(context.scene, 'fmri_how_to_sort', expand=True)
-    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and not fMRIPanel.dont_show_clusters_info:
+    if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and \
+            not fMRIPanel.dont_show_clusters_info:
         if 'size' not in fMRIPanel.cluster_labels:
             fMRIPanel.cluster_labels['size'] = len(fMRIPanel.cluster_labels['vertices'])
         blob_size = fMRIPanel.cluster_labels['size']
@@ -610,6 +645,10 @@ try:
     bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
         default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
     bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.plot_fmri_cluster_contours = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.fmri_cluster_contours_color = bpy.props.FloatVectorProperty(
+        name="contours_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
+
 except:
     pass
 
@@ -633,6 +672,7 @@ class fMRIPanel(bpy.types.Panel):
     fMRI_clusters_files_exist = False
     constrast = {'rh':None, 'lh':None}
     clusters_labels_file_names = []
+    clusters_labels_files = []
 
     def draw(self, context):
         if fMRIPanel.init:
@@ -657,6 +697,7 @@ def init(addon):
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
+    bpy.context.scene.plot_fmri_cluster_contours = False
 
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist
@@ -665,7 +706,10 @@ def init(addon):
         #     perc = mu.namebase(clusters_labels_file).split('_')[-1]
         #     key = '{}_{}'.format(file_name, perc)
             key = file_name
-            fMRIPanel.clusters_labels[key] = np.load(clusters_labels_file)
+            fMRIPanel.clusters_labels[key] = c = mu.Bag(mu.load(clusters_labels_file))
+            for ind in range(len(c.values)):
+                c.values[ind] = mu.Bag(c.values[ind])
+
             # fMRIPanel.clusters_labels[key] = support_old_verions(fMRIPanel.clusters_labels[file_name])
             fMRIPanel.lookup[key] = create_lookup_table(fMRIPanel.clusters_labels[key])
 

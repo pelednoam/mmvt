@@ -395,7 +395,12 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
                 overwrite_evoked=False, task=''):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
-        if op.isfile(evoked_fname) and not overwrite_evoked:
+        fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
+        task_str = f'{task}_' if task != '' else ''
+        mmvt_files = [op.join(fol, f'{task_str}sensors_evoked_data.npy'),
+                      op.join(fol, f'{task_str}sensors_evoked_data_meta.npz'),
+                      op.join(fol, f'{task_str}sensors_evoked_minmax.npy')]
+        if op.isfile(evoked_fname) and all([op.isfile(f) for f in mmvt_files]) and not overwrite_evoked:
             evoked = mne.read_evokeds(evoked_fname)
             return True, evoked
         events_keys = list(events.keys())
@@ -436,12 +441,13 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
 def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, normalize_data=False,
                         norm_by_percentile=False, norm_percs=None, modality='meg', calc_max_min_diff=True, task=''):
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
+    first_evokes = evokes if isinstance(evokes, mne.evoked.EvokedArray) else evokes[0]
     if modality == 'meg':
         channels_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
         if len(channels_indices) == 0:
             print(f'None of the channels names starts with {channels_prefix}!')
-    first_evokes = evokes if isinstance(evokes, mne.evoked.EvokedArray) else evokes[0]
-    channels_indices = range(len(first_evokes.ch_names))
+    else:
+        channels_indices = range(len(first_evokes.ch_names))
     ch_names = [first_evokes.ch_names[k] for k in channels_indices]
     dt = np.diff(first_evokes.times[:2])[0]
     if isinstance(evokes, mne.evoked.EvokedArray):
@@ -456,7 +462,8 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     if normalize_data:
         data = utils.normalize_data(data, norm_by_percentile, norm_percs)
     else:
-        data *= np.power(10, 6) # micro V
+        factor = 6 if modality == 'eeg' else 12 # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
+        data *= np.power(10, factor)
     if calc_max_min_diff:
         data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
         data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
@@ -527,7 +534,10 @@ def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH
 
 def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing='oct6', recreate_src_surface='white',
               n_jobs=2):
-    src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
+    # src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
+    src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem',
+                        f'{mri_subject}-{recreate_src_spacing[:-1]}-{recreate_src_spacing[-1]}-src.fif')
+    src_exist = op.isfile(src_fname)
     if not src_exist:
         src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
             mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))
@@ -542,6 +552,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
             #     {'bem': '{}-{}-{}-src.fif'.format(mri_subject, oct_name, oct_num)}, args)
+            # https://martinos.org/mne/dev/manual/cookbook.html#source-localization
             src = mne.setup_source_space(MRI_SUBJECT, spacing=recreate_src_spacing, surface=recreate_src_surface,
                                          overwrite=True, subjects_dir=SUBJECTS_MRI_DIR, n_jobs=n_jobs)
         else:
@@ -2666,10 +2677,11 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
         print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
+def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
                                 label_name_template='', peak_mode='abs', extract_mode='mean_flip',
                                 min_cluster_max=0, min_cluster_size=0, clusters_label='', src=None,
-                                inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, n_jobs=6):
+                                inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True,
+                                recreate_src_spacing='oct6', n_jobs=6):
     import mne.stats.cluster_level as mne_clusters
 
     clusters_root_fol = op.join(MMVT_DIR, subject, 'meg', 'clusters')
@@ -2695,14 +2707,13 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
     clusters_fol = op.join(clusters_root_fol, clusters_name)
     # data_minmax = utils.get_max_abs(utils.min_stc(stc), utils.max_stc(stc))
     # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-    factor = 9 # to get nAmp
-    threshold *= np.power(10, factor)
+    threshold *= np.power(10, 9) # nAmp
     min_cluster_max = max(threshold, min_cluster_max)
     clusters_labels = utils.Bag(
         dict(stc_name=stc_name, threshold=threshold, time=time_index, label_name_template=label_name_template, values=[],
              min_cluster_max=min_cluster_max, min_cluster_size=min_cluster_size, clusters_label=clusters_label))
     for hemi in utils.HEMIS:
-        stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, factor)
+        stc_data = (stc_t_smooth.rh_data if hemi == 'rh' else stc_t_smooth.lh_data).squeeze() * np.power(10, 9)
         clusters, _ = mne_clusters._find_clusters(stc_data, threshold, connectivity=connectivity[hemi])
         if len(clusters) == 0:
             print('No clusters where found for {}-{}!'.format(stc_name, hemi))
@@ -2714,8 +2725,8 @@ def find_functional_rois_in_stc(subject, atlas, stc_name, threshold, threshold_i
             print("Can't find overlapped_labeles in {}-{}!".format(stc_name, hemi))
         else:
             clusters_labels_hemi = extract_time_series_for_cluster(
-                subject, stc, hemi, clusters_labels_hemi, factor, clusters_fol, extract_mode[0], src, inv_fname,
-                time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG)
+                subject, mri_subject, stc, hemi, clusters_labels_hemi, clusters_fol, extract_mode[0], src, inv_fname,
+                time_index, min_cluster_max, fwd_usingMEG, fwd_usingEEG, recreate_src_spacing=recreate_src_spacing)
             clusters_labels.values.extend(clusters_labels_hemi)
     clusters_labels_output_fname = op.join(clusters_root_fol, 'clusters_labels_{}.pkl'.format(stc_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
@@ -2763,17 +2774,23 @@ def load_connectivity(subject):
     return connectivity_per_hemi
 
 
-def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, clusters_fol, extract_mode='mean_flip',
+def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, clusters_fol, extract_mode='mean_flip',
                                     src=None, inv_fname='', time_index=-1, cluster_max_min=0, fwd_usingMEG=True,
-                                    fwd_usingEEG=True, calc_contours=True):
+                                    fwd_usingEEG=True, calc_contours=True, recreate_src_spacing='oct6'):
     utils.make_dir(clusters_fol)
     time_series_fol = op.join(clusters_fol, 'time_series_{}'.format(extract_mode))
     utils.make_dir(time_series_fol)
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     if src is None:
-        inverse_operator = read_inverse_operator(inv_fname)
-        src = inverse_operator['src']
+        if op.isfile(inv_fname):
+            inverse_operator = read_inverse_operator(inv_fname)
+            src = inverse_operator['src']
+        else:
+            # todo: set the recreate_src_spacing according to the stc
+            # https://martinos.org/mne/dev/manual/cookbook.html#source-localization
+            src = check_src(mri_subject, recreate_src_spacing=recreate_src_spacing)
     for cluster_ind, cluster in enumerate(clusters):
+        cluster = utils.Bag(cluster)
         # cluster: vertices, intersects, name, coordinates, max, hemi, size
         cluster_label = mne.Label(
             cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
@@ -2781,14 +2798,14 @@ def extract_time_series_for_cluster(subject, stc, hemi, clusters, factor, cluste
         if time_index == -1:
             cluster.ts_max = np.min(x) if abs(np.min(x)) > abs(np.max(x)) else np.max(x)
         else:
-            cluster.ts_max = x[time_index] * np.power(10, factor)
+            cluster.ts_max = x[time_index] * np.power(10, 9)
         cluster_name = 'cluster_size_{}_max_{:.2f}_{}.label'.format(cluster.size, cluster.max, cluster.name)
         cluster_label.save(op.join(clusters_fol, cluster_name))
         if np.all(label_data == 0):
             cluster.label_data = None
         else:
             cluster.label_data = np.squeeze(label_data)
-            cluster.label_data *= np.power(10, factor)
+            cluster.label_data *= np.power(10, 9)
             np.save(op.join(time_series_fol, '{}.npy'.format(cluster_name)), cluster.label_data)
     if len(clusters) > 0 and calc_contours:
         new_atlas_name = 'clusters-{}-{}'.format(utils.namebase(clusters_fol), hemi)
@@ -3140,11 +3157,11 @@ def main(tup, remote_subject_dir, args, flags):
 
     if 'find_functional_rois_in_stc' in args.function:
         flags['find_functional_rois_in_stc'] = find_functional_rois_in_stc(
-            subject, args.atlas, args.stc_name, args.threshold, args.threshold_is_precentile,
+            subject, mri_subject, args.atlas, args.stc_name, args.threshold, args.threshold_is_precentile,
             args.peak_stc_time_index, args.label_name_template, args.peak_mode,
             args.extract_mode, args.min_cluster_max, args.min_cluster_size, args.clusters_label,
             inv_fname=args.inv_fname, fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingEEG,
-            n_jobs=args.n_jobs)
+            recreate_src_spacing=args.recreate_src_spacing, n_jobs=args.n_jobs)
 
     if 'print_files_names' in args.function:
         # also called in init_globals
@@ -3266,6 +3283,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--recreate_src_surface', help='', required=False, default='white')
     parser.add_argument('--inv_loose', help='', required=False, default=0.2, type=float)
     parser.add_argument('--inv_depth', help='', required=False, default=0.8, type=float)
+    parser.add_argument('--use_raw_for_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--use_empty_room_for_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_noise_cov', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--inv_calc_cortical', help='', required=False, default=1, type=au.is_true)

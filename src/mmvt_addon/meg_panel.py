@@ -31,16 +31,6 @@ def get_cluster_fcurve_name(cluster):
     return '{}_{}_{:.2f}'.format(cluster.name, cluster.size, cluster.max)
 
 
-def get_cluster_max_vert_co(cluster):
-    max_vert_ind = cluster.max_vert
-    obj_name = 'inflated_{}'.format(cluster.hemi)
-    obj = bpy.data.objects[obj_name]
-    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
-    vertex_co = me.vertices[max_vert_ind].co * obj.matrix_world
-    bpy.data.meshes.remove(me)
-    return vertex_co
-
-
 def get_cluster_verts_co(cluster):
     inflated_mesh = 'inflated_{}'.format(cluster.hemi)
     me = bpy.data.objects[inflated_mesh].to_mesh(bpy.context.scene, True, 'PREVIEW')
@@ -55,7 +45,7 @@ def _clusters_update():
     MEGPanel.current_cluster = cluster = MEGPanel.clusters_lookup[bpy.context.scene.meg_clusters]
     # set_cluster_time_series(cluster)
     cluster_name = get_cluster_name(cluster)
-    cluster_max_vert_co = get_cluster_max_vert_co(cluster)
+    cluster_max_vert_co = mu.get_vert_co(cluster.max_vert, cluster.hemi)
     bpy.context.scene.cursor_location = cluster_max_vert_co
     _addon().set_cursor_pos()
     _addon().set_closest_vertex_and_mesh_to_cursor(cluster.max_vert, 'inflated_{}'.format(cluster.hemi))
@@ -309,11 +299,13 @@ def select_meg_cluster(event, context, pos=None):
     if not MEGPanel.init:
         return
 
-    area = mu.get_click_area(event, context)
-    if area.type != 'VIEW_3D':
-        return
+    # Should be checked in the appearence modal loop
+    # area = mu.get_click_area(event, context)
+    # if area.type != 'VIEW_3D':
+    #     return
 
-    # if pos is None:    #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
+    # if pos is None:    #
+    # from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
     #     region = [r for r in area.regions if r.type == 'WINDOW'][0]
     #     rv3d = area.spaces.active.region_3d
     #     coord = (event.mouse_x - area.x, event.mouse_y - area.y)

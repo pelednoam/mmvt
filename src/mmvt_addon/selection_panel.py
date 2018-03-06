@@ -109,6 +109,7 @@ def minimize_graph():
 def calc_best_curves_sep(norm_percs=[3, 97]):
     fcurves, data = get_selected_fcurves_and_data()
     bpy.context.scene.curves_sep = _calc_best_curves_sep(data, norm_percs)
+    bpy.context.scene.curves_sep += 0.001
 
 
 def _calc_best_curves_sep(data, norm_percs=[3, 97]):
@@ -175,6 +176,7 @@ def select_roi(roi_name):
     # check if MEG data is loaded and attahced to the obj
     if mu.count_fcurves(roi) > 0:
         roi.select = True
+        labels_selection_coloring(roi_name)
         # mu.change_fcurves_colors(roi)
     else:
         # Check if dynamic fMRI data is loaded
@@ -188,6 +190,57 @@ def select_roi(roi_name):
                 fcurve.hide = True
     mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
     mu.view_all_in_graph_editor()
+
+
+def labels_selection_coloring(current_label):
+    selected_labels = get_selected_labels()
+    # Check if it's a new selection:
+    if len(selected_labels) == 1 and current_label not in SelectionMakerPanel.prev_labels:
+        # Clear and init prev_labels
+        unselect_prev_label(SelectionMakerPanel.prev_labels)
+        SelectionMakerPanel.prev_labels = set([current_label])
+    # Check if this is a new labels where the shift is pressed
+    elif len(selected_labels) > 1 and current_label not in SelectionMakerPanel.prev_labels:
+        # Add current label to prev_labels
+        SelectionMakerPanel.prev_labels.add(current_label)
+    # Check if the user unselect one of the selected labels
+    elif len(selected_labels) > 1 and current_label in SelectionMakerPanel.prev_labels:
+        bpy.data.objects[current_label].select = False
+        unselect_prev_label([current_label])
+        SelectionMakerPanel.prev_labels.remove(current_label)
+    else:
+        clear_labels_selection()
+    print(get_selected_labels())
+
+
+def get_selected_labels():
+    return [obj.name for obj in bpy.context.selected_objects if
+            mu.check_obj_type(obj.name) in [mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_CORTEX_LH]]
+
+
+def unselect_prev_label(prev_labels):
+    for prev_label in prev_labels:
+        prev_elc = bpy.data.objects.get(prev_label)
+        if not prev_elc is None:
+            de_select_object(prev_elc)
+
+
+def de_select_object(obj):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
+    try:
+        obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+    except:
+        pass
+    try:
+        obj.active_material.diffuse_color = (1, 1, 1)
+    except:
+        pass
+
+
+def clear_labels_selection():
+    unselect_prev_label(SelectionMakerPanel.prev_labels)
+    SelectionMakerPanel.prev_labels = set()
 
 
 def select_all_rois():
@@ -215,7 +268,7 @@ def select_all_meg_sensors():
     select_brain_objects('MEG_sensors')
 
 
-def select_all_eeg():
+def select_all_eeg_sensors():
     mu.unfilter_graph_editor()
     bpy.context.scene.filter_curves_type = 'EEG'
     select_brain_objects('EEG_sensors')
@@ -341,7 +394,7 @@ class SelectAllEEG(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        select_all_eeg()
+        select_all_eeg_sensors()
         SelectionMakerPanel.selection.append(SEL_EEG_SENSORS)
         mu.unfilter_graph_editor()
         # if bpy.context.scene.selection_type == 'diff':
@@ -520,6 +573,10 @@ def get_window_length(obj_name):
     return N
 
 
+def subselect_update(self=None, context=None):
+    context.screen.areas[0].spaces[0].dopesheet.filter_fcurve_name = context.scene.filter_fcurves
+
+
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
     items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2)])
            # ("spec_cond", "Specific condition", "", 3)], description="Selection type")
@@ -531,6 +588,7 @@ bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
 bpy.types.Scene.graph_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
 bpy.types.Scene.find_curves_sep_auto = bpy.props.BoolProperty()
+bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:",update=subselect_update)
 
 
 
@@ -555,6 +613,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     modalities_num = 0
     connection_files_exist = False
     data, names, curves_sep, fcurves = {}, {}, {}, {}
+    prev_labels = set()
 
     @staticmethod
     def draw(self, context):
@@ -585,6 +644,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllEEG.bl_idname, text="EEG sensors", icon='BORDER_RECT')
         if SelectionMakerPanel.connection_files_exist:
             layout.operator(SelectAllConnections.bl_idname, text="Connections", icon='BORDER_RECT')
+
         layout.operator(ClearSelection.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
         layout.operator(FitSelection.bl_idname, text="Fit graph window", icon='MOD_ARMATURE')
         row = layout.row(align=True)
@@ -596,7 +656,7 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(MaxMinGraphPanel.bl_idname,
                         text="{} graph".format('Maximize' if bpy.context.scene.graph_max_min else 'Minimize'),
                         icon='TRIA_UP' if bpy.context.scene.graph_max_min else 'TRIA_DOWN')
-
+        layout.prop(context.scene, "filter_fcurves", text="Show curves with name:")
 
         # if not SelectionMakerPanel.dt is None:
         #     points_in_sec = int(1 / SelectionMakerPanel.dt)

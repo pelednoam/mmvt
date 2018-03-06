@@ -42,6 +42,12 @@ def change_view3d():
             # break
 
 
+def panels_background_color_update(self, context):
+    context.user_preferences.themes[0].image_editor.space.back = \
+        context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = \
+        bpy.context.scene.panels_background_color
+
+
 def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 
@@ -127,6 +133,7 @@ def hemis_distance_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = bpy.data.objects['Cortex-inflated-lh'].location[0] = \
                 AppearanceMakerPanel.cortex_rh - bpy.context.scene.hemis_distance
 
+        bpy.context.scene.cursor_is_snapped = bpy.context.scene.hemis_distance == 0
 
 # def inflating_update(self, context):
 #     try:
@@ -154,7 +161,7 @@ def inflating_update(self, context):
         if bpy.data.objects.get('rh', None) is None:
             return
         if bpy.context.scene.inflating > 0: #flattening
-            _addon().show_coronal(True)
+            # _addon().show_coronal(True)
             # _addon().view_all()
             if AppearanceMakerPanel.flat_map_exists:
                 bpy.data.shape_keys['Key'].key_blocks["flat"].value = bpy.context.scene.inflating
@@ -179,6 +186,7 @@ def inflating_update(self, context):
             bpy.data.objects['inflated_lh'].location[0] = 0
             use_masking = False
 
+        mu.set_zoom_level(bpy.context.scene.surface_type, abs(bpy.context.scene.inflating))
         bpy.context.scene.layers[_addon().ACTIVITY_LAYER] = False
         bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = False
 
@@ -208,29 +216,31 @@ def inflating_update(self, context):
             if obj_name != '':
                 if 'inflated' not in obj_name:
                     obj_name = 'inflated_{}'.format(obj_name)
-                ob = bpy.data.objects[obj_name]
-                scene = bpy.context.scene
-                me = ob.to_mesh(scene, True, 'PREVIEW')
-                try:
-                    bpy.context.scene.cursor_location = me.vertices[vert].co * ob.matrix_world # / 10
-                except:
-                    pass
-                # if 0 < infl <= 1.0:
-                #     if obj_name == 'inflated_rh':
-                #         bpy.context.scene.cursor_location[0] +=  bpy.context.scene.inflating
-                #     elif obj_name == 'inflated_lh':
-                #         bpy.context.scene.cursor_location[0] -=  bpy.context.scene.inflating
-                bpy.data.meshes.remove(me)
+                obj = bpy.data.objects[obj_name]
+                move_cursor_according_to_vert(vert, obj)
     except:
         print('Error in inflating update!')
         print(traceback.format_exc())
 
 
+def move_cursor_according_to_vert(vert, obj):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
+    scene = bpy.context.scene
+    me = obj.to_mesh(scene, True, 'PREVIEW')
+    try:
+        bpy.context.scene.cursor_location = me.vertices[vert].co * obj.matrix_world  # / 10
+    except:
+        pass
+    bpy.data.meshes.remove(me)
+
+
 def set_inflated_ratio(ratio):
     bpy.context.scene.inflating = ratio
 
-    if not is_rendered():
-        _addon().view_all()
+    # todo: why we need those lines?
+    # if not is_rendered():
+    #     _addon().view_all()
 
 
 def get_inflated_ratio():
@@ -292,6 +302,8 @@ def filter_view_type_update(self, context):
 def surface_type_update(self, context):
     if AppearanceMakerPanel.no_surface_type_update:
         return
+    if bpy.data.objects['inflated_lh'].location[0] != 0:
+        _addon().set_normal_view()
     # tmp = bpy.context.scene.surface_type
     inflated = bpy.context.scene.surface_type == 'inflated'
     # todo: why we need the for loop here?!?
@@ -316,12 +328,15 @@ def surface_type_update(self, context):
         show_hide_eeg(AppearanceMakerPanel.showing_eeg_sensors)
         show_hide_electrodes(AppearanceMakerPanel.showing_electrodes)
 
+    # mu.set_zoom_level(bpy.context.scene.surface_type, 1)
     if bpy.context.scene.surface_type == 'inflated':
         set_inflated_ratio(0)
 
         # print('inflated - set_inflated_ratio(0) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'flat_map':
         set_inflated_ratio(1)
+        _addon().show_coronal(True)
+        # mu.set_zoom_for_flatmap()
         # print('flat_map - set_inflated_ratio(1) the actual value={}'.format(bpy.context.scene.inflating))
     if bpy.context.scene.surface_type == 'pial':
         set_inflated_ratio(-1)
@@ -405,19 +420,23 @@ def appearance_draw(self, context):
     #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
     #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
-    if bpy.data.objects.get(_addon().electrodes_panel_parent):
+    if bpy.data.objects.get(_addon().electrodes_panel_parent) and is_pial():
         show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
-    if bpy.data.objects.get('MEG_sensors'):
+    if bpy.data.objects.get('MEG_sensors') and is_pial():
         show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
-    if bpy.data.objects.get('EEG_sensors'):
+    if bpy.data.objects.get('EEG_sensors') and is_pial():
         show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
         show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
+    if bpy.context.scene.hemis_distance == 0 and bpy.data.objects['inflated_lh'].location[0] == 0:
+        layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
+    layout.prop(context.scene, 'show_appearance_settings', text='Show settings')
+    if bpy.context.scene.show_appearance_settings:
+        layout.prop(context.scene, 'panels_background_color', text='Background')
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
@@ -452,6 +471,8 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
+                # if bpy.context.scene.slices_zoom > 1:
+                #     ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
@@ -466,16 +487,24 @@ class SelectionListener(bpy.types.Operator):
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)
-            if _addon().is_pial():
-                # todo: should work also on the inflated
-                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+
+            tkreg_ras = _addon().calc_tkreg_ras_from_cursor()
+            if tkreg_ras is not None:
+                _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+            # if _addon().is_pial():
+            #     tkreg_ras = bpy.context.scene.cursor_location * 10
+            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+            # elif bpy.context.scene.cursor_is_snapped:
+            #     tkreg_ras = _addon().calc_tkreg_ras_from_snapped_cursor()
+            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+
             if cursor_moved:
                 set_cursor_pos()
                 # print('cursor position was changed by the user!')
-                _addon().create_slices()
+                _addon().create_slices(pos=tkreg_ras)
                 _addon().save_cursor_position()
                 clear_slice()
-            if coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
+            if bpy.context.scene.find_closest_label_on_click: # coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
                 _addon().find_closest_label()
 
         if self.right_clicked:
@@ -483,7 +512,7 @@ class SelectionListener(bpy.types.Operator):
             if not click_inside_3d_view(event):
                 return {'PASS_THROUGH'}
             # print(bpy.context.selected_objects)
-            cluster = _addon().select_meg_cluster(event, context)
+            # cluster = _addon().select_meg_cluster(event, context)
             # if cluster is not None:
             #     return {'PASS_THROUGH'}
             if len(bpy.context.selected_objects):
@@ -517,7 +546,12 @@ class SelectionListener(bpy.types.Operator):
             else:
                 _addon().clear_electrodes_selection()
                 #todo: should call to _addon().clear_rois_selection()
-        if time.time() - self.press_time > 1:
+                # if is_activity():
+                #     bpy.context.scene.cursor_location = mouse_coo_to_3d_loc(event, context)
+                #     snap_cursor(True)
+                #     _addon().find_closest_label()
+
+        if time.time() - self.press_time > 1 and event.value == 'PRESS':
             if event.type == 'RIGHTMOUSE':
                 self.press_time = time.time()
                 self.right_clicked = True
@@ -577,6 +611,14 @@ def click_inside_images_view(event):
     return None, None
 
 
+def ohad(offset_values):
+    for area, region in mu.get_images_area_regions():
+        override = bpy.context.copy()
+        override['area'] = area
+        override['region'] = region
+        bpy.ops.image.view_pan(override, offset=(-offset_values[0], -offset_value[1]))
+
+
 def set_cursor_pos():
     SelectionListener.cursor_pos = bpy.context.scene.cursor_location.copy()
 
@@ -597,9 +639,9 @@ def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_
         bpy.context.scene.cursor_location = vertex_co
         set_cursor_pos()
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
-        activity_values = _addon().get_activity_values()
-        if activity_values is not None:
-            _addon().set_vertex_data(activity_values[vertex_ind])
+        # activity_values = _addon().get_activity_values()
+        # if activity_values is not None:
+        #     _addon().set_vertex_data(activity_values[vertex_ind])
         # print(closest_mesh_name, vertex_ind, vertex_co)
         return vertex_ind, closest_mesh_name
     else:
@@ -653,6 +695,7 @@ except:
         description="Surface type", update=surface_type_update)
     bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=0, default=0, step=0.1, update=inflating_update)
 
+
 bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
@@ -662,6 +705,10 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
 bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.show_appearance_settings = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.panels_background_color = bpy.props.FloatVectorProperty(
+    name="object_color", subtype='COLOR', default=(0, 0, 0), min=0.0, max=1.0, description="color picker",
+    update=panels_background_color_update)
 
 
 class SnapCursor(bpy.types.Operator):
@@ -758,6 +805,7 @@ def init(addon):
     # show_rois()
     loc_val = 0 #5
     AppearanceMakerPanel.flat_map_exists = True
+    bpy.context.scene.show_appearance_settings = False
     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('inflated_rh'):
         AppearanceMakerPanel.cortex_inflated_rh = bpy.data.objects['Cortex-inflated-rh'].location[0] = \
             bpy.data.objects['inflated_rh'].location[0] = loc_val
