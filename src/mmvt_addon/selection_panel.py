@@ -465,6 +465,17 @@ class FitSelection(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ResetCurvesFilter(bpy.types.Operator):
+    bl_idname = "mmvt.reset_curves_filter"
+    bl_label = "reset_curves_filter"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.filter_fcurves = ''
+        return {"FINISHED"}
+
+
 class ResetCurvesSep(bpy.types.Operator):
     bl_idname = "mmvt.reset_curves_sep"
     bl_label = "reset_curves_sep"
@@ -574,7 +585,8 @@ def get_window_length(obj_name):
 
 
 def subselect_update(self=None, context=None):
-    context.screen.areas[0].spaces[0].dopesheet.filter_fcurve_name = context.scene.filter_fcurves
+    mu.filter_graph_editor(context.scene.filter_fcurves)
+    # context.screen.areas[0].spaces[0].dopesheet.filter_fcurve_name = context.scene.filter_fcurves
 
 
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
@@ -588,7 +600,7 @@ bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
 bpy.types.Scene.graph_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
 bpy.types.Scene.find_curves_sep_auto = bpy.props.BoolProperty()
-bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:",update=subselect_update)
+bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:", update=subselect_update)
 
 
 
@@ -656,7 +668,9 @@ class SelectionMakerPanel(bpy.types.Panel):
         layout.operator(MaxMinGraphPanel.bl_idname,
                         text="{} graph".format('Maximize' if bpy.context.scene.graph_max_min else 'Minimize'),
                         icon='TRIA_UP' if bpy.context.scene.graph_max_min else 'TRIA_DOWN')
-        layout.prop(context.scene, "filter_fcurves", text="Show curves with name:")
+        row = layout.row(align=True)
+        row.prop(context.scene, "filter_fcurves", text="Filter curves")
+        row.operator(ResetCurvesFilter.bl_idname, text="", icon='PANEL_CLOSE')
 
         # if not SelectionMakerPanel.dt is None:
         #     points_in_sec = int(1 / SelectionMakerPanel.dt)
@@ -743,6 +757,7 @@ def register():
         bpy.utils.register_class(SelectAllRois)
         bpy.utils.register_class(CalcBestCurvesSep)
         bpy.utils.register_class(ResetCurvesSep)
+        bpy.utils.register_class(ResetCurvesFilter)
         bpy.utils.register_class(MaxMinGraphPanel)
         bpy.utils.register_class(NextWindow)
         bpy.utils.register_class(PrevWindow)
@@ -765,6 +780,7 @@ def unregister():
         bpy.utils.unregister_class(SelectAllRois)
         bpy.utils.unregister_class(CalcBestCurvesSep)
         bpy.utils.unregister_class(ResetCurvesSep)
+        bpy.utils.unregister_class(ResetCurvesFilter)
         bpy.utils.unregister_class(MaxMinGraphPanel)
         bpy.utils.unregister_class(NextWindow)
         bpy.utils.unregister_class(PrevWindow)
