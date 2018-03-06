@@ -2015,9 +2015,9 @@ def draw(self, context):
     else:
         connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
     layout.prop(context.scene, 'coloring_threshold', text="Threshold")
+    layout.prop(context.scene, "set_current_time", text="Set time")
     layout.prop(context.scene, 'coloring_use_abs', text="Use abs")
     layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
-    layout.prop(context.scene, "set_current_time", text="Set time")
 
     if faces_verts_exist:
         meg_current_activity_data_exist = mu.hemi_files_exists(
@@ -2155,7 +2155,9 @@ bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(d
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
-bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", update=set_current_time_update)
+bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", min=0,
+                                                         max=bpy.data.scenes['Scene'].frame_preview_end,
+                                                         update=set_current_time_update)
 
 
 class ColoringMakerPanel(bpy.types.Panel):
