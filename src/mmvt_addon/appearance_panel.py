@@ -874,7 +874,6 @@ def init(addon):
     # bpy.data.objects['rh'].hide_render = True
 
 
-
 def register():
     try:
         bpy.utils.register_class(AppearanceMakerPanel)

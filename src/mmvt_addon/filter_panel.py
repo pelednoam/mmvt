@@ -113,16 +113,13 @@ def filter_draw(self, context):
 
 
 def clear_filtering():
-    for subhierarchy in bpy.data.objects['Brain'].children:
-        new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-        if subhierarchy.name == 'Subcortical_structures':
-            new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-        if subhierarchy.name.startswith('Cortex-inflated'):
-            for obj in subhierarchy.children:
-                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
-        else:
-            for obj in subhierarchy.children:
-                obj.active_material = new_mat
+    # for subhierarchy in bpy.data.objects['Brain'].children:
+    #     if subhierarchy.name.startswith('Cortex-inflated'):
+    #         for obj in subhierarchy.children:
+    #             obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
+    #     else:
+    for obj in bpy.data.objects['Subcortical_structures'].children:
+        obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
 
     for parent_name in ['Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         if bpy.data.objects.get(parent_name):
@@ -167,7 +164,7 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
             mu.filter_graph_editor(closet_object_name)
     # if bpy.context.scene.mark_filter_items:
         # hemi = mu.get_hemi_from_fname(closet_object_name)
-        # _addon().color_contours([closet_object_name], hemi, specific_color=[0, 0, 1], atlas=bpy.context.scene.atlas,
+        # _addon().color_contours([closet_object_name], hemi, specific_colors=[0, 0, 1], atlas=bpy.context.scene.atlas,
         #                         move_cursor=False)
         # if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
         #     obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
@@ -212,10 +209,10 @@ def deselect_all_objects():
         if obj.select:
             if obj.parent == bpy.data.objects['Subcortical_structures']:
                 obj.active_material = bpy.data.materials['unselected_label_Mat_subcortical']
-            elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
-                obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
-            elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
-                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
+            # elif obj.parent == bpy.data.objects['Cortex-lh'] or obj.parent == bpy.data.objects['Cortex-rh']:
+            #     obj.active_material = bpy.data.materials['unselected_label_Mat_cortex']
+            # elif obj.parent == bpy.data.objects['Cortex-inflated-lh'] or obj.parent == bpy.data.objects['Cortex-inflated-rh']:
+            #     obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index('curve')
             elif bpy.data.objects.get('Deep_electrodes', None) and obj.parent == bpy.data.objects['Deep_electrodes'] or \
                  bpy.data.objects.get('EEG_sensors', None) and obj.parent == bpy.data.objects['EEG_sensors']:
                  de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
@@ -461,22 +458,29 @@ class Filtering(bpy.types.Operator):
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         deselect_all_objects()
 
+        filter_obj_names = [names[ind] for ind in objects_indices]
         if bpy.context.scene.selection_type == 'diff':
-            filter_obj_names = [names[ind] for ind in objects_indices]
             brain_obj = bpy.data.objects['Brain']
+            fcurves_colors = []
             for fcurve in brain_obj.animation_data.action.fcurves:
                 con_name = mu.get_fcurve_name(fcurve)
                 fcurve.hide = con_name not in filter_obj_names
                 fcurve.select = not fcurve.hide
+                if fcurve.select:
+                    fcurves_colors.append(fcurve.color)
             brain_obj.select = True
-
-        if bpy.context.scene.filter_items_one_by_one:
-            _addon().show_rois()
+            if bpy.context.scene.filter_items_one_by_one:
+                _addon().show_rois()
+            else:
+                _addon().color_contours(filter_obj_names, specific_colors=fcurves_colors, move_cursor=False)
         else:
-            # objects_names, objects_colors, objects_data = self.get_objects_to_color(names, objects_indices)
-            # _addon().color_objects(objects_names, objects_colors, objects_data)
-            specific_labels = [names[ind] for ind in objects_indices] # mu.flat_list_of_lists(objects_names.values())
-            _addon().color_contours(specific_labels, specific_color=[0, 0, 1], move_cursor=False)
+            for roi_name in filter_obj_names:
+                bpy.data.objects[roi_name].select = True
+            if bpy.context.scene.filter_items_one_by_one:
+                _addon().show_rois()
+            else:
+                objs_colors = mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
+                _addon().color_contours(filter_obj_names, specific_colors=objs_colors, move_cursor=False)
 
     def get_objects_to_color(self, names, objects_indices):
         curves_num = 0

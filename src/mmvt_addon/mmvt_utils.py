@@ -1129,8 +1129,10 @@ def change_selected_fcurves_colors(selected_objects_types, color_also_objects=Tr
     # print('change_selected_fcurves_colors')
     if not isinstance(selected_objects_types, Iterable):
         selected_objects_types = [selected_objects_types]
-    selected_objects = [obj for obj in bpy.context.selected_objects if
+    selected_objects = [obj for obj in bpy.context.scene.objects if obj.select if
                         check_obj_type(obj.name) in selected_objects_types]
+    # selected_objects = [obj for obj in bpy.context.selected_objects if
+    #                     check_obj_type(obj.name) in selected_objects_types]
     selected_objects = [obj for obj in selected_objects if obj.animation_data is not None and
                         obj.name not in exclude][::-1]
     if len(selected_objects) == 0:
@@ -1140,13 +1142,16 @@ def change_selected_fcurves_colors(selected_objects_types, color_also_objects=Tr
     fcurves_per_obj = count_fcurves(selected_objects[0])
     Ls = [0.3, 0.7] if fcurves_per_obj == 2 else [0.5]
 
+    obj_colors = []
     for obj_ind, obj in enumerate(selected_objects):
         if color_also_objects:
             obj_color = colorsys.hls_to_rgb(Hs[obj_ind], 0.5, 1)
+            obj_colors.append(obj_color)
             _addon.object_coloring(obj, obj_color)
         for fcurve_ind, fcurve in enumerate(obj.animation_data.action.fcurves):
             new_color = colorsys.hls_to_rgb(Hs[obj_ind], Ls[fcurve_ind], 1)
             change_fcurve_color(fcurve, new_color, exclude)
+    return obj_colors
 
 
 def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):

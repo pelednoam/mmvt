@@ -76,7 +76,7 @@ def _clusters_update():
         atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
         _addon().color_contours(
             inter_labels, cluster.hemi, None, False, False,
-            specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
+            specific_colors=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
 
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
@@ -181,7 +181,7 @@ def find_closest_cluster(only_within=False):
                 inter_labels = [inter_label['name'] for inter_label in closest_cluster['intersects']]
                 atlas = fMRIPanel.clusters_labels[bpy.context.scene.fmri_clusters_labels_files].atlas
                 _addon().color_contours(inter_labels, closest_cluster.hemi, None, False, False,
-                                        specific_color=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
+                                        specific_colors=bpy.context.scene.fmri_cluster_contours_color, atlas=atlas)
         # _clusters_update()
         else:
             print('only within: dist to big ({})'.format(min_dist))

@@ -627,7 +627,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
 
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
-                   specific_color=None, atlas='', move_cursor=True):
+                   specific_colors=None, atlas='', move_cursor=True):
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if atlas != '' and atlas != bpy.context.scene.contours_coloring and atlas in ColoringMakerPanel.existing_contoures:
@@ -643,18 +643,24 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
         _addon().set_colorbar_max_min(contour_max, 1)
         _addon().set_colorbar_prec(0)
     _addon().show_activity()
+    specific_label_ind = 0
+    if specific_colors is not None:
+        specific_colors = np.tile(specific_colors, (len(specific_labels), 1))
     for hemi in mu.HEMIS:
         contours = labels_contours[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
             selected_contours = np.zeros(contours.shape)
         elif len(specific_labels) > 0:
-            selected_contours = np.zeros(contours.shape) if specific_color is None else np.zeros((contours.shape[0], 4))
+            selected_contours = np.zeros(contours.shape) if specific_colors is None else np.zeros((contours.shape[0], 4))
             for specific_label in specific_labels:
+                if mu.get_hemi_from_fname(specific_label) != hemi:
+                    continue
                 label_ind = np.where(np.array(labels_contours[hemi]['labels']) == specific_label)
                 if len(label_ind) > 0 and len(label_ind[0]) > 0:
                     label_ind = label_ind[0][0]
                     selected_contours[np.where(contours == label_ind + 1)] = \
-                        label_ind + 1 if specific_color is None else [1, *specific_color]
+                        label_ind + 1 if specific_colors is None else [1, *specific_colors[specific_label_ind]]
+                    specific_label_ind += 1
                     if move_cursor and len(specific_labels) == 1 and 'centers' in labels_contours[hemi]:
                         vert = labels_contours[hemi]['centers'][label_ind]
                         _addon().move_cursor_according_to_vert(vert, 'inflated_{}'.format(hemi))
