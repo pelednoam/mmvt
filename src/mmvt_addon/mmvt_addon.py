@@ -558,6 +558,7 @@ def fix_objects_material(objects, material_name):
         if obj.name + '_Mat' in materials_names:
             # print(obj.name + '_Mat')
             cur_mat = bpy.data.materials[obj.name + '_Mat']
+            obj.active_material = cur_mat
         else:
             if material_name in materials_names:
                 obj.active_material = bpy.data.materials[material_name].copy()

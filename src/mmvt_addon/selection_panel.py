@@ -176,6 +176,7 @@ def select_roi(roi_name):
     # check if MEG data is loaded and attahced to the obj
     if mu.count_fcurves(roi) > 0:
         roi.select = True
+        labels_selection_coloring(roi_name)
         # mu.change_fcurves_colors(roi)
     else:
         # Check if dynamic fMRI data is loaded
@@ -189,6 +190,51 @@ def select_roi(roi_name):
                 fcurve.hide = True
     mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
     mu.view_all_in_graph_editor()
+
+
+def labels_selection_coloring(current_label):
+    selected_labels = get_selected_labels()
+    # Check if it's a new selection:
+    if len(selected_labels) == 1 and current_label not in SelectionMakerPanel.prev_labels:
+        # Clear and init prev_labels
+        unselect_prev_label(SelectionMakerPanel.prev_labels)
+        SelectionMakerPanel.prev_labels = set([current_label])
+    # Check if this is a new labels where the shift is pressed
+    elif len(selected_labels) > 1 and current_label not in SelectionMakerPanel.prev_labels:
+        # Add current label to prev_labels
+        SelectionMakerPanel.prev_labels.add(current_label)
+    # Check if the user unselect one of the selected labels
+    elif len(selected_labels) > 1 and current_label in SelectionMakerPanel.prev_labels:
+        bpy.data.objects[current_label].select = False
+        unselect_prev_label([current_label])
+        SelectionMakerPanel.prev_labels.remove(current_label)
+    else:
+        clear_labels_selection()
+    print(get_selected_labels())
+
+
+def get_selected_labels():
+    return [obj.name for obj in bpy.context.selected_objects if
+            mu.check_obj_type(obj.name) in [mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_CORTEX_LH]]
+
+
+def unselect_prev_label(prev_labels):
+    for prev_label in prev_labels:
+        prev_elc = bpy.data.objects.get(prev_label)
+        if not prev_elc is None:
+            de_select_label(prev_elc)
+
+
+def de_select_label(obj):
+    if isinstance(obj, str):
+        obj = bpy.data.objects[obj]
+    obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+    obj.active_material.diffuse_color = (1, 1, 1)
+
+
+def clear_labels_selection():
+    unselect_prev_label(SelectionMakerPanel.prev_labels)
+    SelectionMakerPanel.prev_labels = set()
 
 
 def select_all_rois():
@@ -561,6 +607,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     modalities_num = 0
     connection_files_exist = False
     data, names, curves_sep, fcurves = {}, {}, {}, {}
+    prev_labels = set()
 
     @staticmethod
     def draw(self, context):
