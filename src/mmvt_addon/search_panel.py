@@ -2,6 +2,9 @@ import bpy
 import os.path as op
 import mmvt_utils as mu
 
+def _addon():
+    return SearchPanel.addon
+
 
 class SearchFilter(bpy.types.Operator):
     bl_idname = "mmvt.selection_filter"
@@ -42,7 +45,8 @@ class SearchClear(bpy.types.Operator):
             if subHierchy.name == 'Subcortical_structures':
                 new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
             for obj in subHierchy.children:
-                 obj.active_material = new_mat
+                _addon().de_select_object(obj)
+                # obj.active_material = new_mat
 
         if bpy.data.objects.get('Deep_electrodes'):
             for obj in bpy.data.objects['Deep_electrodes'].children:
@@ -130,6 +134,7 @@ class SearchPanel(bpy.types.Panel):
                 mu.add_box_line(col, obj_name, percentage=1)
             row = layout.row(align=0)
             row.operator(SearchExport.bl_idname, text="Export list", icon = 'FORCE_LENNARDJONES')
+
 
 def init(addon):
     SearchPanel.addon = addon

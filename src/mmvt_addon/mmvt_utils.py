@@ -254,10 +254,10 @@ def create_and_set_material(obj):
         obj.active_material = cur_mat
 
 
-def mark_objects(objs_names):
-    for obj_name in objs_names:
-        if bpy.data.objects.get(obj_name):
-            bpy.data.objects[obj_name].active_material = bpy.data.materials['selected_label_Mat']
+# def mark_objects(objs_names):
+#     for obj_name in objs_names:
+#         if bpy.data.objects.get(obj_name):
+#             bpy.data.objects[obj_name].active_material = bpy.data.materials['selected_label_Mat']
 
 
 def cylinder_between(p1, p2, r, layers_array):

@@ -169,15 +169,16 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
         if obj.active_material == bpy.data.materials['unselected_label_Mat_subcortical']:
             obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
         else:
+            # todo: should change the code here...
             vertex_colors_prop = 'selected' if mark == 'mark_green' else 'selected_blue'
             vertec_color = (0.0, 1.0, 0.0) if mark == 'mark_green' else (0.0, 0.0, 1.0)
-            selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
-            if _addon().is_inflated():
-                if not (vertex_colors_prop in obj.data.vertex_colors):
-                    color_object_uniformly(obj, vertec_color)
-                obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
-            else:
-                obj.active_material = bpy.data.materials[selected_label_material]
+            # selected_label_material = 'selected_label_Mat' if mark == 'mark_green' else 'selected_label_Mat_blue'
+            # if _addon().is_inflated():
+            if not (vertex_colors_prop in obj.data.vertex_colors):
+                color_object_uniformly(obj, vertec_color)
+            obj.data.vertex_colors.active_index = obj.data.vertex_colors.keys().index(vertex_colors_prop)
+            # else:
+                # obj.active_material = bpy.data.materials[selected_label_material]
 
     bpy.types.Scene.filter_is_on = True
 

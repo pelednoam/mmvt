@@ -222,14 +222,20 @@ def unselect_prev_label(prev_labels):
     for prev_label in prev_labels:
         prev_elc = bpy.data.objects.get(prev_label)
         if not prev_elc is None:
-            de_select_label(prev_elc)
+            de_select_object(prev_elc)
 
 
-def de_select_label(obj):
+def de_select_object(obj):
     if isinstance(obj, str):
         obj = bpy.data.objects[obj]
-    obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
-    obj.active_material.diffuse_color = (1, 1, 1)
+    try:
+        obj.active_material.node_tree.nodes["RGB"].outputs[0].default_value = (1, 1, 1, 1)
+    except:
+        pass
+    try:
+        obj.active_material.diffuse_color = (1, 1, 1)
+    except:
+        pass
 
 
 def clear_labels_selection():
