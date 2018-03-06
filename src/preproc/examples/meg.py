@@ -76,9 +76,10 @@ def calc_msit(args):
         subject=args.subject,
         mri_subject=args.mri_subject,
         task='MSIT',
-        function=args.real_function,
+        # function=args.real_function,
+        function='calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
         data_per_task=True,
-        atlas='laus250',
+        atlas=args.atlas,
         contrast='interference',
         cleaning_method='nTSSS',
         t_min=-0.5,
@@ -91,7 +92,10 @@ def calc_msit(args):
         # save_smoothed_activity=True,
         # stc_t=1189,
         morph_to_subject = 'fsaverage5',
-        extract_mode=['mean_flip', 'mean', 'pca_flip']
+        extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
+        pick_ori='normal',
+        overwrite_stc=True,
+        overwrite_labels_data=True
     ))
     meg.call_main(args)
 
@@ -281,6 +285,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None,
                         type=au.str_arr_type)
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='MNE',
                         type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=True)

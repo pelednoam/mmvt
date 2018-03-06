@@ -1027,7 +1027,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
                     # mmvt_stc_name = ''
-                    stcs[cond_name].save(op.join(MMVT_DIR, MRI_SUBJECTSUBJECT, modality, utils.namebase(stc_fname)))
+                    stcs[cond_name].save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
