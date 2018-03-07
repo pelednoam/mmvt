@@ -461,6 +461,10 @@ class ClearSelection(bpy.types.Operator):
             _addon().clear_electrodes_selection()
         except:
             pass
+        try:
+            clear_labels_selection()
+        except:
+            pass
         return {"FINISHED"}
 
 

@@ -146,6 +146,7 @@ curves_sep_update = selection_panel.curves_sep_update
 calc_best_curves_sep = selection_panel.calc_best_curves_sep
 set_connection_files_exist = selection_panel.set_connection_files_exist
 de_select_object = selection_panel.de_select_object
+clear_labels_selection = selection_panel.clear_labels_selection
 ClearSelection = selection_panel.ClearSelection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 object_coloring = coloring_panel.object_coloring
