@@ -28,7 +28,7 @@ The visualization and exploration of neuroimaging data are important for the ana
 Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Installation).
 
 The tool itself can run on windows, mac and linux.
-In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only only linux/max). Beside of that, you can use the tool also on windows.
+In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
 
 ## Template brain and data
 We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT](https://www.nature.com/articles/nprot.2006.48) task. The data can be downloaded from [here](https://tinyurl.com/yab2vfzx) (1GB). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend). After that, you'll need to press space anywhere on the screen, write "run mmvt" and press enter. We've also written several self-explanatory tasks for this data, that can be found [here](https://tinyurl.com/yd8wkbx3).
