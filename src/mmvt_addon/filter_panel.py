@@ -107,7 +107,9 @@ def filter_draw(self, context):
         col = box.column()
         for ind in Filtering.objects_indices:
             mu.add_box_line(col, Filtering.filter_objects[ind], '{:.2f}'.format(Filtering.filter_values[ind]), 0.8)
-
+    row = layout.row(align=True)
+    row.prop(context.scene, "filter_fcurves", text="Filter curves")
+    row.operator(ResetCurvesFilter.bl_idname, text="", icon='PANEL_CLOSE')
         # bpy.context.area.type = 'GRAPH_EDITOR'
     # filter_to = bpy.context.scence.frame_preview_end
 
@@ -278,6 +280,8 @@ def get_filter_functions():
         items=[(module_name, module_name, '', k + 1) for k, module_name in enumerate(functions_names)],
         description="Filtering function")
 
+def subselect_update(self=None, context=None):
+    mu.filter_graph_editor(context.scene.filter_fcurves)
 
 class FindCurveClosestToCursor(bpy.types.Operator):
     bl_idname = "mmvt.curve_close_to_cursor"
@@ -360,6 +364,15 @@ class NextFilterItem(bpy.types.Operator):
         next_filter_item()
         return {'FINISHED'}
 
+class ResetCurvesFilter(bpy.types.Operator):
+    bl_idname = "mmvt.reset_curves_filter"
+    bl_label = "reset_curves_filter"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.filter_fcurves = ''
+        return {"FINISHED"}
 
 class Filtering(bpy.types.Operator):
     bl_idname = "mmvt.filter"
@@ -572,6 +585,7 @@ bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=True, descrip
 bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
 bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
     default=False, description="Show one by one", update=show_one_by_one_update)
+bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:", update=subselect_update)
 
 
 class FilteringMakerPanel(bpy.types.Panel):
@@ -608,6 +622,7 @@ def register():
         bpy.utils.register_class(FindCurveClosestToCursor)
         bpy.utils.register_class(PrevFilterItem)
         bpy.utils.register_class(NextFilterItem)
+        bpy.utils.register_class(ResetCurvesFilter)
         # print('Filtering Panel was registered!')
     except:
         print("Can't register Filtering Panel!")
@@ -623,6 +638,7 @@ def unregister():
         bpy.utils.unregister_class(FindCurveClosestToCursor)
         bpy.utils.unregister_class(PrevFilterItem)
         bpy.utils.unregister_class(NextFilterItem)
+        bpy.utils.unregister_class(ResetCurvesFilter)
     except:
         pass
 
