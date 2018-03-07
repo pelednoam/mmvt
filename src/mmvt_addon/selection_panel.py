@@ -117,6 +117,8 @@ def minimize_graph():
 
 def calc_best_curves_sep(norm_percs=[3, 97]):
     fcurves, data = get_selected_fcurves_and_data()
+    # if data.shape[0] == 1:
+    #     return
     bpy.context.scene.curves_sep = _calc_best_curves_sep(data, norm_percs)
     bpy.context.scene.curves_sep += 0.001
 
@@ -199,7 +201,7 @@ def select_roi(roi_name, change_selected_fcurves_colors=True):
                 fcurve.hide = True
     if change_selected_fcurves_colors:
         mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
-    # mu.view_all_in_graph_editor()
+    mu.view_all_in_graph_editor()
 
 
 def labels_selection_coloring(current_label):
