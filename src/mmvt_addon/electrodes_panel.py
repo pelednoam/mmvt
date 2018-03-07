@@ -705,7 +705,6 @@ def init_electrodes_list():
             bpy.context.scene.electrodes = ElecsPanel.current_electrode = last_obj_name
         else:
             bpy.context.scene.electrodes = ElecsPanel.current_electrode = ElecsPanel.groups_first_electrode[lead]
-        _addon().calc_best_curves_sep()
         return True
     else:
         print('{} not in groups!'.format(ElecsPanel.electrodes[0]))

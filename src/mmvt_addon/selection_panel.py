@@ -1,6 +1,7 @@
 import bpy
 import mmvt_utils as mu
 import numpy as np
+import os.path as op
 from functools import partial
 
 SEL_ROIS, SEL_FUNC_ROIS, SEL_SUBS, SEL_ELECTRODES, SEL_MEG_SENSORS, SEL_EEG_SENSORS, SEL_CONNECTIONS = range(7)
@@ -83,7 +84,7 @@ def curves_sep_update(self=None, context=None):
         data_mean = np.median(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
         for c in range(C):
             fcurve = fcurves[fcurve_ind]
-            if SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), -1) == bpy.context.scene.curves_sep:
+            if SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), 0) == bpy.context.scene.curves_sep:
                 fcurve_ind += 1
                 continue
             for t in range(T):
@@ -172,6 +173,7 @@ def meg_clusters_data_loaded():
         return False
 
 
+@mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def select_roi(roi_name, change_selected_fcurves_colors=True):
     roi = bpy.data.objects.get(roi_name)
     if roi is None:
@@ -703,10 +705,11 @@ def init(addon):
     bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=modalities_itesm)
     # SelectionMakerPanel.connection_files_exist = bpy.data.objects.get(_addon().get_connections_parent_name()) and \
     #             bpy.data.objects[_addon().get_connections_parent_name()].animation_data
+    get_data()
     bpy.context.scene.fit_graph_on_selection = False
     bpy.context.scene.graph_max_min = True
+    bpy.context.scene.curves_sep = 0
     bpy.context.scene.find_curves_sep_auto = True
-    get_data()
     SelectionMakerPanel.init = True
     register()
 
