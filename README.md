@@ -33,8 +33,8 @@ The tool itself can run on windows, mac and linux. If you want to connect it to 
 Also in the preprocessing tool there are few call to freesurfer, so mainly to create the anatomy files you'll need an os that supports freesurfer.
 Beside of that, you can use the tool also on windows.
 
-## Template brain
-To get started, download and extract [colin27](https://drive.google.com/file/d/0BxstG-_3FEEyM1JpVzlsVHVJVDg/view?usp=sharing) (SPM template brain) into your MMVT folder. Then, run Blender with the script you've created and open colin27.blend file. After that, hover with the mouse on the 3D brain panel, press "space", write "run MMVT addon" and press enter.
+## Template brain and data
+We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT]((https://www.nature.com/articles/nprot.2006.48)) task. The data can be downloaded from [here](https://tinyurl.com/yab2vfzx) (1GB!). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend). After that, you'll need to press space anywhere on the screen, write "run mmvt" and press enter. We've also written several self-explanatory tasks for this data, that can be found [here](https://tinyurl.com/yd8wkbx3).
 
 ## Preprocessing
 The preprocessing tutorial can be found in the [wiki](https://github.com/pelednoam/mmvt/wiki/Preprocessing).
