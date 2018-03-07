@@ -929,6 +929,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     mesh = cur_obj.data
     scn = bpy.context.scene
 
+    _addon().show_activity()
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     if bpy.context.scene.cursor_is_snapped:
         vert_ind, _ = _addon().get_closest_vertex_and_mesh_to_cursor()

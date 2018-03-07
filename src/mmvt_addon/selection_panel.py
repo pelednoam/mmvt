@@ -177,7 +177,6 @@ def meg_clusters_data_loaded():
         return False
 
 
-@mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def select_roi(roi_name, change_selected_fcurves_colors=True):
     roi = bpy.data.objects.get(roi_name)
     if roi is None:
@@ -200,7 +199,7 @@ def select_roi(roi_name, change_selected_fcurves_colors=True):
                 fcurve.hide = True
     if change_selected_fcurves_colors:
         mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
-    mu.view_all_in_graph_editor()
+    # mu.view_all_in_graph_editor()
 
 
 def labels_selection_coloring(current_label):
