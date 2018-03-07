@@ -1895,26 +1895,32 @@ def build_label_name(delim, pos, label, hemi):
         return '{}{}{}'.format(hemi, delim, label)
 
 
-def min_stc_hemi(stc, hemi):
-    if hemi == 'rh':
-        return np.min(stc.rh_data) if stc.rh_data.shape[0] > 0 else 0
+def min_stc_hemi(stc, hemi, min_perc=None):
+    data = stc.rh_data if hemi == 'rh' else stc.lh_data
+    if data.shape[0] == 0:
+        return 0
+    if min_perc is None:
+        return np.min(data)
     else:
-        return np.min(stc.lh_data) if stc.lh_data.shape[0] > 0 else 0
+        return np.percentile(data, min_perc)
 
 
-def min_stc(stc):
-    return min([min_stc_hemi(stc, hemi) for hemi in HEMIS])
+def min_stc(stc, min_perc=None):
+    return min([min_stc_hemi(stc, hemi, min_perc) for hemi in HEMIS])
 
 
-def max_stc_hemi(stc, hemi):
-    if hemi == 'rh':
-        return np.max(stc.rh_data) if stc.rh_data.shape[0] > 0 else 0
+def max_stc_hemi(stc, hemi, max_perc=None):
+    data = stc.rh_data if hemi == 'rh' else stc.lh_data
+    if data.shape[0] == 0:
+        return 0
+    if max_perc is None:
+        return np.max(data)
     else:
-        return np.max(stc.lh_data) if stc.lh_data.shape[0] > 0 else 0
+        return np.percentile(data, max_perc)
 
 
-def max_stc(stc):
-    return max([max_stc_hemi(stc, hemi) for hemi in HEMIS])
+def max_stc(stc, max_perc=None):
+    return max([max_stc_hemi(stc, hemi, max_perc) for hemi in HEMIS])
 
 
 def check_hemi(hemi):

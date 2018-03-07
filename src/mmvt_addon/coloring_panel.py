@@ -1280,10 +1280,30 @@ def _meg_files_update(context):
             #     bpy.context.scene.meg_max_t = 0
 
 
+def meg_minmax_prec_update(selc, context):
+    if not ColoringMakerPanel.run_meg_minmax_prec_update:
+        return
+    ColoringMakerPanel.run_meg_minmax_prec_update = False
+    if bpy.context.scene.meg_min_prec >= bpy.context.scene.meg_max_prec:
+        bpy.context.scene.meg_min_prec = bpy.context.scene.meg_max_prec - 1
+    if bpy.context.scene.meg_max_prec <= bpy.context.scene.meg_min_prec:
+        bpy.context.scene.meg_max_prec = bpy.context.scene.meg_min_prec + 1
+    ColoringMakerPanel.run_meg_minmax_prec_update = True
+    calc_stc_minmax()
+
+
+def set_meg_minmax_prec(min_prec, max_prec):
+    ColoringMakerPanel.run_meg_minmax_prec_update = False
+    bpy.context.scene.meg_min_prec = min_prec
+    bpy.context.scene.meg_max_prec = max_prec
+    ColoringMakerPanel.run_meg_minmax_prec_update = True
+    calc_stc_minmax()
+
+
 def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
-    data_min = mu.min_stc(stc)
-    data_max = mu.max_stc(stc)
+    data_min = mu.min_stc(stc, bpy.context.scene.meg_min_prec)
+    data_max = mu.max_stc(stc, bpy.context.scene.meg_max_prec)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
     if np.max(ColoringMakerPanel.stc._data) < 1e-5:
@@ -2048,8 +2068,12 @@ def draw(self, context):
             col.prop(context.scene, 'meg_files', '')
             # col.label(text='T max: {}'.format(bpy.context.scene.meg_max_t))
             col.operator(ColorMeg.bl_idname, text="Plot MEG ", icon='POTATO')
-            col.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
-            col.prop(context.scene, 'meg_peak_mode', '')
+            row = col.row(align=True)
+            row.operator(ColorMegMax.bl_idname, text="Plot MEG peak", icon='POTATO')
+            row.prop(context.scene, 'meg_peak_mode', '')
+            row = col.row(align=True)
+            row.prop(context.scene, 'meg_min_prec', 'min percentile')
+            row.prop(context.scene, 'meg_max_prec', 'max percentile')
             if op.isfile(op.join(mu.get_user_fol(), 'subcortical_meg_activity.npz')):
                 col.prop(context.scene, 'coloring_meg_subcorticals', text="Plot also subcorticals")
         if ColoringMakerPanel.meg_labels_data_exist and ColoringMakerPanel.meg_labels_data_minmax_exist:
@@ -2145,6 +2169,8 @@ bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
     items=[('abs', 'Absolute values', '', 0), ('pos', 'Only positive', '', 1), ('neg', 'only negative', '', 2)])
+bpy.types.Scene.meg_min_prec = bpy.props.IntProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
+bpy.types.Scene.meg_max_prec = bpy.props.IntProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
@@ -2229,6 +2255,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     stc = None
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
+    run_meg_minmax_prec_update = True
     # activity_map_coloring = activity_map_coloring
 
     def draw(self, context):
@@ -2261,6 +2288,7 @@ def init(addon):
     bpy.context.scene.coloring_meg_subcorticals = False
     bpy.context.scene.meg_peak_mode = 'abs'
     bpy.context.scene.coloring_use_abs = True
+    set_meg_minmax_prec(1, 99)
     ColoringMakerPanel.init = True
     for hemi in ['lh', 'rh']:
         mesh = mu.get_hemi_obj(hemi).data
