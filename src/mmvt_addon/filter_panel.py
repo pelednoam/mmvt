@@ -129,7 +129,7 @@ def clear_filtering():
     Filtering.filter_objects, Filtering.objects_indices = [], []
 
 
-def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=True):
+def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=False):
     if isinstance(obj, str):
         obj = bpy.data.objects[obj]
     obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1

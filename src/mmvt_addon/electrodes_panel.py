@@ -202,6 +202,7 @@ def update_cursor():
     # Getting the electrode pos after translation if any
     # loc, rot, scale = bpy.context.object.matrix_world.decompose()
     bpy.context.scene.cursor_location = current_electrode_obj.matrix_world.to_translation() #current_electrode_obj.location
+    # bpy.context.scene.cursor_location = current_electrode_obj.location + bpy.data.objects[PARENT_OBJ_NAME].location
     if _addon().freeview_panel is not None:
         _addon().freeview_panel.save_cursor_position()
     _addon().set_cursor_pos()
@@ -217,11 +218,11 @@ def export_electrodes():
     with open(csv_fname, 'w') as csv_file:
         wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE)
         wr.writerow(['Electrode Name', 'R', 'A', 'S'])
-        for electrodes, group in ElecsPanel.groups_electrodes.items():
-            for ind, elc_name in enumerate(electrodes):
-                wr.writerow([elc_name, *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
-            if group_hemi in groups_inds:
-                groups_inds[group_hemi] += 1
+        for group, electrodes  in ElecsPanel.groups_electrodes.items():
+            for elc_name in electrodes:
+                coords = bpy.data.objects[elc_name].matrix_world.to_translation() * 10
+                wr.writerow([elc_name, *['{:.2f}'.format(loc) for loc in coords]])
+    print('The electrodes file was exported to {}'.format(csv_fname))
 
 
 def show_lh_update(self, context):
@@ -420,6 +421,7 @@ def elecs_draw(self, context):
             mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
     layout.prop(context.scene, "elc_size", text="")
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
+    layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
 
     # Color picker:
     # row = layout.row(align=True)
@@ -429,6 +431,15 @@ def elecs_draw(self, context):
     # row.prop(context.scene, 'electrodes_color', text='')
     # row.label(text='             ')
 
+
+class ExportElectrodes(bpy.types.Operator):
+    bl_idname = 'mmvt.electrodes_export'
+    bl_label = 'exportElectrodes'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        export_electrodes()
+        return {'FINISHED'}
 
 class ClearElectrodes(bpy.types.Operator):
     bl_idname = 'mmvt.electrodes_clear'
@@ -798,8 +809,7 @@ def register():
         bpy.utils.register_class(ColorElectrodes)
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
-
-
+        bpy.utils.register_class(ExportElectrodes)
         # print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
@@ -815,7 +825,7 @@ def unregister():
         bpy.utils.unregister_class(ColorElectrodes)
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
-
+        bpy.utils.unregister_class(ExportElectrodes)
     except:
         pass
         # print("Can't unregister Electrodes Panel!")

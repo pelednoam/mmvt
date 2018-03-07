@@ -57,6 +57,8 @@ def get_selected_fcurves_and_data():
         if selction_type != SEL_FUNC_ROIS:
             selected_indices = [ind for ind, name in enumerate(names)
                                 if any(['{}_{}'.format(name, cond) in fcurves_names for cond in conditions])]
+            if len(selected_indices) == 0:
+                continue
             data = data[selected_indices]
         all_fcurves.extend(fcurves)
         all_data = data if all_data == [] else np.concatenate((all_data, data))
@@ -213,7 +215,6 @@ def labels_selection_coloring(current_label):
         SelectionMakerPanel.prev_labels.remove(current_label)
     else:
         clear_labels_selection()
-    print(get_selected_labels())
 
 
 def get_selected_labels():

@@ -371,6 +371,7 @@ def find_closest_label():
             label = vert_labels[0]
             bpy.context.scene.closest_label_output = label.name
             plot_closest_label_contour(label.name, hemi)
+    return label.name
 
 
 def plot_closest_label_contour(label, hemi):

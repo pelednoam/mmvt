@@ -523,7 +523,8 @@ class SelectionListener(bpy.types.Operator):
                 _addon().save_cursor_position()
                 clear_slice()
             if bpy.context.scene.find_closest_label_on_click: # coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
-                _addon().find_closest_label()
+                label = _addon().find_closest_label()
+                # _addon().select_roi(label)
 
         if self.right_clicked:
             self.right_clicked = False
@@ -555,6 +556,7 @@ class SelectionListener(bpy.types.Operator):
                 elif selected_obj_type == mu.OBJ_TYPE_CON_VERTICE:
                     _addon().vertices_selected(selected_obj_name)
                 elif selected_obj_type == mu.OBJ_TYPE_ELECTRODE:
+                    bpy.context.scene.cursor_is_snapped = False
                     _addon().electode_was_manually_selected(selected_obj_name)
                     _addon().dell_ct_electrode_was_selected(selected_obj_name)
                 if bpy.context.scene.find_curves_sep_auto:
