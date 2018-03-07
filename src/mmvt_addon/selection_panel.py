@@ -67,8 +67,11 @@ def get_selected_fcurves_and_data():
 
 
 def curves_sep_update(self=None, context=None):
-    # if len(SelectionMakerPanel.curves_sep) == 0:
-    #     return
+    if SelectionMakerPanel.update_curves_sep:
+        _curves_sep_update(False)
+
+
+def _curves_sep_update(force=False):
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return
@@ -84,7 +87,8 @@ def curves_sep_update(self=None, context=None):
         data_mean = np.median(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
         for c in range(C):
             fcurve = fcurves[fcurve_ind]
-            if SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), 0) == bpy.context.scene.curves_sep:
+            if not force and SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), -1) == \
+                    bpy.context.scene.curves_sep:
                 fcurve_ind += 1
                 continue
             for t in range(T):
@@ -489,7 +493,10 @@ class ResetCurvesSep(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
+        SelectionMakerPanel.update_curves_sep = False
         bpy.context.scene.curves_sep = 0
+        SelectionMakerPanel.update_curves_sep = True
+        _curves_sep_update(True)
         return {"FINISHED"}
 
 
@@ -632,6 +639,7 @@ class SelectionMakerPanel(bpy.types.Panel):
     connection_files_exist = False
     data, names, curves_sep, fcurves = {}, {}, {}, {}
     prev_labels = set()
+    update_curves_sep = True
 
     @staticmethod
     def draw(self, context):
@@ -694,6 +702,7 @@ class SelectionMakerPanel(bpy.types.Panel):
 
 def init(addon):
     SelectionMakerPanel.addon = addon
+    SelectionMakerPanel.update_curves_sep = False
     SelectionMakerPanel.selection = []
     SelectionMakerPanel.dt = get_dt()
     modalities_itesm = []
@@ -711,6 +720,7 @@ def init(addon):
     bpy.context.scene.curves_sep = 0
     bpy.context.scene.find_curves_sep_auto = True
     SelectionMakerPanel.init = True
+    SelectionMakerPanel.update_curves_sep = True
     register()
 
 
