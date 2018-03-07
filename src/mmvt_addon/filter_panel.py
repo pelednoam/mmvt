@@ -325,7 +325,8 @@ class ClearFiltering(bpy.types.Operator):
         type_of_filter = bpy.context.scene.filter_curves_type
         if type_of_filter == 'MEG':
             _addon().select_all_rois()
-            _addon().clear_cortex()
+            _addon().clear_contours()
+            # _addon().clear_cortex()
         elif type_of_filter == 'MEG_sensors':
             _addon().select_all_meg_sensors()
         elif type_of_filter == 'Electrodes':

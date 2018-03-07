@@ -626,6 +626,19 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     print('Finish labels_coloring_hemi, hemi {}, {:.2f}s'.format(hemi, time.time() - now))
 
 
+def clear_contours():
+    # todo: there is a better way to do it
+    labels_contours = ColoringMakerPanel.labels_contours
+    for hemi in mu.HEMIS:
+        contours = labels_contours[hemi]['contours']
+        selected_contours = np.zeros(contours.shape)
+        mesh = mu.get_hemi_obj(hemi).data
+        mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('contours')
+        mesh.vertex_colors['contours'].active_render = True
+        color_hemi_data(hemi, selected_contours, 0.1, 256, override_current_mat=True,
+                        coloring_layer='contours', check_valid_verts=False)
+
+
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
                    specific_colors=None, atlas='', move_cursor=True):
     if isinstance(specific_labels, str):

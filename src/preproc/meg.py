@@ -1607,14 +1607,18 @@ def create_stc_t_from_data(subject, rh_data, lh_data, tstep=0.001):
 @utils.files_needed({'surf': ['lh.sphere.reg', 'rh.sphere.reg']})
 def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5, smoothing_iterations=None,
               overwrite=False, n_jobs=6):
+    ret = True
     for ind, cond in enumerate(events.keys()):
         output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
-        if op.isfile(output_fname) and not overwrite:
+        output_fname = op.join(SUBJECT_MEG_FOLDER, cond).replace(SUBJECT, morph_to_subject)
+        if utils.both_hemi_files_exist('{}-{}.stc'.format(output_fname, '{hemi}')) and not overwrite:
             continue
         utils.make_dir(utils.get_parent_fol(output_fname))
         _morph_stc(subject, morph_to_subject, STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'),
                    output_fname, grade=grade, smooth=smoothing_iterations, n_jobs=n_jobs)
         ret = ret and utils.both_hemi_files_exist(output_fname)
+    diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
+    calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
     return ret
 
 
@@ -2670,7 +2674,8 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
     stc_diff = stc1 - stc2
     output_name = output_name[:-len('-lh.stc')]
     stc_diff.save(output_name)
-    mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name))
+    mmvt_fname = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name)))
+    utils.make_dir(utils.get_parent_fol(output_name))
     for hemi in utils.HEMIS:
         shutil.copy('{}-{}.stc'.format(output_name, hemi),
                     '{}-{}.stc'.format(mmvt_fname, hemi))

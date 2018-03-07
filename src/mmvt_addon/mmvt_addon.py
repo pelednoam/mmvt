@@ -187,6 +187,7 @@ plot_stc_t = coloring_panel.plot_stc_t
 plot_stc = coloring_panel.plot_stc
 init_meg_activity_map = coloring_panel.init_meg_activity_map
 color_contours = coloring_panel.color_contours
+clear_contours = coloring_panel.clear_contours
 plot_label = coloring_panel.plot_label
 plot_fmri_file = coloring_panel.plot_fmri_file
 get_activity_values = coloring_panel.get_activity_values
