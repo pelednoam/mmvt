@@ -66,8 +66,8 @@ def get_selected_fcurves_and_data():
 
 
 def curves_sep_update(self=None, context=None):
-    if len(SelectionMakerPanel.curves_sep) == 0:
-        return
+    # if len(SelectionMakerPanel.curves_sep) == 0:
+    #     return
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return

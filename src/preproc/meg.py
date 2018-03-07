@@ -1056,6 +1056,7 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrit
                     stc_hemi_template.format(cond=conds[1], hemi=hemi), diff_fname)
     return utils.both_hemi_files_exist(stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), hemi='{hemi}'))
 
+
 def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
                 use_meg=True, use_eeg=False, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
                 n_jobs=6):
