@@ -150,8 +150,9 @@ def select_electrode(current_electrode):
 
 def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init:
-        ElecsPanel.current_electrode = selected_electrode_name
-        update_cursor()
+        tkreg_ras = bpy.data.objects[selected_electrode_name].matrix_world.to_translation() * 10
+        _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+        _addon().create_slices(pos=tkreg_ras)
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]
@@ -623,23 +624,14 @@ class ElecsPanel(bpy.types.Panel):
 
 
 def init(addon):
-    import shutil
     ElecsPanel.addon  = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
         print("Can't register electrodes panel, no Deep_electrodes object")
         return
     mu.make_dir(op.join(mu.get_user_fol(), 'electrodes'))
-    sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
-    if not op.isfile(sorted_groups_fname):
-        # Try to get the file from the subject's root folder
-        if op.isfile(op.join(mu.get_user_fol(), 'sorted_groups.pkl')):
-            shutil.move(op.join(mu.get_user_fol(), 'sorted_groups.pkl'), sorted_groups_fname)
-        else:
-            print("Can't register electrodes panel, no sorted groups file")
-            return
+    init_sorted_groups()
     # show_hide_electrodes(True)
-    ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
     ElecsPanel.groups_hemi = create_groups_hemi_lookup(ElecsPanel.sorted_groups)
     ElecsPanel.all_electrodes = [el.name for el in ElecsPanel.parent.children]
     ElecsPanel.groups = create_groups_lookup_table(ElecsPanel.all_electrodes)
@@ -647,12 +639,14 @@ def init(addon):
     ElecsPanel.groups_electrodes = create_groups_electrodes_lookup(ElecsPanel.all_electrodes)
     init_leads_list()
     ret = init_electrodes_list()
-    if not ret:
-        return
+    # if not ret:
+    #     return
     ret = init_electrodes_labeling(addon)
-    if not ret:
+    if ret:
+        _electrodes_labeling_files_update()
+    else:
         print('No electrodes labeling files.')
-        return
+
     # addon.clear_colors_from_parent_childrens('Deep_electrodes')
     # addon.clear_cortex()
     bpy.context.scene.show_only_lead = False
@@ -660,20 +654,35 @@ def init(addon):
     bpy.context.scene.listener_is_running = False
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
-    _electrodes_labeling_files_update()
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")
         if not ElecsPanel.lookup:
             print('No electrodes lookup table!')
         print("!!! Can't plot electrodes' probabilties !!!")
-    if not ElecsPanel.groups or not ElecsPanel.groups_first_electrode or not ElecsPanel.sorted_groups or \
-        not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
-            print('Error in electrodes panel init!')
-    else:
-        register()
-        ElecsPanel.init = True
-        # print('Electrodes panel initialization completed successfully!')
+    # if not ElecsPanel.groups or not ElecsPanel.groups_first_electrode or not ElecsPanel.sorted_groups or \
+    #     not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
+    #         print('Error in electrodes panel init!')
+    # else:
+    register()
+    ElecsPanel.init = True
+    # print('Electrodes panel initialization completed successfully!')
+
+
+
+def init_sorted_groups():
+    import shutil
+    sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
+    if not op.isfile(sorted_groups_fname):
+        # Try to get the file from the subject's root folder
+        if op.isfile(op.join(mu.get_user_fol(), 'sorted_groups.pkl')):
+            shutil.move(op.join(mu.get_user_fol(), 'sorted_groups.pkl'), sorted_groups_fname)
+        else:
+            print("Can't register electrodes panel, no sorted groups file")
+            # return
+    if op.isfile(sorted_groups_fname):
+        ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
+
 
 
 def init_leads_list(leads=None):
@@ -685,10 +694,15 @@ def init_leads_list(leads=None):
     leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
     bpy.types.Scene.leads = bpy.props.EnumProperty(
         items=leads_items, description="leads", update=leads_update)
-    bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
+    if len(ElecsPanel.leads) > 0:
+        bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
+    else:
+        ElecsPanel.current_lead = ''
 
 
 def init_electrodes_list():
+    if ElecsPanel.current_lead == '':
+        return False
     ElecsPanel.electrodes = ElecsPanel.groups_electrodes[ElecsPanel.current_lead]
     if len(ElecsPanel.electrodes) == 0:
         print('init_electrodes_list: No electrodes found for {}!'.format(ElecsPanel.current_lead))

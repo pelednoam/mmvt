@@ -469,6 +469,13 @@ def update_solidity(self, context):
     update_layers()
 
 
+def is_view_3d():
+    try:
+        return bpy.context.area.spaces.active.type == 'VIEW_3D'
+    except:
+        return False
+
+
 class SelectionListener(bpy.types.Operator):
     bl_idname = 'mmvt.selection_listener'
     bl_label = 'selection_listener'
@@ -501,7 +508,7 @@ class SelectionListener(bpy.types.Operator):
             if cursor_moved and bpy.data.objects.get('inner_skull', None) is not None:
                 _addon().find_point_thickness()
                 return {'PASS_THROUGH'}
-            if bpy.context.scene.cursor_is_snapped and bpy.context.area.spaces.active.type == 'VIEW_3D':
+            if bpy.context.scene.cursor_is_snapped and is_view_3d():
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)

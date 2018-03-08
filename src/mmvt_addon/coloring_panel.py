@@ -932,8 +932,11 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     _addon().show_activity()
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     if bpy.context.scene.cursor_is_snapped:
-        vert_ind, _ = _addon().get_closest_vertex_and_mesh_to_cursor()
-        _addon().set_vertex_data(values[vert_ind])
+        vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+        if vert_ind < len(values):
+            _addon().set_vertex_data(values[vert_ind])
+        else:
+            print('vert_ind {} > len(values) ({}) in mesh {}'.format(vert_ind, len(values), mesh_name))
 
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
     if len(valid_verts) == 0 and check_valid_verts:
@@ -1294,11 +1297,12 @@ def meg_minmax_prec_update(selc, context):
 
 
 def set_meg_minmax_prec(min_prec, max_prec):
-    ColoringMakerPanel.run_meg_minmax_prec_update = False
-    bpy.context.scene.meg_min_prec = min_prec
-    bpy.context.scene.meg_max_prec = max_prec
-    ColoringMakerPanel.run_meg_minmax_prec_update = True
-    calc_stc_minmax()
+    if ColoringMakerPanel.stc_exist:
+        ColoringMakerPanel.run_meg_minmax_prec_update = False
+        bpy.context.scene.meg_min_prec = min_prec
+        bpy.context.scene.meg_max_prec = max_prec
+        ColoringMakerPanel.run_meg_minmax_prec_update = True
+        calc_stc_minmax()
 
 
 def calc_stc_minmax():
@@ -2254,6 +2258,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     no_plotting = False
     existing_contoures = []
     stc = None
+    stc_exist = False
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
     run_meg_minmax_prec_update = True
@@ -2357,15 +2362,20 @@ def create_stc_files_list(list_items=[]):
     stcs_files = glob.glob(op.join(user_fol, 'meg', '*.stc'))
     # todo: seperate between MEG and EEG stc files
     stcs_files += glob.glob(op.join(user_fol, 'eeg', '*.stc'))
-    stc_files_dic = defaultdict(list)
-    for stc_file in stcs_files:
-        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
-        stc_files_dic[label].append(hemi)
-    stc_names = [label for label, hemis in stc_files_dic.items() if len(hemis) == 2]
-    if len(stc_names) > 0:
-        ColoringMakerPanel.stc_file_exist = True
-        list_items.extend([(c, c, '', ind + len(list_items)) for ind, c in enumerate(stc_names)])
-    return list_items
+    if len(stcs_files) > 0:
+        ColoringMakerPanel.stc_exist = True
+        stc_files_dic = defaultdict(list)
+        for stc_file in stcs_files:
+            _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
+            stc_files_dic[label].append(hemi)
+        stc_names = [label for label, hemis in stc_files_dic.items() if len(hemis) == 2]
+        if len(stc_names) > 0:
+            ColoringMakerPanel.stc_file_exist = True
+            list_items.extend([(c, c, '', ind + len(list_items)) for ind, c in enumerate(stc_names)])
+        return list_items
+    else:
+        ColoringMakerPanel.stc_exist = False
+        return []
 
 
 def init_fmri_activity_map():

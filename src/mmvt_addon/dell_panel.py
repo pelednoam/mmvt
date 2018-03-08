@@ -47,6 +47,18 @@ def ct_plot_lead_update(self, context):
     mu.show_hide_hierarchy(bpy.context.scene.ct_plot_lead, 'leads', also_parent=False, select=False)
 
 
+def dell_move_elec_update(self, context):
+    if not DellPanel.update_position:
+        return
+    elc = context.active_object
+    elc.location[0] = bpy.context.scene.dell_move_x
+    elc.location[1] = bpy.context.scene.dell_move_y
+    elc.location[2] = bpy.context.scene.dell_move_z
+    tkreg_ras = bpy.data.objects[elc.name].matrix_world.to_translation() * 10
+    _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+    _addon().create_slices(pos=tkreg_ras)
+
+
 @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrodes_pipeline():
     user_fol = mu.get_user_fol()
@@ -99,6 +111,7 @@ def refresh_pos_and_names():
 
 
 def export_electrodes(group_hemi_default='G'):
+    from collections import Counter
     output_fol = op.join(mu.get_user_fol(), 'electrodes')
     subject = mu.get_user()
     if len(DellPanel.groups) > 0:
@@ -118,7 +131,8 @@ def export_electrodes(group_hemi_default='G'):
         groups_inds = {'R':0, 'L':0}
         for group in groups:
             # DellPanel.hemis
-            group_hemi = 'R' if group_hemi == 'rh' else 'L' if group_hemi == 'lh' else group_hemi_default
+            # group_hemi = 'R' if group_hemi == 'rh' else 'L' if group_hemi == 'lh' else group_hemi_default
+            group_hemi = Counter([DellPanel.names[group[k]][0] for k in range(len(group))]).most_common()[0][0]
             if group_hemi in groups_inds:
                 group_name = '{}G{}'.format(group_hemi, chr(ord('A') + groups_inds[group_hemi]))
             else:
@@ -128,6 +142,7 @@ def export_electrodes(group_hemi_default='G'):
                 wr.writerow([elcs_names[ind], *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
             if group_hemi in groups_inds:
                 groups_inds[group_hemi] += 1
+    print('The electrodes were exported to {}'.format(csv_fname))
 
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
@@ -400,6 +415,11 @@ def dell_ct_electrode_was_selected(elc_name):
     group, in_group_ind = find_select_electrode_group()
     group = [DellPanel.names[g] for g in group]
     DellPanel.current_log = [(elc, g) for (elc, g) in DellPanel.log if set(g) == set(group)]
+    DellPanel.update_position = False
+    bpy.context.scene.dell_move_x = bpy.data.objects[elc_name].location[0]
+    bpy.context.scene.dell_move_y = bpy.data.objects[elc_name].location[1]
+    bpy.context.scene.dell_move_z = bpy.data.objects[elc_name].location[2]
+    DellPanel.update_position = True
 
 
 def clear_electrodes_color():
@@ -536,6 +556,10 @@ def dell_draw(self, context):
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
         layout.operator(ExportDellElectrodes.bl_idname, text="Export electrodes", icon='EXPORT')
+        row = layout.row(align=True)
+        row.prop(context.scene, 'dell_move_x')
+        row.prop(context.scene, 'dell_move_y')
+        row.prop(context.scene, 'dell_move_z')
     if len(bpy.context.selected_objects) > 1:
         layout.operator(DeleteElectrodesFromGroup.bl_idname, text="Leave highest CT int", icon='CANCEL')
     if electrode_with_group_selected:
@@ -845,7 +869,7 @@ bpy.types.Scene.dell_ct_threshold = bpy.props.FloatProperty(default=0.5, min=0, 
 bpy.types.Scene.dell_ct_threshold_percentile = bpy.props.FloatProperty(default=99.9, min=0, max=100, description="")
 # bpy.types.Scene.dell_ct_n_components = bpy.props.IntProperty(min=0, description='')
 # bpy.types.Scene.dell_ct_n_groups = bpy.props.IntProperty(min=0, description='', update=dell_ct_n_groups_update)
-bpy.types.Scene.dell_ct_error_radius = bpy.props.FloatProperty(min=1, max=8, default=2)
+bpy.types.Scene.dell_ct_error_radius = bpy.props.FloatProperty(min=1, default=2)
 bpy.types.Scene.dell_ct_min_elcs_for_lead = bpy.props.IntProperty(min=2, max=20, default=4)
 bpy.types.Scene.dell_ct_max_dist_between_electrodes = bpy.props.FloatProperty(default=15, min=1, max=100)
 bpy.types.Scene.dell_ct_min_distance = bpy.props.FloatProperty(default=3, min=0, max=100)
@@ -864,6 +888,10 @@ bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_binary_erosion = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.dell_move_x = bpy.props.FloatProperty(default=0, step=1, name='x', update=dell_move_elec_update)
+bpy.types.Scene.dell_move_y = bpy.props.FloatProperty(default=0, step=1, name='y', update=dell_move_elec_update)
+bpy.types.Scene.dell_move_z = bpy.props.FloatProperty(default=0, step=1, name='z', update=dell_move_elec_update)
+
 
 class DellPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
@@ -884,6 +912,7 @@ class DellPanel(bpy.types.Panel):
     max_finding_group_tries = 10
     log, current_log = [], []
     debug_fol = ''
+    update_position = True
 
     def draw(self, context):
         if DellPanel.init:
@@ -898,6 +927,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
             return
         ret = init_dural()
         if not ret:
+            print('No dural surface, Can\'t init dell panel')
             DellPanel.init = False
             return
         DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
@@ -908,6 +938,10 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
             files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             if len(files) > 0:
                 (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])
+                parent = bpy.data.objects['Deep_electrodes']
+                elcs_names = [o.name for o in parent.children]
+                if len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names):
+                    DellPanel.names = elcs_names
             else:
                 bpy.context.scene.dell_ct_threshold_percentile = 99.9
             bpy.context.scene.dell_ct_threshold = np.percentile(

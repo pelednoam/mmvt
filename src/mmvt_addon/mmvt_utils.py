@@ -1896,6 +1896,8 @@ def build_label_name(delim, pos, label, hemi):
 
 
 def min_stc_hemi(stc, hemi, min_perc=None):
+    if stc is None:
+        return 0
     data = stc.rh_data if hemi == 'rh' else stc.lh_data
     if data.shape[0] == 0:
         return 0

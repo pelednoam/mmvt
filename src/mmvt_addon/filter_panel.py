@@ -126,7 +126,7 @@ def clear_filtering():
     for parent_name in ['Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         if bpy.data.objects.get(parent_name):
             for obj in bpy.data.objects[parent_name].children:
-                de_select_electrode_and_sensor(obj,calc_best_curves_sep=False)
+                de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
 
     Filtering.filter_objects, Filtering.objects_indices = [], []
 

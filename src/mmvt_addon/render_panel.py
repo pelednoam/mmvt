@@ -473,6 +473,12 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
         images_names = [image_name] if isinstance(image_name, str) else image_name
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
     image_fname = op.join(image_fol, images_names[0])
+    if op.isfile(image_fname):
+        files = glob.glob(op.join(image_fol, '{}_*.png'.format(mu.namebase(image_fname))))
+        image_fname = op.join(image_fol, '{}_{}.png'.format(mu.namebase(image_fname), len(files)))
+    if op.isfile(image_fname):
+        print('{} already exist!'.format(image_fname))
+        return ''
     print('Image quality: {}'.format(bpy.context.scene.render.resolution_percentage))
     print("Rendering...")
     if not bpy.context.scene.render_background:

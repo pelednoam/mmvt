@@ -1030,7 +1030,7 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_
     args = mmvt_script.create_new_subject(subject, atlas, overwrite_blend)
     if args is not None:
         utils.waits_for_file(args.log_fname)
-        atlas = utils.get_real_atlas_name(atlas, short_name=True)
+    atlas = utils.get_real_atlas_name(atlas, short_name=True)
     new_fname = op.join(MMVT_DIR, '{}_{}.blend'.format(subject, atlas))
     return op.isfile(new_fname)
     # empty_subject_fname = op.join(MMVT_DIR, 'empty_subject.blend')
