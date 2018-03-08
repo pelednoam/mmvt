@@ -382,7 +382,8 @@ def unselect_prev_electrode(prev_electrodes):
 
 def elecs_draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, "electrodes_labeling_files", text="")
+    if ElecsPanel.electrodes_labeling_file_exist:
+        layout.prop(context.scene, "electrodes_labeling_files", text="")
     row = layout.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -392,10 +393,11 @@ def elecs_draw(self, context):
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
-    layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
+    if ElecsPanel.electrodes_labeling_file_exist:
+        layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
     # layout.label(text='What to color: ')
-    if bpy.context.scene.color_lables:
-        layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
+    # if bpy.context.scene.color_lables:
+    #     layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
     row = layout.row(align=True)
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
@@ -643,8 +645,10 @@ def init(addon):
     #     return
     ret = init_electrodes_labeling(addon)
     if ret:
+        ElecsPanel.electrodes_labeling_file_exist = True
         _electrodes_labeling_files_update()
     else:
+        ElecsPanel.electrodes_labeling_file_exist = False
         print('No electrodes labeling files.')
 
     # addon.clear_colors_from_parent_childrens('Deep_electrodes')

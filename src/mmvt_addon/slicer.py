@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as npl
 import os.path as op
 import traceback
+import glob
 
 try:
     import bpy
@@ -34,7 +35,11 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
             mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
             return None
     if colormap is None:
-        colormap_fname = op.join(mmvt_dir, 'color_maps', 'gray.npy')
+        if op.isfile(op.join(mmvt_dir, 'color_maps', 'gray.npy')):
+            colormap_fname = op.join(mmvt_dir, 'color_maps', 'gray.npy')
+            print("Can't find The gray colormap!")
+        else:
+            colormap_fname = glob.glob(op.join(mmvt_dir, 'color_maps', '*.npy'))[0]
         colormap = np.load(colormap_fname)
     affine = np.array(modality_data.affine, float)
     data = modality_data.data
