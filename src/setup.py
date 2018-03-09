@@ -220,18 +220,14 @@ def find_blender():
         if len(blender_fols) == 1:
             blender_fol = utils.get_parent_fol(blender_fols[0])
     elif utils.is_osx():
-        output = utils.run_script("find ~/ -name 'blender' -type d")
-        if not isinstance(output, str):
-            output = output.decode(sys.getfilesystemencoding(), 'ignore')
-        blender_fols = output.split('\n')
-        blender_fols = [fol for fol in blender_fols if 'blender.app' in fol]
-        if len(blender_fols) == 1:
-            blender_fol = op.join(blender_fols[0], 'blender.app', 'Contents', 'MacOS', 'blender')
-        # if 'users' in sys.executable:
-        #     path_split = sys.executable.split(op.sep)
-        #     ind = path_split.index('users')
-        #     root_path = op.sep.join(path_split[:ind+2])
-        #     output = utils.run_script("find {} -name 'blender' -type d".format(root_path))
+        blender_fol = '/Applications/Blender/blender.app/Contents/MacOS'
+        # output = utils.run_script("find ~/ -name 'blender' -type d")
+        # if not isinstance(output, str):
+        #     output = output.decode(sys.getfilesystemencoding(), 'ignore')
+        # blender_fols = output.split('\n')
+        # blender_fols = [fol for fol in blender_fols if 'blender.app' in fol]
+        # if len(blender_fols) == 1:
+        #     blender_fol = op.join(blender_fols[0], 'blender.app', 'Contents', 'MacOS', 'blender')
     return blender_fol
 
 
