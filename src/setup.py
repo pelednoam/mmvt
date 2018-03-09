@@ -210,7 +210,7 @@ def find_blender():
             blender_fol = op.join('C:\\', blender_win_fol)
         elif op.isdir(op.join('D:\\', blender_win_fol)):
             blender_fol = op.join('D:\\', blender_win_fol)
-    else:
+    elif utils.is_linux():
         output = utils.run_script("find ~/ -name 'blender' -type d")
         if not isinstance(output, str):
             output = output.decode(sys.getfilesystemencoding(), 'ignore')
@@ -219,6 +219,14 @@ def find_blender():
             utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
         if len(blender_fols) == 1:
             blender_fol = utils.get_parent_fol(blender_fols[0])
+    elif utils.is_osx():
+        output = utils.run_script("find ~/ -name 'blender' -type d")
+        if not isinstance(output, str):
+            output = output.decode(sys.getfilesystemencoding(), 'ignore')
+        blender_fols = output.split('\n')
+        blender_fols = [fol for fol in blender_fols if 'blender.app' in fol]
+        if len(blender_fols) == 1:
+            blender_fol = op.join(blender_fols[0], 'blender.app', 'Contents', 'MacOS', 'blender')
         # if 'users' in sys.executable:
         #     path_split = sys.executable.split(op.sep)
         #     ind = path_split.index('users')
@@ -244,9 +252,9 @@ def install_blender_reqs(gui=True):
         blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
         blender_parent_fol = utils.get_parent_fol(blender_fol)
-        print("blender_parent_fol: {}".format(blender_parent_fol))
+
         # Get pip
-        bin_template = op.join(blender_parent_fol, 'Resources', '2.7?', 'python', 'bin') if utils.is_osx() else \
+        bin_template = op.join(utils.get_parent_fol(blender_fol),  'Resources', '2.7?', 'python', 'bin') if utils.is_osx() else \
             op.join(blender_fol, '2.7?', 'python')
         blender_bin_folders = sorted(glob.glob(bin_template))
         if len(blender_bin_folders) == 0:
