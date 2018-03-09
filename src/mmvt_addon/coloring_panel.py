@@ -36,6 +36,23 @@ def get_activity_values():
     return ColoringMakerPanel.activity_values
 
 
+def get_vertex_value(tkreg_ras=None, mni=None, voxel=None):
+    val = None
+    if tkreg_ras is not None:
+        _addon().set_tkreg_ras(tkreg_ras)
+    elif mni is not None:
+        _addon().set_mni(mni)
+    elif voxel is not None:
+        _addon().set_voxel(voxel)
+    if not bpy.context.scene.cursor_is_snapped:
+        _addon().snap_cursor(True)
+    vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+    values = get_activity_values()
+    if vert_ind < len(values):
+        val = values[vert_ind]
+    return val
+
+
 def get_eeg_sensors_data():
     return ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta
 
@@ -55,12 +72,12 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 # @mu.dump_args
-def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
+def plot_stc(stc, t=-1, threshold=None,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
              n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
     n_jobs = mu.get_n_jobs(n_jobs)
-    bpy.context.scene.frame_current = t
+
     def create_stc_t(stc, t):
         if len(stc.times) == 1:
             return stc
@@ -79,12 +96,20 @@ def plot_stc(stc, t, threshold=None,  save_image=True, view_selected=False, subj
     subjects_dir = mu.get_parent_fol(mu.get_user_fol())
     if subjects_dir:
         print('subjects_dir: {}'.format(subjects_dir))
+    if t == -1:
+        t = get_current_time()
     if isinstance(stc, str):
+        if not op.isfile(stc):
+            stc = op.join(mu.get_user_fol(), 'meg', stc)
+        if not op.isfile(stc):
+            stc = '{}-rh.stc'.format(stc)
         ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
         calc_stc_minmax()
 
-    if threshold is None:
+    if threshold is not None:
         set_threshold(threshold)
+    else:
+        threshold = get_threshold()
     stc_t = create_stc_t(stc, t)
     if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
             len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
@@ -139,10 +164,15 @@ def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=
 
 
 def set_threshold(val):
+    if not isinstance(val, float):
+        val = float(val)
     bpy.context.scene.coloring_threshold = val
 
 
-def  set_use_abs_threshold(val):
+def get_threshold():
+    return bpy.context.scene.coloring_threshold
+
+def set_use_abs_threshold(val):
     bpy.context.scene.coloring_use_abs = val
 
 
@@ -2038,6 +2068,16 @@ def read_groups_labels(colors):
 
 def set_current_time_update(self=None, context=None):
     bpy.data.scenes['Scene'].frame_current = context.scene.set_current_time
+
+
+def set_current_time(t):
+    if not isinstance(t, int):
+        t = int(t)
+    bpy.context.scene.frame_current = t
+
+
+def get_current_time():
+    return bpy.context.scene.frame_current
 
 
 def draw(self, context):

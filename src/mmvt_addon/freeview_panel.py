@@ -253,7 +253,7 @@ class FreeviewOpen(bpy.types.Operator):
                             point = mu.read_numbers_rx(data_deocded)
                             print(point)
                             bpy.context.scene.cursor_location = tuple(np.array(point, dtype=np.float) / 10)
-                            _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+                            _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10)
                     except:
                         print("Can't read the stdout from freeview")
                 except Empty:

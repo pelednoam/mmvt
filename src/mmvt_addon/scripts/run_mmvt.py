@@ -11,7 +11,9 @@ except:
 
 
 def run(subject='', atlas='', run_in_background=False, debug=None, raise_exp=True):
-    args = read_args(raise_exp=raise_exp)
+    args = None
+    if sys.argv[0] == __file__:
+        args = read_args(raise_exp=raise_exp)
     if args is None:
         sys.argv = [__file__ , '-s', subject, '-a', atlas]
         args = read_args()

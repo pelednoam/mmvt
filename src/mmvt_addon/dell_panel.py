@@ -55,7 +55,7 @@ def dell_move_elec_update(self, context):
     elc.location[1] = bpy.context.scene.dell_move_y
     elc.location[2] = bpy.context.scene.dell_move_z
     tkreg_ras = bpy.data.objects[elc.name].matrix_world.to_translation() * 10
-    _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+    _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
     _addon().create_slices(pos=tkreg_ras)
 
 

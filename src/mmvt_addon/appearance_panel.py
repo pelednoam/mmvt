@@ -495,7 +495,7 @@ class SelectionListener(bpy.types.Operator):
                 xyz = _addon().slices_were_clicked(active_image, pos)
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
-                _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10, False)
+                _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10, False)
                 # if bpy.context.scene.slices_zoom > 1:
                 #     ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}
@@ -508,20 +508,20 @@ class SelectionListener(bpy.types.Operator):
             if cursor_moved and bpy.data.objects.get('inner_skull', None) is not None:
                 _addon().find_point_thickness()
                 return {'PASS_THROUGH'}
-            if bpy.context.scene.cursor_is_snapped and is_view_3d():
+            if bpy.context.scene.cursor_is_snapped:# and is_view_3d():
                 snap_cursor(True)
             if _addon().fMRI_clusters_files_exist() and bpy.context.scene.plot_fmri_cluster_per_click:
                 _addon().find_closest_cluster(only_within=True)
 
             tkreg_ras = _addon().calc_tkreg_ras_from_cursor()
             if tkreg_ras is not None:
-                _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+                _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
             # if _addon().is_pial():
             #     tkreg_ras = bpy.context.scene.cursor_location * 10
-            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+            #     _addon().set_tkreg_ras(tkreg_ras)
             # elif bpy.context.scene.cursor_is_snapped:
             #     tkreg_ras = _addon().calc_tkreg_ras_from_snapped_cursor()
-            #     _addon().set_tkreg_ras_coo(tkreg_ras)
+            #     _addon().set_tkreg_ras(tkreg_ras)
 
             if cursor_moved:
                 set_cursor_pos()

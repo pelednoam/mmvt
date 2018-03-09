@@ -151,7 +151,7 @@ def select_electrode(current_electrode):
 def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init:
         tkreg_ras = bpy.data.objects[selected_electrode_name].matrix_world.to_translation() * 10
-        _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+        _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
         _addon().create_slices(pos=tkreg_ras)
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
@@ -208,7 +208,7 @@ def update_cursor():
         _addon().freeview_panel.save_cursor_position()
     _addon().set_cursor_pos()
     _addon().create_slices(pos=current_electrode_obj.location)
-    _addon().set_tkreg_ras_coo(bpy.context.scene.cursor_location * 10)
+    _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10)
 
 
 def export_electrodes():

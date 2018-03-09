@@ -65,7 +65,7 @@ def _clusters_update():
 
     tkreg_ras = _addon().calc_tkreg_ras_from_cursor()
     if tkreg_ras is not None:
-        _addon().set_tkreg_ras_coo(tkreg_ras, move_cursor=False)
+        _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
 
     if bpy.context.scene.plot_current_cluster and not fMRIPanel.blobs_plotted:
         faces_verts = fMRIPanel.addon.get_faces_verts()
@@ -143,7 +143,7 @@ def find_closest_cluster(only_within=False):
             pial_mesh = 'rh' if closest_mesh_name == 'inflated_rh' else 'lh'
             pial_vert = bpy.data.objects[pial_mesh].data.vertices[vertex_ind]
             vertex_co = pial_vert.co
-            _addon().set_tkreg_ras_coo(vertex_co, move_cursor=False)
+            _addon().set_tkreg_ras(vertex_co, move_cursor=False)
         else:
             closest_mesh_name, vertex_ind, vertex_co = _addon().find_vertex_index_and_mesh_closest_to_cursor()
             bpy.context.scene.cursor_location = vertex_co

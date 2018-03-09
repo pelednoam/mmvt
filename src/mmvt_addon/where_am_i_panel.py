@@ -136,8 +136,8 @@ def tkras_coo_update(self, context):
         vox = apply_trans(_trans().ras_tkr2vox, np.array([coo]))
         ras = apply_trans(_trans().vox2ras, vox)
         WhereAmIPanel.update = False
-        set_ras_coo(ras[0])
-        set_voxel_coo(vox[0])
+        set_mni(ras[0])
+        set_voxel(vox[0])
         if not _ct_trans() is None:
             ct_vox = apply_trans(_ct_trans().ras2vox, [ras])
             set_ct_coo(ct_vox[0])
@@ -154,8 +154,8 @@ def ras_coo_update(self, context):
         vox = apply_trans(_trans().ras2vox, np.array([coo]))
         ras_tkr = apply_trans(_trans().vox2ras_tkr, vox)
         WhereAmIPanel.update = False
-        set_tkreg_ras_coo(ras_tkr[0])
-        set_voxel_coo(vox[0])
+        set_tkreg_ras(ras_tkr[0])
+        set_voxel(vox[0])
         if not _ct_trans() is None:
             ct_vox = apply_trans(_ct_trans().ras2vox, np.array([coo]))
             set_ct_coo(ct_vox[0])
@@ -173,8 +173,8 @@ def voxel_coo_update(self, context):
         ras = apply_trans(_trans().vox2ras, np.array([vox]))
         ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
         WhereAmIPanel.update = False
-        set_tkreg_ras_coo(ras_tkr[0])
-        set_ras_coo(ras[0])
+        set_tkreg_ras(ras_tkr[0])
+        set_mni(ras[0])
         if not _ct_trans() is None:
             ct_vox = apply_trans(_ct_trans().ras2vox, np.array([ras]))
             set_ct_coo(ct_vox[0])
@@ -196,9 +196,9 @@ def ct_voxel_coo_update(self, context):
         vox = apply_trans(_trans().ras2vox, [ras])[0]
         ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])[0]
         WhereAmIPanel.update = False
-        set_tkreg_ras_coo(ras_tkr)
-        set_ras_coo(ras)
-        set_voxel_coo(vox)
+        set_tkreg_ras(ras_tkr)
+        set_mni(ras)
+        set_voxel(vox)
         WhereAmIPanel.update = True
     get_3d_atlas_name()
     set_ct_intensity()
@@ -239,8 +239,8 @@ def get_3d_atlas_name():
         WhereAmIPanel.atlas_ids = names
 
 
-def set_tkreg_ras_coo(coo, move_cursor=True):
-    # print('set_tkreg_ras_coo')
+def set_tkreg_ras(coo, move_cursor=True):
+    # print('set_tkreg_ras')
     WhereAmIPanel.call_update = False
     WhereAmIPanel.move_cursor = move_cursor
     bpy.context.scene.tkreg_ras_x = coo[0]
@@ -254,8 +254,8 @@ def get_tkreg_ras():
     return (bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z)
 
 
-def set_ras_coo(coo):
-    # print('set_ras_coo')
+def set_mni(coo):
+    # print('set_mni')
     WhereAmIPanel.call_update = False
     bpy.context.scene.ras_x = coo[0]
     bpy.context.scene.ras_y = coo[1]
@@ -267,8 +267,8 @@ def get_ras():
     return (bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z)
 
 
-def set_voxel_coo(coo):
-    # print('set_voxel_coo')
+def set_voxel(coo):
+    # print('set_voxel')
     WhereAmIPanel.call_update = False
     bpy.context.scene.voxel_x = int(np.round(coo[0]))
     bpy.context.scene.voxel_y = int(np.round(coo[1]))
