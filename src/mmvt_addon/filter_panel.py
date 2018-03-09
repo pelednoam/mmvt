@@ -423,6 +423,7 @@ class Filtering(bpy.types.Operator):
     def filter_electrodes_or_sensors(self, parent_name, data, meta):
         # source_files = [op.join(self.current_activity_path, current_file_to_upload)]
         objects_indices, names, Filtering.filter_values = self.get_object_to_filter([], data, meta['names'])
+        names = [mu.to_str(e) for e in meta['names']]
         Filtering.objects_indices, Filtering.filter_objects = objects_indices, names
         if objects_indices is None:
             return

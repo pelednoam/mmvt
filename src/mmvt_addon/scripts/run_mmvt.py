@@ -23,7 +23,8 @@ def run(subject='', atlas='', run_in_background=False, debug=None, raise_exp=Tru
         args.atlas = atlas
     if debug is not None:
         args.debug = debug
-    mmvt = su.call_script(__file__, args, run_in_background=run_in_background)
+    su.call_script(__file__, args, run_in_background=run_in_background)
+    mmvt = su.get_mmvt_object(args.subject)
     if mmvt is not None:
         print('We got the mmvt object!')
     return mmvt
