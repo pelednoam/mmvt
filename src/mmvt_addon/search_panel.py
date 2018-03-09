@@ -41,9 +41,9 @@ class SearchClear(bpy.types.Operator):
     def invoke(self, context, event=None):
         # Copy from where am I clear
         for subHierchy in bpy.data.objects['Brain'].children:
-            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierchy.name == 'Subcortical_structures':
-                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+            # new_mat = bpy.data.materials['unselected_label_Mat_cortex']
+            # if subHierchy.name == 'Subcortical_structures':
+            #     new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
             for obj in subHierchy.children:
                 _addon().de_select_object(obj)
                 # obj.active_material = new_mat
@@ -88,7 +88,8 @@ class SearchMark(bpy.types.Operator):
                 bpy.data.objects[obj.name].select = True
                 SearchMark.marked_objects_hide[obj.name] = bpy.data.objects[obj.name].hide
                 bpy.data.objects[obj.name].hide = False
-                bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
+                # todo: mark the object in a different way
+                # bpy.data.objects[obj.name].active_material = bpy.data.materials['selected_label_Mat']
                 SearchPanel.marked_objects.append(obj.name)
                 # bpy.data.objects['inflated_'+obj.name].select = True
         SearchPanel.addon.show_rois()

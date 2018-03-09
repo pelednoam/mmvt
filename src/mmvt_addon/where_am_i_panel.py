@@ -772,7 +772,8 @@ class WhereAmI(bpy.types.Operator):
         else:
             bpy.data.objects[closest_area].select = True
         bpy.data.objects[closest_area].hide = False
-        bpy.data.objects[closest_area].active_material = bpy.data.materials['selected_label_Mat']
+        # todo: don't change the material! Do something else!
+        # bpy.data.objects[closest_area].active_material = bpy.data.materials['selected_label_Mat']
 
     def invoke(self, context, event=None):
         self.setup_environment(self)
@@ -787,10 +788,8 @@ class ClearWhereAmI(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        for subHierarchy in bpy.data.objects['Brain'].children:
-            new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            if subHierarchy.name == 'Subcortical_structures':
-                new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+        new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
+        for subHierarchy in bpy.data.objects['Subcortical_structures'].children:
             for obj in subHierarchy.children:
                 obj.active_material = new_mat
 

@@ -258,6 +258,7 @@ def install_blender_reqs():
             install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('bin', 'pip'))
             utils.run_script(install_cmd)
         else:
+            # https://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
             install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel'.format(op.join('Scripts', 'pip'))
             print(f'''
                 Sorry, automatically installing external python libs in python will be implemented in the future
