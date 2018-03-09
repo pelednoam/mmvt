@@ -259,6 +259,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             call_args = None
         call_args, blend_fname = None, None
     # print('Finish! For more details look in {}'.format(log_fname))
+    return get_mmvt_object()
 
 
 def get_logs_fol(subject):

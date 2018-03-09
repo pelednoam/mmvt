@@ -23,7 +23,7 @@ def run(subject='', atlas='', run_in_background=False, debug=None, raise_exp=Tru
         args.atlas = atlas
     if debug is not None:
         args.debug = debug
-    su.call_script(__file__, args, run_in_background=run_in_background)
+    return su.call_script(__file__, args, run_in_background=run_in_background)
 
 
 def read_args(argv=None, raise_exp=True):
