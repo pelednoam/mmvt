@@ -250,7 +250,7 @@ def install_blender_reqs(gui=True):
         blender_parent_fol = utils.get_parent_fol(blender_fol)
 
         # Get pip
-        bin_template = op.join(utils.get_parent_fol(blender_fol),  'Resources', '2.7?', 'python', 'bin') if utils.is_osx() else \
+        bin_template = op.join(utils.get_parent_fol(blender_fol),  'Resources', '2.7?', 'python') if utils.is_osx() else \
             op.join(blender_fol, '2.7?', 'python')
         blender_bin_folders = sorted(glob.glob(bin_template))
         if len(blender_bin_folders) == 0:
