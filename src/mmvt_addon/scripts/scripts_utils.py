@@ -230,6 +230,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         args.subjects = ''
         print('*********** {} ***********'.format(subject))
         logs_fol = get_logs_fol(subject)
+        if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
+            os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
         if blend_fname is None:
             blend_fname = get_subject_fname(args)
         else:
@@ -246,7 +248,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         #     cmd = '{blender_exe} -P "{script_fname}" {blend_fname} {call_args}'.format( # > {log_fname}
         #         blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
         #         blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
-        mmvt_addon_fol = get_parent_fol(__file__, 2)
+        # mmvt_addon_fol = get_parent_fol(__file__, 2)
         if not only_verbose:
             # os.chdir(mmvt_addon_fol)
             utils.run_script(
@@ -259,7 +261,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             call_args = None
         call_args, blend_fname = None, None
     # print('Finish! For more details look in {}'.format(log_fname))
-    return get_mmvt_object()
+    return get_mmvt_object(args.subject)
 
 
 def get_logs_fol(subject):
@@ -520,13 +522,17 @@ def waits_for_file(fname):
         time.sleep(.1)
 
 
-def get_mmvt_object():
+def get_mmvt_object(subject):
     mmvt = None
+    pizco_log_fname = op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')
+    waits_for_file(pizco_log_fname)
+    with open(pizco_log_fname, 'r') as log:
+        pizco_address = log.read()
     try:
         from pizco import Proxy
         devnull = open(os.devnull, 'w')
         with RedirectStdStreams(stdout=devnull, stderr=devnull):
-            mmvt = Proxy('tcp://127.0.0.1:8001')
+            mmvt = Proxy(pizco_address)
     except:
         pass
     return mmvt

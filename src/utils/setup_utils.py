@@ -125,8 +125,10 @@ def is_link(link_path):
 
 
 def create_folder_link(real_fol, link_fol, overwrite=True):
+    ret = False
     if not overwrite and is_link(link_fol):
         print('The link {} is already exist'.format(link_fol))
+        ret = True
     else:
         if is_windows():
             try:
@@ -140,17 +142,20 @@ def create_folder_link(real_fol, link_fol, overwrite=True):
                 shortcut = shell.CreateShortCut(path)
                 shortcut.Targetpath = real_fol
                 shortcut.save()
+                ret = True
             except:
                 print("Can't create a link to the folder {}!".format(real_fol))
+                ret = False
         else:
             if overwrite and op.islink(link_fol):
                 os.remove(link_fol)
             try:
                 os.symlink(real_fol, link_fol)
+                ret = op.islink(link_fol)
             except:
                 print('Problem with creating {} link to {}'.format(link_fol, real_fol))
-
-
+                ret = False
+    return ret
 
 def message_box(text, title='', style=1):
     # if is_windows():

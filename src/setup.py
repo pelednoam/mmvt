@@ -100,11 +100,12 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
                 links_names[1:], deafault_fol_names, messages, create_default_dirs):
             fol = ''
             if not create_default_folders:
-                fol = ask_and_create_link(
+                fol, ret = ask_and_create_link(
                     links_fol, link_name, message, gui, create_default_dir, overwrite=overwrite)
             if fol == '' or create_default_folders:
-                fol = create_default_link(
+                fol, ret = create_default_link(
                     links_fol, link_name, default_fol_name, create_default_dir, overwrite=overwrite)
+            if ret:
                 print('The "{}" link was created to {}'.format(link_name, fol))
             links[link_name] = fol
 
@@ -123,8 +124,10 @@ def mmvt_input(message, gui, style=1):
 
 def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_dir=False, overwrite=True):
     fol = ''
+    ret = False
     if not overwrite and utils.is_link(op.join(links_fol, link_name)):
         fol = utils.get_link_dir(links_fol, link_name)
+        ret = True
     else:
         choose_folder = mmvt_input(message, gui) == 'Ok'
         if choose_folder:
@@ -132,20 +135,20 @@ def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_
             fol = utils.choose_folder_gui(root_fol, message) if gui else input()
             if fol != '':
                 create_real_folder(fol)
-                utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
+                ret = utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
                 if create_default_dir:
                     utils.make_dir(op.join(fol, 'default'))
-    return fol
+    return fol, ret
 
 
 def create_default_link(links_fol, link_name, default_fol_name, create_default_dir=False, overwrite=True):
     root_fol = utils.get_parent_fol(levels=3)
     fol = op.join(root_fol, default_fol_name)
     create_real_folder(fol)
-    utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
+    ret = utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
     if create_default_dir:
         utils.make_dir(op.join(fol, 'default'))
-    return fol
+    return fol, ret
 
 
 def get_all_links(links={}, links_fol=None, links_fol_name='links'):

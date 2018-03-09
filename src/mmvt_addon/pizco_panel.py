@@ -9,9 +9,12 @@ except:
 
 from concurrent import futures
 import traceback
+import os
+import os.path as op
 import sys
 from queue import Queue
 import time
+
 
 
 def PSMessage(action, options):
@@ -175,14 +178,24 @@ def init(addon):
 
 
 def init_pizco(mmvt):
-    try:
-        bpy.context.scene.pizco_server_address = 'tcp://127.0.0.1:8001'
-        MMVT_Server(mmvt, bpy.context.scene.pizco_server_address)
-        return True
-    except:
+    log_fname = op.join(mu.make_dir(op.join(mu.get_user_fol(), 'logs')), 'pizco.log')
+    if op.isfile(log_fname):
+        os.remove(log_fname)
+    for k in range(10):
+        try:
+            bpy.context.scene.pizco_server_address = 'tcp://127.0.0.1:800{}'.format(str(k))
+            MMVT_Server(mmvt, bpy.context.scene.pizco_server_address)
+            pizco_exist = True
+            with open(log_fname, 'w') as log:
+                log.write(bpy.context.scene.pizco_server_address)
+            break
+        except:
+            # print('No pizco')
+            # print(traceback.format_exc())
+            pizco_exist = False
+    if not pizco_exist:
         print('No pizco')
-        # print(traceback.format_exc())
-        return False
+    return pizco_exist
 
 
 def register():
