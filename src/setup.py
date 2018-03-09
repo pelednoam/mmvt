@@ -238,15 +238,29 @@ def create_fsaverage_link(links_fol_name='links'):
             utils.create_folder_link(fsveareg_fol, fsaverage_link)
 
 
-def install_blender_reqs():
+def install_blender_reqs(gui=True):
     # http://stackoverflow.com/questions/9956741/how-to-install-multiple-python-packages-at-once-using-pip
     try:
         blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
         blender_parent_fol = utils.get_parent_fol(blender_fol)
         # Get pip
-        blender_bin_fol = sorted(glob.glob(op.join(blender_parent_fol, 'Resources', '2.7?', 'python', 'bin')))[-1] if \
-            utils.is_osx() else sorted(glob.glob(op.join(blender_fol, '2.7?', 'python')))[-1]
+        bin_template = op.join(blender_parent_fol, 'Resources', '2.7?', 'python', 'bin') if utils.is_osx() else \
+            op.join(blender_fol, '2.7?', 'python')
+        blender_bin_folders = sorted(glob.glob(bin_template))
+        if len(blender_bin_folders) == 0:
+            print("Couldn't find Blender's bin folder! ({})".format(bin_template))
+            blender_bin_fol = ''
+            choose_folder = mmvt_input('Please choose the Blender bin folder where python file exists', gui) == 'Ok'
+            if choose_folder:
+                fol = utils.choose_folder_gui(blender_parent_fol, 'Blender bin folder') if gui else input()
+                if fol != '':
+                    blender_bin_fol = fol
+            if blender_bin_fol == '':
+                return
+        else:
+            # todo: let the use select the folder if more than one
+            blender_bin_fol = blender_bin_folders[-1]
         python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
         current_dir = os.getcwd()
         os.chdir(blender_bin_fol)
