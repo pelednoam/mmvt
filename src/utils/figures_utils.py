@@ -98,6 +98,24 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     # plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
+def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, ticks=[], crop_figures=True,
+                                background='black', cb_ticks_font_size=10):
+    if crop_figures:
+        crop_image(fname1, fname1, dx=150, dy=0, dw=50, dh=70)
+        crop_image(fname2, fname2, dx=150 + 50, dy=0, dw=0, dh=70)
+    new_image_fname = op.join(utils.get_parent_fol(fname1), '{}_{}.{}'.format(
+        utils.namebase(fname1), utils.namebase(fname2), utils.file_type(fname1)))
+    combine_two_images(fname1, fname2, new_image_fname, facecolor=background, dpi=200, w_fac=1, h_fac=1)
+    if len(ticks) == 0:
+        ticks = [data_min, data_max]
+    fol = utils.get_parent_fol(fname1)
+    plot_color_bar(data_max, data_min, cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
+                      ticks_font_size=cb_ticks_font_size)
+    cb_fname = op.join(fol, '{}_colorbar.jpg'.format(cb_cm))
+    cb_img = Image.open(cb_fname)
+    return combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True)
+
+
 def combine_four_brain_perspectives_output_fname(fol, inflated=False, facecolor='black', clusters_name=''):
     return op.join(fol, '{}splitted_lateral_medial_{}_{}.png'.format(
         '{}_'.format(clusters_name if clusters_name != '' else ''),
@@ -192,7 +210,17 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
     return new_image_fname
 
 
-def combine_brain_with_color_bar(image_fname, cb_img, w_offset=10, overwrite=False):
+def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrite=False, cb_max=None, cb_min=None,
+                                 cb_cm=None, background='black', ticks=[], cb_ticks_font_size=10):
+    if cb_img is None:
+        if len(ticks) == 0:
+            ticks = [cb_min, cb_max]
+        fol = utils.get_parent_fol(image_fname)
+        cb_fname = op.join(fol, '{}_colorbar.jpg'.format(cb_cm))
+        plot_color_bar(cb_max, cb_min, cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
+                          ticks_font_size=cb_ticks_font_size)
+        cb_img = Image.open(cb_fname)
+
     background = Image.open(image_fname)
     bg_w, bg_h = background.size
     cb_w, cb_h = cb_img.size
@@ -202,6 +230,7 @@ def combine_brain_with_color_bar(image_fname, cb_img, w_offset=10, overwrite=Fal
         image_fol = utils.get_fname_folder(image_fname)
         image_fname = op.join(image_fol, '{}_cb.{}'.format(image_fname[:-4], image_fname[-3:]))
     background.save(image_fname)
+    return image_fname
 
 
 def combine_brain_with_color_bar_old(data_max, data_min, figure_fname, colors_map, overwrite=False, dpi=100,
@@ -310,6 +339,10 @@ if __name__ is '__main__':
     args = Bag(au.parse_parser(parser))
     for func in args.function:
         locals()[func](**args)
+
+    # combine_two_figures_with_cb('/home/npeled/mmvt/colin27/figures/image_21.png',
+    #                             '/home/npeled/mmvt/colin27/figures/image_22.png', 4.051952362060547, 0.0, 'YlOrRd')
+    #
 
     # example2()
     # combine_two_images('/cluster/neuromind/npeled/Documents/ELA/figs/amygdala_electrode.png',\

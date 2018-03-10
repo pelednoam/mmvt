@@ -84,13 +84,14 @@ except:
         sys.path.append(op.split(__file__)[0])
         import connections_panel as con_pan
     except:
-        print('no bpy')
+        pass
+        # print('no bpy')
 
 IS_LINUX = _platform == "linux" or _platform == "linux2"
 IS_MAC = _platform == "darwin"
 IS_WINDOWS = _platform == "win32"
 
-print('platform: {}'.format(_platform))
+# print('platform: {}'.format(_platform))
 
 HEMIS = ['rh', 'lh']
 INF_HEMIS = ['inflated_{}'.format(hemi) for hemi in HEMIS]

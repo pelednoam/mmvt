@@ -528,7 +528,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True):
+def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True, return_plt=False):
     if view_selected is None:
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
@@ -563,14 +563,21 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     bpy.ops.render.opengl(view3d_context, write_still=True)
     # if view_selected:
     #     _addon().zoom(1)
-    return image_name
-    # image_context = mu.get_image_context()
-    # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
-    #                       'INVOKE_DEFAULT',  # invoke the operator
-    #                       copy=True,
-    #                       filepath=image_name)  # export it to this location
+    if return_plt:
+        return get_image_plt(image_name)
+    else:
+        return image_name
 
 
+def get_image_plt(image_fname):
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib.image as mpimg
+        img = mpimg.imread(image_fname)
+        imgplot = plt.imshow(img)
+        return plt
+    except:
+        return None
 # todo: understand how to change the file_format to png in code
 # def get_figure_format():
 #     render.image_settings.file_format

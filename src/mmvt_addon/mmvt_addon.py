@@ -256,6 +256,8 @@ rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
 show_hemis = show_hide_panel.show_hemis
 set_normal_view = show_hide_panel.set_normal_view
+hide_hemi = show_hide_panel.hide_hemi
+show_hemi = show_hide_panel.show_hemi
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
@@ -277,6 +279,7 @@ show_pial = appearance_panel.show_pial
 show_inflated = appearance_panel.show_inflated
 set_inflated_ratio = appearance_panel.set_inflated_ratio
 get_inflated_ratio = appearance_panel.get_inflated_ratio
+show_flat = appearance_panel.show_flat
 is_pial = appearance_panel.is_pial
 is_inflated = appearance_panel.is_inflated
 is_activity = appearance_panel.is_activity

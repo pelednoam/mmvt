@@ -83,12 +83,12 @@ def show_activity():
     bpy.context.scene.appearance_show_rois_activity = 'activity'
 
 
-def show_pial():
-    bpy.context.scene.surface_type = 'pial'
-
-
-def show_inflated():
-    bpy.context.scene.surface_type == 'inflated'
+# def show_pial():
+#     bpy.context.scene.surface_type = 'pial'
+#
+#
+# def show_inflated():
+#     bpy.context.scene.surface_type == 'inflated'
 
 
 def show_electrodes(value=True):
@@ -388,6 +388,10 @@ def show_pial():
 def show_inflated():
     # bpy.context.scene.surface_type = 'inflated'
     bpy.context.scene.inflating = 0
+
+
+def show_flat():
+    bpy.context.scene.inflating = 1
 
 
 def change_to_rendered_brain():

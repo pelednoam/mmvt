@@ -350,7 +350,7 @@ def find_closest_obj(search_also_for_subcorticals=True):
     return closest_area
 
 
-def find_closest_label():
+def find_closest_label(atlas=None, plot_contour=True):
     subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
     if bpy.context.scene.cursor_is_snapped:
         vertex_ind, hemi = _addon().get_closest_vertex_and_mesh_to_cursor()
@@ -362,16 +362,20 @@ def find_closest_label():
         print("find_closest_label: Can't find the closest vertex")
         return
     hemi = 'rh' if 'rh' in hemi else 'lh'
-    annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(
-        hemi, bpy.context.scene.subject_annot_files))
+    if atlas is None:
+        atlas = bpy.context.scene.subject_annot_files
+    annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(hemi, atlas))
     if op.isfile(annot_fname):
         labels = mu.read_labels_from_annot(annot_fname)
         vert_labels = [l for l in labels if vertex_ind in l.vertices]
         if len(vert_labels) > 0:
             label = vert_labels[0]
             bpy.context.scene.closest_label_output = label.name
-            plot_closest_label_contour(label.name, hemi)
-    return label.name
+            if plot_contour:
+                plot_closest_label_contour(label.name, hemi)
+        return label.name
+    else:
+        print("Can't find the annotation file for atlas {}!".format(atlas))
 
 
 def plot_closest_label_contour(label, hemi):

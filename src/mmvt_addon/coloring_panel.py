@@ -72,7 +72,8 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 # @mu.dump_args
-def plot_stc(stc, t=-1, threshold=None,  save_image=True, view_selected=False, subject='', save_prev_colors=False,
+def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
+             view_selected=False, subject='', save_prev_colors=False,
              n_jobs=-1):
     import mne
     subject = mu.get_user() if subject == '' else subject
@@ -98,6 +99,8 @@ def plot_stc(stc, t=-1, threshold=None,  save_image=True, view_selected=False, s
         print('subjects_dir: {}'.format(subjects_dir))
     if t == -1:
         t = get_current_time()
+    if cb_percentiles is not None:
+        set_meg_minmax_prec(*cb_percentiles)
     if isinstance(stc, str):
         if not op.isfile(stc):
             stc = op.join(mu.get_user_fol(), 'meg', stc)

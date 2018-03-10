@@ -134,6 +134,14 @@ def show_hide_hemi(val, hemi):
         hide_obj(bpy.data.objects[obj_name], val)
 
 
+def hide_hemi(hemi):
+    show_hide_hemi(True, hemi)
+
+
+def show_hemi(hemi):
+    show_hide_hemi(False, hemi)
+
+
 def show_hemis():
     for hemi in mu.HEMIS:
         show_hide_hemi(False, hemi)
