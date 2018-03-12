@@ -344,6 +344,9 @@ def plot_labels_probs(elc):
                 _addon().set_colormap('YlOrRd')
                 _addon().labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0,
                                               colors_min=0, colors_max=1)
+                colors = mu.get_distinct_colors(len(elc['cortical_rois']))
+                if bpy.context.scene.electrodes_label_contours:
+                    _addon().color_contours(elc['cortical_rois'], specific_colors=colors)
             else:
                 print("Can't get the rois hemi!")
         else:
@@ -393,8 +396,10 @@ def elecs_draw(self, context):
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
+    row = layout.row(align=True)
     if ElecsPanel.electrodes_labeling_file_exist:
-        layout.prop(context.scene, 'color_lables', text="Color the relevant lables")
+        row.prop(context.scene, 'color_lables', text="Color lables")
+        row.prop(context.scene, 'electrodes_label_contours', text="Color contours")
     # layout.label(text='What to color: ')
     # if bpy.context.scene.color_lables:
     #     layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
@@ -579,6 +584,8 @@ bpy.types.Scene.show_only_lead = bpy.props.BoolProperty(
     default=False, description="Show only the current lead", update=show_only_current_lead_update)
 bpy.types.Scene.color_lables = bpy.props.BoolProperty(
     default=False, description="Color the relevant lables", update=color_labels_update)
+bpy.types.Scene.electrodes_label_contours = bpy.props.BoolProperty(
+    default=False, description="Color the relevant lables contours", update=color_labels_update)
 bpy.types.Scene.show_lh_electrodes = bpy.props.BoolProperty(
     default=True, description="Left Hemi", update=show_lh_update)
 bpy.types.Scene.show_rh_electrodes = bpy.props.BoolProperty(

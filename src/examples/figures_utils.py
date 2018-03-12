@@ -97,6 +97,11 @@ def example7():
             w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
+def add_cb_to_electrode_probs():
+    fol = '/homes/5/npeled/space1/mmvt/mg117/figures'
+    fu.combine_brain_with_color_bar(op.join(fol, 'cortical.png'), cb_max=1, cb_min=0, cb_cm='YlOrRd', ticks=(0, 1))
+
+
 if __name__ == '__main__':
-    example6()
+    add_cb_to_electrode_probs()
 
