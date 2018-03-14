@@ -2298,6 +2298,16 @@ def mouse_coo_to_3d_loc(event, context):
     return loc
 
 
+def points_in_cylinder(pt1, pt2, points, radius_sq, N=100):
+    from scipy.spatial.distance import cdist
+    dist = np.linalg.norm(pt1 - pt2)
+    elc_ori = (pt2 - pt1) / dist
+    elc_line = (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
+    dists = np.min(cdist(elc_line, points), 0)
+    points_inside_cylinder = np.where(dists <= radius_sq)[0]
+    return points_inside_cylinder, elc_line, dists[points_inside_cylinder]
+
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:

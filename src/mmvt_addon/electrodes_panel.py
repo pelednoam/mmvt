@@ -30,6 +30,46 @@ def elc_size_update(self, context):
         pass
 
 
+def show_electrodes_groups_leads_update(self, context):
+    parent_name = 'leads'
+    leads_obj = bpy.data.objects.get(parent_name, None)
+    show_leads = bpy.context.scene.show_electrodes_groups_leads
+    if show_leads and leads_obj is None:
+        leads_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None)
+    if len(leads_obj.children) == 0:
+        for group, electrodes in ElecsPanel.groups_electrodes.items():
+            points = [get_elc_pos(e) for e in electrodes]
+            points_inside_cylinder, _, dists = mu.points_in_cylinder(
+                get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.1)
+            if len(points_inside_cylinder) == len(electrodes):
+                create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
+            else:
+                for ind, (p1, p2) in enumerate(zip(points[:-1], points[1:])):
+                    create_lead(p1, p2, '{}_lead_{}'.format(group, ind))
+
+    for group_lead_obj in leads_obj.children:
+        group_lead_obj.hide = not show_leads
+
+
+def create_lead(p1, p2, lead_name, radius=0.05):
+    if bpy.data.objects.get(lead_name) is not None:
+        return bpy.data.objects.get(lead_name)
+    layers = [False] * 20
+    lead_layer = _addon().ELECTRODES_LAYER
+    layers[lead_layer] = True
+    parent_name = 'leads'
+    mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None, parent_name)
+
+    mu.cylinder_between(p1, p2, radius, layers)
+    color = tuple(np.concatenate((bpy.context.scene.electrodes_leads_color, [1])))
+    mu.create_material('{}_mat'.format(lead_name), color, 1)
+    cur_obj = bpy.context.active_object
+    cur_obj.name = lead_name
+    cur_obj.parent = bpy.data.objects[parent_name]
+    bpy.data.objects[lead_name].select = False
+    return bpy.data.objects[lead_name]
+
+
 def get_leads():
     return ElecsPanel.leads
 
@@ -221,9 +261,13 @@ def export_electrodes():
         wr.writerow(['Electrode Name', 'R', 'A', 'S'])
         for group, electrodes  in ElecsPanel.groups_electrodes.items():
             for elc_name in electrodes:
-                coords = bpy.data.objects[elc_name].matrix_world.to_translation() * 10
+                coords = get_elc_pos(elc_name) * 10
                 wr.writerow([elc_name, *['{:.2f}'.format(loc) for loc in coords]])
     print('The electrodes file was exported to {}'.format(csv_fname))
+
+
+def get_elc_pos(elc_name):
+    return np.array(bpy.data.objects[elc_name].matrix_world.to_translation())
 
 
 def show_lh_update(self, context):
@@ -430,6 +474,9 @@ def elecs_draw(self, context):
     layout.prop(context.scene, "elc_size", text="")
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
     layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
+    row = layout.row(align=True)
+    row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
+    row.prop(context.scene, "electrodes_leads_color")
 
     # Color picker:
     # row = layout.row(align=True)
@@ -605,8 +652,11 @@ bpy.types.Scene.leads = bpy.props.EnumProperty(
 bpy.types.Scene.electrodes_what_to_color = bpy.props.EnumProperty(
     items=[('probs', 'probabilities', '', 1), ('verts', 'vertices', '', 2)], description="what to color",
     update=what_to_color_update)
-
 bpy.types.Scene.elc_size = bpy.props.FloatProperty(description="", update=elc_size_update)
+bpy.types.Scene.show_electrodes_groups_leads = bpy.props.BoolProperty(
+    default=False, update=show_electrodes_groups_leads_update)
+bpy.types.Scene.electrodes_leads_color = bpy.props.FloatVectorProperty(
+    name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
 
 
 class ElecsPanel(bpy.types.Panel):
