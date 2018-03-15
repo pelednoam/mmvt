@@ -518,6 +518,7 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 # print(traceback.format_exc())
                 print("read_labels_from_annot failed! subject {} atlas {} surf name {} hemi {}.".format(
                     subject, atlas, surf_name, hemi))
+                utils.print_last_error_line()
                 print('Trying to read labels files')
                 if not read_only_from_annot:
                     labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
@@ -594,7 +595,7 @@ def _read_labels_parallel(files_chunk):
 #         try:
 #             labels = mne.read_labels_from_annot(subject, atlas, hemi, surf_name)
 #         except:
-#             labels = read_labels_from_annots(subject, subjects_dir, atlas, hemi)
+#             labels = read_labels_from_annots(atlas, hemi)
 #         if len(labels) == 0:
 #             raise Exception('No labels were found in the {} annot file!'.format(annot_fname_template))
 #     else:

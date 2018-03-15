@@ -365,6 +365,8 @@ def find_closest_label(atlas=None, plot_contour=True):
     if atlas is None:
         atlas = bpy.context.scene.subject_annot_files
     annot_fname = op.join(subjects_dir, mu.get_user(), 'label', '{}.{}.annot'.format(hemi, atlas))
+    if not op.isfile(annot_fname):
+        annot_fname = op.join(mu.get_user_fol(), 'labels', '{}.{}.annot'.format(hemi, atlas))
     if op.isfile(annot_fname):
         labels = mu.read_labels_from_annot(annot_fname)
         vert_labels = [l for l in labels if vertex_ind in l.vertices]
@@ -890,6 +892,8 @@ def init(addon):
         try:
             subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
             annot_files = glob.glob(op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))
+            annot_files += glob.glob(op.join(mu.get_user_fol(), 'labels', 'rh.*.annot'))
+            annot_files = list(set(annot_files))
             if len(annot_files) > 0:
                 WhereAmIPanel.annot_files = files_names = [mu.namebase(fname)[3:] for fname in annot_files]
                 items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

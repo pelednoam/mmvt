@@ -965,7 +965,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
 
     _addon().show_activity()
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
-    if bpy.context.scene.cursor_is_snapped:
+    if bpy.context.scene.cursor_is_snapped and mu.obj_is_cortex(cur_obj):
         vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
         if vert_ind < len(values):
             _addon().set_vertex_data(values[vert_ind])
@@ -1121,8 +1121,9 @@ def color_manually():
     values = []
     coloring_objects, coloring_labels = False, False
     rand_colors = cu.get_distinct_colors(30)
-    labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
+    # labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
     coloring_name = '{}.csv'.format(bpy.context.scene.coloring_files)
+    other_atals_labels = defaultdict(list)
     if coloring_name.startswith('_labels_'):
         atlas = coloring_name.split('_')[2]
         obj_type = mu.OBJ_TYPE_LABEL
@@ -1131,49 +1132,64 @@ def color_manually():
         obj_type = ''
         coloring_objects = True
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
-        if len(line) == 0:
+        if len(line) == 0 or line[0][0] == '#':
             continue
-        obj_name, color_name = line[0], line[1:4]
+        if len(line) >= 2:
+            obj_name = line[0]
+        if isinstance(line[1], str):
+            color_name = line[1]
+        if len(line) >= 4 and all([mu.is_float(x) for x in line[1:4]]):
+            color_name = line[1:4]
+        if isinstance(color_name, str):
+            color_rgb = cu.name_to_rgb(color_name)
+        # Check if the color is already in RBG
+        elif len(color_name) == 3:
+            if max(list(map(float, color_name))) > 1:
+                color_name = [float(c) / 256 for c in color_name]
+            color_rgb = color_name
+        elif len(color_name) == 0:
+            color_rgb = next(rand_colors)
+        else:
+            print('Unrecognize color! ({})'.format(color_name))
+            continue
+        color_rgb = list(map(float, color_rgb))
         if len(line) == 5:
             values.append(float(line[4]))
-        if obj_name[0] == '#':
-            continue
-        if isinstance(color_name, list) and len(color_name) == 1:
-            color_name = color_name[0]
+        # if isinstance(color_name, list) and len(color_name) == 1:
+        #     color_name = color_name[0]
         if not coloring_labels:
             obj_type = mu.check_obj_type(obj_name)
         if obj_type is None:
+            # check if the obj_name is an existing label with a different delim/pos
             delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
             if delim != '' and pos != '' and hemi != '' and label != obj_name:
-                obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
-                obj_type = mu.check_obj_type(obj_name)
-        if isinstance(color_name, str) and color_name.startswith('mark'):
-            import filter_panel
-            filter_panel.filter_roi_func(obj_name, mark=color_name)
-        else:
-            if isinstance(color_name, str):
-                color_rgb = cu.name_to_rgb(color_name)
-            # Check if the color is already in RBG
-            elif len(color_name) == 3:
-                if max(list(map(float, color_name))) > 1:
-                    color_name = [float(c) / 256 for c in color_name]
-                color_rgb = color_name
-            elif len(color_name) == 0:
-                color_rgb = next(rand_colors)
-            else:
-                print('Unrecognize color! ({})'.format(color_name))
+                labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(
+                    bpy.data.objects['Cortex-lh'].children[0].name)
+                label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
+                obj_type = mu.check_obj_type(label_obj_name)
+            if obj_type is None:
+                # Check if this is a label from another atlas
+                if len(line) >= 3 and isinstance(line[2], str):
+                    atlas = line[2]
+                    labels_fol = mu.get_atlas_labels_fol(atlas)
+                    if labels_fol != '':
+                        other_atals_labels[atlas].append((obj_name, color_rgb))
                 continue
-            color_rgb = list(map(float, color_rgb))
-            if obj_type is not None:
-                objects_names[obj_type].append(obj_name)
-                colors[obj_type].append(color_rgb)
-                data[obj_type].append(1.)
+        # if isinstance(color_name, str) and color_name.startswith('mark'):
+        #     import filter_panel
+        #     filter_panel.filter_roi_func(obj_name, mark=color_name)
+        # else:
+        if obj_type is not None:
+            objects_names[obj_type].append(obj_name)
+            colors[obj_type].append(color_rgb)
+            data[obj_type].append(1.)
 
     if coloring_objects:
         color_objects(objects_names, colors, data)
     elif coloring_labels:
         plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
-
+    for atlas, labels_tup in other_atals_labels.items():
+        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas)
     if len(values) > 0:
         _addon().set_colorbar_max_min(np.max(values), np.min(values))
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
@@ -1999,7 +2015,11 @@ def plot_label(label, color=''):
 
 
 def plot_labels(labels_names, colors, atlas):
-    atlas_labels = mu.read_labels_from_annots(mu.get_user(), mu.get_subjects_dir(), atlas, hemi='both')
+    atlas_labels = mu.read_labels_from_annots(atlas, hemi='both')
+    if max([max(l.vertices) for l in atlas_labels]) not in [len(bpy.data.objects['rh'].data.vertices),
+                                                            len(bpy.data.objects['lh'].data.vertices)]:
+        print('{} has wrong number of vertices!'.format(atlas))
+        return
     org_delim, org_pos, label, label_hemi = mu.get_hemi_delim_and_pos(atlas_labels[0].name)
     labels_names_fix = []
     for label_name in labels_names:

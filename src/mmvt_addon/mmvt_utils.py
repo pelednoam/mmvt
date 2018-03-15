@@ -634,12 +634,16 @@ def csv_file_reader(csv_fname, delimiter=',', skip_header=0):
 
 
 def check_obj_type(obj_name):
-    obj = bpy.data.objects.get(obj_name, None)
-    if obj is None:
-        obj_type = None
-    elif obj.parent is None:
-        obj_type = None
-    elif obj.parent.name == 'Cortex-lh':
+    import bpy_types
+    if isinstance(obj_name, bpy_types.Object):
+        obj = obj_name
+    elif isinstance(obj_name, str):
+        obj = bpy.data.objects.get(obj_name, None)
+    else:
+        return None
+    if obj is None or obj.parent is None:
+        return None
+    if obj.parent.name == 'Cortex-lh':
         obj_type = OBJ_TYPE_CORTEX_LH
     elif obj.parent.name == 'Cortex-rh':
         obj_type = OBJ_TYPE_CORTEX_RH
@@ -663,6 +667,11 @@ def check_obj_type(obj_name):
         obj_type = None
         # print("Can't find the object type ({})!".format(obj_name))
     return obj_type
+
+
+def obj_is_cortex(obj_name):
+    return check_obj_type(obj_name) in [OBJ_TYPE_CORTEX_LH, OBJ_TYPE_CORTEX_RH, OBJ_TYPE_CORTEX_INFLATED_LH,
+                                        OBJ_TYPE_CORTEX_INFLATED_RH]
 
 
 def get_obj_hemi(obj_name):
@@ -1991,19 +2000,38 @@ def read_label_file(label_fname):
     return Label(vertices, pos, values, hemi, name=name)
 
 
-def read_labels_from_annots(subject, subjects_dir, atlas, hemi='both'):
+def read_labels_from_annots(atlas, hemi='both'):
+    labels_fol = get_atlas_labels_fol(atlas)
+    if labels_fol == '':
+        return []
     labels = []
     for hemi in check_hemi(hemi):
-        hemi_annot_fname = op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+        hemi_annot_fname = op.join(labels_fol, '{}.{}.annot'.format(hemi, atlas))
         if op.isfile(hemi_annot_fname):
             labels.extend(read_labels_from_annot(hemi_annot_fname))
         else:
-            labels_files = glob.glob(op.join(subjects_dir, subject, 'label', atlas, '*.label'))
+            labels_files = glob.glob(op.join(labels_fol, atlas, '*.label'))
             for label_fname in labels_files:
                 new_label = read_label_file(label_fname)
                 if new_label is not None:
                     labels.append(new_label)
     return sorted(labels, key=lambda l: l.name)
+
+
+def get_atlas_labels_fol(atlas):
+    subjects_labels_fol = op.join(get_subjects_dir(), get_user(), 'label')
+    mmvt_labels_fol = op.join(get_user_fol(), 'labels')
+    if check_if_atlas_exist(subjects_labels_fol, atlas):
+        return subjects_labels_fol
+    elif check_if_atlas_exist(mmvt_labels_fol, atlas):
+        return mmvt_labels_fol
+    else:
+        return ''
+
+
+def check_if_atlas_exist(labels_fol, atlas):
+    return both_hemi_files_exist(op.join(labels_fol, '{}.{}.annot'.format('{hemi}', atlas))) or \
+        len(glob.glob(op.join(labels_fol))) > 0
 
 
 @functools.lru_cache(maxsize=None)
@@ -2307,6 +2335,13 @@ def points_in_cylinder(pt1, pt2, points, radius_sq, N=100):
     points_inside_cylinder = np.where(dists <= radius_sq)[0]
     return points_inside_cylinder, elc_line, dists[points_inside_cylinder]
 
+
+def is_float(x):
+    try:
+        float(x)
+        return True
+    except:
+        return False
 
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d

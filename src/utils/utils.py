@@ -72,6 +72,7 @@ max_stc = mu.max_stc
 apply_trans = mu.apply_trans
 remove_file = mu.remove_file
 get_distinct_colors = mu.get_distinct_colors
+is_float = mu.is_float
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -1919,14 +1920,6 @@ def remove_mean_columnwise(x, lines=None):
         return x - np.tile(np.mean(x[lines], 0), (x.shape[0], 1))
 
 
-def is_float(x):
-    try:
-        float(x)
-        return True
-    except:
-        return False
-
-
 def argmax2d(data):
     return np.unravel_index(np.argmax(data), data.shape)
 
@@ -1969,6 +1962,13 @@ def find_common_start(str_list):
             str_list.append(common)
         prev = common
     return get_common_letters(str_list)
+
+
+def print_last_error_line():
+    try:
+        print([l for l in traceback.format_exc().split('\n') if len(l) > 0][-1])
+    except:
+        pass
 
 
 if __name__ == '__main__':
