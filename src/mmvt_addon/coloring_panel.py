@@ -1203,6 +1203,7 @@ def color_manually():
 
 def color_objects(objects_names, colors, data):
     for hemi in HEMIS:
+        # This code should be merged with the plot_labels function
         obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi=='lh' else mu.OBJ_TYPE_CORTEX_RH
         if obj_type not in objects_names or len(objects_names[obj_type]) == 0:
             continue
@@ -2000,7 +2001,7 @@ def plot_label(label, color=''):
             raise Exception('plot_label: label can be label fname or label object!')
 
     if bpy.context.scene.plot_label_contour:
-        color_contours(specific_label=label.name)
+        color_contours(specific_labels=[label.name])
     else:
         color = list(bpy.context.scene.labels_color) if color == '' else color
         ColoringMakerPanel.labels_plotted.append((label, color))
@@ -2015,10 +2016,14 @@ def plot_label(label, color=''):
 
 
 def plot_labels(labels_names, colors, atlas):
-    atlas_labels = mu.read_labels_from_annots(atlas, hemi='both')
-    if max([max(l.vertices) for l in atlas_labels]) not in [len(bpy.data.objects['rh'].data.vertices),
-                                                            len(bpy.data.objects['lh'].data.vertices)]:
-        print('{} has wrong number of vertices!'.format(atlas))
+    atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
+    atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
+    atlas_labels = atlas_labels_rh + atlas_labels_lh
+    if len(atlas_labels) == 0:
+        print("Couldn't find the atlas! ({})".format(atlas))
+        return
+    annot_verts_ok = check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas)
+    if not annot_verts_ok:
         return
     org_delim, org_pos, label, label_hemi = mu.get_hemi_delim_and_pos(atlas_labels[0].name)
     labels_names_fix = []
@@ -2031,7 +2036,22 @@ def plot_labels(labels_names, colors, atlas):
     labels.sort(key=lambda x: labels_names_fix.index(x.name))
     # todo: check if bpy.context.scene.color_rois_homogeneously
     for label, color in zip(labels, colors):
+        print('color {}: {}'.format(label, color))
         plot_label(label, color)
+
+
+def check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas):
+    annot_verts_num_lh = max([max(l.vertices) for l in atlas_labels_lh])
+    annot_verts_num_rh = max([max(l.vertices) for l in atlas_labels_rh])
+    hemi_verts_num_lh = len(bpy.data.objects['lh'].data.vertices)
+    hemi_verts_num_rh = len(bpy.data.objects['rh'].data.vertices)
+    if annot_verts_num_lh >= hemi_verts_num_lh or annot_verts_num_rh >= hemi_verts_num_rh:
+        print('{} has wrong number of vertices!'.format(atlas))
+        print('rh: annot {}, hemi {}'.format(annot_verts_num_lh, hemi_verts_num_lh))
+        print('lh: annot {}, hemi {}'.format(annot_verts_num_rh, hemi_verts_num_rh))
+        return False
+    else:
+        return True
 
 
 def clear_colors():
@@ -2214,8 +2234,9 @@ def draw(self, context):
             # col.label('Manual coloring files')
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-        # layout.prop(context.scene, 'plot_label_contour', text='Plot label as contour')
+            layout.prop(context.scene, 'plot_label_contour', text='Plot labels as contour')
         if len(ColoringMakerPanel.labels_plotted) > 0:
+            layout.label(text='Labels plotted:')
             box = layout.box()
             col = box.column()
             for label, color in ColoringMakerPanel.labels_plotted:
