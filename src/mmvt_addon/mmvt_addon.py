@@ -643,6 +643,13 @@ def load_all_panels(addon_prefs=None, first_time=False):
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def main(addon_prefs=None):
     # atexit.register(my_cleanup_code)
+    # check if the use_scripts_auto_execute is checked (so the mmvt_addon could run automatically)
+    if not bpy.context.user_preferences.system.use_scripts_auto_execute:
+        bpy.context.user_preferences.system.use_scripts_auto_execute = True
+        bpy.ops.wm.save_userpref()
+        bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath)
+        # bpy.ops.wm.revert_mainfile(use_scripts=True)
+
     init(addon_prefs)
     try:
         mmvt = sys.modules[__name__]

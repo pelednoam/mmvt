@@ -55,6 +55,7 @@ def install_mmvt_addon():
     addon_prefs.freeview_cmd_stdin = not su.is_windows()
     bpy.ops.wm.save_userpref()
 
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1 and sys.argv[2] == '--background':
