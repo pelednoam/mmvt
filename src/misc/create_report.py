@@ -17,7 +17,7 @@ def read_html(html_fname):
 def replace_fields(html, patient_name, task_name, nmr_number, scan_date, img_prefix):
     html = html.replace('Patient name', patient_name)
     html = html.replace('task_name', task_name)
-    html = html.replace('img_prefix', img_prefix)
+    html = html.replace('img_prefix_', img_prefix)
     html = html.replace('MRN number', nmr_number)
     html = html.replace('Date', scan_date)
     return html
