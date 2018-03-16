@@ -32,7 +32,7 @@ def create_pdf(html_fname, pdf_fname):
     pdfkit.from_file(html_fname, pdf_fname)
 
 
-def main(html_template_fname, scan_fol, patient_name, task_name, mrn, scan_date, img_prefix,
+def main(html_template_fname, scan_fol, patient_name, task_name, mrn, scan_date, img_prefix=None,
          report_name_suffix='', output_fname=''):
     if utils.get_parent_fol(html_template_fname) != scan_fol:
         shutil.copy(html_template_fname, scan_fol)
@@ -40,7 +40,7 @@ def main(html_template_fname, scan_fol, patient_name, task_name, mrn, scan_date,
         output_fname = op.join(scan_fol, '{}{}.pdf'.format(mrn, '_{}'.format(report_name_suffix) \
             if report_name_suffix != '' else ''))
     new_html_fname =  utils.change_fname_extension(output_fname, 'html')
-    if img_prefix == '':
+    if img_prefix == 'auto':
         img_prefix = utils.find_common_start([utils.namebase(f) for f in glob.glob(op.join(scan_fol, '*.png'))])
         img_prefix = img_prefix[:-1] if img_prefix[-1] == '_' else img_prefix
         img_prefix = img_prefix[:-2] if img_prefix[-2:] == '_l' else img_prefix
