@@ -208,7 +208,7 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol=''):
         if run_fmri_preproc:
             cmd = '{} -m src.preproc.fMRI -s {} -f load_surf_files --fmri_file_template "{}" --ignore_missing 1'.format(
                 bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)
-            mu.run_command_in_new_thread(cmd, False)
+            mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
     return fmri_file_template, hemi, other_hemi
 
 
