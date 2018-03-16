@@ -207,6 +207,7 @@ color_eeg_sensors = coloring_panel.color_eeg_sensors
 color_meg_sensors = coloring_panel.color_meg_sensors
 get_meg_sensors_data = coloring_panel.get_meg_sensors_data
 get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
+color_labels_data = coloring_panel.color_labels_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -332,6 +333,7 @@ set_colormap = colorbar_panel.set_colormap
 set_colorbar_prec = colorbar_panel.set_colorbar_prec
 get_colorbar_prec = colorbar_panel.get_colorbar_prec
 set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
+set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster

@@ -16,6 +16,7 @@ except:
 
 import os.path as op
 import shutil
+import numpy as np
 
 
 def _addon():
@@ -108,6 +109,24 @@ if IN_BLENDER:
             return {'CANCELLED'}
 
 
+    class ChooseLabesNPZFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+        bl_idname = "mmvt.choose_labels_npz_file"
+        bl_label = "choose_labels_npz_file"
+
+        filename_ext = '.npz'
+        filter_glob = bpy.props.StringProperty(default='*.npz', options={'HIDDEN'}, maxlen=255)
+
+        def execute(self, context):
+            d = np.load(self.filepath)
+            data, labels = d['data'], d['names']
+            cb_title = str(d['title']) if 'title' in d else ''
+            labels_min = d['data_min'] if 'data_min' in d else np.min(data)
+            labels_max = d['data_max'] if 'data_max' in d else np.max(data)
+            cmap = str(d['cmap']) if 'cmap' in d else None
+            _addon().color_labels_data(labels, data, cb_title, labels_max, labels_min, cmap)
+            return {'FINISHED'}
+
+
     def load_results_draw(self, context):
         layout = self.layout
         if MNE_EXIST:
@@ -120,7 +139,7 @@ if IN_BLENDER:
                 layout.label(text=bpy.context.scene.nii_label_prompt)
         else:
             layout.label(text=bpy.context.scene.nii_label_output)
-
+        layout.operator(ChooseLabesNPZFile.bl_idname, text="Load labels npz file", icon='LOAD_FACTORY')
 
     def init(addon):
         LoadResultsPanel.addon = addon
@@ -137,6 +156,7 @@ if IN_BLENDER:
             bpy.utils.register_class(LoadResultsPanel)
             bpy.utils.register_class(ChooseSTCFile)
             bpy.utils.register_class(ChooseNiftiiFile)
+            bpy.utils.register_class(ChooseLabesNPZFile)
         except:
             print("Can't register LoadResults Panel!")
 
@@ -146,6 +166,7 @@ if IN_BLENDER:
             bpy.utils.unregister_class(LoadResultsPanel)
             bpy.utils.unregister_class(ChooseSTCFile)
             bpy.utils.unregister_class(ChooseNiftiiFile)
+            bpy.utils.unregister_class(ChooseLabesNPZFile)
         except:
             pass
 

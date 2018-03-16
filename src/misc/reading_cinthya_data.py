@@ -37,11 +37,13 @@ def ttest(data, root_fol):
         _, welch_stats[ind] = scipy.stats.ttest_ind(data1, data2, equal_var=False)
     print(ttest_stats)
     print(welch_stats)
-    np.savez(op.join(root_fol, 'cortical_thickness_ttest.npz'), names=labels, data=ttest_stats)
-    np.savez(op.join(root_fol, 'cortical_thickness_welch.npz'), names=labels, data=welch_stats)
+    np.savez(op.join(root_fol, 'cortical_thickness_ttest.npz'), names=labels, data=ttest_stats,
+             title='cortical thickness ttest', data_min=0, data_max=1, cmap='YlOrRd')
+    np.savez(op.join(root_fol, 'cortical_thickness_welch.npz'), names=labels, data=welch_stats,
+             title='cortical thickness welch', data_min=0, data_max=1, cmap='YlOrRd')
 
 
 if __name__ == '__main__':
-    root_fol = '/homes/5/npeled/space1/Cinthya/'
+    root_fol = [f for f in ['/homes/5/npeled/space1/Cinthya/', '/home/npeled/Documents/Cinthya/'] if op.isdir(f)][0]
     data = read_xlsx(op.join(root_fol, 'COLBOS_CT_Database.xlsx'))
     ttest(data, root_fol)

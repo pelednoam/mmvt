@@ -573,6 +573,35 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
                     labels_min, colors_ratio, use_abs)
 
 
+def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=None, cmap=None):
+    if _addon().colorbar_values_are_locked():
+        labels_min, labels_max = _addon().get_colorbar_max_min()
+    else:
+        if labels_max is None:
+            labels_max = np.max(data)
+        if labels_min is None:
+            labels_min = np.min(data)
+        _addon().set_colorbar_max_min(labels_max, labels_min)
+        if cmap is not None:
+            _addon().set_colormap(cmap)
+        else:
+            _addon().set_colorbar_default_cm()
+        if cb_title != '':
+            _addon().set_colorbar_title(cb_title)
+    colors_ratio = 256 / (labels_max - labels_min)
+
+    for hemi in mu.HEMIS:
+        if mu.get_hemi_obj(hemi).hide:
+            continue
+        if bpy.context.scene.color_rois_homogeneously:
+            color_objects_homogeneously(data, labels, [], labels_min, colors_ratio)
+            _addon().show_rois()
+        else:
+            labels_coloring_hemi(
+                data, ColoringMakerPanel.faces_verts, hemi, bpy.context.scene.coloring_threshold, '', True,
+                labels_min, labels_max)
+
+
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
                          override_current_mat=True, colors_min=None, colors_max=None, use_abs=None):
     if use_abs is None:
