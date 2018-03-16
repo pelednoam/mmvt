@@ -555,6 +555,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     view3d_context = mu.get_view3d_context()
     if view_selected:
         _addon().view_all()
+        _addon().zoom(-1)
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
@@ -588,6 +589,24 @@ def get_output_path():
 
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
                    img_name_prefix=''):
+    def get_image_name(view_name):
+        return '{}{}{}_{}'.format(
+            '{}_'.format(hemi) if hemi != '' else '',
+            '{}_'.format(img_name_prefix) if img_name_prefix != '' else '', surf_name, view_name)
+
+    def save_medial_views():
+        _addon().hide_hemi('rh')
+        _addon().rotate_view(_addon().ROT_SAGITTAL_RIGHT)
+        image_fname = save_render_image('{}_left_medial'.format(surf_name), quality, render_images)
+        images_names.append(image_fname)
+        _addon().show_hemi('rh')
+        _addon().hide_hemi('lh')
+        _addon().rotate_view(_addon().ROT_SAGITTAL_LEFT)
+        image_fname = save_render_image('{}_right_medial'.format(surf_name), quality, render_images)
+        images_names.append(image_fname)
+        _addon().show_hemi('rh')
+        _addon().show_hemi('lh')
+
     if views is None:
         views = _addon().ANGLES_DICT.keys()
     else:
@@ -615,23 +634,27 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     images_names = []
     for view in views:
         view_name = _addon().view_name(view)
-        img_name = '{}{}{}_{}'.format(
-            '{}_'.format(hemi) if hemi != '' else '',
-            '{}_'.format(img_name_prefix) if img_name_prefix != '' else '', surf_name, view_name)
+        img_name = get_image_name(view_name)
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
-        if render_images:
-            camera_mode()
-            image_fname = render_image(img_name, quality=quality, overwrite=True)
-            camera_mode()
-        else:
-            image_fname = save_image(img_name, add_index_to_name=False)
-        mu.write_to_stderr('Saving image to {}'.format(image_fname))
+        image_fname = save_render_image(img_name, quality, render_images)
         images_names.append(image_fname)
+    if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
+        save_medial_views()
     mu.rotate_view3d(org_view_ang)
     return images_names
 
+
+def save_render_image(img_name, quality, do_render_image):
+    if do_render_image:
+        camera_mode()
+        image_fname = render_image(img_name, quality=quality, overwrite=True)
+        camera_mode()
+    else:
+        image_fname = save_image(img_name, add_index_to_name=False)
+    mu.write_to_stderr('Saving image to {}'.format(image_fname))
+    return image_fname
 
 def queue_len():
     return len(RenderingMakerPanel.queue.queue)

@@ -590,6 +590,10 @@ def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=Non
             _addon().set_colorbar_title(cb_title)
     colors_ratio = 256 / (labels_max - labels_min)
 
+    threshold = bpy.context.scene.coloring_threshold
+    if threshold > labels_max:
+        print('threshold > labels_max ({}), setting the threshold to labels_min ({})'.format(labels_max, labels_min))
+        threshold = bpy.context.scene.coloring_threshold = labels_min
     for hemi in mu.HEMIS:
         if mu.get_hemi_obj(hemi).hide:
             continue
@@ -597,13 +601,14 @@ def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=Non
             color_objects_homogeneously(data, labels, [], labels_min, colors_ratio)
             _addon().show_rois()
         else:
+            labels_data = dict(data=data, names=labels)
             labels_coloring_hemi(
-                data, ColoringMakerPanel.faces_verts, hemi, bpy.context.scene.coloring_threshold, '', True,
-                labels_min, labels_max)
+                labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, '', True,
+                labels_min, labels_max, cmap=cmap)
 
 
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
-                         override_current_mat=True, colors_min=None, colors_max=None, use_abs=None):
+                         override_current_mat=True, colors_min=None, colors_max=None, use_abs=None, cmap=None):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     now = time.time()
@@ -626,10 +631,14 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
         else:
             colors_ratio = 256 / (colors_max - colors_min)
             _addon().set_colorbar_max_min(colors_max, colors_min)
-            if colors_min == 0 or np.sign(colors_min) == np.sign(colors_max):
-                _addon().set_colormap('YlOrRd')
+            if cmap is not None:
+                _addon().set_colormap(cmap)
             else:
-                _addon().set_colormap('BuPu-YlOrRd')
+                _addon().set_colorbar_default_cm()
+            # elif colors_min == 0 or np.sign(colors_min) == np.sign(colors_max):
+            #     _addon().set_colormap('YlOrRd')
+            # else:
+            #     _addon().set_colormap('BuPu-YlOrRd')
     for label_data, label_colors, label_name in zip(labels_data['data'], colors, labels_data['names']):
         label_name = mu.to_str(label_name)
         if label_data.ndim == 0:
