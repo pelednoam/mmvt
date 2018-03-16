@@ -394,7 +394,7 @@ def plot_connections(d, plot_time, threshold=None):
         colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
         _addon().show_hide_connections()
         if threshold is None:
-            threshold = bpy.context.scene.coloring_threshold
+            threshold = bpy.context.scene.coloring_lower_threshold
         for ind, cur_obj in enumerate(selected_objects):
             if isinstance(cur_obj, str):
                 cur_obj = bpy.data.objects.get(cur_obj)

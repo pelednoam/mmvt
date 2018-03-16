@@ -338,7 +338,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
 
 def plot_electrodes(cur_frame, threshold, stim=False):
     # todo: need to use the threshold
-    # threshold = bpy.context.scene.coloring_threshold
+    # threshold = bpy.context.scene.coloring_lower_threshold
     # if stim:
     #     names, colors = PlayPanel.stim_names, PlayPanel.stim_colors
     # else:

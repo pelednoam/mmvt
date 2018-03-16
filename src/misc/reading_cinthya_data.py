@@ -26,24 +26,58 @@ def read_xlsx(xlsx_fname):
     return all_data
 
 
-def ttest(data, root_fol):
+def ttest(data, root_fol, output_name, two_tailed_test=True, alpha=0.05, is_greater=True):
     labels = sorted(list(data.keys()))
     subjects_types = sorted(list(data[labels[0]]))
-    ttest_stats, welch_stats = np.zeros((len(labels))), np.zeros((len(labels)))
+    ttest_stats, ttest_labels, welch_stats, welch_labels = [], [], [] ,[]
     for ind, label in enumerate(labels):
-        data1, data2 = data[label][subjects_types[0]], data[label][subjects_types[1]]
+        data1, data2 = only_floats(data[label][subjects_types[0]]), only_floats(data[label][subjects_types[1]])
         # two-tailed p-value
-        _, ttest_stats[ind] = scipy.stats.ttest_ind(data1, data2, equal_var=True)
-        _, welch_stats[ind] = scipy.stats.ttest_ind(data1, data2, equal_var=False)
-    print(ttest_stats)
-    print(welch_stats)
-    np.savez(op.join(root_fol, 'cortical_thickness_ttest.npz'), names=labels, data=ttest_stats,
-             title='cortical thickness ttest', data_min=0, data_max=1, cmap='YlOrRd')
-    np.savez(op.join(root_fol, 'cortical_thickness_welch.npz'), names=labels, data=welch_stats,
-             title='cortical thickness welch', data_min=0, data_max=1, cmap='YlOrRd')
+        t, pval = scipy.stats.ttest_ind(data1, data2, equal_var=True)
+        if is_significant(pval, t, two_tailed_test, alpha, is_greater):
+            ttest_stats.append(pval)
+            ttest_labels.append(label)
+        t, pval = scipy.stats.ttest_ind(data1, data2, equal_var=False)
+        if is_significant(pval, t, two_tailed_test, alpha, is_greater):
+            welch_stats.append(pval)
+            welch_labels.append(label)
+    title = output_name.replace('_', ' ')
+    print('{} ttest: {} significant labels were found'.format(title, len(ttest_stats)))
+    print('{} welch: {} significant labels were found'.format(title, len(ttest_stats)))
+    np.savez(op.join(root_fol, '{}_ttest.npz'.format(output_name)), names=np.array(ttest_labels),
+             data=np.array(ttest_stats), title='{} ttest'.format(title), data_min=0, data_max=0.05, cmap='RdOrYl')
+    np.savez(op.join(root_fol, '{}_welch.npz'.format(output_name)), names=np.array(welch_labels),
+             data=np.array(welch_stats), title='{} welch'.format(title), data_min=0, data_max=0.05, cmap='RdOrYl')
+    return ttest_stats, welch_stats
+
+
+def is_significant(pval, t, two_tailed_test, alpha=0.05, is_greater=True):
+    if two_tailed_test:
+        return pval < alpha
+    else:
+        if is_greater:
+            return pval / 2 < alpha and t > 0
+        else:
+            return pval / 2 < alpha and t < 0
+
+
+def is_float(x):
+    try:
+        float(x)
+        return True
+    except:
+        return False
+
+
+def only_floats(arr):
+    return [x for x in arr if is_float(x)]
 
 
 if __name__ == '__main__':
     root_fol = [f for f in ['/homes/5/npeled/space1/Cinthya/', '/home/npeled/Documents/Cinthya/'] if op.isdir(f)][0]
+
     data = read_xlsx(op.join(root_fol, 'COLBOS_CT_Database.xlsx'))
-    ttest(data, root_fol)
+    ttest(data, root_fol, 'cortical_thickness')
+
+    data = read_xlsx(op.join(root_fol, 'COLBOS_Vol_DB.xlsx'))
+    ttest(data, root_fol, 'cortical_volume')

@@ -416,7 +416,7 @@ class Filtering(bpy.types.Operator):
             d = data
         # print('%%%%%%%%%%%%%%%%%%%' + str(len(d[0, :, 0])))
         t_range = range(max(self.filter_from, 1), min(self.filter_to, len(d[0, :, 0])) - 1)
-        objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_threshold)
+        objects_to_filtter_in, dd = filter_func(d, t_range, self.topK, bpy.context.scene.coloring_lower_threshold)
         # print(dd[objects_to_filtter_in])
         return objects_to_filtter_in, names, dd
 

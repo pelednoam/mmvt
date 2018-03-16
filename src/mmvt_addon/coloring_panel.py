@@ -134,7 +134,7 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
         _addon().set_colorbar_title('MEG')
     if threshold > data_max:
         print('threshold > data_max!')
-        threshold = bpy.context.scene.coloring_threshold = 0
+        threshold = bpy.context.scene.coloring_lower_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
     # set_default_colormap(data_min, data_max)
     fname = plot_stc_t(stc_t_smooth.rh_data, stc_t_smooth.lh_data, t, data_min, colors_ratio,
@@ -169,11 +169,11 @@ def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=
 def set_threshold(val):
     if not isinstance(val, float):
         val = float(val)
-    bpy.context.scene.coloring_threshold = val
+    bpy.context.scene.coloring_lower_threshold = val
 
 
 def get_threshold():
-    return bpy.context.scene.coloring_threshold
+    return bpy.context.scene.coloring_lower_threshold
 
 
 def set_use_abs_threshold(val):
@@ -417,7 +417,7 @@ def load_meg_subcortical_activity():
 def activity_map_coloring(map_type, clusters=False, threshold=None):
     init_activity_map_coloring(map_type)
     if threshold is None:
-        threshold = bpy.context.scene.coloring_threshold
+        threshold = bpy.context.scene.coloring_lower_threshold
     meg_sub_activity = None
     if map_type == 'MEG':
         if bpy.context.scene.coloring_meg_subcorticals:
@@ -445,7 +445,7 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
 def meg_labels_coloring(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_LABELS)
     init_activity_map_coloring('MEG')
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.meg_labels_extract_method
@@ -464,7 +464,7 @@ def meg_labels_coloring(override_current_mat=True):
 def color_connections_labels_avg(override_current_mat=True):
     ColoringMakerPanel.what_is_colored.add(WIC_CONN_LABELS_AVG)
     init_activity_map_coloring('MEG')
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
     # files_names = [mu.namebase(fname).replace('_', ' ').replace('{} '.format(atlas), '') for fname in
@@ -525,7 +525,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
     if not bpy.context.scene.color_rois_homogeneously:
         init_activity_map_coloring('FMRI')
     _addon().set_colorbar_title('fMRI')
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.fmri_labels_extract_method
@@ -574,6 +574,12 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
 
 
 def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=None, cmap=None):
+    if len(labels) != len(data):
+        print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels, len(data))))
+        return
+    if len(labels) == 0:
+        print('color_labels_data: len(labels) == 0!')
+        return
     if _addon().colorbar_values_are_locked():
         labels_min, labels_max = _addon().get_colorbar_max_min()
     else:
@@ -590,10 +596,10 @@ def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=Non
             _addon().set_colorbar_title(cb_title)
     colors_ratio = 256 / (labels_max - labels_min)
 
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     if threshold > labels_max:
         print('threshold > labels_max ({}), setting the threshold to labels_min ({})'.format(labels_max, labels_min))
-        threshold = bpy.context.scene.coloring_threshold = labels_min
+        threshold = bpy.context.scene.coloring_lower_threshold = labels_min
     for hemi in mu.HEMIS:
         if mu.get_hemi_obj(hemi).hide:
             continue
@@ -1555,7 +1561,7 @@ def color_eeg_helmet(use_abs=None):
 def color_meg_sensors():
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     data, meta = get_meg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
@@ -1575,7 +1581,7 @@ def color_meg_sensors():
 def color_eeg_sensors():
     _addon().show_hide_eeg()
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     data, meta = get_eeg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
@@ -1619,7 +1625,7 @@ def color_electrodes():
     bpy.context.scene.show_hide_electrodes = True
     _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     data, names, conditions = _addon().load_electrodes_data()
     if not _addon().colorbar_values_are_locked():
         norm_percs = (3, 97)  # todo: add to gui
@@ -1656,7 +1662,7 @@ def what_is_colored():
 
 def color_electrodes_stim():
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES_STIM)
-    threshold = bpy.context.scene.coloring_threshold
+    threshold = bpy.context.scene.coloring_lower_threshold
     stim_fname = 'stim_electrodes_{}.npz'.format(bpy.context.scene.stim_files.replace(' ', '_'))
     stim_data_fname = op.join(mu.get_user_fol(), 'electrodes', stim_fname)
     data = np.load(stim_data_fname)
@@ -1921,7 +1927,7 @@ class ColorMeg(bpy.types.Operator):
     def invoke(self, context, event=None):
         if ColoringMakerPanel.stc_file_chosen:
             plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
-                     threshold=bpy.context.scene.coloring_threshold, save_image=False)
+                     threshold=bpy.context.scene.coloring_lower_threshold, save_image=False)
         elif ColoringMakerPanel.activity_map_chosen:
             activity_map_coloring('MEG')
         else:
@@ -1941,7 +1947,7 @@ class ColorMegMax(bpy.types.Operator):
                 time_as_index=True, vert_as_index=True, mode=bpy.context.scene.meg_peak_mode)
             print(max_vert, bpy.context.scene.frame_current)
             plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
-                     threshold=bpy.context.scene.coloring_threshold, save_image=False)
+                     threshold=bpy.context.scene.coloring_lower_threshold, save_image=False)
         elif ColoringMakerPanel.activity_map_chosen:
             #todo: implement
             pass
@@ -2180,8 +2186,11 @@ def draw(self, context):
         connections_files_exit = False
     else:
         connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
-    layout.prop(context.scene, 'coloring_threshold', text="Threshold")
-    # layout.prop(context.scene, "set_current_time")
+    layout.prop(context.scene, 'coloring_lower_threshold', text="Threshold")
+    # row = layout.row(align=True)
+    # row.prop(context.scene, 'coloring_add_upper_threhold', text="Add upper threhold")
+    # if context.scene.coloring_add_upper_threhold:
+    #     layout.prop(context.scene, 'coloring_upper_threshold', text="Upper threshold")
     layout.prop(context.scene, "frame_current", text="Set time")
     layout.prop(context.scene, 'coloring_use_abs', text="Use abs")
     layout.prop(context.scene, 'color_rois_homogeneously', text="Color ROIs homogeneously")
@@ -2303,7 +2312,7 @@ bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-bpy.types.Scene.coloring_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
 bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
@@ -2332,7 +2341,6 @@ bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
 # bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", min=0,
 #                                                          max=bpy.data.scenes['Scene'].frame_preview_end,
 #                                                          update=set_current_time_update)
-
 
 class ColoringMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"

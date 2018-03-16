@@ -279,10 +279,10 @@ def prev_cluster():
 
 def plot_clusters():
     if MEGPanel.stc is not None:
-        if bpy.context.scene.coloring_threshold > MEGPanel.max_stc:
-            bpy.context.scene.coloring_threshold = 0
+        if bpy.context.scene.coloring_lower_threshold > MEGPanel.max_stc:
+            bpy.context.scene.coloring_lower_threshold = 0
         _addon().plot_stc(MEGPanel.stc, MEGPanel.clusters_labels.time,
-                 threshold=bpy.context.scene.coloring_threshold, save_image=False, save_prev_colors=True)
+                 threshold=bpy.context.scene.coloring_lower_threshold, save_image=False, save_prev_colors=True)
         _addon().set_colorbar_title('MEG activity (nAmp)')
         bpy.context.scene.frame_current = MEGPanel.clusters_labels.time
 
