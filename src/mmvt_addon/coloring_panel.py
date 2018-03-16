@@ -1428,7 +1428,6 @@ def plot_fmri_file(fmri_template_fname):
     activity_map_coloring('FMRI')
 
 
-
 def _fmri_files_update(fmri_file_name):
     #todo: there are two frmi files list (the other one in fMRI panel)
     user_fol = mu.get_user_fol()
