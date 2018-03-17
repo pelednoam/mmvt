@@ -53,6 +53,7 @@ def install_mmvt_addon():
     addon_prefs.freeview_cmd = 'freeview' if not su.is_windows() else ''
     addon_prefs.freeview_cmd_verbose = not su.is_windows()
     addon_prefs.freeview_cmd_stdin = not su.is_windows()
+    bpy.context.user_preferences.system.use_scripts_auto_execute = True
     bpy.ops.wm.save_userpref()
 
 

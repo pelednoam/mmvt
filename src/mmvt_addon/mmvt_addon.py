@@ -649,7 +649,7 @@ def main(addon_prefs=None):
     if not bpy.context.user_preferences.system.use_scripts_auto_execute:
         bpy.context.user_preferences.system.use_scripts_auto_execute = True
         bpy.ops.wm.save_userpref()
-        bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath)
+        # bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath)
         # bpy.ops.wm.revert_mainfile(use_scripts=True)
 
     init(addon_prefs)
