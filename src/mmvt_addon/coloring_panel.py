@@ -794,7 +794,7 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
 def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
         plot_subcorticals=True, override_current_mat=True, clusters=False):
 
-    current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
+    current_root_path = mu.get_user_fol()# bpy.path.abspath(bpy.context.scene.conf_path)
     not_hiden_hemis = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     t = bpy.context.scene.frame_current
     frame_str = str(t)
@@ -1002,11 +1002,13 @@ def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
 
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
-                              colors_ratio=None, use_abs=True, bigger_or_equall=False, save_prev_colors=False,
+                              colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
                               coloring_layer='Col', check_valid_verts=True):
     mesh = cur_obj.data
     scn = bpy.context.scene
 
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
     _addon().show_activity()
     ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
     if bpy.context.scene.cursor_is_snapped and mu.obj_is_cortex(cur_obj):
