@@ -390,6 +390,10 @@ def get_user():
     return namebase(bpy.data.filepath).split('_')[0]
 
 
+def get_fname_folder(fname):
+    return op.sep.join(fname.split(op.sep)[:-1])
+
+
 def get_real_atlas_name(atlas, csv_fol='', short_name=False):
     if csv_fol == '':
         csv_fol = get_mmvt_dir()

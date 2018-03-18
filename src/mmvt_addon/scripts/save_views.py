@@ -193,9 +193,6 @@ def post_blender_call(args):
         cb_img = Image.open(cb_fname)
         for fig_name in images_names:
             fu.combine_brain_with_color_bar(fig_name, cb_img, overwrite=True)
-            # fu.combine_brain_with_color_bar(
-            #     data_max, data_min, fig_name, args.cb_cm, dpi=100, overwrite=True, ticks=ticks,
-            #     w_fac=1.2, h_fac=1.2, ddh=0.7, dy=0.13)
 
 
 if __name__ == '__main__':

@@ -206,9 +206,11 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol=''):
             mu.make_link(other_hemi_fname, local_other_hemi_fname, True)
         fmri_file_template = mu.get_template_hemi_label_name(mu.namebase_with_ext(local_fname))
         if run_fmri_preproc:
-            cmd = '{} -m src.preproc.fMRI -s {} -f load_surf_files --fmri_file_template "{}" --ignore_missing 1'.format(
-                bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)
-            mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
+            mu.run_mmvt_func(
+                'src.preproc.fMRI', 'load_surf_files', flags='--fmri_file_template "{}"'.format(fmri_file_template))
+            # cmd = '{} -m  -s {} -f  --fmri_file_template "{}" --ignore_missing 1'.format(
+            #     bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)
+            # mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
     return fmri_file_template, hemi, other_hemi
 
 

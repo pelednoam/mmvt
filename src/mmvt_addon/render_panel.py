@@ -10,6 +10,13 @@ import logging
 import mmvt_utils as mu
 import re
 
+try:
+    from scripts import figures_utils as fu
+    MATPLOTLIB_EXIST = True
+except:
+    print(traceback.format_exc())
+    MATPLOTLIB_EXIST = False
+
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
@@ -181,6 +188,10 @@ def render_draw(self, context):
     layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
     func_name = 'Render' if get_view_mode() == 'CAMERA' else 'Save'
     layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
+    row = layout.row(align=0)
+    row.prop(context.scene, 'save_split_views', text="Split views")
+    if MATPLOTLIB_EXIST:
+        row.prop(context.scene, 'save_views_with_cb', text="Add colorbar")
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
 
@@ -282,6 +293,8 @@ bpy.types.Scene.background_color = bpy.props.EnumProperty(
     items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
+bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
 
 
 class SaveAllViews(bpy.types.Operator):
@@ -291,7 +304,7 @@ class SaveAllViews(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        save_all_views(render_images=get_view_mode() == 'CAMERA')
+        save_all_views(render_images=get_view_mode() == 'CAMERA', add_colorbar=bpy.context.scene.save_views_with_cb)
         return {"FINISHED"}
 
 
@@ -312,7 +325,7 @@ class SaveImage(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        save_image('image', bpy.context.scene.save_selected_view)
+        save_image('image', bpy.context.scene.save_selected_view, add_colorbar=bpy.context.scene.save_views_with_cb)
         return {"FINISHED"}
 
 
@@ -528,7 +541,8 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
-def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True, return_plt=False):
+def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True,
+               add_colorbar=False):
     if view_selected is None:
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
@@ -562,33 +576,23 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     if zoom_val != 0:
         _addon().zoom(zoom_val)
     bpy.ops.render.opengl(view3d_context, write_still=True)
+    if add_colorbar and MATPLOTLIB_EXIST:
+        add_colorbar_to_image(image_name)
     # if view_selected:
     #     _addon().zoom(1)
-    if return_plt:
-        return get_image_plt(image_name)
-    else:
-        return image_name
+    return image_name
 
-
-def get_image_plt(image_fname):
-    try:
-        import matplotlib.pyplot as plt
-        import matplotlib.image as mpimg
-        img = mpimg.imread(image_fname)
-        imgplot = plt.imshow(img)
-        return plt
-    except:
-        return None
 # todo: understand how to change the file_format to png in code
 # def get_figure_format():
 #     render.image_settings.file_format
+
 
 def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
-                   img_name_prefix=''):
+                   img_name_prefix='', add_colorbar=False):
     def get_image_name(view_name):
         return '{}{}{}_{}'.format(
             '{}_'.format(hemi) if hemi != '' else '',
@@ -646,13 +650,34 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     return images_names
 
 
+def add_colorbar_to_image(image_fname):
+    data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
+    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {}'.format(
+        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string())
+    mu.run_mmvt_func(
+        'src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
+
+
+def get_background_rgb_string():
+    return ','.join([str(bpy.context.scene.panels_background_color.__getattribute__(x)) for x in ('r', 'g', 'b')])
+    # from PIL import Image
+    # fol = mu.get_fname_folder(image_fname)
+    # cb_fname = op.join(fol, '{}_colorbar.jpg'.format(_addon().get_colormap_name()))
+    # if not op.isfile(cb_fname):
+    #     data_max, data_min = _addon().get_colorbar_max_min()
+    #     fu.plot_color_bar(data_max, data_min, _addon().get_colormap_name(), do_save=True, ticks=[data_max, data_min], fol=fol,
+    #                       facecolor=bpy.context.scene.panels_background_color)
+    # cb_img = Image.open(cb_fname)
+    # fu.combine_brain_with_color_bar(image_fname, cb_img, overwrite=True)
+
+
 def save_render_image(img_name, quality, do_render_image):
     if do_render_image:
         camera_mode()
         image_fname = render_image(img_name, quality=quality, overwrite=True)
         camera_mode()
     else:
-        image_fname = save_image(img_name, add_index_to_name=False)
+        image_fname = save_image(img_name, add_index_to_name=False, add_colorbar=bpy.context.scene.save_views_with_cb)
     mu.write_to_stderr('Saving image to {}'.format(image_fname))
     return image_fname
 

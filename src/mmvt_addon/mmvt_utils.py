@@ -2343,6 +2343,14 @@ def is_float(x):
     except:
         return False
 
+
+def run_mmvt_func(module, func_name, flags=''):
+    if 'preproc' in module.split('.'):
+        flags += ' -s {} --ignore_missing 1'.format(get_user())
+    cmd = '{} -m {} -f {} {} '.format(
+        bpy.context.scene.python_cmd, module, func_name, flags)
+    run_command_in_new_thread(cmd, False, cwd=get_mmvt_code_root())
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:

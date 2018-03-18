@@ -12,11 +12,13 @@ from src.utils import color_maps_utils as cmu
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 
-@utils.tryit()
+# @utils.tryit()
 def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None, facecolor='black',
                    ticks_font_size=10, dpi=100, **kargs):
     import matplotlib as mpl
 
+    if ',' in facecolor:
+        facecolor = [float(x) for x in facecolor.split(',')]
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
     color_map = find_color_map(color_map)
     if ax is None:
@@ -210,6 +212,17 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
     return new_image_fname
 
 
+def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color, **kargs):
+    from PIL import Image
+    fol = utils.get_fname_folder(figure_fname)
+    cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
+    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=[data_max, data_min], fol=fol,
+                   facecolor=background_color)
+    cb_img = Image.open(cb_fname)
+    crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
+    combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True)
+
+
 def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrite=False, cb_max=None, cb_min=None,
                                  cb_cm=None, background='black', ticks=[], cb_ticks_font_size=10):
     if cb_img is None:
@@ -333,6 +346,7 @@ if __name__ is '__main__':
     parser.add_argument('--y_buttom_crop', required=False, default=0, type=float)
     parser.add_argument('--w_fac', required=False, default=2, type=float)
     parser.add_argument('--h_fac', required=False, default=3/2, type=float)
+    parser.add_argument('--background_color', required=False, default='black')
 
     parser.add_argument('-f', '--function', help='function name', required=True,
                         default='combine_four_brain_perspectives', type=au.str_arr_type)

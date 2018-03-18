@@ -73,6 +73,7 @@ apply_trans = mu.apply_trans
 remove_file = mu.remove_file
 get_distinct_colors = mu.get_distinct_colors
 is_float = mu.is_float
+get_fname_folder = mu.get_fname_folder
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -671,10 +672,6 @@ def file_type(fname):
 
 def is_file_type(fname, file_type):
     return fname[-len(file_type):] == file_type
-
-
-def get_fname_folder(fname):
-    return op.sep.join(fname.split(op.sep)[:-1])
 
 
 def namebase_with_ext(fname):
