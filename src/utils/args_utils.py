@@ -60,6 +60,8 @@ def get_args_list(args, key, var_type, default_val=''):
         ret = [args[key]]
     if var_type:
         try:
+            if var_type is not str:
+                ret = [x.replace('*', '-') for x in ret]# Fix for argparse bug
             ret = list(map(var_type, ret))
         except:
             ret = None

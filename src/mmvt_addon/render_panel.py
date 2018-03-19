@@ -694,19 +694,21 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
 def add_colorbar_to_image(image_fname):
     data_max, data_min = _addon().get_colorbar_max_min()
     cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
-    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {} '.format(
+    cb_ticks.replace('-', '*') # Bug in argparse
+    flags = '--figure_fname "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
         image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string()) + \
-        '--cb_title "{}" --cb_ticks {}'.format(_addon().get_colorbar_title(), cb_ticks)
+        '--cb_title "{}" --cb_ticks "{}"'.format(_addon().get_colorbar_title(), cb_ticks)
     mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
 def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname):
     data_max, data_min = _addon().get_colorbar_max_min()
     cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
+    cb_ticks.replace('-', '*')  # Bug in argparse
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
-            '--new_image_fname "{}" --data_max {} --data_min {} '.format(new_image_fname, data_max, data_min) + \
+            '--new_image_fname "{}" --data_max "{}" --data_min "{}" '.format(new_image_fname, data_max, data_min) + \
             '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
-            '--add_cb 1 --cb_title "{}" --cb_ticks {} --crop_figures 1 --remove_original_figures 1'.format(
+            '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --crop_figures 1 --remove_original_figures 1'.format(
                 _addon().get_colorbar_title(), cb_ticks)
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)

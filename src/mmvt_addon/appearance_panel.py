@@ -878,6 +878,7 @@ def init(addon):
     # AppearanceMakerPanel.mesh = {hemi:mu.get_hemi_obj(hemi).to_mesh(bpy.context.scene, True, 'PREVIEW')
     #                              for hemi in mu.HEMIS}
     show_inflated()
+    bpy.context.scene.panels_background_color = [0, 0, 0]
     snap_cursor(True)
     AppearanceMakerPanel.init = True
 

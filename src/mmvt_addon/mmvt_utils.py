@@ -1635,6 +1635,15 @@ def get_view3d_context():
             return override
 
 
+def center_view():
+    v3d = bpy.context.space_data
+    if v3d.type == "VIEW_3D":
+        rv3d = v3d.region_3d
+        current_cloc = v3d.cursor_location.xyz
+        v3d.cursor_location = (0, 0, 0)
+        bpy.ops.view3d.view_center_cursor()
+        v3d.cursor_location = current_cloc
+
 # def get_view3d_region():
 #     area = bpy.data.screens['Neuro'].areas[1]
 #     for region in area.regions:
