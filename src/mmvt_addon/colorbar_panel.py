@@ -190,8 +190,6 @@ def colorbar_update(self, context):
         set_colorbar_title(bpy.context.scene.colorbar_title)
         set_colorbar_max(bpy.context.scene.colorbar_max)
         set_colorbar_min(bpy.context.scene.colorbar_min)
-        bpy.context.scene.cb_ticks = '{},{}'.format(
-            bpy.data.objects['colorbar_min'].data.body, bpy.data.objects['colorbar_max'].data.body)
         # todo: we shouldn't change coloring_use_abs, because in some cases the user will want to plot only the
         # positive values (fMRI for example)
         # bpy.context.scene.coloring_use_abs = np.sign(bpy.context.scene.colorbar_max) != \

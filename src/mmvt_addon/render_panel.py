@@ -692,27 +692,29 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
 
 
 def add_colorbar_to_image(image_fname):
-    data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
+    data_max, data_min = _addon().get_colorbar_max_min()
     cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
-    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {} --cb_ticks {}'.format(
-        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string(), cb_ticks)
-    mu.run_mmvt_func(
-        'src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
+    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {} '.format(
+        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string()) + \
+        '--cb_title "{}" --cb_ticks {}'.format(_addon().get_colorbar_title(), cb_ticks)
+    mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
 def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname):
-    data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
+    data_max, data_min = _addon().get_colorbar_max_min()
     cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max {} --data_min {} '.format(new_image_fname, data_max, data_min) + \
             '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
-            '--add_cb 1 --cb_ticks {} --crop_figures 1 --remove_original_figures 1'.format(cb_ticks)
+            '--add_cb 1 --cb_title "{}" --cb_ticks {} --crop_figures 1 --remove_original_figures 1'.format(
+                _addon().get_colorbar_title(), cb_ticks)
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
 
 
 def get_background_rgb_string():
-    return ','.join([str(bpy.context.scene.panels_background_color.__getattribute__(x)) for x in ('r', 'g', 'b')])
+    background = bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient
+    return ','.join([str(background.__getattribute__(x)) for x in ('r', 'g', 'b')])
 
 
 def save_render_image(img_name, quality, do_render_image, add_colorbar):
