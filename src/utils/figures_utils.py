@@ -212,15 +212,46 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
     return new_image_fname
 
 
-def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color, **kargs):
-    from PIL import Image
+def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color='black',
+                          ticks_font_size=10, **kargs):
     fol = utils.get_fname_folder(figure_fname)
+    if ',' in background_color:
+        background_color = [float(x) for x in background_color.split(',')]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
     plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=[data_max, data_min], fol=fol,
-                   facecolor=background_color)
+                   facecolor=background_color, ticks_font_size=ticks_font_size)
     cb_img = Image.open(cb_fname)
-    crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
+    # crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
     combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True)
+
+
+def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname, data_max, data_min,
+        colors_map, background_color='black', ticks_font_size=10, add_cb=True, crop_figures=True,
+        remove_original_figures=False, **kargs):
+    fol = utils.get_fname_folder(lh_figure_fname)
+    if ',' in background_color:
+        background_color = [float(x) for x in background_color.split(',')]
+    cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
+    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=[data_max, data_min], fol=fol,
+                   facecolor=background_color, ticks_font_size=ticks_font_size)
+    cb_img = Image.open(cb_fname)
+    if add_cb:
+        if crop_figures:
+            crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=50, dh=70)
+            crop_image(rh_figure_fname, rh_figure_fname, dx=150 + 50, dy=0, dw=0, dh=70)
+        combine_two_images(lh_figure_fname, rh_figure_fname, new_image_fname, facecolor=background_color,
+                           dpi=200, w_fac=1, h_fac=1)
+        combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True)
+    else:
+        if crop_figures:
+            crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=150, dh=0)
+            crop_image(rh_figure_fname, dx=150, dy=0, dw=150, dh=0)
+        combine_two_images(lh_figure_fname, rh_figure_fname, new_image_fname, facecolor=background_color)
+    if remove_original_figures:
+        if lh_figure_fname != new_image_fname:
+            utils.remove_file(lh_figure_fname)
+        if rh_figure_fname != new_image_fname:
+            utils.remove_file(rh_figure_fname)
 
 
 def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrite=False, cb_max=None, cb_min=None,
@@ -339,6 +370,10 @@ if __name__ is '__main__':
     parser.add_argument('--data_max', required=False, default=0, type=float)
     parser.add_argument('--data_min', required=False, default=0, type=float)
     parser.add_argument('--figure_fname', required=False, default='')
+    parser.add_argument('--lh_figure_fname', required=False, default='')
+    parser.add_argument('--rh_figure_fname', required=False, default='')
+    parser.add_argument('--new_image_fname', required=False, default='')
+
     parser.add_argument('--colors_map', required=False, default='')
     parser.add_argument('--x_left_crop', required=False, default=0, type=float)
     parser.add_argument('--x_right_crop', required=False, default=0, type=float)
@@ -347,6 +382,10 @@ if __name__ is '__main__':
     parser.add_argument('--w_fac', required=False, default=2, type=float)
     parser.add_argument('--h_fac', required=False, default=3/2, type=float)
     parser.add_argument('--background_color', required=False, default='black')
+    parser.add_argument('--ticks_font_size', required=False, default=10, type=int)
+    parser.add_argument('--add_cb', required=False, default=1, type=au.is_true)
+    parser.add_argument('--crop_figures', required=False, default=1, type=au.is_true)
+    parser.add_argument('--remove_original_figures', required=False, default=0, type=au.is_true)
 
     parser.add_argument('-f', '--function', help='function name', required=True,
                         default='combine_four_brain_perspectives', type=au.str_arr_type)

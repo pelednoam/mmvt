@@ -10,13 +10,6 @@ import logging
 import mmvt_utils as mu
 import re
 
-try:
-    from scripts import figures_utils as fu
-    MATPLOTLIB_EXIST = True
-except:
-    print(traceback.format_exc())
-    MATPLOTLIB_EXIST = False
-
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
     name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
@@ -325,7 +318,7 @@ class SaveImage(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        save_image('image', bpy.context.scene.save_selected_view, add_colorbar=bpy.context.scene.save_views_with_cb)
+        _save_image()
         return {"FINISHED"}
 
 
@@ -541,6 +534,22 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
     # mu.run_command_in_new_thread(cmd, queues=False)
 
 
+def _save_image():
+    if not bpy.context.scene.save_split_views:
+        save_image(view_selected=bpy.context.scene.save_selected_view,
+                   add_colorbar=bpy.context.scene.save_views_with_cb)
+    else:
+        images = {}
+        org_hide = {hemi: mu.get_hemi_obj(hemi).hide for hemi in mu.HEMIS}
+        for hemi in mu.HEMIS:
+            mu.get_hemi_obj(hemi).hide = False
+            mu.get_hemi_obj(mu.other_hemi(hemi)).hide = True
+            images[hemi] = save_image(view_selected=bpy.context.scene.save_selected_view, add_colorbar=False)
+        for hemi in mu.HEMIS:
+            mu.get_hemi_obj(hemi).hide = org_hide[hemi]
+        combine_two_images_and_add_colorbar(images['lh'], images['rh'], images['lh'])
+
+
 def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True,
                add_colorbar=False):
     if view_selected is None:
@@ -569,14 +578,15 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     view3d_context = mu.get_view3d_context()
     if view_selected:
         _addon().view_all()
-        _addon().zoom(-1)
+        # todo: Understand when zoom(-1) is needed
+        # _addon().zoom(-1)
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
     if zoom_val != 0:
         _addon().zoom(zoom_val)
     bpy.ops.render.opengl(view3d_context, write_still=True)
-    if add_colorbar and MATPLOTLIB_EXIST:
+    if add_colorbar:
         add_colorbar_to_image(image_name)
     # if view_selected:
     #     _addon().zoom(1)
@@ -658,17 +668,18 @@ def add_colorbar_to_image(image_fname):
         'src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
+def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname):
+    data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
+    flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
+            '--new_image_fname "{}" --data_max {} --data_min {} '.format(new_image_fname, data_max, data_min) + \
+            '--colors_map {} --background_color {} --add_cb 1 --crop_figures 1 --remove_original_figures 1'.format(
+                _addon().get_colormap_name(), get_background_rgb_string())
+    mu.run_mmvt_func(
+        'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
+
+
 def get_background_rgb_string():
     return ','.join([str(bpy.context.scene.panels_background_color.__getattribute__(x)) for x in ('r', 'g', 'b')])
-    # from PIL import Image
-    # fol = mu.get_fname_folder(image_fname)
-    # cb_fname = op.join(fol, '{}_colorbar.jpg'.format(_addon().get_colormap_name()))
-    # if not op.isfile(cb_fname):
-    #     data_max, data_min = _addon().get_colorbar_max_min()
-    #     fu.plot_color_bar(data_max, data_min, _addon().get_colormap_name(), do_save=True, ticks=[data_max, data_min], fol=fol,
-    #                       facecolor=bpy.context.scene.panels_background_color)
-    # cb_img = Image.open(cb_fname)
-    # fu.combine_brain_with_color_bar(image_fname, cb_img, overwrite=True)
 
 
 def save_render_image(img_name, quality, do_render_image):
