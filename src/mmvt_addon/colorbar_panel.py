@@ -150,6 +150,14 @@ def _set_colorbar_min_max(field, val, prec):
         print('_set_colorbar_min_max: field error ({})! must be max / min!'.format(field))
 
 
+def get_colorbar_ticks(ticks_num=2, prec=None):
+    if prec is None:
+        prec = bpy.context.scene.colorbar_prec
+    step = (get_colorbar_max() - get_colorbar_min()) / (ticks_num - 1)
+    ticks = np.arange(get_colorbar_min(), get_colorbar_max() + step, step)
+    return [PERC_FORMATS[prec].format(x) for x in ticks]
+
+
 def set_colormap(colormap_name):
     if colormap_name in ColorbarPanel.maps_names:
         bpy.context.scene.colorbar_files = colormap_name
@@ -182,6 +190,8 @@ def colorbar_update(self, context):
         set_colorbar_title(bpy.context.scene.colorbar_title)
         set_colorbar_max(bpy.context.scene.colorbar_max)
         set_colorbar_min(bpy.context.scene.colorbar_min)
+        bpy.context.scene.cb_ticks = '{},{}'.format(
+            bpy.data.objects['colorbar_min'].data.body, bpy.data.objects['colorbar_max'].data.body)
         # todo: we shouldn't change coloring_use_abs, because in some cases the user will want to plot only the
         # positive values (fMRI for example)
         # bpy.context.scene.coloring_use_abs = np.sign(bpy.context.scene.colorbar_max) != \

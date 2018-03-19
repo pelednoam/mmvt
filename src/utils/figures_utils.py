@@ -213,7 +213,7 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 
 
 def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color='black',
-                          ticks_font_size=10, **kargs):
+                          cb_ticks=[], ticks_font_size=10, **kargs):
     fol = utils.get_fname_folder(figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
@@ -222,17 +222,17 @@ def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, backgrou
                    facecolor=background_color, ticks_font_size=ticks_font_size)
     cb_img = Image.open(cb_fname)
     # crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
-    combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True)
+    combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
 
 
 def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname, data_max, data_min,
-        colors_map, background_color='black', ticks_font_size=10, add_cb=True, crop_figures=True,
+        colors_map, background_color='black', cb_ticks=[], ticks_font_size=10, add_cb=True, crop_figures=True,
         remove_original_figures=False, **kargs):
     fol = utils.get_fname_folder(lh_figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
-    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=[data_max, data_min], fol=fol,
+    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=cb_ticks, fol=fol,
                    facecolor=background_color, ticks_font_size=ticks_font_size)
     cb_img = Image.open(cb_fname)
     if add_cb:
@@ -241,7 +241,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
             crop_image(rh_figure_fname, rh_figure_fname, dx=150 + 50, dy=0, dw=0, dh=70)
         combine_two_images(lh_figure_fname, rh_figure_fname, new_image_fname, facecolor=background_color,
                            dpi=200, w_fac=1, h_fac=1)
-        combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True)
+        combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
     else:
         if crop_figures:
             crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=150, dh=0)
@@ -256,13 +256,13 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
 
 
 def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrite=False, cb_max=None, cb_min=None,
-                                 cb_cm=None, background='black', ticks=[], cb_ticks_font_size=10):
+                                 cb_cm=None, background='black', cb_ticks=[], cb_ticks_font_size=10):
     if cb_img is None:
-        if len(ticks) == 0:
-            ticks = [cb_min, cb_max]
+        if len(cb_ticks) == 0:
+            cb_ticks = [cb_min, cb_max]
         fol = utils.get_parent_fol(image_fname)
         cb_fname = op.join(fol, '{}_colorbar.jpg'.format(cb_cm))
-        plot_color_bar(cb_max, cb_min, cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
+        plot_color_bar(cb_max, cb_min, cb_cm, do_save=True, cb_ticks=cb_ticks, fol=fol, facecolor=background,
                           ticks_font_size=cb_ticks_font_size)
         cb_img = Image.open(cb_fname)
 
@@ -383,6 +383,7 @@ if __name__ is '__main__':
     parser.add_argument('--w_fac', required=False, default=2, type=float)
     parser.add_argument('--h_fac', required=False, default=3/2, type=float)
     parser.add_argument('--background_color', required=False, default='black')
+    parser.add_argument('--cb_ticks', required=False, default='', type=au.float_arr_type)
     parser.add_argument('--ticks_font_size', required=False, default=10, type=int)
     parser.add_argument('--add_cb', required=False, default=1, type=au.is_true)
     parser.add_argument('--crop_figures', required=False, default=1, type=au.is_true)

@@ -182,8 +182,10 @@ def render_draw(self, context):
     func_name = 'Render' if get_view_mode() == 'CAMERA' else 'Save'
     layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
     row = layout.row(align=0)
-    row.prop(context.scene, 'save_split_views', text="Split views")
     row.prop(context.scene, 'save_views_with_cb', text="Add colorbar")
+    if bpy.context.scene.save_views_with_cb:
+        row.prop(context.scene, 'cb_ticks_num', text="Ticks num")
+    layout.prop(context.scene, 'save_split_views', text="Split views")
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
 
@@ -287,6 +289,7 @@ bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
 
 
 class SaveAllViews(bpy.types.Operator):
@@ -601,12 +604,14 @@ def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
-def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
+def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=None, render_images=False, quality=0,
                    img_name_prefix='', add_colorbar=False):
     if not bpy.context.scene.save_split_views:
+        rot_lh_axial = False if rot_lh_axial is None else rot_lh_axial
         save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, add_colorbar)
     else:
         images_names = []
+        rot_lh_axial = True if rot_lh_axial is None else rot_lh_axial
         org_hide = {hemi: mu.get_hemi_obj(hemi).hide for hemi in mu.HEMIS}
         for hemi in mu.HEMIS:
             mu.get_hemi_obj(hemi).hide = False
@@ -625,9 +630,6 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
             coup = {hemi: coup_template.format(hemi=hemi) for hemi in mu.HEMIS}
             new_image_fname = op.join(fol, mu.namebase_with_ext(files_coup[0])[3:])
             combine_two_images_and_add_colorbar(coup['lh'], coup['rh'], new_image_fname)
-        # for lh_image_fname, rh_image_fname in zip(coup['lh'], coup['rh']):
-        #     new_image_fname = op.join(fol, mu.namebase_with_ext(lh_image_fname)[3:])
-        #     combine_two_images_and_add_colorbar(lh_image_fname, rh_image_fname, new_image_fname)
 
 
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
@@ -691,18 +693,20 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
 
 def add_colorbar_to_image(image_fname):
     data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
-    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {}'.format(
-        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string())
+    cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
+    flags = '--figure_fname "{}" --data_max {} --data_min {} --colors_map {} --background_color {} --cb_ticks {}'.format(
+        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string(), cb_ticks)
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
 def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname):
     data_max, data_min = bpy.data.objects['colorbar_max'].data.body, bpy.data.objects['colorbar_min'].data.body
+    cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max {} --data_min {} '.format(new_image_fname, data_max, data_min) + \
-            '--colors_map {} --background_color {} --add_cb 1 --crop_figures 1 --remove_original_figures 1'.format(
-                _addon().get_colormap_name(), get_background_rgb_string())
+            '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
+            '--add_cb 1 --cb_ticks {} --crop_figures 1 --remove_original_figures 1'.format(cb_ticks)
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
 

@@ -335,6 +335,7 @@ set_colorbar_prec = colorbar_panel.set_colorbar_prec
 get_colorbar_prec = colorbar_panel.get_colorbar_prec
 set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
+get_colorbar_ticks = colorbar_panel.get_colorbar_ticks
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
