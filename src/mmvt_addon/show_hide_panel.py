@@ -166,6 +166,10 @@ def show_subcorticals():
     show_hide_sub_corticals(False)
 
 
+def subcorticals_are_hiding():
+    return bpy.context.scene.objects_show_hide_sub_cortical
+
+
 def show_hide_sub_corticals(do_hide=True):
     show_hide_hierarchy(do_hide, "Subcortical_structures")
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")

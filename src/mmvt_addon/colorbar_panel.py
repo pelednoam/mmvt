@@ -24,6 +24,8 @@ def set_colorbar_default_cm():
         return
     # todo: take those values from an ini file
     data_min, data_max = bpy.context.scene.colorbar_min, bpy.context.scene.colorbar_max
+    if not bpy.context.scene.coloring_use_abs:
+        data_min = bpy.context.scene.colorbar_min = bpy.context.scene.coloring_lower_threshold
     if not (data_min == 0 and data_max == 0) and not colorbar_values_are_locked():
         if data_min == 0 or np.sign(data_min) == np.sign(data_max):
             set_colormap('YlOrRd')

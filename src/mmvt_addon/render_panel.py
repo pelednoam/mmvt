@@ -183,8 +183,7 @@ def render_draw(self, context):
     layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
     row = layout.row(align=0)
     row.prop(context.scene, 'save_split_views', text="Split views")
-    if MATPLOTLIB_EXIST:
-        row.prop(context.scene, 'save_views_with_cb', text="Add colorbar")
+    row.prop(context.scene, 'save_views_with_cb', text="Add colorbar")
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
 
@@ -297,7 +296,7 @@ class SaveAllViews(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        save_all_views(render_images=get_view_mode() == 'CAMERA', add_colorbar=bpy.context.scene.save_views_with_cb)
+        _save_all_views(render_images=get_view_mode() == 'CAMERA', add_colorbar=bpy.context.scene.save_views_with_cb)
         return {"FINISHED"}
 
 
@@ -579,7 +578,8 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     if view_selected:
         _addon().view_all()
         # todo: Understand when zoom(-1) is needed
-        # _addon().zoom(-1)
+        if not _addon().subcorticals_are_hiding():
+            _addon().zoom(-1)
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
@@ -601,6 +601,35 @@ def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
+def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
+                   img_name_prefix='', add_colorbar=False):
+    if not bpy.context.scene.save_split_views:
+        save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, add_colorbar)
+    else:
+        images_names = []
+        org_hide = {hemi: mu.get_hemi_obj(hemi).hide for hemi in mu.HEMIS}
+        for hemi in mu.HEMIS:
+            mu.get_hemi_obj(hemi).hide = False
+            mu.get_hemi_obj(mu.other_hemi(hemi)).hide = True
+            images_names.extend(save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, False))
+        for hemi in mu.HEMIS:
+            mu.get_hemi_obj(hemi).hide = org_hide[hemi]
+        images_hemi_inv_list = set(
+            [mu.namebase(fname)[3:] for fname in images_names if mu.namebase(fname)[:2] in ['rh', 'lh']])
+        files = [[fname for fname in images_names if mu.namebase(fname)[3:] == img_hemi_inv] for img_hemi_inv in
+                 images_hemi_inv_list]
+        fol = mu.get_fname_folder(files[0][0])
+        for files_coup in files:
+            hemi = 'rh' if mu.namebase(files_coup[0]).startswith('rh') else 'lh'
+            coup_template = files_coup[0].replace(hemi, '{hemi}')
+            coup = {hemi: coup_template.format(hemi=hemi) for hemi in mu.HEMIS}
+            new_image_fname = op.join(fol, mu.namebase_with_ext(files_coup[0])[3:])
+            combine_two_images_and_add_colorbar(coup['lh'], coup['rh'], new_image_fname)
+        # for lh_image_fname, rh_image_fname in zip(coup['lh'], coup['rh']):
+        #     new_image_fname = op.join(fol, mu.namebase_with_ext(lh_image_fname)[3:])
+        #     combine_two_images_and_add_colorbar(lh_image_fname, rh_image_fname, new_image_fname)
+
+
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
                    img_name_prefix='', add_colorbar=False):
     def get_image_name(view_name):
@@ -611,12 +640,12 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     def save_medial_views():
         _addon().hide_hemi('rh')
         _addon().rotate_view(_addon().ROT_SAGITTAL_RIGHT)
-        image_fname = save_render_image('{}_left_medial'.format(surf_name), quality, render_images)
+        image_fname = save_render_image('{}_left_medial'.format(surf_name), quality, render_images, add_colorbar)
         images_names.append(image_fname)
         _addon().show_hemi('rh')
         _addon().hide_hemi('lh')
         _addon().rotate_view(_addon().ROT_SAGITTAL_LEFT)
-        image_fname = save_render_image('{}_right_medial'.format(surf_name), quality, render_images)
+        image_fname = save_render_image('{}_right_medial'.format(surf_name), quality, render_images, add_colorbar)
         images_names.append(image_fname)
         _addon().show_hemi('rh')
         _addon().show_hemi('lh')
@@ -652,7 +681,7 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
-        image_fname = save_render_image(img_name, quality, render_images)
+        image_fname = save_render_image(img_name, quality, render_images, add_colorbar)
         images_names.append(image_fname)
     if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
         save_medial_views()
@@ -682,13 +711,13 @@ def get_background_rgb_string():
     return ','.join([str(bpy.context.scene.panels_background_color.__getattribute__(x)) for x in ('r', 'g', 'b')])
 
 
-def save_render_image(img_name, quality, do_render_image):
+def save_render_image(img_name, quality, do_render_image, add_colorbar):
     if do_render_image:
         camera_mode()
         image_fname = render_image(img_name, quality=quality, overwrite=True)
         camera_mode()
     else:
-        image_fname = save_image(img_name, add_index_to_name=False, add_colorbar=bpy.context.scene.save_views_with_cb)
+        image_fname = save_image(img_name, add_index_to_name=False, add_colorbar=add_colorbar)
     mu.write_to_stderr('Saving image to {}'.format(image_fname))
     return image_fname
 

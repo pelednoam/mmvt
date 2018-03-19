@@ -259,6 +259,7 @@ show_hemis = show_hide_panel.show_hemis
 set_normal_view = show_hide_panel.set_normal_view
 hide_hemi = show_hide_panel.hide_hemi
 show_hemi = show_hide_panel.show_hemi
+subcorticals_are_hiding = show_hide_panel.subcorticals_are_hiding
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d

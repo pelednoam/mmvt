@@ -166,9 +166,7 @@ def post_blender_call(args):
         for files_coup in files:
             hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
             coup_template = files_coup[0].replace(hemi, '{hemi}')
-            coup = {}
-            for hemi in utils.HEMIS:
-                coup[hemi] = coup_template.format(hemi=hemi)
+            coup = {hemi: coup_template.format(hemi=hemi) for hemi in utils.HEMIS}
             new_image_fname = op.join(fol, utils.namebase_with_ext(files_coup[0])[3:])
             if args.add_cb:
                 if args.crop_figures:
