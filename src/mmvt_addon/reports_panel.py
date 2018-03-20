@@ -84,13 +84,26 @@ def get_report_fields(report_text, return_indices=False):
         return fields_names
 
 
+def get_report_files(report_text):
+    substr = 'src=~Images prefix~'
+    files_finder = re.finditer(substr, report_text)
+    files_names = set()
+    for m in files_finder:
+        start = m.start() + len(substr)
+        end = report_text[start:].find(' ') + start
+        files_names.add(report_text[start:end])
+    ReportsPanel.files[bpy.context.scene.reports_files] = files_names
+
+
 def reports_files_update(self, context):
-    fields = get_report_fields(read_report_html())
+    report_text = read_report_html()
+    fields = get_report_fields(report_text)
     for field_name in fields:
         ReportsPanel.fields_values[bpy.context.scene.reports_files][field_name] = ''
     reports_items = [(c, c, '', ind) for ind, c in enumerate(fields)]
     bpy.types.Scene.reports_fields = bpy.props.EnumProperty(
         items=reports_items, update=reports_fields_update)
+    get_report_files(report_text)
     # bpy.context.scene.reports_files = reports_items[0]
 
 
@@ -106,11 +119,22 @@ def reports_fields_update(self, context):
 
 def reports_draw(self, context):
     layout = self.layout
+    missing_files = []
     layout.prop(context.scene, "reports_files", text="")
     row = layout.row(align=0)
     row.prop(context.scene, "reports_fields", text="")
     row.prop(context.scene, "reports_field_value", text="")
-    layout.operator(CreateReport.bl_idname, text="Create report", icon='STYLUS_PRESSURE')
+    if len(ReportsPanel.files[bpy.context.scene.reports_files]) > 0:
+        missing_files = [file_name for file_name in ReportsPanel.files[bpy.context.scene.reports_files] if \
+                         not op.isfile(op.join(_addon().get_output_path(), file_name))]
+        if len(missing_files) > 0:
+            layout.label('Missing files:')
+            col = layout.box().column()
+            for file_name in ReportsPanel.files[bpy.context.scene.reports_files]:
+                if not op.isfile(op.join(_addon().get_output_path(), file_name)):
+                    mu.add_box_line(col, file_name, '', 1)
+    if len(missing_files) == 0:
+        layout.operator(CreateReport.bl_idname, text="Create report", icon='STYLUS_PRESSURE')
 
 
 class CreateReport(bpy.types.Operator):
@@ -137,6 +161,7 @@ class ReportsPanel(bpy.types.Panel):
     addon = None
     init = False
     fields_values = defaultdict(dict)
+    files = defaultdict(list)
 
     def draw(self, context):
         if ReportsPanel.init:
