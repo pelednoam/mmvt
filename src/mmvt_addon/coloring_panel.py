@@ -574,8 +574,9 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
 
 
 def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=None, cmap=None):
+    data = np.reshape(data, (max([x for x in data.shape])))
     if len(labels) != len(data):
-        print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels, len(data))))
+        print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels), len(data)))
         return
     if len(labels) == 0:
         print('color_labels_data: len(labels) == 0!')
