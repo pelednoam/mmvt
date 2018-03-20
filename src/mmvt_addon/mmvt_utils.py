@@ -188,8 +188,10 @@ def file_type(fname):
     else:
         return fname.split('.')[-1]
 
-# def file_type(fname):
-#     return op.splitext(op.basename(fname))[1][1:]
+
+def change_fname_extension(fname, new_extension):
+    return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
+
 
 @functools.lru_cache(maxsize=None)
 def file_fol():

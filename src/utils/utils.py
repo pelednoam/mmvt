@@ -74,6 +74,7 @@ remove_file = mu.remove_file
 get_distinct_colors = mu.get_distinct_colors
 is_float = mu.is_float
 get_fname_folder = mu.get_fname_folder
+change_fname_extension = mu.change_fname_extension
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -676,12 +677,6 @@ def is_file_type(fname, file_type):
 
 def namebase_with_ext(fname):
     return fname.split(op.sep)[-1]
-
-
-def change_fname_extension(fname, new_extension):
-    # splits = fname.split('.')
-    # return '{}.{}'.format('.'.join(splits[:-1]), new_extension)
-    return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 
 #todo: Move to labes utils
