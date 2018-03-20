@@ -82,6 +82,8 @@ import skull_panel
 importlib.reload(skull_panel)
 import dell_panel
 importlib.reload(dell_panel)
+import reports_panel
+importlib.reload(reports_panel)
 import moshes_panel
 importlib.reload(moshes_panel)
 # import logo_panel
@@ -606,7 +608,7 @@ def get_panels(first_time=False):
     panels = [data_panel, appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel, moshes_panel] #, pizco_panel, dell_panel)
+            slicer_panel, skull_panel, reports_panel, moshes_panel] #, pizco_panel, dell_panel)
     dell_exist = op.isfile(op.join(mmvt_utils.get_parent_fol(__file__), 'dell', 'find_electrodes_in_ct.py'))
     if not mmvt_utils.IS_WINDOWS and not first_time and dell_exist:
         panels.append(dell_panel)
