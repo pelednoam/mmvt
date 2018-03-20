@@ -215,7 +215,7 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 
 
 def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color='black',
-                          cb_ticks=[], ticks_font_size=10, cb_title='', **kargs):
+                          cb_ticks=[], cb_ticks_font_size=10, cb_title='', **kargs):
     fol = utils.get_fname_folder(figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
@@ -223,21 +223,21 @@ def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, backgrou
         cb_ticks = [data_min, data_max]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
     plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=cb_ticks, fol=fol,
-                   facecolor=background_color, ticks_font_size=ticks_font_size, title=cb_title)
+                   facecolor=background_color, ticks_font_size=cb_ticks_font_size, title=cb_title)
     cb_img = Image.open(cb_fname)
     # crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
     combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
 
 
 def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname, data_max, data_min,
-        colors_map, background_color='black', cb_ticks=[], ticks_font_size=10, add_cb=True, crop_figures=True,
+        colors_map, background_color='black', cb_ticks=[], cb_ticks_font_size=10, add_cb=True, crop_figures=True,
         remove_original_figures=False, cb_title='', **kargs):
     fol = utils.get_fname_folder(lh_figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
     plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=cb_ticks, fol=fol,
-                   facecolor=background_color, ticks_font_size=ticks_font_size, title=cb_title)
+                   facecolor=background_color, ticks_font_size=cb_ticks_font_size, title=cb_title)
     cb_img = Image.open(cb_fname)
     if add_cb:
         if crop_figures:
@@ -389,7 +389,7 @@ if __name__ is '__main__':
     parser.add_argument('--background_color', required=False, default='black')
     parser.add_argument('--cb_title', required=False, default='')
     parser.add_argument('--cb_ticks', required=False, default='', type=au.float_arr_type)
-    parser.add_argument('--ticks_font_size', required=False, default=10, type=int)
+    parser.add_argument('--cb_ticks_font_size', required=False, default=10, type=int)
     parser.add_argument('--add_cb', required=False, default=1, type=au.is_true)
     parser.add_argument('--crop_figures', required=False, default=1, type=au.is_true)
     parser.add_argument('--remove_original_figures', required=False, default=0, type=au.is_true)

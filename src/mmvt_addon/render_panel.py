@@ -182,9 +182,10 @@ def render_draw(self, context):
     func_name = 'Render' if get_view_mode() == 'CAMERA' else 'Save'
     layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
     row = layout.row(align=0)
-    row.prop(context.scene, 'save_views_with_cb', text="Add colorbar")
+    row.prop(context.scene, 'save_views_with_cb', text="Colorbar")
     if bpy.context.scene.save_views_with_cb:
-        row.prop(context.scene, 'cb_ticks_num', text="Ticks num")
+        row.prop(context.scene, 'cb_ticks_num', text="ticks")
+        row.prop(context.scene, 'cb_ticks_font_size', text="size")
     layout.prop(context.scene, 'save_split_views', text="Split views")
     layout.prop(context.scene, 'save_selected_view')
     layout.prop(context.scene, 'output_path')
@@ -290,6 +291,7 @@ bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
+bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
 
 
 class SaveAllViews(bpy.types.Operator):
@@ -688,6 +690,7 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
         save_medial_views()
     mu.rotate_view3d(org_view_ang)
+    mu.center_view()
     return images_names
 
 
@@ -697,7 +700,8 @@ def add_colorbar_to_image(image_fname):
     cb_ticks = cb_ticks.replace('-', '*') # Bug in argparse. todo: change the , to space
     flags = '--figure_fname "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
         image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string()) + \
-        '--cb_title "{}" --cb_ticks "{}"'.format(_addon().get_colorbar_title(), cb_ticks)
+        '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {}'.format(
+            _addon().get_colorbar_title(), cb_ticks, bpy.context.scene.cb_ticks_font_size)
     mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
@@ -708,8 +712,9 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max "{}" --data_min "{}" '.format(new_image_fname, data_max, data_min) + \
             '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
-            '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --crop_figures 1 --remove_original_figures 1'.format(
-                _addon().get_colorbar_title(), cb_ticks)
+            '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
+                _addon().get_colorbar_title(), cb_ticks, bpy.context.scene.cb_ticks_font_size) + \
+            '--crop_figures 1 --remove_original_figures 1'
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
 

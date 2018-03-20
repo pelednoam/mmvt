@@ -1639,7 +1639,7 @@ def get_view3d_context():
 
 def center_view():
     v3d = bpy.context.space_data
-    if v3d.type == "VIEW_3D":
+    if v3d and v3d.type == "VIEW_3D":
         rv3d = v3d.region_3d
         current_cloc = v3d.cursor_location.xyz
         v3d.cursor_location = (0, 0, 0)
