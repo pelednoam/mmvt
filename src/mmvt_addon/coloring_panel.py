@@ -109,6 +109,9 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
             stc = '{}-rh.stc'.format(stc)
         ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
         calc_stc_minmax()
+    else:
+        if stc is None:
+            stc = mne.read_source_estimate(get_stc_full_fname())
 
     if threshold is not None:
         set_threshold(threshold)
@@ -1270,35 +1273,41 @@ def _meg_files_update(context):
                 _addon().set_colorbar_max_min(data_max, data_min, True)
             break
     else:
-        full_stc_fname = ''
-        template = op.join(user_fol, 'meg', '*.stc')
-        stcs_files = glob.glob(template)
-        # todo: Do something better...
-        stcs_files += glob.glob(op.join(user_fol, 'eeg', '*.stc'))
-        for stc_file in stcs_files:
-            _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
-            if label == bpy.context.scene.meg_files:
-                full_stc_fname = stc_file
-                ColoringMakerPanel.stc_file_chosen = True
-                break
-
+        full_stc_fname = get_stc_full_fname()
         if full_stc_fname == '':
-            print("Can't find the stc file in {}".format(template))
+            print("Can't find the stc file in {}".format(op.join(user_fol, 'meg', '*.stc')))
         else:
-            ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
-            T = ColoringMakerPanel.stc.data.shape[1] - 1
+            # ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
+            ColoringMakerPanel.stc = None
+            # if not _addon().colorbar_values_are_locked():
+            data_min, data_max, data_len = calc_stc_minmax()
+            _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
+            _addon().set_colorbar_title('MEG')
+            T = data_len - 1
             bpy.data.scenes['Scene'].frame_preview_start = 0
             bpy.data.scenes['Scene'].frame_preview_end = T
             if context.scene.frame_current > T:
                 context.scene.frame_current = T
-            # if not _addon().colorbar_values_are_locked():
-            data_min, data_max = calc_stc_minmax()
-            _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
-            _addon().set_colorbar_title('MEG')
             # try:
             #     bpy.context.scene.meg_max_t = max([np.argmax(np.max(stc.rh_data, 0)), np.argmax(np.max(stc.lh_data, 0))])
             # except:
             #     bpy.context.scene.meg_max_t = 0
+
+
+def get_stc_full_fname():
+    full_stc_fname = ''
+    user_fol = mu.get_user_fol()
+    template = op.join(user_fol, 'meg', '*.stc')
+    stcs_files = glob.glob(template)
+    # todo: Do something better...
+    stcs_files += glob.glob(op.join(user_fol, 'eeg', '*.stc'))
+    for stc_file in stcs_files:
+        _, _, label, hemi = mu.get_hemi_delim_and_pos(mu.namebase(stc_file))
+        if label == bpy.context.scene.meg_files:
+            full_stc_fname = stc_file
+            ColoringMakerPanel.stc_file_chosen = True
+            break
+    return full_stc_fname
 
 
 def meg_minmax_prec_update(selc, context):
@@ -1323,14 +1332,15 @@ def set_meg_minmax_prec(min_prec, max_prec):
 
 
 def calc_stc_minmax():
-    stc = ColoringMakerPanel.stc
     # print('calc_stc_minmax: {}'.format(bpy.context.scene.meg_files))
     maxmin_fname = op.join(mu.get_user_fol(), 'meg', '{}_{}_{}_minmax.pkl'.format(
         bpy.context.scene.meg_files, bpy.context.scene.meg_min_prec, bpy.context.scene.meg_max_prec))
     if op.isfile(maxmin_fname):
-        ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = mu.load(maxmin_fname)
-        return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
+        ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len = mu.load(maxmin_fname)
+        return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len
 
+    if ColoringMakerPanel.stc is None:
+        stc = ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
     data_min = mu.min_stc(stc, bpy.context.scene.meg_min_prec)
     data_max = mu.max_stc(stc, bpy.context.scene.meg_max_prec)
     # data_minmax = mu.get_max_abs(data_max, data_min)
@@ -1347,9 +1357,10 @@ def calc_stc_minmax():
             ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = 0, data_max
         else:
             ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = data_min, 0
+    stc_data_len = ColoringMakerPanel.stc.data.shape[1]
 
-    mu.save((ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max), maxmin_fname)
-    return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
+    mu.save((ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len), maxmin_fname)
+    return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len
 
 
 @mu.tryit()
