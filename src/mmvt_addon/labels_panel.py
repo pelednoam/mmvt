@@ -1,4 +1,5 @@
 import bpy
+import bpy_extras
 import os.path as op
 import glob
 import time
@@ -185,20 +186,24 @@ def load_labels_data(labels_data_fname):
     else:
         if new_fname != labels_data_fname:
             shutil.copy(labels_data_fname, new_fname)
-    _addon().init_labels_data_files()
+    init_labels_data_files()
     return True
 
 
 def labels_draw(self, context):
     layout = self.layout
+
+    col = layout.box().column()
+    col.label(text='Cortical labels data:')
     if len(LabelsPanel.labels_data_files) > 0:
-        col = layout.box().column()
         col.prop(context.scene, 'labels_data_files', text='')
         col.prop(context.scene, 'color_rois_homogeneously', text="Color labels homogeneously")
         col.operator(PlotLabelsData.bl_idname, text="Plot labels", icon='TPAINT_HLT')
+    col.operator(ChooseLabesDataFile.bl_idname, text="Load labels file", icon='LOAD_FACTORY')
 
     if LabelsPanel.contours_coloring_exist:
         col = layout.box().column()
+        col.label(text='Contours:')
         col.prop(context.scene, 'contours_coloring', '')
         col.operator(ColorContours.bl_idname, text="Plot Contours", icon='POTATO')
         row = col.row(align=True)
@@ -208,7 +213,7 @@ def labels_draw(self, context):
 
     col = layout.box().column()
     if not GrowLabel.running:
-        col.label(text='Create a new label')
+        col.label(text='Creating a new label:')
         col.prop(context.scene, 'new_label_name', text='')
         col.prop(context.scene, 'new_label_r', text='Radius (mm)')
         txt = 'Grow a label' if bpy.context.scene.cursor_is_snapped else 'First Snap the cursor'
@@ -217,6 +222,18 @@ def labels_draw(self, context):
         col.label(text='Growing the label...')
     layout.operator(ClearContours.bl_idname, text="Clear contours", icon='PANEL_CLOSE')
     layout.operator(_addon().ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+
+
+class ChooseLabesDataFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.choose_labels_npz_file"
+    bl_label = "Choose labels data"
+
+    filename_ext = '.*'
+    filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        _addon().load_labels_data(self.filepath.replace('.*', ''))
+        return {'FINISHED'}
 
 
 class GrowLabel(bpy.types.Operator):
@@ -333,7 +350,7 @@ class LabelsPanel(bpy.types.Panel):
     bl_region_type = "UI"
     bl_context = "objectmode"
     bl_category = "mmvt"
-    bl_label = "Labels"
+    bl_label = "Cortical Labels"
     addon = None
     init = False
     
@@ -390,6 +407,7 @@ def register():
         bpy.utils.register_class(NextLabelConture)
         bpy.utils.register_class(PrevLabelConture)
         bpy.utils.register_class(PlotLabelsData)
+        bpy.utils.register_class(ChooseLabesDataFile)
     except:
         print("Can't register Labels Panel!")
 
@@ -403,5 +421,6 @@ def unregister():
         bpy.utils.unregister_class(NextLabelConture)
         bpy.utils.unregister_class(PrevLabelConture)
         bpy.utils.unregister_class(PlotLabelsData)
+        bpy.utils.unregister_class(ChooseLabesDataFile)
     except:
         pass

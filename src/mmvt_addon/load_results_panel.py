@@ -109,18 +109,6 @@ if IN_BLENDER:
             return {'CANCELLED'}
 
 
-    class ChooseLabesNPZFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
-        bl_idname = "mmvt.choose_labels_npz_file"
-        bl_label = "choose_labels_npz_file"
-
-        filename_ext = '.npz'
-        filter_glob = bpy.props.StringProperty(default='*.npz', options={'HIDDEN'}, maxlen=255)
-
-        def execute(self, context):
-            _addon().load_labels_data(self.filepath)
-            return {'FINISHED'}
-
-
     def load_results_draw(self, context):
         layout = self.layout
         if MNE_EXIST:
@@ -133,7 +121,6 @@ if IN_BLENDER:
                 layout.label(text=bpy.context.scene.nii_label_prompt)
         else:
             layout.label(text=bpy.context.scene.nii_label_output)
-        layout.operator(ChooseLabesNPZFile.bl_idname, text="Load labels npz file", icon='LOAD_FACTORY')
 
     def init(addon):
         LoadResultsPanel.addon = addon
@@ -150,7 +137,6 @@ if IN_BLENDER:
             bpy.utils.register_class(LoadResultsPanel)
             bpy.utils.register_class(ChooseSTCFile)
             bpy.utils.register_class(ChooseNiftiiFile)
-            bpy.utils.register_class(ChooseLabesNPZFile)
         except:
             print("Can't register LoadResults Panel!")
 
@@ -160,7 +146,6 @@ if IN_BLENDER:
             bpy.utils.unregister_class(LoadResultsPanel)
             bpy.utils.unregister_class(ChooseSTCFile)
             bpy.utils.unregister_class(ChooseNiftiiFile)
-            bpy.utils.unregister_class(ChooseLabesNPZFile)
         except:
             pass
 
