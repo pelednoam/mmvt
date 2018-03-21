@@ -1324,6 +1324,13 @@ def set_meg_minmax_prec(min_prec, max_prec):
 
 def calc_stc_minmax():
     stc = ColoringMakerPanel.stc
+    # print('calc_stc_minmax: {}'.format(bpy.context.scene.meg_files))
+    maxmin_fname = op.join(mu.get_user_fol(), 'meg', '{}_{}_{}_minmax.pkl'.format(
+        bpy.context.scene.meg_files, bpy.context.scene.meg_min_prec, bpy.context.scene.meg_max_prec))
+    if op.isfile(maxmin_fname):
+        ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = mu.load(maxmin_fname)
+        return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
+
     data_min = mu.min_stc(stc, bpy.context.scene.meg_min_prec)
     data_max = mu.max_stc(stc, bpy.context.scene.meg_max_prec)
     # data_minmax = mu.get_max_abs(data_max, data_min)
@@ -1340,6 +1347,8 @@ def calc_stc_minmax():
             ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = 0, data_max
         else:
             ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = data_min, 0
+
+    mu.save((ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max), maxmin_fname)
     return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max
 
 
@@ -2277,6 +2286,7 @@ def set_no_plotting(val):
     ColoringMakerPanel.no_plotting = val
 
 
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def init(addon):
     ColoringMakerPanel.addon = addon
     ColoringMakerPanel.faces_verts = None

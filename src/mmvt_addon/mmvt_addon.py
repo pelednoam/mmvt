@@ -19,6 +19,7 @@ import importlib
 import traceback
 import logging
 import atexit
+import time
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
@@ -637,8 +638,9 @@ def load_all_panels(addon_prefs=None, first_time=False):
         if panel is freeview_panel:
             panel.init(mmvt, addon_prefs)
         else:
-            print('init {}'.format(panel.__name__))
+            now = time.time()
             panel.init(mmvt)
+            print('{} took {:.5f}s to initialize'.format(panel.__name__, time.time() - now))
     if bpy.data.objects.get('rh'):
         split_view(0)
         split_view(0)
