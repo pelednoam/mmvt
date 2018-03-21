@@ -2011,8 +2011,9 @@ def read_label_file(label_fname):
     return Label(vertices, pos, values, hemi, name=name)
 
 
-def read_labels_from_annots(atlas, hemi='both'):
-    labels_fol = get_atlas_labels_fol(atlas)
+def read_labels_from_annots(atlas, hemi='both', labels_fol=''):
+    if labels_fol == '':
+        labels_fol = get_atlas_labels_fol(atlas)
     if labels_fol == '':
         return []
     labels = []
@@ -2043,6 +2044,33 @@ def get_atlas_labels_fol(atlas):
 def check_if_atlas_exist(labels_fol, atlas):
     return both_hemi_files_exist(op.join(labels_fol, '{}.{}.annot'.format('{hemi}', atlas))) or \
         len(glob.glob(op.join(labels_fol, '*.label'))) > 0
+
+
+def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas40'):
+    if subjects_dir == '':
+        subjects_dir = get_link_dir(get_links_dir(), 'subjects')
+    labels = []
+    lh_annot_files = glob.glob(op.join(subjects_dir, 'fsaverage*', 'label', 'lh.{}.annot'.format(atlas)))
+    if len(lh_annot_files) == 0:
+        lh_annot_files = glob.glob(op.join(subjects_dir, '**', 'label', 'lh.{}.annot'.format(atlas)), recursive=True)
+    if len(lh_annot_files) > 0:
+        for lh_annot_file in lh_annot_files:
+            annot_fol = get_parent_fol(lh_annot_file)
+            rh_annot_file = op.join(annot_fol, 'rh.{}.annot'.format(atlas))
+            if op.isfile(rh_annot_file):
+                labels = read_labels_from_annots(atlas, hemi='both', labels_fol=annot_fol)
+                break
+    return labels
+
+
+def check_atlas_by_labels_names(labels_names):
+    subjects_dir = get_link_dir(get_links_dir(), 'subjects')
+    for atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s', 'aparc250', 'laus125', 'laus250', 'laus500']:
+        atlas_labels = find_annot_labels(subjects_dir, atlas)
+        atlas_labels_names = set([l.name for l in atlas_labels])
+        if set(labels_names).issubset(atlas_labels_names):
+            return atlas
+    return ''
 
 
 @functools.lru_cache(maxsize=None)
@@ -2361,6 +2389,24 @@ def run_mmvt_func(module, func_name, flags=''):
     cmd = '{} -m {} -f {} {} '.format(
         bpy.context.scene.python_cmd, module, func_name, flags)
     run_command_in_new_thread(cmd, False, cwd=get_mmvt_code_root())
+
+
+def load_npz_to_bag(npz_fname):
+    return Bag(dict(np.load(npz_fname)))
+
+
+# Those matlab function are taken from matlab_utils
+def load_mat_to_bag(mat_fname):
+    import scipy.io as sio
+    return Bag(dict(**sio.loadmat(mat_fname)))
+
+
+def matlab_cell_str_to_list(cell_arr):
+    if len(cell_arr[0]) > 1:
+        ret_list = [cell_arr[0][ind][0].astype(str) for ind in range(len(cell_arr[0]))]
+    else:
+        ret_list = [cell_arr[ind][0][0].astype(str) for ind in range(len(cell_arr))]
+    return ret_list
 
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d

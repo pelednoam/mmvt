@@ -534,8 +534,7 @@ class SelectionListener(bpy.types.Operator):
                 _addon().save_cursor_position()
                 clear_slice()
             if bpy.context.scene.find_closest_label_on_click: # coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
-                label = _addon().find_closest_label()
-                # _addon().select_roi(label)
+                _addon().find_closest_label(plot_contour=bpy.context.scene.plot_closest_label_contour)
 
         if self.right_clicked:
             self.right_clicked = False

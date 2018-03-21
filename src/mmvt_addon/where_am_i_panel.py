@@ -96,7 +96,7 @@ def where_i_am_draw(self, context):
     layout.operator(WhereAmI.bl_idname, text="Find closest object", icon='SNAP_SURFACE')
     if bpy.context.scene.where_am_i_str != '':
         layout.label(text=bpy.context.scene.where_am_i_str)
-    if bpy.context.scene.subject_annot_files != '':
+    if len(WhereAmIPanel.annot_files) > 0:
         col = layout.box().column()
         col.prop(context.scene, 'subject_annot_files', text='')
         col.operator(ClosestLabel.bl_idname, text="Find closest label", icon='SNAP_SURFACE')
@@ -105,15 +105,6 @@ def where_i_am_draw(self, context):
         col.prop(context.scene, 'find_closest_label_on_click', text='Find each click on brain')
         if WhereAmIPanel.labels_contours is not None:
             col.prop(context.scene, 'plot_closest_label_contour', text="Plot label's contour")
-    col = layout.box().column()
-    if not GrowLabel.running:
-        col.label(text='Create a new label')
-        col.prop(context.scene, 'new_label_name', text='')
-        col.prop(context.scene, 'new_label_r', text='Radius (mm)')
-        txt = 'Grow a label' if bpy.context.scene.cursor_is_snapped else 'First Snap the cursor'
-        col.operator(GrowLabel.bl_idname, text=txt, icon='OUTLINER_DATA_MESH')
-    else:
-        col.label(text='Growing the label...')
     layout.operator(ClearWhereAmI.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -389,33 +380,6 @@ def plot_closest_label_contour(label, hemi):
         _addon().color_contours([label], hemi, WhereAmIPanel.labels_contours, False, False, (0, 0, 1))
     else:
         mu.create_labels_contours()
-
-
-def new_label_r_update(self, context):
-    build_new_label_name()
-
-
-def build_new_label_name():
-    closest_label_output = bpy.context.scene.closest_label_output
-    if closest_label_output == '':
-        new_label_name = 'Unknown'
-    else:
-        delim, pos, label, label_hemi = mu.get_hemi_delim_and_pos(closest_label_output)
-        label = '{}-{}mm'.format(label, bpy.context.scene.new_label_r)
-        new_label_name = mu.build_label_name(delim, pos, label, label_hemi)
-    bpy.context.scene.new_label_name = new_label_name
-
-
-def grow_a_label():
-    closest_mesh_name, vertex_ind, _ = \
-        _addon().find_vertex_index_and_mesh_closest_to_cursor(use_shape_keys=True)
-    hemi = closest_mesh_name[len('infalted_'):] if _addon().is_inflated() else closest_mesh_name
-    subject, atlas = mu.get_user(), bpy.context.scene.subject_annot_files
-    label_name, label_r = bpy.context.scene.new_label_name, bpy.context.scene.new_label_r
-    cmd = '{} -m src.preproc.anatomy -s {} -a {} -f grow_label '.format(
-        bpy.context.scene.python_cmd, subject, atlas)
-    cmd += '--vertice_indice {} --hemi {} --label_name {} --label_r {} --ignore_missing 1'.format(vertex_ind, hemi, label_name, label_r)
-    mu.run_command_in_new_thread(cmd, False)
 
 
 # @mu.timeit
@@ -702,43 +666,6 @@ class ChooseVoxelID(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class GrowLabel(bpy.types.Operator):
-    bl_idname = "mmvt.grow_label"
-    bl_label = "mmvt grow label"
-    bl_options = {"UNDO"}
-    running = False
-
-    def cancel(self, context):
-        if self._timer:
-            context.window_manager.event_timer_remove(self._timer)
-            self._timer = None
-            GrowLabel.running = False
-        return {'CANCELLED'}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        if not bpy.context.scene.cursor_is_snapped:
-            _addon().snap_cursor(True)
-            find_closest_label()
-            build_new_label_name()
-        else:
-            GrowLabel.running = True
-            context.window_manager.modal_handler_add(self)
-            self._timer = context.window_manager.event_timer_add(0.1, context.window)
-            grow_a_label()
-        return {'RUNNING_MODAL'}
-
-    def modal(self, context, event):
-        if event.type == 'TIMER' and GrowLabel.running:
-            new_label_fname = op.join(
-                mu.get_user_fol(), 'labels', '{}.label'.format(bpy.context.scene.new_label_name))
-            if op.isfile(new_label_fname):
-                _addon().plot_label(new_label_fname)
-                GrowLabel.running = False
-                self.cancel(context)
-        return {'PASS_THROUGH'}
-
-
 class ClosestLabel(bpy.types.Operator):
     bl_idname = "mmvt.closest_label"
     bl_label = "mmvt closest label"
@@ -746,7 +673,7 @@ class ClosestLabel(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        find_closest_label()
+        find_closest_label(plot_contour=bpy.context.scene.plot_closest_label_contour)
         return {"FINISHED"}
 
 
@@ -839,8 +766,6 @@ bpy.types.Scene.where_am_i_str = bpy.props.StringProperty()
 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.closest_label_output = bpy.props.StringProperty()
 bpy.types.Scene.closest_label = bpy.props.StringProperty()
-bpy.types.Scene.new_label_name = bpy.props.StringProperty()
-bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
 bpy.types.Scene.cut_type = 'sagital'
 bpy.types.Scene.find_closest_label_on_click = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.plot_closest_label_contour = bpy.props.BoolProperty(default=False)
@@ -895,9 +820,8 @@ def init(addon):
                 op.join(subjects_dir, mu.get_user(), 'label', 'rh.*.annot'))]
             annot_files += [mu.namebase(fname)[3:] for fname in glob.glob(
                 op.join(mu.get_user_fol(), 'labels', 'rh.*.annot'))]
-            annot_files = list(set(annot_files))
+            WhereAmIPanel.annot_files = annot_files = list(set(annot_files))
             if len(annot_files) > 0:
-                WhereAmIPanel.annot_files = annot_files
                 items = [(c, c, '', ind) for ind, c in enumerate(annot_files)]
                 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(
                     items=items, update=subject_annot_files_update)
@@ -945,7 +869,6 @@ def register():
         bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(ClosestLabel)
         bpy.utils.register_class(ChooseVoxelID)
-        bpy.utils.register_class(GrowLabel)
         bpy.utils.register_class(WaitForSlices)
         # print('Where am I Panel was registered!')
     except:
@@ -959,7 +882,6 @@ def unregister():
         bpy.utils.unregister_class(ClearWhereAmI)
         bpy.utils.unregister_class(ClosestLabel)
         bpy.utils.unregister_class(ChooseVoxelID)
-        bpy.utils.unregister_class(GrowLabel)
         bpy.utils.unregister_class(WaitForSlices)
     except:
         # print("Can't unregister Where am I Panel!")

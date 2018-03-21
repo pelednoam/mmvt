@@ -84,6 +84,8 @@ import dell_panel
 importlib.reload(dell_panel)
 import reports_panel
 importlib.reload(reports_panel)
+import labels_panel
+importlib.reload(labels_panel)
 import moshes_panel
 importlib.reload(moshes_panel)
 # import logo_panel
@@ -100,6 +102,10 @@ print("mmvt addon started!")
 # LAYERS
 (TARGET_LAYER, LIGHTS_LAYER, EMPTY_LAYER, BRAIN_EMPTY_LAYER, ROIS_LAYER, ACTIVITY_LAYER, INFLATED_ROIS_LAYER,
  INFLATED_ACTIVITY_LAYER, ELECTRODES_LAYER, CONNECTIONS_LAYER, EEG_LAYER, MEG_LAYER, SKULL_LAYER) = range(13)
+
+(WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
+WIC_ELECTRODES, WIC_ELECTRODES_DISTS, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
+ WIC_CONN_LABELS_AVG, WIC_CONTOURS) = range(17)
 
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
 settings = None
@@ -192,8 +198,6 @@ plot_meg = coloring_panel.plot_meg
 plot_stc_t = coloring_panel.plot_stc_t
 plot_stc = coloring_panel.plot_stc
 init_meg_activity_map = coloring_panel.init_meg_activity_map
-color_contours = coloring_panel.color_contours
-clear_contours = coloring_panel.clear_contours
 plot_label = coloring_panel.plot_label
 plot_fmri_file = coloring_panel.plot_fmri_file
 get_activity_values = coloring_panel.get_activity_values
@@ -210,6 +214,10 @@ color_meg_sensors = coloring_panel.color_meg_sensors
 get_meg_sensors_data = coloring_panel.get_meg_sensors_data
 get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
 color_labels_data = coloring_panel.color_labels_data
+color_hemi_data = coloring_panel.color_hemi_data
+coloring_panel_initialized = coloring_panel.panel_initialized
+get_no_plotting = coloring_panel.get_no_plotting
+set_no_plotting = coloring_panel.set_no_plotting
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
@@ -398,8 +406,13 @@ select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ load_results panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ load_results panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 load_surf_files = load_results_panel.load_surf_files
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ labels_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+load_labels_data = labels_panel.load_labels_data
+color_contours = labels_panel.color_contours
+clear_contours = labels_panel.clear_contours
+
 
 
 def get_max_time_steps(default_val=2500):
@@ -608,7 +621,7 @@ def get_panels(first_time=False):
     panels = [data_panel, appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel, reports_panel, moshes_panel] #, pizco_panel, dell_panel)
+            slicer_panel, skull_panel, reports_panel, labels_panel, moshes_panel] #, pizco_panel, dell_panel)
     dell_exist = op.isfile(op.join(mmvt_utils.get_parent_fol(__file__), 'dell', 'find_electrodes_in_ct.py'))
     if not mmvt_utils.IS_WINDOWS and not first_time and dell_exist:
         panels.append(dell_panel)

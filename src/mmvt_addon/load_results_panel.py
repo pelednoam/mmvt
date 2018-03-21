@@ -117,18 +117,7 @@ if IN_BLENDER:
         filter_glob = bpy.props.StringProperty(default='*.npz', options={'HIDDEN'}, maxlen=255)
 
         def execute(self, context):
-            d = np.load(self.filepath)
-            if 'atlas' not in d:
-                print('The labeling file must contains an atlas field!')
-                return {'FINISHED'}
-            atlas = str(d['atlas'])
-            data, labels = d['data'], d['names']
-            labels = [l.replace('.label', '') for l in labels]
-            cb_title = str(d['title']) if 'title' in d else ''
-            labels_min = d['data_min'] if 'data_min' in d else np.min(data)
-            labels_max = d['data_max'] if 'data_max' in d else np.max(data)
-            cmap = str(d['cmap']) if 'cmap' in d else None
-            _addon().color_labels_data(labels, data, atlas, cb_title, labels_max, labels_min, cmap)
+            _addon().load_labels_data(self.filepath)
             return {'FINISHED'}
 
 
@@ -227,5 +216,6 @@ def clean_nii_temp_files(fmri_file_template, user_fol=''):
         fmri_file_template.replace('{hemi}', '?h')[:-len(file_type)]))
     mu.delete_files('{}{}'.format(file_temp, file_type))
     mu.delete_files('{}{}'.format(file_temp, 'mgz'))
+
 
 

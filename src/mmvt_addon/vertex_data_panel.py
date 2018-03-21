@@ -59,8 +59,8 @@ def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_sh
         closest_mesh_name, vertex_ind, vertex_co = snap_ray()
         if closest_mesh_name is not None:
             return closest_mesh_name, vertex_ind, vertex_co
-        else:
-            print('snap_ray didnt work...')
+        # else:
+        #     print('snap_ray didnt work...')
     if objects_names is not None:
         hemis = objects_names
     elif hemis is None:
