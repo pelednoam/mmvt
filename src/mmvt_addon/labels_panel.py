@@ -63,8 +63,7 @@ def clear_contours():
 
 
 def plot_labels_data():
-    labels_data_fname = op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.npz'.format(
-        bpy.context.scene.labels_data_files.replace(' ', '_')))
+    labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
     load_labels_data(labels_data_fname)
 
 
@@ -161,6 +160,8 @@ def load_labels_data(labels_data_fname):
     elif labels_data_type == 'mat':
         d = mu.load_mat_to_bag(labels_data_fname)
         d.names = mu.matlab_cell_str_to_list(d.names)
+        d.atlas = d.atlas[0] if not isinstance(d.atlas, str) else d.atlas
+        #d.cmap = d.cmap[0] if not isinstance(d.cmap, str) else d.cmap
     else:
         print('Currently we support only mat and npz files')
         return False
@@ -388,7 +389,7 @@ def init_contours_coloring():
 def init_labels_data_files():
     user_fol = mu.get_user_fol()
     mu.make_dir(op.join(user_fol, 'labels', 'labels_data'))
-    LabelsPanel.labels_data_files = labels_data_files = glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.npz'))
+    LabelsPanel.labels_data_files = labels_data_files = glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.npz')) + glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.mat'))
     if len(labels_data_files) > 0:
         files_names = [mu.namebase(fname).replace('_', ' ') for fname in labels_data_files]
         labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
