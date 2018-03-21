@@ -573,8 +573,8 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
                     labels_min, colors_ratio, use_abs)
 
 
-def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=None, cmap=None):
-    data = np.reshape(data, (max([x for x in data.shape])))
+def color_labels_data(labels, data, atlas, cb_title='', labels_max=None, labels_min=None, cmap=None):
+    data = data.ravel()
     if len(labels) != len(data):
         print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels), len(data)))
         return
@@ -611,17 +611,35 @@ def color_labels_data(labels, data, cb_title='', labels_max=None, labels_min=Non
             labels_data = dict(data=data, names=labels)
             labels_coloring_hemi(
                 labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, '', True,
-                labels_min, labels_max, cmap=cmap)
+                labels_min, labels_max, cmap=cmap, atlas=atlas)
+
+
+def load_labels_vertices(atlas):
+    labels_vertices_fname = op.join(mu.get_user_fol(), 'labels_vertices_{}.pkl'.format(atlas))
+    if op.isfile(labels_vertices_fname):
+        labels_names, labels_vertices = mu.load(labels_vertices_fname)
+        ColoringMakerPanel.labels_vertices[atlas] = \
+            dict(labels_names=labels_names,labels_vertices=labels_vertices)
 
 
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
-                         override_current_mat=True, colors_min=None, colors_max=None, use_abs=None, cmap=None):
+                         override_current_mat=True, colors_min=None, colors_max=None, use_abs=None, cmap=None,
+                         atlas=None):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
+    if atlas is None:
+        atlas = bpy.context.scene.atlas
+    if atlas not in ColoringMakerPanel.labels_vertices:
+        load_labels_vertices(atlas)
+        if atlas not in ColoringMakerPanel.labels_vertices:
+            print('Creating a label vertices file for atlas {}'.format(atlas))
+            print('Please try again after the file will be created.')
+            mu.run_mmvt_func('src.preproc.anatomy', 'save_labels_vertices', flags='-a {}'.format(atlas))
+            return
     now = time.time()
     colors_ratio = None
-    labels_names = ColoringMakerPanel.labels_vertices['labels_names']
-    labels_vertices = ColoringMakerPanel.labels_vertices['labels_vertices']
+    labels_names = ColoringMakerPanel.labels_vertices[atlas]['labels_names']
+    labels_vertices = ColoringMakerPanel.labels_vertices[atlas]['labels_vertices']
     vertices_num = max(itertools.chain.from_iterable(labels_vertices[hemi])) + 1
     no_t = labels_data['data'][0].ndim == 0
     t = bpy.context.scene.frame_current
@@ -2326,7 +2344,7 @@ bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], desc
 bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 # bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
@@ -2428,6 +2446,7 @@ def init(addon):
     bpy.context.scene.coloring_meg_subcorticals = False
     bpy.context.scene.meg_peak_mode = 'abs'
     bpy.context.scene.coloring_use_abs = True
+    bpy.context.scene.color_rois_homogeneously = False
     set_meg_minmax_prec(1, 99)
     ColoringMakerPanel.init = True
     for hemi in ['lh', 'rh']:
@@ -2447,14 +2466,12 @@ def init(addon):
 
 def init_labels_vertices():
     user_fol = mu.get_user_fol()
-    labels_vertices_fname = op.join(user_fol, 'labels_vertices_{}.pkl'.format(bpy.context.scene.atlas))
-    if op.isfile(labels_vertices_fname):
-        labels_names, labels_vertices = mu.load(labels_vertices_fname)
-        ColoringMakerPanel.labels_vertices = dict(labels_names=labels_names, labels_vertices=labels_vertices)
-        ColoringMakerPanel.max_labels_vertices_num = {}
-    else:
-        print("Can't load Activity maps panel without the file {}!".format(labels_vertices_fname))
-        #todo: Disable this functionalty
+    labels_vertices_files = glob.glob(op.join(user_fol, 'labels_vertices_*.pkl'))
+    for labels_vertices_fname in labels_vertices_files:
+        atlas = mu.namebase(labels_vertices_fname)[len('labels_vertices_'):]
+        if op.isfile(labels_vertices_fname):
+            labels_names, labels_vertices = mu.load(labels_vertices_fname)
+            ColoringMakerPanel.labels_vertices[atlas] = dict(labels_names=labels_names, labels_vertices=labels_vertices)
 
 
 def init_meg_activity_map():

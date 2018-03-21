@@ -118,13 +118,17 @@ if IN_BLENDER:
 
         def execute(self, context):
             d = np.load(self.filepath)
+            if 'atlas' not in d:
+                print('The labeling file must contains an atlas field!')
+                return {'FINISHED'}
+            atlas = str(d['atlas'])
             data, labels = d['data'], d['names']
             labels = [l.replace('.label', '') for l in labels]
             cb_title = str(d['title']) if 'title' in d else ''
             labels_min = d['data_min'] if 'data_min' in d else np.min(data)
             labels_max = d['data_max'] if 'data_max' in d else np.max(data)
             cmap = str(d['cmap']) if 'cmap' in d else None
-            _addon().color_labels_data(labels, data, cb_title, labels_max, labels_min, cmap)
+            _addon().color_labels_data(labels, data, atlas, cb_title, labels_max, labels_min, cmap)
             return {'FINISHED'}
 
 

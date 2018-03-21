@@ -45,9 +45,11 @@ def ttest(data, root_fol, output_name, two_tailed_test=True, alpha=0.05, is_grea
     print('{} ttest: {} significant labels were found'.format(title, len(ttest_stats)))
     print('{} welch: {} significant labels were found'.format(title, len(ttest_stats)))
     np.savez(op.join(root_fol, '{}_ttest.npz'.format(output_name)), names=np.array(ttest_labels),
-             data=np.array(ttest_stats), title='{} ttest'.format(title), data_min=0, data_max=0.05, cmap='RdOrYl')
+             atlas='aparc.DKTatlas40', data=np.array(ttest_stats), title='{} ttest'.format(title),
+             data_min=0, data_max=0.05, cmap='RdOrYl')
     np.savez(op.join(root_fol, '{}_welch.npz'.format(output_name)), names=np.array(welch_labels),
-             data=np.array(welch_stats), title='{} welch'.format(title), data_min=0, data_max=0.05, cmap='RdOrYl')
+             atlas='aparc.DKTatlas40', data=np.array(welch_stats), title='{} welch'.format(title),
+             data_min=0, data_max=0.05, cmap='RdOrYl')
     return ttest_stats, welch_stats
 
 

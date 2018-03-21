@@ -1359,7 +1359,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['faces_verts'] = calc_faces_verts_dic(subject, args.atlas, args.overwrite_faces_verts)
 
     if utils.should_run(args, 'save_labels_vertices'):
-        # *) Save the labels vertices for meg label plotting
+        # *) Save the labels vertices for labels plotting
         flags['labels_vertices'] = save_labels_vertices(subject, args.atlas)
 
     if utils.should_run(args, 'save_hemis_curv'):
