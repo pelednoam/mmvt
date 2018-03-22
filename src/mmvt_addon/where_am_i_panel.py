@@ -108,6 +108,10 @@ def where_i_am_draw(self, context):
     layout.operator(ClearWhereAmI.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
+def get_labels_contours():
+    return WhereAmIPanel.labels_contours
+
+
 def tkras_coo_update(self, context):
     if not WhereAmIPanel.call_update:
         return

@@ -11,7 +11,12 @@ def _addon():
 
 
 def set_vertex_data(val):
-    DataInVertMakerPanel.data_in_cursor = '{:.5f}'.format(val)
+    val_str = _addon().PERC_FORMATS[_addon().get_colorbar_prec() + 1].format(val)
+    DataInVertMakerPanel.data_in_cursor = val_str if val != '' else ''
+
+
+def get_vertex_data():
+    return DataInVertMakerPanel.data_in_cursor
 
 
 def snap_ray():

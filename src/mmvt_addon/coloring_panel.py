@@ -26,15 +26,16 @@ HEMIS = mu.HEMIS
 # Should be moved to mmvt_addon
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
 WIC_ELECTRODES, WIC_ELECTRODES_DISTS, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
- WIC_CONN_LABELS_AVG, WIC_CONTOURS) = range(17)
+ WIC_CONN_LABELS_AVG, WIC_CONTOURS, WIC_LABELS_DATA) = range(18)
 
 
 def _addon():
     return ColoringMakerPanel.addon
 
 
-def get_activity_values():
-    return ColoringMakerPanel.activity_values
+def get_activity_values(hemi):
+    hemi = 'rh' if 'rh' in hemi else 'lh'
+    return ColoringMakerPanel.activity_values[hemi]
 
 
 def get_vertex_value(tkreg_ras=None, mni=None, voxel=None):
@@ -48,7 +49,7 @@ def get_vertex_value(tkreg_ras=None, mni=None, voxel=None):
     if not bpy.context.scene.cursor_is_snapped:
         _addon().snap_cursor(True)
     vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
-    values = get_activity_values()
+    values = get_activity_values(mesh_name)
     if vert_ind < len(values):
         val = values[vert_ind]
     return val
@@ -584,6 +585,7 @@ def color_labels_data(labels, data, atlas, cb_title='', labels_max=None, labels_
             labels_coloring_hemi(
                 labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, '', True,
                 labels_min, labels_max, cmap=cmap, atlas=atlas)
+    ColoringMakerPanel.what_is_colored.add(WIC_LABELS_DATA)
 
 
 def load_labels_vertices(atlas):
@@ -923,6 +925,19 @@ def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
     return valid_verts
 
 
+def set_activity_values(cur_obj, values):
+    if mu.obj_is_cortex(cur_obj):
+        hemi = 'rh' if 'rh' in cur_obj.name else 'lh'
+        ColoringMakerPanel.activity_values[hemi] = values
+        if bpy.context.scene.cursor_is_snapped:
+            vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
+            closest_hemi = 'rh' if 'rh' in mesh_name else 'lh'
+            if closest_hemi == hemi:
+                if  vert_ind < len(values):
+                    _addon().set_vertex_data(values[vert_ind])
+                else:
+                    print('vert_ind {} > len(values) ({}) in mesh {}'.format(vert_ind, len(values), mesh_name))
+
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
@@ -933,14 +948,9 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     _addon().show_activity()
-    ColoringMakerPanel.activity_values = values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
-    if bpy.context.scene.cursor_is_snapped and mu.obj_is_cortex(cur_obj):
-        vert_ind, mesh_name = _addon().get_closest_vertex_and_mesh_to_cursor()
-        if vert_ind < len(values):
-            _addon().set_vertex_data(values[vert_ind])
-        else:
-            print('vert_ind {} > len(values) ({}) in mesh {}'.format(vert_ind, len(values), mesh_name))
-
+    values = vert_values[:, 0] if vert_values.ndim > 1 else vert_values
+    if coloring_layer == 'Col':
+        set_activity_values(cur_obj, values)
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
     if len(valid_verts) == 0 and check_valid_verts:
         # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
@@ -2254,7 +2264,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     labels_plotted = []
     static_conn = None
     connectivity_labels = []
-    activity_values = None
+    activity_values = {hemi:[] for hemi in mu.HEMIS}
     prev_colors = {}
     stc = None
     stc_file_chosen = False

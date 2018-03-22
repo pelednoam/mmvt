@@ -661,6 +661,10 @@ def clear_slice():
             _addon().clear_slice()
 
 
+def cursor_is_snapped():
+    return bpy.context.scene.cursor_is_snapped
+
+
 def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_snap_cursor_to_true=True):
     flag = not bpy.context.scene.cursor_is_snapped if flag is None else flag
     if flag:
@@ -670,8 +674,8 @@ def snap_cursor(flag=None, objects_names=mu.INF_HEMIS, use_shape_keys=True, set_
         set_cursor_pos()
         set_closest_vertex_and_mesh_to_cursor(vertex_ind, closest_mesh_name, set_snap_cursor_to_true)
 
-        activity_values = _addon().get_activity_values()
-        if activity_values is not None:
+        activity_values = _addon().get_activity_values(closest_mesh_name)
+        if activity_values is not None and len(activity_values) > vertex_ind:
             _addon().set_vertex_data(activity_values[vertex_ind])
         # print(closest_mesh_name, vertex_ind, vertex_co)
         return vertex_ind, closest_mesh_name

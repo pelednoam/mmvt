@@ -63,7 +63,9 @@ def clear_contours():
 
 
 def plot_labels_data():
-    labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
+    # Support more than one file type (npz and mat)
+    labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
+        bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
     load_labels_data(labels_data_fname)
 
 
@@ -173,6 +175,7 @@ def load_labels_data(labels_data_fname):
             return False
     else:
         atlas = str(d.atlas)
+    LabelsPanel.labels_data_atlas = atlas
     labels = [l.replace('.label', '') for l in labels]
     cb_title = str(d.get('title', ''))
     labels_min = d.get('data_min', np.min(data))
@@ -188,6 +191,8 @@ def load_labels_data(labels_data_fname):
         if new_fname != labels_data_fname:
             shutil.copy(labels_data_fname, new_fname)
     init_labels_data_files()
+    bpy.context.scene.find_closest_label_on_click = True
+    _addon().find_closest_label(atlas=atlas, plot_contour=bpy.context.scene.plot_closest_label_contour)
     return True
 
 
@@ -199,6 +204,17 @@ def labels_draw(self, context):
     if len(LabelsPanel.labels_data_files) > 0:
         col.prop(context.scene, 'labels_data_files', text='')
         col.prop(context.scene, 'color_rois_homogeneously', text="Color labels homogeneously")
+        row = col.row(align=True)
+        row.prop(context.scene, 'find_closest_label_on_click', text='Find label on click')
+        if _addon().get_labels_contours() is not None:
+            row.prop(context.scene, 'plot_closest_label_contour', text="Plot label's contour")
+        vertex_data = _addon().get_vertex_data()
+        if bpy.context.scene.closest_label_output != '' and vertex_data != '' and vertex_data is not None:
+            col.label(text='{} ({})'.format(bpy.context.scene.closest_label_output, vertex_data))
+        elif bpy.context.scene.closest_label_output != '':
+            col.label(text=bpy.context.scene.closest_label_output)
+        elif vertex_data != '' and vertex_data is not None:
+            col.label('Cursor value: {}'.format(vertex_data))
         col.operator(PlotLabelsData.bl_idname, text="Plot labels", icon='TPAINT_HLT')
     col.operator(ChooseLabesDataFile.bl_idname, text="Load labels file", icon='LOAD_FACTORY')
 
@@ -360,6 +376,7 @@ class LabelsPanel(bpy.types.Panel):
     contours_coloring_exist = False
     labels_contours = {}
     labels = dict(rh=[], lh=[])
+    labels_data_atlas = ''
 
     def draw(self, context):
         if LabelsPanel.init:

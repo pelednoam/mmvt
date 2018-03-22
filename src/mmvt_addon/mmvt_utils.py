@@ -653,6 +653,10 @@ def check_obj_type(obj_name):
         obj_type = OBJ_TYPE_CORTEX_INFLATED_LH
     elif obj.parent.name == 'Cortex-inflated-rh':
         obj_type = OBJ_TYPE_CORTEX_INFLATED_RH
+    elif obj.name == 'inflated_lh':
+        obj_type = OBJ_TYPE_CORTEX_INFLATED_LH
+    elif obj.name == 'inflated_rh':
+        obj_type = OBJ_TYPE_CORTEX_INFLATED_RH
     elif obj.parent.name == 'Subcortical_structures':
         obj_type = OBJ_TYPE_SUBCORTEX
     elif obj.parent.name == 'Deep_electrodes':

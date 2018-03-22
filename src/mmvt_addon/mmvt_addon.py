@@ -106,7 +106,7 @@ print("mmvt addon started!")
 
 (WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_DYNAMICS, WIC_FMRI_LABELS, WIC_FMRI_CLUSTERS, WIC_EEG, WIC_MEG_SENSORS,
 WIC_ELECTRODES, WIC_ELECTRODES_DISTS, WIC_ELECTRODES_SOURCES, WIC_ELECTRODES_STIM, WIC_MANUALLY, WIC_GROUPS, WIC_VOLUMES,
- WIC_CONN_LABELS_AVG, WIC_CONTOURS) = range(17)
+ WIC_CONN_LABELS_AVG, WIC_CONTOURS, WIC_LABELS_DATA) = range(18)
 
 bpy.types.Scene.python_cmd = bpy.props.StringProperty(name='python cmd', default='python')
 settings = None
@@ -303,6 +303,7 @@ set_closest_vertex_and_mesh_to_cursor = appearance_panel.set_closest_vertex_and_
 get_closest_vertex_and_mesh_to_cursor = appearance_panel.get_closest_vertex_and_mesh_to_cursor
 clear_closet_vertex_and_mesh_to_cursor = appearance_panel.clear_closet_vertex_and_mesh_to_cursor
 snap_cursor = appearance_panel.snap_cursor
+cursor_is_snapped = appearance_panel.cursor_is_snapped
 set_cursor_pos = appearance_panel.set_cursor_pos
 flat_map_exists = appearance_panel.flat_map_exists
 move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
@@ -347,6 +348,7 @@ get_colorbar_prec = colorbar_panel.get_colorbar_prec
 set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
 get_colorbar_ticks = colorbar_panel.get_colorbar_ticks
+PERC_FORMATS = colorbar_panel.PERC_FORMATS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
@@ -390,9 +392,11 @@ get_tkreg_ras = where_am_i_panel.get_tkreg_ras
 get_ras = where_am_i_panel.get_ras
 get_T1_voxel = where_am_i_panel.get_T1_voxel
 get_ct_voxel = where_am_i_panel.get_ct_voxel
+get_labels_contours = where_am_i_panel.get_labels_contours
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data
+get_vertex_data = vertex_data_panel.get_vertex_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
