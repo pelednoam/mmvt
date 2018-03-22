@@ -161,7 +161,7 @@ def get_colorbar_ticks(ticks_num=2, prec=None):
 def set_colormap(colormap_name):
     if colormap_name in ColorbarPanel.maps_names:
         bpy.context.scene.colorbar_files = colormap_name
-    else:
+    elif colormap_name is not None:
         print('No such colormap! {}'.format(colormap_name))
 
 
