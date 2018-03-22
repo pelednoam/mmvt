@@ -14,7 +14,7 @@ def _addon():
 
 def set_colorbar_defaults():
     set_colorbar_title('')
-    set_colorbar_max_min(1, -1, True, False)
+    set_colorbar_max_min(1, -1, True)
     set_colorbar_prec(2)
     set_colormap('BuPu-YlOrRd')
 
@@ -77,7 +77,11 @@ def get_colorbar_title():
     return bpy.context.scene.colorbar_title
 
 
-def set_colorbar_max_min(max_val, min_val, force_update=False, set_default_cm=True):
+def set_colorbar_min_max(min_val, max_val, force_update=False):
+    set_colorbar_max_min(max_val, min_val, force_update)
+
+
+def set_colorbar_max_min(max_val, min_val, force_update=False):
     if max_val >= min_val:
         init = ColorbarPanel.init
         if force_update:
@@ -163,6 +167,22 @@ def set_colormap(colormap_name):
         bpy.context.scene.colorbar_files = colormap_name
     elif colormap_name is not None:
         print('No such colormap! {}'.format(colormap_name))
+
+
+def get_cb_ticks_num():
+    return bpy.context.scene.cb_ticks_num
+
+
+def set_cb_ticks_num(val):
+    bpy.context.scene.cb_ticks_num = val
+
+
+def get_cb_ticks_font_size():
+    return bpy.context.scene.cb_ticks_font_size
+
+
+def set_cb_ticks_font_size(val):
+    bpy.context.scene.cb_ticks_font_size = val
 
 
 def hide_cb_center_update(self, context):
@@ -267,6 +287,9 @@ bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
 bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
 bpy.types.Scene.lock_min_max = bpy.props.BoolProperty(default=False, description="lock values")
+bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
+bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
 
 
 class ColorbarPanel(bpy.types.Panel):

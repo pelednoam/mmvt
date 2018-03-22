@@ -20,6 +20,9 @@ import traceback
 import logging
 import atexit
 import time
+import warnings
+# Warning: this is dangerous!
+warnings.filterwarnings("ignore")
 
 import mmvt_utils
 importlib.reload(mmvt_utils)
@@ -87,6 +90,8 @@ import reports_panel
 importlib.reload(reports_panel)
 import labels_panel
 importlib.reload(labels_panel)
+import scripts_panel
+importlib.reload(scripts_panel)
 import moshes_panel
 importlib.reload(moshes_panel)
 # import logo_panel
@@ -119,7 +124,10 @@ ANGLES_NAMES_DICT = show_hide_panel.ANGLES_NAMES_DICT
 (ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR,
  ROT_AXIAL_INFERIOR) = range(6)
 
+utils = mmvt_utils
+scene = bpy.context.scene
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+data = data_panel
 import_brain = data_panel.import_brain
 add_data_to_parent_obj = data_panel.add_data_to_parent_obj
 add_data_to_brain = data_panel.add_data_to_brain
@@ -137,6 +145,7 @@ add_data_to_eeg_sensors = data_panel.add_data_to_eeg_sensors
 add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
 create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+selection = selection_panel
 select_brain_objects = selection_panel.select_brain_objects
 select_all_connections = selection_panel.select_all_connections
 select_all_electrodes = selection_panel.select_all_electrodes
@@ -158,6 +167,7 @@ de_select_object = selection_panel.de_select_object
 clear_labels_selection = selection_panel.clear_labels_selection
 ClearSelection = selection_panel.ClearSelection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Coloring links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+coloring = coloring_panel
 set_current_time = coloring_panel.set_current_time
 get_current_time = coloring_panel.get_current_time
 object_coloring = coloring_panel.object_coloring
@@ -188,8 +198,8 @@ get_fMRI_activity = coloring_panel.get_fMRI_activity
 get_faces_verts = coloring_panel.get_faces_verts
 clear_colors = coloring_panel.clear_colors
 clear_and_recolor = coloring_panel.clear_and_recolor
-set_threshold = coloring_panel.set_threshold
-get_threshold = coloring_panel.get_threshold
+set_lower_threshold = coloring_panel.set_lower_threshold
+get_lower_threshold = coloring_panel.get_lower_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
 color_eeg_helmet = coloring_panel.color_eeg_helmet
 calc_colors = coloring_panel.calc_colors
@@ -219,7 +229,9 @@ color_hemi_data = coloring_panel.color_hemi_data
 coloring_panel_initialized = coloring_panel.panel_initialized
 get_no_plotting = coloring_panel.get_no_plotting
 set_no_plotting = coloring_panel.set_no_plotting
+plot_fmri = coloring_panel.plot_fmri
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val
 filter_draw = filter_panel.filter_draw
 clear_filtering = filter_panel.clear_filtering
@@ -227,6 +239,7 @@ de_select_electrode_and_sensor = filter_panel.de_select_electrode_and_sensor
 filter_roi_func = filter_panel.filter_roi_func
 filter_electrode_or_sensor = filter_panel.filter_electrode_or_sensor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Rendering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+render = render_panel
 load_camera = render_panel.load_camera
 grab_camera = render_panel.grab_camera
 set_render_quality = render_panel.set_render_quality
@@ -249,7 +262,13 @@ exit_from_camera_view = render_panel.exit_from_camera_view
 save_all_views = render_panel.save_all_views
 change_background_color = render_panel.change_background_color
 get_output_path = render_panel.get_output_path
+set_output_path = render_panel.set_output_path
+get_save_views_with_cb = render_panel.get_save_views_with_cb
+save_views_with_cb = render_panel.save_views_with_cb
+get_save_split_views = render_panel.get_save_split_views
+set_save_split_views = render_panel.set_save_split_views
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+show_hide = show_hide_panel
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
 show_hide_hemi = show_hide_panel.show_hide_hemi
 rotate_brain = show_hide_panel.rotate_brain
@@ -272,6 +291,7 @@ hide_hemi = show_hide_panel.hide_hemi
 show_hemi = show_hide_panel.show_hemi
 subcorticals_are_hiding = show_hide_panel.subcorticals_are_hiding
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+appearance = appearance_panel
 setup_layers = appearance_panel.setup_layers
 change_view3d = appearance_panel.change_view3d
 show_rois = appearance_panel.show_rois
@@ -308,6 +328,7 @@ set_cursor_pos = appearance_panel.set_cursor_pos
 flat_map_exists = appearance_panel.flat_map_exists
 move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+play = play_panel
 set_play_type = play_panel.set_play_type
 set_play_from = play_panel.set_play_from
 set_play_to = play_panel.set_play_to
@@ -329,8 +350,10 @@ electode_was_manually_selected = electrodes_panel.electode_was_manually_selected
 clear_electrodes_selection = electrodes_panel.clear_electrodes_selection
 init_electrodes_labeling = electrodes_panel.init_electrodes_labeling
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ colorbar links~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+colorbar = colorbar_panel
 show_cb_in_render = colorbar_panel.show_cb_in_render
 set_colorbar_max_min = colorbar_panel.set_colorbar_max_min
+set_colorbar_min_max = colorbar_panel.set_colorbar_min_max
 set_colorbar_max = colorbar_panel.set_colorbar_max
 set_colorbar_min = colorbar_panel.set_colorbar_min
 set_colorbar_title = colorbar_panel.set_colorbar_title
@@ -348,8 +371,13 @@ get_colorbar_prec = colorbar_panel.get_colorbar_prec
 set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
 get_colorbar_ticks = colorbar_panel.get_colorbar_ticks
+get_cb_ticks_num = colorbar_panel.get_cb_ticks_num
+set_cb_ticks_num = colorbar_panel.set_cb_ticks_num
+get_cb_ticks_font_size = colorbar_panel.get_cb_ticks_font_size
+set_cb_ticks_font_size = colorbar_panel.set_cb_ticks_font_size
 PERC_FORMATS = colorbar_panel.PERC_FORMATS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fmri = fMRI_panel
 fMRI_clusters_files_exist = fMRI_panel.fMRI_clusters_files_exist
 find_closest_cluster = fMRI_panel.find_closest_cluster
 find_fmri_files_min_max = fMRI_panel.find_fmri_files_min_max
@@ -358,6 +386,7 @@ get_clusters_file_names = fMRI_panel.get_clusters_file_names
 plot_all_blobs = fMRI_panel.plot_all_blobs
 load_fmri_cluster = fMRI_panel.load_fmri_cluster
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+connections = connections_panel
 connections_exist = connections_panel.connections_exist
 connections_data = connections_panel.connections_data
 plot_connections = connections_panel.plot_connections
@@ -366,12 +395,12 @@ create_connections = connections_panel.create_connections
 filter_nodes = connections_panel.filter_nodes
 get_connections_parent_name = connections_panel.get_connections_parent_name
 select_connection = connections_panel.select_connection
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ utils links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-view_all_in_graph_editor = mmvt_utils.view_all_in_graph_editor
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+transparency = transparency_panel
 set_brain_transparency = transparency_panel.set_brain_transparency
 set_light_layers_depth = transparency_panel.set_light_layers_depth
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+where_am_i = where_am_i_panel
 set_mni = where_am_i_panel.set_mni
 set_tkreg_ras = where_am_i_panel.set_tkreg_ras
 set_voxel = where_am_i_panel.set_voxel
@@ -394,30 +423,43 @@ get_T1_voxel = where_am_i_panel.get_T1_voxel
 get_ct_voxel = where_am_i_panel.get_ct_voxel
 get_labels_contours = where_am_i_panel.get_labels_contours
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ vertex_data_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+vertex_data = vertex_data_panel
 find_vertex_index_and_mesh_closest_to_cursor = vertex_data_panel.find_vertex_index_and_mesh_closest_to_cursor
 set_vertex_data = vertex_data_panel.set_vertex_data
 get_vertex_data = vertex_data_panel.get_vertex_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ freeview_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+freeview = freeview_panel
 save_cursor_position = freeview_panel.save_cursor_position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ slicer_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+slicer = slicer_panel
 clear_slice = slicer_panel.clear_slice
 slice_brain = slicer_panel.slice_brain
 ct_exist = slicer_panel.ct_exist
 slices_zoom = slicer_panel.slices_zoom
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+skull = skull_panel
 find_point_thickness = skull_panel.find_point_thickness
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ meg_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+meg = meg_panel
 select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dell = dell_panel
 dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ load_results panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+results = load_results_panel
 load_surf_files = load_results_panel.load_surf_files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ labels_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+labels = labels_panel
 load_labels_data = labels_panel.load_labels_data
 color_contours = labels_panel.color_contours
 clear_contours = labels_panel.clear_contours
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ reports_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+reports = reports_panel
+set_report_name = reports_panel.set_report_name
+get_report_name = reports_panel.get_report_name
+get_report_files = reports_panel.get_report_files
+get_report_fields = reports_panel.get_report_fields
 
 
 def get_max_time_steps(default_val=2500):
@@ -626,7 +668,7 @@ def get_panels(first_time=False):
     panels = [data_panel, appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel, reports_panel, labels_panel, moshes_panel] #, pizco_panel, dell_panel)
+            slicer_panel, skull_panel, reports_panel, labels_panel, scripts_panel, moshes_panel] #, pizco_panel, dell_panel)
     # dell_exist = op.isfile(op.join(mmvt_utils.get_parent_fol(__file__), 'dell', 'find_electrodes_in_ct.py'))
     # if not mmvt_utils.IS_WINDOWS and not first_time and dell_exist:
     #     panels.append(dell_panel)

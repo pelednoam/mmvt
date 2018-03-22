@@ -437,7 +437,8 @@ class PlotThickness(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        _addon().set_colorbar_title('Skull thickness (mm)')
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('Skull thickness (mm)')
         for inner in [True, False]:
             plot_distances(inner) #bpy.context.scene.cast_ray_source == 'inner')
         return {'PASS_THROUGH'}

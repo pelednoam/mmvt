@@ -92,7 +92,7 @@ def wrap_mmvt_calls(subject_fname):
 
 
 def mmvt_calls(mmvt, args, subject_fname):
-    mmvt.set_threshold(args.threshold)
+    mmvt.set_lower_threshold(args.threshold)
     mmvt.set_use_abs_threshold(args.use_abs_threshold)
     if args.cb_min_max is not None:
         cb_min, cb_max = args.cb_min_max

@@ -40,6 +40,7 @@ import sys
 import os
 import os.path as op
 import re
+import shutil
 import uuid
 from collections import OrderedDict, Iterable
 import time
@@ -815,6 +816,16 @@ def make_dir(fol):
     if not os.path.isdir(fol):
         os.makedirs(fol)
     return fol
+
+
+def move_file(fname, fol):
+    if op.isfile(fname):
+        shutil.move(fname, op.join(fol, namebase_with_ext(fname)))
+
+
+def copy_file(fname, fol):
+    if op.isfile(fname):
+        shutil.copy(fname, op.join(fol, namebase_with_ext(fname)))
 
 
 def profileit(sort_field='cumtime', root_folder=''):

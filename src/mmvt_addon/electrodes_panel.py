@@ -384,8 +384,9 @@ def plot_labels_probs(elc):
             hemi = mu.get_obj_hemi(elc['cortical_rois'][0])
             if not hemi is None:
                 labels_data = dict(data=elc['cortical_probs'], names=elc['cortical_rois'])
-                _addon().set_colorbar_title('Electrodes probabilities')
-                _addon().set_colormap('YlOrRd')
+                if not _addon().colorbar_values_are_locked():
+                    _addon().set_colorbar_title('Electrodes probabilities')
+                    _addon().set_colormap('YlOrRd')
                 _addon().labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0,
                                               colors_min=0, colors_max=1)
                 colors = mu.get_distinct_colors(len(elc['cortical_rois']))

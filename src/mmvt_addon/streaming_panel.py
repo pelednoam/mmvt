@@ -73,7 +73,6 @@ def change_graph_all_vals(mat):
     colors_ratio = 256 / (data_max - data_min)
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
-    # _addon().view_all_in_graph_editor()
     curr_t = bpy.context.scene.frame_current
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         fcurve_name = mu.get_fcurve_name(fcurve)
@@ -314,7 +313,8 @@ class StreamButton(bpy.types.Operator):
             self._first_timer = True
             # print('Setting _first_timer to True!')
             # _addon().set_colorbar_max_min(StreamingPanel.data_max, StreamingPanel.data_min)
-            _addon().set_colorbar_title('Electrodes Streaming Data')
+            if not _addon().colorbar_values_are_locked():
+                _addon().set_colorbar_title('Electrodes Streaming Data')
             mu.show_only_render(True)
             bpy.context.scene.frame_current = 0
             args = dict(buffer_size=bpy.context.scene.streaming_buffer_size,
@@ -361,7 +361,6 @@ class StreamButton(bpy.types.Operator):
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
                     #     print('Setting _first_timer to False! ', bpy.context.scene.frame_current)
                     #     self._first_timer = False
-                    #     _addon().view_all_in_graph_editor()
 
         return {'PASS_THROUGH'}
 

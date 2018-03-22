@@ -55,6 +55,10 @@ def get_vertex_value(tkreg_ras=None, mni=None, voxel=None):
     return val
 
 
+def plot_fmri():
+    activity_map_coloring('FMRI')
+
+
 def get_eeg_sensors_data():
     return ColoringMakerPanel.eeg_sensors_data, ColoringMakerPanel.eeg_sensors_meta
 
@@ -115,9 +119,9 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
             stc = mne.read_source_estimate(get_stc_full_fname())
 
     if threshold is not None:
-        set_threshold(threshold)
+        set_lower_threshold(threshold)
     else:
-        threshold = get_threshold()
+        threshold = get_lower_threshold()
     stc_t = create_stc_t(stc, t)
     if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
             len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
@@ -171,13 +175,13 @@ def plot_stc_t(rh_data, lh_data, t, data_min=None, colors_ratio=None, threshold=
         return True
 
 
-def set_threshold(val):
+def set_lower_threshold(val):
     if not isinstance(val, float):
         val = float(val)
     bpy.context.scene.coloring_lower_threshold = val
 
 
-def get_threshold():
+def get_lower_threshold():
     return bpy.context.scene.coloring_lower_threshold
 
 
@@ -386,7 +390,7 @@ def load_meg_subcortical_activity():
     return meg_sub_activity
 
 
-@mu.dump_args
+# @mu.dump_args
 def activity_map_coloring(map_type, clusters=False, threshold=None):
     init_activity_map_coloring(map_type)
     if threshold is None:
@@ -497,7 +501,6 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
     ColoringMakerPanel.what_is_colored.add(WIC_FMRI_LABELS)
     if not bpy.context.scene.color_rois_homogeneously:
         init_activity_map_coloring('FMRI')
-    _addon().set_colorbar_title('fMRI')
     threshold = bpy.context.scene.coloring_lower_threshold
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
@@ -510,6 +513,7 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
         if labels_min > 0:
             labels_min = 0
         _addon().set_colorbar_max_min(labels_max, labels_min)
+        _addon().set_colorbar_title('fMRI')
     colors_ratio = 256 / (labels_max - labels_min)
     # set_default_colormap(labels_min, labels_max)
     for hemi in hemispheres:
@@ -746,8 +750,8 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 if _addon().colorbar_values_are_locked():
                     data_max, data_min = _addon().get_colorbar_max_min()
                     colors_ratio = 256 / (data_max - data_min)
-                _addon().set_colorbar_max_min(data_max, data_min)
-                _addon().set_colorbar_title(cb_title)
+                else:
+                    _addon().set_colorbar_max_min(data_max, data_min)
             else:
                 print("Can't load {}".format(fname))
                 return False
@@ -760,7 +764,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                     colors_ratio = ColoringMakerPanel.fmri_activity_colors_ratio
                     data_min, data_max = ColoringMakerPanel.fmri_activity_data_minmax
                     _addon().set_colorbar_max_min(data_max, data_min)
-                _addon().set_colorbar_title('fMRI')
+                    _addon().set_colorbar_title('fMRI')
                 _addon().set_colorbar_max_min(data_max, data_min)
             if clusters:
                 f = [c for h, c in ColoringMakerPanel.fMRI_clusters.items() if h == hemi]
@@ -807,7 +811,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                         data_max, data_min = meg_sub_activity['data_minmax'], -meg_sub_activity['data_minmax']
                         colors_ratio = 256 / (2 * data_max)
                         _addon().set_colorbar_max_min(data_max, data_min)
-                    _addon().set_colorbar_title('Subcortical MEG')
+                        _addon().set_colorbar_title('Subcortical MEG')
                 color_objects_homogeneously(
                     meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
                     colors_ratio, threshold, '_meg_activity')
@@ -1290,9 +1294,10 @@ def _meg_files_update(context):
             # ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
             ColoringMakerPanel.stc = None
             # if not _addon().colorbar_values_are_locked():
-            data_min, data_max, data_len = calc_stc_minmax()
-            _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
-            _addon().set_colorbar_title('MEG')
+            if not _addon().colorbar_values_are_locked():
+                data_min, data_max, data_len = calc_stc_minmax()
+                _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
+                _addon().set_colorbar_title('MEG')
             T = data_len - 1
             bpy.data.scenes['Scene'].frame_preview_start = 0
             bpy.data.scenes['Scene'].frame_preview_end = T
@@ -1468,7 +1473,7 @@ def color_electrodes_sources():
         data_min, data_max = -data_minmax, data_minmax
         colors_ratio = 256 / (data_max - data_min)
         _addon().set_colorbar_max_min(data_max, data_min)
-    _addon().set_colorbar_title('Electordes-Cortex')
+        _addon().set_colorbar_title('Electordes-Cortex')
     curr_sub_data = sub_data[:, bpy.context.scene.frame_current, 0]
     subs_colors = calc_colors(curr_sub_data, data_min, colors_ratio)
     # cond_inds = np.where(subcortical_data['conditions'] == bpy.context.scene.conditions_selection)[0]
@@ -1500,8 +1505,8 @@ def color_eeg_helmet(use_abs=None):
     else:
         data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
         _addon().set_colorbar_max_min(data_max, data_min, True)
+        _addon().set_colorbar_title('EEG')
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('EEG')
     data_t = data[:, bpy.context.scene.frame_current]
 
     cur_obj = bpy.data.objects['eeg_helmet']
@@ -1543,9 +1548,11 @@ def color_eeg_sensors():
     if bpy.context.scene.eeg_sensors_conditions != 'diff':
         cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
         data = data[:, :, cond_ind]
-        _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
     else:
-        _addon().set_colorbar_title('EEG sensors conditions difference')
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors conditions difference')
     color_objects_homogeneously(data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
 
 
@@ -1564,9 +1571,10 @@ def color_electrodes_dists():
     data = dists[selected_elec_ind].squeeze()
     data_max = np.max(dists)
     colors_ratio = 256 / data_max
-    _addon().set_colorbar_max_min(data_max, 0)
-    _addon().set_colorbar_title('Electordes conditions difference')
-    _addon().set_colormap('hot')
+    if not _addon().colorbar_values_are_locked():
+        _addon().set_colorbar_max_min(data_max, 0)
+        _addon().set_colorbar_title('Electordes conditions difference')
+        _addon().set_colormap('hot')
     color_objects_homogeneously(data, names, conditions, 0, colors_ratio, 0)
     _addon().show_electrodes()
 
@@ -1589,9 +1597,11 @@ def color_electrodes():
     if bpy.context.scene.electrodes_conditions != 'diff':
         cond_ind = np.where(conditions == bpy.context.scene.electrodes_conditions)[0][0]
         data = data[:, :, cond_ind]
-        _addon().set_colorbar_title('Electrodes {} condition'.format(conditions[cond_ind]))
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('Electrodes {} condition'.format(conditions[cond_ind]))
     else:
-        _addon().set_colorbar_title('Electrodes conditions difference')
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
     _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
@@ -1879,11 +1889,12 @@ class ColorMegLabels(bpy.types.Operator):
 class ColorfMRI(bpy.types.Operator):
     bl_idname = "mmvt.fmri_color"
     bl_label = "mmvt fmri color"
+    bl_description = 'Plot the current fMRI activity map.\nScript: mmvt.plot_fmri()'
     bl_options = {"UNDO"}
 
     @staticmethod
     def invoke(self, context, event=None):
-        activity_map_coloring('FMRI')
+        plot_fmri()
         return {"FINISHED"}
 
 
@@ -2380,7 +2391,7 @@ def init_meg_activity_map():
             print('data meg: {}-{}'.format(data_min, data_max))
             if not _addon().colorbar_values_are_locked():
                 _addon().set_colorbar_max_min(data_max, data_min, True)
-            _addon().set_colorbar_title('MEG')
+                _addon().set_colorbar_title('MEG')
             ColoringMakerPanel.meg_activity_data_exist = True
             if activity_type == '':
                 activity_type = 'conditions diff'
@@ -2429,7 +2440,7 @@ def init_fmri_activity_map():
         ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_max_min(data_max, data_min, True)
-        _addon().set_colorbar_title('fMRI')
+            _addon().set_colorbar_title('fMRI')
         ColoringMakerPanel.activity_types.append('fmri')
 
 

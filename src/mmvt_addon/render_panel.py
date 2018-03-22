@@ -289,9 +289,6 @@ bpy.types.Scene.background_color = bpy.props.EnumProperty(
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
-bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
 
 
 class SaveAllViews(bpy.types.Operator):
@@ -301,7 +298,7 @@ class SaveAllViews(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        _save_all_views(render_images=get_view_mode() == 'CAMERA', add_colorbar=bpy.context.scene.save_views_with_cb)
+        save_all_views(render_images=get_view_mode() == 'CAMERA')
         return {"FINISHED"}
 
 
@@ -537,7 +534,6 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
         cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
     # mu.run_command_in_new_thread(cmd, queues=False)
 
-
 def _save_image():
     if not bpy.context.scene.save_split_views:
         save_image(view_selected=bpy.context.scene.save_selected_view,
@@ -555,7 +551,13 @@ def _save_image():
 
 
 def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add_index_to_name=True,
-               add_colorbar=False):
+               add_colorbar=None, cb_ticks_num=None, cb_ticks_font_size=None):
+    if add_colorbar is None:
+        add_colorbar = bpy.context.scene.save_views_with_cb
+    if cb_ticks_num is None:
+        cb_ticks_num = bpy.context.scene.cb_ticks_num
+    if cb_ticks_font_size is None:
+        cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
     if view_selected is None:
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
@@ -592,7 +594,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
         _addon().zoom(zoom_val)
     bpy.ops.render.opengl(view3d_context, write_still=True)
     if add_colorbar:
-        add_colorbar_to_image(image_name)
+        add_colorbar_to_image(image_name, cb_ticks_num, cb_ticks_font_size)
     # if view_selected:
     #     _addon().zoom(1)
     return image_name
@@ -606,11 +608,39 @@ def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
-def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=None, render_images=False, quality=0,
-                   img_name_prefix='', add_colorbar=False):
+def set_output_path(new_path):
+    bpy.context.scene.output_path = new_path
+
+
+def get_save_views_with_cb():
+    return bpy.context.scene.save_views_with_cb
+
+
+def save_views_with_cb(val=True):
+    bpy.context.scene.save_views_with_cb = val
+
+
+def get_save_split_views():
+    return bpy.context.scene.save_split_views
+
+
+def set_save_split_views(val=True):
+    bpy.context.scene.save_split_views = val
+
+
+# todo: do something with the overwrite flag
+def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=None, render_images=False, quality=0,
+                   img_name_prefix='', add_colorbar=None, cb_ticks_num=None, cb_ticks_font_size=None, overwrite=True):
+    if add_colorbar is None:
+        add_colorbar = bpy.context.scene.save_views_with_cb
+    if cb_ticks_num is None:
+        cb_ticks_num = bpy.context.scene.cb_ticks_num
+    if cb_ticks_font_size is None:
+        cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
     if not bpy.context.scene.save_split_views:
         rot_lh_axial = False if rot_lh_axial is None else rot_lh_axial
-        save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, add_colorbar)
+        _save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix,
+                        add_colorbar, cb_ticks_num, cb_ticks_font_size, overwrite)
     else:
         images_names = []
         rot_lh_axial = True if rot_lh_axial is None else rot_lh_axial
@@ -618,7 +648,9 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         for hemi in mu.HEMIS:
             mu.get_hemi_obj(hemi).hide = False
             mu.get_hemi_obj(mu.other_hemi(hemi)).hide = True
-            images_names.extend(save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, False))
+            images_names.extend(_save_all_views(
+                views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix, False,
+                overwrite=overwrite))
         for hemi in mu.HEMIS:
             mu.get_hemi_obj(hemi).hide = org_hide[hemi]
         images_hemi_inv_list = set(
@@ -631,11 +663,12 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
             coup_template = files_coup[0].replace(hemi, '{hemi}')
             coup = {hemi: coup_template.format(hemi=hemi) for hemi in mu.HEMIS}
             new_image_fname = op.join(fol, mu.namebase_with_ext(files_coup[0])[3:])
-            combine_two_images_and_add_colorbar(coup['lh'], coup['rh'], new_image_fname)
+            combine_two_images_and_add_colorbar(
+                coup['lh'], coup['rh'], new_image_fname, cb_ticks_num, cb_ticks_font_size)
 
 
-def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=False, render_images=False, quality=0,
-                   img_name_prefix='', add_colorbar=False):
+def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=True, render_images=False, quality=0,
+                   img_name_prefix='', add_colorbar=False, cb_ticks_num=None, cb_ticks_font_size=None, overwrite=True):
     def get_image_name(view_name):
         return '{}{}{}_{}'.format(
             '{}_'.format(hemi) if hemi != '' else '',
@@ -644,12 +677,14 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     def save_medial_views():
         _addon().hide_hemi('rh')
         _addon().rotate_view(_addon().ROT_SAGITTAL_RIGHT)
-        image_fname = save_render_image('{}_left_medial'.format(surf_name), quality, render_images, add_colorbar)
+        image_fname = save_render_image(
+            '{}_left_medial'.format(surf_name), quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
         images_names.append(image_fname)
         _addon().show_hemi('rh')
         _addon().hide_hemi('lh')
         _addon().rotate_view(_addon().ROT_SAGITTAL_LEFT)
-        image_fname = save_render_image('{}_right_medial'.format(surf_name), quality, render_images, add_colorbar)
+        image_fname = save_render_image(
+            '{}_right_medial'.format(surf_name), quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
         images_names.append(image_fname)
         _addon().show_hemi('rh')
         _addon().show_hemi('lh')
@@ -685,7 +720,8 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
-        image_fname = save_render_image(img_name, quality, render_images, add_colorbar)
+        image_fname = save_render_image(
+            img_name, quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
         images_names.append(image_fname)
     if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
         save_medial_views()
@@ -694,26 +730,35 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=F
     return images_names
 
 
-def add_colorbar_to_image(image_fname):
+def add_colorbar_to_image(image_fname, cb_ticks_num=None, cb_ticks_font_size=None):
+    if cb_ticks_num is None:
+        cb_ticks_num = bpy.context.scene.cb_ticks_num
+    if cb_ticks_font_size is None:
+        cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
     data_max, data_min = _addon().get_colorbar_max_min()
-    cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
+    cb_ticks = ','.join(_addon().get_colorbar_ticks(cb_ticks_num))
     cb_ticks = cb_ticks.replace('-', '*') # Bug in argparse. todo: change the , to space
     flags = '--figure_fname "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
         image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string()) + \
         '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {}'.format(
-            _addon().get_colorbar_title(), cb_ticks, bpy.context.scene.cb_ticks_font_size)
+            _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size)
     mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 
 
-def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname):
+def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_image_fname, cb_ticks_num=None,
+                                        cb_ticks_font_size=None):
+    if cb_ticks_num is None:
+        cb_ticks_num = bpy.context.scene.cb_ticks_num
+    if cb_ticks_font_size is None:
+        cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
     data_max, data_min = _addon().get_colorbar_max_min()
-    cb_ticks = ','.join(_addon().get_colorbar_ticks(bpy.context.scene.cb_ticks_num))
+    cb_ticks = ','.join(_addon().get_colorbar_ticks(cb_ticks_num))
     cb_ticks = cb_ticks.replace('-', '*')  # Bug in argparse
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max "{}" --data_min "{}" '.format(new_image_fname, data_max, data_min) + \
             '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
             '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
-                _addon().get_colorbar_title(), cb_ticks, bpy.context.scene.cb_ticks_font_size) + \
+                _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size) + \
             '--crop_figures 1 --remove_original_figures 1'
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
@@ -724,15 +769,23 @@ def get_background_rgb_string():
     return ','.join([str(background.__getattribute__(x)) for x in ('r', 'g', 'b')])
 
 
-def save_render_image(img_name, quality, do_render_image, add_colorbar):
+def save_render_image(img_name, quality, do_render_image, add_colorbar=None, cb_ticks_num=None, cb_ticks_font_size=None):
+    if add_colorbar is None:
+        add_colorbar = bpy.context.scene.save_views_with_cb
+    if cb_ticks_num is None:
+        cb_ticks_num = bpy.context.scene.cb_ticks_num
+    if cb_ticks_font_size is None:
+        cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
     if do_render_image:
         camera_mode()
         image_fname = render_image(img_name, quality=quality, overwrite=True)
         camera_mode()
     else:
-        image_fname = save_image(img_name, add_index_to_name=False, add_colorbar=add_colorbar)
+        image_fname = save_image(img_name, add_index_to_name=False, add_colorbar=add_colorbar,
+                                 cb_ticks_num=cb_ticks_num, cb_ticks_font_size=cb_ticks_font_size)
     mu.write_to_stderr('Saving image to {}'.format(image_fname))
     return image_fname
+
 
 def queue_len():
     return len(RenderingMakerPanel.queue.queue)

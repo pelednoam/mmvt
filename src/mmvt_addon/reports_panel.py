@@ -45,7 +45,7 @@ def wkhtmltopdf_exist():
 
 def create_report():
     report_text = read_report_html()
-    fields = get_report_fields(report_text)
+    fields = parse_report_fields_from_text(report_text)
     for field in fields:
         report_text = report_text.replace(
             '~{}~'.format(field), ReportsPanel.fields_values[bpy.context.scene.reports_files][field])
@@ -71,7 +71,7 @@ def read_report_html():
     return report_text
 
 
-def get_report_fields(report_text, return_indices=False):
+def parse_report_fields_from_text(report_text, return_indices=False):
     fields_finder = re.finditer('~[0-9A-Za-z _]+~', report_text)
     fields_indices = []
     fields_names = set()
@@ -84,7 +84,7 @@ def get_report_fields(report_text, return_indices=False):
         return fields_names
 
 
-def get_report_files(report_text):
+def parse_report_files_from_text(report_text):
     substr = 'src=~Images prefix~'
     files_finder = re.finditer(substr, report_text)
     files_names = set()
@@ -97,13 +97,14 @@ def get_report_files(report_text):
 
 def reports_files_update(self, context):
     report_text = read_report_html()
-    fields = get_report_fields(report_text)
+    fields = sorted(parse_report_fields_from_text(report_text))[::-1]
     for field_name in fields:
-        ReportsPanel.fields_values[bpy.context.scene.reports_files][field_name] = ''
+        if field_name not in ReportsPanel.fields_values[bpy.context.scene.reports_files]:
+            ReportsPanel.fields_values[bpy.context.scene.reports_files][field_name] = ''
     reports_items = [(c, c, '', ind) for ind, c in enumerate(fields)]
     bpy.types.Scene.reports_fields = bpy.props.EnumProperty(
         items=reports_items, update=reports_fields_update)
-    get_report_files(report_text)
+    parse_report_files_from_text(report_text)
     # bpy.context.scene.reports_files = reports_items[0]
 
 
@@ -115,6 +116,24 @@ def reports_field_value_update(self, context):
 def reports_fields_update(self, context):
     bpy.context.scene.reports_field_value = \
         ReportsPanel.fields_values[bpy.context.scene.reports_files][bpy.context.scene.reports_fields]
+
+
+def set_report_name(report_name):
+    bpy.context.scene.reports_files = report_name
+
+
+def get_report_name():
+    return bpy.context.scene.reports_files
+
+
+def get_report_files():
+    return ReportsPanel.files[bpy.context.scene.reports_files]
+
+
+def get_report_fields():
+    fields = ReportsPanel.fields_values[bpy.context.scene.reports_files].copy()
+    fields = {k.lower().replace(' ', '_'): v for k, v in fields.items()}
+    return mu.Bag(fields)
 
 
 def reports_draw(self, context):

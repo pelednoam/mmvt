@@ -375,8 +375,8 @@ def calc_colors_ratio(activity):
             print('Both data max and min are zeros!')
             return 0, 0
         _addon().set_colorbar_max_min(data_max, data_min)
+        _addon().set_colorbar_title('fMRI')
     colors_ratio = 256 / (data_max - data_min)
-    _addon().set_colorbar_title('fMRI')
     return data_min, colors_ratio
 
 

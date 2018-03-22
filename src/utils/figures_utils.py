@@ -256,7 +256,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
             utils.remove_file(lh_figure_fname)
         if rh_figure_fname != new_image_fname:
             utils.remove_file(rh_figure_fname)
-        utils.remove_file(cb_fname)
+        # utils.remove_file(cb_fname)
 
 
 def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrite=False, cb_max=None, cb_min=None,

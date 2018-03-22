@@ -125,6 +125,16 @@ def show_hide_hierarchy(do_hide, obj_name):
             hide_obj(child, do_hide)
 
 
+def get_hierarchy_show(obj_name, show=True):
+    all_show = []
+    if bpy.data.objects.get(obj_name) is not None:
+        obj = bpy.data.objects[obj_name]
+        all_show.append(not obj.hide)
+        for child in obj.children:
+            all_show.append(not child.hide)
+    return all(all_show) if show else not all(all_show)
+
+
 def show_hide_hemi(val, hemi):
     show_hide_hierarchy(val, 'Cortex-{}'.format(hemi))
     show_hide_hierarchy(val, 'Cortex-inflated-{}'.format(hemi))
@@ -167,7 +177,8 @@ def show_subcorticals():
 
 
 def subcorticals_are_hiding():
-    return bpy.context.scene.objects_show_hide_sub_cortical
+    return get_hierarchy_show('Subcortical_structures', False)
+    # return bpy.context.scene.objects_show_hide_sub_cortical
 
 
 def show_hide_sub_corticals(do_hide=True):

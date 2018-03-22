@@ -417,7 +417,8 @@ def plot_connections(d, plot_time, threshold=None):
         colorbar_title = 'Electrodes {}'.format(connectivity_method) \
             if 'electrodes' in bpy.context.scene.connectivity_files else \
                 '{} {}'.format(bpy.context.scene.connectivity_files, connectivity_method) # Cortical labels
-        _addon().set_colorbar_title(colorbar_title)
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title(colorbar_title)
 
 
 def get_all_selected_connections(d):

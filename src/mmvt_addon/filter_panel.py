@@ -280,8 +280,10 @@ def get_filter_functions():
         items=[(module_name, module_name, '', k + 1) for k, module_name in enumerate(functions_names)],
         description="Filtering function")
 
+
 def subselect_update(self=None, context=None):
     mu.filter_graph_editor(context.scene.filter_fcurves)
+
 
 class FindCurveClosestToCursor(bpy.types.Operator):
     bl_idname = "mmvt.curve_close_to_cursor"
