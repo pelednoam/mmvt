@@ -1840,6 +1840,8 @@ class ColorMegMax(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         if ColoringMakerPanel.stc_file_chosen:
+            if ColoringMakerPanel.stc is None:
+                ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
             max_vert, bpy.context.scene.frame_current = ColoringMakerPanel.stc.get_peak(
                 time_as_index=True, vert_as_index=True, mode=bpy.context.scene.meg_peak_mode)
             print(max_vert, bpy.context.scene.frame_current)

@@ -421,7 +421,7 @@ def update_slices(modality='mri', ratio=1, images=None):
 
 
 def init_slices():
-    extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result'])
+    extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result']) - set(['coronal.png', 'axial.png', 'sagital.png'])
     try:
         for img_name in extra_images:
             if img_name in bpy.data.images:

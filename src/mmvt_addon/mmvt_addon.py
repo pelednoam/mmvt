@@ -629,7 +629,7 @@ def get_panels(first_time=False):
     return panels
 
 
-@mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
+# @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
 def load_all_panels(addon_prefs=None, first_time=False):
     mmvt = sys.modules[__name__]
     # check_empty_subject_version()

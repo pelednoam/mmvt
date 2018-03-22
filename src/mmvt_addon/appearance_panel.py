@@ -869,14 +869,14 @@ def init(addon):
     bpy.context.scene.hemis_distance = 0
     bpy.context.scene.hemis_inf_distance = 0 #-5
     bpy.context.scene.cursor_is_snapped = True
-    set_inflated_ratio(0)
+    # set_inflated_ratio(0)
     appearance_show_rois_activity_update()
     AppearanceMakerPanel.showing_meg_sensors = showing_meg_sensors()
     AppearanceMakerPanel.showing_eeg_sensors = showing_eeg()
     AppearanceMakerPanel.showing_electrodes = showing_electordes()
     # AppearanceMakerPanel.mesh = {hemi:mu.get_hemi_obj(hemi).to_mesh(bpy.context.scene, True, 'PREVIEW')
     #                              for hemi in mu.HEMIS}
-    show_inflated()
+    # show_inflated()
     bpy.context.scene.panels_background_color = [0, 0, 0]
     snap_cursor(True)
     AppearanceMakerPanel.init = True
