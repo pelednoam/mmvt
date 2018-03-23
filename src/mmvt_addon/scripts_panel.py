@@ -12,16 +12,28 @@ def _addon():
     return ScriptsPanel.addon
 
 
-def run_script():
+def check_script(script_name):
     try:
-        script_name = bpy.context.scene.scripts_files.replace(' ', '_')
         lib = importlib.import_module(script_name)
         importlib.reload(lib)
         run_func = getattr(lib, 'run')
         func_signature = inspect.signature(run_func)
-        if len(func_signature.parameters) == 2 and list(func_signature.parameters)[1] == 'overwrite':
+        if 1 <= len(func_signature.parameters) <= 2:
+            ScriptsPanel.funcs[script_name] = (run_func, len(func_signature.parameters))
+            return True
+        else:
+            return False
+    except:
+        return False
+
+
+def run_script():
+    try:
+        script_name = bpy.context.scene.scripts_files.replace(' ', '_')
+        run_func, params_num = ScriptsPanel.funcs[script_name]
+        if params_num == 2:
             run_func(_addon(), bpy.context.scene.scripts_overwrite)
-        elif len(func_signature.parameters) == 1:
+        elif params_num == 1:
             run_func(_addon())
     except:
         print("run_script: Can't run {}!".format(script_name))
@@ -58,6 +70,7 @@ class ScriptsPanel(bpy.types.Panel):
     bl_label = "Scripts"
     addon = None
     init = False
+    funcs = {}
 
     def draw(self, context):
         if ScriptsPanel.init:
@@ -71,6 +84,7 @@ def init(addon):
     if len(scripts_files) == 0:
         return None
     sys.path.append(op.join(mu.get_parent_fol(user_fol), 'scripts'))
+    scripts_files = [f for f in scripts_files if check_script(mu.namebase(f))]
     files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=scripts_items, description="scripts files")

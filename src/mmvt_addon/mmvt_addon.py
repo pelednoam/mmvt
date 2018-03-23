@@ -121,8 +121,9 @@ electrodes_panel_parent_obj = bpy.data.objects.get(electrodes_panel_parent, None
 meg_panel_parent = meg_panel.PARENT_OBJ_NAME
 ANGLES_DICT = show_hide_panel.ANGLES_DICT
 ANGLES_NAMES_DICT = show_hide_panel.ANGLES_NAMES_DICT
+# Remove double definition (also in show_hide_panel)
 (ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR,
- ROT_AXIAL_INFERIOR) = range(6)
+ ROT_AXIAL_INFERIOR, ROT_MEDIAL_LEFT, ROT_MEDIAL_RIGHT) = range(8)
 
 utils = mmvt_utils
 scene = bpy.context.scene
