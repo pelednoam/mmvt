@@ -41,7 +41,9 @@ ANGLES_NAMES_DICT = {
     ROT_CORONAL_ANTERIOR: 'anterior',
     ROT_CORONAL_POSTERIOR: 'posterior',
     ROT_AXIAL_SUPERIOR: 'superior',
-    ROT_AXIAL_INFERIOR: 'inferior'
+    ROT_AXIAL_INFERIOR: 'inferior',
+    ROT_MEDIAL_LEFT: 'left_medial',
+    ROT_MEDIAL_RIGHT: 'right_medial'
 }
 
 

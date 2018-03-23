@@ -938,11 +938,16 @@ def load_meg_labels_data():
     base_path = mu.get_user_fol()
     atlas = bpy.context.scene.atlas
     labels_extract_method = bpy.context.scene.labels_data_files
-    data_rh = np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method)))
-    data_lh = np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))
-    data = np.concatenate((data_rh['data'], data_lh['data']))
-    names = np.concatenate((data_rh['names'], data_lh['names']))
-    return data, names, data_rh['conditions']
+    rh_fname = op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))
+    lh_fname = op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method))
+    if op.isfile(rh_fname) and op.isfile(lh_fname):
+        data_rh = np.load(rh_fname)
+        data_lh = np.load(lh_fname)
+        data = np.concatenate((data_rh['data'], data_lh['data']))
+        names = np.concatenate((data_rh['names'], data_lh['names']))
+        return data, names, data_rh['conditions']
+    else:
+        return None, None, None
 
 
 def load_eeg_sensors_data(data_fname='', meta_fname=''):
