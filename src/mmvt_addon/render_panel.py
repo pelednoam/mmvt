@@ -608,8 +608,20 @@ def get_output_path():
     return bpy.path.abspath(bpy.context.scene.output_path)
 
 
+def get_output_type():
+    return bpy.context.scene.render.image_settings.file_format
+
+
+def set_output_type(val):
+    bpy.context.scene.render.image_settings.file_format = val
+
+
 def set_output_path(new_path):
     bpy.context.scene.output_path = new_path
+
+
+def get_full_output_fname(img_name):
+    return op.join(get_output_path(), '{}.{}'.format(img_name, get_output_type()))
 
 
 def get_save_views_with_cb():
@@ -674,23 +686,29 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
             '{}_'.format(hemi) if hemi != '' else '',
             '{}_'.format(img_name_prefix) if img_name_prefix != '' else '', surf_name, view_name)
 
+    def should_save_image(image_name):
+        return overwrite or not op.isfile(get_full_output_fname(img_name))
+
     def save_medial_views():
         if _addon().ROT_MEDIAL_LEFT in views:
-            _addon().hide_hemi('rh')
-            _addon().show_hemi('lh')
-            _addon().rotate_view(_addon().ROT_SAGITTAL_RIGHT)
-            image_fname = save_render_image(
-                '{}_left_medial'.format(surf_name), quality, render_images, add_colorbar, cb_ticks_num,
-                cb_ticks_font_size)
-            images_names.append(image_fname)
+            image_name = '{}_left_medial'.format(surf_name)
+            if should_save_image(image_name):
+                _addon().hide_hemi('rh')
+                _addon().show_hemi('lh')
+                _addon().rotate_view(_addon().ROT_SAGITTAL_RIGHT)
+                image_fname = save_render_image(
+                    image_name, quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
+                images_names.append(image_fname)
         if _addon().ROT_MEDIAL_RIGHT in views:
-            _addon().show_hemi('rh')
-            _addon().hide_hemi('lh')
-            _addon().rotate_view(_addon().ROT_SAGITTAL_LEFT)
-            image_fname = save_render_image(
-                '{}_right_medial'.format(surf_name), quality, render_images, add_colorbar, cb_ticks_num,
-                cb_ticks_font_size)
-            images_names.append(image_fname)
+            image_name = '{}_right_medial'.format(surf_name)
+            if should_save_image(image_name):
+                _addon().show_hemi('rh')
+                _addon().hide_hemi('lh')
+                _addon().rotate_view(_addon().ROT_SAGITTAL_LEFT)
+                image_fname = save_render_image(
+                    '{}_right_medial'.format(surf_name), quality, render_images, add_colorbar, cb_ticks_num,
+                    cb_ticks_font_size)
+                images_names.append(image_fname)
         _addon().show_hemi('rh')
         _addon().show_hemi('lh')
 
@@ -722,6 +740,8 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
     for view in views:
         view_name = _addon().view_name(view)
         img_name = get_image_name(view_name)
+        if not should_save_image(img_name):
+            continue
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
@@ -730,6 +750,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         images_names.append(image_fname)
     # if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
     save_medial_views()
+    # todo: doesn't work
     mu.rotate_view3d(org_view_ang)
     mu.center_view()
     return images_names
