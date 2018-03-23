@@ -1,4 +1,5 @@
 import os.path as op
+import os
 import time
 
 MAX_TIME_TO_WAIT_FOR_FILES = 60  # minute
@@ -63,3 +64,5 @@ def run(mmvt, overwrite):
     time.sleep(TIME_TO_WAIT_FOR_FINALIZED)
     #  Create the pdf report
     mmvt.reports.create_report()
+    # Remove temp colorbar figure
+    os.remove(mmvt.colorbar.get_colorbar_figure_fname())
