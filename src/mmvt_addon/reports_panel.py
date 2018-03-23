@@ -189,13 +189,16 @@ class ReportsPanel(bpy.types.Panel):
 
 def init(addon):
     if not PDFKIT_EXIST:
+        print('reports_panel: no pdfkit')
         return None
     if not wkhtmltopdf_exist():
+        print('reports_panel: no wkhtmltopdf')
         return None
     ReportsPanel.addon = addon
     user_fol = mu.get_user_fol()
     reports_files = glob.glob(op.join(mu.get_parent_fol(user_fol), 'reports', '*.html'))
     if len(reports_files) == 0:
+        print('reports_panel: no reports')
         return None
     files_names = [mu.namebase(fname).replace('_', ' ') for fname in reports_files]
     reports_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
