@@ -169,6 +169,14 @@ def set_colormap(colormap_name):
         print('No such colormap! {}'.format(colormap_name))
 
 
+def get_colormap():
+    return bpy.context.scene.colorbar_files
+
+
+def get_colorbar_figure_fname():
+    return op.join(_addon().get_output_path(), '{}_colorbar.jpg'.format(get_colormap()))
+
+
 def get_cb_ticks_num():
     return bpy.context.scene.cb_ticks_num
 

@@ -19,7 +19,7 @@ def run_script():
         importlib.reload(lib)
         run_func = getattr(lib, 'run')
         func_signature = inspect.signature(run_func)
-        if len(func_signature.parameters) == 2:
+        if len(func_signature.parameters) == 2 and list(func_signature.parameters)[1] == 'overwrite':
             run_func(_addon(), bpy.context.scene.scripts_overwrite)
         elif len(func_signature.parameters) == 1:
             run_func(_addon())

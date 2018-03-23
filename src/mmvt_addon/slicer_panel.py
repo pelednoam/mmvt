@@ -237,7 +237,7 @@ def create_joint_brain_obj():
 #         # print('Changing {} to {}'.format(cb_obj_name, colormap[ind]))
 #
 #
-# def get_colormap_name():
+# def get_colormap():
 #     return bpy.context.scene.colorbar_files
 #
 #

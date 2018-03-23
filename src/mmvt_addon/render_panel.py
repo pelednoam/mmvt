@@ -404,7 +404,7 @@ def combine_four_brain_perspectives():
     figure_name = 'splitted_lateral_medial_{}_{}.png'.format(
         'inflated' if _addon().is_inflated() else 'pial', background)
     figure_fname = op.join(mu.get_user_fol(), 'figures', figure_name)
-    colors_map = _addon().get_colormap_name().replace('-', '_')
+    colors_map = _addon().get_colormap().replace('-', '_')
     x_left_crop, x_right_crop, y_top_crop, y_buttom_crop = (300, 300, 0, 0)
     w_fac, h_fac = (1.5, 1)
     cmd = '{} -m src.utils.figures_utils '.format(bpy.context.scene.python_cmd) + \
@@ -739,7 +739,7 @@ def add_colorbar_to_image(image_fname, cb_ticks_num=None, cb_ticks_font_size=Non
     cb_ticks = ','.join(_addon().get_colorbar_ticks(cb_ticks_num))
     cb_ticks = cb_ticks.replace('-', '*') # Bug in argparse. todo: change the , to space
     flags = '--figure_fname "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
-        image_fname, data_max, data_min, _addon().get_colormap_name(), get_background_rgb_string()) + \
+        image_fname, data_max, data_min, _addon().get_colormap(), get_background_rgb_string()) + \
         '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {}'.format(
             _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size)
     mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
@@ -756,7 +756,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     cb_ticks = cb_ticks.replace('-', '*')  # Bug in argparse
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max "{}" --data_min "{}" '.format(new_image_fname, data_max, data_min) + \
-            '--colors_map {} --background_color {} '.format(_addon().get_colormap_name(), get_background_rgb_string()) + \
+            '--colors_map {} --background_color {} '.format(_addon().get_colormap(), get_background_rgb_string()) + \
             '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
                 _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size) + \
             '--crop_figures 1 --remove_original_figures 1'

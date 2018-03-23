@@ -27,7 +27,7 @@ def render_perspectives_product(subject, atlas, quality=10, inflated_ratio=0.5, 
 #     figure_name = 'splitted_lateral_medial_{}_{}.png'.format(
 #         'inflated' if _addon().is_inflated() else 'pial', background)
 #     figure_fname = op.join(mu.get_user_fol(), 'figures', figure_name)
-#     colors_map = _addon().get_colormap_name().replace('-', '_')
+#     colors_map = _addon().get_colormap().replace('-', '_')
 #     x_left_crop, x_right_crop, y_top_crop, y_buttom_crop = (300, 300, 0, 0)
 #     w_fac, h_fac = (1.5, 1)
 #     cmd = '{} -m src.utils.figures_utils '.format(bpy.context.scene.python_cmd) + \
