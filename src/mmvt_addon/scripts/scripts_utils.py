@@ -216,8 +216,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
     if not op.isdir(blender_fol):
         print('No Blender folder!')
         return
-    blend_fname_is_None = True if blend_fname is None else False
-    call_args_is_None = True if call_args is None else False
+    # blend_fname_is_None = True if blend_fname is None else False
+    # call_args_is_None = True if call_args is None else False
     if log_name == '':
         log_name = namebase(script_fname)
         if only_verbose:
@@ -228,7 +228,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
     for subject in subjects:
         args.subject = subject
         args.subjects = ''
-        print('*********** {} ***********'.format(subject))
+        # print('*********** {} ***********'.format(subject))
         logs_fol = get_logs_fol(subject)
         if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
             os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
@@ -239,27 +239,17 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if call_args is None:
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
-        # if run_in_background:
-        # print('Blender dir: {}'.format(blender_fol))
         cmd = '{blender_exe} {blend_fname} {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
             blender_exe='./blender', background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
-        # else:
-        #     cmd = '{blender_exe} -P "{script_fname}" {blend_fname} {call_args}'.format( # > {log_fname}
-        #         blender_exe=op.join(args.blender_fol, 'blender'), background='--background' if run_in_background else '',
-        #         blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname)
-        # mmvt_addon_fol = get_parent_fol(__file__, 2)
         if not only_verbose:
-            # os.chdir(mmvt_addon_fol)
             utils.run_script(
                 cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
-        # print('After Blender call')
-        # Initialize blend_fname and call_args to None if that was their init value
-        if blend_fname_is_None:
-            blend_fname = None
-        if call_args_is_None:
-            call_args = None
-        call_args, blend_fname = None, None
+        # if blend_fname_is_None:
+        #     blend_fname = None
+        # if call_args_is_None:
+        #     call_args = None
+        # call_args, blend_fname = None, None
     # print('Finish! For more details look in {}'.format(log_fname))
 
 
@@ -305,6 +295,9 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
+    if bpy.context.scene.mmvt_initialized:
+        print('mmvt was already initialized')
+        return mmvt_addon
     # imp.reload(mmvt_addon)
     addon_prefs = Bag({'python_cmd':sys.executable, 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})
