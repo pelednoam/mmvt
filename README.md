@@ -45,10 +45,13 @@ The preprocessing tutorial can be found in the [wiki](https://github.com/peledno
 - Noam Peled (npeled@mgh.harvard.edu)
 
 ## Acknowledgments
-This tool is being developed as part of the [Transform DBS project](https://transformdbs.partners.org/).
-It's sponsored by:
-- The U.S. Army Research Office and Defense Advanced Research Projects Agency under Cooperative Agreement Number W911NF-14-2-0045. 
-- The NCRR (S10RR014978) and NIH (S10RR031599,R01-NS069696, 5R01-NS060918, U01MH093765)
+This research was partially funded by the Defense Advanced Research
+Projects Agency (DARPA) under Cooperative Agreement Number
+W911NF-14-2-0045 issued by ARO contracting office in support of [DARPA's
+SUBNETS Program](https://transformdbs.partners.org/). The views, opinions, and/or findings expressed are
+those of the author and should not be interpreted as representing the
+official views or policies of the Department of Defense or the U.S.
+Government.  This research was also funded by the NCRR (S10RR014978) and NIH (S10RR031599,R01-NS069696, 5R01-NS060918, U01MH093765).
 
 ## Suggested Citation
 O.Felsenstein and N. Peled et al. (2017). MMVT - Multi-Modality Visualization Tool. GitHub Repository. https://github.com/pelednoam/mmvt DOI:10.5281/zenodo.438343
