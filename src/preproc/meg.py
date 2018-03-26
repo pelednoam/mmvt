@@ -2858,13 +2858,18 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
     return ica
 
 
-def remove_artifacts(raw, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica',
+def remove_artifacts(raw=None, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica',
                      ecg_inds=[], eog_inds=[], eog_channel=None, remove_from_raw=True, save_raw=True, raw_fname='',
-                     new_raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False, n_jobs=6):
+                     new_raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False, raw_template='*raw.fif',
+                     n_jobs=6):
     from mne.preprocessing import read_ica
     if op.isfile(ica_fname) and not overwrite_ica:
         ica = read_ica(ica_fname)
     else:
+        if isinstance(raw, str) and op.isfile(raw):
+            raw = mne.io.read_raw_fif(raw)
+        elif raw is None:
+            raw = load_raw(raw_template=raw_template)
         # 1) Fit ICA model using the FastICA algorithm.
         ica = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot, n_jobs=n_jobs)
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
@@ -3194,8 +3199,10 @@ def main(tup, remote_subject_dir, args, flags):
             None, conditions, stat, stcs_conds_smooth, inverse_method, args.morph_to_subject,
             args.norm_by_percentile, args.norm_percs, False)
 
-    if 'fit_ica_on_subjects' in args.function:
-        fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
+    if 'remove_artifacts' in args.function:
+        flags['remove_artifacts'] = remove_artifacts(
+            n_max_ecg=args.ica_n_max_ecg, n_max_eog=args.ica_n_max_eog, n_components=args.ica_n_components,
+            method=args.ica_method, remove_from_raw=args.remove_artifacts_from_raw, overwrite_ica=args.overwrite_ica)
 
     if 'morph_stc' in args.function:
         flags['morph_stc'] = morph_stc(
@@ -3210,6 +3217,9 @@ def main(tup, remote_subject_dir, args, flags):
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
             subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
             args.overwrite_surface, args.overwrite_stc)
+
+    if 'fit_ica_on_subjects' in args.function:
+        fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
 
     return flags
 

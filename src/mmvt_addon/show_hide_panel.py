@@ -118,13 +118,34 @@ def show_only_redner_update(self, context):
     mu.show_only_render(bpy.context.scene.show_only_render)
 
 
-def show_hide_hierarchy(do_hide, obj_name):
+def show_hide_cerebellum_update(self, context):
+    obj_names = [
+        'Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex',
+        'Left-Cerebellum-Cortex_fmri_activity', 'Right-Cerebellum-Cortex_fmri_activity',
+        'Left-Cerebellum-Cortex_meg_activity', 'Right-Cerebellum-Cortex_meg_activity']
+    for obj_name in obj_names:
+        show_hide_hierarchy(context.scene.show_hide_cerebellum, obj_name)
+
+
+def show_hide_hierarchy(do_hide, obj_name, hemi='both'):
     if bpy.data.objects.get(obj_name) is not None:
         obj = bpy.data.objects[obj_name]
-        hide_obj(obj, do_hide)
-        # bpy.data.objects[obj].hide = do_hide
+        # hide_obj(obj, do_hide)
+        show_hide_obj(do_hide, obj, hemi)
         for child in obj.children:
-            hide_obj(child, do_hide)
+            show_hide_obj(do_hide, child, hemi)
+            # hide_obj(child, do_hide)
+
+
+def show_hide_obj(do_hide, obj, hemi='both'):
+    if hemi == 'both':
+        hide_obj(obj, do_hide)
+    else:
+        if (hemi == 'rh' and ('rh' in obj.name or 'Right' in obj.name)) or \
+                (hemi == 'lh' and ('lh' in obj.name or 'Left' in obj.name)):
+            hide_obj(obj, do_hide)
+        # elif 'rh' not in obj.name and 'lh' not in obj.name and 'Right' not in obj.name and 'Left' not in obj.name:
+        #     hide_obj(obj, do_hide)
 
 
 def get_hierarchy_show(obj_name, show=True):
@@ -183,19 +204,19 @@ def subcorticals_are_hiding():
     # return bpy.context.scene.objects_show_hide_sub_cortical
 
 
-def show_hide_sub_corticals(do_hide=True):
-    show_hide_hierarchy(do_hide, "Subcortical_structures")
+def show_hide_sub_corticals(do_hide=True, hemi='both'):
+    show_hide_hierarchy(do_hide, "Subcortical_structures", hemi)
     # show_hide_hierarchy(bpy.context.scene.objects_show_hide_sub_cortical, "Subcortical_activity_map")
     # We split the activity map into two types: meg for the same activation for the each structure, and fmri
     # for a better resolution, like on the cortex.
     if not do_hide:
         fmri_show = bpy.context.scene.subcortical_layer == 'fmri'
         meg_show = bpy.context.scene.subcortical_layer == 'meg'
-        show_hide_hierarchy(not fmri_show, "Subcortical_fmri_activity_map")
-        show_hide_hierarchy(not meg_show, "Subcortical_meg_activity_map")
+        show_hide_hierarchy(not fmri_show, "Subcortical_fmri_activity_map", hemi)
+        show_hide_hierarchy(not meg_show, "Subcortical_meg_activity_map", hemi)
     else:
-        show_hide_hierarchy(True, "Subcortical_fmri_activity_map")
-        show_hide_hierarchy(True, "Subcortical_meg_activity_map")
+        show_hide_hierarchy(True, "Subcortical_fmri_activity_map", hemi)
+        show_hide_hierarchy(True, "Subcortical_meg_activity_map", hemi)
 
 
 # def flip_camera_ortho_view():
@@ -465,8 +486,36 @@ class ShowHideSubCorticals(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        bpy.context.scene.objects_show_hide_sub_cortical = not bpy.context.scene.objects_show_hide_sub_cortical
+        bpy.context.scene.objects_show_hide_sub_cortical = \
+            bpy.context.scene.objects_show_hide_rh_subs = \
+            bpy.context.scene.objects_show_hide_lh_subs = \
+            bpy.context.scene.show_hide_cerebellum = \
+            not bpy.context.scene.objects_show_hide_sub_cortical
         show_hide_sub_corticals(bpy.context.scene.objects_show_hide_sub_cortical)
+        return {"FINISHED"}
+
+
+class ShowHideLHSubs(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_sub_left"
+    bl_label = "mmvt show_hide_sub_left"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.objects_show_hide_lh_subs = not bpy.context.scene.objects_show_hide_lh_subs
+        show_hide_sub_corticals(bpy.context.scene.objects_show_hide_lh_subs, 'lh')
+        return {"FINISHED"}
+
+
+class ShowHideRHSubs(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_sub_right"
+    bl_label = "mmvt show_hide_sub_right"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.objects_show_hide_rh_subs = not bpy.context.scene.objects_show_hide_rh_subs
+        show_hide_sub_corticals(bpy.context.scene.objects_show_hide_rh_subs, 'rh')
         return {"FINISHED"}
 
 
@@ -500,7 +549,10 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         if not ShowHideObjectsPanel.init:
             return
         layout = self.layout
-        vis = dict(Right = not bpy.context.scene.objects_show_hide_rh, Left = not bpy.context.scene.objects_show_hide_lh)
+        vis = dict(Right = not bpy.context.scene.objects_show_hide_rh,
+                   Left = not bpy.context.scene.objects_show_hide_lh)
+        vis_subs = dict(Right = not bpy.context.scene.objects_show_hide_rh_subs,
+                        Left = not bpy.context.scene.objects_show_hide_lh_subs)
         show_hide_icon = dict(show='RESTRICT_VIEW_OFF', hide='RESTRICT_VIEW_ON')
         row = layout.row(align=True)
         for hemi in ['Left', 'Right']:
@@ -513,9 +565,22 @@ class ShowHideObjectsPanel(bpy.types.Panel):
                      len(bpy.data.objects['Subcortical_structures'].children) > 0
         if _addon().is_pial() and subs_exist:
             sub_vis = not bpy.context.scene.objects_show_hide_sub_cortical
-            sub_show_text = '{} Subcortical'.format('Hide' if sub_vis else 'Show')
+            sub_show_text = '{} Subcorticals'.format('Hide' if sub_vis else 'Show')
             sub_icon = show_hide_icon['show' if sub_vis else 'hide']
-            layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
+            if not context.scene.hide_half_subcorticals:
+                layout.operator(ShowHideSubCorticals.bl_idname, text=sub_show_text, icon=sub_icon)
+            else:
+                row = layout.row(align=True)
+                for hemi in ['Left', 'Right']:
+                    action = 'show' if vis_subs[hemi] else 'hide'
+                    show_text = '{} {} Subcorticals'.format('Hide' if vis_subs[hemi] else 'Show', hemi)
+                    show_icon = show_hide_icon[action]
+                    bl_idname = ShowHideLHSubs.bl_idname if hemi == 'Left' else ShowHideRHSubs.bl_idname
+                    row.operator(bl_idname, text=show_text, icon=show_icon)
+            layout.prop(context.scene, 'hide_half_subcorticals', text='{} only one side'.format(
+                'Hide' if sub_vis else 'Show'))
+        action = 'Show' if context.scene.show_hide_cerebellum else 'Hide'
+        layout.prop(context.scene, 'show_hide_cerebellum', text='{} Cerebellum'.format(action))
         # if bpy.data.objects.get('Cerebellum'):
         #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
         #     sub_show_text = '{} Cerebellum'.format('Hide' if sub_vis else 'Show')
@@ -554,14 +619,20 @@ bpy.types.Scene.objects_show_hide_rh = bpy.props.BoolProperty(
     default=True, description="Show right hemisphere")#, update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_sub_cortical = bpy.props.BoolProperty(
     default=True, description="Show sub cortical")#, update=show_hide_sub_cortical_update)
+bpy.types.Scene.objects_show_hide_lh_subs = bpy.props.BoolProperty(
+    default=True, description="Show left subcorticals")#,update=show_hide_lh)
+bpy.types.Scene.objects_show_hide_rh_subs = bpy.props.BoolProperty(
+    default=True, description="Show right subcorticals")#, update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
+bpy.types.Scene.show_hide_cerebellum = bpy.props.BoolProperty(default=False, update=show_hide_cerebellum_update)
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
 bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain')
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.render_split = bpy.props.BoolProperty()
+bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False)
 
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x')#, min=-0.1, max=0.1, )
 bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0, step=1, name='y')#, min=-0.1, max=0.1, )
@@ -583,6 +654,10 @@ def init(addon):
     bpy.context.scene.objects_show_hide_rh = False
     bpy.context.scene.objects_show_hide_lh = False
     bpy.context.scene.objects_show_hide_sub_cortical = False
+    bpy.context.scene.objects_show_hide_rh_subs = \
+        bpy.context.scene.objects_show_hide_lh_subs = \
+        bpy.context.scene.objects_show_hide_sub_cortical
+    bpy.context.scene.hide_half_subcorticals = bpy.context.scene.show_hide_cerebellum = False
     show_hide_sub_corticals(False)
     show_hemis()
     bpy.context.scene.show_only_render = False
@@ -617,6 +692,8 @@ def register():
         bpy.utils.register_class(SplitView)
         bpy.utils.register_class(MaxMinBrain)
         bpy.utils.register_class(ShowHideSubCorticals)
+        bpy.utils.register_class(ShowHideLHSubs)
+        bpy.utils.register_class(ShowHideRHSubs)
         bpy.utils.register_class(ShowHideSubCerebellum)
         # print('Show Hide Panel was registered!')
     except:
@@ -634,6 +711,8 @@ def unregister():
         bpy.utils.unregister_class(SplitView)
         bpy.utils.unregister_class(MaxMinBrain)
         bpy.utils.unregister_class(ShowHideSubCorticals)
+        bpy.utils.unregister_class(ShowHideLHSubs)
+        bpy.utils.unregister_class(ShowHideRHSubs)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
     except:
         pass
