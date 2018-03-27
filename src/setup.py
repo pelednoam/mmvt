@@ -279,17 +279,14 @@ def install_blender_reqs(gui=True):
         else:
             # https://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
             install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit'.format(op.join('Scripts', 'pip'))
-            print(f'''
-                Sorry, automatically installing external python libs in python will be implemented in the future
-                Meanwhile, you can do the following:
-                1) Open a terminal window as administrator (right click on the "Command Prompt" shortcut from the start
-                   menu and choose "Run as administrator"
-                2) Change the directory to "{blender_bin_fol}".
-                3) Run "{pip_cmd}"
-                4) Run "{install_cmd}"
-                Good luck!
-            ''')
-
+            print(
+                'Sorry, automatically installing external python libs in python will be implemented in the future.\n' +
+                'Meanwhile, you can do the following:\n' +
+                '1) Open a terminal window as administrator: ' +
+                'Right click on the "Command Prompt" shortcut from the star menu and choose "Run as administrator"\n' +
+                '2) Change the directory to "{}".\n'.format(blender_bin_fol) +
+                '3) Run "{}"\n'.format(pip_cmd) +
+                '4) Run "{}"\nGood luck!')
             # from src.mmvt_addon.scripts import install_blender_reqs
             # install_blender_reqs.wrap_blender_call(args.only_verbose)
         os.chdir(current_dir)
