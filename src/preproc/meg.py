@@ -534,13 +534,17 @@ def create_smooth_src(subject, surface='pial', overwrite=False, fname=SRC_SMOOTH
 
 def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing='oct6', recreate_src_surface='white',
               n_jobs=2):
+    # https://martinos.org/mne/stable/manual/cookbook.html#anatomical-information
     # src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
     src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem',
                         f'{mri_subject}-{recreate_src_spacing[:-1]}-{recreate_src_spacing[-1]}-src.fif')
-    src_exist = op.isfile(src_fname)
-    if not src_exist:
+    if not op.isfile(src_fname):
         src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
             mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))
+    if not op.isfile(src_fname):
+        src_files = glob.glob(op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '*-src.fif'))
+        if len(src_files) > 0:
+            src_fname = utils.select_one_file(src_files, '', 'source files')
     if not recreate_the_source_space and op.isfile(src_fname):
         src = mne.read_source_spaces(src_fname)
     else:
@@ -553,6 +557,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
             #     {'bem': '{}-{}-{}-src.fif'.format(mri_subject, oct_name, oct_num)}, args)
             # https://martinos.org/mne/dev/manual/cookbook.html#source-localization
+            utils.make_dir(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem'))
             src = mne.setup_source_space(MRI_SUBJECT, spacing=recreate_src_spacing, surface=recreate_src_surface,
                                          overwrite=True, subjects_dir=SUBJECTS_MRI_DIR, n_jobs=n_jobs)
         else:
@@ -691,7 +696,14 @@ def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname
 
 
 def _make_forward_solution(src, epo, usingMEG=True, usingEEG=True, n_jobs=6):
-    fwd = mne.make_forward_solution(info=epo, trans=COR, src=src, bem=BEM, # mri=MRI
+    bem = BEM
+    if not op.isfile(BEM):
+        bem = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
+        if op.isfile(bem):
+            shutil.copy(bem, BEM)
+        else:
+            raise Exception("Can't find the BEM file!")
+    fwd = mne.make_forward_solution(info=epo, trans=COR, src=src, bem=bem, # mri=MRI
                                     meg=usingMEG, eeg=usingEEG, mindist=5.0,
                                     n_jobs=n_jobs, overwrite=True)
     return fwd
@@ -2357,7 +2369,10 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
             if op.isfile(trans_file):
                 trans_fol = utils.make_dir(op.join('mri', 'T1-neuromag', 'sets'))
                 if utils.get_parent_fol(trans_file) != trans_fol:
-                    shutil.copy(trans_file, trans_fol)
+                    if trans_file != trans_fol:
+                        shutil.copy(trans_file, trans_fol)
+                    if trans_file != COR:
+                        shutil.copy(trans_file, COR)
             src_dic = dict(bem=['*-oct-6*-src.fif'])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])

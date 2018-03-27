@@ -152,24 +152,31 @@ def morph_stc(args):
     meg.call_main(args)
 
 
-def remove_artifacts(args):
+def ecr_msit(args):
     # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
     #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
     #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
-    for task in ['ECR', 'MSIT']:
+    for task in ['ECR']: #, 'MSIT']:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
-            mri_subject=args.mri_subject,
+            mri_subject=args.subject,
+            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{}'.format(args.subject[0]),
             task=task,
-            function='calc_epochs',#''remove_artifacts',
+            function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',#''remove_artifacts',
             data_per_task=True,
             atlas='laus125',
             cleaning_method='nTSSS',
             ica_overwrite_raw=False,
             read_events_from_file=True,
-            normalize_data = False,
-            overwrite_evoked = True,
+            normalize_data=False,
+            overwrite_evoked=True,
+            t_min=-0.5,
+            t_max=2,
             events_file_name='{}_{}_raw-eve.fif'.format('{subject}', task.lower()),
+            extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
+            pick_ori='normal',
+            overwrite_stc=True,
+            overwrite_labels_data=True
         ))
         meg.call_main(args)
 

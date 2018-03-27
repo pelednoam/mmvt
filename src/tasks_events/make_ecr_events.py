@@ -1,6 +1,6 @@
 import getopt, os, re, sys
 import numpy as np
-# from pandas import read_csv
+from pandas import read_csv
 from mne import find_events, write_events
 from mne.io import Raw
 
@@ -127,12 +127,16 @@ def make_ecr_events(raw_file, data_file, out_file, pattern=False):
     # Merge and sort.
     events = np.concatenate([stim_onsets,response_onsets])
     events = events[events[:,0].argsort(),:]
+
+    # Ignore the pattern, just set the stim events accroding to the Congruence
+    events = np.array([event for event in events if event[2].astype(str)[0] == '1'])
+    events[:, 2] = [event[2].astype(str)[1] for event in events]
     
     # Reduce to pattern.
-    if pattern:
-        p = re.compile(pattern)
-        idx, = np.where( [True if re.findall(p,event.astype(str)) else False for event in events[:,2]] )
-        events = events[idx,:]
+    # if pattern:
+    #     p = re.compile(pattern)
+    #     idx, = np.where( [True if re.findall(p,event.astype(str)) else False for event in events[:,2]] )
+    #     events = events[idx,:]
 
     # Insert first sample.
     events = np.insert(events, 0, [raw.first_samp, 0, 0], 0)
@@ -141,12 +145,15 @@ def make_ecr_events(raw_file, data_file, out_file, pattern=False):
     write_events(out_file, events)
 
     # Write to text file.
-    if out_file.endswith('.fif'): out_file = out_file[:-4] + '.txt'
-    else: out_file = out_file + '.txt'
-    for n, p in enumerate(pattern): events[:,2] = np.where( [True if re.findall(p,event.astype(str)) else False for event in events[:,2]], n+1, events[:,2])
-    events = np.insert(events, 1, raw.index_as_time(events[:,0]), 1)
-    np.savetxt(out_file, events, fmt = '%s', header = 'pattern = %s' %' | '.join(pattern))
-
+    try:
+        if out_file.endswith('.fif'): out_file = out_file[:-4] + '.txt'
+        else: out_file = out_file + '.txt'
+        for n, p in enumerate(pattern): events[:,2] = np.where( [True if re.findall(p,event.astype(str)) else False for event in events[:,2]], n+1, events[:,2])
+        # events = np.insert(events, 1, raw.index_as_time(events[:,0]), 1)
+        events = np.insert(events, 1, raw.index_as_time(events[:, 0]), 1)
+        np.savetxt(out_file, events, fmt = '%s', header = 'pattern = %s' %' | '.join(pattern))
+    except:
+        print('Error writing events to txt file!')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # Open file.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -158,4 +165,6 @@ if __name__ == '__main__':
     if not out_file: raise ValueError('Must supply out file! Type "make_ecr_events.py -h" for details.')
     if not data_file: raise ValueError('Must supply data file! Type "make_ecr_events.py -h" for details.')
 
+    if isinstance(pattern, list):
+        pattern = pattern[0]
     make_ecr_events(raw_file, data_file, out_file, pattern)
