@@ -40,6 +40,9 @@ def snap_ray():
             if obj.name in ['inflated_rh', 'inflated_lh']:
                 me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
                 vertex_ind = obj.data.polygons[face].vertices[0]
+                if vertex_ind >= len(me.vertices):
+                    print('snap_ray: vertex_ind not in me.vertices!')
+                    return None, None, None
                 vertex_co = me.vertices[vertex_ind].co * obj.matrix_world
                 bpy.data.meshes.remove(me)
                 # print("hit object", obj, "on face:", face)

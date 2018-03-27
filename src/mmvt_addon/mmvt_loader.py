@@ -1,9 +1,10 @@
 bl_info = {
-    'name': 'MMVT loader',
+    'name': 'MMVT',
     'author': 'Ohad Felsenstein & Noam Peled',
     'version': (1, 2),
-    'blender': (2, 7, 2),
+    'blender': (2, 7, 9),
     'location': 'Press [Space], search for "mmvt_addon"',
+    'wiki_url': 'https://github.com/pelednoam/mmvt/wiki',
     'category': 'Development',
 }
 
@@ -24,6 +25,7 @@ def current_dir():
 
 def mmvt_dir():
     return bpy.path.abspath('//')
+
 
 # https://github.com/sybrenstuvel/random-blender-addons/blob/master/remote_debugger.py
 class MMVTLoaderAddonPreferences(AddonPreferences):

@@ -55,13 +55,14 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
         all_links_exist = utils.all([utils.is_link(op.join(links_fol, link_name)) for link_name in links_names])
         if all_links_exist:
             print('All links exist!')
-            links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in links_names}
+            links = {link_name: utils.get_link_dir(links_fol, link_name) for link_name in links_names}
             write_links_into_csv_file(links, links_fol, links_file_name)
             return True
     if not utils.is_windows() and not utils.is_link(op.join(links_fol, 'freesurfer')):
         if os.environ.get('FREESURFER_HOME', '') == '':
             print('If you are going to use FreeSurfer locally, please source it and rerun')
-            cont = input("Do you want to continue (y/n)?") # If you choose to continue, you'll need to create a link to FreeSurfer manually")
+            # If you choose to continue, you'll need to create a link to FreeSurfer manually")
+            cont = input("Do you want to continue (y/n)?")
             if cont.lower() != 'y':
                 return
         else:
@@ -70,8 +71,9 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
                 create_real_folder(freesurfer_fol)
 
     mmvt_message = 'Please select where do you want to put the blend files '
-    subjects_message = 'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
-              '(It is prefered to create a local folder, because MMVT is going to save files to this directory) '
+    subjects_message = \
+        'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
+        '(It is prefered to create a local folder, because MMVT is going to save files to this directory) '
     blender_message = 'Please select where did you install Blender '
     meg_message = 'Please select where do you want to put the MEG files (Cancel if you are not going to use MEG data) '
     eeg_message = 'Please select where do you want to put the EEG files (Cancel if you are not going to use EEG data) '
@@ -155,7 +157,7 @@ def get_all_links(links={}, links_fol=None, links_fol_name='links'):
     if links_fol is None:
         links_fol = utils.get_links_dir(links_fol_name)
     all_links = [utils.namebase(f) for f in glob.glob(op.join(links_fol, '*')) if utils.is_link(f)]
-    all_links = {link_name:utils.get_link_dir(links_fol, link_name) for link_name in all_links if link_name not in links}
+    all_links = {link_name: utils.get_link_dir(links_fol, link_name) for link_name in all_links if link_name not in links}
     links = utils.merge_two_dics(links, all_links)
     return links
 
@@ -173,7 +175,7 @@ def write_links_into_csv_file(links, links_fol=None, links_file_name='links.csv'
 def create_empty_links_csv(links_fol_name='links', links_file_name='links.csv'):
     links_fol = utils.get_links_dir(links_fol_name)
     links_names = ['mmvt', 'subjects', 'blender', 'eeg', 'meg', 'fMRI', 'electrodes']
-    links = {link_name:'' for link_name in links_names}
+    links = {link_name: '' for link_name in links_names}
     write_links_into_csv_file(links, links_fol, links_file_name)
 
 

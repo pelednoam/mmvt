@@ -152,6 +152,28 @@ def morph_stc(args):
     meg.call_main(args)
 
 
+def remove_artifacts(args):
+    # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
+    #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
+    #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
+    for task in ['ECR', 'MSIT']:
+        args = meg.read_cmd_args(dict(
+            subject=args.subject,
+            mri_subject=args.mri_subject,
+            task=task,
+            function='calc_epochs',#''remove_artifacts',
+            data_per_task=True,
+            atlas='laus125',
+            cleaning_method='nTSSS',
+            ica_overwrite_raw=False,
+            read_events_from_file=True,
+            normalize_data = False,
+            overwrite_evoked = True,
+            events_file_name='{}_{}_raw-eve.fif'.format('{subject}', task.lower()),
+        ))
+        meg.call_main(args)
+
+
 def crop_stc_no_baseline(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.fname_format = '{subject}_02_f2-35_all_correct_combined'

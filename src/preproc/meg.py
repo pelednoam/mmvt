@@ -2333,6 +2333,8 @@ def get_meg_files(subject, necessary_fnames, args, events=None):
 
 
 def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject=''):
+    if not utils.should_run(args, 'make_forward_solution') and not utils.should_run(args, 'calc_inverse_operator'):
+        return flags
     if mri_subject == '':
         mri_subject = subject
     raw_fname = get_raw_fname(args.raw_fname)
@@ -2408,21 +2410,19 @@ def get_stc_hemi_template(stc_template):
 
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}, raw=None, epochs=None):
-    from itertools import product
-    stc_hemi_template = get_stc_hemi_template(args.stc_template)
-    if conditions is None:
-        conditions = ['all']
-    stc_exist = all([utils.both_hemi_files_exist(stc_hemi_template.format(
-        cond=cond, method=im, hemi='{hemi}')) for (im, cond) in product(args.inverse_method, conditions)])
-    if stc_exist and not args.overwrite_stc:
-        return True, None, {}
-
     stcs_conds, stcs_num = None, {}
-    if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
-        inverse_method = inverse_method[0]
-    inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
-    evo_fname = get_evo_fname(args.evo_fname)
     if utils.should_run(args, 'calc_stc_per_condition'):
+        stc_hemi_template = get_stc_hemi_template(args.stc_template)
+        if conditions is None:
+            conditions = ['all']
+        stc_exist = all([utils.both_hemi_files_exist(stc_hemi_template.format(
+            cond=cond, method=im, hemi='{hemi}')) for (im, cond) in product(args.inverse_method, conditions)])
+        if stc_exist and not args.overwrite_stc:
+            return True, None, {}
+        if isinstance(inverse_method, Iterable) and not isinstance(inverse_method, str):
+            inverse_method = inverse_method[0]
+        inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
+        evo_fname = get_evo_fname(args.evo_fname)
         get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
@@ -2855,23 +2855,45 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
             print('Please enter a valid integer')
         with open(output_fname, 'a') as f:
             f.write('{},{}\n'.format(utils.namebase_with_ext(ica_fname), comp_num))
-    return ica
+    return ica, ica_fname
+
+
+def find_raw_fname(raw=None, raw_fname='', raw_template='*raw.fif'):
+    if op.isfile(raw_fname):
+        return raw_fname, True
+    if raw is None or (isinstance(raw, str) and not op.isfile(raw)):
+        raw_fname, raw_exist = locating_meg_file(raw_fname, glob_pattern=raw_template)
+        if not raw_exist:
+            return '', False
+    elif isinstance(raw, mne.io.fiff.raw.Raw):
+        raw_fname = raw.filenames[0]
+    if not op.isfile(raw_fname):
+        return '', False
+    else:
+        return raw_fname, True
 
 
 def remove_artifacts(raw=None, n_max_ecg=3, n_max_eog=1, n_components=0.95, method='fastica',
                      ecg_inds=[], eog_inds=[], eog_channel=None, remove_from_raw=True, save_raw=True, raw_fname='',
-                     new_raw_fname='', ica_fname='', overwrite_ica=False, do_plot=False, raw_template='*raw.fif',
-                     n_jobs=6):
+                     new_raw_fname='', ica_fname='', overwrite_ica=False, overwrite_raw=False, do_plot=False,
+                     raw_template='*raw.fif', n_jobs=6):
     from mne.preprocessing import read_ica
+    raw_fname, raw_exist = find_raw_fname(raw, raw_fname, raw_template)
+    if not raw_exist:
+        print("remove_artifacts: Can't find raw!")
+        return False
+    if ica_fname == '':
+        raw_fname, raw_exist = locating_meg_file(raw_fname, glob_pattern=raw_template)
+        ica_fname = '{}-{}'.format(op.splitext(raw_fname)[0][:-4], 'ica.fif')
     if op.isfile(ica_fname) and not overwrite_ica:
         ica = read_ica(ica_fname)
     else:
         if isinstance(raw, str) and op.isfile(raw):
             raw = mne.io.read_raw_fif(raw)
         elif raw is None:
-            raw = load_raw(raw_template=raw_template)
+            raw = load_raw(raw_fname, raw_template=raw_template)
         # 1) Fit ICA model using the FastICA algorithm.
-        ica = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot, n_jobs=n_jobs)
+        ica, ica_fname = fit_ica(raw, n_components, method, ica_fname, raw_fname, overwrite_ica, do_plot, n_jobs=n_jobs)
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                                stim=False, exclude='bads')
         ###############################################################################
@@ -2895,7 +2917,7 @@ def remove_artifacts(raw=None, n_max_ecg=3, n_max_eog=1, n_components=0.95, meth
             ica.exclude += ecg_inds
         try:
             if len(eog_inds) == 0:
-                # detect EOG by correlation
+                # detect EOG by correlation # eog_ch = [c for c in raw.ch_names if 'EOG' in c]
                 eog_inds, scores = ica.find_bads_eog(raw, ch_name=eog_channel)
             else:
                 scores = [1.0 / len(eog_inds)] * len(eog_inds)
@@ -2937,9 +2959,9 @@ def remove_artifacts(raw=None, n_max_ecg=3, n_max_eog=1, n_components=0.95, meth
             raw = ica.apply(raw)
             if save_raw:
                 if new_raw_fname == '':
-                    new_raw_fname = RAW_ICA
+                    new_raw_fname = raw_fname if overwrite_raw else RAW_ICA
                 raw.save(new_raw_fname, overwrite=True)
-    return raw
+    return True
 
 
 def remove_artifacts_with_template_matching(ica_subjects='all', meg_root_fol=''):
@@ -3114,10 +3136,12 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
     return fname_format, fname_format_cond, conditions
 
 
-def main(tup, remote_subject_dir, args, flags):
+def main(tup, remote_subject_dir, args, flags=None):
     (subject, mri_subject), inverse_method = tup
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
+    if flags is None:
+        flags = {}
     fname_format, fname_format_cond, conditions = init(subject, args, mri_subject, remote_subject_dir)
     # fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
     # init_globals_args(
@@ -3202,7 +3226,8 @@ def main(tup, remote_subject_dir, args, flags):
     if 'remove_artifacts' in args.function:
         flags['remove_artifacts'] = remove_artifacts(
             n_max_ecg=args.ica_n_max_ecg, n_max_eog=args.ica_n_max_eog, n_components=args.ica_n_components,
-            method=args.ica_method, remove_from_raw=args.remove_artifacts_from_raw, overwrite_ica=args.overwrite_ica)
+            method=args.ica_method, remove_from_raw=args.remove_artifacts_from_raw, overwrite_ica=args.overwrite_ica,
+            overwrite_raw=args.ica_overwrite_raw)
 
     if 'morph_stc' in args.function:
         flags['morph_stc'] = morph_stc(
@@ -3335,6 +3360,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--ica_method', required=False, default='fastica')
     parser.add_argument('--overwrite_ica', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_artifacts_from_raw', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--ica_overwrite_raw', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_ica', help='', required=False, default=0, type=au.is_true)
     # Clusters
     parser.add_argument('--stc_name', required=False, default='')
