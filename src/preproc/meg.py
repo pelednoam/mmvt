@@ -2017,7 +2017,8 @@ def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_metho
 
 def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
-        factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, overwrite=False, do_plot=False, n_jobs=1):
+        factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, read_only_from_annot=True, overwrite=False,
+        do_plot=False, n_jobs=1):
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
             labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
@@ -2048,7 +2049,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
         conditions = []
         labels_data = {}
         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
-                                labels_fol=labels_fol, read_only_from_annot=True, n_jobs=n_jobs)
+                                labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
                 plt.figure()
@@ -2647,7 +2648,8 @@ def calc_labels_avg_per_condition_wrapper(
                 labels_data_template=args.labels_data_template,
                 stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
                 fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingMEG,
-                stcs_num=stcs_num, overwrite=overwrite, n_jobs=args.n_jobs)
+                stcs_num=stcs_num, read_only_from_annot=args.read_only_from_annot, overwrite=overwrite,
+                n_jobs=args.n_jobs)
             if stcs_conds and isinstance(stcs_conds[list(conditions_keys)[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
                 _, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(
@@ -3368,6 +3370,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--apply_on_raw', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
+    parser.add_argument('--read_only_from_annot', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
     parser.add_argument('--normalize_data', help='', required=False, default=1, type=au.is_true)

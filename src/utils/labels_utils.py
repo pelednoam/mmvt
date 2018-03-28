@@ -120,7 +120,7 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
                                   subjects_dir=subjects_dir)
     except:
         print('Error in writing annot file!')
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         return False
     return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
