@@ -1741,7 +1741,7 @@ def add_str_to_file_name(fname, txt, suf=''):
     return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
 
-def locating_file(default_fname, glob_pattern, parent_fol):
+def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False):
     if op.isfile(default_fname):
         return default_fname, True
     fname = op.join(parent_fol, default_fname)
@@ -1767,6 +1767,8 @@ def locating_file(default_fname, glob_pattern, parent_fol):
                     fname = op.join(parent_fol, fname_input)
                 else:
                     print("Couldn't find {}!".format(op.join(parent_fol, fname_input)))
+    if not exist and raise_exception:
+        raise Exception("locating_file: Couldn't find the file ({})".format(op.join(parent_fol, glob_pattern)))
     return fname, exist
 
 

@@ -275,15 +275,16 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     if remove_power_line_noise:
         raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
-    events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
-    # todo: what to do with the read_events_from_file?
-    if events is None and event_fname_exist:
-        # events_fname = events_fname if events_fname != '' else EVE
-        print('read events from {}'.format(events_fname))
-        events = mne.read_events(events_fname)
+    if read_events_from_file:
+        events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
+        if events is None and event_fname_exist:
+            # events_fname = events_fname if events_fname != '' else EVE
+            print('read events from {}'.format(events_fname))
+            events = mne.read_events(events_fname)
     else:
         if events is None:
             try:
+                print('Finding events in {}'.format(stim_channels))
                 events = mne.find_events(raw, stim_channel=stim_channels)
             except:
                 print('No stim channels found!')
@@ -298,7 +299,11 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
-    events_conditions = {k:v for k,v in conditions.items() if v in np.unique(events[:, 2])}
+    if list(conditions.keys())[0] == 'all' and len(np.unique(events[:, 2])) == 1:
+        event_id = np.unique(events[:, 2])[0]
+        events_conditions = {k: event_id for k, v in conditions.items()}
+    else:
+        events_conditions = {k: v for k,v in conditions.items() if v in np.unique(events[:, 2])}
     epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     print('{} good epochs'.format(len(epochs)))
@@ -392,7 +397,7 @@ def calc_epochs_wrapper(
 
 def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
-                overwrite_evoked=False, task=''):
+                overwrite_evoked=False, task='', set_eeg_reference=True):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
         fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
@@ -411,6 +416,14 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
             # return False, None
         evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
+        if set_eeg_reference:
+            try:
+                for evoked in evokes:
+                    mne.set_eeg_reference(evoked, ref_channels=None)
+                    evoked.apply_proj()
+            except:
+                print("_calc_inverse_operator: Can't add eeg_reference to the evoked")
+
         if calc_evoked_for_all_epoches:
             epochs_all = mne.concatenate_epochs([epochs[event] for event in events_keys])
             evokes_all = epochs_all.average()
@@ -834,46 +847,40 @@ def recalc_epochs_for_noise_cov(noise_t_min, noise_t_max, args, raw=None):
 
 def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     if inv_fname == '':
-        inv_fname, inv_exist = locating_meg_file(inv_fname, '*inv.fif')
-        if not inv_exist:
-            inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
-    else:
-        if not op.isfile(inv_fname):
-            files = glob.glob(op.join(MEG_DIR, SUBJECT, '*{}*'.format(inv_fname)))
-            if len(files) > 0:
-                inv_fname = utils.select_one_file(files)
+        inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
+    inv_fname, inv_exist = locating_meg_file(inv_fname, '*inv.fif')
+    if not inv_exist:
+        files = glob.glob(op.join(MEG_DIR, SUBJECT, '*{}*'.format(inv_fname)))
+        if len(files) > 0:
+            inv_fname = utils.select_one_file(files)
     return inv_fname
 
 
 def get_raw_fname(raw_fname=''):
     if raw_fname == '':
-        raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif')
-        if not raw_exist:
-            raw_fname = RAW
+        raw_fname = RAW
+    raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif')
     return raw_fname
 
 
 def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     if fwd_fname == '':
-        fwd_fname, fwd_exist = locating_meg_file(fwd_fname, '*fwd.fif')
-        if not fwd_exist:
-            fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
+        fwd_fname = FWD_EEG if fwd_usingEEG and not fwd_usingMEG else FWD
+    fwd_fname, fwd_exist = locating_meg_file(fwd_fname, '*fwd.fif')
     return fwd_fname
 
 
 def get_epo_fname(epo_fname=''):
     if epo_fname == '':
-        epo_fname, epo_exist = locating_meg_file(epo_fname, '*epo.fif')
-        if not epo_exist:
-            epo_fname = EPO
+        epo_fname = EPO
+    epo_fname, epo_exist = locating_meg_file(epo_fname, '*epo.fif')
     return epo_fname
 
 
 def get_evo_fname(evo_fname=''):
     if evo_fname == '':
-        evo_fname, epo_exist = locating_meg_file(evo_fname, '*ave.fif')
-        if not epo_exist:
-            evo_fname = EVO
+        evo_fname = EVO
+    evo_fname, epo_exist = locating_meg_file(evo_fname, '*ave.fif')
     return evo_fname
 
 
@@ -905,7 +912,9 @@ def calc_inverse_operator(
         try:
             if overwrite_noise_cov or not op.isfile(noise_cov_fname):
                 if use_empty_room_for_noise_cov:
-                    raw_empty_room = mne.io.read_raw_fif(EMPTY_ROOM, add_eeg_ref=False)
+                    empty_room_fname, empty_room_exist = locating_meg_file(
+                        EMPTY_ROOM, '*empty*.fif', raise_exception=True)
+                    raw_empty_room = mne.io.read_raw_fif(empty_room_fname, add_eeg_ref=False)
                     noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
                     noise_cov.save(noise_cov_fname)
                 elif use_raw_for_noise_cov:
@@ -1031,6 +1040,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     if not stc_t_min is None and not stc_t_max is None:
                         evoked = evoked.crop(stc_t_min, stc_t_max)
                     try:
+                        # todo: should check if this was already done
                         mne.set_eeg_reference(evoked, ref_channels=None)
                     except:
                         print('Cannot create EEG average reference projector (no EEG data found)')
@@ -1045,7 +1055,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
             flag = False
-    if calc_stcs_diff:
+    if calc_stcs_diff and len(events) > 1:
         calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
@@ -2287,39 +2297,37 @@ def misc():
 
 def get_fname_format_args(args):
     return get_fname_format(
-        args.task, args.fname_format,args.fname_format_cond, args.conditions)
+        args.task, args.fname_format,args.fname_format_cond, args.conditions, args.get_task_defaults)
 
 
-def get_fname_format(task, fname_format='', fname_format_cond='', args_conditions=('all')):
-    if task == 'MSIT':
-        # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
-        # fname_format_cond = '{subject}_msit_{cleaning_method}_{contrast}_{cond}_1-15-{ana_type}.{file_type}'
-        # fname_format = '{subject}_msit_{cleaning_method}_{contrast}_1-15-{ana_type}.{file_type}'
-        fname_format_cond = '{subject}_msit_{cleaning_method}_{contrast}_{cond}_1-15-{ana_type}.{file_type}'
-        fname_format = '{subject}_msit_{cleaning_method}_{contrast}_1-15-{ana_type}.{file_type}'
-        conditions = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
-        # event_digit = 1
-    elif task == 'ECR':
-        fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
-        fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
-        # conditions = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
-        conditions = dict(C=1, I=2)
-        # event_digit = 3
-    elif task == 'ARC':
-        fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
-        fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
-        conditions = dict(low_risk=1, med_risk=2, high_risk=3)
-    elif task == 'rest':
-        fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
-        conditions = dict(rest=1)
+def get_fname_format(task, fname_format='', fname_format_cond='', args_conditions=('all'), get_task_defaults=True):
+    if get_task_defaults:
+        if task == 'MSIT':
+            # fname_format = '{subject}_msit_interference_1-15-{file_type}.fif' # .format(subject, fname (like 'inv'))
+            # fname_format_cond = '{subject}_msit_{cleaning_method}_{contrast}_{cond}_1-15-{ana_type}.{file_type}'
+            # fname_format = '{subject}_msit_{cleaning_method}_{contrast}_1-15-{ana_type}.{file_type}'
+            fname_format_cond = '{subject}_msit_{cleaning_method}_{contrast}_{cond}_1-15-{ana_type}.{file_type}'
+            fname_format = '{subject}_msit_{cleaning_method}_{contrast}_1-15-{ana_type}.{file_type}'
+            conditions = dict(interference=1, neutral=2) # dict(congruent=1, incongruent=2), events = dict(Fear=1, Happy=2)
+            # event_digit = 1
+        elif task == 'ECR':
+            fname_format_cond = '{subject}_ecr_{cond}_15-{ana_type}.{file_type}'
+            fname_format = '{subject}_ecr_15-{ana_type}.{file_type}'
+            # conditions = dict(Fear=1, Happy=2) # or dict(congruent=1, incongruent=2)
+            conditions = dict(C=1, I=2)
+            # event_digit = 3
+        elif task == 'ARC':
+            fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
+            fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
+            conditions = dict(low_risk=1, med_risk=2, high_risk=3)
+        elif task == 'rest':
+            fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
+            conditions = dict(rest=1)
     else:
         if fname_format == '' or fname_format_cond == '':
             raise Exception('Empty fname_format and/or fname_format_cond!')
         # raise Exception('Unkown task! Known tasks are MSIT/ECR/ARC')
         # print('Unkown task! Known tasks are MSIT/ECR/ARC.')
-        conditions = dict((cond_name, cond_id + 1) for cond_id, cond_name in enumerate(args_conditions))
-        # conditions = dict(all=1)
-    if args_conditions[0] != 'all':
         conditions = dict((cond_name, cond_id + 1) for cond_id, cond_name in enumerate(args_conditions))
     return fname_format, fname_format_cond, conditions
 
@@ -3273,6 +3281,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='dSPM', type=au.str_arr_type)
     parser.add_argument('--modality', help='', required=False, default='meg')
     parser.add_argument('--sub_dirs_for_tasks', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--get_task_defaults', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fname_format', help='', required=False, default='{subject}-{ana_type}.{file_type}')
     parser.add_argument('--fname_format_cond', help='', required=False, default='{subject}_{cond}-{ana_type}.{file_type}')
     parser.add_argument('--data_per_task', help='task-subject-data', required=False, default=0, type=au.is_true)
@@ -3307,7 +3316,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
-    parser.add_argument('--stim_channels', help='stim_channels', required=False, default=None, type=au.str_arr_type)
+    parser.add_argument('--stim_channels', help='stim_channels', required=False, default='STI001', type=au.str_arr_type)
     parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
     parser.add_argument('--reject_mag', help='', required=False, default=4e-12, type=float)
