@@ -1355,9 +1355,9 @@ def calc_stc_minmax():
         return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len
 
     if ColoringMakerPanel.stc is None:
-        stc = ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
-    data_min = mu.min_stc(stc, bpy.context.scene.meg_min_prec)
-    data_max = mu.max_stc(stc, bpy.context.scene.meg_max_prec)
+        ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
+    data_min = mu.min_stc(ColoringMakerPanel.stc, bpy.context.scene.meg_min_prec)
+    data_max = mu.max_stc(ColoringMakerPanel.stc, bpy.context.scene.meg_max_prec)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
     if np.max(ColoringMakerPanel.stc._data) < 1e-5:

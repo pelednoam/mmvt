@@ -162,7 +162,8 @@ def ecr_msit(args):
             mri_subject=args.subject,
             remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{}'.format(args.subject[0]),
             task=task,
-            function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',#''remove_artifacts',
+            # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',#''remove_artifacts',
+            function='calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             data_per_task=True,
             atlas='laus125',
             cleaning_method='nTSSS',
@@ -172,9 +173,11 @@ def ecr_msit(args):
             overwrite_evoked=True,
             t_min=-0.5,
             t_max=2,
+            use_empty_room_for_noise_cov=True,
+            read_only_from_annot=False,
             events_file_name='{}_{}_raw-eve.fif'.format('{subject}', task.lower()),
             extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
-            pick_ori='normal',
+            # pick_ori='normal',
             overwrite_stc=True,
             overwrite_labels_data=True
         ))

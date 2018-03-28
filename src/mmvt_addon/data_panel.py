@@ -33,7 +33,8 @@ bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, descri
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
 bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=[], description="labels data files")
-bpy.types.Scene.add_meg_labels_data = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.add_meg_labels_data_to_parent = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.add_meg_data_to_labels = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
@@ -599,7 +600,7 @@ def add_data_to_brain(source_files):
 
 
 # def add_data_to_parent_brain_obj(brain_sources, subcorticals_sources, stat=STAT_DIFF):
-#     if bpy.context.scene.add_meg_labels_data:
+#     if bpy.context.scene.add_meg_labels_data_to_parent:
 #         brain_obj = bpy.data.objects['Brain']
 #         add_data_to_parent_obj(brain_obj, brain_sources, stat)
 #     if bpy.context.scene.add_meg_subcorticals_data:
@@ -686,8 +687,9 @@ def add_data_to_parent_obj(parent_obj, source_files, stat):
             if bpy.data.objects.get(obj_name) is None:
                 if obj_name.startswith('rh') or obj_name.startswith('lh'):
                     obj_name = obj_name[3:]
-                if bpy.data.objects.get(obj_name) is None:
-                    continue
+                # todo: add a flag to the gui?
+                # if bpy.data.objects.get(obj_name) is None:
+                #     continue
             if not bpy.context.scene.import_unknown and 'unkown' in obj_name:
                 continue
             if stat == STAT_AVG and data.ndim > 1:
@@ -751,8 +753,9 @@ class AddDataToBrain(bpy.types.Operator):
             subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
         else:
             subcorticals_sources = None
-        add_data_to_brain(brain_sources)
-        if bpy.context.scene.add_meg_labels_data:
+        if bpy.context.scene.add_meg_data_to_labels:
+            add_data_to_brain(brain_sources)
+        if bpy.context.scene.add_meg_labels_data_to_parent:
             brain_obj = bpy.data.objects['Brain']
             add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
         if bpy.context.scene.add_meg_subcorticals_data and not subcorticals_sources is None:
@@ -1075,7 +1078,9 @@ def data_draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, 'labels_data_files', text="")
         col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
-        col.prop(context.scene, 'add_meg_labels_data', text="labels")
+        row = col.row(align=True)
+        row.prop(context.scene, 'add_meg_data_to_labels', text="labels")
+        row.prop(context.scene, 'add_meg_labels_data_to_parent', text="diff")
         col.prop(context.scene, 'import_unknown', text="Import unknown")
     if DataMakerPanel.subcortical_meg_data_exist:
         col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")

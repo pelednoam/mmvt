@@ -155,10 +155,10 @@ def filter_roi_func(closet_object_name, closest_curve_name=None, mark='mark_gree
     if _addon().is_inflated():
         closet_object_name = 'inflated_{}'.format(closet_object_name)
 
-    obj = bpy.data.objects[closet_object_name]
     if bpy.context.scene.selection_type == 'conds':
         # todo: set change_selected_fcurves_colors to False, and match the contour's color to the fcurve's color
         _addon().select_roi(roi_closet_object_name, change_selected_fcurves_colors=True)
+        obj = bpy.data.objects[closet_object_name]
         obj.select = True
         bpy.context.scene.objects.active = obj
     elif bpy.context.scene.selection_type == 'diff':
