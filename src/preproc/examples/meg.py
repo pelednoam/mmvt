@@ -164,6 +164,8 @@ def ecr_msit(args):
             utils.make_dir(op.join(MEG_DIR, task, subject))
             utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'))
     # Run python -m src.preproc.anatomy -s ep006 -a laus125 --remote_subject_dir "{remote_subject_dir}"
+    # Read the /autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{subject}/cfg.txt to find the scan day for each task for the empty room noise cov
+    # Move the empty room recordings to op.join(MEG_DIR, subject)
     for task in tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
