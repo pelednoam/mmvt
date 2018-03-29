@@ -16,8 +16,12 @@ def _addon():
     return WhereAmIPanel.addon
 
 
-def _trans():
-    return WhereAmIPanel.subject_orig_trans
+def t1_trans():
+    return WhereAmIPanel.subject_t1_trans
+
+
+def t2_trans():
+    return WhereAmIPanel.subject_t2_trans
 
 
 def _ct_trans():
@@ -26,7 +30,9 @@ def _ct_trans():
 
 def get_trans(modality):
     if modality == 'mri':
-        return _trans()
+        return t1_trans()
+    elif modality == 't2':
+        return t2_trans()
     elif modality == 'ct':
         return _ct_trans()
     else:
@@ -52,6 +58,15 @@ def set_t1_value():
         bpy.context.scene.t1_value = 0
 
 
+def set_t2_value():
+    if get_slicer_state('t2') is not None:
+        x, y, z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
+        t2_data = _addon().get_slicer_state('t2').data
+        bpy.context.scene.t2_value = t2_data[x, y, z]
+    else:
+        bpy.context.scene.t2_value = 0
+
+
 def subject_annot_files_update(self, context):
     d = {}
     user_fol = mu.get_user_fol()
@@ -72,7 +87,7 @@ def where_i_am_draw(self, context):
     row.prop(context.scene, "tkreg_ras_x", text="x")
     row.prop(context.scene, "tkreg_ras_y", text="y")
     row.prop(context.scene, "tkreg_ras_z", text="z")
-    if not _trans() is None:
+    if not t1_trans() is None:
         layout.label(text='mni305:')
         row = layout.row(align=0)
         row.prop(context.scene, "ras_x", text="x")
@@ -126,10 +141,10 @@ def tkras_coo_update(self, context):
         if bpy.context.scene.cursor_is_snapped:
             _addon().snap_cursor(True)
 
-    if not _trans() is None and WhereAmIPanel.update:
+    if not t1_trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z]
-        vox = apply_trans(_trans().ras_tkr2vox, np.array([coo]))
-        ras = apply_trans(_trans().vox2ras, vox)
+        vox = apply_trans(t1_trans().ras_tkr2vox, np.array([coo]))
+        ras = apply_trans(t1_trans().vox2ras, vox)
         WhereAmIPanel.update = False
         set_mni(ras[0])
         set_voxel(vox[0])
@@ -144,10 +159,10 @@ def ras_coo_update(self, context):
         return
 
     # print('ras_coo_update')
-    if not _trans() is None and WhereAmIPanel.update:
+    if not t1_trans() is None and WhereAmIPanel.update:
         coo = [bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z]
-        vox = apply_trans(_trans().ras2vox, np.array([coo]))
-        ras_tkr = apply_trans(_trans().vox2ras_tkr, vox)
+        vox = apply_trans(t1_trans().ras2vox, np.array([coo]))
+        ras_tkr = apply_trans(t1_trans().vox2ras_tkr, vox)
         WhereAmIPanel.update = False
         set_tkreg_ras(ras_tkr[0])
         set_voxel(vox[0])
@@ -163,10 +178,10 @@ def voxel_coo_update(self, context):
 
     # print('voxel_coo_update')
     vox_x, vox_y, vox_z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
-    if not _trans() is None and WhereAmIPanel.update:
+    if not t1_trans() is None and WhereAmIPanel.update:
         vox = [vox_x, vox_y, vox_z]
-        ras = apply_trans(_trans().vox2ras, np.array([vox]))
-        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])
+        ras = apply_trans(t1_trans().vox2ras, np.array([vox]))
+        ras_tkr = apply_trans(t1_trans().vox2ras_tkr, [vox])
         WhereAmIPanel.update = False
         set_tkreg_ras(ras_tkr[0])
         set_mni(ras[0])
@@ -185,11 +200,11 @@ def ct_voxel_coo_update(self, context):
 
     # print('voxel_coo_update')
     vox_x, vox_y, vox_z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
-    if _trans() is not None and _ct_trans() is not None and WhereAmIPanel.update:
+    if t1_trans() is not None and _ct_trans() is not None and WhereAmIPanel.update:
         ct_vox = [vox_x, vox_y, vox_z]
         ras = apply_trans(_ct_trans().vox2ras, np.array([ct_vox]))[0]
-        vox = apply_trans(_trans().ras2vox, [ras])[0]
-        ras_tkr = apply_trans(_trans().vox2ras_tkr, [vox])[0]
+        vox = apply_trans(t1_trans().ras2vox, [ras])[0]
+        ras_tkr = apply_trans(t1_trans().vox2ras_tkr, [vox])[0]
         WhereAmIPanel.update = False
         set_tkreg_ras(ras_tkr)
         set_mni(ras)
@@ -527,10 +542,12 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
         return
 
     if modality == 'mri':
-        x, y, z = np.rint(apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
+        x, y, z = np.rint(apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
+    elif modality == 't2':
+        x, y, z = np.rint(apply_trans(t2_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
     elif modality == 'ct':
-        vox = apply_trans(_trans().ras_tkr2vox, np.array([pos]))[0]
-        ras = apply_trans(_trans().vox2ras, np.array([vox]))[0]
+        vox = apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]
+        ras = apply_trans(t1_trans().vox2ras, np.array([vox]))[0]
         x, y, z = np.rint(apply_trans(_ct_trans().ras2vox, np.array([ras]))[0]).astype(int)
     xyz = [x, y, z]
     # print('Create slices, slicer_state.coordinates: {}'.format(WhereAmIPanel.slicer_state.coordinates))
@@ -579,8 +596,8 @@ def slices_were_clicked(active_image, pos):
     new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state, modality)
     if modality == 'ct':
         new_pial_ras = apply_trans(_ct_trans().vox2ras, np.array([new_pos_vox]))[0]
-        new_pos_vox = apply_trans(_trans().ras2vox, np.array([new_pial_ras]))[0]
-    new_pos_pial = apply_trans(_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
+        new_pos_vox = apply_trans(t1_trans().ras2vox, np.array([new_pial_ras]))[0]
+    new_pos_pial = apply_trans(t1_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
     # Find the closest vertex on the pial brain, and convert it to the current inflation
     new_pos = pos_to_current_inflation(new_pos_pial) / 10
     bpy.context.scene.cursor_location = new_pos
@@ -785,7 +802,8 @@ class WhereAmIPanel(bpy.types.Panel):
     bl_label = "Where Am I"
     addon = None
     init = False
-    subject_orig_trans = None
+    subject_t1_trans = None
+    subject_t2_trans = None
     subject_ct_trans = None
     vol_atlas = {}
     vol_atlas_lut = {}
@@ -806,12 +824,15 @@ class WhereAmIPanel(bpy.types.Panel):
 
 def init(addon):
     try:
-        trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
+        t1_trans_fname = op.join(mu.get_user_fol(), 't1_trans.npz')
+        t2_trans_fname = op.join(mu.get_user_fol(), 't2_trans.npz')
         ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
         volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))
         luts = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*ColorLUT.npz'))
-        if op.isfile(trans_fname):
-            WhereAmIPanel.subject_orig_trans = mu.Bag(np.load(trans_fname))
+        if op.isfile(t1_trans_fname):
+            WhereAmIPanel.subject_t1_trans = mu.Bag(np.load(t1_trans_fname))
+        if op.isfile(t2_trans_fname):
+            WhereAmIPanel.subject_t2_trans = mu.Bag(np.load(t2_trans_fname))
         if op.isfile(ct_trans_fname):
             WhereAmIPanel.subject_ct_trans = mu.Bag(np.load(ct_trans_fname))
         for atlas_vol_fname, atlas_vol_lut_fname in zip(volumes, luts):
@@ -841,7 +862,7 @@ def init(addon):
         bpy.context.scene.find_closest_label_on_click = False
         bpy.context.scene.plot_closest_label_contour = False
 
-        mri_data_fname = op.join(mu.get_user_fol(), 'freeview', '{}_data.npz'.format('mri'))
+        mri_data_fname = op.join(mu.get_user_fol(), 'freeview', 'mri_data.npz')
         if op.isfile(mri_data_fname):
             WhereAmIPanel.mri_data = mu.Bag(np.load(mri_data_fname))
         gray_colormap_fname = op.join(mu.file_fol(), 'color_maps', 'gray.npy')

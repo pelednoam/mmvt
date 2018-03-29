@@ -973,12 +973,16 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
 
 
 @utils.tryit()
-def save_subject_orig_trans(subject, modality='mri'):
+def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
-    output_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
-    header = tu.get_subject_orig_header(subject, SUBJECTS_DIR)
-    ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
-    np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
+    for image_name in ['T1.mgz', 'T2.mgz']:
+        header = tu.get_subject_mri_header(subject, SUBJECTS_DIR, image_name)
+        if header is None:
+            continue
+        output_fname = op.join(MMVT_DIR, subject, '{}_trans.npz'.format(utils.namebase(image_name.lower())))
+        ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
+        print('save_subject_orig_trans: saving {}'.format(output_fname))
+        np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
     return op.isfile(output_fname)
 
 
@@ -1243,33 +1247,34 @@ def get_image_data(image_data, order, flips, ii, pos):
 
 
 def save_images_data_and_header(subject):
-    def get_data_and_header(subject):
+    def get_data_and_header(subject, image_name):
         # print('Loading header and data for {}, {}'.format(subject, modality))
         utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-        fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')
+        fname = op.join(MMVT_DIR, subject, 'freeview', image_name)
         if not op.isfile(fname):
-            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', image_name)
             if op.isfile(subjects_fname):
                 shutil.copy(subjects_fname, fname)
             else:
-                print("Can't find subject's T1.mgz!")
+                print("Can't find subject's {}!".format(image_name))
                 return None, None
         header = nib.load(fname)
         data = header.get_data()
         return data, header
 
-    ret = True
-    data, header = get_data_and_header(subject)
-    if data is None or header is None:
-        return False
-    affine = header.affine
-    precentiles = np.percentile(data, (1, 99))
-    colors_ratio = 256 / (precentiles[1] - precentiles[0])
-    output_fname = op.join(MMVT_DIR, subject, 'freeview', 'mri_data.npz')
-    if not op.isfile(output_fname):
-        np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
-    ret = ret and op.isfile(output_fname)
-    return ret
+    modalities = {'T1.mgz':'mri', 'T2.mgz':'t2'}
+    for image_name in modalities.keys():
+        data, header = get_data_and_header(subject, image_name)
+        if data is None or header is None:
+            continue
+        affine = header.affine
+        precentiles = np.percentile(data, (1, 99))
+        colors_ratio = 256 / (precentiles[1] - precentiles[0])
+        output_fname = op.join(MMVT_DIR, subject, 'freeview', '{}_data.npz'.format(modalities[image_name]))
+        if not op.isfile(output_fname):
+            print('save_images_data_and_header: saving {}'.format(output_fname))
+            np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
+    return op.isfile(op.join(MMVT_DIR, subject, 'freeview', 'mri_data.npz'))
 
 
 def create_skull_surfaces(subject, surfaces_fol_name='bem', verts_in_ras=True):
@@ -1385,7 +1390,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['save_labels_coloring'] = lu.create_atlas_coloring(subject, args.atlas, args.n_jobs)
 
     if utils.should_run(args, 'save_subject_orig_trans'):
-        flags['save_subject_orig_trans'] = save_subject_orig_trans(subject, args.slices_modality)
+        flags['save_subject_orig_trans'] = save_subject_orig_trans(subject)
 
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject)

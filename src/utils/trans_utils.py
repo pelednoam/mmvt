@@ -106,7 +106,7 @@ def mni152_mni305(points):
 
 def tkras_to_vox(points, subject_orig_header=None, subject='', subjects_dir=''):
     if subject_orig_header is None:
-        subject_orig_header = get_subject_orig_header(subject, subjects_dir)
+        subject_orig_header = get_subject_mri_header(subject, subjects_dir)
     vox2ras_tkr = subject_orig_header.get_vox2ras_tkr()
     ras_tkr2vox = np.linalg.inv(vox2ras_tkr)
     vox = apply_trans(ras_tkr2vox, points)
@@ -115,18 +115,20 @@ def tkras_to_vox(points, subject_orig_header=None, subject='', subjects_dir=''):
 
 def vox_to_ras(points, subject_orig_header=None, subject='', subjects_dir=''):
     if subject_orig_header is None:
-        subject_orig_header = get_subject_orig_header(subject, subjects_dir)
+        subject_orig_header = get_subject_mri_header(subject, subjects_dir)
     vox2ras = subject_orig_header.get_vox2ras()
     ras = apply_trans(vox2ras, points)
     return ras
 
 
-def get_subject_orig_header(subject, subjects_dir):
-    if op.isdir(op.join(subjects_dir, subject)):
-        d = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz'))# 'orig.mgz'))
+def get_subject_mri_header(subject, subjects_dir, image_name='T1.mgz'):
+    image_fname = op.join(subjects_dir, subject, 'mri', image_name)
+    if op.isfile(image_fname):
+        d = nib.load(image_fname)# 'orig.mgz'))
         subject_orig_header = d.get_header()
     else:
-        raise Exception('subject_orig_header is None and subjects_dir/subject is not a dir')
+        print("get_subject_mri_header: Can't find image! ({})".format(image_fname))
+        subject_orig_header = None
     return subject_orig_header
 
 
@@ -139,7 +141,7 @@ if __name__ == '__main__':
     true_vox = [[146, 86, 76]]
     # point = [-13.1962, -66.5584, 33.3018]
 
-    h = get_subject_orig_header(subject, SUBJECTS_DIR)
+    h = get_subject_mri_header(subject, SUBJECTS_DIR)
     vox = tkras_to_vox(points, h)
     print('vox: {}'.format(vox))
 

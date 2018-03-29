@@ -47,7 +47,7 @@ def get_data_and_header(subject, modality):
 @functools.lru_cache(maxsize=None)
 def get_modality_trans_file(subject, modality):
     if modality == 'mri':
-        trans_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
+        trans_fname = op.join(MMVT_DIR, subject, 't1_trans.npz')
         if not op.isfile(trans_fname):
             anat.save_subject_orig_trans(subject)
     elif modality == 'ct':

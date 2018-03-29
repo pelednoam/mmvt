@@ -418,6 +418,7 @@ set_slicer_state = where_am_i_panel.set_slicer_state
 get_slicer_state = where_am_i_panel.get_slicer_state
 set_ct_intensity = where_am_i_panel.set_ct_intensity
 set_t1_value = where_am_i_panel.set_t1_value
+set_t2_value = where_am_i_panel.set_t2_value
 create_slices_from_vox_coordinates = where_am_i_panel.create_slices_from_vox_coordinates
 find_closest_label = where_am_i_panel.find_closest_label
 get_annot_files = where_am_i_panel.get_annot_files

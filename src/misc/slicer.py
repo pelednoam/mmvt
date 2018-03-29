@@ -153,7 +153,7 @@ if __name__ == '__main__':
         # subject = 'nmr00979'
         # subject = '100307'
         subject = 'mg102'
-        trans_fname = op.join(MMVT_DIR, subject, 'orig_trans.npz')
+        trans_fname = op.join(MMVT_DIR, subject, 't1_trans.npz')
         d = utils.Bag(np.load(trans_fname))
         ras_tkr2vox = np.linalg.inv(d.vox2ras_tkr)
         mri_fname = op.join(MMVT_DIR, subject, 'freeview', 'T1.mgz')

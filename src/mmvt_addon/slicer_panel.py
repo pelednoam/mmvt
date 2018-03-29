@@ -14,6 +14,9 @@ def slices_modality_update(self, context):
     elif bpy.context.scene.slices_modality == 'ct':
         bpy.context.scene.slices_modality_mix = 1
         _addon().set_ct_intensity()
+    elif bpy.context.scene.slices_modality == 't2':
+        bpy.context.scene.slices_modality_mix = 1
+        _addon().set_t2_value()
     if _addon().get_slicer_state(bpy.context.scene.slices_modality) is not None:
         clim = (bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max)
         _addon().create_slices(
@@ -470,6 +473,7 @@ bpy.types.Scene.new_electrode_num = bpy.props.IntProperty(default=1, min=1)
 bpy.types.Scene.slices_zoom = bpy.props.FloatProperty(default=1, min=1, update=slices_zoom_update)
 bpy.types.Scene.ct_intensity = bpy.props.FloatProperty()
 bpy.types.Scene.t1_value = bpy.props.FloatProperty()
+bpy.types.Scene.t2_value = bpy.props.FloatProperty()
 bpy.types.Scene.slices_zoom_around_voxel = bpy.props.BoolProperty(default=False, update=slices_update)
 bpy.types.Scene.slices_zoom_voxels_num = bpy.props.IntProperty(default=30, min=1, update=slices_update)
 bpy.types.Scene.slices_zoom_interpolate = bpy.props.BoolProperty(default=False, update=slices_update)
@@ -485,10 +489,12 @@ def slicer_draw(self, context):
     layout.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
     layout.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
     layout.prop(context.scene, 'show_full_slice', text='Show full slice')
-    if SlicerPanel.ct_exist:
+    if SlicerPanel.ct_exist or SlicerPanel.t2_exist:
         layout.prop(context.scene, 'slices_modality', expand=True)
         if bpy.context.scene.slices_modality == 'mri':
             layout.label(text='T1 value: {:.2f}'.format(bpy.context.scene.t1_value))
+        elif bpy.context.scene.slices_modality == 't2':
+            layout.label(text='T2 value: {:.2f}'.format(bpy.context.scene.t2_value))
         elif bpy.context.scene.slices_modality == 'ct':
             layout.label(text='CT intensity: {:.2f}'.format(bpy.context.scene.ct_intensity))
         # layout.prop(context.scene, 'slices_modality_mix')
@@ -522,6 +528,7 @@ class SlicerPanel(bpy.types.Panel):
     bl_label = "Slicer"
     addon = None
     ct_exist = False
+    t2_exist = False
     init = False
 
     def draw(self, context):
@@ -541,10 +548,19 @@ def init(addon):
     bpy.context.scene.last_cursor_location = (0.0, 0.0, 0.0)
     bpy.context.scene.is_sliced_ind = -1
     ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
-    if op.isfile(ct_trans_fname):
-        SlicerPanel.ct_exist = True
-        bpy.types.Scene.slices_modality = bpy.props.EnumProperty(
-            items=[('mri', 'MRI', '', 1), ('ct', 'CT', '', 2)], update=slices_modality_update)
+    t2_trans_fname = op.join(mu.get_user_fol(), 't2_trans.npz')
+    if op.isfile(ct_trans_fname) or op.isfile(t2_trans_fname):
+        items_ind = 1
+        items = [('mri', 'MRI', '', items_ind)]
+        if op.isfile(t2_trans_fname):
+            SlicerPanel.t2_exist = True
+            items_ind += 1
+            items.append(('t2', 'T2', '', items_ind))
+        if op.isfile(ct_trans_fname):
+            items_ind += 1
+            SlicerPanel.ct_exist = True
+            items.append(('ct', 'CT', '', items_ind))
+        bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=items, update=slices_modality_update)
     bpy.context.scene.slices_modality_mix = 0
     bpy.context.scene.slices_zoom = 1
     bpy.context.scene.new_electrode_num = 1

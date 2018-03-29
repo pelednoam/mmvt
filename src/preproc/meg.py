@@ -1229,7 +1229,7 @@ def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):
 def dipole_pos_to_vox(dipole, trans):
     from mne.transforms import _get_trans, apply_trans
 
-    orig_trans = utils.Bag(np.load(op.join(MMVT_DIR, MRI_SUBJECT, 'orig_trans.npz')))
+    orig_trans = utils.Bag(np.load(op.join(MMVT_DIR, MRI_SUBJECT, 't1_trans.npz')))
     trans = _get_trans(trans, fro='head', to='mri')[0]
     scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
     dipole_locs_vox = apply_trans(orig_trans.ras_tkr2vox, scatter_points)

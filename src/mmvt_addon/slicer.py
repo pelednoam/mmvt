@@ -21,18 +21,21 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     if mmvt_dir == '':
         mmvt_dir = mu.file_fol()
     if modality_data is None:
-        if modality == 'ct':
+        if modality == 'mri':
+            fname = op.join(mmvt_dir, subject, 'freeview', 'mri_data.npz')
+        elif modality == 't2':
+            fname = op.join(mmvt_dir, subject, 'freeview', 't2_data.npz')
+        elif modality == 'ct':
             fname = op.join(mmvt_dir, subject, 'ct', 'ct_data.npz'.format(modality))
-        else:
-            fname = op.join(mmvt_dir, subject, 'freeview', '{}_data.npz'.format(modality))
         if op.isfile(fname):
             modality_data = mu.Bag(np.load(fname))
         else:
             print('To see the slices the following command is being called:'.format(modality))
             print('python -m src.preproc.anatomy -s {} -f save_images_data_and_header'.format(mu.get_user()))
-            cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header --ignore_missing 1'.format(
-                bpy.context.scene.python_cmd, mu.get_user())
-            mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
+            mu.run_mmvt_func('src.preproc.anatom', 'save_subject_orig_trans,save_images_data_and_header')
+            # cmd = '{} -m src.preproc.anatomy -s {} -f save_subject_orig_trans,save_images_data_and_header --ignore_missing 1'.format(
+            #     bpy.context.scene.python_cmd, mu.get_user())
+            # mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
             return None
     if colormap is None:
         if op.isfile(op.join(mmvt_dir, 'color_maps', 'gray.npy')):
@@ -256,7 +259,7 @@ def on_click(ii, xy, state, modality='mri'):
     x = xy[0] - state[modality].extras[ii][0]
     y = xy[1] - state[modality].extras[ii][1]
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
-    if modality == 'mri':
+    if modality in ['mri', 't2']:
         trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
     elif modality == 'ct':
         trans = [[2, 1, 0], [1, 0, 2], [0, 2, 1]][ii]
@@ -269,7 +272,7 @@ def on_click(ii, xy, state, modality='mri'):
     idxs[xax] = y
     idxs[yax] = x
     idxs[ii] = s.coordinates[ii]
-    print(ii, xax, yax, x, y, s.sizes, idxs, state[modality].extras)
+    # print(ii, xax, yax, x, y, s.sizes, idxs, state[modality].extras)
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
     # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))
