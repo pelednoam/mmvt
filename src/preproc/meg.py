@@ -996,6 +996,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
         global_inverse_operator = True
     if calc_stc_for_all:
         events_keys.append('all')
+    flag = False
     for cond_name in events_keys:
         stc_fname = stc_template.format(cond=cond_name, method=inverse_method)[:-4]
         if op.isfile('{}.stc'.format(stc_fname)) and not overwrite_stc:
@@ -1054,7 +1055,6 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
-            flag = False
     if calc_stcs_diff and len(events) > 1:
         calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num

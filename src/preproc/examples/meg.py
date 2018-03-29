@@ -163,7 +163,7 @@ def ecr_msit(args):
             fname_format='{}_{}_nTSSS_1-15-ica-raw'.format('{subject}', task.lower()),
             function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
-            conditions=task,
+            conditions=task.lower(),
             data_per_task=True,
             atlas='laus125',
             ica_overwrite_raw=False,
@@ -176,8 +176,8 @@ def ecr_msit(args):
             read_only_from_annot=False,
             extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
             # pick_ori='normal',
-            # overwrite_epochs=True,
-            # overwrite_evoked=True,
+            overwrite_epochs=True,
+            overwrite_evoked=True,
             overwrite_stc=True,
             overwrite_labels_data=True
         ))
