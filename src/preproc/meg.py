@@ -2022,7 +2022,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
         overwrite=False, do_plot=False, n_jobs=1):
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
-            labels_data_template.format(atlas, em, hemi)))) for em in extract_modes])
+            labels_data_template.format(task, atlas, em, hemi)))) for em in extract_modes])
     if labels_data_template == '':
         labels_data_template = LBL
     if _check_all_files_exist() and not overwrite:
@@ -2492,7 +2492,7 @@ def calc_labels_avg_for_rest(
     labels_files_exist = all([len(glob.glob(op.join(
         SUBJECT_MEG_FOLDER, labels_output_fol_template.format(extract_mode=em), '*.npy'))) == labels_num
         for em in extract_modes])
-    labels_data_exist = all([utils.both_hemi_files_exist(labels_data_template.format(atlas, em, '{hemi}'))
+    labels_data_exist = all([utils.both_hemi_files_exist(labels_data_template.format('rest', atlas, em, '{hemi}'))
                              for em in extract_modes])
     if (not labels_files_exist and not labels_data_exist) or overwrite_labels_data:
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
@@ -2533,7 +2533,7 @@ def calc_labels_avg_for_rest(
         # data_minmax = utils.get_max_abs(data_max, data_min)
         # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
         factor = 9 # to get nAmp
-        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em))
+        min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format('rest', atlas, em))
         np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
         if (not labels_data_exist) or overwrite_labels_data:
             for hemi in utils.HEMIS:
@@ -2542,9 +2542,9 @@ def calc_labels_avg_for_rest(
                                  labels_data_template, 'rest', factor, positive, moving_average_win_size)
 
     output_fol = op.join(MMVT_DIR, MRI_SUBJECT, 'meg')
-    flag = all([op.isfile(op.join(output_fol, op.basename(labels_data_template.format(atlas, em, hemi)))) for \
+    flag = all([op.isfile(op.join(output_fol, op.basename(labels_data_template.format('rest', atlas, em, hemi)))) for \
         em, hemi in product(extract_modes, utils.HEMIS)]) and \
-        all([op.isfile(op.join(output_fol, min_max_output_template.format(atlas, em))) for em in extract_modes])
+        all([op.isfile(op.join(output_fol, min_max_output_template.format('rest', atlas, em))) for em in extract_modes])
     return flag
 
 
@@ -2622,7 +2622,7 @@ def calc_labels_avg_per_condition_wrapper(
         if labels_data_exist and not overwrite:
             if utils.should_run(args, 'calc_labels_min_max'):
                 flags['calc_labels_min_max'] = calc_labels_minmax(
-                    atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
+                    atlas, args.extract_mode, args.task, args.labels_data_template, args.overwrite_labels_data)
             return flags
 
         conditions_keys = conditions.keys() if conditions is not None else ['all']
@@ -2655,22 +2655,22 @@ def calc_labels_avg_per_condition_wrapper(
 
     if utils.should_run(args, 'calc_labels_min_max'):
         flags['calc_labels_min_max'] = calc_labels_minmax(
-            atlas, args.extract_mode, args.labels_data_template, args.overwrite_labels_data)
+            atlas, args.extract_mode, args.task, args.labels_data_template, args.overwrite_labels_data)
     return flags
 
 
-def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_labels_data=False):
+def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', overwrite_labels_data=False):
     if labels_data_template == '':
         labels_data_template = LBL
     if isinstance(extract_modes, str):
         extract_modes = [extract_modes]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
-        min_max_output_fname = min_max_output_template.format(atlas, em)
+        min_max_output_fname = min_max_output_template.format(task, atlas, em)
         min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase_with_ext(min_max_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
-        template = labels_data_template.format(atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
+        template = labels_data_template.format(task, atlas, em, '{hemi}') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
         if utils.both_hemi_files_exist(template):
             labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
             labels_min = min([np.min(d['data']) for d in labels_data])
@@ -2684,7 +2684,7 @@ def calc_labels_minmax(atlas, extract_modes, labels_data_template='', overwrite_
             # shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
         else:
             print("Can't find {}!".format(template))
-    return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(atlas, em)))
+    return np.all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(task, atlas, em)))
                    for em in extract_modes])
 
 
