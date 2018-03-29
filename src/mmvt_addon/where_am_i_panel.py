@@ -190,7 +190,10 @@ def voxel_coo_update(self, context):
             set_ct_coo(ct_vox[0])
         WhereAmIPanel.update = True
     get_3d_atlas_name()
-    set_t1_value()
+    if _addon().get_slices_modality() == 'mri':
+        set_t1_value()
+    elif _addon().get_slices_modality() == 't2':
+        set_t2_value()
     # create_slices()
 
 

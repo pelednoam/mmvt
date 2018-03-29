@@ -443,6 +443,7 @@ clear_slice = slicer_panel.clear_slice
 slice_brain = slicer_panel.slice_brain
 ct_exist = slicer_panel.ct_exist
 slices_zoom = slicer_panel.slices_zoom
+get_slices_modality = slicer_panel.get_slices_modality
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ skull_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 skull = skull_panel
 find_point_thickness = skull_panel.find_point_thickness

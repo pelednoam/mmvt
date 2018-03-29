@@ -40,6 +40,10 @@ def slices_update(self, context):
             clim=clim, plot_cross=bpy.context.scene.slices_plot_cross, mark_voxel=bpy.context.scene.slices_mark_voxel)
 
 
+def get_slices_modality():
+    return bpy.context.scene.slices_modality
+
+
 def ct_exist():
     return SlicerPanel.ct_exist
 
