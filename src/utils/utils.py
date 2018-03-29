@@ -1738,19 +1738,19 @@ def add_str_to_file_name(fname, txt, suf=''):
     return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
 
-def locating_file(default_fname, glob_patterns, parent_fol, raise_exception=False):
+def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False):
     if op.isfile(default_fname):
         return default_fname, True
-    if isinstance(glob_patterns, str):
-        glob_patterns = [glob_patterns]
-    glob_pattern_print = ','.join(glob_patterns)
+    if isinstance(glob_pattern, str):
+        glob_pattern = [glob_pattern]
+    glob_pattern_print = ','.join(glob_pattern)
     fname = op.join(parent_fol, default_fname)
     if '{cond}' in fname:
         exist = len(glob.glob(fname.replace('{cond}', '*'))) > 1
     else:
         exist = op.isfile(fname)
     if not exist:
-        lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_patterns]
+        lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
         exist = len(files) > 0
         if exist:

@@ -2669,21 +2669,30 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
             continue
         template = get_labels_data_fname(labels_data_template, task, atlas, em, '{hemi}')
         if utils.both_hemi_files_exist(template):
-            labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
-            labels_min = min([np.min(d['data']) for d in labels_data])
-            labels_max = max([np.max(d['data']) for d in labels_data])
-            labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
-            labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
-            np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
-                     labels_diff_minmax=[labels_diff_min, labels_diff_max])
-            print('{}: min: {}, max: {}'.format(em, labels_min, labels_max))
-            print('{}: labels diff min: {}, labels diff max: {}'.format(em, labels_diff_min, labels_diff_max))
-            # shutil.copy(min_max_output_fname, min_max_mmvt_output_fname)
+            calc_labels_data_minmax(template, min_max_output_fname, em)
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(
         op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(min_max_output_template, task, atlas, em))) \
         for em in extract_modes])
+
+
+def calc_labels_data_minmax(labels_data_fname_template, min_max_output_fname='', task='', atlas='', em='mean-flip',
+                            labels_data_template=''):
+    if min_max_output_fname == '':
+        if labels_data_template == '':
+            labels_data_template = LBL
+        min_max_output_template = get_labels_minmax_template(labels_data_template)
+        min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
+    labels_data = [np.load(labels_data_fname_template.format(hemi=hemi)) for hemi in utils.HEMIS]
+    labels_min = min([np.min(d['data']) for d in labels_data])
+    labels_max = max([np.max(d['data']) for d in labels_data])
+    labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
+    labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
+    np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
+             labels_diff_minmax=[labels_diff_min, labels_diff_max])
+    print('{}: min: {}, max: {}'.format(em, labels_min, labels_max))
+    print('{}: labels diff min: {}, labels diff max: {}'.format(em, labels_diff_min, labels_diff_max))
 
 
 def get_labels_data_fname(labels_data_template, task, atlas, em, hemi):
@@ -2711,6 +2720,55 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
             shutil.copy('{}-{}.stc'.format(output_name, hemi),
                         '{}-{}.stc'.format(mmvt_fname, hemi))
             print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
+
+
+def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_conditions=''):
+    for hemi in utils.HEMIS:
+        d1 = utils.Bag(np.load(labels_data1_fname.format(hemi=hemi)))
+        d2 = utils.Bag(np.load(labels_data2_fname.format(hemi=hemi)))
+        if not all(d1.names == d2.names):
+            raise Exception('Both labels data has to have the same labels names!')
+        if d1.data.shape != d2.data.shape:
+            raise Exception('Both labels data has to have the same data dims!')
+        if len(d1.conditions) != len(d2.conditions):
+            raise Exception('Both labels data has to have the same number of conditions!')
+        hemi_output_fname = output_fname.format(hemi=hemi)
+        utils.make_dir(utils.get_parent_fol(hemi_output_fname))
+        default_conditions = ['{}-{}'.format(cond1, cond2) for cond1, cond2 in zip(d1.conditions, d2.conditions)]
+        if new_conditions == '':
+            new_conditions = default_conditions
+        else:
+            if isinstance(new_conditions, str):
+                new_conditions = [new_conditions]
+            if len(new_conditions) != len(d1.conditions):
+                print('The new conditions has to have the same length like the labels conditions! ({})'.format(
+                    len(d1.conditions)))
+        labels_data_diff = d1.data - d2.data
+        np.savez(hemi_output_fname, data=labels_data_diff, names=d1.names, conditions=new_conditions)
+    min_max_output_fname = '{}_minmax.npz'.format(hemi_output_fname[:-len('_lh.npz')])
+    calc_labels_data_minmax(output_fname, min_max_output_fname)
+    return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
+
+
+def calc_labels_func(subject, task, atlas, em, func=sum, labels_data_output_name='', precentiles=(3, 97)):
+    labels_data_template_fname = op.join(
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
+    data, labels = [], []
+    for hemi in utils.HEMIS:
+        d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
+        data = func(d.data.T) if len(data) == 0 else np.concatenate((data, func(d.data.T)))
+        labels.extend(d.names)
+    if labels_data_output_name == '':
+        labels_data_output_name = '{}_{}'.format(d.conditions[0], func.__name__)
+    if data.ndim > 1 or data.shape[0] != len(labels):
+        print('data ({}) should have one dim, and same length as the labels ({})'.format(data.shape, len(labels)))
+    data_minmax = utils.calc_abs_minmax(data, precentiles)
+    print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+    np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
+        names=np.array(labels), atlas=atlas, data=data, title=labels_data_output_name.replace('_', ' '),
+             data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
+
 
 
 def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,

@@ -153,14 +153,25 @@ def morph_stc(args):
 
 
 def ecr_msit(args):
-    for task in ['MSIT','ECR']:
+    atlas, inv_method, em = 'laus125', 'dSPM', 'mean_flip'
+    remote_subject_dir = '/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
+    tasks = ['MSIT', 'ECR']
+    for subject in args.subject:
+        utils.make_dir(op.join(MEG_DIR, subject))
+        utils.make_link(op.join(remote_subject_dir.format(subject=subject), 'bem'),
+                        op.join(MEG_DIR, subject, 'bem'))
+        for task in tasks:
+            utils.make_dir(op.join(MEG_DIR, task, subject))
+            utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'))
+    # Run python -m src.preproc.anatomy -s ep006 -a laus125 --remote_subject_dir "{remote_subject_dir}"
+    for task in tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
             mri_subject=args.subject,
-            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
-            task=task,
+            remote_subject_dir=remote_subject_dir,
+            task=atlas, inverse_method=inv_method, extract_mode=em,
             get_task_defaults=False,
-            fname_format='{}_{}_nTSSS_1-15-ica-raw'.format('{subject}', task.lower()),
+            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
             conditions=task.lower(),
@@ -174,7 +185,6 @@ def ecr_msit(args):
             stim_channels='STI001',
             use_empty_room_for_noise_cov=True,
             read_only_from_annot=False,
-            extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
             # pick_ori='normal',
             # overwrite_epochs=True,
             # overwrite_evoked=True,
@@ -183,9 +193,15 @@ def ecr_msit(args):
         ))
         meg.call_main(args)
     for subject in args.subject:
-        meg.calc_stc_diff(op.join(MMVT_DIR, subject, 'meg', '{}_msit-dSPM-rh.stc'.format(subject)),
-                          op.join(MMVT_DIR, subject, 'meg', '{}_ecr-dSPM-rh.stc'.format(subject)),
-                          op.join(MMVT_DIR, subject, 'meg', '{}-msit-ecr-dSPM-rh.stc'.format(subject)))
+        meg_dir = op.join(MMVT_DIR, subject, 'meg')
+        meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
+                          op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
+                          op.join(meg_dir, '{}-msit-ecr-{}-rh.stc'.format(subject, inv_method)))
+        meg.calc_labels_diff(
+            op.join(meg_dir, 'labels_data_msit_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+            op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+            op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+        meg.calc_labels_func(subject, 'msit-ecr', atlas, em)
 
 
 def crop_stc_no_baseline(subject, mri_subject):

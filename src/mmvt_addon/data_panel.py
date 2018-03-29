@@ -745,10 +745,9 @@ class AddDataToBrain(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         base_path = mu.get_user_fol()
-        atlas = bpy.context.scene.atlas
-        labels_extract_method = bpy.context.scene.labels_data_files
-        brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))),
-                         np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method)))]
+        brain_sources = [
+            np.load(op.join(base_path, 'meg', 'labels_data_{}_lh.npz'.format(bpy.context.scene.labels_data_files))),
+            np.load(op.join(base_path, 'meg', 'labels_data_{}_rh.npz'.format(bpy.context.scene.labels_data_files)))]
         if op.isfile(op.join(base_path, 'meg', 'subcortical_meg_activity.npz')):
             subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
         else:
@@ -762,7 +761,7 @@ class AddDataToBrain(bpy.types.Operator):
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
-        bpy.context.scene.meg_labels_extract_method = labels_extract_method
+        bpy.context.scene.meg_labels_extract_method = '-'.join(bpy.context.scene.labels_data_files.split('_')[-2:])
         _addon().select_all_rois()
         _addon().init_meg_labels_coloring_type()
         mu.view_all_in_graph_editor()
@@ -1241,10 +1240,10 @@ def init(addon):
     atlas = bpy.context.scene.atlas
     # load_meg_evoked()
     # _meg_evoked_files_update()
-    labels_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', 'labels_data_{}_*_rh.npz'.format(atlas)))
+    labels_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', 'labels_data*_{}_*_rh.npz'.format(atlas)))
     if len(labels_data_files) > 0:
         DataMakerPanel.meg_labels_data_exist = True
-        files_names = [mu.namebase(fname)[len('labels_data_{}_'.format(atlas)):-3] for fname in labels_data_files]
+        files_names = [mu.namebase(fname)[len('labels_data_'):-3] for fname in labels_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
         bpy.context.scene.labels_data_files = bpy.context.scene.meg_labels_extract_method \
