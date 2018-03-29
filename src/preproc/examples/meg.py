@@ -153,9 +153,6 @@ def morph_stc(args):
 
 
 def ecr_msit(args):
-    # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
-    #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
-    #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
     for task in ['MSIT']: #'ECR', 'MSIT']:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
@@ -164,8 +161,8 @@ def ecr_msit(args):
             task=task,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS_1-15-ica-raw'.format('{subject}', task.lower()),
-            # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
-            function='calc_labels_avg_per_condition,calc_labels_min_max',
+            function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+            # function='calc_labels_avg_per_condition,calc_labels_min_max',
             data_per_task=True,
             atlas='laus125',
             ica_overwrite_raw=False,
