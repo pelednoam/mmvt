@@ -156,7 +156,7 @@ def ecr_msit(args):
     # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
     #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
     #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
-    for task in ['ECR']: #, 'MSIT']:
+    for task in ['MSIT']: #'ECR', 'MSIT']:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
             mri_subject=args.subject,
@@ -180,8 +180,8 @@ def ecr_msit(args):
             # pick_ori='normal',
             # overwrite_epochs=True,
             # overwrite_evoked=True,
-            overwrite_stc=True,
-            overwrite_labels_data=True
+            # overwrite_stc=True,
+            # overwrite_labels_data=True
         ))
         meg.call_main(args)
 
