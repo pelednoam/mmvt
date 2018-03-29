@@ -2008,7 +2008,7 @@ def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_metho
             label_name = '{name}_max_{max:.2f}_size_{size}'.format(**info)
             labels_names[info.hemi].append(label_name)
     for hemi in utils.HEMIS:
-        labels_output_fname = labels_output_fname_template.format(task.lower(), atlas, extract_method, hemi).replace('__', '_')
+        labels_output_fname = get_labels_data_fname(labels_output_fname_template, task, atlas, extract_method, hemi)
         lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[hemi][extract_method],
                  names=labels_names, conditions=conditions)
@@ -2021,7 +2021,7 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
         overwrite=False, do_plot=False, n_jobs=1):
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
-            labels_data_template.format(task.lower(), atlas, em, hemi).replace('__', '_')))) for em in extract_modes])
+            get_labels_data_fname(labels_data_template, task, atlas, em, hemi)))) for em in extract_modes])
     if labels_data_template == '':
         labels_data_template = LBL
     if _check_all_files_exist() and not overwrite:
@@ -2111,9 +2111,7 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
             labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
             labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
-        labels_output_fname = labels_data_template.format(task.lower(), atlas, em, hemi).replace('__', '_')  # if labels_output_fname_template == '' else \
-        # lables_mmvt_fname = op.join(
-        #     MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_data_template.format(atlas, em, hemi)))
+        labels_output_fname = get_labels_data_fname(labels_data_template, task, atlas, em, hemi)
         print('Saving to {}'.format(labels_output_fname))
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
@@ -2665,11 +2663,11 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
         extract_modes = [extract_modes]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
     for em in extract_modes:
-        min_max_output_fname = min_max_output_template.format(task.lower(), atlas, em).replace('__', '_')
+        min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
         min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase_with_ext(min_max_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
-        template = labels_data_template.format(task.lower(), atlas, em, '{hemi}').replace('__', '_') # op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(LBL.format(atlas, em, '{hemi}')))
+        template = get_labels_data_fname(labels_data_template, task, atlas, em, '{hemi}')
         if utils.both_hemi_files_exist(template):
             labels_data = [np.load(template.format(hemi=hemi)) for hemi in utils.HEMIS]
             labels_min = min([np.min(d['data']) for d in labels_data])
@@ -2684,8 +2682,16 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(
-        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format(task.lower(), atlas, em))).replace(
-        '__', '_') for em in extract_modes])
+        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(min_max_output_template, task, atlas, em)) \
+        for em in extract_modes])
+
+
+def get_labels_data_fname(labels_data_template, task, atlas, em, hemi):
+    return labels_data_template.format(task.lower(), atlas, em, hemi).replace('__', '_')
+
+
+def get_minmax_fname(min_max_output_template, task, atlas, em):
+    return  min_max_output_template.format(task.lower(), atlas, em).replace('__', '_')
 
 
 def get_labels_minmax_template(labels_data_template):
