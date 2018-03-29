@@ -299,9 +299,9 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
-    if list(conditions.keys())[0] == 'all' and len(np.unique(events[:, 2])) == 1:
-        event_id = np.unique(events[:, 2])[0]
-        events_conditions = {k: event_id for k, v in conditions.items()}
+    unique_events = np.unique(events[:, 2])
+    if len(unique_events) == 1:
+        events_conditions = {k: unique_events[0] for k, v in conditions.items()}
     else:
         events_conditions = {k: v for k,v in conditions.items() if v in np.unique(events[:, 2])}
     epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
@@ -2635,10 +2635,6 @@ def calc_labels_avg_per_condition_wrapper(
             stcs_conds = get_stc_conds(conditions, inverse_method, args.stc_hemi_template)
             if stcs_conds is None:
                 return False
-        # data_min = min([utils.min_stc(stc_cond) for stc_cond in stcs_conds.values()])
-        # data_max = max([utils.max_stc(stc_cond) for stc_cond in stcs_conds.values()])
-        # data_minmax = utils.get_max_abs(data_max, data_min)
-        # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
         factor = 9 # to get nAmp
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
