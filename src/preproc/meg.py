@@ -2707,9 +2707,10 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
     mmvt_fname = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase(output_name)))
     utils.make_dir(utils.get_parent_fol(output_name))
     for hemi in utils.HEMIS:
-        shutil.copy('{}-{}.stc'.format(output_name, hemi),
-                    '{}-{}.stc'.format(mmvt_fname, hemi))
-        print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
+        if output_name != mmvt_fname:
+            shutil.copy('{}-{}.stc'.format(output_name, hemi),
+                        '{}-{}.stc'.format(mmvt_fname, hemi))
+            print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
 def find_functional_rois_in_stc(subject, mri_subject, atlas, stc_name, threshold, threshold_is_precentile=True, time_index=None,
