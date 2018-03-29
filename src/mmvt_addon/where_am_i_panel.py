@@ -828,6 +828,9 @@ class WhereAmIPanel(bpy.types.Panel):
 def init(addon):
     try:
         t1_trans_fname = op.join(mu.get_user_fol(), 't1_trans.npz')
+        if not op.isfile(t1_trans_fname):
+            # backward compatibility
+            t1_trans_fname = op.join(mu.get_user_fol(), 'orig_trans.npz')
         t2_trans_fname = op.join(mu.get_user_fol(), 't2_trans.npz')
         ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
         volumes = glob.glob(op.join(mu.get_user_fol(), 'freeview', '*+aseg.npy'))

@@ -75,6 +75,7 @@ get_distinct_colors = mu.get_distinct_colors
 is_float = mu.is_float
 get_fname_folder = mu.get_fname_folder
 change_fname_extension = mu.change_fname_extension
+copy_file = mu.copy_file
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -804,10 +805,6 @@ def get_abs_max(data):
     ret = np.zeros((data.shape[1], 2))
     ret[:, 0], ret[:, 1] = np.max(data, 0), np.min(data, 0)
     return [r[0] if abs(r[0])>abs(r[1]) else r[1] for r in ret]
-
-
-def copy_file(src, dst):
-    shutil.copyfile(src, dst)
 
 
 def get_labels_vertices(labels, vertno):
@@ -1741,16 +1738,20 @@ def add_str_to_file_name(fname, txt, suf=''):
     return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
 
-def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False):
+def locating_file(default_fname, glob_patterns, parent_fol, raise_exception=False):
     if op.isfile(default_fname):
         return default_fname, True
+    if isinstance(glob_patterns, str):
+        glob_patterns = [glob_patterns]
+    glob_pattern_print = ','.join(glob_patterns)
     fname = op.join(parent_fol, default_fname)
     if '{cond}' in fname:
         exist = len(glob.glob(fname.replace('{cond}', '*'))) > 1
     else:
         exist = op.isfile(fname)
     if not exist:
-        files = glob.glob(op.join(parent_fol, '**', glob_pattern), recursive=True)
+        lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_patterns]
+        files = list(itertools.chain.from_iterable(lists))
         exist = len(files) > 0
         if exist:
             if len(files) == 1:
@@ -1759,7 +1760,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
                 for ind, fname in enumerate(files):
                     print('{}) {}'.format(ind+1, fname))
                 ind = int(input('There are more than one {} files. Please choose the one you want to use: '.format(
-                    glob_pattern)))
+                    glob_pattern_print)))
                 if ind == 0 or ind > len(files):
                     return '', False
                 fname_input = files[ind-1]
@@ -1768,7 +1769,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
                 else:
                     print("Couldn't find {}!".format(op.join(parent_fol, fname_input)))
     if not exist and raise_exception:
-        raise Exception("locating_file: Couldn't find the file ({})".format(op.join(parent_fol, glob_pattern)))
+        raise Exception("locating_file: Couldn't find the file ({})".format(op.join(parent_fol, glob_pattern_print)))
     return fname, exist
 
 

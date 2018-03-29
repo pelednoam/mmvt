@@ -825,7 +825,10 @@ def move_file(fname, fol):
 
 def copy_file(fname, fol):
     if op.isfile(fname):
-        shutil.copy(fname, op.join(fol, namebase_with_ext(fname)))
+        new_fname = op.join(fol, namebase_with_ext(fname))
+        shutil.copy(fname, new_fname)
+        return new_fname
+    return ''
 
 
 def profileit(sort_field='cumtime', root_folder=''):

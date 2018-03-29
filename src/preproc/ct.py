@@ -79,14 +79,20 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
 
 def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz'):
     output_fname = op.join(MMVT_DIR, subject, 'ct', 'ct_trans.npz')
-    ct_fname = op.join(MMVT_DIR, subject, 'ct', ct_name)
-    if not op.isfile(ct_fname):
-        subjects_ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', ct_name)
-        if op.isfile(subjects_ct_fname):
-            shutil.copy(subjects_ct_fname, ct_fname)
+    ct_fname, ct_exist = utils.locating_file(ct_name, ['*.mgz', '*.nii', '*.nii.gz'], op.join(MMVT_DIR, subject, 'ct'))
+    # ct_fname = op.join(MMVT_DIR, subject, 'ct', ct_name)
+    if not ct_exist:# op.isfile(ct_fname):
+        # subjects_ct_fname = op.join(SUBJECTS_DIR, subject, 'mri', ct_name)
+        ct_fname, ct_exist = utils.locating_file(
+            ct_name, ['*.mgz', '*.nii', '*.nii.gz'], op.join(SUBJECTS_DIR, subject, 'mri'))
+        if ct_exist: #op.isfile(subjects_ct_fname):
+            utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+            ct_fname = utils.copy(ct_fname, op.join(MMVT_DIR, subject, 'ct'))
         else:
             print("Can't find subject's CT! ({})".format(ct_fname))
             return False
+    if ct_fname != op.join(MMVT_DIR, subject, 'ct', ct_name):
+        utils.make_link(ct_fname, op.join(MMVT_DIR, subject, 'ct', ct_name))
     header = nib.load(ct_fname).header
     ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = anat.get_trans_functions(header)
     np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
