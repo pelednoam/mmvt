@@ -153,7 +153,7 @@ def morph_stc(args):
 
 
 def ecr_msit(args):
-    for task in ['MSIT']: #'ECR', 'MSIT']:
+    for task in ['MSIT','ECR']:
         args = meg.read_cmd_args(dict(
             subject=args.subject,
             mri_subject=args.subject,
@@ -161,7 +161,7 @@ def ecr_msit(args):
             task=task,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS_1-15-ica-raw'.format('{subject}', task.lower()),
-            function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+            # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
             conditions=task.lower(),
             data_per_task=True,
