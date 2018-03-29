@@ -185,7 +185,7 @@ def ecr_msit(args):
     for subject in args.subject:
         meg.calc_stc_diff(op.join(MMVT_DIR, subject, 'meg', '{}_msit-dSPM-rh.stc'.format(subject)),
                           op.join(MMVT_DIR, subject, 'meg', '{}_ecr-dSPM-rh.stc'.format(subject)),
-                          op.join(MMVT_DIR, subject, 'meg', '{}-dSPM-rh.stc'.format(subject)))
+                          op.join(MMVT_DIR, subject, 'meg', '{}-msit-ecr-dSPM-rh.stc'.format(subject)))
 
 
 def crop_stc_no_baseline(subject, mri_subject):
