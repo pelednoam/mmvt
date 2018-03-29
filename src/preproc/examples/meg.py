@@ -157,7 +157,7 @@ def ecr_msit(args):
         args = meg.read_cmd_args(dict(
             subject=args.subject,
             mri_subject=args.subject,
-            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{}'.format(args.subject[0]),
+            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
             task=task,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS_1-15-ica-raw'.format('{subject}', task.lower()),
@@ -176,12 +176,16 @@ def ecr_msit(args):
             read_only_from_annot=False,
             extract_mode=['mean_flip'], #, 'mean', 'pca_flip'],
             # pick_ori='normal',
-            overwrite_epochs=True,
-            overwrite_evoked=True,
-            overwrite_stc=True,
-            overwrite_labels_data=True
+            # overwrite_epochs=True,
+            # overwrite_evoked=True,
+            # overwrite_stc=True,
+            # overwrite_labels_data=True
         ))
         meg.call_main(args)
+    for subject in args.subject:
+        meg.calc_stc_diff(op.join(MMVT_DIR, subject, 'meg', '{}_msit-dSPM-rh.stc'.format(subject)),
+                          op.join(MMVT_DIR, subject, 'meg', '{}_ecr-dSPM-rh.stc'.format(subject)),
+                          op.join(MMVT_DIR, subject, 'meg', '{}-dSPM-rh.stc'.format(subject)))
 
 
 def crop_stc_no_baseline(subject, mri_subject):
