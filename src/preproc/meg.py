@@ -2682,7 +2682,7 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(
-        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(min_max_output_template, task, atlas, em)) \
+        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(min_max_output_template, task, atlas, em))) \
         for em in extract_modes])
 
 
