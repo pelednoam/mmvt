@@ -989,7 +989,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
     global_inverse_operator = False
     if '{cond}' not in inv_fname:
         if not op.isfile(inv_fname):
-            print('No inverse operator was found!')
+            print('No inverse operator was found! ({})'.format(inv_fname))
             return False, stcs, stcs_num
         inverse_operator = read_inverse_operator(inv_fname)
         global_inverse_operator = True
