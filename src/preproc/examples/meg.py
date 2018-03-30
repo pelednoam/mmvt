@@ -171,7 +171,7 @@ def ecr_msit(args):
             subject=args.subject,
             mri_subject=args.subject,
             remote_subject_dir=remote_subject_dir,
-            task=task, inverse_method=inv_method, extract_mode=em,
+            task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
@@ -179,7 +179,6 @@ def ecr_msit(args):
             function='calc_stc_per_condition',
             conditions=task.lower(),
             data_per_task=True,
-            atlas='laus125',
             ica_overwrite_raw=False,
             normalize_data=False,
             t_min=0,
@@ -192,6 +191,30 @@ def ecr_msit(args):
             # pick_ori='normal',
             # overwrite_epochs=True,
             # overwrite_evoked=True,
+            overwrite_stc=True,
+            # overwrite_labels_data=True
+        ))
+        # meg.call_main(args)
+        args = meg.read_cmd_args(dict(
+            subject=args.subject, mri_subject=args.subject,
+            remote_subject_dir=remote_subject_dir,
+            task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
+            get_task_defaults=False,
+            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
+            function='calc_epochs,calc_evokes,calc_stc_per_condition',
+            conditions=task.lower(),
+            data_per_task=True,
+            ica_overwrite_raw=False,
+            normalize_data=False,
+            t_min=0,
+            t_max=4,
+            read_events_from_file=False,
+            stim_channels='STI001',
+            calc_source_band_induced_power=True,
+            read_only_from_annot=False,
+            # pick_ori='normal',
+            overwrite_epochs=True,
+            overwrite_evoked=True,
             overwrite_stc=True,
             # overwrite_labels_data=True
         ))
