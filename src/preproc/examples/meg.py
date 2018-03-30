@@ -193,7 +193,7 @@ def ecr_msit(args):
             # overwrite_stc=True,
             # overwrite_labels_data=True
         ))
-        meg.call_main(args)
+        # meg.call_main(args)
     for subject in args.subject:
         meg_dir = op.join(MMVT_DIR, subject, 'meg')
         meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),

@@ -2750,18 +2750,24 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 
-def calc_labels_func(subject, task, atlas, em, func=sum, labels_data_output_name='', precentiles=(3, 97)):
+def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_name='', precentiles=(3, 97),
+                     func_name=''):
+    if func is None:
+        func = utils.wrapped_partial(np.mean, axis=1)
+    if func_name == '':
+        func_name == func.__name__ if hasattr(func, '__name__') else ''
     labels_data_template_fname = op.join(
         MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
     data, labels = [], []
     for hemi in utils.HEMIS:
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
-        data = func(d.data.T) if len(data) == 0 else np.concatenate((data, func(d.data.T)))
+        data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
-        labels_data_output_name = '{}_{}'.format(d.conditions[0], func.__name__)
+        labels_data_output_name = '{}_{}'.format(d.conditions[0], func_name)
     if data.ndim > 1 or data.shape[0] != len(labels):
         print('data ({}) should have one dim, and same length as the labels ({})'.format(data.shape, len(labels)))
+        return
     data_minmax = utils.calc_abs_minmax(data, precentiles)
     print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))

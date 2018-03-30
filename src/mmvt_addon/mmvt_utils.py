@@ -2225,8 +2225,11 @@ def create_labels_contours():
 
 def make_link(source, target, overwrite=False):
     try:
-        os.symlink(source, target)
-        return True
+        if op.exists(source):
+            os.symlink(source, target)
+            return True
+        else:
+            return False
     except FileExistsError as e:
         if not overwrite:
             print('{} already exist'.format(target))

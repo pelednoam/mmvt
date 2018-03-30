@@ -1965,6 +1965,12 @@ def print_last_error_line():
     except:
         pass
 
+def wrapped_partial(func, *args, **kwargs):
+    from functools import update_wrapper
+    partial_func = partial(func, *args, **kwargs)
+    update_wrapper(partial_func, func)
+    return partial_func
+
 
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

@@ -32,7 +32,7 @@ bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bip
 bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
 bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
 bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
-bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=[], description="labels data files")
+bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=[], description="meg labels data files")
 bpy.types.Scene.add_meg_labels_data_to_parent = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.add_meg_data_to_labels = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
@@ -666,11 +666,9 @@ def add_data_to_eeg_sensors():
 
 def add_meg_data_to_parent_obj():
     base_path = mu.get_user_fol()
-    atlas = bpy.context.scene.atlas
-    labels_extract_method = bpy.context.scene.labels_data_files
     brain_obj = bpy.data.objects['Brain']
-    brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}_{}.npz'.format(
-        atlas, labels_extract_method, hemi))) for hemi in mu.HEMIS]
+    brain_sources = [np.load(op.join(base_path, 'meg', 'labels_data_{}_{}.npz'.format(
+        bpy.context.scene.meg_labels_data_files, hemi))) for hemi in mu.HEMIS]
     add_data_to_parent_obj(brain_obj, brain_sources, STAT_DIFF)
 
 
@@ -746,8 +744,8 @@ class AddDataToBrain(bpy.types.Operator):
     def invoke(self, context, event=None):
         base_path = mu.get_user_fol()
         brain_sources = [
-            np.load(op.join(base_path, 'meg', 'labels_data_{}_lh.npz'.format(bpy.context.scene.labels_data_files))),
-            np.load(op.join(base_path, 'meg', 'labels_data_{}_rh.npz'.format(bpy.context.scene.labels_data_files)))]
+            np.load(op.join(base_path, 'meg', 'labels_data_{}_lh.npz'.format(bpy.context.scene.meg_labels_data_files))),
+            np.load(op.join(base_path, 'meg', 'labels_data_{}_rh.npz'.format(bpy.context.scene.meg_labels_data_files)))]
         if op.isfile(op.join(base_path, 'meg', 'subcortical_meg_activity.npz')):
             subcorticals_sources = [np.load(op.join(base_path, 'meg', 'subcortical_meg_activity.npz'))]
         else:
@@ -761,7 +759,7 @@ class AddDataToBrain(bpy.types.Operator):
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
-        bpy.context.scene.meg_labels_extract_method = '-'.join(bpy.context.scene.labels_data_files.split('_')[-2:])
+        bpy.context.scene.meg_labels_extract_method = '-'.join(bpy.context.scene.meg_labels_data_files.split('_')[-2:])
         _addon().select_all_rois()
         _addon().init_meg_labels_coloring_type()
         mu.view_all_in_graph_editor()
@@ -938,10 +936,8 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
 
 def load_meg_labels_data():
     base_path = mu.get_user_fol()
-    atlas = bpy.context.scene.atlas
-    labels_extract_method = bpy.context.scene.labels_data_files
-    rh_fname = op.join(base_path, 'meg', 'labels_data_{}_{}_lh.npz'.format(atlas, labels_extract_method))
-    lh_fname = op.join(base_path, 'meg', 'labels_data_{}_{}_rh.npz'.format(atlas, labels_extract_method))
+    rh_fname = op.join(base_path, 'meg', 'labels_data_{}_lh.npz'.format(bpy.context.scene.meg_labels_data_files))
+    lh_fname = op.join(base_path, 'meg', 'labels_data_{}_rh.npz'.format(bpy.context.scene.meg_labels_data_files))
     if op.isfile(rh_fname) and op.isfile(lh_fname):
         data_rh = np.load(rh_fname)
         data_lh = np.load(lh_fname)
@@ -1075,7 +1071,7 @@ def data_draw(self, context):
         mu.get_user_fol(), 'electrodes', '*.npz')
     if DataMakerPanel.meg_labels_data_exist:
         col = layout.box().column()
-        col.prop(context.scene, 'labels_data_files', text="")
+        col.prop(context.scene, 'meg_labels_data_files', text="")
         col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
         row = col.row(align=True)
         row.prop(context.scene, 'add_meg_data_to_labels', text="labels")
@@ -1245,9 +1241,8 @@ def init(addon):
         DataMakerPanel.meg_labels_data_exist = True
         files_names = [mu.namebase(fname)[len('labels_data_'):-3] for fname in labels_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
-        bpy.context.scene.labels_data_files = bpy.context.scene.meg_labels_extract_method \
-                if bpy.context.scene.meg_labels_extract_method in files_names else files_names[0]
+        bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
+        bpy.context.scene.meg_labels_data_files = files_names[0]
     if op.isfile(op.join(mu.get_user_fol(), 'meg', 'subcortical_meg_activity.npz')):
         DataMakerPanel.subcortical_meg_data_exist = True
     subcortical_fmri_files = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'subcorticals_*.npz'))
