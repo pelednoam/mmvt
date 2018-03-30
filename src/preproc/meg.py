@@ -2773,8 +2773,7 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
     data, labels = [], []
     for hemi in utils.HEMIS:
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
-        for label_data in d.data:
-            utils.calc_bands_power(label_data, 0.001)
+        bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
         data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
@@ -2788,6 +2787,38 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
     np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
         names=np.array(labels), atlas=atlas, data=data, title=labels_data_output_name.replace('_', ' '),
              data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
+
+
+def calc_labels_power_bands(
+        subject, task, atlas, em,
+        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
+        labels_data_output_name='', precentiles=(3, 97), func_name='power'):
+    labels_data_template_fname = op.join(
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
+    data, labels = defaultdict(list), []
+    for hemi in utils.HEMIS:
+        d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
+        bands_power = defaultdict(list)
+        for label_data in d.data:
+            power = utils.calc_bands_power(label_data, 0.001, bands)
+            for band, band_power in power.items():
+                bands_power[band].append(band_power)
+        for band in bands:
+            data[band] = bands_power[band] if len(data[band]) == 0 else \
+                np.concatenate((data[band], np.array(bands_power[band])))
+        labels.extend(d.names)
+    for band in bands:
+        if labels_data_output_name == '':
+            labels_data_output_name = '{}_{}_{}'.format(d.conditions[0], func_name, band)
+        if data[band].ndim > 1 or data[band].shape[0] != len(labels):
+            print('data ({}) should have one dim, and same length as the labels ({})'.format(data[band].shape, len(labels)))
+            return
+        data_minmax = utils.calc_abs_minmax(data[band], precentiles)
+        print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
+        fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+        np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
+            names=np.array(labels), atlas=atlas, data=data[band], title=labels_data_output_name.replace('_', ' '),
+                 data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
 
 
 

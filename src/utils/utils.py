@@ -1975,7 +1975,7 @@ def wrapped_partial(func, *args, **kwargs):
 def calc_bands_power(x, dt, bands):
     from scipy.signal import welch
     f, psd = welch(x, fs=1. / dt)
-    power = {band: np.mean(psd[np.where((f >= lf) & (f <= hf))]) for band, (lf, hf) in bands}
+    power = {band: np.mean(psd[np.where((f >= lf) & (f <= hf))]) for band, (lf, hf) in bands.items()}
     return power
 
 

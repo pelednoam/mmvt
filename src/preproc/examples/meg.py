@@ -194,19 +194,21 @@ def ecr_msit(args):
             overwrite_stc=True,
             # overwrite_labels_data=True
         ))
-        meg.call_main(args)
+        # meg.call_main(args)
 
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     for subject in args.subject:
         meg_dir = op.join(MMVT_DIR, subject, 'meg')
-        # meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
-        #                   op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
-        #                   op.join(meg_dir, '{}-msit-ecr-{}-rh.stc'.format(subject, inv_method)))
-        # meg.calc_labels_diff(
-        #     op.join(meg_dir, 'labels_data_msit_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
-        #     op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
-        #     op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
-        meg.calc_labels_func(subject, 'msit-ecr', atlas, em)
+        meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
+                          op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
+                          op.join(meg_dir, '{}-msit-ecr-{}-rh.stc'.format(subject, inv_method)))
+        meg.calc_labels_diff(
+            op.join(meg_dir, 'labels_data_msit_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+            op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+            op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+        # meg.calc_labels_power_bands(subject, 'msit-ecr', atlas, em)
+
+
 
 
 def crop_stc_no_baseline(subject, mri_subject):
