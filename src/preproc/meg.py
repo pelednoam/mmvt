@@ -1027,7 +1027,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     from mne.minimum_norm import source_band_induced_power
                     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
                     stcs[cond_name] = source_band_induced_power(
-                        epochs, inverse_operator, bands, n_cycles=5, use_fft=False, lambda2=lambda2, n_jobs=n_jobs)
+                        epochs, inverse_operator, bands, n_cycles=5, use_fft=False, lambda2=lambda2, n_jobs=1)
                     for band, stcs[cond_name] in stcs.items():
                         print('Saving the source estimate to {}.stc'.format(stc_fname))
                         band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
