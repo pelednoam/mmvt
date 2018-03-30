@@ -1023,11 +1023,17 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                         pick_ori=pick_ori, return_generator=True)
                 elif calc_source_band_induced_power:
-                    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
+                    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html4-8, 8-15, 15-30, 30-55, 65-200 4-8, 8-15, 15-30, 30-55, 65-200
                     from mne.minimum_norm import source_band_induced_power
-                    bands = dict(alpha=[9, 11], beta=[18, 22])
+                    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
                     stcs[cond_name] = source_band_induced_power(
                         epochs, inverse_operator, bands, n_cycles=2, use_fft=False, n_jobs=n_jobs)
+                    for band, stcs[cond_name] in stcs.items():
+                        print('Saving the source estimate to {}.stc'.format(stc_fname))
+                        band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
+                        print('Saving {}'.format(band_stc_fname))
+                        stcs.save(band_stc_fname)
+                        stcs.save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(band_stc_fname)))
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
