@@ -969,8 +969,8 @@ def _calc_inverse_operator(fwd_name, inv_name, evoked_fname, noise_cov, inv_loos
 
 def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
-                           single_trial_stc=False, save_stc=True, snr=3.0, overwrite_stc=False,
-                           stc_template='', epo_fname='', evo_fname='', inv_fname='',
+                           single_trial_stc=False, calc_source_band_induced_power=False, save_stc=True, snr=3.0,
+                           overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
                            modality='meg', calc_stc_for_all=False, calc_stcs_diff=True, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
@@ -1007,7 +1007,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     print('No inverse operator was found!')
                     return False, stcs, stcs_num
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
-            if single_trial_stc:
+            if single_trial_stc or calc_source_band_induced_power:
                 if epochs is None:
                     epo_fname = epo_fname.format(cond=cond_name)
                     if not op.isfile(epo_fname):
@@ -1019,12 +1019,16 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     mne.set_eeg_reference(epochs, ref_channels=None)
                 except:
                     print('annot create EEG average reference projector (no EEG data found)')
-                stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
-                    pick_ori=pick_ori, return_generator=True)
+                if single_trial_stc:
+                    stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
+                        pick_ori=pick_ori, return_generator=True)
+                elif calc_source_band_induced_power:
+                    from mne.minimum_norm import source_band_induced_power
+                    bands = dict(alpha=[9, 11], beta=[18, 22])
+                    stcs[cond_name] = source_band_induced_power(
+                        epochs, inverse_operator, bands, n_cycles=2, use_fft=False, n_jobs=n_jobs)
                 stcs_num[cond_name] = epochs.events.shape[0]
-                # if save_stc:
-                #     utils.save(stcs[cond_name], STC_ST.format(cond=cond_name, method=inverse_method))
-            else:
+            if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
                     stcs_num[cond_name] = mne.minimum_norm.apply_inverse_raw(
                         raw, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
@@ -2449,10 +2453,10 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
-            args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc, args.save_stc,
-            args.snr, args.overwrite_stc, args.stc_template, args.epo_fname,
-            args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw, raw, epochs,
-            args.modality, args.calc_stc_for_all, args.calc_stc_diff, args.n_jobs)
+            args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
+            args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
+            args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
+            raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
 
@@ -3437,6 +3441,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_stc_diff', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--morph_to_subject', help='', required=False, default='')
     parser.add_argument('--single_trial_stc', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--calc_source_band_induced_power', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--apply_on_raw', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--read_only_from_annot', help='', required=False, default=1, type=au.is_true)

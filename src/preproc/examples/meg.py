@@ -176,6 +176,7 @@ def ecr_msit(args):
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
+            function='calc_stc_per_condition',
             conditions=task.lower(),
             data_per_task=True,
             atlas='laus125',
@@ -186,6 +187,7 @@ def ecr_msit(args):
             read_events_from_file=False,
             stim_channels='STI001',
             use_empty_room_for_noise_cov=True,
+            calc_source_band_induced_power=True,
             read_only_from_annot=False,
             # pick_ori='normal',
             # overwrite_epochs=True,
@@ -193,7 +195,8 @@ def ecr_msit(args):
             # overwrite_stc=True,
             # overwrite_labels_data=True
         ))
-        # meg.call_main(args)
+        meg.call_main(args)
+    return
     for subject in args.subject:
         meg_dir = op.join(MMVT_DIR, subject, 'meg')
         meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
