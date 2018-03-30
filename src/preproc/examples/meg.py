@@ -171,7 +171,7 @@ def ecr_msit(args):
             subject=args.subject,
             mri_subject=args.subject,
             remote_subject_dir=remote_subject_dir,
-            task=atlas, inverse_method=inv_method, extract_mode=em,
+            task=task, inverse_method=inv_method, extract_mode=em,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
@@ -192,20 +192,21 @@ def ecr_msit(args):
             # pick_ori='normal',
             # overwrite_epochs=True,
             # overwrite_evoked=True,
-            # overwrite_stc=True,
+            overwrite_stc=True,
             # overwrite_labels_data=True
         ))
         meg.call_main(args)
-    return
+
+    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     for subject in args.subject:
         meg_dir = op.join(MMVT_DIR, subject, 'meg')
-        meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
-                          op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
-                          op.join(meg_dir, '{}-msit-ecr-{}-rh.stc'.format(subject, inv_method)))
-        meg.calc_labels_diff(
-            op.join(meg_dir, 'labels_data_msit_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
-            op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
-            op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
+        # meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
+        #                   op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
+        #                   op.join(meg_dir, '{}-msit-ecr-{}-rh.stc'.format(subject, inv_method)))
+        # meg.calc_labels_diff(
+        #     op.join(meg_dir, 'labels_data_msit_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+        #     op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
+        #     op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')))
         meg.calc_labels_func(subject, 'msit-ecr', atlas, em)
 
 

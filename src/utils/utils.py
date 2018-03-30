@@ -1972,5 +1972,12 @@ def wrapped_partial(func, *args, **kwargs):
     return partial_func
 
 
+def calc_bands_power(x, dt, bands):
+    from scipy.signal import welch
+    f, psd = welch(x, fs=1. / dt)
+    power = {band: np.mean(psd[np.where((f >= lf) & (f <= hf))]) for band, (lf, hf) in bands}
+    return power
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

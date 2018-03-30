@@ -2772,6 +2772,8 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
     data, labels = [], []
     for hemi in utils.HEMIS:
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
+        for label_data in d.data:
+            utils.calc_bands_power(label_data, 0.001)
         data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
