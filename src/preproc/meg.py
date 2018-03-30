@@ -1023,7 +1023,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                         pick_ori=pick_ori, return_generator=True)
                 elif calc_source_band_induced_power:
-                    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html4-8, 8-15, 15-30, 30-55, 65-200 4-8, 8-15, 15-30, 30-55, 65-200
+                    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
                     from mne.minimum_norm import source_band_induced_power
                     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
                     stcs[cond_name] = source_band_induced_power(

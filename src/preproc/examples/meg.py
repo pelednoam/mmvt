@@ -170,7 +170,7 @@ def ecr_msit(args):
         args = meg.read_cmd_args(dict(
             subject=args.subject,
             mri_subject=args.subject,
-            remote_subject_dir=remote_subject_dir,
+            # remote_subject_dir=remote_subject_dir,
             task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
@@ -182,7 +182,7 @@ def ecr_msit(args):
             ica_overwrite_raw=False,
             normalize_data=False,
             t_min=0,
-            t_max=0.5,
+            t_max=4,
             read_events_from_file=False,
             stim_channels='STI001',
             use_empty_room_for_noise_cov=True,
@@ -191,30 +191,6 @@ def ecr_msit(args):
             # pick_ori='normal',
             # overwrite_epochs=True,
             # overwrite_evoked=True,
-            overwrite_stc=True,
-            # overwrite_labels_data=True
-        ))
-        # meg.call_main(args)
-        args = meg.read_cmd_args(dict(
-            subject=args.subject, mri_subject=args.subject,
-            remote_subject_dir=remote_subject_dir,
-            task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-            get_task_defaults=False,
-            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
-            function='calc_epochs,calc_evokes,calc_stc_per_condition',
-            conditions=task.lower(),
-            data_per_task=True,
-            ica_overwrite_raw=False,
-            normalize_data=False,
-            t_min=0,
-            t_max=4,
-            read_events_from_file=False,
-            stim_channels='STI001',
-            calc_source_band_induced_power=True,
-            read_only_from_annot=False,
-            # pick_ori='normal',
-            overwrite_epochs=True,
-            overwrite_evoked=True,
             overwrite_stc=True,
             # overwrite_labels_data=True
         ))
