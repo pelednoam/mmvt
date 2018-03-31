@@ -550,16 +550,9 @@ def fmri_labels_coloring(override_current_mat=True, use_abs=None):
                     labels_min, colors_ratio, use_abs)
 
 
-def color_labels_data(labels, data, atlas, cb_title='', labels_max=None, labels_min=None, cmap=None):
-    data = data.ravel()
-    if len(labels) != len(data):
-        print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels), len(data)))
-        return
-    if len(labels) == 0:
-        print('color_labels_data: len(labels) == 0!')
-        return
+def init_labels_colorbar(data, cb_title='', labels_max=None, labels_min=None, cmap=None):
     if _addon().colorbar_values_are_locked():
-        labels_min, labels_max = _addon().get_colorbar_max_min()
+        labels_max, labels_min = _addon().get_colorbar_max_min()
     else:
         if labels_max is None:
             labels_max = np.max(data)
@@ -572,6 +565,18 @@ def color_labels_data(labels, data, atlas, cb_title='', labels_max=None, labels_
             _addon().set_colorbar_default_cm()
         if cb_title != '':
             _addon().set_colorbar_title(cb_title)
+    return labels_max, labels_min
+
+
+def color_labels_data(labels, data, atlas, cb_title='', labels_max=None, labels_min=None, cmap=None):
+    data = data.ravel()
+    if len(labels) != len(data):
+        print('color_labels_data: len(labels) ({}) != len(data) ({})!'.format(len(labels), len(data)))
+        return
+    if len(labels) == 0:
+        print('color_labels_data: len(labels) == 0!')
+        return
+    labels_max, labels_min = init_labels_colorbar(data, cb_title, labels_max, labels_min, cmap)
     colors_ratio = 256 / (labels_max - labels_min)
 
     threshold = bpy.context.scene.coloring_lower_threshold

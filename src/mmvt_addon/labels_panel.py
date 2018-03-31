@@ -13,10 +13,6 @@ def _addon():
     return LabelsPanel.addon
 
 
-def update_something():
-    pass
-
-
 def contours_coloring_update(self, context):
     _addon().set_no_plotting(True)
     LabelsPanel.labels_contours = labels_contours = load_labels_contours()
@@ -71,7 +67,10 @@ def plot_labels_data():
 
 def labels_data_files_update(self, context):
     if LabelsPanel.init:
-        update_something()
+        labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
+            bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
+        d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = _load_labels_data(labels_data_fname)
+        _addon().init_labels_colorbar(data, cb_title, labels_max, labels_min, cmap)
 
 
 def new_label_r_update(self, context):
@@ -156,6 +155,23 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
 
 
 def load_labels_data(labels_data_fname):
+    d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = _load_labels_data(labels_data_fname)
+    _addon().color_labels_data(labels, data, atlas, cb_title, labels_max, labels_min, cmap)
+    new_fname = op.join(mu.get_user_fol(), 'labels', 'labels_data', mu.namebase_with_ext(labels_data_fname))
+    if 'atlas' not in d:
+        npz_dict = dict(d)
+        npz_dict['atlas'] = atlas
+        np.savez(new_fname, **npz_dict)
+    else:
+        if new_fname != labels_data_fname:
+            shutil.copy(labels_data_fname, new_fname)
+        init_labels_data_files()
+    bpy.context.scene.find_closest_label_on_click = True
+    _addon().find_closest_label(atlas=atlas, plot_contour=bpy.context.scene.plot_closest_label_contour)
+    return True
+
+
+def _load_labels_data(labels_data_fname):
     labels_data_type = mu.file_type(labels_data_fname)
     if labels_data_type == 'npz':
         d = mu.load_npz_to_bag(labels_data_fname)
@@ -181,19 +197,7 @@ def load_labels_data(labels_data_fname):
     labels_min = d.get('data_min', np.min(data))
     labels_max = d.get('data_max', np.max(data))
     cmap = str(d.get('cmap', None))
-    _addon().color_labels_data(labels, data, atlas, cb_title, labels_max, labels_min, cmap)
-    new_fname = op.join(mu.get_user_fol(), 'labels', 'labels_data', mu.namebase_with_ext(labels_data_fname))
-    if 'atlas' not in d:
-        npz_dict = dict(d)
-        npz_dict['atlas'] = atlas
-        np.savez(new_fname, **npz_dict)
-    else:
-        if new_fname != labels_data_fname:
-            shutil.copy(labels_data_fname, new_fname)
-    init_labels_data_files()
-    bpy.context.scene.find_closest_label_on_click = True
-    _addon().find_closest_label(atlas=atlas, plot_contour=bpy.context.scene.plot_closest_label_contour)
-    return True
+    return d, labels, data, atlas, cb_title, labels_max, labels_min, cmap
 
 
 def labels_draw(self, context):
@@ -355,7 +359,8 @@ class NextLabelConture(bpy.types.Operator):
         return {"FINISHED"}
 
 
-bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(items=[], description="label files")
+bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
+    items=[], description="label files", update=labels_data_files_update)
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
@@ -406,7 +411,9 @@ def init_contours_coloring():
 def init_labels_data_files():
     user_fol = mu.get_user_fol()
     mu.make_dir(op.join(user_fol, 'labels', 'labels_data'))
-    LabelsPanel.labels_data_files = labels_data_files = glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.npz')) + glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.mat'))
+    LabelsPanel.labels_data_files = labels_data_files = \
+        glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.npz')) + \
+        glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.mat'))
     if len(labels_data_files) > 0:
         files_names = [mu.namebase(fname).replace('_', ' ') for fname in labels_data_files]
         labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

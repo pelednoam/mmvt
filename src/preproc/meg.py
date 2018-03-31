@@ -2807,12 +2807,11 @@ def calc_labels_power_bands(
             data[band] = bands_power[band] if len(data[band]) == 0 else \
                 np.concatenate((data[band], np.array(bands_power[band])))
         labels.extend(d.names)
-    for band in bands:
-        if labels_data_output_name == '':
-            labels_data_output_name = '{}_{}_{}'.format(d.conditions[0], func_name, band)
+    for band in bands.keys():
+        labels_data_output_name = '{}_{}_{}'.format(d.conditions[0], func_name, band)
         if data[band].ndim > 1 or data[band].shape[0] != len(labels):
             print('data ({}) should have one dim, and same length as the labels ({})'.format(data[band].shape, len(labels)))
-            return
+            continue
         data_minmax = utils.calc_abs_minmax(data[band], precentiles)
         print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
         fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))

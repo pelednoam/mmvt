@@ -232,6 +232,7 @@ coloring_panel_initialized = coloring_panel.panel_initialized
 get_no_plotting = coloring_panel.get_no_plotting
 set_no_plotting = coloring_panel.set_no_plotting
 plot_fmri = coloring_panel.plot_fmri
+init_labels_colorbar = coloring_panel.init_labels_colorbar
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val
