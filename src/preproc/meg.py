@@ -2697,14 +2697,20 @@ def calc_labels_data_minmax(labels_data_fname_template, min_max_output_fname='',
         min_max_output_template = get_labels_minmax_template(labels_data_template)
         min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
     labels_data = [np.load(labels_data_fname_template.format(hemi=hemi)) for hemi in utils.HEMIS]
-    labels_min = min([np.min(d['data']) for d in labels_data])
-    labels_max = max([np.max(d['data']) for d in labels_data])
+    labels_min, labels_max = _calc_labels_data_minmax(labels_data)
     labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
     labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
     np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
              labels_diff_minmax=[labels_diff_min, labels_diff_max])
     print('{}: min: {}, max: {}'.format(em, labels_min, labels_max))
     print('{}: labels diff min: {}, labels diff max: {}'.format(em, labels_diff_min, labels_diff_max))
+
+
+def _calc_labels_data_minmax(hemis_data):
+    hemis_data = hemis_data.values() if isinstance(hemis_data, dict) else hemis_data
+    labels_min = min([np.min(d['data']) for d in hemis_data])
+    labels_max = max([np.max(d['data']) for d in hemis_data])
+    return labels_min, labels_max
 
 
 def get_labels_data_fname(labels_data_template, task, atlas, em, hemi):
@@ -2734,7 +2740,8 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
             print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_conditions=''):
+def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_conditions='', norm_data=False):
+    labels_data_diff = {}
     for hemi in utils.HEMIS:
         d1 = utils.Bag(np.load(labels_data1_fname.format(hemi=hemi)))
         d2 = utils.Bag(np.load(labels_data2_fname.format(hemi=hemi)))
@@ -2744,8 +2751,6 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
             raise Exception('Both labels data has to have the same data dims!')
         if len(d1.conditions) != len(d2.conditions):
             raise Exception('Both labels data has to have the same number of conditions!')
-        hemi_output_fname = output_fname.format(hemi=hemi)
-        utils.make_dir(utils.get_parent_fol(hemi_output_fname))
         default_conditions = ['{}-{}'.format(cond1, cond2) for cond1, cond2 in zip(d1.conditions, d2.conditions)]
         if new_conditions == '':
             new_conditions = default_conditions
@@ -2755,29 +2760,38 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
             if len(new_conditions) != len(d1.conditions):
                 print('The new conditions has to have the same length like the labels conditions! ({})'.format(
                     len(d1.conditions)))
-        labels_data_diff = d1.data - d2.data
-        np.savez(hemi_output_fname, data=labels_data_diff, names=d1.names, conditions=new_conditions)
-    min_max_output_fname = '{}_minmax.npz'.format(hemi_output_fname[:-len('_lh.npz')])
+        labels_data_diff[hemi] = dict(data=d1.data - d2.data, names=d1.names, conditions=new_conditions)
+    if norm_data:
+        labels_min, labels_max = _calc_labels_data_minmax(labels_data_diff)
+        _, labels_minmax = utils.calc_minmax_abs_from_minmax(labels_min, labels_max)
+        for hemi in utils.HEMIS:
+            labels_data_diff[hemi]['data'] /= labels_minmax
+        output_fname = '{}_norm_{}.npz'.format(output_fname[:-len('_{hemi}.npz')], '{hemi}')
+    utils.make_dir(utils.get_parent_fol(output_fname.format(hemi='rh')))
+    for hemi in utils.HEMIS:
+        hemi_output_fname = output_fname.format(hemi=hemi)
+        np.savez(hemi_output_fname, **labels_data_diff[hemi])
+    min_max_output_fname = '{}_minmax.npz'.format(output_fname.format(hemi='lh')[:-len('_lh.npz')])
     calc_labels_data_minmax(output_fname, min_max_output_fname)
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 
-def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_name='', precentiles=(3, 97),
-                     func_name=''):
+def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_name='', precentiles=(1, 99),
+                     func_name='', norm_data=True):
     if func is None:
         func = utils.wrapped_partial(np.mean, axis=1)
     if func_name == '':
-        func_name == func.__name__ if hasattr(func, '__name__') else ''
+        func_name = func.__name__ if hasattr(func, '__name__') else ''
     labels_data_template_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}{}.npz'.format(
+            task.lower(), atlas, em, 'norm_' if norm_data else '', '{hemi}'))
     data, labels = [], []
     for hemi in utils.HEMIS:
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
-        bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
         data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
-        labels_data_output_name = '{}_{}'.format(d.conditions[0], func_name)
+        labels_data_output_name = '{}_{}{}'.format(d.conditions[0], func_name, '_norm' if norm_data else '')
     if data.ndim > 1 or data.shape[0] != len(labels):
         print('data ({}) should have one dim, and same length as the labels ({})'.format(data.shape, len(labels)))
         return
@@ -2789,10 +2803,8 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
              data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
 
 
-def calc_labels_power_bands(
-        subject, task, atlas, em,
-        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
-        labels_data_output_name='', precentiles=(3, 97), func_name='power'):
+def calc_labels_power_bands(subject, task, atlas, em, precentiles=(1, 99), func_name='power', norm_data=False,
+        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])):
     labels_data_template_fname = op.join(
         MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
     data, labels = defaultdict(list), []
@@ -2807,17 +2819,44 @@ def calc_labels_power_bands(
             data[band] = bands_power[band] if len(data[band]) == 0 else \
                 np.concatenate((data[band], np.array(bands_power[band])))
         labels.extend(d.names)
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
     for band in bands.keys():
         labels_data_output_name = '{}_{}_{}'.format(d.conditions[0], func_name, band)
         if data[band].ndim > 1 or data[band].shape[0] != len(labels):
             print('data ({}) should have one dim, and same length as the labels ({})'.format(data[band].shape, len(labels)))
             continue
-        data_minmax = utils.calc_abs_minmax(data[band], precentiles)
-        print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
-        fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+        if norm_data:
+            data_minmax = utils.calc_abs_minmax(data[band])
+            data[band] /= data_minmax
+            labels_data_output_name = '{}_norm'.format(labels_data_output_name)
+        data_max = utils.calc_max(data[band], norm_percs=precentiles)
+        print('calc_labels_func minmax: {}, {}'.format(0, data_max))
         np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
             names=np.array(labels), atlas=atlas, data=data[band], title=labels_data_output_name.replace('_', ' '),
-                 data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
+                 data_min=0, data_max=data_max, cmap='RdOrYl')
+
+
+def calc_labels_power_bands_diff(subject, task1, task2, precentiles=(1, 99), func_name='power', norm_data=False,
+        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])):
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+    for band in bands.keys():
+        d1 = utils.Bag(np.load(op.join(fol, '{}_{}_{}.npz'.format(task1, func_name, band))))
+        d2 = utils.Bag(np.load(op.join(fol, '{}_{}_{}.npz'.format(task2, func_name, band))))
+        if d1.atlas != d2.atlas:
+            raise Exception('Both labels data should have the same atlas!')
+        if not all(d1.names == d2.names):
+            raise Exception('Both labels data should have the same labels!')
+        data_diff = d1.data - d2.data
+        labels_data_output_name = op.join(fol, '{}-{}_{}_{}'.format(task1, task2, func_name, band))
+        if norm_data:
+            data_minmax = utils.calc_abs_minmax(data_diff)
+            data_diff /= data_minmax
+            labels_data_output_name = '{}_norm'.format(labels_data_output_name)
+        data_diff_minmax = utils.calc_abs_minmax(data_diff, precentiles)
+        print('calc_labels_power_bands_diff {} minmax: {}, {}'.format(band, -data_diff_minmax, data_diff_minmax))
+        np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
+            names=np.array(d1.names), atlas=d1.atlas, data=data_diff, title=labels_data_output_name.replace('_', ' '),
+                 data_min=-data_diff_minmax, data_max=data_diff_minmax, cmap='BuPu-RdOrYl')
 
 
 

@@ -165,7 +165,7 @@ def load_labels_data(labels_data_fname):
     else:
         if new_fname != labels_data_fname:
             shutil.copy(labels_data_fname, new_fname)
-        init_labels_data_files()
+        # init_labels_data_files()
     bpy.context.scene.find_closest_label_on_click = True
     _addon().find_closest_label(atlas=atlas, plot_contour=bpy.context.scene.plot_closest_label_contour)
     return True
