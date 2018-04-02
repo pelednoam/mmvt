@@ -783,8 +783,8 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     flags = '--lh_figure_fname "{}" --rh_figure_fname "{}" '.format(lh_figure_fname, rh_figure_fname) + \
             '--new_image_fname "{}" --data_max "{}" --data_min "{}" '.format(new_image_fname, data_max, data_min) + \
             '--colors_map {} --background_color {} '.format(_addon().get_colormap(), get_background_rgb_string()) + \
-            '--add_cb 1 --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
-                _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size) + \
+            '--add_cb {} --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
+                bpy.context.scene.save_views_with_cb, _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size) + \
             '--crop_figures 1 --remove_original_figures 1'
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)

@@ -159,7 +159,8 @@ def get_colorbar_ticks(ticks_num=2, prec=None):
         prec = bpy.context.scene.colorbar_prec
     step = (get_colorbar_max() - get_colorbar_min()) / (ticks_num - 1)
     ticks = np.arange(get_colorbar_min(), get_colorbar_max() + step, step)
-    return [PERC_FORMATS[prec].format(x) for x in ticks]
+    return [str(mu.round_n_digits(x, prec)) for x in ticks]
+    # return [PERC_FORMATS[prec].format(x) for x in ticks]
 
 
 def set_colormap(colormap_name):

@@ -1483,7 +1483,12 @@ def get_fcurves_ordering(obj_name, ch_names):
 
 def ceil_floor(x):
     import math
-    return math.ceil(x) if x > 0 else math.floor(x)
+    return math.ceil(x) if x < 0 else math.floor(x)
+
+
+def round_n_digits(x, n):
+    import math
+    return ceil_floor(x * math.pow(10, n)) / math.pow(10, n)
 
 
 def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):

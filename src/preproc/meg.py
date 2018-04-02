@@ -2847,7 +2847,7 @@ def calc_labels_power_bands_diff(subject, task1, task2, precentiles=(1, 99), fun
         if not all(d1.names == d2.names):
             raise Exception('Both labels data should have the same labels!')
         data_diff = d1.data - d2.data
-        labels_data_output_name = op.join(fol, '{}-{}_{}_{}'.format(task1, task2, func_name, band))
+        labels_data_output_name = '{}-{}_{}_{}'.format(task1, task2, func_name, band)
         if norm_data:
             data_minmax = utils.calc_abs_minmax(data_diff)
             data_diff /= data_minmax

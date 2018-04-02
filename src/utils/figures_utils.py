@@ -32,7 +32,7 @@ def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True,
         cb.set_ticks(ticks)
         cb.ax.tick_params(labelsize=ticks_font_size)
     if title != '':
-        cb.ax.set_ylabel(title, color='white' if facecolor in ['black', [0, 0, 0]] else 'black')
+        cb.ax.set_ylabel(title.strip(), color='white' if facecolor in ['black', [0, 0, 0]] else 'black')
     resize_and_move_ax(ax, ddw=0.07, ddh=0.8)
     if do_save:
         fname = op.join(fol, '{}_colorbar.jpg'.format(color_map_name))

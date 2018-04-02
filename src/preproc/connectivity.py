@@ -165,8 +165,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
-    labels_data_fnames = glob.glob(op.join(
-        conn_fol, '{}*labels_data_{}_{}_?h.npz'.format(args.identifier, args.atlas, labels_extract_mode)))
+    labels_data_fnames = utils.select_one_file(glob.glob(op.join(
+        conn_fol, '{}*labels_data*_{}_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
     if len(labels_data_fnames) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
@@ -175,14 +175,14 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         print("You don't have any connectivity data ({}) in {}, create it using the {} preproc".format(
             '*labels_data_{}_{}_?h.npz'.format(args.atlas, labels_extract_mode), conn_fol, args.connectivity_modality))
         return False
-    if len(labels_data_fnames) != 2:
-        print("You have more than one type of {} connectivity data in {}, please pick one".format(
-            args.connectivity_modality, conn_fol))
-        print(labels_data_fnames)
-        print('For now, just move the other files somewhere else...')
-        #todo: Write code that lets the user pick one
-        return False
-    labels_data_fname_template = labels_data_fnames[0].replace('rh', '{hemi}').replace('lh', '{hemi}')
+    # if len(labels_data_fnames) != 2:
+    #     print("You have more than one type of {} connectivity data in {}, please pick one".format(
+    #         args.connectivity_modality, conn_fol))
+    #     print(labels_data_fnames)
+    #     print('For now, just move the other files somewhere else...')
+    #     #todo: Write code that lets the user pick one
+    #     return False
+    labels_data_fname_template = labels_data_fnames.replace('rh', '{hemi}') #.replace('lh', '{hemi}')
     if not utils.both_hemi_files_exist(labels_data_fname_template):
         print("Can't find the labels data for both hemi in {}".format(conn_fol))
         return False
