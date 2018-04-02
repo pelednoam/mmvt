@@ -151,38 +151,44 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     data, names = {}, {}
     identifier = '{}_'.format(args.identifier) if args.identifier != '' else ''
     if 'cv' in args.connectivity_method:
-        static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_cv_{}.npz'.format(
-            args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
-        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_cv_{}.npz'.format(
-            args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
-        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_cv_mean_{}.npz'.format(
-            args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
-    conn_mean_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_mean.npy'.format(
-            args.connectivity_modality, identifier, args.connectivity_method[0], labels_extract_mode))
+        static_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_cv_{}.npz'.format(
+            args.connectivity_modality, identifier, args.atlas, args.connectivity_method[0], labels_extract_mode))
+        static_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_cv_{}.npz'.format(
+            args.connectivity_modality, identifier, args.atlas, args.connectivity_method[0], labels_extract_mode))
+        static_mean_output_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_cv_mean_{}.npz'.format(
+            args.connectivity_modality, identifier, args.atlas, args.connectivity_method[0], labels_extract_mode))
+    conn_mean_mat_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_{}_mean.npy'.format(
+            args.connectivity_modality, identifier, args.atlas, args.connectivity_method[0], labels_extract_mode))
     labels_avg_output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_{}{}_{}_{}_labels_avg.npz'.format(
         args.connectivity_modality, identifier, args.connectivity_method[0], args.atlas, '{hemi}'))
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
-    labels_data_fnames = utils.select_one_file(glob.glob(op.join(
-        conn_fol, '{}*labels_data*_{}_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
-    if len(labels_data_fnames) == 0:
+    if args.labels_data_name != '':
+        labels_data_fname = op.join(conn_fol, args.labels_data_name)
+    else:
+        labels_data_fname = utils.select_one_file(glob.glob(op.join(
+            conn_fol, '{}*labels_data*_{}_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
+    if len(labels_data_fname) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
-        labels_data_fnames = [f for f in glob.glob(op.join(conn_fol, '*labels_data*.npz')) if 'norm' not in utils.namebase(f)]
-    if len(labels_data_fnames) == 0:
+        labels_data_fname = [f for f in glob.glob(op.join(conn_fol, '*labels_data*.npz')) if 'norm' not in utils.namebase(f)]
+    if len(labels_data_fname) == 0:
         print("You don't have any connectivity data ({}) in {}, create it using the {} preproc".format(
             '*labels_data_{}_{}_?h.npz'.format(args.atlas, labels_extract_mode), conn_fol, args.connectivity_modality))
         return False
-    # if len(labels_data_fnames) != 2:
+    # if len(labels_data_fname) != 2:
     #     print("You have more than one type of {} connectivity data in {}, please pick one".format(
     #         args.connectivity_modality, conn_fol))
-    #     print(labels_data_fnames)
+    #     print(labels_data_fname)
     #     print('For now, just move the other files somewhere else...')
     #     #todo: Write code that lets the user pick one
     #     return False
-    labels_data_fname_template = labels_data_fnames.replace('rh', '{hemi}') #.replace('lh', '{hemi}')
+    if '{hemi}' not in labels_data_fname:
+        labels_data_fname_template = labels_data_fname.replace('rh', '{hemi}').replace('lh', '{hemi}')
+    else:
+        labels_data_fname_template = labels_data_fname
     if not utils.both_hemi_files_exist(labels_data_fname_template):
         print("Can't find the labels data for both hemi in {}".format(conn_fol))
         return False
@@ -861,6 +867,10 @@ def calc_fmri_corr_degree(subject, identifier='', threshold=0.7, connectivity_me
     return op.isfile(output_fname)
 
 
+def call_main(args):
+    pu.run_on_subjects(args, main)
+
+
 def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_rois_matlab_connectivity'):
         flags['calc_rois_matlab_connectivity'] = calc_rois_matlab_connectivity(subject, args)
@@ -905,6 +915,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--connectivity_method', help='', required=False, default='corr,cv', type=au.str_arr_type)
     parser.add_argument('--labels_extract_mode', help='', required=False, default='mean_flip', type=au.str_arr_type)
     parser.add_argument('--connectivity_modality', help='', required=False, default='fmri')
+    parser.add_argument('--labels_data_name', help='', required=False, default='')
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--stat', help='', required=False, default=STAT_DIFF, type=int)
@@ -947,10 +958,6 @@ def read_cmd_args(argv=None):
         args.stat = STAT_AVG
     # print(args)
     return args
-
-
-def call_main(args):
-    pu.run_on_subjects(args, main)
 
 
 if __name__ == '__main__':

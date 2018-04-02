@@ -94,7 +94,7 @@ def calc_meg_connectivity(args):
         atlas='laus125',
         function='calc_lables_connectivity',
         connectivity_modality='meg',
-        connectivity_method='pli', #,cv',
+        connectivity_method='pli',
         windows_length=500,
         windows_shift=100,
         # sfreq=1000.0,
@@ -105,7 +105,7 @@ def calc_meg_connectivity(args):
         recalc_connectivity=True,
         n_jobs=args.n_jobs
     ))
-    pu.run_on_subjects(args, con.main)
+    con.call_main(args)
 
 
 def calc_electrodes_rest_connectivity(args):

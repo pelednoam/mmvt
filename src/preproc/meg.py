@@ -2791,15 +2791,16 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
         data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
-        labels_data_output_name = '{}_{}{}'.format(d.conditions[0], func_name, '_norm' if norm_data else '')
+        labels_data_output_name = '{}_{}_{}{}'.format(d.conditions[0], atlas, func_name, '_norm' if norm_data else '')
     if data.ndim > 1 or data.shape[0] != len(labels):
         print('data ({}) should have one dim, and same length as the labels ({})'.format(data.shape, len(labels)))
         return
     data_minmax = utils.calc_abs_minmax(data, precentiles)
     print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+    title = '{} {}'.format(d.conditions[0], func_name).replace('_', ' ')
     np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
-        names=np.array(labels), atlas=atlas, data=data, title=labels_data_output_name.replace('_', ' '),
+        names=np.array(labels), atlas=atlas, data=data, title=title,
              data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
 
 
