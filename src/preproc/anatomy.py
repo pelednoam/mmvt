@@ -401,11 +401,12 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
             shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas)),
                         op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
         return True
-    existing_freesurfer_annotations = ['aparc.DKTatlas40.annot', 'aparc.annot', 'aparc.a2009s.annot']
-    if '{}.annot'.format(atlas) in existing_freesurfer_annotations:
+
+    if is_fs_atlas(atlas):
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
-        if not utils.both_hemi_files_exist(annotation_fname_template):
+        save_annot_file = False
+        if not utils.both_hemi_files_exist(annotation_fname_template): # or overwrite_annotation:
             utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
             annotations_exist = fu.create_annotation_file(
                 subject, atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
@@ -419,14 +420,25 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     if save_annot_file and (overwrite_annotation or not annotations_exist):
         labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, n_jobs)
     if save_annot_file:
-        return utils.both_hemi_files_exist(op.join(
-            SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas)))
+        return both_annot_files_exist(subject, atlas)
     else:
-        return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))) > 0
+        return len(glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))) > 0 or \
+               both_annot_files_exist(subject, atlas)
+
+
+def both_annot_files_exist(subject, atlas):
+    return utils.both_hemi_files_exist(op.join(
+        SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas)))
+
+
+def is_fs_atlas(atlas):
+    return atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
 
 
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
                     overwrite_vertices_labels_lookup=False, n_jobs=6):
+    if is_fs_atlas(atlas) and both_annot_files_exist(subject, atlas):
+        return True
     annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
     if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
