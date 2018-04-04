@@ -72,7 +72,8 @@ def find_electrodes_pipeline():
         print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
         print('Finding local maxima')
         ct_voxels = fect.find_all_local_maxima(
-            DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold, find_nei_maxima=True, max_iters=100)
+            DellPanel.ct_data, ct_voxels, bpy.context.scene.dell_ct_threshold,
+            find_nei_maxima=bpy.context.scene.dell_find_nei_maxima, max_iters=100)
         np.save(local_maxima_fname, ct_voxels)
     else:
         ct_voxels = np.load(local_maxima_fname)
@@ -108,6 +109,15 @@ def refresh_pos_and_names():
         subject_fol, DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
+
+
+def create_new_electrodes(x, y, z):
+    print('creating {}: {}'.format(elc_name, (x, y, z)))
+    mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
+    cur_obj = bpy.data.objects[elc_name]
+    cur_obj.select = True
+    cur_obj.parent = bpy.data.objects[parnet_name]
+    mu.create_and_set_material(cur_obj)
 
 
 def export_electrodes(group_hemi_default='G'):
@@ -498,6 +508,7 @@ def dell_draw(self, context):
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         # layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+        layout.prop(context.scene, 'dell_find_nei_maxima', text='Find local nei maxima')
         layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
         layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
@@ -887,6 +898,7 @@ bpy.types.Scene.dell_brain_mask_sigma = bpy.props.IntProperty(min=0, max=20, def
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_binary_erosion = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.dell_find_nei_maxima = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_move_x = bpy.props.FloatProperty(default=0, step=1, name='x', update=dell_move_elec_update)
 bpy.types.Scene.dell_move_y = bpy.props.FloatProperty(default=0, step=1, name='y', update=dell_move_elec_update)

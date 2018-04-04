@@ -3,6 +3,7 @@ import numpy.linalg as npl
 import os.path as op
 import traceback
 import glob
+from itertools import product
 
 try:
     import bpy
@@ -99,8 +100,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     # cross_vert, cross_horiz = calc_cross(self[modality].coordinates, self[modality].sizes, self[modality].flips)
     images = {}
     xaxs, yaxs = [1, 0, 0], [2, 2, 1]
-    max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in zip(xaxs, modalities)])
-    max_yaxs_size = max([self[modality].sizes[yax] for yax, modality in zip(yaxs, modalities)])
+    max_xaxs_size = max([self[modality].sizes[xax] for xax, modality in product(yaxs, modalities)])
+    max_yaxs_size = max([self[modality].sizes[yax] for yax, modality in product(yaxs, modalities)])
     max_sizes = (max_xaxs_size, max_yaxs_size)
 
     for ii, xax, yax, prespective, label in zip(
@@ -207,11 +208,13 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom
                       mark_voxel=True):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
 
-    # todo: check all the other cases
     extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
     if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
         dark = np.zeros((colors.shape[0], extra[0], 3))
         colors = np.concatenate((dark, colors, dark), axis=1)
+    if max_sizes[1] > sizes[1] and max_sizes[0] == sizes[0]:
+        dark = np.zeros((extra[1], colors.shape[1], 3))
+        colors = np.concatenate((dark, colors, dark), axis=0)
 
     if zoom_around_voxel and mark_voxel:
         # todo: in very close zoom the red doesn't cover the whole pixel
@@ -230,7 +233,7 @@ def add_cross_to_pixels(pixels, max_sizes, cross, extra):
                 pixels[x, cross[1] + extra[0]] = [0, 1, 0, 1]
         if 0 <= cross[0] < max_sizes[0]:  # data.shape[0]:
             for y in range(max_sizes[1]):  # data.shape[1]):
-                pixels[cross[0], y] = [0, 1, 0, 1]
+                pixels[cross[0] + extra[1], y] = [0, 1, 0, 1]
     except:
         pass
     return pixels
@@ -351,7 +354,7 @@ def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
     from scipy.ndimage import zoom
 
     h, w = img.shape[:2]
-    zoom_factor = h / (pixels_zoom * 2)
+    zoom_factor = max(h, w) / (pixels_zoom * 2)
 
     # width and height of the zoomed image
     zh = int(np.round(zoom_factor * h))

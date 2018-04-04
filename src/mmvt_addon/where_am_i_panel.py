@@ -87,6 +87,7 @@ def where_i_am_draw(self, context):
     row.prop(context.scene, "tkreg_ras_x", text="x")
     row.prop(context.scene, "tkreg_ras_y", text="y")
     row.prop(context.scene, "tkreg_ras_z", text="z")
+    row.operator(ClipboardToTkreg.bl_idname, text="", icon='PASTEDOWN')
     if not t1_trans() is None:
         layout.label(text='mni305:')
         row = layout.row(align=0)
@@ -264,7 +265,7 @@ def set_tkreg_ras(coo, move_cursor=True):
 
 
 def get_tkreg_ras():
-    return (bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z)
+    return np.array([bpy.context.scene.tkreg_ras_x, bpy.context.scene.tkreg_ras_y, bpy.context.scene.tkreg_ras_z])
 
 
 def set_mni(coo):
@@ -277,7 +278,7 @@ def set_mni(coo):
 
 
 def get_ras():
-    return (bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z)
+    return np.array([bpy.context.scene.ras_x, bpy.context.scene.ras_y, bpy.context.scene.ras_z])
 
 
 def set_voxel(coo):
@@ -290,7 +291,7 @@ def set_voxel(coo):
 
 
 def get_T1_voxel():
-    return (bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z)
+    return np.array([bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z])
 
 
 def set_ct_coo(coo):
@@ -303,7 +304,7 @@ def set_ct_coo(coo):
 
 
 def get_ct_voxel():
-    return (bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z)
+    return np.array([bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z])
 
 
 def apply_trans(trans, points):
@@ -636,6 +637,31 @@ def get_slicer_state(modality):
     return WhereAmIPanel.slicer_state.get(modality, None)
 
 
+def clipboard_to_coords():
+    clipboard = bpy.context.window_manager.clipboard
+    if ',' in clipboard:
+        coords = clipboard.split(',')
+    elif ' ' in clipboard:
+        coords = clipboard.split(' ')
+    else:
+        print("Can't find 3 coordinates in clipboard!")
+        return None
+
+    coords = [x.strip() for x in coords]
+    if all([mu.is_float(x) for x in coords]):
+        return [float(x) for x in coords]
+    else:
+        print("Can't find 3 coordinates in clipboard! '{}'".format(clipboard))
+        return None
+
+
+def clipboard_to_tkreg():
+    coords = clipboard_to_coords()
+    if coords is not None:
+        set_tkreg_ras(coords)
+        create_slices()
+
+
 class WaitForSlices(bpy.types.Operator):
     bl_idname = "mmvt.wait_for_slices"
     bl_label = "wait_for_slices"
@@ -687,6 +713,17 @@ class ChooseVoxelID(bpy.types.Operator):
         obj = bpy.data.objects.get(bpy.context.scene.where_am_i_atlas, None)
         if not obj is None:
             obj.select = True
+        return {"FINISHED"}
+
+
+class ClipboardToTkreg(bpy.types.Operator):
+    bl_idname = "mmvt.clipboard_to_tkreg"
+    bl_label = "mmvt clipboard_to_tkreg"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        clipboard_to_tkreg()
         return {"FINISHED"}
 
 
@@ -900,6 +937,7 @@ def register():
         bpy.utils.register_class(ClearWhereAmI)
         bpy.utils.register_class(ClosestLabel)
         bpy.utils.register_class(ChooseVoxelID)
+        bpy.utils.register_class(ClipboardToTkreg)
         bpy.utils.register_class(WaitForSlices)
         # print('Where am I Panel was registered!')
     except:
@@ -913,6 +951,7 @@ def unregister():
         bpy.utils.unregister_class(ClearWhereAmI)
         bpy.utils.unregister_class(ClosestLabel)
         bpy.utils.unregister_class(ChooseVoxelID)
+        bpy.utils.unregister_class(ClipboardToTkreg)
         bpy.utils.unregister_class(WaitForSlices)
     except:
         # print("Can't unregister Where am I Panel!")

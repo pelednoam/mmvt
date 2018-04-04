@@ -382,6 +382,30 @@ def import_eeg_sensors(overwrite_sensors=False):
     print('EEG sensors importing is Finished ')
 
 
+def get_electrodes_radius():
+    return bpy.context.scene.electrodes_radius
+
+
+def create_electrode(x, y, z, elc_name, electrode_size=None, layers_array=None, parnet_name=''):
+    if parnet_name == '':
+        parnet_name = _addon().electrodes_panel_parent
+    if electrode_size is None:
+        electrode_size = bpy.context.scene.electrodes_radius
+    if layers_array is None:
+        layers_array = [False] * 20
+        layers_array[_addon().ELECTRODES_LAYER] = True
+    if not bpy.data.objects.get(elc_name) is None:
+        elc_obj = bpy.data.objects[elc_name]
+        elc_obj.location = [x, y, z]
+    else:
+        print('creating {}: {}'.format(elc_name, (x, y, z)))
+        mu.create_sphere((x, y, z), electrode_size, layers_array, elc_name)
+        cur_obj = bpy.data.objects[elc_name]
+        cur_obj.select = True
+        cur_obj.parent = bpy.data.objects[parnet_name]
+        mu.create_and_set_material(cur_obj)
+
+
 def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrode_size=None,
                       parnet_name='Deep_electrodes', elecs_pos=None, elecs_names=None, overwrite=False):
     if electrodes_layer is None:
@@ -408,26 +432,15 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
             print('Wrong number of electrodes, deleting the object')
             mu.delete_hierarchy(parnet_name)
 
-    electrode_size = bpy.context.scene.electrodes_radius
     layers_array = [False] * 20
     create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
-
     layers_array = [False] * 20
     layers_array[electrodes_layer] = True
 
     for (x, y, z), elc_name in zip(elecs_pos, elecs_names):
         if not isinstance(elc_name, str):
             elc_name = elc_name.astype(str)
-        if not bpy.data.objects.get(elc_name) is None:
-            elc_obj = bpy.data.objects[elc_name]
-            elc_obj.location = [x * 0.1, y * 0.1, z * 0.1]
-        else:
-            print('creating {}: {}'.format(elc_name, (x, y, z)))
-            mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
-            cur_obj = bpy.data.objects[elc_name]
-            cur_obj.select = True
-            cur_obj.parent = bpy.data.objects[parnet_name]
-            mu.create_and_set_material(cur_obj)
+            create_electrode(x * 0.1, y * 0.1, z * 0.1, elc_name, electrode_size, layers_array, parnet_name)
 
 
 @mu.tryit(None, False)

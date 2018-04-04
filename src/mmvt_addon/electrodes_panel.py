@@ -189,10 +189,11 @@ def select_electrode(current_electrode):
 
 
 def electode_was_manually_selected(selected_electrode_name):
-    if not ElecsPanel.init:
-        tkreg_ras = bpy.data.objects[selected_electrode_name].matrix_world.to_translation() * 10
-        _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
-        _addon().create_slices(pos=tkreg_ras)
+    bpy.context.scene.cursor_location = bpy.data.objects[selected_electrode_name].matrix_world.to_translation()
+    tkreg_ras = bpy.context.scene.cursor_location * 10
+    _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
+    _addon().create_slices(pos=tkreg_ras)
+    if not ElecsPanel.init or len(ElecsPanel.leads) == 0:
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]
@@ -299,7 +300,10 @@ def show_hide_electrodes(val):
 
 
 def get_elec_hemi(elec_name):
-    return ElecsPanel.groups_hemi[ElecsPanel.groups[elec_name]]
+    if elec_name in ElecsPanel.groups and ElecsPanel.groups[elec_name] in ElecsPanel.groups_hemi:
+        return ElecsPanel.groups_hemi[ElecsPanel.groups[elec_name]]
+    else:
+        return ''
 
 
 def updade_lead_hemis():
