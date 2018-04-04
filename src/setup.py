@@ -288,7 +288,7 @@ def install_blender_reqs(gui=True):
                 'Right click on the "Command Prompt" shortcut from the star menu and choose "Run as administrator"\n' +
                 '2) Change the directory to "{}".\n'.format(blender_bin_fol) +
                 '3) Run "{}"\n'.format(pip_cmd) +
-                '4) Run "{}"\nGood luck!')
+                '4) Run "{}"\nGood luck!'.format(install_cmd))
             # from src.mmvt_addon.scripts import install_blender_reqs
             # install_blender_reqs.wrap_blender_call(args.only_verbose)
         os.chdir(current_dir)
