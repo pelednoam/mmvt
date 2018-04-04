@@ -141,7 +141,8 @@ def _electrodes_update():
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
     else:
-        print('lookup table is None!')
+        pass
+        # print('lookup table is None!')
     # mu.change_fcurves_colors(bpy.data.objects[current_electrode])
     # select_electrode(current_electrode)
     bpy.data.objects[current_electrode].select = True
@@ -168,7 +169,7 @@ def electrodes_selection_coloring():
         ElecsPanel.prev_electrodes.remove(current_electrode)
     else:
         clear_electrodes_selection()
-    print(get_selected_electrodes())
+    # print(get_selected_electrodes())
 
 
 def get_selected_electrodes():
@@ -291,6 +292,14 @@ def show_hide_hemi_electrodes(hemi, val):
         if elec_hemi == hemi:
             elec_obj.hide = not val
             elec_obj.hide_render = not val
+    leads_parent = bpy.data.objects.get('leads', None)
+    if leads_parent is not None:
+        for lead_obj in leads_parent.children:
+            lead_group = lead_obj.name.split('_')[0]
+            group_hemi = get_elec_hemi(ElecsPanel.groups_first_electrode[lead_group])
+            if group_hemi == hemi:
+                lead_obj.hide = not val
+                lead_obj.hide_render = not val
 
 
 def show_hide_electrodes(val):

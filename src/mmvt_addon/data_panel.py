@@ -440,7 +440,7 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
     for (x, y, z), elc_name in zip(elecs_pos, elecs_names):
         if not isinstance(elc_name, str):
             elc_name = elc_name.astype(str)
-            create_electrode(x * 0.1, y * 0.1, z * 0.1, elc_name, electrode_size, layers_array, parnet_name)
+        create_electrode(x * 0.1, y * 0.1, z * 0.1, elc_name, electrode_size, layers_array, parnet_name)
 
 
 @mu.tryit(None, False)

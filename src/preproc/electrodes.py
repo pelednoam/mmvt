@@ -511,7 +511,7 @@ def find_groups_hemi(electrodes, transformed_positions, bipolar):
     groups_hemi = {}
     for group, positions in groups.items():
         trans_pos = np.array(positions)
-        hemi = 'rh' if sum(trans_pos[:, 1] < 0) > 0 else 'lh'
+        hemi = 'lh' if sum(trans_pos[:, 1] < 0) > 0 else 'rh'
         groups_hemi[group] = hemi
     return groups_hemi
 

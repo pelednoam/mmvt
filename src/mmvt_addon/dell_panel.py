@@ -54,11 +54,8 @@ def dell_move_elec_update(self, context):
     coo = (bpy.context.scene.dell_move_x, bpy.context.scene.dell_move_y, bpy.context.scene.dell_move_z)
     _addon().set_ct_coo(coo)
     tkreg_ras = _addon().get_tkreg_ras()
-    elc.location[0] = tkreg_ras[0] * 0.1
-    elc.location[1] = tkreg_ras[1] * 0.1
-    elc.location[2] = tkreg_ras[2] * 0.1
-    # tkreg_ras = bpy.data.objects[elc.name].matrix_world.to_translation() * 10
-    # _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
+    for k in range(3):
+        elc.location[k] = tkreg_ras[k] * 0.1
     _addon().create_slices(pos=tkreg_ras)
 
 
@@ -110,17 +107,13 @@ def refresh_pos_and_names():
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     DellPanel.hemis = fect.find_electrodes_hemis(
         subject_fol, DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
+    DellPanel.names = name_electrodes(DellPanel.hemis)
+    for new_name, obj in zip(DellPanel.names, objects):
+        obj.name = new_name
+    for obj in objects:
+        obj.name = obj.name.replace('.001', '')
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
             op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
-
-
-def create_new_electrodes(x, y, z):
-    print('creating {}: {}'.format(elc_name, (x, y, z)))
-    mu.create_sphere((x * 0.1, y * 0.1, z * 0.1), electrode_size, layers_array, elc_name)
-    cur_obj = bpy.data.objects[elc_name]
-    cur_obj.select = True
-    cur_obj.parent = bpy.data.objects[parnet_name]
-    mu.create_and_set_material(cur_obj)
 
 
 def export_electrodes(group_hemi_default='G'):
