@@ -51,11 +51,14 @@ def dell_move_elec_update(self, context):
     if not DellPanel.update_position:
         return
     elc = context.active_object
-    elc.location[0] = bpy.context.scene.dell_move_x
-    elc.location[1] = bpy.context.scene.dell_move_y
-    elc.location[2] = bpy.context.scene.dell_move_z
-    tkreg_ras = bpy.data.objects[elc.name].matrix_world.to_translation() * 10
-    _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
+    coo = (bpy.context.scene.dell_move_x, bpy.context.scene.dell_move_y, bpy.context.scene.dell_move_z)
+    _addon().set_ct_coo(coo)
+    tkreg_ras = _addon().get_tkreg_ras()
+    elc.location[0] = tkreg_ras[0] * 0.1
+    elc.location[1] = tkreg_ras[1] * 0.1
+    elc.location[2] = tkreg_ras[2] * 0.1
+    # tkreg_ras = bpy.data.objects[elc.name].matrix_world.to_translation() * 10
+    # _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
     _addon().create_slices(pos=tkreg_ras)
 
 
@@ -426,9 +429,12 @@ def dell_ct_electrode_was_selected(elc_name):
     group = [DellPanel.names[g] for g in group]
     DellPanel.current_log = [(elc, g) for (elc, g) in DellPanel.log if set(g) == set(group)]
     DellPanel.update_position = False
-    bpy.context.scene.dell_move_x = bpy.data.objects[elc_name].location[0]
-    bpy.context.scene.dell_move_y = bpy.data.objects[elc_name].location[1]
-    bpy.context.scene.dell_move_z = bpy.data.objects[elc_name].location[2]
+    # tkreg_ras = bpy.data.objects[elc_name].location * 10
+    # tkreg_ras2 = _addon().get_tkreg_ras()
+    ct_vox = _addon().get_ct_voxel()
+    bpy.context.scene.dell_move_x = ct_vox[0]# bpy.data.objects[elc_name].location[0]
+    bpy.context.scene.dell_move_y = ct_vox[1]# bpy.data.objects[elc_name].location[1]
+    bpy.context.scene.dell_move_z = ct_vox[2]# bpy.data.objects[elc_name].location[2]
     DellPanel.update_position = True
 
 
@@ -900,9 +906,9 @@ bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_binary_erosion = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_find_nei_maxima = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.dell_move_x = bpy.props.FloatProperty(default=0, step=1, name='x', update=dell_move_elec_update)
-bpy.types.Scene.dell_move_y = bpy.props.FloatProperty(default=0, step=1, name='y', update=dell_move_elec_update)
-bpy.types.Scene.dell_move_z = bpy.props.FloatProperty(default=0, step=1, name='z', update=dell_move_elec_update)
+bpy.types.Scene.dell_move_x = bpy.props.IntProperty(default=0, step=1, name='x', update=dell_move_elec_update)
+bpy.types.Scene.dell_move_y = bpy.props.IntProperty(default=0, step=1, name='y', update=dell_move_elec_update)
+bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z', update=dell_move_elec_update)
 
 
 class DellPanel(bpy.types.Panel):

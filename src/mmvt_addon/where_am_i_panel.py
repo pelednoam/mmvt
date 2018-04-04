@@ -809,6 +809,7 @@ class ClearWhereAmI(bpy.types.Operator):
         # where_i_am_draw(self, context)
         return {"FINISHED"}
 
+
 bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
                                                       update=where_i_am_draw)
 bpy.types.Scene.ras_x = bpy.props.FloatProperty(update=ras_coo_update)

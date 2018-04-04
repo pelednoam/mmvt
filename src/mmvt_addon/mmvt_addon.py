@@ -413,6 +413,7 @@ where_am_i = where_am_i_panel
 set_mni = where_am_i_panel.set_mni
 set_tkreg_ras = where_am_i_panel.set_tkreg_ras
 set_voxel = where_am_i_panel.set_voxel
+set_ct_coo = where_am_i_panel.set_ct_coo
 find_closest_obj = where_am_i_panel.find_closest_obj
 create_slices = where_am_i_panel.create_slices
 slices_were_clicked = where_am_i_panel.slices_were_clicked
