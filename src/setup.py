@@ -15,7 +15,7 @@ def copy_resources_files(mmvt_root_dir, only_verbose=False):
     resource_dir = utils.get_resources_fol()
     utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
     files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'FreeSurferColorLUT.txt',
-             'empty_subject.blend']
+             'empty_subject.blend', 'high_level_atlas.csv']
     cm_files = glob.glob(op.join(resource_dir, 'color_maps', '*.npy'))
     all_files_exist = utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
     all_cm_files_exist = utils.all([op.isfile(
@@ -288,7 +288,7 @@ def install_blender_reqs(gui=True):
                 'Right click on the "Command Prompt" shortcut from the star menu and choose "Run as administrator"\n' +
                 '2) Change the directory to "{}".\n'.format(blender_bin_fol) +
                 '3) Run "{}"\n'.format(pip_cmd) +
-                '4) Run "{}"\nGood luck!')
+                '4) Run "{}"\nGood luck!'.format(install_cmd))
             # from src.mmvt_addon.scripts import install_blender_reqs
             # install_blender_reqs.wrap_blender_call(args.only_verbose)
         os.chdir(current_dir)

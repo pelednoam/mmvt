@@ -2032,6 +2032,18 @@ def plot_labels(labels_names, colors, atlas):
         label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
         labels_names_fix.append(label_fix)
     labels = [l for l in atlas_labels if l.name in labels_names_fix]
+    if len(labels) < len(labels_names):
+        dump_fname = op.join(mu.get_user_fol(), 'logs', '{}_labels.txt'.format(atlas))
+        print("Can't find all the labels ({}) in the {} atlas!".format(labels_names, atlas))
+        print("Take a look here for the {} labels names: {}".format(atlas, dump_fname))
+        with open(dump_fname, 'w') as output_file:
+            output_file.write("Can't find all the labels ({}) in the {} atlas!\n".format(labels_names, atlas))
+            output_file.write("Take a look here for the {} labels names:\n".format(atlas))
+            for label in atlas_labels:
+                output_file.write('{}\n'.format(label.name))
+        import webbrowser
+        webbrowser.open_new(dump_fname)
+        return
     labels.sort(key=lambda x: labels_names_fix.index(x.name))
     # todo: check if bpy.context.scene.color_rois_homogeneously
     for label, color in zip(labels, colors):
