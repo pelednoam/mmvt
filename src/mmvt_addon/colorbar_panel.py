@@ -12,11 +12,19 @@ def _addon():
     return ColorbarPanel.addon
 
 
+# todo: change the name
+def change_colorbar_default_cm(val):
+    if len(val) != 2:
+        print('default cm should be a tuple of 2 default maps')
+    else:
+        ColorbarPanel.default_cm = val
+
+
 def set_colorbar_defaults():
     set_colorbar_title('')
     set_colorbar_max_min(1, -1, True)
     set_colorbar_prec(2)
-    set_colormap('BuPu-YlOrRd')
+    set_colormap(ColorbarPanel.default_cm[1])
 
 
 def set_colorbar_default_cm():
@@ -28,9 +36,9 @@ def set_colorbar_default_cm():
         data_min = bpy.context.scene.colorbar_min = bpy.context.scene.coloring_lower_threshold
     if not (data_min == 0 and data_max == 0) and not colorbar_values_are_locked():
         if data_min == 0 or np.sign(data_min) == np.sign(data_max):
-            set_colormap('YlOrRd')
+            set_colormap(ColorbarPanel.default_cm[0])
         else:
-            set_colormap('BuPu-YlOrRd')
+            set_colormap(ColorbarPanel.default_cm[1])
 
 
 def get_cm():
@@ -312,6 +320,7 @@ class ColorbarPanel(bpy.types.Panel):
     colorbar_updated = False
     cm = None
     maps_names = []
+    default_cm = ('YlOrRd', 'BuPu-YlOrRd')
 
     def draw(self, context):
         if ColorbarPanel.init:

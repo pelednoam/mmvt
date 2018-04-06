@@ -379,6 +379,7 @@ set_colorbar_prec = colorbar_panel.set_colorbar_prec
 get_colorbar_prec = colorbar_panel.get_colorbar_prec
 set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
+change_colorbar_default_cm = colorbar_panel.change_colorbar_default_cm
 get_colorbar_ticks = colorbar_panel.get_colorbar_ticks
 get_cb_ticks_num = colorbar_panel.get_cb_ticks_num
 set_cb_ticks_num = colorbar_panel.set_cb_ticks_num

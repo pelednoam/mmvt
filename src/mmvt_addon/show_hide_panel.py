@@ -33,7 +33,9 @@ ANGLES_DICT = {
     ROT_CORONAL_ANTERIOR: CORONAL_ANTERIOR,
     ROT_CORONAL_POSTERIOR: CORONAL_POSTERIOR,
     ROT_AXIAL_SUPERIOR: AXIAL_SUPERIOR,
-    ROT_AXIAL_INFERIOR: AXIAL_INFERIOR
+    ROT_AXIAL_INFERIOR: AXIAL_INFERIOR,
+    ROT_MEDIAL_LEFT: None,
+    ROT_MEDIAL_RIGHT: None
 }
 ANGLES_NAMES_DICT = {
     ROT_SAGITTAL_LEFT: 'left',
@@ -54,10 +56,19 @@ def _addon():
 def rotate_view(view_ang):
     rotation_in_quaternions = ANGLES_DICT.get(view_ang, '')
     if rotation_in_quaternions != '':
-        mu.rotate_view3d(rotation_in_quaternions)
+        if view_ang == ROT_MEDIAL_LEFT:
+            _addon().hide_hemi('rh')
+            _addon().show_hemi('lh')
+            mu.rotate_view3d(ANGLES_DICT[ROT_SAGITTAL_RIGHT])
+        elif view_ang == ROT_MEDIAL_RIGHT:
+            _addon().show_hemi('rh')
+            _addon().hide_hemi('lh')
+            mu.rotate_view3d(ANGLES_DICT[ROT_SAGITTAL_LEFT])
+        else:
+            mu.rotate_view3d(rotation_in_quaternions)
     else:
         print('angle should be one of ROT_SAGITTAL_LEFT, ROT_SAGITTAL_RIGHT, ROT_CORONAL_ANTERIOR, ' + \
-              'ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR, ROT_AXIAL_INFERIOR')
+              'ROT_CORONAL_POSTERIOR, ROT_AXIAL_SUPERIOR, ROT_AXIAL_INFERIOR,ROT_MEDIAL_LEFT,ROT_MEDIAL_RIGHT')
 
 
 def view_name(view):

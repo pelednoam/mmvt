@@ -80,10 +80,12 @@ class ScriptsPanel(bpy.types.Panel):
 def init(addon):
     ScriptsPanel.addon = addon
     user_fol = mu.get_user_fol()
-    scripts_files = glob.glob(op.join(mu.get_parent_fol(user_fol), 'scripts', '*.py'))
+    scripts_files = glob.glob(op.join(mu.get_parent_fol(user_fol), 'scripts', '*.py')) + \
+                    glob.glob(op.join(mu.get_mmvt_code_root(), 'src', 'examples', 'scripts', '*.py'))
     if len(scripts_files) == 0:
         return None
     sys.path.append(op.join(mu.get_parent_fol(user_fol), 'scripts'))
+    sys.path.append(op.join(mu.get_mmvt_code_root(), 'src', 'examples', 'scripts'))
     scripts_files = [f for f in scripts_files if check_script(mu.namebase(f))]
     files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

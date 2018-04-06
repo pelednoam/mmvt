@@ -100,7 +100,8 @@ def load_camera(camera_fname=''):
         RenderFigure.update_camera = True
         update_camera()
     else:
-        print('No camera file was found in {}!'.format(camera_fname))
+        pass
+        # print('No camera file was found in {}!'.format(camera_fname))
 
 
 def get_view_mode():
@@ -168,7 +169,7 @@ def grab_camera(self=None, do_save=True, overwrite=True):
             camera_fname = op.join(mu.get_user_fol(), 'camera', 'camera.pkl')
             if not op.isfile(camera_fname) or overwrite:
                 mu.save((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location), camera_fname)
-                print('Camera location was saved to {}'.format(camera_fname))
+                # print('Camera location was saved to {}'.format(camera_fname))
                 print((X_rotation, Y_rotation, Z_rotation, X_location, Y_location, Z_location))
         else:
             mu.message(self, "Can't find the folder {}".format(mu.get_user_fol(), 'camera'))
@@ -686,7 +687,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
             '{}_'.format(hemi) if hemi != '' else '',
             '{}_'.format(img_name_prefix) if img_name_prefix != '' else '', surf_name, view_name)
 
-    def should_save_image(image_name):
+    def should_save_image(img_name):
         return overwrite or not op.isfile(get_full_output_fname(img_name))
 
     def save_medial_views():
@@ -749,7 +750,8 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
             img_name, quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
         images_names.append(image_fname)
     # if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
-    save_medial_views()
+    if views is None:
+        save_medial_views()
     # todo: doesn't work
     mu.rotate_view3d(org_view_ang)
     mu.center_view()
