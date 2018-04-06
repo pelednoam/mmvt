@@ -183,6 +183,7 @@ def render_draw(self, context):
     layout.operator(SaveImage.bl_idname, text='Save image', icon='ROTATE')
     func_name = 'Render' if get_view_mode() == 'CAMERA' else 'Save'
     layout.operator(SaveAllViews.bl_idname, text='{} all perspectives'.format(func_name), icon='EDITMODE_HLT')
+    layout.operator(SaveColorbar.bl_idname, text='Save the colorbar'.format(func_name), icon='SETTINGS')
     row = layout.row(align=0)
     row.prop(context.scene, 'save_views_with_cb', text="Colorbar")
     if bpy.context.scene.save_views_with_cb:
@@ -292,6 +293,17 @@ bpy.types.Scene.background_color = bpy.props.EnumProperty(
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
+
+
+class SaveColorbar(bpy.types.Operator):
+    bl_idname = "mmvt.save_the_colorbar"
+    bl_label = "mmvt save_the_colorbar"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        _addon().save_colorbar()
+        return {"FINISHED"}
 
 
 class SaveAllViews(bpy.types.Operator):
@@ -796,7 +808,8 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
 
 def get_background_rgb_string():
     background = _addon().get_panels_background_color()
-    return ','.join([str(background.__getattribute__(x)) for x in ('r', 'g', 'b')])
+    return ','.join([str(x) for x in background])
+    # return ','.join([str(background.__getattribute__(x)) for x in ('r', 'g', 'b')])
 
 
 def save_render_image(img_name, quality, do_render_image, add_colorbar=None, cb_ticks_num=None, cb_ticks_font_size=None):
@@ -924,6 +937,7 @@ def register():
         bpy.utils.register_class(RenderFigure)
         bpy.utils.register_class(RenderPerspectives)
         bpy.utils.register_class(SaveAllViews)
+        bpy.utils.register_class(SaveColorbar)
         bpy.utils.register_class(CombinePerspectives)
         # print('Render Panel was registered!')
     except:
@@ -942,6 +956,7 @@ def unregister():
         bpy.utils.unregister_class(RenderFigure)
         bpy.utils.unregister_class(RenderPerspectives)
         bpy.utils.unregister_class(SaveAllViews)
+        bpy.utils.unregister_class(SaveColorbar)
         bpy.utils.unregister_class(CombinePerspectives)
     except:
         pass

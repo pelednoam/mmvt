@@ -391,6 +391,7 @@ get_cb_ticks_num = colorbar_panel.get_cb_ticks_num
 set_cb_ticks_num = colorbar_panel.set_cb_ticks_num
 get_cb_ticks_font_size = colorbar_panel.get_cb_ticks_font_size
 set_cb_ticks_font_size = colorbar_panel.set_cb_ticks_font_size
+save_colorbar = colorbar_panel.save_colorbar
 PERC_FORMATS = colorbar_panel.PERC_FORMATS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fMRI links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 fmri = fMRI_panel
